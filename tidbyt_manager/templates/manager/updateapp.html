@@ -6,14 +6,15 @@
 <form method="post">
   <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
-
+  <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
+<img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', id=device_id,iname=app['iname']) }}"
+    alt="Preview">
   <label for="uinterval">Render Interval Minutes (Update ever X minutes)</label>
   <div><input type="number" name="uinterval" id="uinterval" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
   
   <label for="display_time">Display Time Seconds (0 for device default)</label>
   <div><input type="number" name="display_time" id="display_time" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
   
-  <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
   
   <label for="notes">Notes: </label>
   <textarea name="notes" id="notes">{{ request.form['notes'] or app['notes'] }}</textarea>
