@@ -170,7 +170,7 @@
                 <li>
                   <div class="post">
                     <header>
-                      <h1>{{ app['iname'] }} &nbsp(installation id) </h1>
+                      <h1>{{ app['name'] }}-{{ app['iname'] }} </h1>
                       <h1>{% if app['enabled'] == "true" %}<enabled>&nbsp -- Enabled --</enabled><a
                           href="{{ url_for('manager.toggle_enabled', id=device['id'],iname=app['iname']) }}">Disable</a>
                         {% else %}<disabled>&nbsp -- Disabled -- </disabled><a

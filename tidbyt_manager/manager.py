@@ -121,8 +121,8 @@ def create():
         api_key = request.form["api_key"]
         notes = request.form["notes"]
         error = None
-        if not name:
-            error = "Name is required."
+        if not name or db.get_device_by_name(g.user,name):
+            error = "Unique name is required."
         if error is not None:
             flash(error)
         else:
@@ -667,7 +667,7 @@ def next_app(username,device_name,recursion_depth=0):
     device = [d for d in user["devices"].values() if device_name in d['img_url']][0]
     # treat em like an array
     apps_list = list(device["apps"].values())
-    if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") != "":
+    if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
         next_app_dict = device["apps"][device['night_mode_app']]
     elif device['id'] not in device_last_app_index:
         next_app_dict = apps_list[0]

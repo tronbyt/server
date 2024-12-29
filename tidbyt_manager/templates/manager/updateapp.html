@@ -6,14 +6,15 @@
 <form method="post">
   <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
-
+  <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
+<img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', id=device_id,iname=app['iname']) }}"
+    alt="Preview">
   <label for="uinterval">Render Interval Minutes (Update ever X minutes)</label>
   <div><input type="number" name="uinterval" id="uinterval" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
   
-  <label for="display_time">Display Time Second (0 for device default)</label>
+  <label for="display_time">Display Time Seconds (0 for device default)</label>
   <div><input type="number" name="display_time" id="display_time" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
   
-  <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
   
   <label for="notes">Notes: </label>
   <textarea name="notes" id="notes">{{ request.form['notes'] or app['notes'] }}</textarea>
@@ -26,15 +27,15 @@
   <label for="end_time">End Time</label>
   <div><input type="time" name="end_time" id="end_time" value="{{ request.form['end_time'] or app['end_time'] }}"></div>
   
-  <label for="days">Active Days</label>
+  <label for="days">Active Days</label> (none selected is ALL selected)
   <div>
-    <input type="checkbox" name="days" value="monday" {% if 'monday' in app['days'] %} checked {% endif %}> Monday
-    <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app['days'] %} checked {% endif %}> Tuesday
-    <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app['days'] %} checked {% endif %}> Wednesday
-    <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app['days'] %} checked {% endif %}> Thursday
-    <input type="checkbox" name="days" value="friday" {% if 'friday' in app['days'] %} checked {% endif %}> Friday
-    <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app['days'] %} checked {% endif %}> Saturday
-    <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app['days'] %} checked {% endif %}> Sunday
+    <input type="checkbox" name="days" value="monday" {% if 'monday' in app['days'] or not app['days'] %} checked {% endif %}> Monday
+    <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app['days'] or not app['days'] %} checked {% endif %}> Tuesday
+    <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app['days'] or not app['days'] %} checked {% endif %}> Wednesday
+    <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app['days'] or not app['days'] %} checked {% endif %}> Thursday
+    <input type="checkbox" name="days" value="friday" {% if 'friday' in app['days'] or not app['days'] %} checked {% endif %}> Friday
+    <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app['days'] or not app['days'] %} checked {% endif %}> Saturday
+    <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app['days'] or not app['days'] %} checked {% endif %}> Sunday
   </div>
 
   <input type="submit" value="Save">

@@ -256,3 +256,9 @@ def get_is_app_schedule_active(app):
         schedule_active = True
 
     return schedule_active
+
+def get_device_by_name(user,name):
+    for device_id, device in user.get("devices", {}).items():
+        if device.get("name") == name:
+            return device
+    return None
