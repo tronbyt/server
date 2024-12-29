@@ -121,8 +121,8 @@ def create():
         api_key = request.form["api_key"]
         notes = request.form["notes"]
         error = None
-        if not name:
-            error = "Name is required."
+        if not name or db.get_device_by_name(g.user,name):
+            error = "Unique name is required."
         if error is not None:
             flash(error)
         else:
