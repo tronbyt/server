@@ -200,7 +200,7 @@ def update(id):
                 print("no img_url in device")
                 device["img_url"] = f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
             else:
-                device["img_url"] = db.sanitize(img_url)
+                device["img_url"] = db.sanitize_url(img_url)
             device['night_mode_app'] = request.form['night_mode_app']
             device["api_key"] = api_key
             device["notes"] = notes
@@ -499,19 +499,21 @@ def flashfirmware(id):
             if 'file_path' in result:
                 return render_template(
                     "manager/firmware_flasher.html",
-                    device=g.user['devices'][id],
+                    device=g.user["devices"][id],
                     img_url=image_url,
-                    ap=ap,password=password,
-                    firmware_file=result['file_path']
+                    ap=ap,
+                    password=password,
+                    firmware_file=result["file_path"],
                 )
             elif 'error' in result:
                 flash(result['error'])
             else:
                 flash("firmware modification failed")
-    
+
     return render_template(
         "manager/firmware_form.html",
-        device=g.user['devices'][id]
+        device=g.user['devices'][id],
+        server_root=f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}",
     )
 
 

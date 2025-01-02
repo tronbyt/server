@@ -9,7 +9,7 @@
 <p>{{ img_url }}</p>
 <label for="wifi_ap">WiFi Network Name (AP):</label> {{ ap }}<br>
 <label for="wifi_password">WiFi Password:</label> {{ password }}<br>
-<label for="firmware">Firmware File:</label> <a href="{{ url_for('manager.download_firmware', device_id=device['id']) }}">DOWNLOAD FIRMWARE FILE</a>
+<h2><label for="firmware">Firmware File:</label> <a href="{{ url_for('manager.download_firmware', device_id=device['id']) }}">DOWNLOAD FIRMWARE FILE</a></h2>
  <h2>Download ESPHome Flasher here <a href="https://github.com/esphome/esphome-flasher/releases">ESPHome Flasher</a></h2>
  After downloading both files, run the ESPHome Flasher program and select your downloaded firmware file to flash your device.
 {% endblock %}

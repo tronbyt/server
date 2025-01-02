@@ -10,3 +10,4 @@ configs/**
 tidbyt-apps/
 users/admin/admin.json
 firmware/*custom.bin
+firmware/tronbyt_*.bin

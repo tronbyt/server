@@ -180,6 +180,21 @@ def sanitize(str):
     str = str.replace("'","")
     return str
 
+from urllib.parse import quote, unquote
+
+def sanitize_url(url):
+    # Decode any percent-encoded characters
+    url = unquote(url)
+    # Replace spaces with underscores
+    url = url.replace(" ", "_")
+    # Remove unwanted characters
+    for char in ["'", "\\"]:
+        url = url.replace(char, "")
+    # Encode back into a valid URL
+    url = quote(url, safe="/:.?&=")  # Allow standard URL characters
+    return url
+
+
 # basically just call gen_apps_array.py script
 def generate_apps_list():
     os.system("python3 gen_app_array.py") # safe
