@@ -4,6 +4,9 @@ from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
 import time
+import sys
+import shutil
+import subprocess
 
 def get_night_mode_is_active(device):
     current_hour = datetime.now().hour
@@ -262,3 +265,63 @@ def get_device_by_name(user,name):
         if device.get("name") == name:
             return device
     return None
+
+def get_user_by_device_id(device_id):
+    for user in get_all_users():
+        if 'devices' in user and device_id in user['devices']:
+            return user
+
+def generate_firmware(device_id,url,ap,pw):
+    # Usage
+    file_path = "firmware/fw.bin"
+    new_path = file_path.replace("fw", f"tronbyt_{device_id[0:4]}")
+    shutil.copy(file_path, new_path)
+
+    # Replace this with the string to be replaced
+
+    # new values should be the first three areuments passed to script
+    # extract ssid, password and url from command-line arguments
+    # substitutions = sys.argv[1:4]
+    # dict = {
+    #     "XplaceholderWIFISSID": ap,
+    #     "XplaceholderWIFIPASSWORD": pw,
+    #     "XplaceholderREMOTEURL___________________________________________________________________" : url,
+    # }
+    dict = {
+        "XplaceholderWIFISSID________________________________": ap,
+        "XplaceholderWIFIPASSWORD____________________________": pw,
+        "XplaceholderREMOTEURL_________________________________________________________________________________________": url,
+    }
+    bytes_written = None
+    with open(new_path, "r+b") as f:
+        # Read the binary file into memory
+        content = f.read()
+
+        for old_string, new_string in dict.items():
+            # Ensure the new string is not longer than the original
+            if len(new_string) > len(old_string):
+                return {"error" : "Replacement string cannot be longer than the original string."}
+
+            # Find the position of the old string
+            position = content.find(old_string.encode("ascii") + b"\x00")
+            if position == -1:
+                return {"error" : f"String '{old_string}' not found in the binary."}
+
+            # Create the new string, null-terminated, and padded to match the original length
+            padded_new_string = new_string + '\x00'
+            padded_new_string = padded_new_string.ljust(len(old_string) + 1, '\x00')  # Add padding if needed
+
+            # Replace the string
+            f.seek(position)
+            bytes_written = f.write(padded_new_string.encode("ascii"))
+    if bytes_written:
+        # run the correct checksum/hash script
+        result = subprocess.run(
+            ["python3", "/app/firmware/correct_firmware_esptool.py", f"/app/{new_path}"],
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        return {'file_path' : new_path}
+    else:
+        return {'error' : "no bytes written"}

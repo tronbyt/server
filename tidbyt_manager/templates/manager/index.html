@@ -139,10 +139,12 @@
           <table>
           <tr>
             <td>
-
               <a class="w3-button w3-teal w3-round" style="width: 100px;"
-                href="{{ url_for('manager.update', id=device['id']) }}">Edit</a> <a class="w3-button w3-teal w3-round"
+                href="{{ url_for('manager.update', id=device['id']) }}">Edit</a>
+              <a class="w3-button w3-teal w3-round"
                 style="width: 100px;" href="{{ url_for('manager.addapp', id=device['id']) }}">Add App</a>
+              <a class="w3-button w3-teal w3-round"
+                style="width: 100px;" href="{{ url_for('manager.flashfirmware', id=device['id']) }}">Firmware</a>
             </td>
           </tr>
         </table>

@@ -9,3 +9,4 @@ configs/**
 .DS_Store
 tidbyt-apps/
 users/admin/admin.json
+firmware/*custom.bin

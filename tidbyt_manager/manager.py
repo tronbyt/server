@@ -22,7 +22,6 @@ import time
 
 bp = Blueprint("manager", __name__)
 
-
 @bp.route("/")
 @login_required
 def index():
@@ -132,7 +131,7 @@ def create():
             device["name"] = name
             if not img_url:
                 sname = db.sanitize(name)
-                img_url = f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}/{g.user['username']}/{sname}/next"
+                img_url = f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
             device["img_url"] = img_url
             device["api_key"] = api_key
             device["notes"] = notes
@@ -199,10 +198,9 @@ def update(id):
             device["night_start"] = int(request.form['night_start'])
             if len(img_url) < 1:
                 print("no img_url in device")
-                topic = db.sanitize(name).lower()
-                device["img_url"] = f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}/{g.user['username']}/{topic}/next"
+                device["img_url"] = f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
             else:
-                device["img_url"] = img_url
+                device["img_url"] = db.sanitize(img_url)
             device['night_mode_app'] = request.form['night_mode_app']
             device["api_key"] = api_key
             device["notes"] = notes
@@ -482,6 +480,40 @@ def possibly_render(user,app):
         print("NO RENDER")
     return result
 
+@bp.route("/<string:id>/flash", methods=("POST", "GET"))
+@login_required
+def flashfirmware(id):
+    # first ensure this device id exists in the current users config
+    if id not in g.user["devices"]:
+        abort(404)
+    # on GET just render the form for the user to input their wifi creds and auto fill the image_url
+
+    if request.method == "POST":
+        print(request.form)
+        if 'wifi_ap' in request.form and 'wifi_password' in request.form:
+            ap = request.form['wifi_ap']
+            password = request.form["wifi_password"]
+            image_url = request.form["img_url"]
+
+            result = db.generate_firmware(id,image_url,ap,password)
+            if 'file_path' in result:
+                return render_template(
+                    "manager/firmware_flasher.html",
+                    device=g.user['devices'][id],
+                    img_url=image_url,
+                    ap=ap,password=password,
+                    firmware_file=result['file_path']
+                )
+            elif 'error' in result:
+                flash(result['error'])
+            else:
+                flash("firmware modification failed")
+    
+    return render_template(
+        "manager/firmware_form.html",
+        device=g.user['devices'][id]
+    )
+
 
 @bp.route("/<string:id>/<string:iname>/<int:delete_on_cancel>/configapp",methods=("GET", "POST"))
 @login_required
@@ -655,16 +687,17 @@ def get_brightness(username, device_name):
 
 MAX_RECURSION_DEPTH = 10
 device_last_app_index = {} # global last index dict
-@bp.route("/<string:username>/<string:device_name>/next")
-def next_app(username,device_name,recursion_depth=0):
+@bp.route("/<string:device_id>/next")
+def next_app(device_id,user=None,recursion_depth=0):
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded")
         return None  # or handle the situation as needed
+    # get user owner of this devicde id
+    if not user:
+        user = db.get_user_by_device_id(device_id)
 
-    user = db.get_user(username)
-    #
     # Pick the device out of the list of devices where device_name in contained in img_url
-    device = [d for d in user["devices"].values() if device_name in d['img_url']][0]
+    device = user['devices'][device_id]
     # treat em like an array
     apps_list = list(device["apps"].values())
     if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
@@ -691,7 +724,7 @@ def next_app(username,device_name,recursion_depth=0):
         # recurse until we find one that's enabled
         print("disabled app")
         time.sleep(0.25) #delay when recursing to avoid accidental runaway
-        return next_app(username,device_name,recursion_depth+1)
+        return next_app(device_id,user,recursion_depth+1)
     else:
         # check if the webp needs update/render and do it, save if rendered
         if possibly_render(user,app):
@@ -724,7 +757,7 @@ def next_app(username,device_name,recursion_depth=0):
         else:
             print("file not found")
             time.sleep(0.25) # delay when recursing to avoid accidental runaway
-            return next_app(username,device_name, recursion_depth+1) # run it recursively until we get a file.
+            return next_app(device_id,user, recursion_depth+1) # run it recursively until we get a file.
 
 
 @bp.route("/<string:id>/<string:iname>/appwebp")
@@ -743,6 +776,27 @@ def appwebp(id, iname):
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
             # if filesize is greater than zero
             return send_file(webp_path, mimetype="image/webp")
+        else:
+            print("file no exist or 0 size")
+            abort(404)
+    except:
+        abort(404)
+
+@bp.route("/<string:device_id>/firmware")
+@login_required
+def download_firmware(device_id):
+    try:
+        if g.user and device_id in g.user['devices']:
+            device = g.user["devices"][device_id]
+        else:
+            abort(404)
+
+        file_path = "/app/firmware/tronbyt_{}.bin".format(device_id[0:4])
+        # check if the file exists
+        if db.file_exists(file_path) and os.path.getsize(file_path) > 0:
+            # if filesize is greater than zero
+
+            return send_file(file_path, mimetype="application/octet-stream")
         else:
             print("file no exist or 0 size")
             abort(404)
