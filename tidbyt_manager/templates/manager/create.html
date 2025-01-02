@@ -11,8 +11,9 @@
 <input type="range" name="brightness" id="brightness" min="0" max="100" value="30"
     oninput="this.previousElementSibling.value = this.value">
 
-<span><label for="api_key">Device API KEY</label> (leave blank when using mqtt)</span>
-<textarea name="api_key" id="api_key" rows="5"></textarea> 
+<!-- <span><label for="api_key">Device API KEY</label> (leave blank)</span> -->
+<!-- <textarea name="api_key" id="api_key" rows="5"></textarea>  -->
+<input type="hidden" name="api_key" id="api_key"> 
 <label for="notes">Notes</label>
 <input name="notes" id="notes" value="{{ request.form['notes'] }}" >
 <input type="submit" value="Save">
