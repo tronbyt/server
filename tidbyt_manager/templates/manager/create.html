@@ -5,7 +5,7 @@
 {% block content %} <form method="post">
 <span><label for="name">Name</label> (Descriptive name for this Tronbyt device)</span>
 <input name="name" id="name" value="{{ request.form['name'] }}" required>
-<span><label for="img_url">Device ID</label> (Leave Blank if using docker-compose.) -- ID from Tronbyt app or mqtt url eg. mqtt://user:pass@hostname:1883/topic </span>
+<span><label for="img_url">Image URL</label> (Leave Blank if using docker-compose.)</span>
 <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" > 
 <span><label for="brightness">Brightness</label></span><output>30</output>
 <input type="range" name="brightness" id="brightness" min="0" max="100" value="30"
