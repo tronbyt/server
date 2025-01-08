@@ -494,9 +494,14 @@ def flashfirmware(id):
             ap = request.form['wifi_ap']
             password = request.form["wifi_password"]
             image_url = request.form["img_url"]
+            gen2 = False
+            if 'gen2' in request.form:
+                gen2 = request.form['gen2']
 
-            result = db.generate_firmware(id,image_url,ap,password)
+            result = db.generate_firmware(id,image_url,ap,password,gen2)
             if 'file_path' in result:
+                g.user["devices"][id]["firmware_file_path"] = result["file_path"]
+                db.save_user(g.user)
                 return render_template(
                     "manager/firmware_flasher.html",
                     device=g.user["devices"][id],
@@ -788,13 +793,17 @@ def appwebp(id, iname):
 @login_required
 def download_firmware(device_id):
     try:
-        if g.user and device_id in g.user['devices']:
-            device = g.user["devices"][device_id]
+        if (
+            g.user
+            and device_id in g.user["devices"]
+            and "firmware_file_path" in g.user["devices"][device_id]
+        ):
+            file_path = f"/app/{g.user['devices'][device_id]['firmware_file_path']}"
         else:
             abort(404)
 
-        file_path = "/app/firmware/tronbyt_{}.bin".format(device_id[0:4])
         # check if the file exists
+        print(f"checking for {file_path}")
         if db.file_exists(file_path) and os.path.getsize(file_path) > 0:
             # if filesize is greater than zero
 

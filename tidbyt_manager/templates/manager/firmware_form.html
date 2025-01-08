@@ -17,7 +17,18 @@
 <input name="wifi_ap" id="wifi_ap" required>
 <label for="wifi_password">WiFi Password</label>
 <input name="wifi_password" id="wifi_password" required>
+<style>
+    .left-align {
+        text-align: left;
+    }
+</style>
+</head>
 
+<body>
+    <div class="left-align">
+        <label for="gen2">Gen2 ?</label>
+        <input type="checkbox" name="gen2" id="gen2" {% if request.form.get('gen2') %} checked {% endif %}>
+    </div>
 <input type="submit" value="Generate Firmware File">
 </form>
 <hr>
