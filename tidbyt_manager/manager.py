@@ -367,7 +367,7 @@ def toggle_enabled(id, iname):
     user["devices"][id]["apps"][iname] = app
     db.save_user(user)  # this saves all changes
     flash(
-        "Change will go into effect next render cycle. For immediate change edit or re-configure the app."
+        "Changes saved."
     )
     return redirect(url_for("manager.index"))
 
