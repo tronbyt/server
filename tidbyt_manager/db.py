@@ -245,7 +245,6 @@ def get_all_users():
     users = list()
     for user in os.listdir(get_users_dir()):
         if (os.path.isdir(f"{get_users_dir()}/{user}")):
-            print(f"got {user}")
             users.append(get_user(user))
         
     return users
