@@ -126,7 +126,7 @@ def create():
             flash(error)
         else:
             device = dict()
-            device["id"] = str(uuid.uuid4())
+            device["id"] = str(uuid.uuid4())[0:8] # just use first 8 chars is good enough
             print("id is :" + str(device["id"]))
             device["name"] = name
             if not img_url:
@@ -480,9 +480,9 @@ def possibly_render(user,app):
         print("NO RENDER")
     return result
 
-@bp.route("/<string:id>/flash", methods=("POST", "GET"))
+@bp.route("/<string:id>/firmware", methods=("POST", "GET"))
 @login_required
-def flashfirmware(id):
+def generate_firmware(id):
     # first ensure this device id exists in the current users config
     if id not in g.user["devices"]:
         abort(404)
@@ -494,16 +494,17 @@ def flashfirmware(id):
             ap = request.form['wifi_ap']
             password = request.form["wifi_password"]
             image_url = request.form["img_url"]
+            label = db.sanitize(g.user["devices"][id]['name'])
             gen2 = False
             if 'gen2' in request.form:
                 gen2 = request.form['gen2']
 
-            result = db.generate_firmware(id,image_url,ap,password,gen2)
+            result = db.generate_firmware(label,image_url,ap,password,gen2)
             if 'file_path' in result:
                 g.user["devices"][id]["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
                 return render_template(
-                    "manager/firmware_flasher.html",
+                    "manager/firmware.html",
                     device=g.user["devices"][id],
                     img_url=image_url,
                     ap=ap,
@@ -693,7 +694,7 @@ def get_brightness(username, device_name):
     return Response(str(brightness_value), mimetype='text/plain')
 
 MAX_RECURSION_DEPTH = 10
-device_last_app_index = {} # global last index dict
+device_last_app_index = {} # global last index dict (CAN'T USE THIS WITH MULTIPLE WORKERS) must use file.
 @bp.route("/<string:device_id>/next")
 def next_app(device_id,user=None,recursion_depth=0):
     if recursion_depth > MAX_RECURSION_DEPTH:
@@ -703,7 +704,7 @@ def next_app(device_id,user=None,recursion_depth=0):
     if not user:
         user = db.get_user_by_device_id(device_id)
 
-    # Pick the device out of the list of devices where device_name in contained in img_url
+    # Pick device by passed in device_id
     device = user['devices'][device_id]
     # treat em like an array
     apps_list = list(device["apps"].values())
@@ -789,7 +790,7 @@ def appwebp(id, iname):
     except:
         abort(404)
 
-@bp.route("/<string:device_id>/firmware")
+@bp.route("/<string:device_id>/download_firmware")
 @login_required
 def download_firmware(device_id):
     try:

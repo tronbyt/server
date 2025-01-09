@@ -8,6 +8,22 @@ import sys
 import shutil
 import subprocess
 
+def get_last_app_index(device_id):
+    try:
+        with open(f'users/{device_id}.idx', 'r') as file:
+            return int(file.read().strip())
+    except (FileNotFoundError, ValueError, OSError):
+        return 0
+
+
+def save_last_app_index(device_id, index):
+    try:
+        with open(f"users/{device_id}.idx", "w") as file:
+            file.write(str(index))
+    except OSError as e:
+        print(f"Error saving index for device {device_id}: {e}")
+
+
 def get_night_mode_is_active(device):
     current_hour = datetime.now().hour
     if device.get("night_start",-1) > -1:
@@ -286,14 +302,15 @@ def get_user_by_device_id(device_id):
         if 'devices' in user and device_id in user['devices']:
             return user
 
-def generate_firmware(device_id,url,ap,pw,gen2):
+def generate_firmware(label,url,ap,pw,gen2):
     # Usage
     if (gen2 == False):
         file_path = "firmware/gen1.bin"
     else:
         file_path = "firmware/gen2.bin"
-        
-    new_path = file_path.replace(".bin", f"_tronbyt_{device_id[0:4]}.bin")
+
+    
+    new_path = file_path.replace(".bin", f"_{label}.bin")
     shutil.copy(file_path, new_path)
 
     # Replace this with the string to be replaced

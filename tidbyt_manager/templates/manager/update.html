@@ -8,7 +8,7 @@
 <label for="name">Name</label>
 <input name="name" id="name"
 value="{{ request.form['name'] or device['name'] }}" required>
-<span><label for="img_url">Image URL</label></span>
+<span><label for="img_url">Image URL</label> (clear to reset to default)</span>
 {% if not device['img_url'].startswith('http') %}
 <input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
 {% else %}
