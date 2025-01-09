@@ -126,7 +126,7 @@ def create():
             flash(error)
         else:
             device = dict()
-            device["id"] = str(uuid.uuid4())
+            device["id"] = str(uuid.uuid4())[0:8] # just use first 8 chars is good enough
             print("id is :" + str(device["id"]))
             device["name"] = name
             if not img_url:
@@ -480,9 +480,9 @@ def possibly_render(user,app):
         print("NO RENDER")
     return result
 
-@bp.route("/<string:id>/flash", methods=("POST", "GET"))
+@bp.route("/<string:id>/firmware", methods=("POST", "GET"))
 @login_required
-def flashfirmware(id):
+def generate_firmware(id):
     # first ensure this device id exists in the current users config
     if id not in g.user["devices"]:
         abort(404)
@@ -494,16 +494,17 @@ def flashfirmware(id):
             ap = request.form['wifi_ap']
             password = request.form["wifi_password"]
             image_url = request.form["img_url"]
+            label = db.sanitize(g.user["devices"][id]['name'])
             gen2 = False
             if 'gen2' in request.form:
                 gen2 = request.form['gen2']
 
-            result = db.generate_firmware(id,image_url,ap,password,gen2)
+            result = db.generate_firmware(label,image_url,ap,password,gen2)
             if 'file_path' in result:
                 g.user["devices"][id]["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
                 return render_template(
-                    "manager/firmware_flasher.html",
+                    "manager/firmware.html",
                     device=g.user["devices"][id],
                     img_url=image_url,
                     ap=ap,
@@ -683,9 +684,9 @@ def configapp(id, iname, delete_on_cancel):
             return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:username>/<string:device_name>/brightness", methods=("GET",))
-def get_brightness(username, device_name):
-    user = db.get_user(username)
+@bp.route("/<string:device_id>/brightness", methods=("GET",))
+def get_brightness(device_id,):
+    user = db.get_user_by_device_id(device_id)
     device = list(user["devices"].values())[0]
     # brightness_value = db.brightness_int_from_string(device.get("brightness", "medium").lower())  # Assume this is how you get the brightness value from your device
     brightness_value = device.get("brightness", 30)  # Assume this is how you get the brightness value from your device
@@ -693,36 +694,35 @@ def get_brightness(username, device_name):
     return Response(str(brightness_value), mimetype='text/plain')
 
 MAX_RECURSION_DEPTH = 10
-device_last_app_index = {} # global last index dict
 @bp.route("/<string:device_id>/next")
-def next_app(device_id,user=None,recursion_depth=0):
+def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded")
         return None  # or handle the situation as needed
     # get user owner of this devicde id
     if not user:
         user = db.get_user_by_device_id(device_id)
+    if not last_app_index:
+        last_app_index = db.get_last_app_index(device_id)
 
-    # Pick the device out of the list of devices where device_name in contained in img_url
+    # Pick device by passed in device_id
     device = user['devices'][device_id]
+    
     # treat em like an array
     apps_list = list(device["apps"].values())
     if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
         next_app_dict = device["apps"][device['night_mode_app']]
-    elif device['id'] not in device_last_app_index:
-        next_app_dict = apps_list[0]
-        device_last_app_index[device['id']] = 0 # just use the first one if we haven't ever done this before
     else:
-        if device_last_app_index[device["id"]] + 1 < len(
+        if last_app_index + 1 < len(
             apps_list
         ):  # will +1 be in bounds of array ?
             next_app_dict = apps_list[
-                device_last_app_index[device["id"]] + 1
+                last_app_index + 1
             ]  # add 1 to get the next app
-            device_last_app_index[device["id"]] += 1
+            last_app_index += 1
         else:
             next_app_dict = apps_list[0]  # go to the beginning
-            device_last_app_index[device["id"]] = 0
+            last_app_index = 0
 
     print("got next app: "+ next_app_dict['name'])
     app = next_app_dict
@@ -731,7 +731,7 @@ def next_app(device_id,user=None,recursion_depth=0):
         # recurse until we find one that's enabled
         print("disabled app")
         time.sleep(0.25) #delay when recursing to avoid accidental runaway
-        return next_app(device_id,user,recursion_depth+1)
+        return next_app(device_id,user,last_app_index+1,recursion_depth+1)
     else:
         # check if the webp needs update/render and do it, save if rendered
         if possibly_render(user,app):
@@ -759,12 +759,13 @@ def next_app(device_id,user=None,recursion_depth=0):
                 s = device.get("default_interval", 5)
             print(f"sending dwell seconds {s}")
             response.headers["Tronbyt-Dwell-Secs"] = s
-
+            print(f"returning app index {last_app_index}")
+            db.save_last_app_index(device_id,last_app_index)
             return response        
         else:
             print("file not found")
             time.sleep(0.25) # delay when recursing to avoid accidental runaway
-            return next_app(device_id,user, recursion_depth+1) # run it recursively until we get a file.
+            return next_app(device_id,user,last_app_index+1,recursion_depth+1) # run it recursively until we get a file.
 
 
 @bp.route("/<string:id>/<string:iname>/appwebp")
@@ -789,7 +790,7 @@ def appwebp(id, iname):
     except:
         abort(404)
 
-@bp.route("/<string:device_id>/firmware")
+@bp.route("/<string:device_id>/download_firmware")
 @login_required
 def download_firmware(device_id):
     try:

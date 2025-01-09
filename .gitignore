@@ -9,5 +9,6 @@ configs/**
 .DS_Store
 tidbyt-apps/
 users/admin/admin.json
-firmware/*custom.bin
-firmware/tronbyt_*.bin
+firmware/*.bin
+users/*.idx
+

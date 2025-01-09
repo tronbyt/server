@@ -2,13 +2,13 @@
     "username": "admin",
     "password": "pbkdf2:sha256:600000$MejfwNqfHsmefntx$3289f3302f44d15b719d82c409f9da1d52c798c7eab2ee546b361a0cfff91077",
     "devices": {
-        "9abe2858-554a-4913-92ce-c4c27dd16c53": {
-            "id": "9abe2858-554a-4913-92ce-c4c27dd16c53",
+        "9abe2858": {
+            "id": "9abe2858",
             "name": "Tronbyt 1",
             "brightness": 10,
             "night_brightness": 10,
             "night_start": -1,
-            "img_url": "/9abe2858-554a-4913-92ce-c4c27dd16c53/next",
+            "img_url": "/9abe2858/next",
             "api_key": "",
             "notes": "",
             "apps": {
