@@ -51,7 +51,7 @@ def brightness_int_from_string(brightness_string):
     return brightness_value
 
 def get_users_dir():
-    #print(f"users dir : {current_app.config['USERS_DIR']}")
+    # print(f"users dir : {current_app.config['USERS_DIR']}")
     return current_app.config['USERS_DIR']
 
 def get_user_config_path(user):
@@ -244,7 +244,9 @@ def delete_user_upload(user,filename):
 def get_all_users():
     users = list()
     for user in os.listdir(get_users_dir()):
-        users.append(get_user(user))
+        if (os.path.isdir(f"{get_users_dir()}/{user}")):
+            print(f"got {user}")
+            users.append(get_user(user))
         
     return users
 
