@@ -6,7 +6,7 @@ FROM golang:latest
 ENV NODE_URL=https://deb.nodesource.com/setup_21.x
 ENV PIXLET_REPO=https://github.com/tavdog/pixlet
 ENV TDM_REPO=https://github.com/tavdog/tidbyt-manager
-ENV TIDBYT_APPS_REPO=https://github.com/tavdog/tidbyt-apps
+ENV TIDBYT_APPS_REPO=https://github.com/tavdog/tronbyt-apps.git
 
 RUN apt update && apt upgrade -y && apt install cron libwebp-dev python3-pip python3-flask python3-gunicorn -y
 RUN pip3 install --break-system-packages python-dotenv paho-mqtt python-pidfile esptool
