@@ -26,7 +26,11 @@
     <div id="system_app_grid" class="app-grid">
       {% for app in apps_list %}
       <div class="app-item" data-value="{{app['name'].replace('.star','')}}">
-        <img src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'].replace('.star','') }}">
+        {% if 'preview' in app%}
+        <img width="400px" src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'].replace('.star','') }}">
+        {% else %}
+        <img src="{{ url_for('static', filename='images/not_found.jpg')}}" alt="{{ app['name'].replace('.star','') }}">
+        {% endif %}
         <p>{{ app['name'].replace('.star','') }} - {{ app['summary'] }}</p>
       </div>
       {% endfor %}
