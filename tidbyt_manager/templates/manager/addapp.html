@@ -2,55 +2,85 @@
 {% block header %}
 <h1>{% block title %}Add App{% endblock %}</h1>
 {% endblock %}
-{% block content %} <form method="post" id="main_form">
+{% block content %}
+<form method="post" id="main_form">
   <label for="name">App Selection</label>
-  <select id=name name="name">
+
   {% if custom_apps_list %}
-    <optgroup label="Custom Apps"></optgroup>
-    {% for app in custom_apps_list %}
-    <option value="{{app['name'].replace('.star','')}}">{{app['name'].replace('.star','')}} - {{app['summary']}}</option>
-    {% endfor %}
-    </optgroup>
-    <hr>
+  <div class="app-group">
+    <h3>Custom Apps</h3>
+    <div id="custom_app_grid" class="app-grid">
+      {% for app in custom_apps_list %}
+      <div class="app-item" data-value="{{app['name'].replace('.star','')}}">
+        <img src="{{ url_for('static', filename='images/') }}" alt="{{ app['name'].replace('.star','') }}">
+        <p>{{ app['name'].replace('.star','') }} - {{ app['summary'] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <hr>
   {% endif %}
-  <optgroup label="System Apps"></optgroup>
-    {% for app in apps_list %}
-      <option value="{{app['name'].replace('.star','')}}">{{app['name'].replace('.star','')}} - {{app['summary']}}</option>
-    {% endfor %}
-  </optgroup>
-  </select>
-<br>
-<label for="uinterval">Render Interval (minutes)</label>
-<input name="uinterval" type="number" id="uinterval" value={{ request.form['uinterval'] or 10}} required>
-<label for="display_time">Display Time (seconds)</label>
-<input name="display_time" type="number" id="display_time" value={{ request.form['display_time'] or 0}} required>
 
-<label for="notes">Notes</label>
-<textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
+  <div class="app-group">
+    <h3>System Apps</h3>
+    <div id="system_app_grid" class="app-grid">
+      {% for app in apps_list %}
+      <div class="app-item" data-value="{{app['name'].replace('.star','')}}">
+        <img src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'].replace('.star','') }}">
+        <p>{{ app['name'].replace('.star','') }} - {{ app['summary'] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 
+  <input type="hidden" name="name" id="selected_app">
+  <br>
+  <label for="uinterval">Render Interval (minutes)</label>
+  <input name="uinterval" type="number" id="uinterval" value={{ request.form['uinterval'] or 10}} required>
+  <label for="display_time">Display Time (seconds)</label>
+  <input name="display_time" type="number" id="display_time" value={{ request.form['display_time'] or 0}} required>
+
+  <label for="notes">Notes</label>
+  <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
+
+  <input type="submit" value="Configure" class="w3-button w3-green" onclick="move()"></input>
+  <div class="w3-light-grey">
+    <div id="myBar" class="w3-container w3-green" style="height:24px;width:1%;visibility: hidden"></div>
+  </div>
 </form>
-<input type="submit" value="Configure" class="w3-button w3-green" onclick="move()"></input>
-<div class="w3-light-grey">
-  <div id="myBar" class="w3-container w3-green" style="height:24px;width:1%;visibility: hidden"></div>
-</div>
+
+<style>
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .app-item {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .app-item img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .app-item.selected {
+    border-color: #4CAF50;
+  }
+</style>
 
 <script>
-function move() {
-  var elem = document.getElementById("myBar");
-  var myform = document.getElementById("main_form");
-  elem.style.visibility = "visible";
-  var width = 1;
-  var id = setInterval(frame, 20);
-  function frame() {
-    if (width >= 100) {
-      clearInterval(id);
-    } else {
-      width++;
-      elem.style.width = width + '%';
-    }
-  }
-  myform.submit();
-
-}
+  document.querySelectorAll('.app-item').forEach(item => {
+    item.addEventListener('click', function () {
+      document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
+      this.classList.add('selected');
+      document.getElementById('selected_app').value = this.getAttribute('data-value');
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+  });
 </script>
 {% endblock %}
