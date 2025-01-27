@@ -83,7 +83,9 @@
       document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
       this.classList.add('selected');
       document.getElementById('selected_app').value = this.getAttribute('data-value');
-      window.scrollTo(0, document.body.scrollHeight);
+      // Submit the form
+      document.getElementById('main_form').submit();
+      // window.scrollTo(0, document.body.scrollHeight);
     });
   });
 </script>
