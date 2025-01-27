@@ -83,6 +83,11 @@ def get_user(username):
         return False
 
 def auth_user(username,password):
+    # first time running with no admin.json file ?
+    user_file_path = f"{get_users_dir()}/{username}/{username}.json"
+    default_admin_file_path = f"{get_users_dir()}/admin/admin.json.default"
+    if (not os.path.exists(user_file_path)) and username == "admin":
+        shutil.copy(default_admin_file_path, user_file_path)        
     try:
         with open(f"{get_users_dir()}/{username}/{username}.json") as file:
             user = json.load(file)

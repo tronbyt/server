@@ -57,7 +57,7 @@ for app in apps:
         # Check for the existence of an image with the base name of the app name
         image_found = False
         for ext in ['gif','png','webp']:
-            image_path = os.path.join(app_base_path, f"{app_dict['name']}.{ext}")
+            image_path = os.path.join(static_images_path, f"{app_dict['name']}.{ext}")
             # print(image_path)
 
             if os.path.exists(image_path):
