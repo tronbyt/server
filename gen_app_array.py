@@ -58,33 +58,33 @@ for app in apps:
         image_found = False
         for ext in ['gif','png','webp']:
             image_path = os.path.join(app_base_path, f"{app_dict['name']}.{ext}")
-            print(image_path)
+            # print(image_path)
 
-            # if os.path.exists(image_path):
-            #     app_dict["preview"] = os.path.basename(image_path)
-            #     shutil.copy(
-            #         image_path,
-            #         os.path.join(static_images_path, os.path.basename(image_path)),
-            #     )
-            #     image_found = True
+            if os.path.exists(image_path):
+                app_dict["preview"] = os.path.basename(image_path)
+                # shutil.copy(
+                #     image_path,
+                #     os.path.join(static_images_path, os.path.basename(image_path)),
+                # )
+                image_found = True
 
-            #     break
+                break
 
-        if not os.path.exists(os.path.join(static_images_path, os.path.basename(image_path))):
-            # lets do a pixlet render and output to the images/static dir
-            command = [
-                # "/pixlet/pixlet",
-                "pixlet",
-                "render",
-                app_path,
-                "-o",
-                os.path.join(static_images_path, os.path.basename(image_path)),
-            ]
-            print(command)
-            result = subprocess.run(command)
-            app_dict['preview'] = os.path.basename(image_path)  # Set a default image if not found
-        else:
-            app_dict["preview"] = os.path.basename(image_path)
+        # if not os.path.exists(os.path.join(static_images_path, os.path.basename(image_path))):
+        #     # lets do a pixlet render and output to the images/static dir
+        #     # command = [
+        #     #     # "/pixlet/pixlet",
+        #     #     "pixlet",
+        #     #     "render",
+        #     #     app_path,
+        #     #     "-o",
+        #     #     os.path.join(static_images_path, os.path.basename(image_path)),
+        #     # ]
+        #     # print(command)
+        #     # result = subprocess.run(command)
+        #     app_dict['preview'] = os.path.basename("not_found.jpg")  # Set a default image if not found
+        # else:
+        #     app_dict["preview"] = os.path.basename(image_path)
         count += 1
         apps_array.append(app_dict)
     except Exception as e:
