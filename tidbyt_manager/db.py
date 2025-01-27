@@ -124,7 +124,7 @@ def get_apps_list(user):
     # test for directory named dir and if not exist creat it
     if user == "system" or user == "":
         list_file = "tidbyt-apps/apps.json"
- 
+
         if not os.path.exists(list_file):
             print("Generating apps.json file...")
             subprocess.run(["python3", "gen_app_array.py"])
@@ -138,7 +138,7 @@ def get_apps_list(user):
         command = [ "find", dir, "-name", "*.star" ]
         output = subprocess.check_output(command, text=True)
         print("got find output of {}".format(output))
-    
+
         apps_paths = output.split("\n")
         for app in apps_paths:
             if app == "":
@@ -149,7 +149,7 @@ def get_apps_list(user):
             app = app.replace("\n","")
             app = app.replace('.star','')
             app_dict['name'] = app.split('/')[-1]
-
+            app_dict["image_url"] = app_dict["name"] + ".gif"
             # look for a yaml file
             app_base_path = ("/").join(app_dict['path'].split('/')[0:-1])
             yaml_path = "{}/manifest.yaml".format(app_base_path)
@@ -159,8 +159,8 @@ def get_apps_list(user):
                 with open(yaml_path,'r') as f:
                     yaml_str = f.read()
                     for line in yaml_str.split('\n'):
-                            if "summary:" in line:
-                                app_dict['summary'] = line.split(': ')[1]
+                        if "summary:" in line:
+                            app_dict['summary'] = line.split(': ')[1]
             else:
                 app_dict['summary'] = "Custom App"
             app_list.append(app_dict)

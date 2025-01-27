@@ -1,10 +1,10 @@
 services:
   web:
-    network_mode: bridge
-    ports:
-      - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
-      - "${PIXLET_SERVE_PORT1}:5100" # 5100 is used for pixlet serve interface during app configuration
-      - "${PIXLET_SERVE_PORT2}:5101" # user 2
+    # network_mode: bridge
+    # ports:
+    #   - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
+    #   - "${PIXLET_SERVE_PORT1}:5100" # 5100 is used for pixlet serve interface during app configuration
+    #   - "${PIXLET_SERVE_PORT2}:5101" # user 2
     volumes:
      - .:/app
     command: ["./run.development"]
