@@ -910,9 +910,11 @@ def set_system_repo():
                         flash("Repo Cloned")
                 else:
                     # same as before so just issue a pull to update it.
-                    result = subprocess.run(["git", "-C", "pull", system_apps_path])
+                    result = subprocess.run(["git", "-C", system_apps_path, "pull"])
                     if result.returncode == 0:
                         flash("Repo Updated")
+                    else:
+                        flash("Repo Update Failed")
                 # run the generate app list for custom repo
                 os.system("python3 gen_app_array.py")  # safe
                 return redirect(url_for("manager.index"))
