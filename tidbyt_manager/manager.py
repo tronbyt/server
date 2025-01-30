@@ -196,6 +196,7 @@ def update(id):
             device["brightness"] = int(request.form["brightness"])
             device["night_brightness"] = int(request.form["night_brightness"])
             device["night_start"] = int(request.form['night_start'])
+            device['timezone'] = int(request.form['timezone'])
             if len(img_url) < 1:
                 print("no img_url in device")
                 device["img_url"] = f"http://{current_app.config['DOMAIN']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"

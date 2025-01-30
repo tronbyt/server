@@ -23,7 +23,17 @@ value="{{ request.form['name'] or device['name'] }}" required>
 <input type="range" name="brightness" id="brightness" min="0" max="100" value="{{ device['brightness'] }}"
     oninput="this.previousElementSibling.value = this.value">
 
-
+<!-- ...existing code... -->
+<span><label for="timezone">Timezone (UTC Offset)</label></span>
+<select name="timezone" id="timezone">
+  <option value="100"> Server Timezone </option>
+  {% for offset in range(-12, 13) %}
+    <option value="{{ offset }}" {% if device['timezone'] == offset %}selected{% endif %}>
+      UTC{% if offset >= 0 %}+{{ offset }}{% else %}{{ offset }}{% endif %}
+    </option>
+  {% endfor %}
+</select>
+<!-- ...existing code... -->
 <span><label for="night_brightness">Night Brightness</label></span><output>{{ device['night_brightness'] or 10 }}</output>
 
 <input type="range" name="night_brightness" id="night_brightness" min="0" max="100" value="{{ device['night_brightness'] or 10 }}"

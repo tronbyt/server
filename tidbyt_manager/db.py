@@ -2,11 +2,20 @@ import os,json,subprocess,datetime
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import sys
 import shutil
 import subprocess
+
+def server_tz_offset():
+    output = subprocess.check_output(["date", "+%z"]).decode().strip()
+    # Convert the offset to a timedelta
+    sign = 1 if output[0] == '+' else -1
+    hours = int(output[1:3])
+    minutes = int(output[3:5])
+    offset = sign * (hours * 3600 + minutes * 60)
+    return offset
 
 def get_last_app_index(device_id):
     try:
@@ -25,7 +34,11 @@ def save_last_app_index(device_id, index):
 
 
 def get_night_mode_is_active(device):
-    current_hour = datetime.now().hour
+    if device['timezone'] != 100: # configured, adjust current hour to set device timezone        
+        current_hour = (datetime.now(timezone.utc).hour + device['timezone']) % 24 #
+    else:
+        current_hour = datetime.now().hour
+    print(f"current_hour:{current_hour}")
     if device.get("night_start",-1) > -1:
         start_hour = device['night_start']
         end_hour = 6 # 6am
