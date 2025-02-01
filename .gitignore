@@ -5,9 +5,9 @@ configs/**
 **/*.json
 **/*.log
 .env
-**/tidbyt-apps/**
+**/system-apps/**
 .DS_Store
-tidbyt-apps/
+system-apps/
 users/admin/admin.json
 firmware/*.bin
 users/*.idx
