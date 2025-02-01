@@ -34,7 +34,7 @@ def save_last_app_index(device_id, index):
 
 
 def get_night_mode_is_active(device):
-    if device['timezone'] != 100: # configured, adjust current hour to set device timezone        
+    if 'timezone' in device and device['timezone'] != 100: # configured, adjust current hour to set device timezone        
         current_hour = (datetime.now(timezone.utc).hour + device['timezone']) % 24 #
     else:
         current_hour = datetime.now().hour
@@ -141,7 +141,7 @@ def get_apps_list(user):
     app_list = list()
     # test for directory named dir and if not exist creat it
     if user == "system" or user == "":
-        list_file = "tidbyt-apps/apps.json"
+        list_file = "system-apps.json"
 
         if not os.path.exists(list_file):
             print("Generating apps.json file...")
@@ -197,7 +197,7 @@ def get_app_details(user,name):
             # we found it
             return app
     # if we get here then the app is not in custom apps
-    # so we need to look in the tidbyt-apps directory
+    # so we need to look in the system-apps directory
     apps = get_apps_list("system")
     for app in apps:
         if app['name'] == name:
