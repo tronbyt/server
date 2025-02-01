@@ -12,3 +12,4 @@ users/admin/admin.json
 firmware/*.bin
 users/*.idx
 
+/system-apps
