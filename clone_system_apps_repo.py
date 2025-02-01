@@ -1,16 +1,29 @@
-# generate the apps.txt list. will pullapp descrption pulled from the yaml if available
+# clone system repo and generate the apps.json list. will pullapp descrption pulled from the yaml if available
 import json,os,sys,subprocess,shutil
 
-
-apps_path = "tidbyt-apps"
-
+system_apps_path = "system-apps"
+system_apps_repo = os.environ.get('SYSTEM_APPS_REPO') or "https://github.com/tavdog/tronbyt-apps.git"
 # check for existence of apps_path dir
-if not os.path.exists(apps_path):
-    print("{} directory not found".format(apps_path))
-    exit()
+if not os.path.exists(system_apps_path):
+    print("{} not found, cloning {}".format(system_apps_path,system_apps_repo))
+
+    result = subprocess.run(
+                        [
+                            "git",
+                            "clone",
+                            system_apps_repo,
+                            system_apps_path,
+                            "--depth",
+                            "1"
+                        ]
+                    )
+    if result.returncode != 0:
+        print("Error Cloning Repo")
+    else:
+        print("Repo Cloned")
 
 # run a command to generate a txt file withh all the .star file in the apps_path directory
-command = [ "find", apps_path, "-name", "*.star" ]
+command = [ "find", system_apps_path, "-name", "*.star" ]
 output = subprocess.check_output(command, text=True)
 print("got find output of {}".format(output))
 
@@ -22,11 +35,11 @@ count = 0
 for app in apps:
     print(app)
     try:
-        # read in the file from apps_path/apps/
+        # read in the file from system_apps_path/apps/
         app_dict = dict()
         app_dict['name'] = os.path.basename(app).replace('.star','')
         app_dict['path'] = app
-        app_path = app #"{}/apps/{}/{}.star".format(apps_path, app.replace('_',''), app)
+        app_path = app #"{}/apps/{}/{}.star".format(system_apps_path, app.replace('_',''), app)
 
         # skip any files that include secret.star module and
         with open(app_path,'r') as f:
@@ -60,12 +73,13 @@ for app in apps:
             image_path = os.path.join(static_images_path, f"{app_dict['name']}.{ext}")
             # print(image_path)
 
-            if os.path.exists(image_path):
+            if os.path.exists(image_path) and os.path.getsize(image_path) < 1 * 1024 * 1024: # less than a meg only
+                # Your code here
                 app_dict["preview"] = os.path.basename(image_path)
-                # shutil.copy(
-                #     image_path,
-                #     os.path.join(static_images_path, os.path.basename(image_path)),
-                # )
+                shutil.move(
+                    image_path,
+                    os.path.join(static_images_path, os.path.basename(image_path)),
+                )
                 image_found = True
 
                 break
@@ -93,5 +107,5 @@ for app in apps:
 
 # writeout apps_array as a json file
 print(f"got {count} useable apps")
-with open("{}/apps.json".format(apps_path),'w') as f:
+with open("system-apps.json",'w') as f:
     json.dump(apps_array,f)

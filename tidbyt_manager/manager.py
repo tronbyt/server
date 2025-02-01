@@ -37,7 +37,7 @@ def index():
     return render_template("manager/index.html", devices=devices, server_root=server_root )
 
 
-# new function to handle uploading a an app
+# function to handle uploading a an app
 @bp.route("/uploadapp", methods=("GET", "POST"))
 @login_required
 def uploadapp():
@@ -443,8 +443,7 @@ def possibly_render(user,app):
         app_path = app["path"]
     else:
         print("\t\t\tNo path for {}, trying default location".format(app["name"]))
-        app_path = "tidbyt-apps/apps/{}/{}.star".format(
-            app["name"].replace("_", ""), app["name"]
+        app_path = "system-apps/apps/{}/{}.star".format(app["name"].replace("_", ""), app["name"]
         )
     if "last_render" not in app or now - app["last_render"] > int(app["uinterval"]) * 60:
         print("\t\t\tRendering")
@@ -537,7 +536,7 @@ def configapp(id, iname, delete_on_cancel):
     if "path" in app_details:
         app_path = app_details["path"]
     else:
-        app_path = "tidbyt-apps/apps/{}/{}.star".format(
+        app_path = "system-apps/apps/{}/{}.star".format(
             app["name"].replace("_", ""), app["name"]
         )
     config_path = "{}/{}/configs/{}.json".format(
@@ -877,7 +876,7 @@ def set_system_repo():
         if "app_repo_url" in request.form:
             repo_url = request.form["app_repo_url"]
             print(repo_url)
-            system_apps_path = "tidbyt-apps"
+            system_apps_path = "system-apps"
             old_repo = ""
             if "system_repo_url" in g.user:
                 old_repo = g.user["system_repo_url"]
@@ -893,7 +892,7 @@ def set_system_repo():
                     print(system_apps_path)
                     if db.file_exists(system_apps_path):
                         # delete the folder and re-clone.
-                        print("deleting tidbyt-apps")
+                        print(f"deleting {system_apps_path}")
                         subprocess.run(["rm", "-rf", system_apps_path])
                     # pull the repo and save to local filesystem.
                     # result = os.system("git clone https://blah:blah@github.com/{} {}".format(repo_url,system_apps_path))
@@ -901,6 +900,8 @@ def set_system_repo():
                         [
                             "git",
                             "clone",
+                            "--depth",
+                            "1",
                             f"https://blah:blah@github.com/{repo_url}",
                             system_apps_path,
                         ]
@@ -917,7 +918,7 @@ def set_system_repo():
                     else:
                         flash("Repo Update Failed")
                 # run the generate app list for custom repo
-                os.system("python3 gen_app_array.py")  # safe
+                os.system("python3 clone_system_apps_repo.py")  # will just generate json file if already there.
                 return redirect(url_for("manager.index"))
 
             else:
