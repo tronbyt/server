@@ -11,7 +11,7 @@ WORKDIR /tmp
 RUN curl -fsSL $NODE_URL | bash - && apt-get install -y nodejs && node -v
 
 WORKDIR /
-RUN git clone --depth 1 -b config_merge $PIXLET_REPO /pixlet
+RUN git clone --depth 1 $PIXLET_REPO /pixlet
 WORKDIR /pixlet
 RUN npm install && npm run build && make build
 
