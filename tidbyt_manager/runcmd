@@ -1,3 +1,0 @@
-export FLASK_APP=tidbyt_manager
-export FLASK_DEBUG=1
-flask run --host=0.0.0.0 --port=8000
