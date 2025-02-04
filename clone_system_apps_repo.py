@@ -25,15 +25,17 @@ if not os.path.exists(system_apps_path):
 # run a command to generate a txt file withh all the .star file in the apps_path directory
 command = [ "find", system_apps_path, "-name", "*.star" ]
 output = subprocess.check_output(command, text=True)
-print("got find output of {}".format(output))
+# print("got find output of {}".format(output))
 
-# pull in the apps.txt list
 apps_array = []
 apps = output.split('\n')
 apps.sort()
 count = 0
+skip_count = 0
+new_previews = 0
+num_previews = 0
 for app in apps:
-    print(app)
+    # print(app)
     try:
         # read in the file from system_apps_path/apps/
         app_dict = dict()
@@ -45,7 +47,8 @@ for app in apps:
         with open(app_path,'r') as f:
             app_str = f.read()
             if "secret.star" in app_str:
-                print("skipping {} (uses secret.star)".format(app))
+                # print("skipping {} (uses secret.star)".format(app))
+                skip_count += 1
                 continue
             if "summary:" in app_str:
                 # loop though lines and pick out the summary line
@@ -67,38 +70,29 @@ for app in apps:
         else:
             app_dict['summary'] = " -- "
 
-        # Check for the existence of an image with the base name of the app name
+        # Check for a preview in the repo and copy it over to static previews directory 
         image_found = False
-        for ext in ['gif','png','webp']:
-            image_path = os.path.join(static_images_path, f"{app_dict['name']}.{ext}")
-            # print(image_path)
+        for ext in ['webp','gif','png']:
+            image_path = os.path.join(app_base_path, f"{app_dict['name']}.{ext}")
+            static_image_path = os.path.join(static_images_path, f"{app_dict['name']}.{ext}")
 
             if os.path.exists(image_path) and os.path.getsize(image_path) < 1 * 1024 * 1024: # less than a meg only
-                # Your code here
-                app_dict["preview"] = os.path.basename(image_path)
-                shutil.move(
-                    image_path,
-                    os.path.join(static_images_path, os.path.basename(image_path)),
-                )
+                print(f"copying {image_path}")
+                if not os.path.exists(static_image_path):
+                    print(f"copying preview to static dir {app_dict['name']}.{ext}")
+                    new_previews += 1
+                    shutil.move(
+                        image_path,
+                        static_image_path
+                    )
                 image_found = True
 
+            # set the preview for the app to the static preview location
+            if os.path.exists(static_image_path):
+                num_previews += 1
+                app_dict["preview"] = os.path.basename(image_path)
                 break
 
-        # if not os.path.exists(os.path.join(static_images_path, os.path.basename(image_path))):
-        #     # lets do a pixlet render and output to the images/static dir
-        #     # command = [
-        #     #     # "/pixlet/pixlet",
-        #     #     "pixlet",
-        #     #     "render",
-        #     #     app_path,
-        #     #     "-o",
-        #     #     os.path.join(static_images_path, os.path.basename(image_path)),
-        #     # ]
-        #     # print(command)
-        #     # result = subprocess.run(command)
-        #     app_dict['preview'] = os.path.basename("not_found.jpg")  # Set a default image if not found
-        # else:
-        #     app_dict["preview"] = os.path.basename(image_path)
         count += 1
         apps_array.append(app_dict)
     except Exception as e:
@@ -107,5 +101,8 @@ for app in apps:
 
 # writeout apps_array as a json file
 print(f"got {count} useable apps")
+print(f"skipped {skip_count} secrets.star using apps")
+print(f"copied {new_previews} new previews into static")
+print(f"total previews found {num_previews}")
 with open("system-apps.json",'w') as f:
     json.dump(apps_array,f)
