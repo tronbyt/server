@@ -14,7 +14,7 @@ def create_app(test_config=None):
         MAIN_PORT = os.environ['SERVER_PORT'] or 8000,
         USERS_DIR = 'users',
     )
-        
+
     else:
         app.config.from_mapping(
         SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
@@ -27,13 +27,18 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
-    
+
     from . import auth
     app.register_blueprint(auth.bp)
+
+    from . import api
+    app.register_blueprint(api.bp)
+    # app.add_url_rule("/api", endpoint="api")
 
     from . import manager
     app.register_blueprint(manager.bp)
     app.add_url_rule('/', endpoint='index')
+
 
     import time
     @app.template_filter('timeago')
@@ -49,5 +54,5 @@ def create_app(test_config=None):
             return f"{int(secondsago // 60)} minutes ago"
         elif secondsago >= 3600:
             return f"{int(secondsago // 3600)} hours ago"
-    
+
     return app
