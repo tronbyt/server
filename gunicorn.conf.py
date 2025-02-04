@@ -1,4 +1,4 @@
-#python3 -m gunicorn --config gunicorn.conf.py "tidbyt_manager:create_app()"
+#python3 -m gunicorn --config gunicorn.conf.py "tronbyt_server:create_app()"
 
 bind = '0.0.0.0:8000'
 loglevel = 'debug'

@@ -1,5 +1,5 @@
 import pytest,os
-from tidbyt_manager import create_app
+from tronbyt_server import create_app
 
 @pytest.fixture()
 def app():

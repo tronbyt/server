@@ -58,7 +58,7 @@ for app in apps:
 
         app_base_path = ("/").join(app_path.split('/')[0:-1])
         yaml_path = "{}/manifest.yaml".format(app_base_path)
-        static_images_path = "tidbyt_manager/static/images"
+        static_images_path = "tronbyt_server/static/images"
 
         # check for existeanse of yaml_path
         if os.path.exists(yaml_path):
