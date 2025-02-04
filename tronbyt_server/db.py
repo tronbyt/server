@@ -316,6 +316,12 @@ def get_device_by_name(user,name):
             return device
     return None
 
+def get_device_by_api_key(user,api_key):
+    for device in user.get("devices", {}).values():
+        if device.get("api_key") == api_key:
+            return device
+    return None
+
 def get_user_by_device_id(device_id):
     for user in get_all_users():
         if 'devices' in user and device_id in user['devices']:
