@@ -697,8 +697,11 @@ MAX_RECURSION_DEPTH = 10
 @bp.route("/<string:device_id>/next")
 def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     if recursion_depth > MAX_RECURSION_DEPTH:
-        print("Maximum recursion depth exceeded")
-        return None  # or handle the situation as needed
+        print("Maximum recursion depth exceeded, sending default webp")
+        response = send_file("webp/default.webp", mimetype="image/webp")
+        response.headers["Tronbyt-Brightness"] = 8
+        return response
+        # return None  # or handle the situation as needed
     # get user owner of this devicde id
     if not user:
         user = db.get_user_by_device_id(device_id)
@@ -707,7 +710,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
     # Pick device by passed in device_id
     device = user['devices'][device_id]
-    
+
     # treat em like an array
     apps_list = list(device["apps"].values())
     if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
