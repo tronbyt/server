@@ -24,9 +24,9 @@
               <tr>
                 <td>
                   <a class="w3-button w3-teal w3-round" style="width: 100px;"
-                    href="{{ url_for('manager.update', id=device['id']) }}">Edit</a> <a
+                    href="{{ url_for('manager.update', device_id=device['id']) }}">Edit</a> <a
                     class="w3-button w3-teal w3-round" style="width: 100px;"
-                    href="{{ url_for('manager.addapp', id=device['id']) }}">Add App</a>
+                    href="{{ url_for('manager.addapp', device_id=device['id']) }}">Add App</a>
                 </td>
               </tr>
             </table>
@@ -58,7 +58,7 @@
                         <p class="body">Notes: {{ app['notes'] }}</p>
                         {% endif %}
                 </td>
-                <td><br><img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', id=device['id'],iname=app['iname']) }}" alt="Preview" >
+                <td><br><img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="Preview" >
                   <br>
                   Last Rendered: {{ app['last_render']|timeago }}
           </div>

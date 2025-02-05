@@ -7,7 +7,7 @@
 <input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
 <input type="submit" value="Save"></form>
 {% if delete_on_cancel == 1 %}
-    <form action="{{ url_for('manager.deleteapp', id=device_id, iname=app['iname'])}}" method="get" ><input type="submit" value="Cancel"></form>
+    <form action="{{ url_for('manager.deleteapp', device_id=device_id, iname=app['iname'])}}" method="get" ><input type="submit" value="Cancel"></form>
 {% else %}
     <form action="{{ url_for('manager.index') }}" method="get"><input type="submit"
             value="Cancel"></form>

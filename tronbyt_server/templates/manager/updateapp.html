@@ -7,7 +7,7 @@
   <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
   <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
-<img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', id=device_id,iname=app['iname']) }}"
+<img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
     alt="Preview">
   <label for="uinterval">Render Interval Minutes (Update ever X minutes)</label>
   <div><input type="number" name="uinterval" id="uinterval" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
@@ -41,7 +41,7 @@
   <input type="submit" value="Save">
 </form>
 
-<form action="{{ url_for('manager.deleteapp', id=device_id,iname=app['iname']) }}" method="post">
+<form action="{{ url_for('manager.deleteapp', device_id=device_id,iname=app['iname']) }}" method="post">
   <input class="danger" type="submit" value="Delete" onclick="return confirm('Delete App?');">
 </form>
 {% endblock %}

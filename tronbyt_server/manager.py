@@ -147,7 +147,7 @@ def create():
     return render_template("manager/create.html")
 
 
-@bp.route("/<string:id>/update_brightness", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/update_brightness", methods=("GET", "POST"))
 @login_required
 def update_brightness(id):
     if id not in g.user["devices"]:
@@ -160,7 +160,7 @@ def update_brightness(id):
         return "",200
 
 # duplicate this method and make for default_interval
-@bp.route("/<string:id>/update_interval", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/update_interval", methods=("GET", "POST"))
 @login_required
 def update_interval(id):
     if id not in g.user["devices"]:
@@ -172,7 +172,7 @@ def update_interval(id):
         db.save_user(user)
         return "",200
 
-@bp.route("/<string:id>/update", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/update", methods=("GET", "POST"))
 @login_required
 def update(id):
     # first ensure this device id exists in the current users config
@@ -218,7 +218,7 @@ def update(id):
     return render_template("manager/update.html", device=device, server_root=server_root)
 
 
-@bp.route("/<string:id>/delete", methods=("POST",))
+@bp.route("/<string:device_id>/delete", methods=("POST",))
 @login_required
 def delete(id):
     g.user["devices"].pop(id)
@@ -226,68 +226,69 @@ def delete(id):
     return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:id>/<string:iname>/delete", methods=("POST", "GET"))
+@bp.route("/<string:device_id>/<string:iname>/delete", methods=("POST", "GET"))
 @login_required
-def deleteapp(id, iname):
+def deleteapp(device_id, iname):
     # delete the config file
     users_dir = db.get_users_dir()
     config_path = "{}/{}/configs/{}-{}.json".format(
         users_dir,
         g.user["username"],
-        g.user["devices"][id]["apps"][iname]["name"],
-        g.user["devices"][id]["apps"][iname]["iname"],
+        g.user["devices"][device_id]["apps"][iname]["name"],
+        g.user["devices"][device_id]["apps"][iname]["iname"],
     )
     tmp_config_path = "{}/{}/configs/{}-{}.tmp".format(
         users_dir,
         g.user["username"],
-        g.user["devices"][id]["apps"][iname]["name"],
-        g.user["devices"][id]["apps"][iname]["iname"],
+        g.user["devices"][device_id]["apps"][iname]["name"],
+        g.user["devices"][device_id]["apps"][iname]["iname"],
     )
     if os.path.isfile(config_path):
         os.remove(config_path)
     if os.path.isfile(tmp_config_path):
         os.remove(tmp_config_path)
 
-    # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
+    # use pixlet to delete installation of app if api_key exists (tdevice_idbyt server operation) and enabled flag is set to true
     if (
-        "api_key" in g.user["devices"][id]
-        and g.user["devices"][id]["apps"][iname]["enabled"] == "true"
+        "api_key" in g.user["devices"][device_id]
+        and g.user["devices"][device_id]["apps"][iname]["enabled"] == "true"
     ):
         command = [
             "/pixlet/pixlet",
             "delete",
-            g.user["devices"][id]["img_url"],
+            g.user["devices"][device_id]["img_url"],
             iname,
             "-t",
-            g.user["devices"][id]["api_key"],
+            g.user["devices"][device_id]["api_key"],
         ]
         print("Deleting installation id {}".format(iname))
         subprocess.run(command)
 
     # delete the webp file
-    webp_path = "tronbyt_server/webp/{}-{}.webp".format(
-        g.user["devices"][id]["apps"][iname]["name"],
-        g.user["devices"][id]["apps"][iname]["iname"],
+    webp_path = "tronbyt_server/webp/{}/{}-{}.webp".format(
+        device_id,
+        g.user["devices"][device_id]["apps"][iname]["name"],
+        g.user["devices"][device_id]["apps"][iname]["iname"],
     )
     # if file exists remove it
     if os.path.isfile(webp_path):
         os.remove(webp_path)
     # pop the app from the user object
-    g.user["devices"][id]["apps"].pop(iname)
+    g.user["devices"][device_id]["apps"].pop(iname)
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:id>/addapp", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/addapp", methods=("GET", "POST"))
 @login_required
-def addapp(id):
+def addapp(device_id):
     if request.method == "GET":
         # build the list of apps.
         custom_apps_list = db.get_apps_list(g.user["username"])
         apps_list = db.get_apps_list("system")
         return render_template(
             "manager/addapp.html",
-            device=g.user["devices"][id],
+            device=g.user["devices"][device_id],
             apps_list=apps_list,
             custom_apps_list=custom_apps_list,
         )
@@ -326,37 +327,37 @@ def addapp(id):
                 app["path"] = app_details["path"]  # this indicates a custom app
 
             user = g.user
-            if "apps" not in user["devices"][id]:
-                user["devices"][id]["apps"] = {}
+            if "apps" not in user["devices"][device_id]:
+                user["devices"][device_id]["apps"] = {}
 
-            user["devices"][id]["apps"][iname] = app
+            user["devices"][device_id]["apps"][iname] = app
             db.save_user(user)
 
             return redirect(
-                url_for("manager.configapp", id=id, iname=iname, delete_on_cancel=1)
+                url_for("manager.configapp", device_id=device_id, iname=iname, delete_on_cancel=1)
             )
     else:
         abort(404)
 
 
-@bp.route("/<string:id>/<string:iname>/toggle_enabled", methods=(["GET"]))
+@bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=(["GET"]))
 @login_required
-def toggle_enabled(id, iname):
+def toggle_enabled(device_id, iname):
     user = g.user
-    app = user["devices"][id]["apps"][iname]
+    app = user["devices"][device_id]["apps"][iname]
 
-    if user["devices"][id]["apps"][iname]["enabled"] == "true":
+    if user["devices"][device_id]["apps"][iname]["enabled"] == "true":
         app["enabled"] = "false"
         # set fresh_disable so we can delete from tidbyt once and only once
         # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-        if "api_key" in g.user["devices"][id]:
+        if "api_key" in g.user["devices"][device_id]:
             command = [
                 "/pixlet/pixlet",
                 "delete",
-                g.user["devices"][id]["img_url"],
+                g.user["devices"][device_id]["img_url"],
                 iname,
                 "-t",
-                g.user["devices"][id]["api_key"],
+                g.user["devices"][device_id]["api_key"],
             ]
             print(command)
             subprocess.run(command)
@@ -365,7 +366,7 @@ def toggle_enabled(id, iname):
         # we should probably re-render and push but that'a  a pain so not doing it right now.
         app["enabled"] = "true"
 
-    user["devices"][id]["apps"][iname] = app
+    user["devices"][device_id]["apps"][iname] = app
     db.save_user(user)  # this saves all changes
     flash(
         "Changes saved."
@@ -373,9 +374,9 @@ def toggle_enabled(id, iname):
     return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:id>/<string:iname>/updateapp", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/<string:iname>/updateapp", methods=("GET", "POST"))
 @login_required
-def updateapp(id, iname):
+def updateapp(device_id, iname):
     if request.method == "POST":
         name = request.form["name"]
         uinterval = request.form["uinterval"]
@@ -392,7 +393,7 @@ def updateapp(id, iname):
             flash(error)
         else:
             user = g.user
-            app = user["devices"][id]["apps"][iname]
+            app = user["devices"][device_id]["apps"][iname]
             app["iname"] = iname
             print("iname is :" + str(app["iname"]))
             app["name"] = name
@@ -404,33 +405,33 @@ def updateapp(id, iname):
             app["days"] = request.form.getlist("days")
 
             if (
-                user["devices"][id]["apps"][iname]["enabled"] == "true"
+                user["devices"][device_id]["apps"][iname]["enabled"] == "true"
                 and enabled == "false"
             ):
                 # set fresh_disable so we can delete from tidbyt once and only once
                 # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-                if "api_key" in g.user["devices"][id]:
+                if "api_key" in g.user["devices"][device_id]:
                     command = [
                         "/pixlet/pixlet",
                         "delete",
-                        g.user["devices"][id]["img_url"],
+                        g.user["devices"][device_id]["img_url"],
                         iname,
                         "-t",
-                        g.user["devices"][id]["api_key"],
+                        g.user["devices"][device_id]["api_key"],
                     ]
                     print(command)
                     subprocess.run(command)
                     app["deleted"] = "true"
             app["enabled"] = enabled
-            user["devices"][id]["apps"][iname] = app
+            user["devices"][device_id]["apps"][iname] = app
             db.save_user(user)  # this saves all changes
 
             return redirect(url_for("manager.index"))
-    app = g.user["devices"][id]["apps"][iname]
-    return render_template("manager/updateapp.html", app=app, device_id=id)
+    app = g.user["devices"][device_id]["apps"][iname]
+    return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
-def possibly_render(user,app):
+def possibly_render(user,device_id,app):
     result = False
     if not app.get("enabled",True):
         print("App Disabled")
@@ -438,7 +439,7 @@ def possibly_render(user,app):
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
-    webp_path = "tronbyt_server/webp/{}.webp".format(app_basename)
+    webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
     if "path" in app:
         app_path = app["path"]
     else:
@@ -480,11 +481,11 @@ def possibly_render(user,app):
         print("NO RENDER")
     return result
 
-@bp.route("/<string:id>/firmware", methods=("POST", "GET"))
+@bp.route("/<string:device_id>/firmware", methods=("POST", "GET"))
 @login_required
-def generate_firmware(id):
+def generate_firmware(device_id):
     # first ensure this device id exists in the current users config
-    if id not in g.user["devices"]:
+    if device_id not in g.user["devices"]:
         abort(404)
     # on GET just render the form for the user to input their wifi creds and auto fill the image_url
 
@@ -494,18 +495,18 @@ def generate_firmware(id):
             ap = request.form['wifi_ap']
             password = request.form["wifi_password"]
             image_url = request.form["img_url"]
-            label = db.sanitize(g.user["devices"][id]['name'])
+            label = db.sanitize(g.user["devices"][device_id]['name'])
             gen2 = False
             if 'gen2' in request.form:
                 gen2 = request.form['gen2']
 
             result = db.generate_firmware(label,image_url,ap,password,gen2)
             if 'file_path' in result:
-                g.user["devices"][id]["firmware_file_path"] = result["file_path"]
+                g.user["devices"][device_id]["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
                 return render_template(
                     "manager/firmware.html",
-                    device=g.user["devices"][id],
+                    device=g.user["devices"][device_id],
                     img_url=image_url,
                     ap=ap,
                     password=password,
@@ -518,19 +519,18 @@ def generate_firmware(id):
 
     return render_template(
         "manager/firmware_form.html",
-        device=g.user['devices'][id],
+        device=g.user['devices'][device_id],
         server_root=f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}",
     )
 
 
-@bp.route("/<string:id>/<string:iname>/<int:delete_on_cancel>/configapp",methods=("GET", "POST"))
+@bp.route("/<string:device_id>/<string:iname>/<int:delete_on_cancel>/configapp",methods=("GET", "POST"))
 @login_required
-def configapp(id, iname, delete_on_cancel):
+def configapp(device_id, iname, delete_on_cancel):
     users_dir = db.get_users_dir()
     domain_host = current_app.config["SERVER_HOSTNAME"]  # used when rendering configapp
-    import subprocess, time
 
-    app = g.user["devices"][id]["apps"][iname]
+    app = g.user["devices"][device_id]["apps"][iname]
     app_basename = "{}-{}".format(app["name"], app["iname"])
     app_details = db.get_app_details(g.user["username"], app["name"])
     if "path" in app_details:
@@ -545,7 +545,7 @@ def configapp(id, iname, delete_on_cancel):
     tmp_config_path = "{}/{}/configs/{}.tmp".format(
         users_dir, g.user["username"], app_basename
     )
-    webp_path = "tronbyt_server/webp/{}.webp".format(app_basename)
+    webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id, app_basename)
 
     user_render_port = str(db.get_user_render_port(g.user["username"]))
     # always kill the pixlet proc based on port number.
@@ -584,12 +584,12 @@ def configapp(id, iname, delete_on_cancel):
             )
             if render_result.returncode == 0:  # success
                 # set the enabled key in app to true now that it has been configured.
-                g.user["devices"][id]["apps"][iname]["enabled"] = "true"
+                g.user["devices"][device_id]["apps"][iname]["enabled"] = "true"
                 # set last_rendered to seconds
-                g.user["devices"][id]["apps"][iname]["last_render"] = int(time.time())
+                g.user["devices"][device_id]["apps"][iname]["last_render"] = int(time.time())
 
-                if g.user["devices"][id]["api_key"] != "":
-                    device = g.user["devices"][id]
+                if g.user["devices"][device_id]["api_key"] != "":
+                    device = g.user["devices"][device_id]
                     # check for zero filesize
                     if os.path.getsize(webp_path) > 0:
                         command = [
@@ -674,7 +674,7 @@ def configapp(id, iname, delete_on_cancel):
                 app=app,
                 domain_host=domain_host,
                 url_params=url_params,
-                device_id=id,
+                device_id=device_id,
                 delete_on_cancel=delete_on_cancel,
                 user_render_port=user_render_port,
             )
@@ -737,12 +737,12 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
         return next_app(device_id,user,last_app_index+1,recursion_depth+1)
     else:
         # check if the webp needs update/render and do it, save if rendered
-        if possibly_render(user,app):
+        if possibly_render(user,device_id,app):
             db.save_user(user)
 
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
-        webp_path = "/app/tronbyt_server/webp/{}.webp".format(app_basename)
+        webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
         print(webp_path)
 
         # check if the file exists
@@ -771,7 +771,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
             return next_app(device_id,user,last_app_index+1,recursion_depth+1) # run it recursively until we get a file.
 
 
-@bp.route("/<string:id>/<string:iname>/appwebp")
+@bp.route("/<string:device_id>/<string:iname>/appwebp")
 def appwebp(id, iname):
     try:
         if g.user:
@@ -782,7 +782,7 @@ def appwebp(id, iname):
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
         print(app_basename)
-        webp_path = "/app/tronbyt_server/webp/{}.webp".format(app_basename)
+        webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(id,app_basename)
         # check if the file exists
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
             # if filesize is greater than zero
