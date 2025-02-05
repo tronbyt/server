@@ -1,9 +1,1 @@
-{
-    "color": "#ffff00",
-    "glow": "2",
-    "location": "{\"lat\":40.678,\"lng\":-73.944,\"locality\":\"Brooklyn, New York\",\"timezone\":\"Pacific/Honolulu\"}",
-    "n_fireflies": "30",
-    "set": "1",
-    "show_clock": "true",
-    "speed": "2"
-}
+{}

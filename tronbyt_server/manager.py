@@ -769,17 +769,17 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")
-def appwebp(id, iname):
+def appwebp(device_id, iname):
     try:
         if g.user:
-            app = g.user["devices"][id]["apps"][iname]
+            app = g.user["devices"][device_id]["apps"][iname]
         else:
-            app = db.get_user("admin")["devices"][id]["apps"][iname]
+            app = db.get_user("admin")["devices"][device_id]["apps"][iname]
 
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
-        print(app_basename)
-        webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(id,app_basename)
+        webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+        print(webp_path)
         # check if the file exists
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
             # if filesize is greater than zero
