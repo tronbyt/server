@@ -527,7 +527,7 @@ def generate_firmware(id):
 @login_required
 def configapp(id, iname, delete_on_cancel):
     users_dir = db.get_users_dir()
-    domain_host = current_app.config["DOMAIN"]  # used when rendering configapp
+    domain_host = current_app.config["SERVER_HOSTNAME"]  # used when rendering configapp
     import subprocess, time
 
     app = g.user["devices"][id]["apps"][iname]
