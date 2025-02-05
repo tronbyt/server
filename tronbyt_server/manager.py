@@ -733,11 +733,19 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
-        print("Maximum recursion depth exceeded")
-        return None  # or handle the situation as needed
-
+        print("Maximum recursion depth exceeded, sending default webp")
+        response = send_file("webp/default.webp", mimetype="image/webp")
+        response.headers["Tronbyt-Brightness"] = 8
+        return response
+        # return None  # or handle the situation as needed
+    # get user owner of this devicde id
+    if not user:
+        user = db.get_user_by_device_id(device_id)
     if not last_app_index:
         last_app_index = db.get_last_app_index(device_id)
+
+    # Pick device by passed in device_id
+    device = user['devices'][device_id]
 
     # treat em like an array
     if "apps" not in device:
