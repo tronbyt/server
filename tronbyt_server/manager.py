@@ -744,6 +744,9 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     if not last_app_index:
         last_app_index = db.get_last_app_index(device_id)
 
+    # Pick device by passed in device_id
+    device = user['devices'][device_id]
+
     # treat em like an array
     if "apps" not in device:
         return next_app(device_id, user, 0, recursion_depth + 1)
