@@ -38,7 +38,7 @@ def get_night_mode_is_active(device):
         current_hour = (datetime.now(timezone.utc).hour + device['timezone']) % 24 #
     else:
         current_hour = datetime.now().hour
-    print(f"current_hour:{current_hour}")
+    # print(f"current_hour:{current_hour} -- ",end="")
     if device.get("night_start",-1) > -1:
         start_hour = device['night_start']
         end_hour = 6 # 6am
