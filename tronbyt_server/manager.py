@@ -174,7 +174,8 @@ def update_interval(id):
 
 @bp.route("/<string:device_id>/update", methods=("GET", "POST"))
 @login_required
-def update(id):
+def update(device_id):
+    id = device_id
     # first ensure this device id exists in the current users config
     if id not in g.user["devices"]:
         abort(404)
