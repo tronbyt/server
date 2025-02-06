@@ -316,10 +316,11 @@ def get_device_by_name(user,name):
             return device
     return None
 
-def get_device_by_api_key(user,api_key):
-    for device in user.get("devices", {}).values():
-        if device.get("api_key") == api_key:
-            return device
+def get_device_by_id(device_id):
+    for user in get_all_users():
+        for device in user.get("devices", {}).values():
+            if device.get("id") == device_id:
+                return device
     return None
 
 def get_user_by_device_id(device_id):

@@ -18,59 +18,76 @@ from tronbyt_server.auth import login_required
 import tronbyt_server.db as db
 import uuid, os, subprocess, sys
 from datetime import datetime
-import time, re
+import time, re, base64
 
 
-bp = Blueprint("api", __name__, url_prefix='/api')
+bp = Blueprint("api", __name__, url_prefix='/v0')
 
-@bp.route("/get/<string:username>/<string:api_key>", methods=["GET","POST"] )
-def get_apps(username,api_key):
+@bp.route("/get/<string:device_id>/<string:api_key>", methods=["GET","POST"] )
+def get_apps(device_id):
     # get device based on api_key
     try:
-        user = db.get_user(username)
-        device = db.get_device_by_api_key(user,api_key)
+        device = db.get_device_by_id()
     except Exception as e:
         print(str(e))
         abort(404)
 
     return (str(device.get('apps')))
     # return render_template("manager/index.html", devices=devices, server_root=server_root )
+#!/bin/sh
+# curl -X POST --url http://m1pro.local:8000/v0/devices/northerly-prodigious-bright-coatimundi-778/push --header "Authorization: a" --header 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i a1.webp)'"}'
 
-@bp.route("/push", methods=["POST"])
-def handle_push():
-    # get parameters from POST data
-    username = request.form.get("username")
-    api_key = request.form.get("api_key")
-    app_id = request.form.get("install_id", "__")
+@bp.route("/devices/<string:device_id>/push", methods=["POST"])
+def handle_push(device_id):
 
-    if not username or not api_key:
+    # get api_key from Authorization header
+    api_key = ""
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        if auth_header.startswith("Bearer "):
+            api_key = auth_header.split(" ")[1]
+        else:
+            api_key = auth_header
+    else:
+        abort(400, description="Missing or invalid Authorization header")
+    print(f"api_key : {api_key}")
+    device = db.get_device_by_id(device_id)
+    if  not device or device['api_key'] != api_key:
+        abort(404)
+    
+    # get parameters from JSON data
+    data = request.get_json()
+    print(data)
+    app_id = data.get("installationId", "__")
+    print(f"app_id:{app_id}")
+    image_data = data.get("image")
+
+    if not api_key or not image_data:
         abort(400, description="Missing required parameters")
 
-    # sanitize app_id
-    app_id = re.sub(r'[^a-zA-Z0-9_-]', '', app_id) 
 
-    # get device based on api_key
+    # sanitize app_id
+    app_id = re.sub(r'[^a-zA-Z0-9_-]', '', app_id)
+
+    # # get device based on api_key
+    # try:
+    #     user = db.get_user(username)
+    #     device = db.get_device_by_api_key(user, api_key)
+    # except Exception as e:
+    #     print(str(e))
+    #     abort(404)
+
+    # Decode the base64-encoded image data
     try:
-        user = db.get_user(username)
-        device = db.get_device_by_api_key(user, api_key)
+        image_bytes = base64.b64decode(image_data)
     except Exception as e:
         print(str(e))
-        abort(404)
-
-    if "file" not in request.files:
-        flash("No file part")
-        abort(400)
-    file = request.files["file"]
-    if file.filename == "":
-        flash("No selected file")
-        abort(400)
+        abort(400, description="Invalid image data")
 
     device_webp_path = f"tronbyt_server/webp/{device['id']}"
-    if not os.path.isdir(device_webp_path):
-        os.mkdir(device_webp_path)
+    os.makedirs(device_webp_path, exist_ok=True)
     pushed_path = f"{device_webp_path}/pushed"
-    if not os.path.isdir(pushed_path):
-        os.mkdir(pushed_path)
+    os.makedirs(pushed_path, exist_ok=True)
 
     # Generate a unique filename using the sanitized app_id and current timestamp
     timestamp = ""
@@ -78,28 +95,38 @@ def handle_push():
         timestamp = f"{int(time.time())}"
     filename = f"{app_id}{timestamp}.webp"
     file_path = os.path.join(pushed_path, filename)
-    file.save(file_path)
+
+    # Save the decoded image data to a file
+    with open(file_path, "wb") as f:
+        f.write(image_bytes)
 
     return "Webp received.", 200
 
 
-@bp.route("/delete", methods=["POST"])
-def handle_delete():
-    # get parameters from POST data
-    username = request.form.get("username")
-    api_key = request.form.get("api_key")
-    installation_id = request.form.get("install_id")
+# curl --request DELETE
+# --url http://m1pro.local:8000/v0/devices/worryingly-benign-unlimited-crane-f05/installations/surfrlast --header "$(cat kitebit.key)" --header 'Content-Type: application/json'
 
-    if not username or not api_key or not installation_id:
+@bp.route("/devices/<string:device_id>/installations/<string:installation_id>", methods=["DELETE"])
+def handle_delete(device_id,installation_id):
+
+    # get api_key from Authorization header
+    api_key = ""
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        if auth_header.startswith("Bearer "):
+            api_key = auth_header.split(" ")[1]
+        else:
+            api_key = auth_header
+    else:
+        abort(400, description="Missing or invalid Authorization header")
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
+        abort(404)
+
+    if not api_key:
         abort(400, description="Missing required parameters")
 
-    # get device based on api_key
-    try:
-        user = db.get_user(username)
-        device = db.get_device_by_api_key(user, api_key)
-    except Exception as e:
-        print(str(e))
-        abort(404)
+    device = db.get_device_by_id(device_id) or abort(404)
     pushed_webp_path = f"tronbyt_server/webp/{device['id']}/pushed"
     if not os.path.isdir(pushed_webp_path):
         abort(404, description="Device directory not found")
