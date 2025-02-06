@@ -56,7 +56,7 @@ for app in apps:
         # read in the file from system_apps_path/apps/
         app_dict = dict()
         app_dict['name'] = os.path.basename(app).replace('.star','')
-        app_dict['path'] = app
+        # app_dict['path'] = app
         app_path = app #"{}/apps/{}/{}.star".format(system_apps_path, app.replace('_',''), app)
 
         # skip any files that include secret.star module and
