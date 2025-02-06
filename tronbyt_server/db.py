@@ -325,7 +325,7 @@ def get_device_by_id(device_id):
 
 def get_user_by_device_id(device_id):
     for user in get_all_users():
-        if 'devices' in user and device_id in user['devices']:
+        if 'devices' in user and device_id in user.get('devices',{}).keys():
             return user
 
 def generate_firmware(label,url,ap,pw,gen2):
@@ -387,3 +387,27 @@ def generate_firmware(label,url,ap,pw,gen2):
         return {'file_path' : new_path}
     else:
         return {'error' : "no bytes written"}
+
+def add_pushed_app(device_id,path):
+
+    # Get the base name of the file
+    filename = os.path.basename(path)
+    # Remove the extension
+    installation_id, _ = os.path.splitext(filename)
+    
+    user = get_user_by_device_id(device_id)
+    if installation_id in user.get('devices').keys():
+        # already in there
+        return
+    app = {
+            "iname": installation_id,
+            "name": "pushed",
+            "uinterval": 10,
+            "display_time": 0,
+            "notes": "",
+            "enabled": "true",
+            "pushed" : 1
+        }
+    user["devices"][device_id]["apps"][installation_id] = app
+    save_user(user)
+

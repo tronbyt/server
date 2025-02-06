@@ -156,8 +156,9 @@
         {% else %}
       <p class="body">Image URL: {{ device['img_url'] }} - <a href="{{ device['img_url'] }}">Test!</a></p>
       {% endif %}
+      <p class="body">Device Id: {{ device['id'] }}</p>
       {% if not device['api_key'] == "" %}
-      <p class="body">API KEY: {{ device['api_key'][0:10] }} ... {{ device['api_key'][-10:-1] }}</p>
+      <p class="body">API KEY: {{ device['api_key'] }}</p>
       {% endif %}
       {% if device['notes'] != '' %}
       <p class="body">Notes: {{ device['notes'] }}</p>
@@ -190,7 +191,7 @@
             <td><br><img class="w3-padding app-img" width=400
                 src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="Preview">
               <br>
-              Last Rendered: {{ app['last_render']|timeago }}
+              Last Rendered: {{ app.get('last_render',0)|timeago }}
 
       </div>
       </li>

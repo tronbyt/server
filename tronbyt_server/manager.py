@@ -29,6 +29,10 @@ def index():
     # os.system("pkill -f serve") # kill any pixlet serve processes
 
     devices = dict()
+
+    if not g.user:
+        print("check [user].json file, might be corrupted")
+
     if "devices" in g.user:
         devices = reversed(list(g.user["devices"].values()))
     server_root = (
@@ -251,7 +255,8 @@ def deleteapp(device_id, iname):
 
     # use pixlet to delete installation of app if api_key exists (tdevice_idbyt server operation) and enabled flag is set to true
     if (
-        "api_key" in g.user["devices"][device_id]
+        "use_tidbyt" in g.user["devices"][device_id] 
+        and "api_key" in g.user["devices"][device_id]
         and g.user["devices"][device_id]["apps"][iname]["enabled"] == "true"
     ):
         command = [
@@ -264,13 +269,18 @@ def deleteapp(device_id, iname):
         ]
         print("Deleting installation id {}".format(iname))
         subprocess.run(command)
+    device = g.user['devices'][device_id]
+    app = g.user["devices"][device_id]["apps"][iname]
 
-    # delete the webp file
-    webp_path = "tronbyt_server/webp/{}/{}-{}.webp".format(
-        device_id,
-        g.user["devices"][device_id]["apps"][iname]["name"],
-        g.user["devices"][device_id]["apps"][iname]["iname"],
-    )
+    if "pushed" in app:
+        webp_path = "tronbyt_server/webp/{}/pushed/{}.webp".format(device['id'],app['name'])
+    else:
+        # delete the webp file
+        webp_path = "tronbyt_server/webp/{}/{}-{}.webp".format(
+            device['id'],
+            app["name"],
+            app["iname"],
+        )
     # if file exists remove it
     if os.path.isfile(webp_path):
         os.remove(webp_path)
@@ -278,7 +288,6 @@ def deleteapp(device_id, iname):
     g.user["devices"][device_id]["apps"].pop(iname)
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
-
 
 @bp.route("/<string:device_id>/addapp", methods=("GET", "POST"))
 @login_required
@@ -434,6 +443,9 @@ def updateapp(device_id, iname):
 
 def possibly_render(user,device_id,app):
     result = False
+    if "pushed" in app:
+        print("Pushed App -- NO RENDER")
+        return result
     if not app.get("enabled",True):
         print(f"{app['name']} -- Disabled")
         return result
@@ -698,13 +710,18 @@ MAX_RECURSION_DEPTH = 10
 @bp.route("/<string:device_id>/next")
 def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
+    user = db.get_user_by_device_id(device_id) or abort(404)
+    device = user['devices'][device_id] or abort(404)
+
     # first check for a pushed file starting with __ and just return that and then delete it.
-    pushed_files = [f for f in os.listdir(f"/app/tronbyt_server/webp/{device_id}/pushed") if f.startswith("__")]
-    if pushed_files:
-        pushed_file = pushed_files[0]
-        print(f"\nreturning ephermeral pushed file {pushed_file}")
-        webp_path = f"/app/tronbyt_server/webp/{device_id}/pushed/{pushed_file}"
+    ephemeral_files = [f for f in os.listdir(f"/app/tronbyt_server/webp/{device_id}/pushed") if f.startswith("__")]
+    if ephemeral_files:
+        ephemeral_file = ephemeral_files[0]
+        print(f"\nreturning ephermeral pushed file {ephemeral_file}")
+        webp_path = f"/app/tronbyt_server/webp/{device_id}/pushed/{ephemeral_file}"
         response = send_file(webp_path, mimetype="image/webp")
+        s = device.get("default_interval", 5)
+        response.headers["Tronbyt-Dwell-Secs"] = s
         os.remove(webp_path)
         return response
 
@@ -719,9 +736,6 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
         user = db.get_user_by_device_id(device_id)
     if not last_app_index:
         last_app_index = db.get_last_app_index(device_id)
-
-    # Pick device by passed in device_id
-    device = user['devices'][device_id]
 
     # treat em like an array
     apps_list = list(device["apps"].values())
@@ -752,9 +766,11 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
         if possibly_render(user,device_id,app):
             db.save_user(user)
 
-        app_basename = "{}-{}".format(app["name"], app["iname"])
-
-        webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+        if "pushed" in app:
+            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(device_id,app['iname'])
+        else:
+            app_basename = "{}-{}".format(app["name"], app["iname"])
+            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
         print(webp_path)
 
         # check if the file exists
@@ -793,7 +809,10 @@ def appwebp(device_id, iname):
 
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
-        webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+        if "pushed" in app:
+            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(device_id,app['iname'])
+        else:
+            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
         print(webp_path)
         # check if the file exists
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
@@ -802,7 +821,8 @@ def appwebp(device_id, iname):
         else:
             print("file no exist or 0 size")
             abort(404)
-    except:
+    except Exception as e:
+        print(f"Exception: {str(e)}")
         abort(404)
 
 @bp.route("/<string:device_id>/download_firmware")
