@@ -68,16 +68,19 @@ def handle_push():
     device_webp_path = f"tronbyt_server/webp/{device['id']}"
     if not os.path.isdir(device_webp_path):
         os.mkdir(device_webp_path)
+    pushed_path = f"{device_webp_path}/pushed"
+    if not os.path.isdir(pushed_path):
+        os.mkdir(pushed_path)
 
     # Generate a unique filename using the sanitized app_id and current timestamp
     timestamp = ""
     if app_id == "__":
         timestamp = f"{int(time.time())}"
     filename = f"{app_id}{timestamp}.webp"
-    file_path = os.path.join(device_webp_path, filename)
+    file_path = os.path.join(pushed_path, filename)
     file.save(file_path)
 
-    return "File uploaded successfully", 200
+    return "Webp received.", 200
 
 
 @bp.route("/delete", methods=["POST"])
@@ -97,20 +100,19 @@ def handle_delete():
     except Exception as e:
         print(str(e))
         abort(404)
-
-    device_webp_path = f"tronbyt_server/webp/{device['id']}"
-    if not os.path.isdir(device_webp_path):
+    pushed_webp_path = f"tronbyt_server/webp/{device['id']}/pushed"
+    if not os.path.isdir(pushed_webp_path):
         abort(404, description="Device directory not found")
 
     # Generate the filename using the installation_id
-    file_path = os.path.join(device_webp_path, f"{installation_id}.webp")
+    file_path = os.path.join(pushed_webp_path, f"{installation_id}.webp")
     if not os.path.isfile(file_path):
         abort(404, description="File not found")
 
     # Delete the file
     os.remove(file_path)
 
-    return "File deleted successfully", 200
+    return "Webp deleted.", 200
 
 
 # # function to handle uploading a an app
