@@ -23,19 +23,17 @@ import time, re, base64
 
 bp = Blueprint("api", __name__, url_prefix='/v0')
 
-@bp.route("/get/<string:device_id>/<string:api_key>", methods=["GET","POST"] )
-def get_apps(device_id):
-    # get device based on api_key
-    try:
-        device = db.get_device_by_id()
-    except Exception as e:
-        print(str(e))
-        abort(404)
+# @bp.route("/get/<string:device_id>/<string:api_key>", methods=["GET","POST"] )
+# def get_apps(device_id):
+#     # get device based on api_key
+#     try:
+#         device = db.get_device_by_id()
+#     except Exception as e:
+#         print(str(e))
+#         abort(404)
 
-    return (str(device.get('apps')))
-    # return render_template("manager/index.html", devices=devices, server_root=server_root )
-#!/bin/sh
-# curl -X POST --url http://m1pro.local:8000/v0/devices/northerly-prodigious-bright-coatimundi-778/push --header "Authorization: a" --header 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i a1.webp)'"}'
+#     return (str(device.get('apps')))
+#     # return render_template("manager/index.html", devices=devices, server_root=server_root )
 
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
 def handle_push(device_id):
@@ -54,30 +52,20 @@ def handle_push(device_id):
     device = db.get_device_by_id(device_id)
     if  not device or device['api_key'] != api_key:
         abort(404)
-    
+
     # get parameters from JSON data
     data = request.get_json()
     print(data)
-    app_id = data.get("installationId", "__")
-    print(f"app_id:{app_id}")
+    installation_id = data.get("installationId", "__")
+    print(f"installation_id:{installation_id}")
     image_data = data.get("image")
 
     if not api_key or not image_data:
         abort(400, description="Missing required parameters")
 
+    # sanitize installation_id
+    installation_id = re.sub(r'[^a-zA-Z0-9_-]', '', installation_id)
 
-    # sanitize app_id
-    app_id = re.sub(r'[^a-zA-Z0-9_-]', '', app_id)
-
-    # # get device based on api_key
-    # try:
-    #     user = db.get_user(username)
-    #     device = db.get_device_by_api_key(user, api_key)
-    # except Exception as e:
-    #     print(str(e))
-    #     abort(404)
-
-    # Decode the base64-encoded image data
     try:
         image_bytes = base64.b64decode(image_data)
     except Exception as e:
@@ -89,11 +77,11 @@ def handle_push(device_id):
     pushed_path = f"{device_webp_path}/pushed"
     os.makedirs(pushed_path, exist_ok=True)
 
-    # Generate a unique filename using the sanitized app_id and current timestamp
+    # Generate a unique filename using the sanitized installation_id and current timestamp
     timestamp = ""
-    if app_id == "__":
+    if installation_id == "__":
         timestamp = f"{int(time.time())}"
-    filename = f"{app_id}{timestamp}.webp"
+    filename = f"{installation_id}{timestamp}.webp"
     file_path = os.path.join(pushed_path, filename)
 
     # Save the decoded image data to a file
@@ -101,10 +89,6 @@ def handle_push(device_id):
         f.write(image_bytes)
 
     return "Webp received.", 200
-
-
-# curl --request DELETE
-# --url http://m1pro.local:8000/v0/devices/worryingly-benign-unlimited-crane-f05/installations/surfrlast --header "$(cat kitebit.key)" --header 'Content-Type: application/json'
 
 @bp.route("/devices/<string:device_id>/installations/<string:installation_id>", methods=["DELETE"])
 def handle_delete(device_id,installation_id):
@@ -131,8 +115,12 @@ def handle_delete(device_id,installation_id):
     if not os.path.isdir(pushed_webp_path):
         abort(404, description="Device directory not found")
 
+    # Sanitize installation_id to prevent path traversal attacks
+    installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
+
     # Generate the filename using the installation_id
     file_path = os.path.join(pushed_webp_path, f"{installation_id}.webp")
+    print(file_path)
     if not os.path.isfile(file_path):
         abort(404, description="File not found")
 
@@ -140,7 +128,6 @@ def handle_delete(device_id,installation_id):
     os.remove(file_path)
 
     return "Webp deleted.", 200
-
 
 # # function to handle uploading a an app
 # @bp.route("/uploadapp", methods=("GET", "POST"))
