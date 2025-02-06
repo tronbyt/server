@@ -350,7 +350,7 @@ def toggle_enabled(device_id, iname):
         app["enabled"] = "false"
         # set fresh_disable so we can delete from tidbyt once and only once
         # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-        if "api_key" in g.user["devices"][device_id]:
+        if "use_tidbyt" in g.user["devices"][device_id] and "api_key" in g.user["devices"][device_id]:
             command = [
                 "/pixlet/pixlet",
                 "delete",
@@ -410,7 +410,7 @@ def updateapp(device_id, iname):
             ):
                 # set fresh_disable so we can delete from tidbyt once and only once
                 # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-                if "api_key" in g.user["devices"][device_id]:
+                if "use_tidbyt" in g.user["devices"][device_id] and "api_key" in g.user["devices"][device_id]:
                     command = [
                         "/pixlet/pixlet",
                         "delete",
@@ -434,20 +434,21 @@ def updateapp(device_id, iname):
 def possibly_render(user,device_id,app):
     result = False
     if not app.get("enabled",True):
-        print("App Disabled")
+        print(f"{app['name']} -- Disabled")
         return result
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
     webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+    
     if "path" in app:
         app_path = app["path"]
     else:
-        print("\t\t\tNo path for {}, trying default location".format(app["name"]))
+        # print("\t\t\tNo path for {}, trying default location".format(app["name"]))
         app_path = "system-apps/apps/{}/{}.star".format(app["name"].replace("_", ""), app["name"]
         )
     if "last_render" not in app or now - app["last_render"] > int(app["uinterval"]) * 60:
-        print("\t\t\tRendering")
+        print(f"\nRENDERING -- {app_basename}")
         # build the pixlet render command
         if os.path.exists(config_path): 
             command = [
@@ -474,11 +475,10 @@ def possibly_render(user,device_id,app):
             print(result)
         else:
             # update the config file with the new last render time
-            print("\t\t\tupdating last render")
             app["last_render"] = int(time.time())
             result = True
     else:
-        print("NO RENDER")
+        print(f"\n{app_basename} -- NO RENDER")
     return result
 
 @bp.route("/<string:device_id>/firmware", methods=("POST", "GET"))
@@ -696,6 +696,17 @@ def get_brightness(device_id,):
 MAX_RECURSION_DEPTH = 10
 @bp.route("/<string:device_id>/next")
 def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
+
+    # first check for a pushed file starting with __ and just return that and then delete it.
+    pushed_files = [f for f in os.listdir(f"/app/tronbyt_server/webp/{device_id}/pushed") if f.startswith("__")]
+    if pushed_files:
+        pushed_file = pushed_files[0]
+        print(f"\nreturning ephermeral pushed file {pushed_file}")
+        webp_path = f"/app/tronbyt_server/webp/{device_id}/pushed/{pushed_file}"
+        response = send_file(webp_path, mimetype="image/webp")
+        os.remove(webp_path)
+        return response
+
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded")
         return None  # or handle the situation as needed
@@ -707,7 +718,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
     # Pick device by passed in device_id
     device = user['devices'][device_id]
-    
+
     # treat em like an array
     apps_list = list(device["apps"].values())
     if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
@@ -724,7 +735,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
             next_app_dict = apps_list[0]  # go to the beginning
             last_app_index = 0
 
-    print("got next app: "+ next_app_dict['name'])
+    # print("next app: "+ next_app_dict['name'])
     app = next_app_dict
 
     if app['enabled'] == 'false' or db.get_is_app_schedule_active(app) == False:
@@ -752,14 +763,14 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
             # response.headers["Tronbyt-Brightness"] = db.brightness_int_from_string(app.get('brightness', device.get("brightness","medium")))
             # make sure we are sending an integer not a string
             b = db.get_device_brightness(device)
-            print(f"sending brighness {b}")
+            print(f"sending brighness {b} -- ", end="")
             response.headers["Tronbyt-Brightness"] = b
             s = app.get('display_time',None)
             if not s or int(s) == 0:
                 s = device.get("default_interval", 5)
-            print(f"sending dwell seconds {s}")
+            print(f"sending dwell seconds {s} -- ", end="")
             response.headers["Tronbyt-Dwell-Secs"] = s
-            print(f"returning app index {last_app_index}")
+            print(f"app index is {last_app_index}")
             db.save_last_app_index(device_id,last_app_index)
             return response        
         else:
