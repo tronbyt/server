@@ -18,7 +18,7 @@ from tronbyt_server.auth import login_required
 import tronbyt_server.db as db
 import uuid, os, subprocess, sys
 from datetime import datetime
-import time, re, base64
+import time, re, base64, json
 
 
 bp = Blueprint("api", __name__, url_prefix='/v0')
@@ -37,6 +37,10 @@ bp = Blueprint("api", __name__, url_prefix='/v0')
 
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
 def handle_push(device_id):
+    # Print out the whole request
+    print("Headers:", request.headers)
+    # print("JSON Data:", request.get_json())
+    print("Body:", request.get_data(as_text=True))
 
     # get api_key from Authorization header
     api_key = ""
@@ -54,9 +58,13 @@ def handle_push(device_id):
         abort(404)
 
     # get parameters from JSON data
-    data = request.get_json()
+    try:
+        data = json.loads(request.get_data(as_text=True))
+    except json.JSONDecodeError:
+        abort(400, description="Invalid JSON data")
+    # data = request.get_json()
     print(data)
-    installation_id = data.get("installationId", "__")
+    installation_id = data.get("installationID", "__")
     print(f"installation_id:{installation_id}")
     image_data = data.get("image")
 
@@ -88,8 +96,13 @@ def handle_push(device_id):
     with open(file_path, "wb") as f:
         f.write(image_bytes)
 
+    if timestamp == "":
+        db.add_pushed_app(device_id, file_path) # add the app to user.json so it'll stay in the rotation
+
     return "Webp received.", 200
 
+
+########################################################################################################
 @bp.route("/devices/<string:device_id>/installations/<string:installation_id>", methods=["DELETE"])
 def handle_delete(device_id,installation_id):
 
