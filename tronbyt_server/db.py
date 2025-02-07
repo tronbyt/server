@@ -3,9 +3,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime, timezone
-import sqlite3
-import shutil
-import subprocess
+import sqlite3, shutil, secrets
 
 DB_FILE = "users/usersdb.sqlite"
 
@@ -18,6 +16,7 @@ def init_db():
             data TEXT NOT NULL
         )
         """)
+        conn.commit()
         cursor.execute("SELECT * FROM json_data WHERE username='admin'")
         row = cursor.fetchone()
 
@@ -136,21 +135,30 @@ def auth_user(username,password):
             print("bad password")
             return False
 
-def save_user(user):
-    print("saving user")
+def save_user(user,new_user=False):
+    print(f"saving user {user['username']}")
     if "username" in user:
         username = user['username']
         try:
             with sqlite3.connect(DB_FILE) as conn:
                 cursor = conn.cursor()
                 # json
-                cursor.execute(
-                    "UPDATE json_data SET data = ? WHERE username = ?",
-                    (json.dumps(user), str(username)),
-                )
+                if new_user:
+                    cursor.execute(
+                        "INSERT INTO json_data (data, username) VALUES (?, ?)",
+                        (json.dumps(user), str(username)),
+                    )
+                    create_user_dir(username)
+
+                else:
+                    cursor.execute(
+                        "UPDATE json_data SET data = ? WHERE username = ?",
+                        (json.dumps(user), str(username)),
+                    )
                 conn.commit() 
 
             print("writing to json file for visibility")
+
             with open(f"{get_users_dir()}/{username}/{username}_debug.json","w") as file:
                 user['username'] = "DO NOT USE THIS FILE, FOR DEBUG ONLY"
                 json.dump(user,file)
@@ -159,6 +167,7 @@ def save_user(user):
         except Exception as e:
             print("couldn't save {} : {}".format(user,str(e)))
             return False
+        
 def create_user_dir(user):
     dir = sanitize(user)
     dir = secure_filename(dir)

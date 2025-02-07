@@ -17,7 +17,7 @@ from tronbyt_server.auth import login_required
 import tronbyt_server.db as db
 import uuid, os, subprocess, sys
 from datetime import datetime
-import time
+import time, secrets, string
 
 
 bp = Blueprint("manager", __name__)
@@ -137,6 +137,11 @@ def create():
                 sname = db.sanitize(name)
                 img_url = f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
             device["img_url"] = img_url
+            if not api_key or api_key == "":
+                api_key = "".join(
+                    secrets.choice(string.ascii_letters + string.digits)
+                    for _ in range(32)
+                )
             device["api_key"] = api_key
             device["notes"] = notes
             device["brightness"] = int(request.form["brightness"])
@@ -225,8 +230,8 @@ def update(device_id):
 
 @bp.route("/<string:device_id>/delete", methods=("POST",))
 @login_required
-def delete(id):
-    g.user["devices"].pop(id)
+def delete(device_id):
+    g.user["devices"].pop(device_id)
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
 
@@ -714,16 +719,18 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     device = user['devices'][device_id] or abort(404)
 
     # first check for a pushed file starting with __ and just return that and then delete it.
-    ephemeral_files = [f for f in os.listdir(f"/app/tronbyt_server/webp/{device_id}/pushed") if f.startswith("__")]
-    if ephemeral_files:
-        ephemeral_file = ephemeral_files[0]
-        print(f"\nreturning ephermeral pushed file {ephemeral_file}")
-        webp_path = f"/app/tronbyt_server/webp/{device_id}/pushed/{ephemeral_file}"
-        response = send_file(webp_path, mimetype="image/webp")
-        s = device.get("default_interval", 5)
-        response.headers["Tronbyt-Dwell-Secs"] = s
-        os.remove(webp_path)
-        return response
+    pushed_dir = f"/app/tronbyt_server/webp/{device_id}/pushed"
+    if os.path.isdir(pushed_dir):
+        ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
+        if ephemeral_files:
+            ephemeral_file = ephemeral_files[0]
+            print(f"\nreturning ephermeral pushed file {ephemeral_file}")
+            webp_path = f"{pushed_dir}/{ephemeral_file}"
+            response = send_file(webp_path, mimetype="image/webp")
+            s = device.get("default_interval", 5)
+            response.headers["Tronbyt-Dwell-Secs"] = s
+            os.remove(webp_path)
+            return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
@@ -738,6 +745,8 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
         last_app_index = db.get_last_app_index(device_id)
 
     # treat em like an array
+    if "apps" not in device:
+        return next_app(device_id, user, 0, recursion_depth + 1)
     apps_list = list(device["apps"].values())
     if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
         next_app_dict = device["apps"][device['night_mode_app']]

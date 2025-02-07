@@ -11,4 +11,5 @@ system-apps/**
 firmware/*.bin
 users/*.idx
 /system-apps
-users/userdb.sqlite
+users/usersdb.sqlite
+
