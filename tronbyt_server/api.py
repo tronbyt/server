@@ -64,7 +64,7 @@ def handle_push(device_id):
         abort(400, description="Invalid JSON data")
     # data = request.get_json()
     print(data)
-    installation_id = data.get("installationID", "__")
+    installation_id = data.get("installationID", data.get("installationId", "__")) # get both cases ID and Id
     print(f"installation_id:{installation_id}")
     image_data = data.get("image")
 
