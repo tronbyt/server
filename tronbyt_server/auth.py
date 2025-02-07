@@ -46,11 +46,12 @@ def register():
                     email = request.form['email']
             user['email'] = email
 
-            db.create_user_dir(username)
-            db.save_user(user)
-            
-            flash(f"Registered as {username}.")
-            return redirect(url_for('auth.login'))
+            if db.save_user(user,new_user=True):
+                db.create_user_dir(username)
+                flash(f"Registered as {username}.")
+                return redirect(url_for('auth.login'))
+            else:
+                error = "Couldn't Save User"
         flash(error)
     return render_template('auth/register.html')
 
