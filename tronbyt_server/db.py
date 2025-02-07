@@ -161,7 +161,7 @@ def save_user(user,new_user=False):
 
             with open(f"{get_users_dir()}/{username}/{username}_debug.json","w") as file:
                 user['username'] = "DO NOT USE THIS FILE, FOR DEBUG ONLY"
-                json.dump(user,file)
+                json.dump(user,file, indent=4)
 
             return True      
         except Exception as e:
@@ -311,9 +311,9 @@ def get_all_users():
         cursor.execute("SELECT data FROM json_data")
         
         for row in cursor.fetchall():
-            print(row[0])
+            #print(row[0])
             user = json.loads(row[0])
-            print(f"got user {user['username']}")
+            #print(f"got user {user['username']}")
             users.append(user)
         # # for user in os.listdir(get_users_dir()):
         # if (os.path.isdir(f"{get_users_dir()}/{user}")):
