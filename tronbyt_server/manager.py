@@ -150,7 +150,8 @@ def create():
                 user["devices"] = {}
 
             user["devices"][device["id"]] = device
-            db.save_user(user)
+            if db.save_user(user):
+                os.mkdir(f"tronbyt_server/webp/{device['id']}")
 
             return redirect(url_for("manager.index"))
     return render_template("manager/create.html")
@@ -158,27 +159,27 @@ def create():
 
 @bp.route("/<string:device_id>/update_brightness", methods=("GET", "POST"))
 @login_required
-def update_brightness(id):
-    if id not in g.user["devices"]:
+def update_brightness(device_id):
+    if device_id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
         brightness = int(request.form["brightness"])
         user = g.user
-        user["devices"][id]["brightness"] = brightness
+        user["devices"][device_id]["brightness"] = brightness
         db.save_user(user)
         return "",200
 
 # duplicate this method and make for default_interval
 @bp.route("/<string:device_id>/update_interval", methods=("GET", "POST"))
 @login_required
-def update_interval(id):
-    if id not in g.user["devices"]:
+def update_interval(device_id):
+    if device_id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
         interval = int(request.form["interval"])
-        user = g.user
-        user["devices"][id]["default_interval"] = interval
-        db.save_user(user)
+        
+        g.user["devices"][device_id]["default_interval"] = interval
+        db.save_user(g.user)
         return "",200
 
 @bp.route("/<string:device_id>/update", methods=("GET", "POST"))
@@ -458,7 +459,7 @@ def possibly_render(user,device_id,app):
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
     webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
-    
+
     if "path" in app:
         app_path = app["path"]
     else:
@@ -600,13 +601,14 @@ def configapp(device_id, iname, delete_on_cancel):
                     webp_path,
                 ]
             )
+            device = g.user["devices"][device_id]
             if render_result.returncode == 0:  # success
                 # set the enabled key in app to true now that it has been configured.
-                g.user["devices"][device_id]["apps"][iname]["enabled"] = "true"
+                device["apps"][iname]["enabled"] = "true"
                 # set last_rendered to seconds
-                g.user["devices"][device_id]["apps"][iname]["last_render"] = int(time.time())
+                device["apps"][iname]["last_render"] = int(time.time())
 
-                if g.user["devices"][device_id]["api_key"] != "":
+                if "use_tidyt" in device and device["api_key"] != "":
                     device = g.user["devices"][device_id]
                     # check for zero filesize
                     if os.path.getsize(webp_path) > 0:
@@ -621,6 +623,7 @@ def configapp(device_id, iname, delete_on_cancel):
                             "-i",
                             app["iname"],
                         ]
+
                         print("pushing {}".format(app["iname"]))
                         result = subprocess.run(command)
                         if "deleted" in app:
