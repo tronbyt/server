@@ -3,10 +3,40 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime, timezone
-import time
-import sys
+import sqlite3
 import shutil
 import subprocess
+
+DB_FILE = "users/usersdb.sqlite"
+
+def init_db():
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""CREATE TABLE IF NOT EXISTS json_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            data TEXT NOT NULL
+        )
+        """)
+        cursor.execute("SELECT * FROM json_data WHERE username='admin'")
+        row = cursor.fetchone()
+
+        if not row:  # If no row is found
+            # Load the default JSON data from the file
+            with open('users/admin/admin.json.default', 'r') as f:
+                default_json = json.load(f)
+            
+            # Insert default JSON
+            cursor.execute(
+                "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
+                (json.dumps(default_json,),)
+            )
+            conn.commit()
+            print(f"Default JSON inserted for admin user")
+        conn.commit()
+
+init_db()
+
 
 def server_tz_offset():
     output = subprocess.check_output(["date", "+%z"]).decode().strip()
@@ -67,18 +97,6 @@ def get_users_dir():
     # print(f"users dir : {current_app.config['USERS_DIR']}")
     return current_app.config['USERS_DIR']
 
-def get_user_config_path(user):
-    return f"{get_users_dir()}/{user}/{user}.json"
-
-def user_exists(username):
-    try:
-        with open(f"{get_users_dir()}/{username}/{username}.json") as file:
-            # print("username: {} exists.".format(username))
-            return True
-    except:
-        return False
-    return False
-
 def file_exists(file_path):
     if os.path.exists(file_path):
         return True
@@ -87,41 +105,59 @@ def file_exists(file_path):
 
 def get_user(username):
     try:
-        with open(f"{get_users_dir()}/{username}/{username}.json") as file:
-            user = json.load(file)
-#            print("return user")
-            return user
-    except Exception as e:
-        print("problem with get_user" + str(e))
-        return False
-
-def auth_user(username,password):
-    # first time running with no admin.json file ?
-    user_file_path = f"{get_users_dir()}/{username}/{username}.json"
-    default_admin_file_path = f"{get_users_dir()}/admin/admin.json.default"
-    if (not os.path.exists(user_file_path)) and username == "admin":
-        shutil.copy(default_admin_file_path, user_file_path)        
-    try:
-        with open(f"{get_users_dir()}/{username}/{username}.json") as file:
-            user = json.load(file)
-            print(user)
-            if check_password_hash(user.get("password"), password):
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT data FROM json_data WHERE username = ?", (str(username),))
+            row = cursor.fetchone()
+            if row:
+                user = json.loads(row[0])
                 return user
             else:
-                print("bad password")
-                return False
-    except:
-        return False
+                print(f"{username} not found")
+                return None
+            # with open(f"{get_users_dir()}/{username}/{username}.json") as file:
+            # user = json.loads(row[0])
+#            print("return user")
+    except Exception as e:
+        print("problem with get_user" + str(e))
+        return None
+
+def auth_user(username,password):
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT data FROM json_data WHERE username = ?", (str(username),))
+        row = cursor.fetchone()
+        if row:
+            user = json.loads(row[0])
+            if check_password_hash(user.get("password"), password):
+                print(f"returning {user}")
+                return user
+        else:
+            print("bad password")
+            return False
 
 def save_user(user):
-     if "username" in user:
+    print("saving user")
+    if "username" in user:
         username = user['username']
         try:
-            with open(f"{get_users_dir()}/{username}/{username}.json","w") as file:
+            with sqlite3.connect(DB_FILE) as conn:
+                cursor = conn.cursor()
+                # json
+                cursor.execute(
+                    "UPDATE json_data SET data = ? WHERE username = ?",
+                    (json.dumps(user), str(username)),
+                )
+                conn.commit() 
+
+            print("writing to json file for visibility")
+            with open(f"{get_users_dir()}/{username}/{username}_debug.json","w") as file:
+                user['username'] = "DO NOT USE THIS FILE, FOR DEBUG ONLY"
                 json.dump(user,file)
+
             return True      
-        except:
-            print("couldn't save {}".format(user))
+        except Exception as e:
+            print("couldn't save {} : {}".format(user,str(e)))
             return False
 def create_user_dir(user):
     dir = sanitize(user)
@@ -261,10 +297,18 @@ def delete_user_upload(user,filename):
 
 def get_all_users():
     users = list()
-    for user in os.listdir(get_users_dir()):
-        if (os.path.isdir(f"{get_users_dir()}/{user}")):
-            users.append(get_user(user))
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT data FROM json_data")
         
+        for row in cursor.fetchall():
+            print(row[0])
+            user = json.loads(row[0])
+            print(f"got user {user['username']}")
+            users.append(user)
+        # # for user in os.listdir(get_users_dir()):
+        # if (os.path.isdir(f"{get_users_dir()}/{user}")):
+        #     users.append(get_user(user))        
     return users
 
 def get_user_render_port(username):
@@ -410,4 +454,3 @@ def add_pushed_app(device_id,path):
         }
     user["devices"][device_id]["apps"][installation_id] = app
     save_user(user)
-

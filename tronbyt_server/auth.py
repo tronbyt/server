@@ -60,7 +60,7 @@ def login():
         if not current_app.config['TESTING']: time.sleep(2) # slow down brute force attacks
         username = db.sanitize(request.form['username'])
         password = db.sanitize(request.form['password'])
-        dprint(f"safeusername:{username} and hp : {password}")
+        dprint(f"safeusername : {username} and hp : {password}")
         error = None
         user = db.auth_user(username,password)
         if user is False:
@@ -100,10 +100,8 @@ def load_logged_in_user():
     if username is None:
         g.user = None
     else:
-        if db.user_exists(username):
-            g.user = db.get_user(username)
-        else:
-            g.user = None
+        g.user = db.get_user(username) # will return none if non existant
+        
 
 @bp.route('/logout')
 def logout():
