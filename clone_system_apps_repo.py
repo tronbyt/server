@@ -4,7 +4,23 @@ import json,os,sys,subprocess,shutil
 system_apps_path = "system-apps"
 system_apps_repo = os.environ.get('SYSTEM_APPS_REPO') or "https://github.com/tavdog/tronbyt-apps.git"
 # check for existence of apps_path dir
-if not os.path.exists(system_apps_path):
+if os.path.exists(system_apps_path):
+    print("{} found, updating {}".format(system_apps_path,system_apps_repo))
+
+    result = subprocess.run(
+                        [
+                            "git",
+                            "pull",
+                            "--rebase",
+                            "true"
+                        ],
+                        cwd=system_apps_path
+                    )
+    if result.returncode != 0:
+        print("Error updating repo")
+    else:
+        print("Repo updated")
+else:
     print("{} not found, cloning {}".format(system_apps_path,system_apps_repo))
 
     result = subprocess.run(
