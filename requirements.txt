@@ -1,6 +1,4 @@
 flask
 gunicorn
 python-dotenv
-paho-mqtt
-python-pidfile
 esptool
