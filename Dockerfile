@@ -15,7 +15,7 @@ FROM python:3.13-slim AS runtime
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-RUN apt-get update && apt-get install --no-install-recommends -y procps libwebp-dev git \
+RUN apt-get update && apt-get install --no-install-recommends -y procps libwebp7 libwebpdemux2 libwebpmux3 git \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /tmp
