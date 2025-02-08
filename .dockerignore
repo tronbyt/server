@@ -1,5 +1,13 @@
-.venv
-.vscode
+.dockerignore
+.env.example
 .git
+.github
+.gitignore
 .pytest_cache
 .trunk
+.venv
+.vscode
+Dockerfile
+docker-compose.yaml
+README.md
+tests
