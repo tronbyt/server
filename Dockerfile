@@ -18,7 +18,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && apt-get install --no-install-recommends -y procps libwebp7 libwebpdemux2 libwebpmux3 git \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
-WORKDIR /tmp
 
 # Copy the built pixlet binary from the builder stage
 COPY --from=builder /pixlet/pixlet /pixlet/pixlet
@@ -27,6 +26,7 @@ COPY --from=builder /pixlet/pixlet /pixlet/pixlet
 WORKDIR /app
 COPY . /app
 RUN pip install --no-cache-dir -r requirements.txt
+RUN rm -f requirements.txt
 
 # 8000 for main app, 5100,5102 for pixlet serve iframe 
 EXPOSE 8000 5100 5101

@@ -6,10 +6,10 @@
 **/*.json
 **/*.log
 .env
+env
 **/system-apps/**
 system-apps/**
 firmware/*.bin
 users/*.idx
 /system-apps
 users/usersdb.sqlite
-
