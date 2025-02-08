@@ -10,7 +10,7 @@ def create_app(test_config=None):
         app.config.from_mapping(
         SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
         MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
-        SERVER_HOSTNAME = os.environ['SERVER_HOSTNAME_OR_IP'] or 'localhost',
+        SERVER_HOSTNAME = os.environ['SERVER_HOSTNAME'] or 'localhost',
         MAIN_PORT = os.environ['SERVER_PORT'] or 8000,
         USERS_DIR = 'users',
     )
