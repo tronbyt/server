@@ -1,35 +1,42 @@
-FROM golang:1.23 AS builder
+# build pixlet
+FROM golang:1.23-alpine3.21 AS pixlet-builder
 
 ENV PIXLET_REPO=https://github.com/tavdog/pixlet
 
-# build pixlet
-RUN apt-get update && apt-get install --no-install-recommends npm libwebp-dev -y \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+RUN apk --no-cache add npm libwebp-dev git make gcc musl-dev
 WORKDIR /
 RUN git clone --depth 1 $PIXLET_REPO /pixlet
 WORKDIR /pixlet
 RUN npm install && npm run build && make build
 
-FROM python:3.13-slim AS runtime
+# package python dependencies
+FROM python:3.13-alpine3.21 AS python-builder
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install --no-install-recommends -y procps libwebp7 libwebpdemux2 libwebpmux3 git \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-# Copy the built pixlet binary from the builder stage
-COPY --from=builder /pixlet/pixlet /pixlet/pixlet
-
-# Set up the environment for the Flask app
 WORKDIR /app
-COPY . /app
-RUN pip install --no-cache-dir -r requirements.txt
-RUN rm -f requirements.txt
+COPY requirements.txt .
+RUN apk --no-cache add gcc python3-dev musl-dev linux-headers && \
+    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
-# 8000 for main app, 5100,5102 for pixlet serve iframe 
+# build runtime image
+FROM python:3.13-alpine3.21 AS runtime
+
+# 8000 for main app, 5100, 5101 for pixlet serve iframe 
 EXPOSE 8000 5100 5101
+
+WORKDIR /app
+
+# copy pixlet binary and python dependencies
+COPY --from=pixlet-builder /pixlet/pixlet /pixlet/pixlet
+COPY --from=python-builder /app/wheels /wheels
+COPY --from=python-builder /app/requirements.txt /app
+
+RUN pip install --no-cache /wheels/* && \
+    apk --no-cache add libwebp libwebpmux libwebpdemux procps-ng git
+
+COPY . /app
 
 # start the app
 CMD ["./run"]

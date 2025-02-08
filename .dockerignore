@@ -8,6 +8,6 @@
 .venv
 .vscode
 Dockerfile
-docker-compose.yaml
+docker-compose*.yaml
 README.md
 tests
