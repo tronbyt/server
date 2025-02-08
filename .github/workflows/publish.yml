@@ -47,12 +47,17 @@ jobs:
             latest=true
             prefix=
             suffix=
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.4.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.9.0
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6.13.0
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/arm64/v8
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Generate artifact attestation
