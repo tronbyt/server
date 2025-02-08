@@ -2,9 +2,9 @@ name: Create and publish a container image
 
 on:
   push:
-    # Publish `main` as Docker `latest` image.
+    # Publish `master` as Docker `latest` image.
     branches:
-      - main
+      - master
   
     # Publish `v1.2.3` tags as releases.
     tags:
