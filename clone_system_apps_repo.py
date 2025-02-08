@@ -1,5 +1,8 @@
 # clone system repo and generate the apps.json list. will pullapp descrption pulled from the yaml if available
-import json,os,sys,subprocess,shutil
+import json
+import os
+import subprocess
+import shutil
 
 system_apps_path = "system-apps"
 system_apps_repo = os.environ.get('SYSTEM_APPS_REPO') or "https://github.com/tavdog/tronbyt-apps.git"
@@ -11,8 +14,7 @@ if os.path.exists(system_apps_path):
                         [
                             "git",
                             "pull",
-                            "--rebase",
-                            "true"
+                            "--rebase=true"
                         ],
                         cwd=system_apps_path
                     )
