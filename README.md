@@ -21,7 +21,7 @@ docker run -d -e SERVER_HOSTNAME_OR_IP=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:
 
-1. Download the Compose project https://raw.githubusercontent.com/tavdog/tronbyt-server/refs/heads/master/docker-compose.yaml (or use the contents to add a service to an existing project).
+1. Download the [Compose project](https://raw.githubusercontent.com/tavdog/tronbyt-server/refs/heads/master/docker-compose.yaml) (or use the contents to add a service to an existing project).
 
 2. Copy the [example environment file](https://raw.githubusercontent.com/tavdog/tronbyt-server/refs/heads/master/.env.example) and modify it as needed:
 
