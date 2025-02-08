@@ -4,7 +4,7 @@ services:
     ports:
       - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
       - "${PIXLET_SERVE_PORT1}:5100" # 5100 is used for pixlet serve interface during app configuration
-      - "${PIXLET_SERVE_PORT2}:5101" # user 2
+      - "${PIXLET_SERVE_PORT2}:5101" # user 2, add 1 incremented port each additional user you want or use host network_mode
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:

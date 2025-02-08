@@ -19,7 +19,7 @@ if os.path.exists(system_apps_path):
                         cwd=system_apps_path
                     )
     if result.returncode != 0:
-        print("Error updating repo")
+        print("Error updating repo, whatevs")
     else:
         print("Repo updated")
 else:
@@ -95,7 +95,7 @@ for app in apps:
             static_image_path = os.path.join(static_images_path, f"{app_dict['name']}.{ext}")
 
             if os.path.exists(image_path) and os.path.getsize(image_path) < 1 * 1024 * 1024: # less than a meg only
-                print(f"copying {image_path}")
+                # print(f"copying {image_path}")
                 if not os.path.exists(static_image_path):
                     print(f"copying preview to static dir {app_dict['name']}.{ext}")
                     new_previews += 1

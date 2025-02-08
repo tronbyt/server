@@ -5,11 +5,11 @@
         "9abe2858": {
             "id": "9abe2858",
             "name": "Tronbyt 1",
-            "brightness": 10,
+            "brightness": 40,
             "night_brightness": 10,
             "night_start": -1,
             "img_url": "/9abe2858/next",
-            "api_key": "",
+            "api_key": "CHANGEME",
             "notes": "",
             "apps": {
                 "994": {
