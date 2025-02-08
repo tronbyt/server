@@ -23,7 +23,7 @@ If you've been invited to use my public instance of this server login there and 
     cp .env.example .env
     ```
 
-3. Set the `DOMAIN` value in the `.env` file if not running locally. IP addresses will work too.
+3. Set the `SERVER_HOSTNAME_OR_IP` value in the `.env` file. IP addresses will work too.
 
 ### Running the Application
 
@@ -58,5 +58,5 @@ If you've been invited to use my public instance of this server login there and 
 
 ### Notes
 
-- Ensure that the `DOMAIN` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
+- Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
 - Do not try to run this server over HTTPS.  It requires a pixlet serve subprocess to configure the apps and it only works over http and you can't jump from https to http in most browsers.
