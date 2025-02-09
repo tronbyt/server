@@ -1,6 +1,6 @@
 import os,json
 
-config_path =  "tests/users/testuser/testuser.json"
+config_path =  "tests/users/testuser/testuser_debug.json"
 uploads_path = "tests/users/testuser/apps"
 def get_testuser_config_string():
     with open(config_path) as file:

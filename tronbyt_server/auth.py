@@ -64,7 +64,7 @@ def login():
         dprint(f"safeusername : {username} and hp : {password}")
         error = None
         user = db.auth_user(username,password)
-        if user is False:
+        if user is False or user is None:
             error = 'Incorrect username/password.'
         if error is None:
             session.clear()

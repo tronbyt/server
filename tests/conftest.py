@@ -1,24 +1,27 @@
-import pytest,os
-from tronbyt_server import create_app
+import pytest
+import os
+from tronbyt_server import create_app, db
 
 @pytest.fixture()
 def app():
     app = create_app(test_config=True)
-    app.config['TESTING'] = True
 
-    yield app
+    with app.app_context():
+        yield app
 
     # clean up / reset resources here
-    # remove the users/testuser directory
-    os.system("rm -rf tests/users/testuser")
-
-
+    print("delete testdb")
+    os.system("rm users/testdb.sqlite")
 
 @pytest.fixture()
 def client(app):
     return app.test_client()
 
-
 @pytest.fixture()
 def runner(app):
     return app.test_cli_runner()
+
+@pytest.fixture()
+def app_context(app):
+    with app.app_context():
+        yield

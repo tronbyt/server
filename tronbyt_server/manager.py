@@ -119,10 +119,11 @@ def deleteuser(username):
 @login_required
 def create():
     if request.method == "POST":
-        name = request.form["name"]
-        img_url = request.form["img_url"] # using this for remote_url now
-        api_key = request.form["api_key"]
-        notes = request.form["notes"]
+        name = request.form.get("name")
+        img_url = request.form.get("img_url") # using this for remote_url now
+        api_key = request.form.get("api_key")
+        notes = request.form.get("notes")
+        brightness = request.form.get("brightness")
         error = None
         if not name or db.get_device_by_name(g.user,name):
             error = "Unique name is required."
@@ -131,7 +132,7 @@ def create():
         else:
             device = dict()
             device["id"] = str(uuid.uuid4())[0:8] # just use first 8 chars is good enough
-            print("id is :" + str(device["id"]))
+            print("device_id is :" + str(device["id"]))
             device["name"] = name
             if not img_url:
                 sname = db.sanitize(name)
@@ -144,7 +145,10 @@ def create():
                 )
             device["api_key"] = api_key
             device["notes"] = notes
-            device["brightness"] = int(request.form["brightness"])
+            if brightness:
+                device["brightness"] = int(brightness)
+            else:
+                device["brightness"] = 30
             user = g.user
             if "devices" not in user:
                 user["devices"] = {}
@@ -153,6 +157,7 @@ def create():
             if db.save_user(user):
                 os.mkdir(f"tronbyt_server/webp/{device['id']}")
 
+            print("got to redirect")
             return redirect(url_for("manager.index"))
     return render_template("manager/create.html")
 
@@ -163,7 +168,7 @@ def update_brightness(device_id):
     if device_id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
-        brightness = int(request.form["brightness"])
+        brightness = int(request.form.get("brightness"))
         user = g.user
         user["devices"][device_id]["brightness"] = brightness
         db.save_user(user)
@@ -176,7 +181,7 @@ def update_interval(device_id):
     if device_id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
-        interval = int(request.form["interval"])
+        interval = int(request.form.get("interval"))
         
         g.user["devices"][device_id]["default_interval"] = interval
         db.save_user(g.user)
@@ -190,10 +195,10 @@ def update(device_id):
     if id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
-        name = request.form["name"]
-        notes = request.form["notes"]
-        img_url = request.form["img_url"]
-        api_key = request.form["api_key"]
+        name = request.form.get("name")
+        notes = request.form.get("notes")
+        img_url = request.form.get("img_url")
+        api_key = request.form.get("api_key")
         error = None
         if not name or not id:
             error = "Id and Name is required."
@@ -203,17 +208,17 @@ def update(device_id):
             device = dict()
             device["id"] = id
             device["name"] = name
-            device['default_interval'] = int(request.form['default_interval'])
-            device["brightness"] = int(request.form["brightness"])
-            device["night_brightness"] = int(request.form["night_brightness"])
-            device["night_start"] = int(request.form['night_start'])
-            device['timezone'] = int(request.form['timezone'])
+            device['default_interval'] = int(request.form.get('default_interval'))
+            device["brightness"] = int(request.form.get("brightness"))
+            device["night_brightness"] = int(request.form.get("night_brightness"))
+            device["night_start"] = int(request.form.get('night_start'))
+            device['timezone'] = int(request.form.get('timezone'))
             if len(img_url) < 1:
                 print("no img_url in device")
                 device["img_url"] = f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
             else:
                 device["img_url"] = db.sanitize_url(img_url)
-            device['night_mode_app'] = request.form['night_mode_app']
+            device['night_mode_app'] = request.form.get('night_mode_app')
             device["api_key"] = api_key
             device["notes"] = notes
 
@@ -310,11 +315,11 @@ def addapp(device_id):
         )
 
     elif request.method == "POST":
-        name = request.form["name"]
+        name = request.form.get("name")
         app_details = db.get_app_details(g.user["username"], name)
-        uinterval = int(request.form["uinterval"])
-        display_time = int(request.form["display_time"])
-        notes = request.form["notes"]
+        uinterval = int(request.form.get("uinterval"))
+        display_time = int(request.form.get("display_time"))
+        notes = request.form.get("notes")
         error = None
         # generate an iname from 3 digits. will be used later as the port number on which to run pixlet serve
         import random
@@ -393,10 +398,11 @@ def toggle_enabled(device_id, iname):
 @bp.route("/<string:device_id>/<string:iname>/updateapp", methods=("GET", "POST"))
 @login_required
 def updateapp(device_id, iname):
+    print(str(request.form))
     if request.method == "POST":
-        name = request.form["name"]
-        uinterval = request.form["uinterval"]
-        notes = request.form["notes"]
+        name = request.form.get("name")
+        uinterval = request.form.get("uinterval")
+        notes = request.form.get("notes")
         if "enabled" in request.form:
             enabled = "true"
         else:
@@ -414,10 +420,10 @@ def updateapp(device_id, iname):
             print("iname is :" + str(app["iname"]))
             app["name"] = name
             app["uinterval"] = uinterval
-            app["display_time"] = int(request.form["display_time"]) or 0
+            app["display_time"] = int(request.form.get("display_time")) or 0
             app["notes"] = notes
-            app["start_time"] = request.form["start_time"]
-            app["end_time"] = request.form["end_time"]
+            app["start_time"] = request.form.get("start_time")
+            app["end_time"] = request.form.get("end_time")
             app["days"] = request.form.getlist("days")
 
             if (
@@ -511,13 +517,13 @@ def generate_firmware(device_id):
     if request.method == "POST":
         print(request.form)
         if 'wifi_ap' in request.form and 'wifi_password' in request.form:
-            ap = request.form['wifi_ap']
-            password = request.form["wifi_password"]
-            image_url = request.form["img_url"]
+            ap = request.form.get('wifi_ap')
+            password = request.form.get("wifi_password")
+            image_url = request.form.get("img_url")
             label = db.sanitize(g.user["devices"][device_id]['name'])
             gen2 = False
             if 'gen2' in request.form:
-                gen2 = request.form['gen2']
+                gen2 = request.form.get('gen2')
 
             result = db.generate_firmware(label,image_url,ap,password,gen2)
             if 'file_path' in result:
@@ -871,7 +877,7 @@ def download_firmware(device_id):
 def set_user_repo():
     if request.method == "POST":
         if "app_repo_url" in request.form:
-            repo_url = request.form["app_repo_url"]
+            repo_url = request.form.get("app_repo_url")
             print(repo_url)
             user_apps_path = "{}/{}/apps".format(db.get_users_dir(), g.user["username"])
             old_repo = ""
@@ -924,7 +930,7 @@ def set_system_repo():
         if g.user["username"] != "admin":
             abort(404)
         if "app_repo_url" in request.form:
-            repo_url = request.form["app_repo_url"]
+            repo_url = request.form.get("app_repo_url")
             print(repo_url)
             system_apps_path = "system-apps"
             old_repo = ""

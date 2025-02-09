@@ -8,6 +8,12 @@ import sqlite3, shutil, secrets
 DB_FILE = "users/usersdb.sqlite"
 
 def init_db():
+
+    global DB_FILE
+    if current_app.testing:
+        DB_FILE = "users/testdb.sqlite"
+        
+    print(f"using {DB_FILE}")
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("""CREATE TABLE IF NOT EXISTS json_data (
@@ -33,9 +39,6 @@ def init_db():
             conn.commit()
             print(f"Default JSON inserted for admin user")
         conn.commit()
-
-init_db()
-
 
 def server_tz_offset():
     output = subprocess.check_output(["date", "+%z"]).decode().strip()
@@ -138,6 +141,8 @@ def auth_user(username,password):
 def save_user(user,new_user=False):
     print(f"saving user {user['username']}")
     if "username" in user:
+        if current_app.testing:
+            print(f"user data passed to save_user : {user}")
         username = user['username']
         try:
             with sqlite3.connect(DB_FILE) as conn:
@@ -160,14 +165,17 @@ def save_user(user,new_user=False):
             print("writing to json file for visibility")
 
             with open(f"{get_users_dir()}/{username}/{username}_debug.json","w") as file:
-                user['username'] = "DO NOT USE THIS FILE, FOR DEBUG ONLY"
+                if current_app.testing:
+                    print(f"writing json of {user}")
+                else:
+                    user['username'] = "DO NOT USE THIS FILE, FOR DEBUG ONLY"
                 json.dump(user,file, indent=4)
 
             return True      
         except Exception as e:
             print("couldn't save {} : {}".format(user,str(e)))
             return False
-        
+
 def create_user_dir(user):
     dir = sanitize(user)
     dir = secure_filename(dir)

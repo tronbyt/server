@@ -8,7 +8,8 @@ def test_device_create_delete(client):
     r = client.get("/create")
     assert r.status_code == 200
 
-    r = client.post("/create", data={"name":"TESTDEVICE","img_url":"TESTID","api_key":"TESTKEY","notes":"TESTNOTES"})
+    r = client.post("/create", data={"name":"TESTDEVICE","img_url":"TESTID","api_key":"TESTKEY","notes":"TESTNOTES", "brightness":"30"})
+    print(r.text)
     assert "TESTDEVICE" in utils.get_testuser_config_string()
 
 

@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 
 from flask import Flask
+from tronbyt_server import db
 def create_app(test_config=None):
     load_dotenv()
     # create and configure the app
@@ -13,20 +14,29 @@ def create_app(test_config=None):
         SERVER_HOSTNAME = os.environ['SERVER_HOSTNAME'] or 'localhost',
         MAIN_PORT = os.environ['SERVER_PORT'] or 8000,
         USERS_DIR = 'users',
+        DB_FILE = 'usersdb.sqlite'
     )
 
     else:
         app.config.from_mapping(
-        SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
-        MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
-        SERVER_HOSTNAME = os.environ['SERVER_HOSTANAME'] or 'localhost',
-        USERS_DIR = 'tests/users',
-    )
+            SECRET_KEY="lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh",
+            MAX_CONTENT_LENGTH=1000 * 1000,  # 1mbyte upload size limit
+            SERVER_HOSTNAME="localhost",
+            MAIN_PORT=os.environ["SERVER_PORT"] or 8000,
+            USERS_DIR="tests/users",
+            PRODUCTION=0,
+            TESTING=True,
+            DB_FILE="testdb.sqlite",
+        )
 
     try:
         os.makedirs(app.instance_path)
     except OSError:
         pass
+
+    # Initialize the database within the application context
+    with app.app_context():
+        db.init_db()
 
     from . import auth
     app.register_blueprint(auth.bp)
@@ -38,7 +48,6 @@ def create_app(test_config=None):
     from . import manager
     app.register_blueprint(manager.bp)
     app.add_url_rule('/', endpoint='index')
-
 
     import time
     @app.template_filter('timeago')
