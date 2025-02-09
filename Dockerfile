@@ -3,7 +3,7 @@ FROM alpine:edge AS pixlet-builder
 
 ENV PIXLET_REPO=https://github.com/tavdog/pixlet
 
-RUN apk --no-cache add go=1.23.5-r0 npm=10.9.1-r0 libwebp-dev=1.5.0-r0 git=2.48.1-r0 make=4.4.1-r2 gcc=14.2.0-r5 musl-dev=1.2.5-r9
+RUN apk --no-cache add go npm=10.9.1-r0 libwebp-dev=1.5.0-r0 git=2.48.1-r0 make=4.4.1-r2 gcc=14.2.0-r5 musl-dev=1.2.5-r9
 WORKDIR /
 RUN git clone --depth 1 $PIXLET_REPO /pixlet
 WORKDIR /pixlet
