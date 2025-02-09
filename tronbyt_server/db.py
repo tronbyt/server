@@ -40,6 +40,22 @@ def init_db():
             print(f"Default JSON inserted for admin user")
         conn.commit()
 
+def delete_device_dirs(device_id):
+    # Get the name of the current app
+    app_name = current_app.name
+
+    # Construct the path to the directory to delete
+    dir_to_delete = os.path.join(app_name, "webp", device_id)
+
+    # Delete the directory recursively
+    try:
+        shutil.rmtree(dir_to_delete)
+        print(f"Successfully deleted directory: {dir_to_delete}")
+    except FileNotFoundError:
+        print(f"Directory not found: {dir_to_delete}")
+    except Exception as e:
+        print(f"Error deleting directory {dir_to_delete}: {str(e)}")
+
 def server_tz_offset():
     output = subprocess.check_output(["date", "+%z"]).decode().strip()
     # Convert the offset to a timedelta

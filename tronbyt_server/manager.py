@@ -155,7 +155,7 @@ def create():
 
             user["devices"][device["id"]] = device
             if db.save_user(user):
-                os.mkdir(f"tronbyt_server/webp/{device['id']}")
+                os.mkdir(f"{current_app.name}/webp/{device['id']}")
 
             print("got to redirect")
             return redirect(url_for("manager.index"))
@@ -237,10 +237,12 @@ def update(device_id):
 @bp.route("/<string:device_id>/delete", methods=("POST",))
 @login_required
 def delete(device_id):
-    g.user["devices"].pop(device_id)
-    db.save_user(g.user)
-    return redirect(url_for("manager.index"))
-
+    device = g.user["devices"].get(device_id,None)
+    if device:
+        g.user["devices"].pop(device_id)
+        db.save_user(g.user)
+        db.delete_device_dirs(device_id)
+        return redirect(url_for("manager.index"))
 
 @bp.route("/<string:device_id>/<string:iname>/delete", methods=("POST", "GET"))
 @login_required
