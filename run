@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 python3 clone_system_apps_repo.py
 
