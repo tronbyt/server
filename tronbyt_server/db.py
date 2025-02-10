@@ -352,7 +352,7 @@ def get_all_users():
     return users
 
 def get_user_render_port(username):
-    base_port = current_app.config.get('PIXLET_RENDER_PORT1') or 5100
+    base_port = int(current_app.config.get('PIXLET_RENDER_PORT1')) or 5100
     users = get_all_users()
     for i in range(len(users)):
          if users[i]['username'] == username:
