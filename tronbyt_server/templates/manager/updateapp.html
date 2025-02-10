@@ -9,7 +9,7 @@
   <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
 <img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
     alt="Preview">
-  <label for="uinterval">Render Interval Minutes (Update ever X minutes)</label>
+  <label for="uinterval">Render Interval Minutes (Update every X minutes)</label>
   <div><input type="number" name="uinterval" id="uinterval" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
   
   <label for="display_time">Display Time Seconds (0 for device default)</label>
