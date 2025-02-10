@@ -15,9 +15,12 @@ from flask import (
 from werkzeug.exceptions import abort
 from tronbyt_server.auth import login_required
 import tronbyt_server.db as db
-import uuid, os, subprocess, sys
-from datetime import datetime
-import time, secrets, string
+import uuid
+import os
+import subprocess
+import time
+import secrets
+import string
 
 
 bp = Blueprint("manager", __name__)
@@ -447,18 +450,18 @@ def updateapp(device_id, iname):
     return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
-def possibly_render(user,device_id,app):
+def possibly_render(user, device_id, app):
     result = False
     if "pushed" in app:
         print("Pushed App -- NO RENDER")
         return result
-    if not app.get("enabled",True):
+    if not app.get("enabled", True):
         print(f"{app['name']} -- Disabled")
         return result
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
-    webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+    webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id, app_basename)
 
     if "path" in app:
         app_path = app["path"]
@@ -737,7 +740,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
-        response = send_file("webp/default.webp", mimetype="image/webp")
+        response = send_file("/app/tronbyt_server/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
         return response
         # return None  # or handle the situation as needed
@@ -771,7 +774,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     # print("next app: "+ next_app_dict['name'])
     app = next_app_dict
 
-    if app['enabled'] == 'false' or db.get_is_app_schedule_active(app) == False:
+    if app['enabled'] == 'false' or not db.get_is_app_schedule_active(app):
         # recurse until we find one that's enabled
         print("disabled app")
         time.sleep(0.25) #delay when recursing to avoid accidental runaway
