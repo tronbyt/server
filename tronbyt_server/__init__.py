@@ -10,22 +10,24 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     if test_config is None:
         app.config.from_mapping(
-        SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
-        MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
-        SERVER_HOSTNAME = os.getenv('SERVER_HOSTNAME', 'localhost'),
-        SERVER_PROTOCOL = os.getenv('SERVER_PROTOCOL', 'http'),
-        MAIN_PORT = os.environ['SERVER_PORT'] or 8000,
-        USERS_DIR = 'users',
-    )
+            SECRET_KEY="lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh",
+            MAX_CONTENT_LENGTH=1000 * 1000,  # 1mbyte upload size limit
+            SERVER_HOSTNAME=os.getenv("SERVER_HOSTNAME", "localhost"),
+            SERVER_PROTOCOL=os.getenv("SERVER_PROTOCOL", "http"),
+            PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
+            MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
+            USERS_DIR="users",
+        )
 
     else:
         app.config.from_mapping(
-        SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
-        MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
-        SERVER_HOSTNAME = os.getenv('SERVER_HOSTNAME', 'localhost'),
-        SERVER_PROTOCOL = os.getenv('SERVER_PROTOCOL', 'http'),
-        USERS_DIR = 'tests/users',
-    )
+            SECRET_KEY="lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh",
+            MAX_CONTENT_LENGTH=1000 * 1000,  # 1mbyte upload size limit
+            SERVER_HOSTNAME=os.getenv("SERVER_HOSTNAME", "localhost"),
+            SERVER_PROTOCOL=os.getenv("SERVER_PROTOCOL", "http"),
+            PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
+            USERS_DIR="tests/users",
+        )
 
     try:
         os.makedirs(app.instance_path)
@@ -33,24 +35,27 @@ def create_app(test_config=None):
         pass
 
     from . import auth
+
     app.register_blueprint(auth.bp)
 
     from . import api
+
     app.register_blueprint(api.bp)
     # app.add_url_rule("/api", endpoint="api")
 
     from . import manager
-    app.register_blueprint(manager.bp)
-    app.add_url_rule('/', endpoint='index')
 
+    app.register_blueprint(manager.bp)
+    app.add_url_rule("/", endpoint="index")
 
     import time
-    @app.template_filter('timeago')
+
+    @app.template_filter("timeago")
     def timeago(seconds):
         if seconds == 0:
             return "Never"
         # caclulate the minutes between now and the seconds passed in
-        secondsago = (time.time() - seconds)
+        secondsago = time.time() - seconds
         if seconds < 2:
             return " just now"
         elif secondsago < 60:
