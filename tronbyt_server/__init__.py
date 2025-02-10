@@ -1,7 +1,9 @@
 import os
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from flask import Flask
+
+
 def create_app(test_config=None):
     load_dotenv()
     # create and configure the app
@@ -10,8 +12,8 @@ def create_app(test_config=None):
         app.config.from_mapping(
         SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
         MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
-        SERVER_HOSTNAME = os.environ['SERVER_HOSTNAME'] or 'localhost',
-        SERVER_PROTOCOL = os.environ['SERVER_PROTOCOL'] or 'http',
+        SERVER_HOSTNAME = os.getenv('SERVER_HOSTNAME', 'localhost'),
+        SERVER_PROTOCOL = os.getenv('SERVER_PROTOCOL', 'http'),
         MAIN_PORT = os.environ['SERVER_PORT'] or 8000,
         USERS_DIR = 'users',
     )
@@ -20,8 +22,8 @@ def create_app(test_config=None):
         app.config.from_mapping(
         SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
         MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
-        SERVER_HOSTNAME = os.environ['SERVER_HOSTANAME'] or 'localhost',
-        SERVER_PROTOCOL = os.environ['SERVER_PROTOCOL'] or 'http',
+        SERVER_HOSTNAME = os.getenv('SERVER_HOSTNAME', 'localhost'),
+        SERVER_PROTOCOL = os.getenv('SERVER_PROTOCOL', 'http'),
         USERS_DIR = 'tests/users',
     )
 
@@ -45,7 +47,8 @@ def create_app(test_config=None):
     import time
     @app.template_filter('timeago')
     def timeago(seconds):
-        if seconds == 0: return "Never"
+        if seconds == 0:
+            return "Never"
         # caclulate the minutes between now and the seconds passed in
         secondsago = (time.time() - seconds)
         if seconds < 2:

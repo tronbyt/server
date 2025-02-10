@@ -1,9 +1,13 @@
-import os,json,subprocess,datetime
+import os
+import json
+import subprocess
+import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime, timezone
-import sqlite3, shutil, secrets
+import sqlite3
+import shutil
 
 DB_FILE = "users/usersdb.sqlite"
 
@@ -22,8 +26,35 @@ def init_db():
 
         if not row:  # If no row is found
             # Load the default JSON data from the file
-            with open('users/admin/admin.json.default', 'r') as f:
-                default_json = json.load(f)
+            default_json = json.load('''
+{
+    "username": "admin",
+    "password": "pbkdf2:sha256:600000$MejfwNqfHsmefntx$3289f3302f44d15b719d82c409f9da1d52c798c7eab2ee546b361a0cfff91077",
+    "devices": {
+        "9abe2858": {
+            "id": "9abe2858",
+            "name": "Tronbyt 1",
+            "brightness": 40,
+            "night_brightness": 10,
+            "night_start": -1,
+            "img_url": "/9abe2858/next",
+            "api_key": "CHANGEME",
+            "notes": "",
+            "apps": {
+                "994": {
+                    "iname": "994",
+                    "name": "fireflies",
+                    "uinterval": 1,
+                    "display_time": 0,
+                    "notes": "",
+                    "enabled": "true",
+                    "last_render": 1734338387,
+                    "path": "system-apps/apps/fireflies/fireflies.star"
+                }
+            }
+        }
+    }
+}''')
             
             # Insert default JSON
             cursor.execute(
@@ -31,7 +62,7 @@ def init_db():
                 (json.dumps(default_json,),)
             )
             conn.commit()
-            print(f"Default JSON inserted for admin user")
+            print("Default JSON inserted for admin user")
         conn.commit()
 
 init_db()
