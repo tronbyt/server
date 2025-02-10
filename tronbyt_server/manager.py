@@ -461,7 +461,9 @@ def possibly_render(user, device_id, app):
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
-    webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id, app_basename)
+    webp_device_path = "tronbyt_server/webp/{}".format(device_id)
+    os.makedirs(webp_device_path, exist_ok=True)
+    webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
 
     if "path" in app:
         app_path = app["path"]
@@ -567,7 +569,9 @@ def configapp(device_id, iname, delete_on_cancel):
     tmp_config_path = "{}/{}/configs/{}.tmp".format(
         users_dir, g.user["username"], app_basename
     )
-    webp_path = "tronbyt_server/webp/{}/{}.webp".format(device_id, app_basename)
+    webp_device_path = "tronbyt_server/webp/{}".format(device_id)
+    os.makedirs(webp_device_path, exist_ok=True)
+    webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
 
     user_render_port = str(db.get_user_render_port(g.user["username"]))
     # always kill the pixlet proc based on port number.
@@ -661,7 +665,8 @@ def configapp(device_id, iname, delete_on_cancel):
     elif request.method == "GET":
         url_params = ""
         if db.file_exists(config_path):
-            import urllib.parse, json
+            import urllib.parse
+            import json
 
             with open(config_path, "r") as c:
                 config_dict = json.load(c)
