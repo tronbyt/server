@@ -1,0 +1,26 @@
+services:
+  web:
+    image: ghcr.io/tavdog/tronbyt-server:latest
+    restart: unless-stopped
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
+    environment:
+      - SERVER_PROTOCOL=https
+      - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
+      - SERVER_PORT=${SERVER_PORT}
+      - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
+      - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
+      - PRODUCTION=${PRODUCTION}
+  proxy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
+      - "${SERVER_PORT}:8000/udp"
+      - "${PIXLET_SERVE_PORT1}:5100" # 5100 is used for pixlet serve interface during app configuration
+      - "${PIXLET_SERVE_PORT2}:5101" # user 2, add 1 incremented port each additional user you want or use host network_mode
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs:/data
+    depends_on:
+      - web
