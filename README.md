@@ -66,7 +66,6 @@ That said, the recommended installation method uses Docker Compose with a config
 ### Notes
 
 - Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
-- Do not try to run this server over HTTPS. It requires a pixlet serve subprocess to configure the apps and it only works over http and you can't jump from https to http in most browsers.
 
 ### Development
 
@@ -82,3 +81,11 @@ That said, the recommended installation method uses Docker Compose with a config
     ```sh
     docker compose -f docker-compose.dev.yaml up -d --build
     ```
+
+### HTTPS (TLS)
+
+If you'd like to serve tronbyt-server and pixlet over HTTPS, you can do so by fronting the services with a reverse proxy.
+
+The `docker-compose.https.yaml` file contains an example using [Caddy](https://caddyserver.com) as a lightweight reverse proxy which provides TLS termination. The default configuration uses [Local HTTPS](https://caddyserver.com/docs/automatic-https#local-https), for which Caddy generates its own certificate authority (CA) and uses it to sign certificates. The certificates are stored in the `certs` directory at `pki/authorities/local`.
+
+If you want to make tronbyt-server accessible using a public DNS name, adjust `Caddyfile` to match your domain name and use one of the supporte [ACME challenges](https://caddyserver.com/docs/automatic-https#acme-challenges) (HTTP, TLS-ALPN, or DNS).

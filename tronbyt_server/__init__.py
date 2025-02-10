@@ -11,6 +11,7 @@ def create_app(test_config=None):
         SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
         MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
         SERVER_HOSTNAME = os.environ['SERVER_HOSTNAME'] or 'localhost',
+        SERVER_PROTOCOL = os.environ['SERVER_PROTOCOL'] or 'http',
         MAIN_PORT = os.environ['SERVER_PORT'] or 8000,
         USERS_DIR = 'users',
     )
@@ -20,6 +21,7 @@ def create_app(test_config=None):
         SECRET_KEY='lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh',
         MAX_CONTENT_LENGTH = 1000 * 1000, # 1mbyte upload size limit
         SERVER_HOSTNAME = os.environ['SERVER_HOSTANAME'] or 'localhost',
+        SERVER_PROTOCOL = os.environ['SERVER_PROTOCOL'] or 'http',
         USERS_DIR = 'tests/users',
     )
 

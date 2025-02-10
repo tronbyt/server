@@ -1,0 +1,9 @@
+https://localhost:8000 {
+	reverse_proxy http://web:8000
+}
+https://localhost:5000 {
+	reverse_proxy http://web:5000
+}
+https://localhost:5001 {
+	reverse_proxy http://web:5001
+}

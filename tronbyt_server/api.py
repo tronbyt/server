@@ -236,7 +236,7 @@ def handle_delete(device_id,installation_id):
 #             device["name"] = name
 #             if not img_url:
 #                 sname = db.sanitize(name)
-#                 img_url = f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
+#                 img_url = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
 #             device["img_url"] = img_url
 #             device["api_key"] = api_key
 #             device["notes"] = notes
@@ -304,7 +304,7 @@ def handle_delete(device_id,installation_id):
 #             device['timezone'] = int(request.form['timezone'])
 #             if len(img_url) < 1:
 #                 print("no img_url in device")
-#                 device["img_url"] = f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
+#                 device["img_url"] = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
 #             else:
 #                 device["img_url"] = db.sanitize_url(img_url)
 #             device['night_mode_app'] = request.form['night_mode_app']
@@ -319,7 +319,7 @@ def handle_delete(device_id,installation_id):
 
 #             return redirect(url_for("manager.index"))
 #     device = g.user["devices"][id]
-#     server_root = f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}"
+#     server_root = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}"
 #     return render_template("manager/update.html", device=device, server_root=server_root)
 
 
@@ -624,7 +624,7 @@ def handle_delete(device_id,installation_id):
 #     return render_template(
 #         "manager/firmware_form.html",
 #         device=g.user['devices'][id],
-#         server_root=f"http://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}",
+#         server_root=f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}",
 #     )
 
 
