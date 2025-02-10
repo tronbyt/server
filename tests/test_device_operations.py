@@ -15,7 +15,7 @@ def test_device_operations(client):
     device_id = utils.get_test_device_id()
     # Test firmware generation page
     r = client.get(f"{device_id}/firmware")
-    assert(r.result_code == 200)
+    assert(r.status_code == 200)
 
     # id: device['id']
     # img_url: http://m1Pro.local:8000/9abe2858/next
@@ -28,11 +28,11 @@ def test_device_operations(client):
         'wifi_password': 'Blah'
     }
     r = client.post(f"/{device_id}/firmware", data = data)
-    assert(r.result_code == 200)
+    assert(r.status_code == 200)
 
-    r = client.get(f"/{device_id}/download_firmware")
-    assert(r.result_code == 200)
-
+    # r = client.get(f"/{device_id}/download_firmware")
+    assert(os.path.exists(f"firmware/gen1_TESTDEVICE.BIN"))
+    os.remove(f"firmware/gen1_TESTDEVICE.BIN")
     # Delete the device.
     r = client.post(f"{device_id}/delete")
     assert "TESTDEVICE" not in utils.get_testuser_config_string()

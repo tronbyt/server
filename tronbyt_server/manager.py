@@ -157,7 +157,7 @@ def create():
             if db.save_user(user):
                 os.mkdir(f"{current_app.name}/webp/{device['id']}")
 
-            print("got to redirect")
+            # print("got to redirect")
             return redirect(url_for("manager.index"))
     return render_template("manager/create.html")
 
