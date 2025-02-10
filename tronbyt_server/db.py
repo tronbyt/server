@@ -26,7 +26,7 @@ def init_db():
 
         if not row:  # If no row is found
             # Load the default JSON data from the file
-            default_json = json.load('''
+            default_json = json.loads('''
 {
     "username": "admin",
     "password": "pbkdf2:sha256:600000$MejfwNqfHsmefntx$3289f3302f44d15b719d82c409f9da1d52c798c7eab2ee546b361a0cfff91077",
