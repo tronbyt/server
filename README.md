@@ -16,7 +16,7 @@ If you've been invited to use my public instance of this server login there and 
 It is possible to just start the server on the default ports in the background with a one-liner:
 
 ```sh
-docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXLET_SERVE_PORT1=5100 -e PRODUCTION=1 -p 8000:8000 -p 5100:5100 -p 5101:5101 ghcr.io/tavdog/tronbyt-server
+docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXLET_RENDER_PORT1=5100 -e PRODUCTION=1 -p 8000:8000 -p 5100:5100 -p 5101:5101 ghcr.io/tavdog/tronbyt-server
 ```
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:

@@ -8,9 +8,12 @@ services:
       - "${PIXLET_SERVE_PORT2}:5101" # user 2, add 1 incremented port each additional user you want or use host network_mode
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
+      - users:/app/users
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
       - SERVER_PORT=${SERVER_PORT}
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
       - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
       - PRODUCTION=${PRODUCTION}
+volumes:
+  users:
