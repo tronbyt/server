@@ -3,6 +3,7 @@
 **/configs/**
 *.pyc
 *.tmp
+!devcontainer.json
 **/*.json
 **/*.log
 .env
