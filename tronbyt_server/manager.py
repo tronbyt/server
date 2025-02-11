@@ -25,6 +25,7 @@ import string
 
 bp = Blueprint("manager", __name__)
 
+
 @bp.route("/")
 @login_required
 def index():
@@ -41,7 +42,7 @@ def index():
     server_root = (
         f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}"
     )
-    return render_template("manager/index.html", devices=devices, server_root=server_root )
+    return render_template("manager/index.html", devices=devices, server_root=server_root)
 
 
 # function to handle uploading a an app
@@ -123,18 +124,19 @@ def deleteuser(username):
 def create():
     if request.method == "POST":
         name = request.form.get("name")
-        img_url = request.form.get("img_url") # using this for remote_url now
+        img_url = request.form.get("img_url")  # using this for remote_url now
         api_key = request.form.get("api_key")
         notes = request.form.get("notes")
         brightness = request.form.get("brightness")
         error = None
-        if not name or db.get_device_by_name(g.user,name):
+        if not name or db.get_device_by_name(g.user, name):
             error = "Unique name is required."
         if error is not None:
             flash(error)
         else:
             device = dict()
-            device["id"] = str(uuid.uuid4())[0:8] # just use first 8 chars is good enough
+            # just use first 8 chars is good enough
+            device["id"] = str(uuid.uuid4())[0:8]
             print("device_id is :" + str(device["id"]))
             device["name"] = name
             if not img_url:
@@ -175,9 +177,11 @@ def update_brightness(device_id):
         user = g.user
         user["devices"][device_id]["brightness"] = brightness
         db.save_user(user)
-        return "",200
+        return "", 200
 
 # duplicate this method and make for default_interval
+
+
 @bp.route("/<string:device_id>/update_interval", methods=("GET", "POST"))
 @login_required
 def update_interval(device_id):
@@ -185,10 +189,11 @@ def update_interval(device_id):
         abort(404)
     if request.method == "POST":
         interval = int(request.form.get("interval"))
-        
+
         g.user["devices"][device_id]["default_interval"] = interval
         db.save_user(g.user)
-        return "",200
+        return "", 200
+
 
 @bp.route("/<string:device_id>/update", methods=("GET", "POST"))
 @login_required
@@ -211,9 +216,11 @@ def update(device_id):
             device = dict()
             device["id"] = id
             device["name"] = name
-            device['default_interval'] = int(request.form.get('default_interval'))
+            device['default_interval'] = int(
+                request.form.get('default_interval'))
             device["brightness"] = int(request.form.get("brightness"))
-            device["night_brightness"] = int(request.form.get("night_brightness"))
+            device["night_brightness"] = int(
+                request.form.get("night_brightness"))
             device["night_start"] = int(request.form.get('night_start'))
             device['timezone'] = int(request.form.get('timezone'))
             if len(img_url) < 1:
@@ -232,7 +239,7 @@ def update(device_id):
             db.save_user(user)
 
             return redirect(url_for("manager.index"))
-    device = g.user["devices"][id]    
+    device = g.user["devices"][id]
     server_root = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}"
     return render_template("manager/update.html", device=device, server_root=server_root)
 
@@ -240,12 +247,13 @@ def update(device_id):
 @bp.route("/<string:device_id>/delete", methods=("POST",))
 @login_required
 def delete(device_id):
-    device = g.user["devices"].get(device_id,None)
+    device = g.user["devices"].get(device_id, None)
     if device:
         g.user["devices"].pop(device_id)
         db.save_user(g.user)
         db.delete_device_dirs(device_id)
         return redirect(url_for("manager.index"))
+
 
 @bp.route("/<string:device_id>/<string:iname>/delete", methods=("POST", "GET"))
 @login_required
@@ -271,7 +279,7 @@ def deleteapp(device_id, iname):
 
     # use pixlet to delete installation of app if api_key exists (tdevice_idbyt server operation) and enabled flag is set to true
     if (
-        "use_tidbyt" in g.user["devices"][device_id] 
+        "use_tidbyt" in g.user["devices"][device_id]
         and "api_key" in g.user["devices"][device_id]
         and g.user["devices"][device_id]["apps"][iname]["enabled"] == "true"
     ):
@@ -289,7 +297,8 @@ def deleteapp(device_id, iname):
     app = g.user["devices"][device_id]["apps"][iname]
 
     if "pushed" in app:
-        webp_path = "tronbyt_server/webp/{}/pushed/{}.webp".format(device['id'],app['name'])
+        webp_path = "tronbyt_server/webp/{}/pushed/{}.webp".format(
+            device['id'], app['name'])
     else:
         # delete the webp file
         webp_path = "tronbyt_server/webp/{}/{}-{}.webp".format(
@@ -304,6 +313,7 @@ def deleteapp(device_id, iname):
     g.user["devices"][device_id]["apps"].pop(iname)
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
+
 
 @bp.route("/<string:device_id>/addapp", methods=("GET", "POST"))
 @login_required
@@ -350,7 +360,8 @@ def addapp(device_id):
             )
             app["last_render"] = 0
             if "path" in app_details:
-                app["path"] = app_details["path"]  # this indicates a custom app
+                # this indicates a custom app
+                app["path"] = app_details["path"]
 
             user = g.user
             if "apps" not in user["devices"][device_id]:
@@ -360,7 +371,8 @@ def addapp(device_id):
             db.save_user(user)
 
             return redirect(
-                url_for("manager.configapp", device_id=device_id, iname=iname, delete_on_cancel=1)
+                url_for("manager.configapp", device_id=device_id,
+                        iname=iname, delete_on_cancel=1)
             )
     else:
         abort(404)
@@ -467,7 +479,8 @@ def possibly_render(user, device_id, app):
         return result
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
-    config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
+    config_path = "users/{}/configs/{}.json".format(
+        user["username"], app_basename)
     webp_device_path = "tronbyt_server/webp/{}".format(device_id)
     os.makedirs(webp_device_path, exist_ok=True)
     webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
@@ -477,11 +490,11 @@ def possibly_render(user, device_id, app):
     else:
         # print("\t\t\tNo path for {}, trying default location".format(app["name"]))
         app_path = "system-apps/apps/{}/{}.star".format(app["name"].replace("_", ""), app["name"]
-        )
+                                                        )
     if "last_render" not in app or now - app["last_render"] > int(app["uinterval"]) * 60:
         print(f"\nRENDERING -- {app_basename}")
         # build the pixlet render command
-        if os.path.exists(config_path): 
+        if os.path.exists(config_path):
             command = [
                 "/pixlet/pixlet",
                 "render",
@@ -512,6 +525,7 @@ def possibly_render(user, device_id, app):
         print(f"\n{app_basename} -- NO RENDER")
     return result
 
+
 @bp.route("/<string:device_id>/firmware", methods=("POST", "GET"))
 @login_required
 def generate_firmware(device_id):
@@ -531,7 +545,7 @@ def generate_firmware(device_id):
             if 'gen2' in request.form:
                 gen2 = request.form.get('gen2')
 
-            result = db.generate_firmware(label,image_url,ap,password,gen2)
+            result = db.generate_firmware(label, image_url, ap, password, gen2)
             if 'file_path' in result:
                 g.user["devices"][device_id]["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
@@ -555,11 +569,12 @@ def generate_firmware(device_id):
     )
 
 
-@bp.route("/<string:device_id>/<string:iname>/<int:delete_on_cancel>/configapp",methods=("GET", "POST"))
+@bp.route("/<string:device_id>/<string:iname>/<int:delete_on_cancel>/configapp", methods=("GET", "POST"))
 @login_required
 def configapp(device_id, iname, delete_on_cancel):
     users_dir = db.get_users_dir()
-    domain_host = current_app.config["SERVER_HOSTNAME"]  # used when rendering configapp
+    # used when rendering configapp
+    domain_host = current_app.config["SERVER_HOSTNAME"]
 
     app = g.user["devices"][device_id]["apps"][iname]
     app_basename = "{}-{}".format(app["name"], app["iname"])
@@ -668,7 +683,7 @@ def configapp(device_id, iname, delete_on_cancel):
 
         return redirect(url_for("manager.index"))
 
-    #################### run the in browser configure interface via pixlet serve
+    # run the in browser configure interface via pixlet serve
     elif request.method == "GET":
         url_params = ""
         if db.file_exists(config_path):
@@ -725,13 +740,17 @@ def get_brightness(device_id,):
     user = db.get_user_by_device_id(device_id)
     device = list(user["devices"].values())[0]
     # brightness_value = db.brightness_int_from_string(device.get("brightness", "medium").lower())  # Assume this is how you get the brightness value from your device
-    brightness_value = device.get("brightness", 30)  # Assume this is how you get the brightness value from your device
+    # Assume this is how you get the brightness value from your device
+    brightness_value = device.get("brightness", 30)
     print(f"brightness value {brightness_value}")
     return Response(str(brightness_value), mimetype='text/plain')
 
+
 MAX_RECURSION_DEPTH = 10
+
+
 @bp.route("/<string:device_id>/next")
-def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
+def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
 
     user = db.get_user_by_device_id(device_id) or abort(404)
     device = user['devices'][device_id] or abort(404)
@@ -739,10 +758,11 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     # first check for a pushed file starting with __ and just return that and then delete it.
     pushed_dir = f"{db.get_device_webp_dir(device_id)}/pushed"
     if os.path.isdir(pushed_dir):
-        ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
+        ephemeral_files = [f for f in os.listdir(
+            pushed_dir) if f.startswith("__")]
         if ephemeral_files:
             ephemeral_file = ephemeral_files[0]
-            print(f"\nreturning ephermeral pushed file {ephemeral_file}")
+            print(f"\nreturning ephemeral pushed file {ephemeral_file}")
             webp_path = f"{pushed_dir}/{ephemeral_file}"
             response = send_file(webp_path, mimetype="image/webp")
             s = device.get("default_interval", 5)
@@ -752,7 +772,8 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
-        response = send_file("webp/default.webp", mimetype="image/webp")
+        response = send_file("/app/defaults/default.webp",
+                             mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
         return response
         # return None  # or handle the situation as needed
@@ -769,7 +790,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     if "apps" not in device:
         return next_app(device_id, user, 0, recursion_depth + 1)
     apps_list = list(device["apps"].values())
-    if db.get_night_mode_is_active(device) and device.get('night_mode_app',"") in device["apps"].keys():
+    if db.get_night_mode_is_active(device) and device.get('night_mode_app', "") in device["apps"].keys():
         next_app_dict = device["apps"][device['night_mode_app']]
     else:
         if last_app_index + 1 < len(
@@ -789,18 +810,20 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     if app['enabled'] == 'false' or not db.get_is_app_schedule_active(app):
         # recurse until we find one that's enabled
         print("disabled app")
-        time.sleep(0.25) #delay when recursing to avoid accidental runaway
-        return next_app(device_id,user,last_app_index+1,recursion_depth+1)
+        time.sleep(0.25)  # delay when recursing to avoid accidental runaway
+        return next_app(device_id, user, last_app_index+1, recursion_depth+1)
     else:
         # check if the webp needs update/render and do it, save if rendered
-        if possibly_render(user,device_id,app):
+        if possibly_render(user, device_id, app):
             db.save_user(user)
 
         if "pushed" in app:
-            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(device_id,app['iname'])
+            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(
+                device_id, app['iname'])
         else:
             app_basename = "{}-{}".format(app["name"], app["iname"])
-            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(
+                device_id, app_basename)
         print(webp_path)
 
         # check if the file exists
@@ -815,18 +838,20 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
             b = db.get_device_brightness(device)
             print(f"sending brighness {b} -- ", end="")
             response.headers["Tronbyt-Brightness"] = b
-            s = app.get('display_time',None)
+            s = app.get('display_time', None)
             if not s or int(s) == 0:
                 s = device.get("default_interval", 5)
             print(f"sending dwell seconds {s} -- ", end="")
             response.headers["Tronbyt-Dwell-Secs"] = s
             print(f"app index is {last_app_index}")
-            db.save_last_app_index(device_id,last_app_index)
-            return response        
+            db.save_last_app_index(device_id, last_app_index)
+            return response
         else:
             print("file not found")
-            time.sleep(0.25) # delay when recursing to avoid accidental runaway
-            return next_app(device_id,user,last_app_index+1,recursion_depth+1) # run it recursively until we get a file.
+            # delay when recursing to avoid accidental runaway
+            time.sleep(0.25)
+            # run it recursively until we get a file.
+            return next_app(device_id, user, last_app_index+1, recursion_depth+1)
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")
@@ -840,9 +865,11 @@ def appwebp(device_id, iname):
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
         if "pushed" in app:
-            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(device_id,app['iname'])
+            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(
+                device_id, app['iname'])
         else:
-            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(device_id,app_basename)
+            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(
+                device_id, app_basename)
         print(webp_path)
         # check if the file exists
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
@@ -854,6 +881,7 @@ def appwebp(device_id, iname):
     except Exception as e:
         print(f"Exception: {str(e)}")
         abort(404)
+
 
 @bp.route("/<string:device_id>/download_firmware")
 @login_required
@@ -888,7 +916,8 @@ def set_user_repo():
         if "app_repo_url" in request.form:
             repo_url = request.form.get("app_repo_url")
             print(repo_url)
-            user_apps_path = "{}/{}/apps".format(db.get_users_dir(), g.user["username"])
+            user_apps_path = "{}/{}/apps".format(
+                db.get_users_dir(), g.user["username"])
             old_repo = ""
             if "app_repo_url" in g.user:
                 old_repo = g.user["app_repo_url"]
@@ -918,7 +947,8 @@ def set_user_repo():
                         flash("Repo Cloned")
                 else:
                     # same as before so just issue a pull to update it.
-                    result = subprocess.run(["git", "-C", "pull", user_apps_path])
+                    result = subprocess.run(
+                        ["git", "-C", "pull", user_apps_path])
                     if result.returncode == 0:
                         flash("Repo Updated")
                 # run the generate app list for custom repo
@@ -977,13 +1007,15 @@ def set_system_repo():
                         flash("Repo Cloned")
                 else:
                     # same as before so just issue a pull to update it.
-                    result = subprocess.run(["git", "-C", system_apps_path, "pull"])
+                    result = subprocess.run(
+                        ["git", "-C", system_apps_path, "pull"])
                     if result.returncode == 0:
                         flash("Repo Updated")
                     else:
                         flash("Repo Update Failed")
                 # run the generate app list for custom repo
-                os.system("python3 clone_system_apps_repo.py")  # will just generate json file if already there.
+                # will just generate json file if already there.
+                os.system("python3 clone_system_apps_repo.py")
                 return redirect(url_for("manager.index"))
 
             else:
