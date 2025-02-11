@@ -46,7 +46,6 @@ def create_app(test_config=None):
     app.register_blueprint(auth.bp)
 
     from . import api
-
     app.register_blueprint(api.bp)
     # app.add_url_rule("/api", endpoint="api")
 
@@ -54,6 +53,7 @@ def create_app(test_config=None):
 
     app.register_blueprint(manager.bp)
     app.add_url_rule("/", endpoint="index")
+
 
     import time
 

@@ -32,35 +32,8 @@ def init_db():
 
         if not row:  # If no row is found
             # Load the default JSON data from the file
-            default_json = json.loads('''
-{
-    "username": "admin",
-    "password": "pbkdf2:sha256:600000$MejfwNqfHsmefntx$3289f3302f44d15b719d82c409f9da1d52c798c7eab2ee546b361a0cfff91077",
-    "devices": {
-        "9abe2858": {
-            "id": "9abe2858",
-            "name": "Tronbyt 1",
-            "brightness": 40,
-            "night_brightness": 10,
-            "night_start": -1,
-            "img_url": "/9abe2858/next",
-            "api_key": "CHANGEME",
-            "notes": "",
-            "apps": {
-                "994": {
-                    "iname": "994",
-                    "name": "fireflies",
-                    "uinterval": 1,
-                    "display_time": 0,
-                    "notes": "",
-                    "enabled": "true",
-                    "last_render": 1734338387,
-                    "path": "system-apps/apps/fireflies/fireflies.star"
-                }
-            }
-        }
-    }
-}''')
+            with open('users/admin/admin.json.default', 'r') as f:
+                default_json = json.load(f)
             
             # Insert default JSON
             cursor.execute(
@@ -223,7 +196,6 @@ def save_user(user,new_user=False):
         except Exception as e:
             print("couldn't save {} : {}".format(user,str(e)))
             return False
-
 def create_user_dir(user):
     dir = sanitize(user)
     dir = secure_filename(dir)
@@ -513,7 +485,6 @@ def add_pushed_app(device_id,path):
     filename = os.path.basename(path)
     # Remove the extension
     installation_id, _ = os.path.splitext(filename)
-
     user = get_user_by_device_id(device_id)
     if installation_id in user.get('devices').keys():
         # already in there

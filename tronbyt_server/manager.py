@@ -403,7 +403,6 @@ def toggle_enabled(device_id, iname):
 @bp.route("/<string:device_id>/<string:iname>/updateapp", methods=("GET", "POST"))
 @login_required
 def updateapp(device_id, iname):
-    print(str(request.form))
     if request.method == "POST":
         name = request.form.get("name")
         uinterval = request.form.get("uinterval")
@@ -753,7 +752,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
-        response = send_file("/app/tronbyt_server/default.webp", mimetype="image/webp")
+        response = send_file("webp/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
         return response
         # return None  # or handle the situation as needed
