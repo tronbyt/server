@@ -730,7 +730,7 @@ def next_app(device_id,user=None,last_app_index=None,recursion_depth=0):
     device = user['devices'][device_id] or abort(404)
 
     # first check for a pushed file starting with __ and just return that and then delete it.
-    pushed_dir = f"/app/tronbyt_server/webp/{device_id}/pushed"
+    pushed_dir = f"{db.get_device_webp_dir(device_id)}/pushed"
     if os.path.isdir(pushed_dir):
         ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
         if ephemeral_files:

@@ -33,6 +33,12 @@ def test_device_operations(client):
     # r = client.get(f"/{device_id}/download_firmware")
     assert(os.path.exists(f"firmware/gen1_TESTDEVICE.BIN"))
     os.remove(f"firmware/gen1_TESTDEVICE.BIN")
+
+
+    # test /device_id/next works even when no app configured
+    assert(client.get(f"{device_id}/next").status_code == 200)
+
+
     # Delete the device.
     r = client.post(f"{device_id}/delete")
     assert "TESTDEVICE" not in utils.get_testuser_config_string()

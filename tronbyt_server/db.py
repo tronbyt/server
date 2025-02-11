@@ -394,6 +394,16 @@ def get_device_by_name(user,name):
             return device
     return None
 
+def get_device_webp_dir(device_id):
+    if current_app.testing:
+        path = f"tests/webp/{device_id}"
+    else:
+        path = f"tronbyt_server/webp/{device_id}"
+        
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
+
 def get_device_by_id(device_id):
     for user in get_all_users():
         for device in user.get("devices", {}).values():
@@ -472,7 +482,7 @@ def add_pushed_app(device_id,path):
     filename = os.path.basename(path)
     # Remove the extension
     installation_id, _ = os.path.splitext(filename)
-    
+
     user = get_user_by_device_id(device_id)
     if installation_id in user.get('devices').keys():
         # already in there
@@ -486,5 +496,7 @@ def add_pushed_app(device_id,path):
             "enabled": "true",
             "pushed" : 1
         }
+    if "apps" not in user["devices"][device_id]:
+        user["devices"][device_id]["apps"] = {}
     user["devices"][device_id]["apps"][installation_id] = app
     save_user(user)
