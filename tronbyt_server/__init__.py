@@ -24,7 +24,6 @@ def create_app(test_config=None):
             MAX_CONTENT_LENGTH=1000 * 1000,  # 1mbyte upload size limit
             SERVER_PROTOCOL=os.getenv("SERVER_PROTOCOL", "http"),
             PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
-            USERS_DIR="tests/users",
             DB_FILE="testdb.sqlite",
             SERVER_HOSTNAME="localhost",
             MAIN_PORT=os.environ["SERVER_PORT"] or 8000,
