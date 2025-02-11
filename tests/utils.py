@@ -1,7 +1,14 @@
 import os,json
 
-config_path =  "tests/users/testuser/testuser.json"
+config_path =  "tests/users/testuser/testuser_debug.json"
 uploads_path = "tests/users/testuser/apps"
+
+def load_test_data(client):
+    client.post("/auth/register", data={"username": "testuser", "password": "password"})
+    client.post("/auth/login",    data={"username": "testuser", "password": "password"})
+    client.post("/create", data={"name":"TESTDEVICE","img_url":"TESTID","api_key":"TESTKEY","notes":"TESTNOTES", "brightness":"30"})
+    return get_test_device_id()
+
 def get_testuser_config_string():
     with open(config_path) as file:
         data = file.read()

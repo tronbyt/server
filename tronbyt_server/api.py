@@ -85,7 +85,7 @@ def handle_push(device_id):
         print(str(e))
         abort(400, description="Invalid image data")
 
-    device_webp_path = f"tronbyt_server/webp/{device['id']}"
+    device_webp_path = db.get_device_webp_dir(device_id)
     os.makedirs(device_webp_path, exist_ok=True)
     pushed_path = f"{device_webp_path}/pushed"
     os.makedirs(pushed_path, exist_ok=True)
