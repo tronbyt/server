@@ -1,6 +1,9 @@
-import pytest
 import os
-from tronbyt_server import create_app, db
+
+import pytest
+
+from tronbyt_server import create_app
+
 
 @pytest.fixture()
 def app():
@@ -13,13 +16,16 @@ def app():
     print("delete testdb")
     os.system("rm users/testdb.sqlite")
 
+
 @pytest.fixture()
 def client(app):
     return app.test_client()
 
+
 @pytest.fixture()
 def runner(app):
     return app.test_cli_runner()
+
 
 @pytest.fixture()
 def app_context(app):

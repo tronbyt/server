@@ -1,15 +1,17 @@
+import struct
 import subprocess
 import sys
-import struct
+
 
 def get_esptool_output(esptool_path, file_path):
     result = subprocess.run(
-        [esptool_path, '--chip', 'esp32', 'image_info', file_path],
+        [esptool_path, "--chip", "esp32", "image_info", file_path],
         capture_output=True,
-        text=True
+        text=True,
     )
     print(result.stdout)
     return result.stdout
+
 
 def parse_esptool_output(output):
     lines = output.splitlines()
@@ -20,29 +22,32 @@ def parse_esptool_output(output):
         if line.startswith("Checksum:"):
             parts = line.split()
             if "(invalid" in line:
-                checksum = parts[-1].strip('()')
+                checksum = parts[-1].strip("()")
             else:
                 checksum = parts[1]
         elif line.startswith("Validation Hash:"):
             sha256 = line.split()[-2]
-    print(checksum,sha256)
+    print(checksum, sha256)
     return checksum, sha256
+
 
 def update_firmware_file_with_checksum(file_path, checksum):
     checksum_byte = int(checksum, 16)
-    with open(file_path, 'r+b') as f:
+    with open(file_path, "r+b") as f:
         # Write the checksum at position 33 from the end
         f.seek(-33, 2)
-        f.write(struct.pack('B', checksum_byte))
+        f.write(struct.pack("B", checksum_byte))
+
 
 def update_firmware_file_with_sha256(file_path, sha256):
     sha256_bytes = bytes.fromhex(sha256)
-    with open(file_path, 'r+b') as f:
+    with open(file_path, "r+b") as f:
         # Write the SHA256 hash at the end
         f.seek(-32, 2)
         f.write(sha256_bytes)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # if len(sys.argv) != 3:
     #     print(f"Usage: {sys.argv[0]} <esptool_path> <filename>")
     #     sys.exit(1)

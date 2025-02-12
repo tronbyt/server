@@ -2,7 +2,10 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask
+
 from tronbyt_server import db
+
+
 def create_app(test_config=None):
     load_dotenv()
     # create and configure the app
@@ -16,7 +19,7 @@ def create_app(test_config=None):
             PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
             USERS_DIR="users",
-            DB_FILE = 'usersdb.sqlite'
+            DB_FILE="usersdb.sqlite",
         )
     else:
         app.config.from_mapping(
@@ -26,7 +29,7 @@ def create_app(test_config=None):
             PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
             DB_FILE="testdb.sqlite",
             SERVER_HOSTNAME="localhost",
-            MAIN_PORT=os.environ["SERVER_PORT"] or 8000,
+            MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
             USERS_DIR="tests/users",
             PRODUCTION=0,
             TESTING=True,
@@ -46,6 +49,7 @@ def create_app(test_config=None):
     app.register_blueprint(auth.bp)
 
     from . import api
+
     app.register_blueprint(api.bp)
     # app.add_url_rule("/api", endpoint="api")
 
@@ -53,8 +57,6 @@ def create_app(test_config=None):
 
     app.register_blueprint(manager.bp)
     app.add_url_rule("/", endpoint="index")
-
-
 
     import time
 
