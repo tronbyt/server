@@ -245,7 +245,7 @@ def get_apps_list(user):
 
         if not os.path.exists(list_file):
             print("Generating apps.json file...")
-            subprocess.run(["python3", "gen_app_array.py"])
+            subprocess.run(["python3", "clone_system_apps_repo.py"])
             print("apps.json file generated.")
 
         with open(list_file, 'r') as f:

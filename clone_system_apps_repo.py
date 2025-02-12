@@ -85,12 +85,14 @@ for app in apps:
 
         # check for existence of yaml_path
         if os.path.exists(yaml_path):
-            with open(yaml_path, 'r') as f:
-                yaml_dict = yaml.safe_load(f)
-                if 'summary' in yaml_dict:
-                    app_dict['summary'] = yaml_dict['summary']
-                if 'name' in yaml_dict:
-                    app_dict['name'] = yaml_dict['name']
+            with open(yaml_path,'r') as f:
+                yaml_str = f.read()
+                for line in yaml_str.split('\n'):
+                    if "summary:" in line:
+                        app_dict['summary'] = line.split(': ')[1]
+                    if "name:" in line:
+                        # set the name
+                        app_dict['name'] = line.split(': ')[1]
         else:
             app_dict['summary'] = " -- "
 
