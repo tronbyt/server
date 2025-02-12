@@ -11,9 +11,12 @@
     <h3>Custom Apps</h3>
     <div id="custom_app_grid" class="app-grid">
       {% for app in custom_apps_list %}
-      <div class="app-item" data-value="{{app['name'].replace('.star','')}}">
-        <img src="{{ url_for('static', filename='images/') }}" alt="{{ app['name'].replace('.star','') }}">
-        <p>{{ app['name'].replace('.star','') }} - {{ app['summary'] }}</p>
+      <div class="app-item" data-value="{{app['name']}}">
+        <img src="{{ url_for('static', filename='images/') }}" alt="{{ app['name'] }}">
+        <p>{{ app['name'] }} - {{ app['summary'] }}</p>
+        {% if 'author' in app %}
+        <p>From {{ app['author'] }}</p>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -25,13 +28,16 @@
     <h3>System Apps</h3>
     <div id="system_app_grid" class="app-grid">
       {% for app in apps_list %}
-      <div class="app-item" data-value="{{app['name'].replace('.star','')}}">
-        {% if 'preview' in app%}
-        <img width="400px" src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'].replace('.star','') }}">
+      <div class="app-item" data-value="{{app['name']}}">
+        {% if 'preview' in app %}
+        <img width="400px" src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'] }}">
         {% else %}
-        <img src="{{ url_for('static', filename='images/not_found.jpg')}}" alt="{{ app['name'].replace('.star','') }}">
+        <img src="{{ url_for('static', filename='images/not_found.jpg')}}" alt="{{ app['name'] }}">
         {% endif %}
-        <p>{{ app['name'].replace('.star','') }} - {{ app['summary'] }}</p>
+        <p>{{ app['name'] }} - {{ app['summary'] }}</p>
+        {% if 'author' in app %}
+        <p>From {{ app['author'] }}</p>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

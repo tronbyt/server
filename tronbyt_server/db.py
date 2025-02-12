@@ -9,6 +9,7 @@ from flask import current_app
 from datetime import datetime, timezone
 import sqlite3
 import shutil
+import yaml
 
 DB_FILE = "users/usersdb.sqlite"
 
@@ -225,7 +226,7 @@ def save_user(user, new_user=False):
 def create_user_dir(user):
     dir = sanitize(user)
     dir = secure_filename(dir)
-    # test for directory named dir and if not exist creat it
+    # test for directory named dir and if not exist create it
     user_dir = f"{get_users_dir()}/{user}"
     if not os.path.exists(user_dir):
         os.makedirs(user_dir)
@@ -239,7 +240,7 @@ def create_user_dir(user):
 
 def get_apps_list(user):
     app_list = list()
-    # test for directory named dir and if not exist creat it
+    # test for directory named dir and if not exist create it
     if user == "system" or user == "":
         list_file = "system-apps.json"
 
@@ -271,14 +272,12 @@ def get_apps_list(user):
             # look for a yaml file
             app_base_path = ("/").join(app_dict['path'].split('/')[0:-1])
             yaml_path = "{}/manifest.yaml".format(app_base_path)
-            print("checking for yaml in {}".format(yaml_path))
-            # check for existeanse of yaml_path
+            print("checking for manifest.yaml in {}".format(yaml_path))
+            # check for existence of yaml_path
             if os.path.exists(yaml_path):
                 with open(yaml_path, 'r') as f:
-                    yaml_str = f.read()
-                    for line in yaml_str.split('\n'):
-                        if "summary:" in line:
-                            app_dict['summary'] = line.split(': ')[1]
+                    yaml_dict = yaml.safe_load(f)
+                    app_dict.update(yaml_dict)
             else:
                 app_dict['summary'] = "Custom App"
             app_list.append(app_dict)
