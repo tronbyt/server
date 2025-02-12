@@ -47,10 +47,11 @@ def init_db():
             print("Default JSON inserted for admin user")
 
             # Copy the default files to the expected locations
-            shutil.copyfile('defaults/fireflies-994.webp',
-                            'tronbyt_server/webp/9abe2858/fireflies-994.webp')
-            shutil.copyfile('defaults/fireflies-994.json',
-                            'tronbyt_server/users/admin/configs/fireflies-994.json')
+            if not current_app.testing:
+                shutil.copyfile('tronbyt-server/defaults/fireflies-994.webp',
+                                'tronbyt_server/webp/9abe2858/fireflies-994.webp')
+                shutil.copyfile('tronbyt-server/defaults/fireflies-994.json',
+                                'tronbyt_server/users/admin/configs/fireflies-994.json')
         conn.commit()
 
 
