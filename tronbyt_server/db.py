@@ -137,7 +137,6 @@ def get_users_dir():
     # print(f"users dir : {current_app.config['USERS_DIR']}")
     return current_app.config['USERS_DIR']
 
-
 def file_exists(file_path):
     if os.path.exists(file_path):
         return True

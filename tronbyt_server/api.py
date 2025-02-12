@@ -28,18 +28,6 @@ import json
 
 bp = Blueprint("api", __name__, url_prefix='/v0')
 
-# @bp.route("/get/<string:device_id>/<string:api_key>", methods=["GET","POST"] )
-# def get_apps(device_id):
-#     # get device based on api_key
-#     try:
-#         device = db.get_device_by_id()
-#     except Exception as e:
-#         print(str(e))
-#         abort(404)
-
-#     return (str(device.get('apps')))
-#     # return render_template("manager/index.html", devices=devices, server_root=server_root )
-
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
 def handle_push(device_id):
     # Print out the whole request
