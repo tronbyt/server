@@ -1,32 +1,34 @@
-from flask import (
-    Blueprint,
-#    flash,
-#    g,
-#    redirect,
-#    render_template,
-    request,
-#    url_for,
-#    send_file,
-    abort,
-#    current_app,
-#    Response,
-#    jsonify,
-)
-
-from werkzeug.exceptions import abort
-#from tronbyt_server.auth import login_required
-import tronbyt_server.db as db
-#import uuid
-import os
-#import subprocess
-#import sys
-import time
-import re
 import base64
 import json
 
+# import uuid
+import os
+import re
 
-bp = Blueprint("api", __name__, url_prefix='/v0')
+# import subprocess
+# import sys
+import time
+
+from flask import (
+    Blueprint,
+    #    url_for,
+    #    send_file,
+    abort,
+    #    current_app,
+    #    Response,
+    #    jsonify,
+    #    flash,
+    #    g,
+    #    redirect,
+    #    render_template,
+    request,
+)
+
+# from tronbyt_server.auth import login_required
+import tronbyt_server.db as db
+
+bp = Blueprint("api", __name__, url_prefix="/v0")
+
 
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
 def handle_push(device_id):
@@ -47,7 +49,7 @@ def handle_push(device_id):
         abort(400, description="Missing or invalid Authorization header")
     print(f"api_key : {api_key}")
     device = db.get_device_by_id(device_id)
-    if  not device or device['api_key'] != api_key:
+    if not device or device["api_key"] != api_key:
         abort(404)
 
     # get parameters from JSON data
@@ -57,7 +59,9 @@ def handle_push(device_id):
         abort(400, description="Invalid JSON data")
     # data = request.get_json()
     print(data)
-    installation_id = data.get("installationID", data.get("installationId", "__")) # get both cases ID and Id
+    installation_id = data.get(
+        "installationID", data.get("installationId", "__")
+    )  # get both cases ID and Id
     print(f"installation_id:{installation_id}")
     image_data = data.get("image")
 
@@ -65,7 +69,7 @@ def handle_push(device_id):
         abort(400, description="Missing required parameters")
 
     # sanitize installation_id
-    installation_id = re.sub(r'[^a-zA-Z0-9_-]', '', installation_id)
+    installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
 
     try:
         image_bytes = base64.b64decode(image_data)
@@ -90,15 +94,19 @@ def handle_push(device_id):
         f.write(image_bytes)
 
     if timestamp == "":
-        db.add_pushed_app(device_id, file_path) # add the app to user.json so it'll stay in the rotation
+        db.add_pushed_app(
+            device_id, file_path
+        )  # add the app to user.json so it'll stay in the rotation
 
     return "Webp received.", 200
 
 
 ########################################################################################################
-@bp.route("/devices/<string:device_id>/installations/<string:installation_id>", methods=["DELETE"])
-def handle_delete(device_id,installation_id):
-
+@bp.route(
+    "/devices/<string:device_id>/installations/<string:installation_id>",
+    methods=["DELETE"],
+)
+def handle_delete(device_id, installation_id):
     # get api_key from Authorization header
     api_key = ""
     auth_header = request.headers.get("Authorization")
@@ -134,6 +142,7 @@ def handle_delete(device_id,installation_id):
     os.remove(file_path)
 
     return "Webp deleted.", 200
+
 
 # # function to handle uploading a an app
 # @bp.route("/uploadapp", methods=("GET", "POST"))

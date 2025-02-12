@@ -6,6 +6,7 @@
 !devcontainer.json
 **/*.json
 **/*.log
+.coverage
 .env
 env
 certs
@@ -15,3 +16,4 @@ firmware/*.bin
 users/*.idx
 /system-apps
 users/usersdb.sqlite
+junit
