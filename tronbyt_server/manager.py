@@ -589,6 +589,7 @@ def configapp(device_id, iname, delete_on_cancel):
     users_dir = db.get_users_dir()
     # used when rendering configapp
     domain_host = current_app.config["SERVER_HOSTNAME"]
+    protocol = current_app.config["SERVER_PROTOCOL"]
 
     app = g.user["devices"][device_id]["apps"][iname]
     app_basename = "{}-{}".format(app["name"], app["iname"])
@@ -737,6 +738,7 @@ def configapp(device_id, iname, delete_on_cancel):
                 "manager/configapp.html",
                 app=app,
                 domain_host=domain_host,
+                protocol=protocol,
                 url_params=url_params,
                 device_id=device_id,
                 delete_on_cancel=delete_on_cancel,
