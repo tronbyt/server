@@ -23,6 +23,13 @@
 				"ms-azuretools.vscode-docker"
 			],
 			"settings": {
+				"[python]": {
+					"editor.defaultFormatter": "charliermarsh.ruff",
+					"editor.formatOnSave": true,
+					"editor.codeActionsOnSave": {
+						"source.organizeImports.ruff": "explicit"
+					}
+				},
 				"terminal.integrated.profiles.linux": {
 					"zsh": {
 						"path": "/usr/bin/zsh"
@@ -30,7 +37,7 @@
 				},
 				"terminal.integrated.defaultProfile.linux": "zsh",
 				"editor.formatOnPaste": false,
-				"editor.formatOnSave": true,
+				"editor.formatOnSave": false,
 				"editor.formatOnType": true,
 				"files.trimTrailingWhitespace": true
 			}
