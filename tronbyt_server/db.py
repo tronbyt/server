@@ -445,11 +445,7 @@ def get_device_by_name(user, name):
 
 
 def get_device_webp_dir(device_id):
-    if current_app.testing:
-        path = f"tests/webp/{device_id}"
-    else:
-        path = f"tronbyt_server/webp/{device_id}"
-
+    path = f"tronbyt_server/webp/{device_id}"
     if not os.path.exists(path):
         os.makedirs(path)
     return path
