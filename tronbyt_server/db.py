@@ -1,10 +1,9 @@
-import datetime
 import json
 import os
 import shutil
 import sqlite3
 import subprocess
-from datetime import timezone
+from datetime import datetime, timezone
 from urllib.parse import quote, unquote
 
 import yaml
