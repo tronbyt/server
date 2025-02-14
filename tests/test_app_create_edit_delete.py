@@ -1,6 +1,9 @@
-from . import utils
-from tronbyt_server import db
 import os
+
+from tronbyt_server import db
+
+from . import utils
+
 
 def test_app_create_edit_delete(client):
     client.post("/auth/register", data={"username": "testuser", "password": "password"})

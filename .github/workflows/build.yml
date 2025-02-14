@@ -1,6 +1,6 @@
 name: Build and test
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build-and-test:
@@ -26,5 +26,3 @@ jobs:
         run: |
           pip install pytest
           pytest tests --doctest-modules --junitxml=junit/test-results.xml
-        # TODO: remove continue-on-error when all tests pass
-        continue-on-error: true

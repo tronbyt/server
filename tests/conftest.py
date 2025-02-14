@@ -14,7 +14,7 @@ def app():
 
     # clean up / reset resources here
     print("delete testdb")
-    os.system("rm users/testdb.sqlite")
+    os.remove("users/testdb.sqlite")
 
 
 @pytest.fixture()

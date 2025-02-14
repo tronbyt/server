@@ -125,7 +125,7 @@ def handle_delete(device_id, installation_id):
         abort(400, description="Missing required parameters")
 
     device = db.get_device_by_id(device_id) or abort(404)
-    pushed_webp_path = f"tronbyt_server/webp/{device['id']}/pushed"
+    pushed_webp_path = f"{db.get_device_webp_dir(device['id'])}/pushed"
     if not os.path.isdir(pushed_webp_path):
         abort(404, description="Device directory not found")
 
