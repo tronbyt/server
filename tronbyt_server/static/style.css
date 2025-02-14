@@ -20,12 +20,21 @@ input[type=submit] { align-self: start; min-width: 10em; }
 enabled { color: #128e23}
 disabled { color: #8e1212}
 
-/* Enhance and Pixelate app image, overlay image with dot matrix */
 .app-img {
-  image-rendering: crisp-edges;
+  background: #000000;
+  overflow: hidden;
+  border: 1px solid #d8d8d8;
+  border-radius: 0.5rem;
+}
+
+/* Enhance and pixelate app image, overlay image with dot matrix */
+.app-img img {
+  background: #000000;
   image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -webkit-clip-path: url(#dots);
   clip-path: url(#dots);
-  width: 230px !important;
-  height: 115px !important;
-  border-radius: 1rem;
+  width: 100%;
+  height: 100%;
 }
