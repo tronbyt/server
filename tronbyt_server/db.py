@@ -34,7 +34,7 @@ def init_db():
 
         if not row:  # If no row is found
             # Load the default JSON data from the file
-            with open("defaults/admin.json", "r") as f:
+            with open("tronbyt_server/defaults/admin.json", "r") as f:
                 default_json = json.load(f)
 
             # Insert default JSON
@@ -52,11 +52,11 @@ def init_db():
             # Copy the default files to the expected locations
             if not current_app.testing:
                 shutil.copyfile(
-                    "tronbyt-server/defaults/fireflies-994.webp",
+                    "tronbyt-server/tronbyt_server/defaults/fireflies-994.webp",
                     "tronbyt_server/webp/9abe2858/fireflies-994.webp",
                 )
                 shutil.copyfile(
-                    "tronbyt-server/defaults/fireflies-994.json",
+                    "tronbyt-server/tronbyt_server/defaults/fireflies-994.json",
                     "tronbyt_server/users/admin/configs/fireflies-994.json",
                 )
         conn.commit()
@@ -443,11 +443,19 @@ def get_device_by_name(user, name):
     return None
 
 
-def get_device_webp_dir(device_id):
+def get_device_webp_dir(device_id, create = True):
     path = f"tronbyt_server/webp/{device_id}"
-    if not os.path.exists(path):
+    if not os.path.exists(path) and create:
         os.makedirs(path)
     return path
+
+def delete_device_webp_dir(device_id):
+    path = get_device_webp_dir(device_id, False)
+    # path = f"webp/{device_id}"
+    print(f"deleting webp dir {path}")
+    if os.path.exists(path):
+        os.rmdir(f"{path}/pushed")
+        os.rmdir(path)
 
 
 def get_device_by_id(device_id):
