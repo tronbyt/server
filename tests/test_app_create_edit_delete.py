@@ -1,5 +1,6 @@
 from . import utils
-
+from tronbyt_server import db
+import os
 
 def test_app_create_edit_delete(client):
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
@@ -43,3 +44,7 @@ def test_app_create_edit_delete(client):
     client.get(f"{device_id}/{app_id}/delete")
 
     assert "TESTAPPUPDATED" not in utils.get_testuser_config_string()
+
+    # delete the test device webp dir
+    db.delete_device_dirs(device_id)
+    assert not os.path.isdir(f"tronbyt_server/webp/{device_id}")

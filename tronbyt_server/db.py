@@ -449,15 +449,6 @@ def get_device_webp_dir(device_id, create = True):
         os.makedirs(path)
     return path
 
-def delete_device_webp_dir(device_id):
-    path = get_device_webp_dir(device_id, False)
-    # path = f"webp/{device_id}"
-    print(f"deleting webp dir {path}")
-    if os.path.exists(path):
-        os.rmdir(f"{path}/pushed")
-        os.rmdir(path)
-
-
 def get_device_by_id(device_id):
     for user in get_all_users():
         for device in user.get("devices", {}).values():

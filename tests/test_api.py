@@ -57,5 +57,5 @@ def test_api(client):
     assert len(file_list) == 0
 
     # delete the test device webp dir
-    db.delete_device_webp_dir(device_id)
-    assert not os.path.isdir(f"tronbyt_server/webp/{device_id}/pushed")
+    db.delete_device_dirs(device_id)
+    assert not os.path.isdir(f"tronbyt_server/webp/{device_id}")

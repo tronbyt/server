@@ -1,7 +1,7 @@
 import os
 
 from . import utils
-
+from tronbyt_server import db
 
 def test_device_operations(client):
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
