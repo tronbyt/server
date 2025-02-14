@@ -1,7 +1,7 @@
 import os
 
 from . import utils
-from tronbyt_server import db
+
 
 def test_device_operations(client):
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
@@ -42,8 +42,8 @@ def test_device_operations(client):
     assert r.status_code == 200
 
     # r = client.get(f"/{device_id}/download_firmware")
-    assert os.path.exists("firmware/gen1_TESTDEVICE.BIN")
-    os.remove("firmware/gen1_TESTDEVICE.BIN")
+    assert os.path.exists("firmware/gen1_TESTDEVICE.bin")
+    os.remove("firmware/gen1_TESTDEVICE.bin")
 
     # test /device_id/next works even when no app configured
     assert client.get(f"{device_id}/next").status_code == 200

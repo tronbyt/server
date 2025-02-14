@@ -20,6 +20,7 @@ def init_db():
         DB_FILE = "users/testdb.sqlite"
 
     print(f"using {DB_FILE}")
+    os.makedirs("users/admin/configs", exist_ok=True)
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("""CREATE TABLE IF NOT EXISTS json_data (
@@ -52,12 +53,12 @@ def init_db():
             # Copy the default files to the expected locations
             if not current_app.testing:
                 shutil.copyfile(
-                    "tronbyt-server/tronbyt_server/defaults/fireflies-994.webp",
+                    "tronbyt_server/defaults/fireflies-994.webp",
                     "tronbyt_server/webp/9abe2858/fireflies-994.webp",
                 )
                 shutil.copyfile(
-                    "tronbyt-server/tronbyt_server/defaults/fireflies-994.json",
-                    "tronbyt_server/users/admin/configs/fireflies-994.json",
+                    "tronbyt_server/defaults/fireflies-994.json",
+                    "users/admin/configs/fireflies-994.json",
                 )
         conn.commit()
 
@@ -146,10 +147,7 @@ def get_users_dir():
 
 
 def file_exists(file_path):
-    if os.path.exists(file_path):
-        return True
-    else:
-        return False
+    return os.path.exists(file_path)
 
 
 def get_user(username):
@@ -443,11 +441,12 @@ def get_device_by_name(user, name):
     return None
 
 
-def get_device_webp_dir(device_id, create = True):
-    path = f"tronbyt_server/webp/{device_id}"
+def get_device_webp_dir(device_id, create=True):
+    path = f"{os.getcwd()}/tronbyt_server/webp/{device_id}"
     if not os.path.exists(path) and create:
         os.makedirs(path)
     return path
+
 
 def get_device_by_id(device_id):
     for user in get_all_users():
@@ -467,10 +466,14 @@ def generate_firmware(label, url, ap, pw, gen2):
     # Usage
     if gen2:
         file_path = "firmware/gen2.bin"
+        new_path = f"firmware/gen2_{label}.bin"
     else:
         file_path = "firmware/gen1.bin"
+        new_path = f"firmware/gen1_{label}.bin"
 
-    new_path = file_path.replace(".bin", f"_{label}.bin")
+    if not file_exists(file_path):
+        return {"error": f"Firmware file {file_path} not found."}
+
     shutil.copy(file_path, new_path)
 
     # Replace this with the string to be replaced
@@ -519,8 +522,8 @@ def generate_firmware(label, url, ap, pw, gen2):
         result = subprocess.run(
             [
                 "python3",
-                "/app/firmware/correct_firmware_esptool.py",
-                f"/app/{new_path}",
+                "firmware/correct_firmware_esptool.py",
+                f"{new_path}",
             ],
             capture_output=True,
             text=True,

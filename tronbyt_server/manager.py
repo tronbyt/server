@@ -155,8 +155,10 @@ def create():
                 user["devices"] = {}
 
             user["devices"][device["id"]] = device
-            if db.save_user(user) and not os.path.isdir( f"tronbyt_server/webp/{device['id']}" ):
-                os.mkdir( f"tronbyt_server/webp/{device['id']}" )
+            if db.save_user(user) and not os.path.isdir(
+                db.get_device_webp_dir(device["id"])
+            ):
+                os.mkdir(db.get_device_webp_dir(device["id"]))
 
             # print("got to redirect")
             return redirect(url_for("manager.index"))
@@ -296,13 +298,13 @@ def deleteapp(device_id, iname):
     app = g.user["devices"][device_id]["apps"][iname]
 
     if "pushed" in app:
-        webp_path = "tronbyt_server/webp/{}/pushed/{}.webp".format(
-            device["id"], app["name"]
+        webp_path = "{}/pushed/{}.webp".format(
+            db.get_device_webp_dir(device["id"]), app["name"]
         )
     else:
         # delete the webp file
-        webp_path = "tronbyt_server/webp/{}/{}-{}.webp".format(
-            device["id"],
+        webp_path = "{}/{}-{}.webp".format(
+            db.get_device_webp_dir(device["id"]),
             app["name"],
             app["iname"],
         )
@@ -488,7 +490,7 @@ def possibly_render(user, device_id, app):
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
-    webp_device_path = "tronbyt_server/webp/{}".format(device_id)
+    webp_device_path = db.get_device_webp_dir(device_id)
     os.makedirs(webp_device_path, exist_ok=True)
     webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
 
@@ -606,7 +608,7 @@ def configapp(device_id, iname, delete_on_cancel):
     tmp_config_path = "{}/{}/configs/{}.tmp".format(
         users_dir, g.user["username"], app_basename
     )
-    webp_device_path = "tronbyt_server/webp/{}".format(device_id)
+    webp_device_path = db.get_device_webp_dir(device_id)
     os.makedirs(webp_device_path, exist_ok=True)
     webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
 
@@ -783,13 +785,15 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
             response = send_file(webp_path, mimetype="image/webp")
             s = device.get("default_interval", 5)
             response.headers["Tronbyt-Dwell-Secs"] = s
-            print(f"removing ephemeral webp")
+            print("removing ephemeral webp")
             os.remove(f"{pushed_dir}/{ephemeral_file}")
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
-        response = send_file("defaults/default.webp", mimetype="image/webp") # file to send is always prefixed by tronbyt_server
+        response = send_file(
+            "defaults/default.webp", mimetype="image/webp"
+        )  # file to send is always prefixed by tronbyt_server
         response.headers["Tronbyt-Brightness"] = 8
         return response
         # return None  # or handle the situation as needed
@@ -833,13 +837,13 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
             db.save_user(user)
 
         if "pushed" in app:
-            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(
-                device_id, app["iname"]
+            webp_path = "{}/pushed/{}.webp".format(
+                db.get_device_webp_dir(device_id), app["iname"]
             )
         else:
             app_basename = "{}-{}".format(app["name"], app["iname"])
-            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(
-                device_id, app_basename
+            webp_path = "{}/{}.webp".format(
+                db.get_device_webp_dir(device_id), app_basename
             )
         print(webp_path)
 
@@ -882,12 +886,12 @@ def appwebp(device_id, iname):
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
         if "pushed" in app:
-            webp_path = "/app/tronbyt_server/webp/{}/pushed/{}.webp".format(
-                device_id, app["iname"]
+            webp_path = "{}/pushed/{}.webp".format(
+                db.get_device_webp_dir(device_id), app["iname"]
             )
         else:
-            webp_path = "/app/tronbyt_server/webp/{}/{}.webp".format(
-                device_id, app_basename
+            webp_path = "{}/{}.webp".format(
+                db.get_device_webp_dir(device_id), app_basename
             )
         print(webp_path)
         # check if the file exists
@@ -911,7 +915,7 @@ def download_firmware(device_id):
             and device_id in g.user["devices"]
             and "firmware_file_path" in g.user["devices"][device_id]
         ):
-            file_path = f"/app/{g.user['devices'][device_id]['firmware_file_path']}"
+            file_path = g.user["devices"][device_id]["firmware_file_path"]
         else:
             abort(404)
 
