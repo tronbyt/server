@@ -12,7 +12,9 @@
     <div id="custom_app_grid" class="app-grid">
       {% for app in custom_apps_list %}
       <div class="app-item" data-value="{{app['name']}}">
-        <img src="{{ url_for('static', filename='images/') }}" alt="{{ app['name'] }}">
+        <div class="app-img">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/') }}" alt="{{ app['name'] }}">
+        </div>
         <p>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
         <p>From {{ app['author'] }}</p>
@@ -30,9 +32,13 @@
       {% for app in apps_list %}
       <div class="app-item" data-value="{{app['name']}}">
         {% if 'preview' in app %}
-        <img width="400px" src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'] }}">
+        <div class="app-img">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'] }}">
+        </div>
         {% else %}
-        <img src="{{ url_for('static', filename='images/not_found.jpg')}}" alt="{{ app['name'] }}">
+        <div>
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg')}}" alt="{{ app['name'] }}">
+        </div>
         {% endif %}
         <p>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
@@ -67,7 +73,7 @@
   }
 
   .app-item {
-    border: 1px solid #ccc;
+    border: 1px solid #d8d8d8;
     padding: 10px;
     text-align: center;
     cursor: pointer;
