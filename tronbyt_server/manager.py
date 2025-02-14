@@ -155,8 +155,8 @@ def create():
                 user["devices"] = {}
 
             user["devices"][device["id"]] = device
-            if db.save_user(user):
-                os.mkdir(f"{current_app.name}/webp/{device['id']}")
+            if db.save_user(user) and not os.path.isdir( f"tronbyt_server/webp/{device['id']}" ):
+                os.mkdir( f"tronbyt_server/webp/{device['id']}" )
 
             # print("got to redirect")
             return redirect(url_for("manager.index"))
@@ -778,16 +778,18 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
         if ephemeral_files:
             ephemeral_file = ephemeral_files[0]
             print(f"\nreturning ephemeral pushed file {ephemeral_file}")
-            webp_path = f"{pushed_dir}/{ephemeral_file}"
+            webp_path = f"webp/{device_id}/pushed/{ephemeral_file}"
+            # send_file doesn't need the full path, just the path after the tronbyt_server
             response = send_file(webp_path, mimetype="image/webp")
             s = device.get("default_interval", 5)
             response.headers["Tronbyt-Dwell-Secs"] = s
-            os.remove(webp_path)
+            print(f"removing ephemeral webp")
+            os.remove(f"{pushed_dir}/{ephemeral_file}")
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
-        response = send_file("/app/defaults/default.webp", mimetype="image/webp")
+        response = send_file("defaults/default.webp", mimetype="image/webp") # file to send is always prefixed by tronbyt_server
         response.headers["Tronbyt-Brightness"] = 8
         return response
         # return None  # or handle the situation as needed

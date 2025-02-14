@@ -53,4 +53,9 @@ def test_api(client):
         for f in os.listdir(push_path)
         if os.path.isfile(os.path.join(push_path, f)) and f.startswith("__")
     ]
+
     assert len(file_list) == 0
+
+    # delete the test device webp dir
+    db.delete_device_webp_dir(device_id)
+    assert not os.path.isdir(f"tronbyt_server/webp/{device_id}/pushed")
