@@ -13,6 +13,19 @@ services:
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
       - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
       - PRODUCTION=${PRODUCTION}
+      - PIXLET_API_URL=http://pixlet:8080
+    depends_on:
+      - pixlet
+    links:
+      - pixlet
+  pixlet:
+    image: ghcr.io/tavdog/pixlet:latest
+    command: ["api", "--host=0.0.0.0", "--port=8080"]
+    container_name: pixlet
+    restart: unless-stopped
+    volumes:
+      - .:/app # for development
+      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
   proxy:
     image: caddy:latest
     restart: unless-stopped

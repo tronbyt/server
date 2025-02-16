@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 import string
@@ -5,6 +6,7 @@ import subprocess
 import time
 import uuid
 
+import requests
 from flask import (
     Blueprint,
     Response,
@@ -479,6 +481,53 @@ def updateapp(device_id, iname):
     return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
+def render_app(app_path, config_path, webp_path):
+    pixlet_api_url = current_app.config["PIXLET_API_URL"]
+    if pixlet_api_url != "":
+        print("rendering app via pixlet API")
+        with open(config_path, "r") as config_file:
+            config_data = json.load(config_file)
+        response = requests.post(
+            f"{pixlet_api_url}/api/render",
+            json={"path": f"/app/{app_path}", "config": config_data},
+        )
+        if response.status_code == 200:
+            with open(webp_path, "wb") as f:
+                f.write(response.content)
+            return True
+        else:
+            print(
+                f"Error rendering app via pixlet API, trying CLI: {response.status_code} {response.text}"
+            )
+
+    # build the pixlet render command
+    if os.path.exists(config_path):
+        command = [
+            "/pixlet/pixlet",
+            "render",
+            "-c",
+            config_path,
+            app_path,
+            "-o",
+            webp_path,
+        ]
+    else:  # if the path doesn't exist then don't include it in render command
+        command = [
+            "/pixlet/pixlet",
+            "render",
+            app_path,
+            "-o",
+            webp_path,
+        ]
+    # print(command)
+    result = subprocess.run(command)
+    if result.returncode != 0:
+        print("\t\t\tError running pixlet render")
+        print(result)
+        return False
+    return True
+
+
 def possibly_render(user, device_id, app):
     result = False
     if "pushed" in app:
@@ -506,31 +555,7 @@ def possibly_render(user, device_id, app):
         or now - app["last_render"] > int(app["uinterval"]) * 60
     ):
         print(f"\nRENDERING -- {app_basename}")
-        # build the pixlet render command
-        if os.path.exists(config_path):
-            command = [
-                "/pixlet/pixlet",
-                "render",
-                "-c",
-                config_path,
-                app_path,
-                "-o",
-                webp_path,
-            ]
-        else:  # if the path doesn't exist then don't include it in render command
-            command = [
-                "/pixlet/pixlet",
-                "render",
-                app_path,
-                "-o",
-                webp_path,
-            ]
-        # print(command)
-        result = subprocess.run(command)
-        if result.returncode != 0:
-            print("\t\t\tError running pixlet render")
-            print(result)
-        else:
+        if render_app(app_path, config_path, webp_path):
             # update the config file with the new last render time
             app["last_render"] = int(time.time())
             result = True
@@ -634,20 +659,8 @@ def configapp(device_id, iname, delete_on_cancel):
 
             # run pixlet render with the new config file
             print("rendering")
-            # render_result = os.system("/pixlet/pixlet render -c {} {} -o {}".format(config_path, app_path, webp_path))
-            render_result = subprocess.run(
-                [
-                    "/pixlet/pixlet",
-                    "render",
-                    "-c",
-                    config_path,
-                    app_path,
-                    "-o",
-                    webp_path,
-                ]
-            )
             device = g.user["devices"][device_id]
-            if render_result.returncode == 0:  # success
+            if render_app(app_path, config_path, webp_path):
                 # set the enabled key in app to true now that it has been configured.
                 device["apps"][iname]["enabled"] = "true"
                 # set last_rendered to seconds
@@ -674,7 +687,7 @@ def configapp(device_id, iname, delete_on_cancel):
                         if "deleted" in app:
                             del app["deleted"]
                     else:
-                        # delete installation may error if the instlalation doesn't exist but that's ok.
+                        # delete installation may error if the installation doesn't exist but that's ok.
                         command = [
                             "/pixlet/pixlet",
                             "delete",

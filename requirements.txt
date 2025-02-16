@@ -2,3 +2,4 @@ flask
 gunicorn
 python-dotenv
 esptool
+requests
