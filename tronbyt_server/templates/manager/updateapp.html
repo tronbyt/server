@@ -7,15 +7,15 @@
   <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
   <div><b>Enabled : </b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
-<img class="w3-padding app-img" width=400 src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
-    alt="Preview">
+  <div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
+    alt="Preview"></div>
   <label for="uinterval">Render Interval Minutes (Update every X minutes)</label>
   <div><input type="number" name="uinterval" id="uinterval" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
-  
+
   <label for="display_time">Display Time Seconds (0 for device default)</label>
   <div><input type="number" name="display_time" id="display_time" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
-  
-  
+
+
   <label for="notes">Notes: </label>
   <textarea name="notes" id="notes">{{ request.form['notes'] or app['notes'] }}</textarea>
 
@@ -23,10 +23,10 @@
   <h2>Schedule</h2>
   <label for="start_time">Start Time</label>
   <div><input type="time" name="start_time" id="start_time" value="{{ request.form['start_time'] or app['start_time'] }}"></div>
-  
+
   <label for="end_time">End Time</label>
   <div><input type="time" name="end_time" id="end_time" value="{{ request.form['end_time'] or app['end_time'] }}"></div>
-  
+
   <label for="days">Active Days</label> (none selected is ALL selected)
   <div>
     <input type="checkbox" name="days" value="monday" {% if 'monday' in app['days'] or not app['days'] %} checked {% endif %}> Monday
