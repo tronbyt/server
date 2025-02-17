@@ -188,7 +188,7 @@
                     <p class="body">Notes: {{ app['notes'] }}</p>
                     {% endif %}
             </td>
-            <td><br><div class="app-img"><img width="400"
+            <td width="33%"><br><div class="app-img"><img
                 src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="Preview"></div>
               <br>
               Last Rendered: {{ app.get('last_render',0)|timeago }}
