@@ -4,9 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
-      - "${PIXLET_SERVE_PORT1}:5100" # 5100 is used for pixlet serve interface during app configuration
-      - "${PIXLET_SERVE_PORT2}:5101" # user 2
+      - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
     volumes:
       - .:/app # for development
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time

@@ -20,6 +20,7 @@ from flask import (
     send_file,
     url_for,
 )
+from websocket import create_connection
 
 import tronbyt_server.db as db
 from tronbyt_server.auth import login_required
@@ -741,8 +742,8 @@ def configapp(device_id, iname, delete_on_cancel):
                     tmp_config_path,
                     "serve",
                     app_path,
-                    "--host=0.0.0.0",
                     "--port={}".format(user_render_port),
+                    "--path=/pixlet/",
                 ],
                 shell=False,
             )
@@ -1058,3 +1059,48 @@ def set_system_repo():
             flash("Error Saving Repo")
         return redirect(url_for("auth.edit"))
     abort(404)
+
+
+@bp.route("/pixlet", defaults={"path": ""}, methods=["GET", "POST"])
+@bp.route("/pixlet/<path:path>", methods=["GET", "POST"])
+@login_required
+def pixlet_proxy(path):
+    user_render_port = db.get_user_render_port(g.user["username"])
+    pixlet_url = f"http://localhost:{user_render_port}/pixlet/{path}?{request.query_string.decode()}"
+    try:
+        if request.method == "GET":
+            response = requests.get(
+                pixlet_url, params=request.args, headers=request.headers
+            )
+        elif request.method == "POST":
+            response = requests.post(
+                pixlet_url, data=request.get_data(), headers=request.headers
+            )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching {pixlet_url}: {e}")
+        abort(500)
+    excluded_headers = [
+        "Content-Length",
+        "Transfer-Encoding",
+        "Content-Encoding",
+        "Connection",
+    ]
+    headers = [
+        (name, value)
+        for (name, value) in response.raw.headers.items()
+        if name not in excluded_headers
+    ]
+    return Response(response.content, status=response.status_code, headers=headers)
+
+
+@bp.route("/pixlet/api/v1/ws/<path:url>")
+@login_required
+def proxy_ws(url):
+    user_render_port = db.get_user_render_port(g.user["username"])
+    pixlet_url = f"ws://localhost:{user_render_port}/pixlet/{url}"
+    ws = create_connection(pixlet_url)
+    ws.send(request.data)
+    response = ws.recv()
+    ws.close()
+    return Response(response, content_type="application/json")

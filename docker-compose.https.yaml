@@ -32,8 +32,6 @@ services:
     ports:
       - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
       - "${SERVER_PORT}:8000/udp"
-      - "${PIXLET_SERVE_PORT1}:${PIXLET_SERVE_PORT1}" # 5100 is used for pixlet serve interface during app configuration
-      - "${PIXLET_SERVE_PORT2}:${PIXLET_SERVE_PORT2}" # user 2, add 1 incremented port each additional user you want or use host network_mode
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/data
