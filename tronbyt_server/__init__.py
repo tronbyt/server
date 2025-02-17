@@ -18,6 +18,7 @@ def create_app(test_config=None):
             SERVER_PROTOCOL=os.getenv("SERVER_PROTOCOL", "http"),
             PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
+            PIXLET_API_URL=os.getenv("PIXLET_API_URL", ""),
             USERS_DIR="users",
             DB_FILE="usersdb.sqlite",
         )
@@ -30,6 +31,7 @@ def create_app(test_config=None):
             DB_FILE="testdb.sqlite",
             SERVER_HOSTNAME="localhost",
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
+            PIXLET_API_URL=os.getenv("PIXLET_API_URL", ""),
             USERS_DIR="tests/users",
             PRODUCTION=0,
             TESTING=True,
