@@ -23,6 +23,7 @@ from flask import (
 from websocket import create_connection
 
 import tronbyt_server.db as db
+from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 
 bp = Blueprint("manager", __name__)
@@ -483,49 +484,26 @@ def updateapp(device_id, iname):
 
 
 def render_app(app_path, config_path, webp_path):
-    pixlet_api_url = current_app.config["PIXLET_API_URL"]
-    if pixlet_api_url != "":
-        print("rendering app via pixlet API")
+    config_data = ""
+    if os.path.exists(config_path):
         with open(config_path, "r") as config_file:
             config_data = json.load(config_file)
-        response = requests.post(
-            f"{pixlet_api_url}/api/render",
-            json={"path": f"/app/{app_path}", "config": config_data},
-        )
-        if response.status_code == 200:
-            with open(webp_path, "wb") as f:
-                f.write(response.content)
-            return True
-        else:
-            print(
-                f"Error rendering app via pixlet API, trying CLI: {response.status_code} {response.text}"
-            )
-
-    # build the pixlet render command
-    if os.path.exists(config_path):
-        command = [
-            "/pixlet/pixlet",
-            "render",
-            "-c",
-            config_path,
-            app_path,
-            "-o",
-            webp_path,
-        ]
-    else:  # if the path doesn't exist then don't include it in render command
-        command = [
-            "/pixlet/pixlet",
-            "render",
-            app_path,
-            "-o",
-            webp_path,
-        ]
-    # print(command)
-    result = subprocess.run(command)
-    if result.returncode != 0:
+    data = pixlet_render_app(
+        app_path,
+        config_data,
+        64,
+        32,
+        1,
+        15000,
+        30000,
+        False,
+        True,
+    )
+    if not data:
         print("\t\t\tError running pixlet render")
-        print(result)
         return False
+    with open(webp_path, "wb") as webp_file:
+        webp_file.write(data)
     return True
 
 
