@@ -14,7 +14,6 @@ services:
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
       - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
       - PRODUCTION=${PRODUCTION}
-      - PIXLET_API_URL=http://pixlet:8080
 volumes:
   users:
   webp:

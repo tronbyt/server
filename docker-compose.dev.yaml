@@ -15,4 +15,3 @@ services:
       - PYTHONUNBUFFERED=1
       - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
       - PRODUCTION=0
-      - PIXLET_API_URL=http://pixlet:8080
