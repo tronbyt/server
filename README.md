@@ -103,8 +103,53 @@ That said, the recommended installation method uses Docker Compose with a config
 
 ### HTTPS (TLS)
 
-If you'd like to serve tronbyt-server and pixlet over HTTPS, you can do so by fronting the services with a reverse proxy.
+If you'd like to serve tronbyt-server over HTTPS, you can do so by configuring Gunicorn or by fronting the service with a reverse proxy. The reverse proxy approach is more flexible and allows for automatic certificate provisioning and renewal. If you already have a certificate, you can also use that directly and avoid the sidecar container.
+
+#### Reverse Proxy
 
 The `docker-compose.https.yaml` file contains an example using [Caddy](https://caddyserver.com) as a lightweight reverse proxy which provides TLS termination. The default configuration uses [Local HTTPS](https://caddyserver.com/docs/automatic-https#local-https), for which Caddy generates its own certificate authority (CA) and uses it to sign certificates. The certificates are stored in the `certs` directory at `pki/authorities/local`.
 
 If you want to make tronbyt-server accessible using a public DNS name, adjust `Caddyfile` to match your domain name and use one of the supporte [ACME challenges](https://caddyserver.com/docs/automatic-https#acme-challenges) (HTTP, TLS-ALPN, or DNS).
+
+#### Gunicorn
+
+The following example assumes that your private key and certificate are located next to your Compose file.
+
+1. Create a file named `gunicorn.conf.py` in the same directory which looks like this:
+
+```python
+bind = "0.0.0.0:8000"
+loglevel = "info"
+accesslog = "-"
+access_log_format = "%(h)s %(l)s %(u)s %(t)s %(r)s %(s)s %(b)s %(f)s %(a)s"
+errorlog = "-"
+workers = 4
+timeout = 120
+worker_tmp_dir = "/dev/shm"
+preload_app = True
+reload = False
+keyfile = "/ssl/privkey.pem"
+certfile = "/ssl/fullchain.pem"
+ssl_version = "TLSv1_2"
+
+def ssl_context(conf, default_ssl_context_factory):
+    import ssl
+    context = default_ssl_context_factory()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+```
+
+2. Make the files in PEM format and the configuration file available to the container:
+
+```
+    volumes:
+      - ./gunicorn.conf.py:/app/gunicorn.conf.py
+      - ./fullchain.cer:/ssl/fullchain.pem
+      - ./privkey.pem:/ssl/privkey.pem
+```
+
+3. Restart the container.
+
+Your Tronbyt server is now serving HTTPS.
+
+See https://docs.gunicorn.org/en/latest/settings.html#settings for an exhaustive list of settings for Gunicorn.
