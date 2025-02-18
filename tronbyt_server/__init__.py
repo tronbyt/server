@@ -34,7 +34,6 @@ def render_app(
         data = ctypes.cast(
             ret.data, ctypes.POINTER(ctypes.c_uint32 * ret.length)
         ).contents
-        print("From Python: got data of length", ret.length)
         buf = bytes(data)
         free_bytes(ret.data)
     return buf
