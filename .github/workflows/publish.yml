@@ -45,7 +45,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=development,enable=${{ github.ref == 'refs/heads/development') }}
+            type=raw,value=development,enable=${{ github.ref == 'refs/heads/development' }}
           flavor: |
             latest=true
             prefix=
