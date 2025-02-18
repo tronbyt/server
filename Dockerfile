@@ -1,4 +1,4 @@
-FROM ghcr.io/tavdog/pixlet:latest AS pixlet-builder
+FROM ghcr.io/tavdog/pixlet:latest AS pixlet
 
 # build runtime image
 FROM debian:bookworm-slim AS runtime
