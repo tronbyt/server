@@ -46,10 +46,6 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=development,enable=${{ github.ref == 'refs/heads/development' }}
-          flavor: |
-            latest=true
-            prefix=
-            suffix=
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx

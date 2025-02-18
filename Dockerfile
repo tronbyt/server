@@ -16,7 +16,7 @@ COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
 
 RUN echo deb http://deb.debian.org/debian bookworm-backports main > /etc/apt/sources.list.d/bookworm-backports.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         python3 python3-flask gunicorn python3-dotenv python3-requests python3-websocket python3-yaml \
         libwebp7/bookworm-backports libwebpmux3/bookworm-backports libwebpdemux2/bookworm-backports \
         procps git tzdata ca-certificates python3-pip && \
