@@ -2,9 +2,10 @@ name: Create and publish a container image
 
 on:
   push:
-    # Publish `master` as Docker `latest` image.
+    # Publish `master` branch as `latest` tag and track the 'development' branch with its own tag
     branches:
       - master
+      - development
 
     # Publish `v1.2.3` tags as releases.
     tags:
@@ -43,6 +44,8 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=development,enable=${{ github.ref == 'refs/heads/development') }}
           flavor: |
             latest=true
             prefix=
