@@ -3,12 +3,31 @@
 <h1>{% block title %}Add App{% endblock %}</h1>
 {% endblock %}
 {% block content %}
+<script>
+function searchApps(inputId, gridId) {
+  var input = document.getElementById(inputId);
+  var filter = input.value.toUpperCase();
+  var l = document.getElementById(gridId);
+  var li = l.getElementsByClassName('app-item');
+
+  // Loop through all list items, and hide those which don't match the search query
+  for (i = 0; i < li.length; i++) {
+    var name = li[i].getAttribute('data-value');
+    if (name.toUpperCase().indexOf(filter) > -1) {
+      li[i].style.display = "";
+    } else {
+      li[i].style.display = "none";
+    }
+  }
+}
+</script>
 <form method="post" id="main_form">
   <label for="name">App Selection</label>
 
   {% if custom_apps_list %}
   <div class="app-group">
     <h3>Custom Apps</h3>
+    <input type="search" id="custom_search" placeholder="Search apps" onkeyup="searchApps('custom_search', 'custom_app_grid')" />
     <div id="custom_app_grid" class="app-grid">
       {% for app in custom_apps_list %}
       <div class="app-item" data-value="{{app['name']}}">
@@ -28,6 +47,7 @@
 
   <div class="app-group">
     <h3>System Apps</h3>
+    <input type="search" id="system_search" placeholder="Search apps" onkeyup="searchApps('system_search', 'system_app_grid')" />
     <div id="system_app_grid" class="app-grid">
       {% for app in apps_list %}
       <div class="app-item" data-value="{{app['name']}}">
