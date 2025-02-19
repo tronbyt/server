@@ -2,3 +2,5 @@ flask
 gunicorn
 python-dotenv
 esptool
+requests
+websocket-client

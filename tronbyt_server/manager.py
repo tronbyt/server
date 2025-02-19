@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 import string
@@ -5,6 +6,7 @@ import subprocess
 import time
 import uuid
 
+import requests
 from flask import (
     Blueprint,
     Response,
@@ -18,8 +20,10 @@ from flask import (
     send_file,
     url_for,
 )
+from websocket import create_connection
 
 import tronbyt_server.db as db
+from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 
 bp = Blueprint("manager", __name__)
@@ -479,6 +483,30 @@ def updateapp(device_id, iname):
     return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
+def render_app(app_path, config_path, webp_path):
+    config_data = ""
+    if os.path.exists(config_path):
+        with open(config_path, "r") as config_file:
+            config_data = json.load(config_file)
+    data = pixlet_render_app(
+        app_path,
+        config_data,
+        64,
+        32,
+        1,
+        15000,
+        30000,
+        False,
+        True,
+    )
+    if not data:
+        print("\t\t\tError running pixlet render")
+        return False
+    with open(webp_path, "wb") as webp_file:
+        webp_file.write(data)
+    return True
+
+
 def possibly_render(user, device_id, app):
     result = False
     if "pushed" in app:
@@ -506,31 +534,7 @@ def possibly_render(user, device_id, app):
         or now - app["last_render"] > int(app["uinterval"]) * 60
     ):
         print(f"\nRENDERING -- {app_basename}")
-        # build the pixlet render command
-        if os.path.exists(config_path):
-            command = [
-                "/pixlet/pixlet",
-                "render",
-                "-c",
-                config_path,
-                app_path,
-                "-o",
-                webp_path,
-            ]
-        else:  # if the path doesn't exist then don't include it in render command
-            command = [
-                "/pixlet/pixlet",
-                "render",
-                app_path,
-                "-o",
-                webp_path,
-            ]
-        # print(command)
-        result = subprocess.run(command)
-        if result.returncode != 0:
-            print("\t\t\tError running pixlet render")
-            print(result)
-        else:
+        if render_app(app_path, config_path, webp_path):
             # update the config file with the new last render time
             app["last_render"] = int(time.time())
             result = True
@@ -634,20 +638,8 @@ def configapp(device_id, iname, delete_on_cancel):
 
             # run pixlet render with the new config file
             print("rendering")
-            # render_result = os.system("/pixlet/pixlet render -c {} {} -o {}".format(config_path, app_path, webp_path))
-            render_result = subprocess.run(
-                [
-                    "/pixlet/pixlet",
-                    "render",
-                    "-c",
-                    config_path,
-                    app_path,
-                    "-o",
-                    webp_path,
-                ]
-            )
             device = g.user["devices"][device_id]
-            if render_result.returncode == 0:  # success
+            if render_app(app_path, config_path, webp_path):
                 # set the enabled key in app to true now that it has been configured.
                 device["apps"][iname]["enabled"] = "true"
                 # set last_rendered to seconds
@@ -674,7 +666,7 @@ def configapp(device_id, iname, delete_on_cancel):
                         if "deleted" in app:
                             del app["deleted"]
                     else:
-                        # delete installation may error if the instlalation doesn't exist but that's ok.
+                        # delete installation may error if the installation doesn't exist but that's ok.
                         command = [
                             "/pixlet/pixlet",
                             "delete",
@@ -728,8 +720,8 @@ def configapp(device_id, iname, delete_on_cancel):
                     tmp_config_path,
                     "serve",
                     app_path,
-                    "--host=0.0.0.0",
                     "--port={}".format(user_render_port),
+                    "--path=/pixlet/",
                 ],
                 shell=False,
             )
@@ -1045,3 +1037,48 @@ def set_system_repo():
             flash("Error Saving Repo")
         return redirect(url_for("auth.edit"))
     abort(404)
+
+
+@bp.route("/pixlet", defaults={"path": ""}, methods=["GET", "POST"])
+@bp.route("/pixlet/<path:path>", methods=["GET", "POST"])
+@login_required
+def pixlet_proxy(path):
+    user_render_port = db.get_user_render_port(g.user["username"])
+    pixlet_url = f"http://localhost:{user_render_port}/pixlet/{path}?{request.query_string.decode()}"
+    try:
+        if request.method == "GET":
+            response = requests.get(
+                pixlet_url, params=request.args, headers=request.headers
+            )
+        elif request.method == "POST":
+            response = requests.post(
+                pixlet_url, data=request.get_data(), headers=request.headers
+            )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching {pixlet_url}: {e}")
+        abort(500)
+    excluded_headers = [
+        "Content-Length",
+        "Transfer-Encoding",
+        "Content-Encoding",
+        "Connection",
+    ]
+    headers = [
+        (name, value)
+        for (name, value) in response.raw.headers.items()
+        if name not in excluded_headers
+    ]
+    return Response(response.content, status=response.status_code, headers=headers)
+
+
+@bp.route("/pixlet/api/v1/ws/<path:url>")
+@login_required
+def proxy_ws(url):
+    user_render_port = db.get_user_render_port(g.user["username"])
+    pixlet_url = f"ws://localhost:{user_render_port}/pixlet/{url}"
+    ws = create_connection(pixlet_url)
+    ws.send(request.data)
+    response = ws.recv()
+    ws.close()
+    return Response(response, content_type="application/json")

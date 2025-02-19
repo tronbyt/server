@@ -13,6 +13,6 @@
 {% else %}
 <form action="{{ url_for('manager.index') }}" method="get"><input type="submit" value="Cancel"></form>
 {% endif %}
-<iframe src="{{protocol}}://{{domain_host}}:{{user_render_port}}/?{{url_params}}" width=100% height=2000
+<iframe src="{{ url_for('manager.pixlet_proxy') }}?{{url_params}}" width=100% height=2000
     title="Pixlet Serve"></iframe>
 {% endblock %}
