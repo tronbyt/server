@@ -73,15 +73,15 @@ def register():
 @bp.route("/login", methods=("GET", "POST"))
 def login():
     if request.method == "POST":
-        if not current_app.config["TESTING"]:
-            time.sleep(2)  # slow down brute force attacks
-        username = db.sanitize(request.form["username"])
-        password = db.sanitize(request.form["password"])
-        dprint(f"safeusername : {username} and hp : {password}")
+        username = request.form["username"]
+        password = request.form["password"]
+        dprint(f"username : {username} and hp : {password}")
         error = None
         user = db.auth_user(username, password)
         if user is False or user is None:
             error = "Incorrect username/password."
+            if not current_app.config["TESTING"]:
+                time.sleep(2)  # slow down brute force attacks
         if error is None:
             session.clear()
             print("username " + username)

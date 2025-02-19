@@ -849,7 +849,7 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
             # response.headers["Tronbyt-Brightness"] = db.brightness_int_from_string(app.get('brightness', device.get("brightness","medium")))
             # make sure we are sending an integer not a string
             b = db.get_device_brightness(device)
-            print(f"sending brighness {b} -- ", end="")
+            print(f"sending brightness {b} -- ", end="")
             response.headers["Tronbyt-Brightness"] = b
             s = app.get("display_time", None)
             if not s or int(s) == 0:
