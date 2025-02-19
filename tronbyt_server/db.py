@@ -465,16 +465,16 @@ def get_user_by_device_id(device_id):
 def generate_firmware(label, url, ap, pw, gen2):
     # Usage
     if gen2:
-        file_path = "firmware/gen2.bin"
+        file_path = "tronbyt_server/firmware/gen2.bin"
         new_path = f"firmware/gen2_{label}.bin"
     else:
-        file_path = "firmware/gen1.bin"
+        file_path = "tronbyt_server/firmware/gen1.bin"
         new_path = f"firmware/gen1_{label}.bin"
 
     if not file_exists(file_path):
         return {"error": f"Firmware file {file_path} not found."}
 
-    shutil.copy(file_path, new_path)
+    shutil.copy(file_path, f"tronbyt_server/{new_path}")
 
     # Replace this with the string to be replaced
 
@@ -492,7 +492,7 @@ def generate_firmware(label, url, ap, pw, gen2):
         "XplaceholderREMOTEURL_________________________________________________________________________________________": url,
     }
     bytes_written = None
-    with open(new_path, "r+b") as f:
+    with open(f"tronbyt_server/{new_path}", "r+b") as f:
         # Read the binary file into memory
         content = f.read()
 
@@ -519,17 +519,21 @@ def generate_firmware(label, url, ap, pw, gen2):
             bytes_written = f.write(padded_new_string.encode("ascii"))
     if bytes_written:
         # run the correct checksum/hash script
+        print("running correction script")
         result = subprocess.run(
             [
                 "python3",
-                "firmware/correct_firmware_esptool.py",
-                f"{new_path}",
+                "tronbyt_server/firmware/correct_firmware_esptool.py",
+                f"tronbyt_server/{new_path}",
             ],
             capture_output=True,
             text=True,
         )
-        print(result.stdout)
-        return {"file_path": new_path}
+        if (result.stderr):
+            return {"error": result.stderr}            
+        else:
+            print(f"generated file path: {new_path}")
+            return {"file_path": new_path}
     else:
         return {"error": "no bytes written"}
 

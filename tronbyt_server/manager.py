@@ -560,6 +560,7 @@ def generate_firmware(device_id):
 
             result = db.generate_firmware(label, image_url, ap, password, gen2)
             if "file_path" in result:
+                print(f"saving firmware filepath in device as {result['file_path']}")
                 g.user["devices"][device_id]["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
                 return render_template(
@@ -921,7 +922,10 @@ def download_firmware(device_id):
 
         # check if the file exists
         print(f"checking for {file_path}")
-        if db.file_exists(file_path) and os.path.getsize(file_path) > 0:
+        if (
+            db.file_exists(f"tronbyt_server/{file_path}")
+            and os.path.getsize(f"tronbyt_server/{file_path}") > 0
+        ):
             # if filesize is greater than zero
 
             return send_file(file_path, mimetype="application/octet-stream")
