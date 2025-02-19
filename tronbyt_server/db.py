@@ -529,8 +529,7 @@ def generate_firmware(label, url, ap, pw, gen2):
             text=True,
         )
         print(result.stdout)
-        print(new_path)
-        return {"file_path": f"/app/{new_path}"}
+        return {"file_path": os.path.join(os.getcwd(), new_path)}
     else:
         return {"error": "no bytes written"}
 

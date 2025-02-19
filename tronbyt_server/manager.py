@@ -915,7 +915,6 @@ def download_firmware(device_id):
         print(f"checking for {file_path}")
         if db.file_exists(file_path) and os.path.getsize(file_path) > 0:
             # if filesize is greater than zero
-
             return send_file(file_path, mimetype="application/octet-stream")
         else:
             print("file no exist or 0 size")
