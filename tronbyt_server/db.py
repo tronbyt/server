@@ -8,20 +8,14 @@ from urllib.parse import quote, unquote
 
 import yaml
 from flask import current_app
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-
-DB_FILE = "users/usersdb.sqlite"
 
 
 def init_db():
-    global DB_FILE
-    if current_app.testing:
-        DB_FILE = "users/testdb.sqlite"
-
-    print(f"using {DB_FILE}")
+    print(f"using {get_db_file()}")
     os.makedirs("users/admin/configs", exist_ok=True)
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(get_db_file()) as conn:
         cursor = conn.cursor()
         cursor.execute("""CREATE TABLE IF NOT EXISTS json_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,33 +28,59 @@ def init_db():
         row = cursor.fetchone()
 
         if not row:  # If no row is found
-            # Load the default JSON data from the file
-            with open("tronbyt_server/defaults/admin.json", "r") as f:
-                default_json = json.load(f)
+            # Load the default JSON data
+            default_json = {
+                "username": "admin",
+                "password": generate_password_hash("password"),
+                "devices": {
+                    "9abe2858": {
+                        "id": "9abe2858",
+                        "name": "Tronbyt 1",
+                        "default_interval": 18,
+                        "brightness": 40,
+                        "night_brightness": 10,
+                        "night_start": -1,
+                        "timezone": 100,
+                        "img_url": "",
+                        "night_mode_app": "None",
+                        "api_key": "CHANGEME",
+                        "notes": "",
+                        "apps": {
+                            "994": {
+                                "iname": "994",
+                                "name": "fireflies",
+                                "uinterval": 1,
+                                "display_time": 0,
+                                "notes": "",
+                                "enabled": "true",
+                                "last_render": 1739393487,
+                                "path": "system-apps/apps/fireflies/fireflies.star",
+                            }
+                        },
+                    }
+                },
+            }
 
             # Insert default JSON
             cursor.execute(
                 "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
-                (
-                    json.dumps(
-                        default_json,
-                    ),
-                ),
+                (json.dumps(default_json),),
             )
             conn.commit()
             print("Default JSON inserted for admin user")
 
             # Copy the default files to the expected locations
             if not current_app.testing:
+                os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
                 shutil.copyfile(
-                    "tronbyt_server/defaults/fireflies-994.webp",
+                    "tronbyt_server/static/images/fireflies.webp",
                     "tronbyt_server/webp/9abe2858/fireflies-994.webp",
                 )
-                shutil.copyfile(
-                    "tronbyt_server/defaults/fireflies-994.json",
-                    "users/admin/configs/fireflies-994.json",
-                )
         conn.commit()
+
+
+def get_db_file():
+    return current_app.config["DB_FILE"]
 
 
 def delete_device_dirs(device_id):
@@ -152,7 +172,7 @@ def file_exists(file_path):
 
 def get_user(username):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with sqlite3.connect(get_db_file()) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT data FROM json_data WHERE username = ?", (str(username),)
@@ -173,7 +193,7 @@ def get_user(username):
 
 
 def auth_user(username, password):
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(get_db_file()) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT data FROM json_data WHERE username = ?", (str(username),)
@@ -196,7 +216,7 @@ def save_user(user, new_user=False):
             print(f"user data passed to save_user : {user}")
         username = user["username"]
         try:
-            with sqlite3.connect(DB_FILE) as conn:
+            with sqlite3.connect(get_db_file()) as conn:
                 cursor = conn.cursor()
                 # json
                 if new_user:
@@ -213,19 +233,19 @@ def save_user(user, new_user=False):
                     )
                 conn.commit()
 
-            print("writing to json file for visibility")
-
-            with open(
-                f"{get_users_dir()}/{username}/{username}_debug.json", "w"
-            ) as file:
-                json_string = json.dumps(user, indent=4)
-                if current_app.testing:
-                    print(f"writing json of {user}")
-                else:
-                    json_string.replace(
-                        user["username"], "DO NOT EDIT THIS FILE, FOR DEBUG ONLY"
-                    )
-                file.write(json_string)
+            if current_app.config.get("PRODUCTION") == "0":
+                print("writing to json file for visibility")
+                with open(
+                    f"{get_users_dir()}/{username}/{username}_debug.json", "w"
+                ) as file:
+                    json_string = json.dumps(user, indent=4)
+                    if current_app.testing:
+                        print(f"writing json of {user}")
+                    else:
+                        json_string.replace(
+                            user["username"], "DO NOT EDIT THIS FILE, FOR DEBUG ONLY"
+                        )
+                    file.write(json_string)
 
             return True
         except Exception as e:
@@ -374,7 +394,7 @@ def delete_user_upload(user, filename):
 
 def get_all_users():
     users = list()
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(get_db_file()) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT data FROM json_data")
 
