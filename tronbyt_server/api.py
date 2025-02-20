@@ -1,26 +1,12 @@
 import base64
 import json
-
-# import uuid
 import os
 import re
-
-# import subprocess
-# import sys
 import time
 
 from flask import (
     Blueprint,
-    #    url_for,
-    #    send_file,
     abort,
-    #    current_app,
-    #    Response,
-    #    jsonify,
-    #    flash,
-    #    g,
-    #    redirect,
-    #    render_template,
     request,
 )
 
