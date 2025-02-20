@@ -53,23 +53,26 @@
   }
 </style>
 <nav>
-    <h1 class="w3-sans-serif">Tronbyt Manager (Beta)</h1> <ul>
-        {% if g.user %}
-            <li><a href="{{ url_for('manager.index') }}">Home</a></li>
-            {% if g.user['username'] == 'admin' %}<li><a href="{{ url_for('auth.register') }}">Create User</a>{% endif %}
-            <li><a href="{{ url_for('auth.edit') }}">{{ g.user['username'] }}</a>
-            <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
-        {% else %}
-            <li><a href="{{ url_for('auth.login') }}">Log In</a>
-        {% endif %} </ul>
+  <h1 class="w3-sans-serif">{{ _('Tronbyt Manager (Beta)') }}</h1>
+  <ul>
+    {% if g.user %}
+      <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
+      {% if g.user['username'] == 'admin' %}<li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a>{% endif %}
+      <li><a href="{{ url_for('auth.edit') }}">{{ g.user['username'] }}</a></li>
+      <li><a href="{{ url_for('auth.logout') }}">{{ _('Log Out') }}</a></li>
+    {% else %}
+      <li><a href="{{ url_for('auth.login') }}">{{ _('Log In') }}</a></li>
+    {% endif %}
+  </ul>
 </nav>
 <section class="content">
-    <header>
-        {% block header %}{% endblock %}
-    </header>
-    {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div> {% endfor %}
-    {% block content %}{% endblock %}
+  <header>
+    {% block header %}{% endblock %}
+  </header>
+  {% for message in get_flashed_messages() %}
+  <div class="flash">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
 </section>
 <!-- Dot Matrix to overlay app-img-->
 <svg width="0" height="0">

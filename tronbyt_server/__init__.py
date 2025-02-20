@@ -1,11 +1,17 @@
 import ctypes
+import datetime as dt
 import json
 import os
+import time
 
+from babel.dates import format_timedelta
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, current_app, request
+from flask_babel import Babel, _
 
 from tronbyt_server import db
+
+babel = Babel()
 
 
 def render_app(
@@ -39,6 +45,10 @@ def render_app(
     return buf
 
 
+def get_locale():
+    return request.accept_languages.best_match(current_app.config["LANGUAGES"])
+
+
 def create_app(test_config=None):
     load_dotenv()
     # create and configure the app
@@ -53,6 +63,7 @@ def create_app(test_config=None):
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
             USERS_DIR="users",
             DB_FILE="usersdb.sqlite",
+            LANGUAGES=["en", "de"],
         )
     else:
         app.config.from_mapping(
@@ -61,12 +72,14 @@ def create_app(test_config=None):
             SERVER_PROTOCOL=os.getenv("SERVER_PROTOCOL", "http"),
             PIXLET_RENDER_PORT1=os.getenv("PIXLET_RENDER_PORT1", "5100"),
             DB_FILE="testdb.sqlite",
+            LANGUAGES=["en"],
             SERVER_HOSTNAME="localhost",
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
             USERS_DIR="tests/users",
             PRODUCTION=0,
             TESTING=True,
         )
+    babel.init_app(app, locale_selector=get_locale)
 
     try:
         os.makedirs(app.instance_path)
@@ -126,21 +139,15 @@ def create_app(test_config=None):
     app.register_blueprint(manager.bp)
     app.add_url_rule("/", endpoint="index")
 
-    import time
-
     @app.template_filter("timeago")
     def timeago(seconds):
         if seconds == 0:
-            return "Never"
-        # caclulate the minutes between now and the seconds passed in
-        secondsago = time.time() - seconds
-        if seconds < 2:
-            return " just now"
-        elif secondsago < 60:
-            return f"{int(secondsago)} seconds ago"
-        elif secondsago < 3600:
-            return f"{int(secondsago // 60)} minutes ago"
-        elif secondsago >= 3600:
-            return f"{int(secondsago // 3600)} hours ago"
+            return _("Never")
+        return format_timedelta(
+            dt.timedelta(seconds=seconds - int(time.time())),
+            granularity="second",
+            add_direction=True,
+            locale=get_locale(),
+        )
 
     return app

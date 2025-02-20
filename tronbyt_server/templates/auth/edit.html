@@ -1,30 +1,30 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}Edit Settings{% endblock %}</h1>
+<h1>{% block title %}{{ _('Edit Settings') }}{% endblock %}</h1>
 {% endblock %}
-{% block content %} 
+{% block content %}
 {% if g.user['username'] == "admin" %}
 <form method="post" action="{{ url_for('manager.set_system_repo') }}">
-    <label for="app_repo_url">System App Repo URL (Public Github Only!)</label>
+    <label for="app_repo_url">{{ _('System App Repo URL (Public Github Only!)') }}</label>
     <input name="app_repo_url" id="app_repo_url" required value="{{ user['system_repo_url'] }}">
-    Replacing the existing system repo will delete the previous repo and break any apps using that repo.
-    <input type="submit" value="Save" class="w3-button w3-green"></input>
+    {{ _('Replacing the existing system repo will delete the previous repo and break any apps using that repo.') }}
+    <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 {% endif %}
 <form method="post" action="{{ url_for('manager.set_user_repo') }}" >
-<label for="app_repo_url">Custom App Repo URL (Public Github Only!)</label>
+<label for="app_repo_url">{{ _('Custom App Repo URL (Public Github Only!)') }}</label>
 <input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}">
-Replacing an existing custom repo will delete the previous repo and break any apps using that repo.
+{{ _('Replacing an existing custom repo will delete the previous repo and break any apps using that repo.') }}
 
-<input type="submit" value="Save" class="w3-button w3-green"></input>
+<input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 
-<h1>Edit Password</h1>
+<h1>{{ _('Edit Password') }}</h1>
 <form method="post">
-<label for="old_password">Old Password</label>
+<label for="old_password">{{ _('Old Password') }}</label>
 <input type="password" name="old_password" id="old_password" required>
-<label for="password">New Password</label>
+<label for="password">{{ _('New Password') }}</label>
 <input type="password" name="password" id="password" required>
-<input type="submit" value="Save" class="w3-button w3-green"></input>
+<input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 {% endblock %}

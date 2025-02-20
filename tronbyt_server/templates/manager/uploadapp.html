@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}Upload App (.star files only){% endblock %}</h1>
+<h1>{% block title %}{{ _('Upload App (.star files only)') }}{% endblock %}</h1>
 {% endblock %}
-{% block content %} 
+{% block content %}
 {% if g.user['username'] == "admin" %}
 {% endif %}
-<form method=post enctype=multipart/form-data>
-    <input type=file name=file>
-    <input type=submit value=Upload>
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name=file>
+    <input type="submit" value="{{ _('Upload') }}">
 </form>
-<h3>Current files:</h3>
+<h3>{{ _('Current files:') }}</h3>
 {% for filename in files %}
-<p>{{ filename }} - <a href="{{ url_for('manager.deleteupload', filename=filename) }}">Delete</a></p>
+<p>{{ filename }} - <a href="{{ url_for('manager.deleteupload', filename=filename) }}">{{ _('Delete') }}</a></p>
 {% endfor %}
 {% endblock %}

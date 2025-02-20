@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}Register{% endblock %}</h1>
+<h1>{% block title %}{{ _('Register') }}{% endblock %}</h1>
 {% endblock %}
-{% block content %} <form method="post">
-<label for="username">Username (alpha-numeric only, no symbols please.)</label>
-<input name="username" id="username" required>
-<label for="password">Password</label>
-<input type="password" name="password" id="password" required>
-<label for="email">Email Address (optional)</label>
-<input type="text" name="email" id="email">
+{% block content %}
+<form method="POST">
+    <label for="username">{{ _('Username (alpha-numeric only, no symbols please.)') }}</label>
+    <input name="username" id="username" required>
+    <label for="password">{{ _('Password') }}</label>
+    <input type="password" name="password" id="password" required>
+    <label for="email">{{ _('Email Address (optional)') }}</label>
+    <input type="text" name="email" id="email">
 
-<input type="submit" value="Register">
+    <input type="submit" value="{{ _('Register') }}">
 </form>
 {% endblock %}
