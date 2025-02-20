@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-20 11:02+0000\n"
+"POT-Creation-Date: 2025-02-20 20:43+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/__init__.py:145
+#: tronbyt_server/__init__.py:146
 msgid "Never"
 msgstr "Nie"
 
@@ -35,7 +35,6 @@ msgid "Create User"
 msgstr "Benutzer anlegen"
 
 #: tronbyt_server/templates/base.html:62
-#, fuzzy
 msgid "Log Out"
 msgstr "Abmelden"
 
@@ -66,6 +65,7 @@ msgstr ""
 #: tronbyt_server/templates/auth/edit.html:28
 #: tronbyt_server/templates/manager/configapp.html:9
 #: tronbyt_server/templates/manager/create.html:19
+#: tronbyt_server/templates/manager/update.html:63
 #: tronbyt_server/templates/manager/updateapp.html:40
 msgid "Save"
 msgstr "Speichern"
@@ -154,6 +154,7 @@ msgstr "Anzeigedauer (Sekunden)"
 
 #: tronbyt_server/templates/manager/addapp.html:79
 #: tronbyt_server/templates/manager/create.html:17
+#: tronbyt_server/templates/manager/update.html:59
 msgid "Notes"
 msgstr "Notizen"
 
@@ -170,6 +171,7 @@ msgstr "Neuer Tronbyt"
 #: tronbyt_server/templates/manager/adminindex.html:27
 #: tronbyt_server/templates/manager/index.html:143
 #: tronbyt_server/templates/manager/index.html:202
+#: tronbyt_server/templates/manager/update.html:3
 #: tronbyt_server/templates/manager/updateapp.html:3
 msgid "Edit"
 msgstr "Bearbeiten"
@@ -245,6 +247,7 @@ msgid "New Tronbyt Device"
 msgstr "Neues Tronbyt-Gerät"
 
 #: tronbyt_server/templates/manager/create.html:6
+#: tronbyt_server/templates/manager/update.html:8
 msgid "Name"
 msgstr "Name"
 
@@ -254,6 +257,7 @@ msgstr "Beschreibender Name für dieses Tronbyt-Gerät"
 
 #: tronbyt_server/templates/manager/create.html:8
 #: tronbyt_server/templates/manager/firmware_form.html:8
+#: tronbyt_server/templates/manager/update.html:11
 msgid "Image URL"
 msgstr "Bild-URL"
 
@@ -263,6 +267,7 @@ msgstr "Leer lassen, es sei denn, Sie sind ein fortgeschrittener Benutzer."
 
 #: tronbyt_server/templates/manager/create.html:10
 #: tronbyt_server/templates/manager/index.html:127
+#: tronbyt_server/templates/manager/update.html:22
 msgid "Brightness"
 msgstr "Helligkeit"
 
@@ -340,6 +345,7 @@ msgid "Upload .star file"
 msgstr ".star-Datei hochladen"
 
 #: tronbyt_server/templates/manager/index.html:133
+#: tronbyt_server/templates/manager/update.html:17
 msgid "App Cycle Time (Seconds)"
 msgstr "App-Zykluszeit (Sekunden)"
 
@@ -369,10 +375,43 @@ msgid "Delete App ?"
 msgstr "App löschen?"
 
 #: tronbyt_server/templates/manager/index.html:206
+#: tronbyt_server/templates/manager/update.html:67
 #: tronbyt_server/templates/manager/updateapp.html:44
 #: tronbyt_server/templates/manager/uploadapp.html:14
 msgid "Delete"
 msgstr "Löschen"
+
+#: tronbyt_server/templates/manager/update.html:11
+msgid "clear to reset to default"
+msgstr "löschen, um auf Standard zurückzusetzen"
+
+#: tronbyt_server/templates/manager/update.html:27
+msgid "Timezone (UTC Offset)"
+msgstr "Zeitzone (UTC-Offset)"
+
+#: tronbyt_server/templates/manager/update.html:29
+msgid "Server Timezone"
+msgstr "Server-Zeitzone"
+
+#: tronbyt_server/templates/manager/update.html:37
+msgid "Night Brightness"
+msgstr "Nacht-Helligkeit"
+
+#: tronbyt_server/templates/manager/update.html:42
+msgid "Night Start Hour (24hr) (-1 for disabled)"
+msgstr "Nacht-Startstunde (24h) (-1 für deaktiviert)"
+
+#: tronbyt_server/templates/manager/update.html:47
+msgid "Night Mode App:"
+msgstr "Nachtmodus-App:"
+
+#: tronbyt_server/templates/manager/update.html:61
+msgid "API Key"
+msgstr "API-SCHLÜSSEL:"
+
+#: tronbyt_server/templates/manager/update.html:67
+msgid "Delete device and ALL apps ?"
+msgstr "Gerät und alle Apps löschen?"
 
 #: tronbyt_server/templates/manager/updateapp.html:9
 msgid "Enabled: "
