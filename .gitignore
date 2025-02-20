@@ -17,3 +17,7 @@ users/*.idx
 /system-apps
 users/usersdb.sqlite
 junit
+
+# Translations
+*.mo
+messages.pot

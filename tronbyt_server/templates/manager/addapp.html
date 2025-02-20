@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}Add App{% endblock %}</h1>
+<h1>{% block title %}{{ _('Add App') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <script>
@@ -22,12 +22,12 @@ function searchApps(inputId, gridId) {
 }
 </script>
 <form method="post" id="main_form">
-  <label for="name">App Selection</label>
+  <label for="name">{{ _('App Selection') }}</label>
 
   {% if custom_apps_list %}
   <div class="app-group">
-    <h3>Custom Apps</h3>
-    <input type="search" id="custom_search" placeholder="Search apps" onkeyup="searchApps('custom_search', 'custom_app_grid')" />
+    <h3>{{ _('Custom Apps') }}</h3>
+    <input type="search" id="custom_search" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('custom_search', 'custom_app_grid')" />
     <div id="custom_app_grid" class="app-grid">
       {% for app in custom_apps_list %}
       <div class="app-item" data-value="{{app['name']}}">
@@ -36,7 +36,7 @@ function searchApps(inputId, gridId) {
         </div>
         <p>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
-        <p>From {{ app['author'] }}</p>
+        <p>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
       </div>
       {% endfor %}
@@ -46,8 +46,8 @@ function searchApps(inputId, gridId) {
   {% endif %}
 
   <div class="app-group">
-    <h3>System Apps</h3>
-    <input type="search" id="system_search" placeholder="Search apps" onkeyup="searchApps('system_search', 'system_app_grid')" />
+    <h3>{{ _('System Apps') }}</h3>
+    <input type="search" id="system_search" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('system_search', 'system_app_grid')" />
     <div id="system_app_grid" class="app-grid">
       {% for app in apps_list %}
       <div class="app-item" data-value="{{app['name']}}">
@@ -62,7 +62,7 @@ function searchApps(inputId, gridId) {
         {% endif %}
         <p>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
-        <p>From {{ app['author'] }}</p>
+        <p>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
       </div>
       {% endfor %}
@@ -71,15 +71,15 @@ function searchApps(inputId, gridId) {
 
   <input type="hidden" name="name" id="selected_app">
   <br>
-  <label for="uinterval">Render Interval (minutes)</label>
+  <label for="uinterval">{{ _('Render Interval (minutes)') }}</label>
   <input name="uinterval" type="number" id="uinterval" value={{ request.form['uinterval'] or 10}} required>
-  <label for="display_time">Display Time (seconds)</label>
+  <label for="display_time">{{ _('Display Time (seconds)') }}</label>
   <input name="display_time" type="number" id="display_time" value={{ request.form['display_time'] or 0}} required>
 
-  <label for="notes">Notes</label>
+  <label for="notes">{{ _('Notes') }}</label>
   <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
 
-  <input type="submit" value="Configure" class="w3-button w3-green" onclick="move()"></input>
+  <input type="submit" value="{{ _('Configure') }}" class="w3-button w3-green" onclick="move()"></input>
   <div class="w3-light-grey">
     <div id="myBar" class="w3-container w3-green" style="height:24px;width:1%;visibility: hidden"></div>
   </div>

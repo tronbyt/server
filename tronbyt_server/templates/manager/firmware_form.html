@@ -1,21 +1,20 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}Generate Firmware for {{ device['name'] }}"{% endblock %}</h1>
+<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }}"{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <form method="post">
 <input type="hidden" name="id" id="id" value="device['id']">
-<span><label for="img_url">Image URL</label></span>
+<span><label for="img_url">{{ _('Image URL') }}</label></span>
 {% if not device['img_url'].startswith('http') %}
 <input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
-    {% else %}
+{% else %}
 <input name="img_url" id="img_url" value="{{ device['img_url'] }}"></p>
 {% endif %}
 
-
-<label for="wifi_ap">WiFi Network Name (AP)</label>
+<label for="wifi_ap">{{ _('WiFi Network Name (AP)') }}</label>
 <input name="wifi_ap" id="wifi_ap" required>
-<label for="wifi_password">WiFi Password</label>
+<label for="wifi_password">{{ _('WiFi Password') }}</label>
 <input name="wifi_password" id="wifi_password" required>
 <style>
     .left-align {
@@ -26,10 +25,10 @@
 
 <body>
     <div class="left-align">
-        <label for="gen2">Gen2 ?</label>
+        <label for="gen2">{{ _('Gen2 ?') }}</label>
         <input type="checkbox" name="gen2" id="gen2" {% if request.form.get('gen2') %} checked {% endif %}>
     </div>
-<input type="submit" value="Generate Firmware File">
+<input type="submit" value="{{ _('Generate Firmware File') }}">
 </form>
 <hr>
 
