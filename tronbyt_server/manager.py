@@ -784,7 +784,7 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
         response = send_file(
-            "defaults/default.webp", mimetype="image/webp"
+            "static/images/default.webp", mimetype="image/webp"
         )  # file to send is always prefixed by tronbyt_server
         response.headers["Tronbyt-Brightness"] = 8
         return response
