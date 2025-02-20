@@ -5,7 +5,7 @@
 {% endblock %}
 {% block content %}
 {% if g.user %}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">New Tronbyt</a>
+<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a>
 <hr>
 {% endif %}
 
@@ -24,17 +24,17 @@
               <tr>
                 <td>
                   <a class="w3-button w3-teal w3-round" style="width: 100px;"
-                    href="{{ url_for('manager.update', device_id=device['id']) }}">Edit</a> <a
+                    href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a> <a
                     class="w3-button w3-teal w3-round" style="width: 100px;"
-                    href="{{ url_for('manager.addapp', device_id=device['id']) }}">Add App</a>
+                    href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
                 </td>
               </tr>
             </table>
           </header>
-          <p class="body">API ID: {{ device['img_url'] }}</p>
+          <p class="body">{{ _('API ID:') }} {{ device['img_url'] }}</p>
           <!-- <p class="body">API KEY: {{ device['api_key'] }}</p> -->
           {% if device['notes'] != '' %}
-          <p class="body">Notes: {{ device['notes'] }}</p>
+          <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
           {% endif %}
           {% if 'apps' in device %}
           {% for app in device['apps'].values() %}
@@ -46,21 +46,21 @@
                     <li>
                       <div class="post">
                         <header>
-                          <h1>{{ app['iname'] }} &nbsp(installation id) </h1>
-                          <h1>{% if app['enabled'] == "true" %}<enabled>&nbsp -- Enabled --</enabled>{% else %}
-                            <disabled>&nbsp -- Disabled --{% endif %}</disabled>
+                          <h1>{{ app['iname'] }} &nbsp({{ _('installation id') }}) </h1>
+                          <h1>{% if app['enabled'] == "true" %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled>{% else %}
+                            <disabled>&nbsp -- {{ _('Disabled') }} --{% endif %}</disabled>
                           </h1>
                         </header>
-                        <p class="body">App: {{ app['name'] }}</p>
-                        <p class="body">Render Interval (minutes): {{ app['uinterval'] }}</p>
-                        <p class="body">Display Time (secs): {{ app['display_time'] }}</p>
+                        <p class="body">{{ _('App:') }} {{ app['name'] }}</p>
+                        <p class="body">{{ _('Render Interval (minutes):') }} {{ app['uinterval'] }}</p>
+                        <p class="body">{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
                         {% if app['notes'] != '' %}
-                        <p class="body">Notes: {{ app['notes'] }}</p>
+                        <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
                         {% endif %}
                 </td>
-                <td><br><div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="Preview" ></div>
+                <td><br><div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="{{ _('Preview') }}" ></div>
                   <br>
-                  Last Rendered: {{ app['last_render']|timeago }}
+                  {{ _('Last Rendered:') }} {{ app['last_render']|timeago }}
           </div>
           </li>
           </td>

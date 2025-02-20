@@ -1,4 +1,5 @@
 flask
+flask-babel
 gunicorn
 python-dotenv
 esptool
