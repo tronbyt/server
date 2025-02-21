@@ -3,9 +3,11 @@ import json
 import os
 import re
 import time
+from typing import Any, Dict
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     request,
 )
@@ -26,7 +28,7 @@ def get_api_key_from_headers(headers):
     return None
 
 
-@bp.route("/devices/<string:device_id>", methods=["GET"])
+@bp.route("/devices/<string:device_id>", methods=["GET", "PATCH"])
 def get_device(device_id):
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
@@ -36,17 +38,26 @@ def get_device(device_id):
     if not device or device["api_key"] != api_key:
         abort(404)
 
+    if request.method == "PATCH":
+        user = db.get_user_by_device_id(device_id)
+        data = request.get_json()
+        if "brightness" in data:
+            brightness = data["brightness"]
+            if brightness < 0 or brightness > 255:
+                abort(400, description="Brightness must be between 0 and 255")
+            device["brightness"] = brightness
+        user["devices"][device_id] = device
+        db.save_user(user)
     metadata = {
         "id": device["id"],
         "displayName": device["name"],
         "brightness": device["brightness"],
     }
-
     return json.dumps(metadata), 200
 
 
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
-def handle_push(device_id):
+def handle_push(device_id: str) -> Response:
     # Print out the whole request
     print("Headers:", request.headers)
     # print("JSON Data:", request.get_json())
@@ -63,7 +74,7 @@ def handle_push(device_id):
 
     # get parameters from JSON data
     try:
-        data = json.loads(request.get_data(as_text=True))
+        data: Dict[str, Any] = json.loads(request.get_data(as_text=True))
     except json.JSONDecodeError:
         abort(400, description="Invalid JSON data")
     # data = request.get_json()
@@ -115,7 +126,7 @@ def handle_push(device_id):
     "/devices/<string:device_id>/installations/<string:installation_id>",
     methods=["DELETE"],
 )
-def handle_delete(device_id, installation_id):
+def handle_delete(device_id: str, installation_id: str) -> Response:
     # get api_key from Authorization header
     api_key = ""
     auth_header = request.headers.get("Authorization")

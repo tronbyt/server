@@ -1,10 +1,12 @@
 import json
 import os
 import secrets
+import shutil
 import string
 import subprocess
 import time
 import uuid
+from typing import Any, Dict, Optional
 
 import requests
 from flask import (
@@ -31,9 +33,8 @@ bp = Blueprint("manager", __name__)
 
 @bp.route("/")
 @login_required
-def index():
+def index() -> str:
     # os.system("pkill -f serve") # kill any pixlet serve processes
-
     devices = dict()
 
     if not g.user:
@@ -48,9 +49,9 @@ def index():
 
 
 # function to handle uploading a an app
-@bp.route("/uploadapp", methods=("GET", "POST"))
+@bp.route("/uploadapp", methods=["GET", "POST"])
 @login_required
-def uploadapp():
+def uploadapp() -> str:
     user_apps_path = f"{db.get_users_dir()}/{g.user['username']}/apps"
     if request.method == "POST":
         # check if the post request has the file part
@@ -74,29 +75,24 @@ def uploadapp():
                 return redirect(url_for("manager.uploadapp"))
 
     # check for existance of apps path
-    if not os.path.isdir(user_apps_path):
-        os.mkdir(user_apps_path)
+    os.makedirs(user_apps_path, exist_ok=True)
 
-    # get the list of star file in the user_apps_path
-    star_files = list()
-    for file in os.listdir(user_apps_path):
-        if file.endswith(".star"):
-            star_files.append(file)
+    star_files = [file for file in os.listdir(user_apps_path) if file.endswith(".star")]
 
     return render_template("manager/uploadapp.html", files=star_files)
 
 
 # function to delete an uploaded star file
-@bp.route("/deleteupload/<string:filename>", methods=("POST", "GET"))
+@bp.route("/deleteupload/<string:filename>", methods=["POST", "GET"])
 @login_required
-def deleteupload(filename):
+def deleteupload(filename: str) -> Response:
     db.delete_user_upload(g.user, filename)
     return redirect(url_for("manager.uploadapp"))
 
 
 @bp.route("/adminindex")
 @login_required
-def adminindex():
+def adminindex() -> str:
     if g.user["username"] != "admin":
         abort(404)
     userlist = list()
@@ -113,7 +109,7 @@ def adminindex():
 
 @bp.route("/admin/<string:username>/deleteuser", methods=["POST"])
 @login_required
-def deleteuser(username):
+def deleteuser(username: str) -> Response:
     if g.user["username"] != "admin":
         abort(404)
     if username != "admin":
@@ -121,12 +117,12 @@ def deleteuser(username):
     return redirect(url_for("manager.adminindex"))
 
 
-@bp.route("/create", methods=("GET", "POST"))
+@bp.route("/create", methods=["GET", "POST"])
 @login_required
-def create():
+def create() -> str:
     if request.method == "POST":
         name = request.form.get("name")
-        img_url = request.form.get("img_url")  # using this for remote_url now
+        img_url = request.form.get("img_url")
         api_key = request.form.get("api_key")
         notes = request.form.get("notes")
         brightness = request.form.get("brightness")
@@ -151,10 +147,7 @@ def create():
                 )
             device["api_key"] = api_key
             device["notes"] = notes
-            if brightness:
-                device["brightness"] = int(brightness)
-            else:
-                device["brightness"] = 30
+            device["brightness"] = int(brightness) if brightness else 30
             user = g.user
             if "devices" not in user:
                 user["devices"] = {}
@@ -165,14 +158,13 @@ def create():
             ):
                 os.mkdir(db.get_device_webp_dir(device["id"]))
 
-            # print("got to redirect")
             return redirect(url_for("manager.index"))
     return render_template("manager/create.html")
 
 
-@bp.route("/<string:device_id>/update_brightness", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/update_brightness", methods=["GET", "POST"])
 @login_required
-def update_brightness(device_id):
+def update_brightness(device_id: str) -> Response:
     if device_id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
@@ -183,27 +175,22 @@ def update_brightness(device_id):
         return "", 200
 
 
-# duplicate this method and make for default_interval
-
-
-@bp.route("/<string:device_id>/update_interval", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/update_interval", methods=["GET", "POST"])
 @login_required
-def update_interval(device_id):
+def update_interval(device_id: str) -> Response:
     if device_id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
         interval = int(request.form.get("interval"))
-
         g.user["devices"][device_id]["default_interval"] = interval
         db.save_user(g.user)
         return "", 200
 
 
-@bp.route("/<string:device_id>/update", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/update", methods=["GET", "POST"])
 @login_required
-def update(device_id):
+def update(device_id: str) -> str:
     id = device_id
-    # first ensure this device id exists in the current users config
     if id not in g.user["devices"]:
         abort(404)
     if request.method == "POST":
@@ -225,13 +212,11 @@ def update(device_id):
             device["night_brightness"] = int(request.form.get("night_brightness"))
             device["night_start"] = int(request.form.get("night_start"))
             device["timezone"] = int(request.form.get("timezone"))
-            if len(img_url) < 1:
-                print("no img_url in device")
-                device["img_url"] = (
-                    f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
-                )
-            else:
-                device["img_url"] = db.sanitize_url(img_url)
+            device["img_url"] = (
+                db.sanitize_url(img_url)
+                if len(img_url) > 0
+                else f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
+            )
             device["night_mode_app"] = request.form.get("night_mode_app")
             device["api_key"] = api_key
             device["notes"] = notes
@@ -252,7 +237,7 @@ def update(device_id):
 
 @bp.route("/<string:device_id>/delete", methods=["POST"])
 @login_required
-def delete(device_id):
+def delete(device_id: str) -> Response:
     device = g.user["devices"].get(device_id, None)
     if device:
         g.user["devices"].pop(device_id)
@@ -263,8 +248,7 @@ def delete(device_id):
 
 @bp.route("/<string:device_id>/<string:iname>/delete", methods=["POST", "GET"])
 @login_required
-def deleteapp(device_id, iname):
-    # delete the config file
+def deleteapp(device_id: str, iname: str) -> Response:
     users_dir = db.get_users_dir()
     config_path = "{}/{}/configs/{}-{}.json".format(
         users_dir,
@@ -283,7 +267,7 @@ def deleteapp(device_id, iname):
     if os.path.isfile(tmp_config_path):
         os.remove(tmp_config_path)
 
-    # use pixlet to delete installation of app if api_key exists (tdevice_idbyt server operation) and enabled flag is set to true
+    # use pixlet to delete installation of app if api_key exists (device_tidbyt server operation) and enabled flag is set to true
     if (
         "use_tidbyt" in g.user["devices"][device_id]
         and "api_key" in g.user["devices"][device_id]
@@ -322,9 +306,9 @@ def deleteapp(device_id, iname):
     return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:device_id>/addapp", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/addapp", methods=["GET", "POST"])
 @login_required
-def addapp(device_id):
+def addapp(device_id: str) -> Response:
     if request.method == "GET":
         # build the list of apps.
         custom_apps_list = db.get_apps_list(g.user["username"])
@@ -389,9 +373,9 @@ def addapp(device_id):
         abort(404)
 
 
-@bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=(["GET"]))
+@bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=["GET"])
 @login_required
-def toggle_enabled(device_id, iname):
+def toggle_enabled(device_id: str, iname: str) -> Response:
     user = g.user
     app = user["devices"][device_id]["apps"][iname]
 
@@ -424,9 +408,9 @@ def toggle_enabled(device_id, iname):
     return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:device_id>/<string:iname>/updateapp", methods=("GET", "POST"))
+@bp.route("/<string:device_id>/<string:iname>/updateapp", methods=["GET", "POST"])
 @login_required
-def updateapp(device_id, iname):
+def updateapp(device_id: str, iname: str) -> Response:
     if request.method == "POST":
         name = request.form.get("name")
         uinterval = request.form.get("uinterval")
@@ -484,7 +468,7 @@ def updateapp(device_id, iname):
     return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
-def render_app(app_path, config_path, webp_path):
+def render_app(app_path: str, config_path: str, webp_path: str) -> bool:
     config_data = ""
     if os.path.exists(config_path):
         with open(config_path, "r") as config_file:
@@ -508,7 +492,7 @@ def render_app(app_path, config_path, webp_path):
     return True
 
 
-def possibly_render(user, device_id, app):
+def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -> bool:
     result = False
     if "pushed" in app:
         print("Pushed App -- NO RENDER")
@@ -544,9 +528,9 @@ def possibly_render(user, device_id, app):
     return result
 
 
-@bp.route("/<string:device_id>/firmware", methods=("POST", "GET"))
+@bp.route("/<string:device_id>/firmware", methods=["POST", "GET"])
 @login_required
-def generate_firmware(device_id):
+def generate_firmware(device_id: str) -> Response:
     # first ensure this device id exists in the current users config
     if device_id not in g.user["devices"]:
         abort(404)
@@ -594,10 +578,10 @@ def generate_firmware(device_id):
 
 @bp.route(
     "/<string:device_id>/<string:iname>/<int:delete_on_cancel>/configapp",
-    methods=("GET", "POST"),
+    methods=["GET", "POST"],
 )
 @login_required
-def configapp(device_id, iname, delete_on_cancel):
+def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
     users_dir = db.get_users_dir()
     # used when rendering configapp
     domain_host = current_app.config["SERVER_HOSTNAME"]
@@ -753,14 +737,10 @@ def configapp(device_id, iname, delete_on_cancel):
             return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:device_id>/brightness", methods=("GET",))
-def get_brightness(
-    device_id,
-):
+@bp.route("/<string:device_id>/brightness", methods=["GET"])
+def get_brightness(device_id: str) -> Response:
     user = db.get_user_by_device_id(device_id)
     device = list(user["devices"].values())[0]
-    # brightness_value = db.brightness_int_from_string(device.get("brightness", "medium").lower())  # Assume this is how you get the brightness value from your device
-    # Assume this is how you get the brightness value from your device
     brightness_value = device.get("brightness", 30)
     print(f"brightness value {brightness_value}")
     return Response(str(brightness_value), mimetype="text/plain")
@@ -770,7 +750,12 @@ MAX_RECURSION_DEPTH = 10
 
 
 @bp.route("/<string:device_id>/next")
-def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
+def next_app(
+    device_id: str,
+    user: Optional[Dict[str, Any]] = None,
+    last_app_index: Optional[int] = None,
+    recursion_depth: int = 0,
+) -> Response:
     user = db.get_user_by_device_id(device_id) or abort(404)
     device = user["devices"][device_id] or abort(404)
 
@@ -792,16 +777,13 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
 
     if recursion_depth > MAX_RECURSION_DEPTH:
         print("Maximum recursion depth exceeded, sending default webp")
-        response = send_file(
-            "static/images/default.webp", mimetype="image/webp"
-        )  # file to send is always prefixed by tronbyt_server
+        response = send_file("static/images/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
         return response
-        # return None  # or handle the situation as needed
-    # get user owner of this devicde id
+
     if not user:
         user = db.get_user_by_device_id(device_id)
-    if not last_app_index:
+    if last_app_index is None:
         last_app_index = db.get_last_app_index(device_id)
 
     # Pick device by passed in device_id
@@ -824,7 +806,6 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
             next_app_dict = apps_list[0]  # go to the beginning
             last_app_index = 0
 
-    # print("next app: "+ next_app_dict['name'])
     app = next_app_dict
 
     if app["enabled"] == "false" or not db.get_is_app_schedule_active(app):
@@ -848,15 +829,8 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
             )
         print(webp_path)
 
-        # check if the file exists
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
-            # if filesize is greater than zero
-            # return send_file(webp_path, mimetype="image/webp")
             response = send_file(webp_path, mimetype="image/webp")
-            # Add custom header
-
-            # response.headers["Tronbyt-Brightness"] = db.brightness_int_from_string(app.get('brightness', device.get("brightness","medium")))
-            # make sure we are sending an integer not a string
             b = db.get_device_brightness(device)
             print(f"sending brightness {b} -- ", end="")
             response.headers["Tronbyt-Brightness"] = b
@@ -877,7 +851,7 @@ def next_app(device_id, user=None, last_app_index=None, recursion_depth=0):
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")
-def appwebp(device_id, iname):
+def appwebp(device_id: str, iname: str) -> Response:
     try:
         if g.user:
             app = g.user["devices"][device_id]["apps"][iname]
@@ -895,9 +869,7 @@ def appwebp(device_id, iname):
                 db.get_device_webp_dir(device_id), app_basename
             )
         print(webp_path)
-        # check if the file exists
         if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
-            # if filesize is greater than zero
             return send_file(webp_path, mimetype="image/webp")
         else:
             print("file no exist or 0 size")
@@ -909,7 +881,7 @@ def appwebp(device_id, iname):
 
 @bp.route("/<string:device_id>/download_firmware")
 @login_required
-def download_firmware(device_id):
+def download_firmware(device_id: str) -> Response:
     try:
         if (
             g.user
@@ -920,10 +892,8 @@ def download_firmware(device_id):
         else:
             abort(404)
 
-        # check if the file exists
         print(f"checking for {file_path}")
         if db.file_exists(file_path) and os.path.getsize(file_path) > 0:
-            # if filesize is greater than zero
             return send_file(file_path, mimetype="application/octet-stream")
         else:
             print("file no exist or 0 size")
@@ -933,9 +903,9 @@ def download_firmware(device_id):
         abort(404)
 
 
-@bp.route("/set_user_repo", methods=("GET", "POST"))
+@bp.route("/set_user_repo", methods=["GET", "POST"])
 @login_required
-def set_user_repo():
+def set_user_repo() -> Response:
     if request.method == "POST":
         if "app_repo_url" in request.form:
             repo_url = request.form.get("app_repo_url")
@@ -955,9 +925,7 @@ def set_user_repo():
 
                     print(user_apps_path)
                     if db.file_exists(user_apps_path):
-                        # delete the folder and re-clone.
-                        subprocess.run(["rm", "-rf", user_apps_path])
-                    # pull the repo and save to local filesystem. use blah:blah as username password so requests for unknown or private repos fail imeediately
+                        shutil.rmtree(user_apps_path)
                     result = subprocess.run(
                         [
                             "git",
@@ -984,9 +952,9 @@ def set_user_repo():
     abort(404)
 
 
-@bp.route("/set_system_repo", methods=("GET", "POST"))
+@bp.route("/set_system_repo", methods=["GET", "POST"])
 @login_required
-def set_system_repo():
+def set_system_repo() -> Response:
     if request.method == "POST":
         if g.user["username"] != "admin":
             abort(404)
@@ -1010,7 +978,7 @@ def set_system_repo():
                     if db.file_exists(system_apps_path):
                         # delete the folder and re-clone.
                         print(f"deleting {system_apps_path}")
-                        subprocess.run(["rm", "-rf", system_apps_path])
+                        shutil.rmtree(system_apps_path)
                     # pull the repo and save to local filesystem.
                     # result = os.system("git clone https://blah:blah@github.com/{} {}".format(repo_url,system_apps_path))
                     result = subprocess.run(
@@ -1050,7 +1018,7 @@ def set_system_repo():
 @bp.route("/pixlet", defaults={"path": ""}, methods=["GET", "POST"])
 @bp.route("/pixlet/<path:path>", methods=["GET", "POST"])
 @login_required
-def pixlet_proxy(path):
+def pixlet_proxy(path: str) -> Response:
     user_render_port = db.get_user_render_port(g.user["username"])
     pixlet_url = f"http://localhost:{user_render_port}/pixlet/{path}?{request.query_string.decode()}"
     try:
@@ -1082,7 +1050,7 @@ def pixlet_proxy(path):
 
 @bp.route("/pixlet/api/v1/ws/<path:url>")
 @login_required
-def proxy_ws(url):
+def proxy_ws(url: str) -> Response:
     user_render_port = db.get_user_render_port(g.user["username"])
     pixlet_url = f"ws://localhost:{user_render_port}/pixlet/{url}"
     ws = create_connection(pixlet_url)

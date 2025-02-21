@@ -3,6 +3,7 @@ import datetime as dt
 import json
 import os
 import time
+from typing import Any, Dict, Optional
 
 from babel.dates import format_timedelta
 from dotenv import load_dotenv
@@ -15,16 +16,16 @@ babel = Babel()
 
 
 def render_app(
-    name,
-    config,
-    width,
-    height,
-    magnify,
-    maxDuration,
-    timeout,
-    render_gif,
-    silence_output,
-):
+    name: str,
+    config: Dict[str, Any],
+    width: int,
+    height: int,
+    magnify: int,
+    maxDuration: int,
+    timeout: int,
+    render_gif: bool,
+    silence_output: bool,
+) -> bytes:
     ret = pixlet_render_app(
         name.encode("utf-8"),
         json.dumps(config).encode("utf-8"),
@@ -46,11 +47,11 @@ def render_app(
     return None
 
 
-def get_locale():
+def get_locale() -> Optional[str]:
     return request.accept_languages.best_match(current_app.config["LANGUAGES"])
 
 
-def create_app(test_config=None):
+def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     load_dotenv()
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
@@ -142,7 +143,7 @@ def create_app(test_config=None):
     app.add_url_rule("/", endpoint="index")
 
     @app.template_filter("timeago")
-    def timeago(seconds):
+    def timeago(seconds: int) -> str:
         if seconds == 0:
             return _("Never")
         return format_timedelta(
