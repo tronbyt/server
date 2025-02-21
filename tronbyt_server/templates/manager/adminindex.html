@@ -14,7 +14,7 @@
   <header>
     <h1>{{ user['username'] }}</h1>
     {% if user['username'] != 'admin' %}
-    <form method="POST" action="{{ url_for('manager.deleteuser', username=user['username']) }}" onsubmit="return confirm('{{ _('Delete User?') }}');"></form>
+    <form method="POST" action="{{ url_for('manager.deleteuser', username=user['username']) }}" onsubmit="return confirm('{{ _('Delete User?') }}');">
       <input class="danger" type="submit" value="{{ _('Delete') }}">
     </form>
     {% endif %}
