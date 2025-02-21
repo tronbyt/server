@@ -16,6 +16,35 @@ import tronbyt_server.db as db
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
 
+def get_api_key_from_headers(headers):
+    auth_header = headers.get("Authorization")
+    if auth_header:
+        if auth_header.startswith("Bearer "):
+            return auth_header.split(" ")[1]
+        else:
+            return auth_header
+    return None
+
+
+@bp.route("/devices/<string:device_id>", methods=["GET"])
+def get_device(device_id):
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(400, description="Missing or invalid Authorization header")
+    print(f"api_key : {api_key}")
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
+        abort(404)
+
+    metadata = {
+        "id": device["id"],
+        "displayName": device["name"],
+        "brightness": device["brightness"],
+    }
+
+    return json.dumps(metadata), 200
+
+
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
 def handle_push(device_id):
     # Print out the whole request
@@ -24,14 +53,8 @@ def handle_push(device_id):
     print("Body:", request.get_data(as_text=True))
 
     # get api_key from Authorization header
-    api_key = ""
-    auth_header = request.headers.get("Authorization")
-    if auth_header:
-        if auth_header.startswith("Bearer "):
-            api_key = auth_header.split(" ")[1]
-        else:
-            api_key = auth_header
-    else:
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
         abort(400, description="Missing or invalid Authorization header")
     print(f"api_key : {api_key}")
     device = db.get_device_by_id(device_id)

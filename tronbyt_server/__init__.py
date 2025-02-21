@@ -42,7 +42,8 @@ def render_app(
         ).contents
         buf = bytes(data)
         free_bytes(ret.data)
-    return buf
+        return buf
+    return None
 
 
 def get_locale():
