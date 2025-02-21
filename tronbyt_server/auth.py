@@ -1,5 +1,6 @@
 import functools
 import time
+from typing import Any, Callable, Dict, Optional
 
 from flask import (
     Blueprint,
@@ -22,7 +23,7 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 DEBUG = True
 
 
-def dprint(*args, **kwargs):
+def dprint(*args: Any, **kwargs: Any) -> None:
     if DEBUG:
         print(*args, **kwargs)
     # else:
@@ -30,14 +31,14 @@ def dprint(*args, **kwargs):
 
 
 @bp.route("/register", methods=("GET", "POST"))
-def register():
+def register() -> Any:
     if not current_app.config["TESTING"]:
         time.sleep(2)
     # # only allow admin to register new users
     # if session['username'] != "admin":
     #     return redirect(url_for('manager.index'))
     if request.method == "POST":
-        error = None
+        error: Optional[str] = None
 
         username = db.sanitize(secure_filename(request.form["username"]))
         if username != request.form["username"]:
@@ -51,7 +52,7 @@ def register():
         if error is not None and db.get_user(username):
             error = "User is already registered."
         if error is None:
-            user = dict()
+            user: Dict[str, str] = {}
             user["username"] = username
             user["password"] = password
             email = "none"
@@ -71,12 +72,12 @@ def register():
 
 
 @bp.route("/login", methods=("GET", "POST"))
-def login():
+def login() -> Any:
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
         dprint(f"username : {username} and hp : {password}")
-        error = None
+        error: Optional[str] = None
         user = db.auth_user(username, password)
         if user is False or user is None:
             error = "Incorrect username/password."
@@ -94,12 +95,12 @@ def login():
 
 # edit user info, namely password
 @bp.route("/edit", methods=("GET", "POST"))
-def edit():
+def edit() -> Any:
     if request.method == "POST":
         username = session["username"]
         old_pass = request.form["old_password"]
         password = generate_password_hash(request.form["password"])
-        error = None
+        error: Optional[str] = None
         user = db.auth_user(username, old_pass)
         if user is False:
             error = "Bad old password."
@@ -114,7 +115,7 @@ def edit():
 
 
 @bp.before_app_request
-def load_logged_in_user():
+def load_logged_in_user() -> None:
     username = session.get("username")
     if username is None:
         g.user = None
@@ -123,15 +124,15 @@ def load_logged_in_user():
 
 
 @bp.route("/logout")
-def logout():
+def logout() -> Any:
     session.clear()
     flash("Logged Out")
     return redirect(url_for("auth.login"))
 
 
-def login_required(view):
+def login_required(view: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(view)
-    def wrapped_view(**kwargs):
+    def wrapped_view(**kwargs: Any) -> Any:
         if g.user is None:
             return redirect(url_for("auth.login"))
         return view(**kwargs)

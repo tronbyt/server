@@ -4,6 +4,7 @@ import shutil
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
 
 import yaml
@@ -12,7 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 
-def init_db():
+def init_db() -> None:
     print(f"using {get_db_file()}")
     os.makedirs("users/admin/configs", exist_ok=True)
     with sqlite3.connect(get_db_file()) as conn:
@@ -81,11 +82,11 @@ def init_db():
         conn.commit()
 
 
-def get_db_file():
+def get_db_file() -> str:
     return current_app.config["DB_FILE"]
 
 
-def delete_device_dirs(device_id):
+def delete_device_dirs(device_id: str) -> None:
     # Get the name of the current app
     app_name = current_app.name
 
@@ -102,7 +103,7 @@ def delete_device_dirs(device_id):
         print(f"Error deleting directory {dir_to_delete}: {str(e)}")
 
 
-def server_tz_offset():
+def server_tz_offset() -> int:
     output = subprocess.check_output(["date", "+%z"]).decode().strip()
     # Convert the offset to a timedelta
     sign = 1 if output[0] == "+" else -1
@@ -112,7 +113,7 @@ def server_tz_offset():
     return offset
 
 
-def get_last_app_index(device_id):
+def get_last_app_index(device_id: str) -> int:
     try:
         with open(f"users/{device_id}.idx", "r") as file:
             return int(file.read().strip())
@@ -120,7 +121,7 @@ def get_last_app_index(device_id):
         return 0
 
 
-def save_last_app_index(device_id, index):
+def save_last_app_index(device_id: str, index: int) -> None:
     try:
         with open(f"users/{device_id}.idx", "w") as file:
             file.write(str(index))
@@ -128,7 +129,7 @@ def save_last_app_index(device_id, index):
         print(f"Error saving index for device {device_id}: {e}")
 
 
-def get_night_mode_is_active(device):
+def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
     # configured, adjust current hour to set device timezone
     if "timezone" in device and device["timezone"] != 100:
         current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
@@ -149,30 +150,30 @@ def get_night_mode_is_active(device):
     return False
 
 
-def get_device_brightness(device):
+def get_device_brightness(device: Dict[str, Any]) -> int:
     if "night_brightness" in device and get_night_mode_is_active(device):
         return int(device["night_brightness"] * 2)
     else:  # Wrapped case (e.g., 22 to 6 - overnight)
         return int(device.get("brightness", 30) * 2)
 
 
-def brightness_int_from_string(brightness_string):
+def brightness_int_from_string(brightness_string: str) -> int:
     brightness_mapping = {"dim": 10, "low": 20, "medium": 40, "high": 80}
     # Get the numerical value from the dictionary, default to 50 if not found
     brightness_value = brightness_mapping[brightness_string]
     return brightness_value
 
 
-def get_users_dir():
+def get_users_dir() -> str:
     # print(f"users dir : {current_app.config['USERS_DIR']}")
     return current_app.config["USERS_DIR"]
 
 
-def file_exists(file_path):
+def file_exists(file_path: str) -> bool:
     return os.path.exists(file_path)
 
 
-def get_user(username):
+def get_user(username: str) -> Optional[Dict[str, Any]]:
     try:
         with sqlite3.connect(get_db_file()) as conn:
             cursor = conn.cursor()
@@ -194,7 +195,7 @@ def get_user(username):
         return None
 
 
-def auth_user(username, password):
+def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
     with sqlite3.connect(get_db_file()) as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -211,7 +212,7 @@ def auth_user(username, password):
             return False
 
 
-def save_user(user, new_user=False):
+def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
     print(f"saving user {user['username']}")
     if "username" in user:
         if current_app.testing:
@@ -255,7 +256,7 @@ def save_user(user, new_user=False):
             return False
 
 
-def delete_user(username):
+def delete_user(username: str) -> bool:
     try:
         with sqlite3.connect(get_db_file()) as conn:
             cursor = conn.cursor()
@@ -271,14 +272,14 @@ def delete_user(username):
         return False
 
 
-def create_user_dir(user):
+def create_user_dir(user: str) -> None:
     # create the user directory if it doesn't exist
     user_dir = os.path.join(get_users_dir(), user)
     os.makedirs(os.path.join(user_dir, "configs"), exist_ok=True)
     os.makedirs(os.path.join(user_dir, "apps"), exist_ok=True)
 
 
-def get_apps_list(user):
+def get_apps_list(user: str) -> List[Dict[str, Any]]:
     app_list = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
@@ -327,7 +328,7 @@ def get_apps_list(user):
         return []
 
 
-def get_app_details(user, name):
+def get_app_details(user: str, name: str) -> Dict[str, Any]:
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
     print(user, name)
@@ -345,18 +346,18 @@ def get_app_details(user, name):
     return {}
 
 
-def sanitize(str):
-    str = str.replace(" ", "_")
-    str = str.replace("-", "")
-    str = str.replace(".", "")
-    str = str.replace("/", "")
-    str = str.replace("\\", "")
-    str = str.replace("%", "")
-    str = str.replace("'", "")
-    return str
+def sanitize(string: str) -> str:
+    string = string.replace(" ", "_")
+    string = string.replace("-", "")
+    string = string.replace(".", "")
+    string = string.replace("/", "")
+    string = string.replace("\\", "")
+    string = string.replace("%", "")
+    string = string.replace("'", "")
+    return string
 
 
-def sanitize_url(url):
+def sanitize_url(url: str) -> str:
     # Decode any percent-encoded characters
     url = unquote(url)
     # Replace spaces with underscores
@@ -370,16 +371,16 @@ def sanitize_url(url):
 
 
 # basically just call gen_apps_array.py script
-def generate_apps_list():
+def generate_apps_list() -> None:
     os.system("python3 gen_app_array.py")  # safe
     print("generated apps list")
 
 
-def allowed_file(filename):
+def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ["star"]
 
 
-def save_user_app(file, path):
+def save_user_app(file: Any, path: str) -> bool:
     filename = sanitize(file.filename)
     filename = secure_filename(filename)
 
@@ -391,7 +392,7 @@ def save_user_app(file, path):
         return False
 
 
-def delete_user_upload(user, filename):
+def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
     path = "{}/{}/apps/".format(get_users_dir(), user["username"])
     try:
         filename = secure_filename(filename)
@@ -402,24 +403,19 @@ def delete_user_upload(user, filename):
         return False
 
 
-def get_all_users():
+def get_all_users() -> List[Dict[str, Any]]:
     users = list()
     with sqlite3.connect(get_db_file()) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT data FROM json_data")
 
         for row in cursor.fetchall():
-            # print(row[0])
             user = json.loads(row[0])
-            # print(f"got user {user['username']}")
             users.append(user)
-        # # for user in os.listdir(get_users_dir()):
-        # if (os.path.isdir(f"{get_users_dir()}/{user}")):
-        #     users.append(get_user(user))
     return users
 
 
-def get_user_render_port(username):
+def get_user_render_port(username: str) -> int:
     base_port = int(current_app.config.get("PIXLET_RENDER_PORT1")) or 5100
     users = get_all_users()
     for i in range(len(users)):
@@ -428,7 +424,7 @@ def get_user_render_port(username):
             return base_port + i
 
 
-def get_is_app_schedule_active(app):
+def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
     # Check if the app should be displayed based on start and end times and active days
     current_time = datetime.now().time()
     current_day = datetime.now().strftime("%A").lower()
@@ -464,21 +460,21 @@ def get_is_app_schedule_active(app):
     return schedule_active
 
 
-def get_device_by_name(user, name):
+def get_device_by_name(user: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
     for device_id, device in user.get("devices", {}).items():
         if device.get("name") == name:
             return device
     return None
 
 
-def get_device_webp_dir(device_id, create=True):
+def get_device_webp_dir(device_id: str, create: bool = True) -> str:
     path = f"{os.getcwd()}/tronbyt_server/webp/{device_id}"
     if not os.path.exists(path) and create:
         os.makedirs(path)
     return path
 
 
-def get_device_by_id(device_id):
+def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
     for user in get_all_users():
         for device in user.get("devices", {}).values():
             if device.get("id") == device_id:
@@ -486,13 +482,16 @@ def get_device_by_id(device_id):
     return None
 
 
-def get_user_by_device_id(device_id):
+def get_user_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
     for user in get_all_users():
         if "devices" in user and device_id in user.get("devices", {}).keys():
             return user
+    return None
 
 
-def generate_firmware(label, url, ap, pw, gen2, swap_colors):
+def generate_firmware(
+    label: str, url: str, ap: str, pw: str, gen2: bool, swap_colors: bool
+) -> Dict[str, Union[str, int]]:
     # Usage
     if gen2:
         file_path = "firmware/gen2.bin"
@@ -557,13 +556,15 @@ def generate_firmware(label, url, ap, pw, gen2, swap_colors):
         return {"error": "no bytes written"}
 
 
-def add_pushed_app(device_id, path):
+def add_pushed_app(device_id: str, path: str) -> None:
     # Get the base name of the file
     filename = os.path.basename(path)
     # Remove the extension
     installation_id, _ = os.path.splitext(filename)
     user = get_user_by_device_id(device_id)
-    if installation_id in user.get("devices").keys():
+    if user is None:
+        return
+    if installation_id in user.get("devices", {}).keys():
         # already in there
         return
     app = {

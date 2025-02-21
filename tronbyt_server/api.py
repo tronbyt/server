@@ -3,9 +3,11 @@ import json
 import os
 import re
 import time
+from typing import Any, Dict
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     request,
 )
@@ -46,7 +48,7 @@ def get_device(device_id):
 
 
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
-def handle_push(device_id):
+def handle_push(device_id: str) -> Response:
     # Print out the whole request
     print("Headers:", request.headers)
     # print("JSON Data:", request.get_json())
@@ -63,7 +65,7 @@ def handle_push(device_id):
 
     # get parameters from JSON data
     try:
-        data = json.loads(request.get_data(as_text=True))
+        data: Dict[str, Any] = json.loads(request.get_data(as_text=True))
     except json.JSONDecodeError:
         abort(400, description="Invalid JSON data")
     # data = request.get_json()
@@ -115,7 +117,7 @@ def handle_push(device_id):
     "/devices/<string:device_id>/installations/<string:installation_id>",
     methods=["DELETE"],
 )
-def handle_delete(device_id, installation_id):
+def handle_delete(device_id: str, installation_id: str) -> Response:
     # get api_key from Authorization header
     api_key = ""
     auth_header = request.headers.get("Authorization")
