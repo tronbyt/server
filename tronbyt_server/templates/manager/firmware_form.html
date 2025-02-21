@@ -21,12 +21,14 @@
         text-align: left;
     }
 </style>
-</head>
 
-<body>
     <div class="left-align">
         <label for="gen2">{{ _('Gen2 ?') }}</label>
         <input type="checkbox" name="gen2" id="gen2" {% if request.form.get('gen2') %} checked {% endif %}>
+    </div>
+    <div class="left-align">
+        <label for="swap_colors">{{ _('Swap Colors ? (Gen1 Only)') }}</label>
+        <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {% endif %}>
     </div>
 <input type="submit" value="{{ _('Generate Firmware File') }}">
 </form>
