@@ -139,12 +139,12 @@
           <table>
           <tr>
             <td>
-              <a class="w3-button w3-teal w3-round" style="width: 100px;"
+              <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
                 href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a>
               <a class="w3-button w3-teal w3-round"
-                style="width: 100px;" href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
+                style="min-width: 100px;" href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
               <a class="w3-button w3-teal w3-round"
-                style="width: 100px;" href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
+                style="min-width: 100px;" href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
             </td>
           </tr>
         </table>
@@ -202,7 +202,7 @@
             href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}">{{ _('Edit') }}</a>
           <a class="action w3-button w3-blue w3-round"
             href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{ _('Configure') }}</a>
-          <a class="action w3-button w3-blue w3-round" onclick="return confirm('{{ _('Delete App ?') }}');"
+          <a class="action w3-button w3-blue w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
             href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete') }}</a>
         </td>
       </tr>

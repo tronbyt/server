@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-20 20:43+0000\n"
+"POT-Creation-Date: 2025-02-21 09:23+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -117,7 +117,7 @@ msgid "Email Address (optional)"
 msgstr "E-Mail-Adresse (optional)"
 
 #: tronbyt_server/templates/manager/addapp.html:3
-#: tronbyt_server/templates/manager/adminindex.html:29
+#: tronbyt_server/templates/manager/adminindex.html:31
 #: tronbyt_server/templates/manager/index.html:145
 msgid "Add App"
 msgstr "App hinzufügen"
@@ -168,7 +168,20 @@ msgstr "Konfigurieren"
 msgid "New Tronbyt"
 msgstr "Neuer Tronbyt"
 
-#: tronbyt_server/templates/manager/adminindex.html:27
+#: tronbyt_server/templates/manager/adminindex.html:16
+#, fuzzy
+msgid "Delete User?"
+msgstr "Benutzer löschen?"
+
+#: tronbyt_server/templates/manager/adminindex.html:17
+#: tronbyt_server/templates/manager/index.html:206
+#: tronbyt_server/templates/manager/update.html:67
+#: tronbyt_server/templates/manager/updateapp.html:44
+#: tronbyt_server/templates/manager/uploadapp.html:14
+msgid "Delete"
+msgstr "Löschen"
+
+#: tronbyt_server/templates/manager/adminindex.html:29
 #: tronbyt_server/templates/manager/index.html:143
 #: tronbyt_server/templates/manager/index.html:202
 #: tronbyt_server/templates/manager/update.html:3
@@ -176,54 +189,54 @@ msgstr "Neuer Tronbyt"
 msgid "Edit"
 msgstr "Bearbeiten"
 
-#: tronbyt_server/templates/manager/adminindex.html:34
+#: tronbyt_server/templates/manager/adminindex.html:36
 #: tronbyt_server/templates/manager/index.html:159
 msgid "API ID:"
 msgstr "API-ID:"
 
-#: tronbyt_server/templates/manager/adminindex.html:37
-#: tronbyt_server/templates/manager/adminindex.html:58
+#: tronbyt_server/templates/manager/adminindex.html:39
+#: tronbyt_server/templates/manager/adminindex.html:60
 #: tronbyt_server/templates/manager/index.html:164
 #: tronbyt_server/templates/manager/index.html:188
 msgid "Notes:"
 msgstr "Notizen:"
 
-#: tronbyt_server/templates/manager/adminindex.html:49
+#: tronbyt_server/templates/manager/adminindex.html:51
 msgid "installation id"
 msgstr "Installations-ID"
 
-#: tronbyt_server/templates/manager/adminindex.html:50
+#: tronbyt_server/templates/manager/adminindex.html:52
 #: tronbyt_server/templates/manager/index.html:177
 msgid "Enabled"
 msgstr "Aktiviert"
 
-#: tronbyt_server/templates/manager/adminindex.html:51
+#: tronbyt_server/templates/manager/adminindex.html:53
 #: tronbyt_server/templates/manager/index.html:179
 msgid "Disabled"
 msgstr "Deaktiviert"
 
-#: tronbyt_server/templates/manager/adminindex.html:54
+#: tronbyt_server/templates/manager/adminindex.html:56
 #: tronbyt_server/templates/manager/index.html:183
 msgid "App:"
 msgstr "App:"
 
-#: tronbyt_server/templates/manager/adminindex.html:55
+#: tronbyt_server/templates/manager/adminindex.html:57
 #: tronbyt_server/templates/manager/index.html:184
 msgid "Render Interval (minutes):"
 msgstr "Render-Intervall (Minuten):"
 
-#: tronbyt_server/templates/manager/adminindex.html:56
+#: tronbyt_server/templates/manager/adminindex.html:58
 #: tronbyt_server/templates/manager/index.html:185
 msgid "Display Time (secs):"
 msgstr "Anzeigedauer (Sekunden):"
 
-#: tronbyt_server/templates/manager/adminindex.html:61
+#: tronbyt_server/templates/manager/adminindex.html:63
 #: tronbyt_server/templates/manager/index.html:192
 #: tronbyt_server/templates/manager/updateapp.html:11
 msgid "Preview"
 msgstr "Vorschau"
 
-#: tronbyt_server/templates/manager/adminindex.html:63
+#: tronbyt_server/templates/manager/adminindex.html:65
 #: tronbyt_server/templates/manager/index.html:194
 msgid "Last Rendered:"
 msgstr "Zuletzt gerendert:"
@@ -371,15 +384,9 @@ msgid "Enable"
 msgstr "Aktivieren"
 
 #: tronbyt_server/templates/manager/index.html:205
-msgid "Delete App ?"
-msgstr "App löschen?"
-
-#: tronbyt_server/templates/manager/index.html:206
-#: tronbyt_server/templates/manager/update.html:67
 #: tronbyt_server/templates/manager/updateapp.html:44
-#: tronbyt_server/templates/manager/uploadapp.html:14
-msgid "Delete"
-msgstr "Löschen"
+msgid "Delete App?"
+msgstr "App löschen?"
 
 #: tronbyt_server/templates/manager/update.html:11
 msgid "clear to reset to default"
@@ -476,10 +483,6 @@ msgstr "Samstag"
 #: tronbyt_server/templates/manager/updateapp.html:37
 msgid "Sunday"
 msgstr "Sonntag"
-
-#: tronbyt_server/templates/manager/updateapp.html:44
-msgid "Delete App?"
-msgstr "App löschen?"
 
 #: tronbyt_server/templates/manager/uploadapp.html:3
 msgid "Upload App (.star files only)"
