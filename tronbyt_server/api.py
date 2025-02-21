@@ -28,7 +28,7 @@ def get_api_key_from_headers(headers):
     return None
 
 
-@bp.route("/devices/<string:device_id>", methods=["GET"])
+@bp.route("/devices/<string:device_id>", methods=["GET", "PATCH"])
 def get_device(device_id):
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
@@ -38,12 +38,21 @@ def get_device(device_id):
     if not device or device["api_key"] != api_key:
         abort(404)
 
+    if request.method == "PATCH":
+        user = db.get_user_by_device_id(device_id)
+        data = request.get_json()
+        if "brightness" in data:
+            brightness = data["brightness"]
+            if brightness < 0 or brightness > 255:
+                abort(400, description="Brightness must be between 0 and 255")
+            device["brightness"] = brightness
+        user["devices"][device_id] = device
+        db.save_user(user)
     metadata = {
         "id": device["id"],
         "displayName": device["name"],
         "brightness": device["brightness"],
     }
-
     return json.dumps(metadata), 200
 
 

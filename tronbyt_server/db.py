@@ -476,15 +476,16 @@ def get_device_webp_dir(device_id: str, create: bool = True) -> str:
 
 def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
     for user in get_all_users():
-        for device in user.get("devices", {}).values():
-            if device.get("id") == device_id:
-                return device
+        device = user.get("devices", {}).get(device_id)
+        if device:
+            return device
     return None
 
 
 def get_user_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
     for user in get_all_users():
-        if "devices" in user and device_id in user.get("devices", {}).keys():
+        device = user.get("devices", {}).get(device_id)
+        if device:
             return user
     return None
 
@@ -564,7 +565,7 @@ def add_pushed_app(device_id: str, path: str) -> None:
     user = get_user_by_device_id(device_id)
     if user is None:
         return
-    if installation_id in user.get("devices", {}).keys():
+    if installation_id in user["devices"][device_id].get("apps", {}):
         # already in there
         return
     app = {
