@@ -462,30 +462,24 @@ def get_user_by_device_id(device_id):
             return user
 
 
-def generate_firmware(label, url, ap, pw, gen2):
+def generate_firmware(label, url, ap, pw, gen2, swap_colors):
     # Usage
     if gen2:
         file_path = "firmware/gen2.bin"
         new_path = f"firmware/gen2_{label}.bin"
     else:
-        file_path = "firmware/gen1.bin"
-        new_path = f"firmware/gen1_{label}.bin"
+        if swap_colors:
+            file_path = "firmware/gen1_swap.bin"
+            new_path = f"firmware/gen1_swap_{label}.bin"
+        else:
+            file_path = "firmware/gen1.bin"
+            new_path = f"firmware/gen1_{label}.bin"
 
     if not file_exists(file_path):
         return {"error": f"Firmware file {file_path} not found."}
 
     shutil.copy(file_path, new_path)
 
-    # Replace this with the string to be replaced
-
-    # new values should be the first three areuments passed to script
-    # extract ssid, password and url from command-line arguments
-    # substitutions = sys.argv[1:4]
-    # dict = {
-    #     "XplaceholderWIFISSID": ap,
-    #     "XplaceholderWIFIPASSWORD": pw,
-    #     "XplaceholderREMOTEURL___________________________________________________________________" : url,
-    # }
     dict = {
         "XplaceholderWIFISSID________________________________": ap,
         "XplaceholderWIFIPASSWORD____________________________": pw,

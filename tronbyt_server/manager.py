@@ -559,10 +559,13 @@ def generate_firmware(device_id):
             image_url = request.form.get("img_url")
             label = db.sanitize(g.user["devices"][device_id]["name"])
             gen2 = False
+            swap_colors = False
             if "gen2" in request.form:
                 gen2 = request.form.get("gen2")
+            if "swap_colors" in request.form:
+                swap_colors = request.form.get("swap_colors")
 
-            result = db.generate_firmware(label, image_url, ap, password, gen2)
+            result = db.generate_firmware(label, image_url, ap, password, gen2, swap_colors)
             if "file_path" in result:
                 g.user["devices"][device_id]["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
@@ -700,11 +703,14 @@ def configapp(device_id, iname, delete_on_cancel):
 
             with open(config_path, "r") as c:
                 config_dict = json.load(c)
-
             url_params = urllib.parse.urlencode(config_dict)
             print(url_params)
             if len(url_params) > 2:
                 flash(url_params)
+        
+        # should add the device locaation/timezome info to the url params here
+        # 
+
         # ./pixlet serve --saveconfig "noaa_buoy.config" --host 0.0.0.0 src/apps/noaa_buoy.star
         # execute the pixlet serve process and show in it an iframe on the config page.
         print(app_path)
