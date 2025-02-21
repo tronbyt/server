@@ -8,82 +8,85 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
 
 import yaml
-from flask import current_app
+from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 
 def init_db() -> None:
-    print(f"using {get_db_file()}")
     os.makedirs("users/admin/configs", exist_ok=True)
-    with sqlite3.connect(get_db_file()) as conn:
-        cursor = conn.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """CREATE TABLE IF NOT EXISTS json_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        data TEXT NOT NULL
+    )
+    """
+    )
+    conn.commit()
+    cursor.execute("SELECT * FROM json_data WHERE username='admin'")
+    row = cursor.fetchone()
+
+    if not row:  # If no row is found
+        # Load the default JSON data
+        default_json = {
+            "username": "admin",
+            "password": generate_password_hash("password"),
+            "devices": {
+                "9abe2858": {
+                    "id": "9abe2858",
+                    "name": "Tronbyt 1",
+                    "default_interval": 18,
+                    "brightness": 40,
+                    "night_brightness": 10,
+                    "night_start": -1,
+                    "timezone": 100,
+                    "img_url": "",
+                    "night_mode_app": "None",
+                    "api_key": "CHANGEME",
+                    "notes": "",
+                    "apps": {
+                        "994": {
+                            "iname": "994",
+                            "name": "fireflies",
+                            "uinterval": 1,
+                            "display_time": 0,
+                            "notes": "",
+                            "enabled": "true",
+                            "last_render": 1739393487,
+                            "path": "system-apps/apps/fireflies/fireflies.star",
+                        }
+                    },
+                }
+            },
+        }
+
+        # Insert default JSON
         cursor.execute(
-            """CREATE TABLE IF NOT EXISTS json_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            data TEXT NOT NULL
-        )
-        """
+            "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
+            (json.dumps(default_json),),
         )
         conn.commit()
-        cursor.execute("SELECT * FROM json_data WHERE username='admin'")
-        row = cursor.fetchone()
+        print("Default JSON inserted for admin user")
 
-        if not row:  # If no row is found
-            # Load the default JSON data
-            default_json = {
-                "username": "admin",
-                "password": generate_password_hash("password"),
-                "devices": {
-                    "9abe2858": {
-                        "id": "9abe2858",
-                        "name": "Tronbyt 1",
-                        "default_interval": 18,
-                        "brightness": 40,
-                        "night_brightness": 10,
-                        "night_start": -1,
-                        "timezone": 100,
-                        "img_url": "",
-                        "night_mode_app": "None",
-                        "api_key": "CHANGEME",
-                        "notes": "",
-                        "apps": {
-                            "994": {
-                                "iname": "994",
-                                "name": "fireflies",
-                                "uinterval": 1,
-                                "display_time": 0,
-                                "notes": "",
-                                "enabled": "true",
-                                "last_render": 1739393487,
-                                "path": "system-apps/apps/fireflies/fireflies.star",
-                            }
-                        },
-                    }
-                },
-            }
-
-            # Insert default JSON
-            cursor.execute(
-                "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
-                (json.dumps(default_json),),
+        # Copy the default files to the expected locations
+        if not current_app.testing:
+            os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
+            shutil.copyfile(
+                "tronbyt_server/static/images/fireflies.webp",
+                "tronbyt_server/webp/9abe2858/fireflies-994.webp",
             )
-            conn.commit()
-            print("Default JSON inserted for admin user")
-
-            # Copy the default files to the expected locations
-            if not current_app.testing:
-                os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
-                shutil.copyfile(
-                    "tronbyt_server/static/images/fireflies.webp",
-                    "tronbyt_server/webp/9abe2858/fireflies-994.webp",
-                )
-        conn.commit()
+    conn.commit()
 
 
-def get_db_file() -> str:
-    return current_app.config["DB_FILE"]
+def get_db():
+    db = getattr(g, "_database", None)
+    if db is None:
+        print(f"using {current_app.config['DB_FILE']}")
+        db = g._database = sqlite3.connect(current_app.config["DB_FILE"])
+    return db
 
 
 def delete_device_dirs(device_id: str) -> None:
@@ -175,28 +178,7 @@ def file_exists(file_path: str) -> bool:
 
 def get_user(username: str) -> Optional[Dict[str, Any]]:
     try:
-        with sqlite3.connect(get_db_file()) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT data FROM json_data WHERE username = ?", (str(username),)
-            )
-            row = cursor.fetchone()
-            if row:
-                user = json.loads(row[0])
-                return user
-            else:
-                print(f"{username} not found")
-                return None
-            # with open(f"{get_users_dir()}/{username}/{username}.json") as file:
-            # user = json.loads(row[0])
-    #            print("return user")
-    except Exception as e:
-        print("problem with get_user" + str(e))
-        return None
-
-
-def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
-    with sqlite3.connect(get_db_file()) as conn:
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT data FROM json_data WHERE username = ?", (str(username),)
@@ -204,12 +186,27 @@ def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
         row = cursor.fetchone()
         if row:
             user = json.loads(row[0])
-            if check_password_hash(user.get("password"), password):
-                print(f"returning {user}")
-                return user
+            return user
         else:
-            print("bad password")
-            return False
+            print(f"{username} not found")
+            return None
+    except Exception as e:
+        print("problem with get_user" + str(e))
+        return None
+
+
+def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
+    cursor = get_db().cursor()
+    cursor.execute("SELECT data FROM json_data WHERE username = ?", (str(username),))
+    row = cursor.fetchone()
+    if row:
+        user = json.loads(row[0])
+        if check_password_hash(user.get("password"), password):
+            print(f"returning {user}")
+            return user
+    else:
+        print("bad password")
+        return False
 
 
 def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
@@ -219,22 +216,22 @@ def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
             print(f"user data passed to save_user : {user}")
         username = user["username"]
         try:
-            with sqlite3.connect(get_db_file()) as conn:
-                cursor = conn.cursor()
-                # json
-                if new_user:
-                    cursor.execute(
-                        "INSERT INTO json_data (data, username) VALUES (?, ?)",
-                        (json.dumps(user), str(username)),
-                    )
-                    create_user_dir(username)
+            conn = get_db()
+            cursor = conn.cursor()
+            # json
+            if new_user:
+                cursor.execute(
+                    "INSERT INTO json_data (data, username) VALUES (?, ?)",
+                    (json.dumps(user), str(username)),
+                )
+                create_user_dir(username)
 
-                else:
-                    cursor.execute(
-                        "UPDATE json_data SET data = ? WHERE username = ?",
-                        (json.dumps(user), str(username)),
-                    )
-                conn.commit()
+            else:
+                cursor.execute(
+                    "UPDATE json_data SET data = ? WHERE username = ?",
+                    (json.dumps(user), str(username)),
+                )
+            conn.commit()
 
             if current_app.config.get("PRODUCTION") == "0":
                 print("writing to json file for visibility")
@@ -258,10 +255,9 @@ def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
 
 def delete_user(username: str) -> bool:
     try:
-        with sqlite3.connect(get_db_file()) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM json_data WHERE username = ?", (username,))
-            conn.commit()
+        conn = get_db()
+        conn.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
+        conn.commit()
         user_dir = os.path.join(get_users_dir(), username)
         if os.path.exists(user_dir):
             shutil.rmtree(user_dir)
@@ -405,13 +401,13 @@ def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
 
 def get_all_users() -> List[Dict[str, Any]]:
     users = list()
-    with sqlite3.connect(get_db_file()) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT data FROM json_data")
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT data FROM json_data")
 
-        for row in cursor.fetchall():
-            user = json.loads(row[0])
-            users.append(user)
+    for row in cursor.fetchall():
+        user = json.loads(row[0])
+        users.append(user)
     return users
 
 
