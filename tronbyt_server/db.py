@@ -23,12 +23,14 @@ def init_db():
     os.makedirs("users/admin/configs", exist_ok=True)
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
-        cursor.execute("""CREATE TABLE IF NOT EXISTS json_data (
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS json_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
             data TEXT NOT NULL
         )
-        """)
+        """
+        )
         conn.commit()
         cursor.execute("SELECT * FROM json_data WHERE username='admin'")
         row = cursor.fetchone()
