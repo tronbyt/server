@@ -469,13 +469,12 @@ def generate_firmware(label, url, ap, pw, gen2, swap_colors):
     if gen2:
         file_path = "firmware/gen2.bin"
         new_path = f"firmware/gen2_{label}.bin"
+    elif swap_colors:
+        file_path = "firmware/gen1_swap.bin"
+        new_path = f"firmware/gen1_swap_{label}.bin"
     else:
-        if swap_colors:
-            file_path = "firmware/gen1_swap.bin"
-            new_path = f"firmware/gen1_swap_{label}.bin"
-        else:
-            file_path = "firmware/gen1.bin"
-            new_path = f"firmware/gen1_{label}.bin"
+        file_path = "firmware/gen1.bin"
+        new_path = f"firmware/gen1_{label}.bin"
 
     if not file_exists(file_path):
         return {"error": f"Firmware file {file_path} not found."}
