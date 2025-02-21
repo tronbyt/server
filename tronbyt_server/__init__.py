@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from babel.dates import format_timedelta
 from dotenv import load_dotenv
-from flask import Flask, current_app, request
+from flask import Flask, current_app, g, request
 from flask_babel import Babel, _
 
 from tronbyt_server import db
@@ -152,5 +152,11 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             add_direction=True,
             locale=get_locale(),
         )
+
+    @app.teardown_appcontext
+    def close_connection(exception):
+        db = getattr(g, "_database", None)
+        if db is not None:
+            db.close()
 
     return app
