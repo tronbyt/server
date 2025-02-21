@@ -13,6 +13,11 @@
 <div class="w3-card-4 w3-padding">
   <header>
     <h1>{{ user['username'] }}</h1>
+    {% if user['username'] != 'admin' %}
+    <form method="POST" action="{{ url_for('manager.deleteuser', username=user['username']) }}" onsubmit="return confirm('{{ _('Delete User?') }}');"></form>
+      <input class="danger" type="submit" value="{{ _('Delete') }}">
+    </form>
+    {% endif %}
     {% if 'devices' in user %}
     {% for device in user['devices'].values() %}
     <div class="w3-card-4 w3-padding">

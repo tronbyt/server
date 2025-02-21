@@ -253,19 +253,27 @@ def save_user(user, new_user=False):
             return False
 
 
-def create_user_dir(user):
-    dir = sanitize(user)
-    dir = secure_filename(dir)
-    # test for directory named dir and if not exist create it
-    user_dir = f"{get_users_dir()}/{user}"
-    if not os.path.exists(user_dir):
-        os.makedirs(user_dir)
-        os.makedirs(user_dir + "/configs")
-        os.makedirs(user_dir + "/apps")
-
+def delete_user(username):
+    try:
+        with sqlite3.connect(get_db_file()) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM json_data WHERE username = ?", (username,))
+            conn.commit()
+        user_dir = os.path.join(get_users_dir(), username)
+        if os.path.exists(user_dir):
+            shutil.rmtree(user_dir)
+        print(f"User {username} deleted successfully")
         return True
-    else:
+    except Exception as e:
+        print(f"Error deleting user {username}: {e}")
         return False
+
+
+def create_user_dir(user):
+    # create the user directory if it doesn't exist
+    user_dir = os.path.join(get_users_dir(), user)
+    os.makedirs(os.path.join(user_dir, "configs"), exist_ok=True)
+    os.makedirs(os.path.join(user_dir, "apps"), exist_ok=True)
 
 
 def get_apps_list(user):

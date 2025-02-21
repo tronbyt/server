@@ -111,13 +111,14 @@ def adminindex():
     return render_template("manager/adminindex.html", users=userlist)
 
 
-@bp.route("/admin/<string:username>/delete", methods=("POST", "GET"))
+@bp.route("/admin/<string:username>/deleteuser", methods=["POST"])
 @login_required
 def deleteuser(username):
-    devices = dict()
-    if "devices" in g.user:
-        devices = g.user["devices"].values()
-    return render_template("manager/index.html", devices=devices)
+    if g.user["username"] != "admin":
+        abort(404)
+    if username != "admin":
+        db.delete_user(username)
+    return redirect(url_for("manager.adminindex"))
 
 
 @bp.route("/create", methods=("GET", "POST"))
@@ -249,7 +250,7 @@ def update(device_id):
     )
 
 
-@bp.route("/<string:device_id>/delete", methods=("POST",))
+@bp.route("/<string:device_id>/delete", methods=["POST"])
 @login_required
 def delete(device_id):
     device = g.user["devices"].get(device_id, None)
@@ -260,7 +261,7 @@ def delete(device_id):
         return redirect(url_for("manager.index"))
 
 
-@bp.route("/<string:device_id>/<string:iname>/delete", methods=("POST", "GET"))
+@bp.route("/<string:device_id>/<string:iname>/delete", methods=["POST", "GET"])
 @login_required
 def deleteapp(device_id, iname):
     # delete the config file

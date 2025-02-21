@@ -64,6 +64,6 @@ value="{{ request.form['name'] or device['name'] }}" required>
 </form>
 <hr>
 <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post">
-<input class="danger" type="submit" value="{{ _('Delete') }}" onclick="return confirm('{{ _('Delete device and ALL apps ?') }}');">
+  <input class="danger" type="submit" value="{{ _('Delete') }}" onclick="return confirm('{{ _('Delete device and ALL apps ?') }}');">
 </form>
 {% endblock %}
