@@ -18,11 +18,23 @@ COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        python3 python3-flask gunicorn python3-dotenv python3-requests python3-websocket python3-yaml python3-flask-babel \
-        libwebp7 libwebpmux3 libwebpdemux2 libsharpyuv0 \
-        procps git tzdata ca-certificates python3-pip && \
-    pip3 install --no-cache-dir --root-user-action=ignore esptool --break-system-packages && \
-    apt-get purge -y python3-pip && \
+        ca-certificates \
+        esptool \
+        git \
+        gunicorn \
+        libsharpyuv0 \
+        libwebp7 \
+        libwebpdemux2 \
+        libwebpmux3 \
+        procps \
+        python3 \
+        python3-dotenv \
+        python3-flask \
+        python3-flask-babel \
+        python3-requests \
+        python3-websocket \
+        python3-yaml \
+        tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 COPY . /app
