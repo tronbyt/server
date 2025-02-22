@@ -212,7 +212,7 @@ def update(device_id: str) -> str:
             device["night_brightness"] = int(request.form.get("night_brightness"))
             device["night_start"] = int(request.form.get("night_start"))
             device["night_end"] = int(request.form.get("night_end"))
-            device["night_enabled"] = bool(request.form.get("night_enabled"))
+            device["night_mode_enabled"] = bool(request.form.get("night_mode_enabled"))
             device["timezone"] = int(request.form.get("timezone"))
             device["img_url"] = (
                 db.sanitize_url(img_url)
