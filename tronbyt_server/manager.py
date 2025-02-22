@@ -211,6 +211,8 @@ def update(device_id: str) -> str:
             device["brightness"] = int(request.form.get("brightness"))
             device["night_brightness"] = int(request.form.get("night_brightness"))
             device["night_start"] = int(request.form.get("night_start"))
+            device["night_end"] = int(request.form.get("night_end"))
+            device["night_enabled"] = bool(request.form.get("night_enabled"))
             device["timezone"] = int(request.form.get("timezone"))
             device["img_url"] = (
                 db.sanitize_url(img_url)
@@ -271,10 +273,10 @@ def deleteapp(device_id: str, iname: str) -> Response:
     if (
         "use_tidbyt" in g.user["devices"][device_id]
         and "api_key" in g.user["devices"][device_id]
-        and g.user["devices"][device_id]["apps"][iname]["enabled"] == "true"
+        and g.user["devices"][device_id]["apps"][iname]["enabled"]
     ):
         command = [
-            "/pixlet/pixlet",
+            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
             "delete",
             g.user["devices"][device_id]["img_url"],
             iname,
@@ -347,7 +349,7 @@ def addapp(device_id: str) -> Response:
             app["display_time"] = display_time
             app["notes"] = notes
             app["enabled"] = (
-                "false"  # start out false, only set to true after configure is finshed
+                False  # start out false, only set to true after configure is finished
             )
             app["last_render"] = 0
             if "path" in app_details:
@@ -379,8 +381,8 @@ def toggle_enabled(device_id: str, iname: str) -> Response:
     user = g.user
     app = user["devices"][device_id]["apps"][iname]
 
-    if user["devices"][device_id]["apps"][iname]["enabled"] == "true":
-        app["enabled"] = "false"
+    if user["devices"][device_id]["apps"][iname]["enabled"]:
+        app["enabled"] = False
         # set fresh_disable so we can delete from tidbyt once and only once
         # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
         if (
@@ -388,7 +390,7 @@ def toggle_enabled(device_id: str, iname: str) -> Response:
             and "api_key" in g.user["devices"][device_id]
         ):
             command = [
-                "/pixlet/pixlet",
+                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                 "delete",
                 g.user["devices"][device_id]["img_url"],
                 iname,
@@ -397,10 +399,10 @@ def toggle_enabled(device_id: str, iname: str) -> Response:
             ]
             print(command)
             subprocess.run(command)
-            app["deleted"] = "true"
+            app["deleted"] = True
     else:
-        # we should probably re-render and push but that'a  a pain so not doing it right now.
-        app["enabled"] = "true"
+        # we should probably re-render and push but that's a pain so not doing it right now.
+        app["enabled"] = True
 
     user["devices"][device_id]["apps"][iname] = app
     db.save_user(user)  # this saves all changes
@@ -415,10 +417,7 @@ def updateapp(device_id: str, iname: str) -> Response:
         name = request.form.get("name")
         uinterval = request.form.get("uinterval")
         notes = request.form.get("notes")
-        if "enabled" in request.form:
-            enabled = "true"
-        else:
-            enabled = "false"
+        enabled = "enabled" in request.form
         print(request.form)
         error = None
         if not name or not iname:
@@ -438,10 +437,7 @@ def updateapp(device_id: str, iname: str) -> Response:
             app["end_time"] = request.form.get("end_time")
             app["days"] = request.form.getlist("days")
 
-            if (
-                user["devices"][device_id]["apps"][iname]["enabled"] == "true"
-                and enabled == "false"
-            ):
+            if user["devices"][device_id]["apps"][iname]["enabled"] and not enabled:
                 # set fresh_disable so we can delete from tidbyt once and only once
                 # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
                 if (
@@ -449,7 +445,7 @@ def updateapp(device_id: str, iname: str) -> Response:
                     and "api_key" in g.user["devices"][device_id]
                 ):
                     command = [
-                        "/pixlet/pixlet",
+                        os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                         "delete",
                         g.user["devices"][device_id]["img_url"],
                         iname,
@@ -458,7 +454,7 @@ def updateapp(device_id: str, iname: str) -> Response:
                     ]
                     print(command)
                     subprocess.run(command)
-                    app["deleted"] = "true"
+                    app["deleted"] = True
             app["enabled"] = enabled
             user["devices"][device_id]["apps"][iname] = app
             db.save_user(user)  # this saves all changes
@@ -631,7 +627,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
             device = g.user["devices"][device_id]
             if render_app(app_path, config_path, webp_path):
                 # set the enabled key in app to true now that it has been configured.
-                device["apps"][iname]["enabled"] = "true"
+                device["apps"][iname]["enabled"] = True
                 # set last_rendered to seconds
                 device["apps"][iname]["last_render"] = int(time.time())
 
@@ -640,7 +636,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
                     # check for zero filesize
                     if os.path.getsize(webp_path) > 0:
                         command = [
-                            "/pixlet/pixlet",
+                            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                             "push",
                             device["img_url"],
                             webp_path,
@@ -658,7 +654,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
                     else:
                         # delete installation may error if the installation doesn't exist but that's ok.
                         command = [
-                            "/pixlet/pixlet",
+                            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                             "delete",
                             device["img_url"],
                             app["iname"],
@@ -667,7 +663,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
                         ]
                         print("blank output, deleting {}".format(app["iname"]))
                         result = subprocess.run(command)
-                        app["deleted"] = "true"
+                        app["deleted"] = True
                     if result == 0:
                         pass
                     else:
@@ -695,10 +691,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
             if len(url_params) > 2:
                 flash(url_params)
 
-        # should add the device locaation/timezome info to the url params here
-        #
+        # should add the device location/timezome info to the url params here
 
-        # ./pixlet serve --saveconfig "noaa_buoy.config" --host 0.0.0.0 src/apps/noaa_buoy.star
         # execute the pixlet serve process and show in it an iframe on the config page.
         print(app_path)
         if db.file_exists(app_path):
@@ -708,7 +702,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
                     "-k",
                     "300",
                     "300",
-                    "/pixlet/pixlet",
+                    os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                     "--saveconfig",
                     tmp_config_path,
                     "serve",
@@ -808,7 +802,7 @@ def next_app(
 
     app = next_app_dict
 
-    if app["enabled"] == "false" or not db.get_is_app_schedule_active(app):
+    if not app["enabled"] or not db.get_is_app_schedule_active(app):
         # recurse until we find one that's enabled
         print("disabled app")
         time.sleep(0.25)  # delay when recursing to avoid accidental runaway

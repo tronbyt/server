@@ -409,8 +409,14 @@ msgid "Night Brightness"
 msgstr "Nacht-Helligkeit"
 
 #: tronbyt_server/templates/manager/update.html:42
-msgid "Night Start Hour (24hr) (-1 for disabled)"
-msgstr "Nacht-Startstunde (24h) (-1 für deaktiviert)"
+msgid "Night Start Hour (24hr)"
+msgstr "Nachtmodus Start (24h)"
+
+msgid "Night End Hour (24hr)"
+msgstr "Nachtmodus Ende (24h)"
+
+msgid "Enable Night Mode"
+msgstr "Nachtmodus aktivieren"
 
 #: tronbyt_server/templates/manager/update.html:47
 msgid "Night Mode App:"

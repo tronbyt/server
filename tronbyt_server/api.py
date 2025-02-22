@@ -46,12 +46,15 @@ def get_device(device_id):
             if brightness < 0 or brightness > 255:
                 abort(400, description="Brightness must be between 0 and 255")
             device["brightness"] = brightness
+        if "autoDim" in data:
+            device["night_enabled"] = data["autoDim"]
         user["devices"][device_id] = device
         db.save_user(user)
     metadata = {
         "id": device["id"],
         "displayName": device["name"],
         "brightness": device["brightness"],
+        "autoDim": device["night_enabled"],
     }
     return json.dumps(metadata), 200
 
