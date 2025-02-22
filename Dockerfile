@@ -9,6 +9,8 @@ FROM debian:trixie-slim AS runtime
 EXPOSE 8000 5100 5101
 
 ENV PYTHONUNBUFFERED=1
+ENV PIXLET_PATH=/pixlet/pixlet
+ENV LIBPIXLET_PATH=/usr/lib/libpixlet.so
 
 WORKDIR /app
 

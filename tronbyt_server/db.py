@@ -41,7 +41,9 @@ def init_db() -> None:
                     "default_interval": 18,
                     "brightness": 40,
                     "night_brightness": 10,
-                    "night_start": -1,
+                    "night_enabled": False,
+                    "night_start": 22,
+                    "night_end": 6,
                     "timezone": 100,
                     "img_url": "",
                     "night_mode_app": "None",
@@ -54,7 +56,7 @@ def init_db() -> None:
                             "uinterval": 1,
                             "display_time": 0,
                             "notes": "",
-                            "enabled": "true",
+                            "enabled": True,
                             "last_render": 1739393487,
                             "path": "system-apps/apps/fireflies/fireflies.star",
                         }
@@ -133,6 +135,8 @@ def save_last_app_index(device_id: str, index: int) -> None:
 
 
 def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
+    if not device.get("night_enabled", False):
+        return False
     # configured, adjust current hour to set device timezone
     if "timezone" in device and device["timezone"] != 100:
         current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
@@ -141,7 +145,7 @@ def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
     # print(f"current_hour:{current_hour} -- ",end="")
     if device.get("night_start", -1) > -1:
         start_hour = device["night_start"]
-        end_hour = 6  # 6am
+        end_hour = device.get("night_end", 6)  # default to 6 am if not set
         if start_hour <= end_hour:  # Normal case (e.g., 9 to 17)
             if start_hour <= current_hour <= end_hour:
                 print("nightmode active")
@@ -156,7 +160,7 @@ def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
 def get_device_brightness(device: Dict[str, Any]) -> int:
     if "night_brightness" in device and get_night_mode_is_active(device):
         return int(device["night_brightness"] * 2)
-    else:  # Wrapped case (e.g., 22 to 6 - overnight)
+    else:
         return int(device.get("brightness", 30) * 2)
 
 
