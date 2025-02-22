@@ -68,6 +68,10 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             DB_FILE="users/usersdb.sqlite",
             LANGUAGES=["en", "de"],
         )
+        if app.config.get("PRODUCTION") == "1":
+            if app.config["SERVER_PROTOCOL"] == "https":
+                app.config["SESSION_COOKIE_SECURE"] = True
+            app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     else:
         app.config.from_mapping(
             SECRET_KEY="lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh",
