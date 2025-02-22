@@ -85,6 +85,8 @@ def login() -> Any:
                 time.sleep(2)  # slow down brute force attacks
         if error is None:
             session.clear()
+            if current_app.config.get("PRODUCTION") == "1":
+                session.permanent = True
             print("username " + username)
             session["username"] = username
             return redirect(url_for("index"))
