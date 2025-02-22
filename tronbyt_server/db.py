@@ -41,7 +41,7 @@ def init_db() -> None:
                     "default_interval": 18,
                     "brightness": 40,
                     "night_brightness": 10,
-                    "night_enabled": False,
+                    "night_mode_enabled": False,
                     "night_start": 22,
                     "night_end": 6,
                     "timezone": 100,
@@ -135,7 +135,7 @@ def save_last_app_index(device_id: str, index: int) -> None:
 
 
 def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
-    if not device.get("night_enabled", False):
+    if not device.get("night_mode_enabled", False):
         return False
     # configured, adjust current hour to set device timezone
     if "timezone" in device and device["timezone"] != 100:
