@@ -174,7 +174,7 @@
                   <div class="post">
                     <header>
                       <h1>{{ app['name'] }}-{{ app['iname'] }} </h1>
-                      <h1>{% if app['enabled'] == "true" %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled> <a
+                      <h1>{% if app['enabled'] %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled> <a
                           href="{{ url_for('manager.toggle_enabled', device_id=device['id'],iname=app['iname']) }}">{{ _('Disable') }}</a>
                         {% else %}<disabled>&nbsp -- {{ _('Disabled') }} -- </disabled> <a
                           href="{{ url_for('manager.toggle_enabled', device_id=device['id'],iname=app['iname']) }}">{{ _('Enable') }}</a

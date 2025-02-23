@@ -52,7 +52,7 @@
                       <div class="post">
                         <header>
                           <h1>{{ app['iname'] }} &nbsp({{ _('installation id') }}) </h1>
-                          <h1>{% if app['enabled'] == "true" %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled>{% else %}
+                          <h1>{% if app['enabled'] %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled>{% else %}
                             <disabled>&nbsp -- {{ _('Disabled') }} --{% endif %}</disabled>
                           </h1>
                         </header>
