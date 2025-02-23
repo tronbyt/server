@@ -6,7 +6,7 @@
 <form method="post">
   <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
-  <div><b>{{ _('Enabled: ') }}</b><input name="enabled" type="checkbox" {% if app['enabled'] == "true" %} checked {% endif %}></input></div>
+  <div><b>{{ _('Enabled: ') }}</b><input name="enabled" type="checkbox" {% if app['enabled'] %} checked {% endif %}></input></div>
   <div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
     alt="{{ _('Preview') }}"></div>
   <label for="uinterval">{{ _('Render Interval Minutes (Update every X minutes)') }}</label>
