@@ -765,73 +765,67 @@ def next_app(
         response.headers["Tronbyt-Brightness"] = 8
         return response
 
-    if not user:
-        user = db.get_user_by_device_id(device_id)
     if last_app_index is None:
         last_app_index = db.get_last_app_index(device_id)
 
-    # Pick device by passed in device_id
-    device = user["devices"][device_id]
-
     # treat em like an array
     if "apps" not in device:
-        return next_app(device_id, user, 0, recursion_depth + 1)
+        response = send_file("static/images/default.webp", mimetype="image/webp")
+        response.headers["Tronbyt-Brightness"] = 8
+        return response
+
     apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
+    is_night_mode_app = False
     if (
         db.get_night_mode_is_active(device)
         and device.get("night_mode_app", "") in device["apps"].keys()
     ):
-        next_app_dict = device["apps"][device["night_mode_app"]]
+        app = device["apps"][device["night_mode_app"]]
+        is_night_mode_app = True
+    elif last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
+        app = apps_list[last_app_index + 1]  # add 1 to get the next app
+        last_app_index += 1
     else:
-        if last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
-            next_app_dict = apps_list[last_app_index + 1]  # add 1 to get the next app
-            last_app_index += 1
-        else:
-            next_app_dict = apps_list[0]  # go to the beginning
-            last_app_index = 0
+        app = apps_list[0]  # go to the beginning
+        last_app_index = 0
 
-    app = next_app_dict
-
-    if not app["enabled"] or not db.get_is_app_schedule_active(app):
+    if not is_night_mode_app and (
+        not app["enabled"] or not db.get_is_app_schedule_active(app)
+    ):
         # recurse until we find one that's enabled
         print("disabled app")
-        time.sleep(0.25)  # delay when recursing to avoid accidental runaway
-        return next_app(device_id, user, last_app_index + 1, recursion_depth + 1)
+        return next_app(device_id, user, last_app_index, recursion_depth + 1)
+
+    # check if the webp needs update/render and do it, save if rendered
+    if possibly_render(user, device_id, app):
+        db.save_user(user)
+
+    if "pushed" in app:
+        webp_path = "{}/pushed/{}.webp".format(
+            db.get_device_webp_dir(device_id), app["iname"]
+        )
     else:
-        # check if the webp needs update/render and do it, save if rendered
-        if possibly_render(user, device_id, app):
-            db.save_user(user)
+        app_basename = "{}-{}".format(app["name"], app["iname"])
+        webp_path = "{}/{}.webp".format(db.get_device_webp_dir(device_id), app_basename)
+    print(webp_path)
 
-        if "pushed" in app:
-            webp_path = "{}/pushed/{}.webp".format(
-                db.get_device_webp_dir(device_id), app["iname"]
-            )
-        else:
-            app_basename = "{}-{}".format(app["name"], app["iname"])
-            webp_path = "{}/{}.webp".format(
-                db.get_device_webp_dir(device_id), app_basename
-            )
-        print(webp_path)
+    if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
+        response = send_file(webp_path, mimetype="image/webp")
+        b = db.get_device_brightness(device)
+        print(f"sending brightness {b} -- ", end="")
+        response.headers["Tronbyt-Brightness"] = b
+        s = app.get("display_time", None)
+        if not s or int(s) == 0:
+            s = device.get("default_interval", 5)
+        print(f"sending dwell seconds {s} -- ", end="")
+        response.headers["Tronbyt-Dwell-Secs"] = s
+        print(f"app index is {last_app_index}")
+        db.save_last_app_index(device_id, last_app_index)
+        return response
 
-        if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
-            response = send_file(webp_path, mimetype="image/webp")
-            b = db.get_device_brightness(device)
-            print(f"sending brightness {b} -- ", end="")
-            response.headers["Tronbyt-Brightness"] = b
-            s = app.get("display_time", None)
-            if not s or int(s) == 0:
-                s = device.get("default_interval", 5)
-            print(f"sending dwell seconds {s} -- ", end="")
-            response.headers["Tronbyt-Dwell-Secs"] = s
-            print(f"app index is {last_app_index}")
-            db.save_last_app_index(device_id, last_app_index)
-            return response
-        else:
-            print("file not found")
-            # delay when recursing to avoid accidental runaway
-            time.sleep(0.25)
-            # run it recursively until we get a file.
-            return next_app(device_id, user, last_app_index + 1, recursion_depth + 1)
+    print("file not found")
+    # run it recursively until we get a file.
+    return next_app(device_id, user, last_app_index, recursion_depth + 1)
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")
