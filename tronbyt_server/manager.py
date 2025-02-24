@@ -7,6 +7,7 @@ import subprocess
 import time
 import uuid
 from typing import Any, Dict, Optional
+from operator import itemgetter
 
 import requests
 from flask import (
@@ -149,10 +150,7 @@ def create() -> str:
             device["notes"] = notes
             device["brightness"] = int(brightness) if brightness else 30
             user = g.user
-            if "devices" not in user:
-                user["devices"] = {}
-
-            user["devices"][device["id"]] = device
+            user.setdefault("devices", {})[device["id"]] = device
             if db.save_user(user) and not os.path.isdir(
                 db.get_device_webp_dir(device["id"])
             ):
@@ -336,7 +334,7 @@ def addapp(device_id: str) -> Response:
 
         if not name:
             error = "App name required."
-        if db.file_exists("configs/{}-{}.json".format(name, iname)):
+        if os.path.exists("configs/{}-{}.json".format(name, iname)):
             error = "That installation id already exists"
         if error is not None:
             flash(error)
@@ -352,15 +350,13 @@ def addapp(device_id: str) -> Response:
                 False  # start out false, only set to true after configure is finished
             )
             app["last_render"] = 0
-            if "path" in app_details:
-                # this indicates a custom app
-                app["path"] = app_details["path"]
+            app["path"] = app_details.get("path")
 
             user = g.user
-            if "apps" not in user["devices"][device_id]:
-                user["devices"][device_id]["apps"] = {}
+            apps = user["devices"][device_id].setdefault("apps", {})
+            app["order"] = len(apps)
 
-            user["devices"][device_id]["apps"][iname] = app
+            apps[iname] = app
             db.save_user(user)
 
             return redirect(
@@ -404,7 +400,6 @@ def toggle_enabled(device_id: str, iname: str) -> Response:
         # we should probably re-render and push but that's a pain so not doing it right now.
         app["enabled"] = True
 
-    user["devices"][device_id]["apps"][iname] = app
     db.save_user(user)  # this saves all changes
     flash("Changes saved.")
     return redirect(url_for("manager.index"))
@@ -456,7 +451,6 @@ def updateapp(device_id: str, iname: str) -> Response:
                     subprocess.run(command)
                     app["deleted"] = True
             app["enabled"] = enabled
-            user["devices"][device_id]["apps"][iname] = app
             db.save_user(user)  # this saves all changes
 
             return redirect(url_for("manager.index"))
@@ -539,12 +533,8 @@ def generate_firmware(device_id: str) -> Response:
             password = request.form.get("wifi_password")
             image_url = request.form.get("img_url")
             label = db.sanitize(g.user["devices"][device_id]["name"])
-            gen2 = False
-            swap_colors = False
-            if "gen2" in request.form:
-                gen2 = request.form.get("gen2")
-            if "swap_colors" in request.form:
-                swap_colors = request.form.get("swap_colors")
+            gen2 = request.form.get("gen2", False)
+            swap_colors = request.form.get("swap_colors", False)
 
             result = db.generate_firmware(
                 label, image_url, ap, password, gen2, swap_colors
@@ -611,7 +601,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
     if request.method == "POST":
         #   do something to confirm configuration ?
         print("checking for : " + tmp_config_path)
-        if db.file_exists(tmp_config_path):
+        if os.path.exists(tmp_config_path):
             print("file exists")
             with open(tmp_config_path, "r") as c:
                 new_config = c.read()
@@ -680,7 +670,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
     # run the in browser configure interface via pixlet serve
     elif request.method == "GET":
         url_params = ""
-        if db.file_exists(config_path):
+        if os.path.exists(config_path):
             import json
             import urllib.parse
 
@@ -695,7 +685,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
 
         # execute the pixlet serve process and show in it an iframe on the config page.
         print(app_path)
-        if db.file_exists(app_path):
+        if os.path.exists(app_path):
             subprocess.Popen(
                 [
                     "timeout",
@@ -734,7 +724,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
 @bp.route("/<string:device_id>/brightness", methods=["GET"])
 def get_brightness(device_id: str) -> Response:
     user = db.get_user_by_device_id(device_id)
-    device = list(user["devices"].values())[0]
+    device = user["devices"][device_id]
     brightness_value = device.get("brightness", 30)
     print(f"brightness value {brightness_value}")
     return Response(str(brightness_value), mimetype="text/plain")
@@ -754,19 +744,19 @@ def next_app(
     device = user["devices"][device_id] or abort(404)
 
     # first check for a pushed file starting with __ and just return that and then delete it.
-    pushed_dir = f"{db.get_device_webp_dir(device_id)}/pushed"
+    pushed_dir = os.path.join(db.get_device_webp_dir(device_id), "pushed")
     if os.path.isdir(pushed_dir):
         ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
         if ephemeral_files:
             ephemeral_file = ephemeral_files[0]
             print(f"\nreturning ephemeral pushed file {ephemeral_file}")
-            webp_path = f"webp/{device_id}/pushed/{ephemeral_file}"
+            webp_path = os.path.join("webp", device_id, "pushed", ephemeral_file)
             # send_file doesn't need the full path, just the path after the tronbyt_server
             response = send_file(webp_path, mimetype="image/webp")
             s = device.get("default_interval", 5)
             response.headers["Tronbyt-Dwell-Secs"] = s
             print("removing ephemeral webp")
-            os.remove(f"{pushed_dir}/{ephemeral_file}")
+            os.remove(os.path.join(pushed_dir, ephemeral_file))
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
@@ -786,7 +776,7 @@ def next_app(
     # treat em like an array
     if "apps" not in device:
         return next_app(device_id, user, 0, recursion_depth + 1)
-    apps_list = list(device["apps"].values())
+    apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
     if (
         db.get_night_mode_is_active(device)
         and device.get("night_mode_app", "") in device["apps"].keys()
@@ -823,7 +813,7 @@ def next_app(
             )
         print(webp_path)
 
-        if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
+        if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
             response = send_file(webp_path, mimetype="image/webp")
             b = db.get_device_brightness(device)
             print(f"sending brightness {b} -- ", end="")
@@ -863,7 +853,7 @@ def appwebp(device_id: str, iname: str) -> Response:
                 db.get_device_webp_dir(device_id), app_basename
             )
         print(webp_path)
-        if db.file_exists(webp_path) and os.path.getsize(webp_path) > 0:
+        if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
             return send_file(webp_path, mimetype="image/webp")
         else:
             print("file no exist or 0 size")
@@ -887,7 +877,7 @@ def download_firmware(device_id: str) -> Response:
             abort(404)
 
         print(f"checking for {file_path}")
-        if db.file_exists(file_path) and os.path.getsize(file_path) > 0:
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return send_file(file_path, mimetype="application/octet-stream")
         else:
             print("file no exist or 0 size")
@@ -906,7 +896,7 @@ def set_repo(repo_name: str, apps_path: str, repo_url: str) -> None:
             g.user[repo_name] = repo_url
             db.save_user(g.user)
 
-            if db.file_exists(apps_path):
+            if os.path.exists(apps_path):
                 shutil.rmtree(apps_path)
             result = subprocess.run(
                 [
@@ -1029,3 +1019,37 @@ def proxy_ws(url: str) -> Response:
     response = ws.recv()
     ws.close()
     return Response(response, content_type="application/json")
+
+
+@bp.route("/<string:device_id>/<string:iname>/moveapp", methods=["GET", "POST"])
+@login_required
+def moveapp(device_id: str, iname: str):
+    direction = request.args.get("direction")
+    if not direction:
+        return redirect(url_for("manager.index"))
+
+    user = g.user
+    apps = user["devices"][device_id]["apps"]
+    app = apps[iname]
+    if direction == "up":
+        if app["order"] == 0:
+            return redirect(url_for("manager.index"))
+        app["order"] -= 1
+    elif direction == "down":
+        if app["order"] == len(apps) - 1:
+            return redirect(url_for("manager.index"))
+        app["order"] += 1
+    apps[iname] = app
+
+    # Ensure no two apps have the same order
+    for other_iname, other_app in apps.items():
+        if other_iname != iname and other_app["order"] == app["order"]:
+            if direction == "up":
+                other_app["order"] += 1
+            elif direction == "down":
+                other_app["order"] -= 1
+
+    # Sort apps by order
+    user["devices"][device_id]["apps"] = apps
+    db.save_user(user)
+    return redirect(url_for("manager.index"))

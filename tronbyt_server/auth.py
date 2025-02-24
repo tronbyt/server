@@ -1,6 +1,6 @@
 import functools
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 from flask import (
     Blueprint,
@@ -52,14 +52,15 @@ def register() -> Any:
         if error is not None and db.get_user(username):
             error = "User is already registered."
         if error is None:
-            user: Dict[str, str] = {}
-            user["username"] = username
-            user["password"] = password
             email = "none"
             if "email" in request.form:
                 if "@" in request.form["email"]:
                     email = request.form["email"]
-            user["email"] = email
+            user = {
+                "username": username,
+                "password": password,
+                "email": email,
+            }
 
             if db.save_user(user, new_user=True):
                 db.create_user_dir(username)
