@@ -59,6 +59,7 @@ def init_db() -> None:
                             "enabled": True,
                             "last_render": 1739393487,
                             "path": "system-apps/apps/fireflies/fireflies.star",
+                            "order": 0,
                         }
                     },
                 }
@@ -180,6 +181,23 @@ def file_exists(file_path: str) -> bool:
     return os.path.exists(file_path)
 
 
+# Ensure all apps have an "order" attribute
+# Earlier releases did not have this attribute,
+# so we need to ensure it exists to allow reordering of the app list.
+# Eventually, this function should be deleted.
+def ensure_app_order(user: Dict[str, Any]) -> None:
+    modified = False
+    for device in user.get("devices", {}).values():
+        apps = device.get("apps", {})
+        for idx, app in enumerate(apps.values()):
+            if "order" not in app:
+                app["order"] = idx
+                modified = True
+
+    if modified:
+        save_user(user)
+
+
 def get_user(username: str) -> Optional[Dict[str, Any]]:
     try:
         conn = get_db()
@@ -190,6 +208,7 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
         row = cursor.fetchone()
         if row:
             user = json.loads(row[0])
+            ensure_app_order(user)
             return user
         else:
             print(f"{username} not found")
@@ -200,17 +219,15 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
 
 
 def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
-    cursor = get_db().cursor()
-    cursor.execute("SELECT data FROM json_data WHERE username = ?", (str(username),))
-    row = cursor.fetchone()
-    if row:
-        user = json.loads(row[0])
+    user = get_user(username)
+    if user:
         if check_password_hash(user.get("password"), password):
             print(f"returning {user}")
             return user
-    else:
-        print("bad password")
-        return False
+        else:
+            print("bad password")
+            return False
+    return None
 
 
 def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
@@ -284,7 +301,6 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
         list_file = "system-apps.json"
-
         if not os.path.exists(list_file):
             print("Generating apps.json file...")
             subprocess.run(["python3", "clone_system_apps_repo.py"])
@@ -292,36 +308,29 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
 
         with open(list_file, "r") as f:
             return json.load(f)
-    else:
-        dir = "{}/{}/apps".format(get_users_dir(), user)
-    if os.path.exists(dir):
-        command = ["find", dir, "-name", "*.star"]
-        output = subprocess.check_output(command, text=True)
-        print("got find output of {}".format(output))
 
-        apps_paths = output.split("\n")
-        for app in apps_paths:
-            if app == "":
-                continue
-            app_dict = dict()
-            app_dict["path"] = app
-            app = app.replace(dir + "/", "")
-            app = app.replace("\n", "")
-            app = app.replace(".star", "")
-            app_dict["name"] = app.split("/")[-1]
-            app_dict["image_url"] = app_dict["name"] + ".gif"
-            # look for a yaml file
-            app_base_path = ("/").join(app_dict["path"].split("/")[0:-1])
-            yaml_path = "{}/manifest.yaml".format(app_base_path)
-            print("checking for manifest.yaml in {}".format(yaml_path))
-            # check for existence of yaml_path
-            if os.path.exists(yaml_path):
-                with open(yaml_path, "r") as f:
-                    yaml_dict = yaml.safe_load(f)
-                    app_dict.update(yaml_dict)
-            else:
-                app_dict["summary"] = "Custom App"
-            app_list.append(app_dict)
+    dir = os.path.join(get_users_dir(), user, "apps")
+    if os.path.exists(dir):
+        for root, _, files in os.walk(dir):
+            for file in files:
+                if file.endswith(".star"):
+                    app_path = os.path.join(root, file)
+                    app_dict = dict()
+                    app_dict["path"] = app_path
+                    app_dict["name"] = os.path.splitext(os.path.basename(app_path))[0]
+                    app_dict["image_url"] = app_dict["name"] + ".gif"
+                    # look for a yaml file
+                    app_base_path = ("/").join(app_dict["path"].split("/")[0:-1])
+                    yaml_path = os.path.join(app_base_path, "manifest.yaml")
+                    print("checking for manifest.yaml in {}".format(yaml_path))
+                    # check for existence of yaml_path
+                    if os.path.exists(yaml_path):
+                        with open(yaml_path, "r") as f:
+                            yaml_dict = yaml.safe_load(f)
+                            app_dict.update(yaml_dict)
+                    else:
+                        app_dict["summary"] = "Custom App"
+                    app_list.append(app_dict)
         return app_list
     else:
         print("no apps list found for {}".format(user))
@@ -393,7 +402,7 @@ def save_user_app(file: Any, path: str) -> bool:
 
 
 def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
-    path = "{}/{}/apps/".format(get_users_dir(), user["username"])
+    path = os.path.join(get_users_dir(), user["username"], "apps")
     try:
         filename = secure_filename(filename)
         os.remove(os.path.join(path, filename))
@@ -461,7 +470,7 @@ def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
 
 
 def get_device_by_name(user: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
-    for device_id, device in user.get("devices", {}).items():
+    for device in user.get("devices", {}).values():
         if device.get("name") == name:
             return device
     return None

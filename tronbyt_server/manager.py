@@ -7,6 +7,7 @@ import subprocess
 import time
 import uuid
 from typing import Any, Dict, Optional
+from operator import itemgetter
 
 import requests
 from flask import (
@@ -359,6 +360,7 @@ def addapp(device_id: str) -> Response:
             user = g.user
             if "apps" not in user["devices"][device_id]:
                 user["devices"][device_id]["apps"] = {}
+            app["order"] = len(user["devices"][device_id]["apps"])
 
             user["devices"][device_id]["apps"][iname] = app
             db.save_user(user)
@@ -404,7 +406,6 @@ def toggle_enabled(device_id: str, iname: str) -> Response:
         # we should probably re-render and push but that's a pain so not doing it right now.
         app["enabled"] = True
 
-    user["devices"][device_id]["apps"][iname] = app
     db.save_user(user)  # this saves all changes
     flash("Changes saved.")
     return redirect(url_for("manager.index"))
@@ -456,7 +457,6 @@ def updateapp(device_id: str, iname: str) -> Response:
                     subprocess.run(command)
                     app["deleted"] = True
             app["enabled"] = enabled
-            user["devices"][device_id]["apps"][iname] = app
             db.save_user(user)  # this saves all changes
 
             return redirect(url_for("manager.index"))
@@ -539,12 +539,8 @@ def generate_firmware(device_id: str) -> Response:
             password = request.form.get("wifi_password")
             image_url = request.form.get("img_url")
             label = db.sanitize(g.user["devices"][device_id]["name"])
-            gen2 = False
-            swap_colors = False
-            if "gen2" in request.form:
-                gen2 = request.form.get("gen2")
-            if "swap_colors" in request.form:
-                swap_colors = request.form.get("swap_colors")
+            gen2 = request.form.get("gen2", False)
+            swap_colors = request.form.get("swap_colors", False)
 
             result = db.generate_firmware(
                 label, image_url, ap, password, gen2, swap_colors
@@ -734,7 +730,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
 @bp.route("/<string:device_id>/brightness", methods=["GET"])
 def get_brightness(device_id: str) -> Response:
     user = db.get_user_by_device_id(device_id)
-    device = list(user["devices"].values())[0]
+    device = user["devices"][device_id]
     brightness_value = device.get("brightness", 30)
     print(f"brightness value {brightness_value}")
     return Response(str(brightness_value), mimetype="text/plain")
@@ -766,7 +762,7 @@ def next_app(
             s = device.get("default_interval", 5)
             response.headers["Tronbyt-Dwell-Secs"] = s
             print("removing ephemeral webp")
-            os.remove(f"{pushed_dir}/{ephemeral_file}")
+            os.remove(os.path.join(pushed_dir, ephemeral_file))
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
@@ -786,7 +782,7 @@ def next_app(
     # treat em like an array
     if "apps" not in device:
         return next_app(device_id, user, 0, recursion_depth + 1)
-    apps_list = list(device["apps"].values())
+    apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
     if (
         db.get_night_mode_is_active(device)
         and device.get("night_mode_app", "") in device["apps"].keys()
@@ -1029,3 +1025,33 @@ def proxy_ws(url: str) -> Response:
     response = ws.recv()
     ws.close()
     return Response(response, content_type="application/json")
+
+
+@bp.route("/<string:device_id>/<string:iname>/moveapp", methods=["GET", "POST"])
+@login_required
+def moveapp(device_id: str, iname: str, direction: str):
+    user = g.user
+    apps = user["devices"][device_id]["apps"]
+    app = apps[iname]
+    if direction == "up":
+        if app["order"] == 0:
+            return redirect(url_for("manager.index"))
+        app["order"] -= 1
+    elif direction == "down":
+        if app["order"] == len(apps) - 1:
+            return redirect(url_for("manager.index"))
+        app["order"] += 1
+    apps[iname] = app
+
+    # Ensure no two apps have the same order
+    for other_iname, other_app in apps.items():
+        if other_iname != iname and other_app["order"] == app["order"]:
+            if direction == "up":
+                other_app["order"] += 1
+            elif direction == "down":
+                other_app["order"] -= 1
+
+    # Sort apps by order
+    user["devices"][device_id]["apps"] = apps
+    db.save_user(user)
+    return redirect(url_for("manager.index"))
