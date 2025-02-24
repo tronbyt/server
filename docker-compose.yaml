@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/tavdog/tronbyt-server:latest
+    image: ghcr.io/tronbyt/server:latest
     restart: unless-stopped
     ports:
       - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container

@@ -35,17 +35,17 @@ If you've been invited to use my public instance of this server login there and 
 It is possible to just start the server on the default ports in the background with a one-liner:
 
 ```sh
-docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXLET_RENDER_PORT1=5100 -e PRODUCTION=1 -p 8000:8000 -p 5100:5100 -p 5101:5101 ghcr.io/tavdog/tronbyt-server
+docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXLET_RENDER_PORT1=5100 -e PRODUCTION=1 -p 8000:8000 -p 5100:5100 -p 5101:5101 ghcr.io/tronbyt/server
 ```
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:
 
-1. Download the [Compose project](https://raw.githubusercontent.com/tavdog/tronbyt-server/refs/heads/master/docker-compose.yaml) (or use the contents to add a service to an existing project).
+1. Download the [Compose project](https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/docker-compose.yaml) (or use the contents to add a service to an existing project).
 
-2. Copy the [example environment file](https://raw.githubusercontent.com/tavdog/tronbyt-server/refs/heads/master/.env.example) and modify it as needed:
+2. Copy the [example environment file](https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/.env.example) and modify it as needed:
 
    ```sh
-   curl https://raw.githubusercontent.com/tavdog/tronbyt-server/refs/heads/master/.env.example > .env
+   curl https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/.env.example > .env
    ```
 
 3. Set the `SERVER_HOSTNAME_OR_IP` value in the `.env` file. IP addresses will work too.
@@ -91,8 +91,8 @@ That said, the recommended installation method uses Docker Compose with a config
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/tavdog/tronbyt-server.git
-   cd tronbyt-server
+   git clone https://github.com/Tronbyt/server.git
+   cd server
    ```
 
 2. Build and run the image using the local copy:
