@@ -13,11 +13,11 @@ def test_upload_and_delete(client):
 
     client.post("/uploadapp", content_type="multipart/form-data", data=data)
 
-    assert "report.star" in utils.get_user_uploads_list()
+    assert "report/report.star" in utils.get_user_uploads_list()
 
     client.get("/deleteupload/report.star")
 
-    assert "report.star" not in utils.get_user_uploads_list()
+    assert "report/report.star" not in utils.get_user_uploads_list()
 
     # test rejected bad extension
     data = dict(
