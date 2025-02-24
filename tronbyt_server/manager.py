@@ -66,8 +66,13 @@ def uploadapp() -> str:
                 flash("No file")
                 return redirect("manager.uploadapp")
 
-            # save the file to the user's
-            if db.save_user_app(file, user_apps_path):
+            # create a subdirectory for the app
+            app_name = os.path.splitext(file.filename)[0]
+            app_subdir = os.path.join(user_apps_path, app_name)
+            os.makedirs(app_subdir, exist_ok=True)
+
+            # save the file
+            if db.save_user_app(file, app_subdir):
                 flash("Upload Successful")
                 return redirect(url_for("manager.index"))
             else:
@@ -77,7 +82,10 @@ def uploadapp() -> str:
     # check for existance of apps path
     os.makedirs(user_apps_path, exist_ok=True)
 
-    star_files = [file for file in os.listdir(user_apps_path) if file.endswith(".star")]
+    star_files = [
+        file for _, _, files in os.walk(user_apps_path) 
+        for file in files if file.endswith(".star")
+    ]
 
     return render_template("manager/uploadapp.html", files=star_files)
 

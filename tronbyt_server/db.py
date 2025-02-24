@@ -393,10 +393,22 @@ def save_user_app(file: Any, path: str) -> bool:
 
 
 def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
-    path = "{}/{}/apps/".format(get_users_dir(), user["username"])
+    user_apps_path = os.path.join(get_users_dir(), user["username"], "apps")
     try:
         filename = secure_filename(filename)
-        os.remove(os.path.join(path, filename))
+        folder_name = os.path.splitext(filename)[0]
+        file_path = os.path.join(user_apps_path, folder_name, filename)
+        folder_path = os.path.join(user_apps_path, folder_name)
+
+        if not file_path.startswith(user_apps_path):
+            print("Security warning: Attempted path traversal")
+            return False
+
+        os.remove(file_path)
+
+        if not os.listdir(folder_path):
+            os.rmdir(folder_path)
+
         return True
     except OSError as e:
         print(f"couldn't delete file: {e}")
