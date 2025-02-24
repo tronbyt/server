@@ -10,21 +10,27 @@
     {{ _('Replacing the existing system repo will delete the previous repo and break any apps using that repo.') }}
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
+<form method="post" action="{{ url_for('manager.refresh_system_repo') }}">
+    <input type="submit" value="{{ _('Refresh') }}" class="w3-button w3-green"></input>
+</form>
 {% endif %}
 <form method="post" action="{{ url_for('manager.set_user_repo') }}" >
-<label for="app_repo_url">{{ _('Custom App Repo URL (Public Github Only!)') }}</label>
-<input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}">
-{{ _('Replacing an existing custom repo will delete the previous repo and break any apps using that repo.') }}
+    <label for="app_repo_url">{{ _('Custom App Repo URL (Public Github Only!)') }}</label>
+    <input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}">
+    {{ _('Replacing an existing custom repo will delete the previous repo and break any apps using that repo.') }}
 
-<input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
+    <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
+</form>
+<form method="post" action="{{ url_for('manager.refresh_user_repo') }}">
+    <input type="submit" value="{{ _('Refresh') }}" class="w3-button w3-green"></input>
 </form>
 
 <h1>{{ _('Edit Password') }}</h1>
 <form method="post">
-<label for="old_password">{{ _('Old Password') }}</label>
-<input type="password" name="old_password" id="old_password" required>
-<label for="password">{{ _('New Password') }}</label>
-<input type="password" name="password" id="password" required>
-<input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
+    <label for="old_password">{{ _('Old Password') }}</label>
+    <input type="password" name="old_password" id="old_password" required>
+    <label for="password">{{ _('New Password') }}</label>
+    <input type="password" name="password" id="password" required>
+    <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 {% endblock %}

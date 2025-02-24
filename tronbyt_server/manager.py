@@ -897,51 +897,51 @@ def download_firmware(device_id: str) -> Response:
         abort(404)
 
 
+def set_repo(repo_name: str, apps_path: str, repo_url: str) -> None:
+    if repo_url != "":
+        old_repo = g.user.get(repo_name, "")
+        if old_repo != repo_url:
+            # just get the last two words of the repo
+            repo_url = "/".join(repo_url.split("/")[-2:])
+            g.user[repo_name] = repo_url
+            db.save_user(g.user)
+
+            if db.file_exists(apps_path):
+                shutil.rmtree(apps_path)
+            result = subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    f"https://blah:blah@github.com/{repo_url}",
+                    apps_path,
+                ]
+            )
+            if result.returncode == 0:
+                flash("Repo Cloned")
+            else:
+                flash("Error Cloning Repo")
+        else:
+            result = subprocess.run(["git", "-C", apps_path, "pull"])
+            if result.returncode == 0:
+                flash("Repo Updated")
+            else:
+                flash("Repo Update Failed")
+    else:
+        flash("No Changes to Repo")
+
+
 @bp.route("/set_user_repo", methods=["GET", "POST"])
 @login_required
 def set_user_repo() -> Response:
     if request.method == "POST":
-        if "app_repo_url" in request.form:
-            repo_url = request.form.get("app_repo_url")
-            print(repo_url)
-            user_apps_path = "{}/{}/apps".format(db.get_users_dir(), g.user["username"])
-            old_repo = ""
-            if "app_repo_url" in g.user:
-                old_repo = g.user["app_repo_url"]
-
-            if repo_url != "":
-                if old_repo != repo_url:
-                    # just get the last two words of the repo
-                    repo_url = repo_url.split("/")[-2:]
-                    repo_url = "/".join(repo_url)
-                    g.user["app_repo_url"] = repo_url
-                    db.save_user(g.user)
-
-                    print(user_apps_path)
-                    if db.file_exists(user_apps_path):
-                        shutil.rmtree(user_apps_path)
-                    result = subprocess.run(
-                        [
-                            "git",
-                            "clone",
-                            f"https://blah:blah@github.com/{repo_url}",
-                            user_apps_path,
-                        ]
-                    )
-                    if result.returncode == 0:
-                        flash("Repo Cloned")
-                else:
-                    # same as before so just issue a pull to update it.
-                    result = subprocess.run(["git", "-C", "pull", user_apps_path])
-                    if result.returncode == 0:
-                        flash("Repo Updated")
-                # run the generate app list for custom repo
-                return redirect(url_for("manager.index"))
-
-            else:
-                flash("No Changes to Repo")
-
-            flash("Error Saving Repo")
+        if "app_repo_url" not in request.form:
+            abort(400)
+        repo_url = request.form.get("app_repo_url")
+        apps_path = os.path.join(db.get_users_dir(), g.user["username"], "apps")
+        if set_repo("app_repo_url", apps_path, repo_url):
+            return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(404)
 
@@ -951,60 +951,37 @@ def set_user_repo() -> Response:
 def set_system_repo() -> Response:
     if request.method == "POST":
         if g.user["username"] != "admin":
-            abort(404)
-        if "app_repo_url" in request.form:
-            repo_url = request.form.get("app_repo_url")
-            print(repo_url)
-            system_apps_path = "system-apps"
-            old_repo = ""
-            if "system_repo_url" in g.user:
-                old_repo = g.user["system_repo_url"]
+            abort(403)
+        if "app_repo_url" not in request.form:
+            abort(400)
+        if set_repo("system_repo_url", "system-apps", request.form.get("app_repo_url")):
+            # run the generate app list for custom repo
+            # will just generate json file if already there.
+            subprocess.run(["python3", "clone_system_apps_repo.py"])
+            return redirect(url_for("manager.index"))
+        return redirect(url_for("auth.edit"))
+    abort(404)
 
-            if repo_url != "":
-                if old_repo != repo_url:
-                    # just get the last two words of the repo
-                    repo_url = repo_url.split("/")[-2:]
-                    repo_url = "/".join(repo_url)
-                    g.user["system_repo_url"] = repo_url
-                    db.save_user(g.user)
 
-                    print(system_apps_path)
-                    if db.file_exists(system_apps_path):
-                        # delete the folder and re-clone.
-                        print(f"deleting {system_apps_path}")
-                        shutil.rmtree(system_apps_path)
-                    # pull the repo and save to local filesystem.
-                    # result = os.system("git clone https://blah:blah@github.com/{} {}".format(repo_url,system_apps_path))
-                    result = subprocess.run(
-                        [
-                            "git",
-                            "clone",
-                            "--depth",
-                            "1",
-                            f"https://blah:blah@github.com/{repo_url}",
-                            system_apps_path,
-                        ]
-                    )
-                    if result.returncode != 0:
-                        flash("Error Cloning Repo")
-                    else:
-                        flash("Repo Cloned")
-                else:
-                    # same as before so just issue a pull to update it.
-                    result = subprocess.run(["git", "-C", system_apps_path, "pull"])
-                    if result.returncode == 0:
-                        flash("Repo Updated")
-                    else:
-                        flash("Repo Update Failed")
-                # run the generate app list for custom repo
-                # will just generate json file if already there.
-                os.system("python3 clone_system_apps_repo.py")
-                return redirect(url_for("manager.index"))
+@bp.route("/refresh_system_repo", methods=["GET", "POST"])
+@login_required
+def refresh_system_repo() -> Response:
+    if request.method == "POST":
+        if g.user["username"] != "admin":
+            abort(403)
+        if set_repo("system_repo_url", "system-apps", g.user["system_repo_url"]):
+            return redirect(url_for("manager.index"))
+        return redirect(url_for("auth.edit"))
+    abort(404)
 
-            else:
-                flash("No Changes to Repo")
 
-            flash("Error Saving Repo")
+@bp.route("/refresh_user_repo", methods=["GET", "POST"])
+@login_required
+def refresh_user_repo() -> Response:
+    if request.method == "POST":
+        apps_path = os.path.join(db.get_users_dir(), g.user["username"], "apps")
+        if set_repo("app_repo_url", apps_path, g.user["app_repo_url"]):
+            return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(404)
 
