@@ -167,11 +167,11 @@ msgstr "Notizen"
 msgid "Configure"
 msgstr "Konfigurieren"
 
-msgid: "Move Up"
-msgstr: "Nach oben"
+msgid "Move Up"
+msgstr "Nach oben"
 
-msgid: "Move Down"
-msgstr: "Nach unten"
+msgid "Move Down"
+msgstr "Nach unten"
 
 #: tronbyt_server/templates/manager/adminindex.html:8
 #: tronbyt_server/templates/manager/index.html:116

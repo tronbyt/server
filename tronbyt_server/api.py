@@ -116,9 +116,8 @@ def handle_push(device_id: str) -> Response:
         f.write(image_bytes)
 
     if timestamp == "":
-        db.add_pushed_app(
-            device_id, file_path
-        )  # add the app to user.json so it'll stay in the rotation
+        # add the app so it'll stay in the rotation
+        db.add_pushed_app(device_id, file_path)
 
     return "Webp received.", 200
 
