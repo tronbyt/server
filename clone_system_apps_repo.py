@@ -8,7 +8,7 @@ import yaml
 
 system_apps_path = "system-apps"
 system_apps_repo = (
-    os.environ.get("SYSTEM_APPS_REPO") or "https://github.com/tavdog/tronbyt-apps.git"
+    os.environ.get("SYSTEM_APPS_REPO") or "https://github.com/Tronbyt/apps.git"
 )
 # check for existence of apps_path dir
 if os.path.exists(system_apps_path):
@@ -79,11 +79,17 @@ for app in apps:
             app_dict["summary"] = "System App"
 
         # Check for a preview in the repo and copy it over to static previews directory
-        image_found = False
-        for ext in ["webp", "gif", "png"]:
-            image_path = os.path.join(app_base_path, f"{app_basename}.{ext}")
+        for image_name in [
+            f"{app_basename}.webp",
+            f"{app_basename}.gif",
+            f"{app_basename}.png",
+            "screenshot.webp",
+            "screenshot.gif",
+            "screenshot.png",
+        ]:
+            image_path = os.path.join(app_base_path, image_name)
             static_image_path = os.path.join(
-                static_images_path, f"{app_basename}.{ext}"
+                static_images_path, f"{app_basename}{os.path.splitext(image_name)[1]}"
             )
 
             # less than a meg only
@@ -93,15 +99,14 @@ for app in apps:
             ):
                 # print(f"copying {image_path}")
                 if not os.path.exists(static_image_path):
-                    print(f"copying preview to static dir {app_dict['name']}.{ext}")
+                    print(f"copying preview to static dir {static_image_path}")
                     new_previews += 1
-                    shutil.move(image_path, static_image_path)
-                image_found = True
+                    shutil.copy(image_path, static_image_path)
 
             # set the preview for the app to the static preview location
             if os.path.exists(static_image_path):
                 num_previews += 1
-                app_dict["preview"] = os.path.basename(image_path)
+                app_dict["preview"] = os.path.basename(static_image_path)
                 break
 
         count += 1

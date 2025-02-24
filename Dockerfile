@@ -1,6 +1,6 @@
 # Ignore hadolint findings about version pinning
 # hadolint global ignore=DL3007,DL3008,DL3013
-FROM ghcr.io/tavdog/pixlet:latest AS pixlet
+FROM ghcr.io/tronbyt/pixlet:latest AS pixlet
 
 # build runtime image
 FROM debian:trixie-slim AS runtime
@@ -9,6 +9,8 @@ FROM debian:trixie-slim AS runtime
 EXPOSE 8000 5100 5101
 
 ENV PYTHONUNBUFFERED=1
+ENV PIXLET_PATH=/pixlet/pixlet
+ENV LIBPIXLET_PATH=/usr/lib/libpixlet.so
 
 WORKDIR /app
 

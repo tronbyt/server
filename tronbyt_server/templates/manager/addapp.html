@@ -53,7 +53,7 @@ function searchApps(inputId, gridId) {
       <div class="app-item" data-value="{{app['name']}}">
         {% if 'preview' in app %}
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/'  ~ app['preview']) }}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/' ~ app['preview']) }}" alt="{{ app['name'] }}">
         </div>
         {% else %}
         <div>

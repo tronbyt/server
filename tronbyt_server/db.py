@@ -4,88 +4,94 @@ import shutil
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
 
 import yaml
-from flask import current_app
+from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 
-def init_db():
-    print(f"using {get_db_file()}")
+def init_db() -> None:
     os.makedirs("users/admin/configs", exist_ok=True)
-    with sqlite3.connect(get_db_file()) as conn:
-        cursor = conn.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """CREATE TABLE IF NOT EXISTS json_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        data TEXT NOT NULL
+    )
+    """
+    )
+    conn.commit()
+    cursor.execute("SELECT * FROM json_data WHERE username='admin'")
+    row = cursor.fetchone()
+
+    if not row:  # If no row is found
+        # Load the default JSON data
+        default_json = {
+            "username": "admin",
+            "password": generate_password_hash("password"),
+            "devices": {
+                "9abe2858": {
+                    "id": "9abe2858",
+                    "name": "Tronbyt 1",
+                    "default_interval": 18,
+                    "brightness": 40,
+                    "night_brightness": 10,
+                    "night_mode_enabled": False,
+                    "night_start": 22,
+                    "night_end": 6,
+                    "timezone": 100,
+                    "img_url": "",
+                    "night_mode_app": "None",
+                    "api_key": "CHANGEME",
+                    "notes": "",
+                    "apps": {
+                        "994": {
+                            "iname": "994",
+                            "name": "fireflies",
+                            "uinterval": 1,
+                            "display_time": 0,
+                            "notes": "",
+                            "enabled": True,
+                            "last_render": 1739393487,
+                            "path": "system-apps/apps/fireflies/fireflies.star",
+                        }
+                    },
+                }
+            },
+        }
+
+        # Insert default JSON
         cursor.execute(
-            """CREATE TABLE IF NOT EXISTS json_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            data TEXT NOT NULL
-        )
-        """
+            "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
+            (json.dumps(default_json),),
         )
         conn.commit()
-        cursor.execute("SELECT * FROM json_data WHERE username='admin'")
-        row = cursor.fetchone()
+        print("Default JSON inserted for admin user")
 
-        if not row:  # If no row is found
-            # Load the default JSON data
-            default_json = {
-                "username": "admin",
-                "password": generate_password_hash("password"),
-                "devices": {
-                    "9abe2858": {
-                        "id": "9abe2858",
-                        "name": "Tronbyt 1",
-                        "default_interval": 18,
-                        "brightness": 40,
-                        "night_brightness": 10,
-                        "night_start": -1,
-                        "timezone": 100,
-                        "img_url": "",
-                        "night_mode_app": "None",
-                        "api_key": "CHANGEME",
-                        "notes": "",
-                        "apps": {
-                            "994": {
-                                "iname": "994",
-                                "name": "fireflies",
-                                "uinterval": 1,
-                                "display_time": 0,
-                                "notes": "",
-                                "enabled": "true",
-                                "last_render": 1739393487,
-                                "path": "system-apps/apps/fireflies/fireflies.star",
-                            }
-                        },
-                    }
-                },
-            }
-
-            # Insert default JSON
-            cursor.execute(
-                "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
-                (json.dumps(default_json),),
+        # Copy the default files to the expected locations
+        if not current_app.testing:
+            os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
+            shutil.copyfile(
+                "tronbyt_server/static/images/fireflies.webp",
+                "tronbyt_server/webp/9abe2858/fireflies-994.webp",
             )
-            conn.commit()
-            print("Default JSON inserted for admin user")
-
-            # Copy the default files to the expected locations
-            if not current_app.testing:
-                os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
-                shutil.copyfile(
-                    "tronbyt_server/static/images/fireflies.webp",
-                    "tronbyt_server/webp/9abe2858/fireflies-994.webp",
-                )
-        conn.commit()
+    conn.commit()
 
 
-def get_db_file():
-    return current_app.config["DB_FILE"]
+def get_db():
+    db = getattr(g, "_database", None)
+    if db is None:
+        print(f"using {current_app.config['DB_FILE']}")
+        db = g._database = sqlite3.connect(current_app.config["DB_FILE"])
+    return db
 
 
-def delete_device_dirs(device_id):
+def delete_device_dirs(device_id: str) -> None:
     # Get the name of the current app
     app_name = current_app.name
 
@@ -102,7 +108,7 @@ def delete_device_dirs(device_id):
         print(f"Error deleting directory {dir_to_delete}: {str(e)}")
 
 
-def server_tz_offset():
+def server_tz_offset() -> int:
     output = subprocess.check_output(["date", "+%z"]).decode().strip()
     # Convert the offset to a timedelta
     sign = 1 if output[0] == "+" else -1
@@ -112,7 +118,7 @@ def server_tz_offset():
     return offset
 
 
-def get_last_app_index(device_id):
+def get_last_app_index(device_id: str) -> int:
     try:
         with open(f"users/{device_id}.idx", "r") as file:
             return int(file.read().strip())
@@ -120,7 +126,7 @@ def get_last_app_index(device_id):
         return 0
 
 
-def save_last_app_index(device_id, index):
+def save_last_app_index(device_id: str, index: int) -> None:
     try:
         with open(f"users/{device_id}.idx", "w") as file:
             file.write(str(index))
@@ -128,7 +134,9 @@ def save_last_app_index(device_id, index):
         print(f"Error saving index for device {device_id}: {e}")
 
 
-def get_night_mode_is_active(device):
+def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
+    if not device.get("night_mode_enabled", False):
+        return False
     # configured, adjust current hour to set device timezone
     if "timezone" in device and device["timezone"] != 100:
         current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
@@ -137,7 +145,7 @@ def get_night_mode_is_active(device):
     # print(f"current_hour:{current_hour} -- ",end="")
     if device.get("night_start", -1) > -1:
         start_hour = device["night_start"]
-        end_hour = 6  # 6am
+        end_hour = device.get("night_end", 6)  # default to 6 am if not set
         if start_hour <= end_hour:  # Normal case (e.g., 9 to 17)
             if start_hour <= current_hour <= end_hour:
                 print("nightmode active")
@@ -149,53 +157,32 @@ def get_night_mode_is_active(device):
     return False
 
 
-def get_device_brightness(device):
+def get_device_brightness(device: Dict[str, Any]) -> int:
     if "night_brightness" in device and get_night_mode_is_active(device):
         return int(device["night_brightness"] * 2)
-    else:  # Wrapped case (e.g., 22 to 6 - overnight)
+    else:
         return int(device.get("brightness", 30) * 2)
 
 
-def brightness_int_from_string(brightness_string):
+def brightness_int_from_string(brightness_string: str) -> int:
     brightness_mapping = {"dim": 10, "low": 20, "medium": 40, "high": 80}
     # Get the numerical value from the dictionary, default to 50 if not found
     brightness_value = brightness_mapping[brightness_string]
     return brightness_value
 
 
-def get_users_dir():
+def get_users_dir() -> str:
     # print(f"users dir : {current_app.config['USERS_DIR']}")
     return current_app.config["USERS_DIR"]
 
 
-def file_exists(file_path):
+def file_exists(file_path: str) -> bool:
     return os.path.exists(file_path)
 
 
-def get_user(username):
+def get_user(username: str) -> Optional[Dict[str, Any]]:
     try:
-        with sqlite3.connect(get_db_file()) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT data FROM json_data WHERE username = ?", (str(username),)
-            )
-            row = cursor.fetchone()
-            if row:
-                user = json.loads(row[0])
-                return user
-            else:
-                print(f"{username} not found")
-                return None
-            # with open(f"{get_users_dir()}/{username}/{username}.json") as file:
-            # user = json.loads(row[0])
-    #            print("return user")
-    except Exception as e:
-        print("problem with get_user" + str(e))
-        return None
-
-
-def auth_user(username, password):
-    with sqlite3.connect(get_db_file()) as conn:
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT data FROM json_data WHERE username = ?", (str(username),)
@@ -203,37 +190,52 @@ def auth_user(username, password):
         row = cursor.fetchone()
         if row:
             user = json.loads(row[0])
-            if check_password_hash(user.get("password"), password):
-                print(f"returning {user}")
-                return user
+            return user
         else:
-            print("bad password")
-            return False
+            print(f"{username} not found")
+            return None
+    except Exception as e:
+        print("problem with get_user" + str(e))
+        return None
 
 
-def save_user(user, new_user=False):
+def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
+    cursor = get_db().cursor()
+    cursor.execute("SELECT data FROM json_data WHERE username = ?", (str(username),))
+    row = cursor.fetchone()
+    if row:
+        user = json.loads(row[0])
+        if check_password_hash(user.get("password"), password):
+            print(f"returning {user}")
+            return user
+    else:
+        print("bad password")
+        return False
+
+
+def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
     print(f"saving user {user['username']}")
     if "username" in user:
         if current_app.testing:
             print(f"user data passed to save_user : {user}")
         username = user["username"]
         try:
-            with sqlite3.connect(get_db_file()) as conn:
-                cursor = conn.cursor()
-                # json
-                if new_user:
-                    cursor.execute(
-                        "INSERT INTO json_data (data, username) VALUES (?, ?)",
-                        (json.dumps(user), str(username)),
-                    )
-                    create_user_dir(username)
+            conn = get_db()
+            cursor = conn.cursor()
+            # json
+            if new_user:
+                cursor.execute(
+                    "INSERT INTO json_data (data, username) VALUES (?, ?)",
+                    (json.dumps(user), str(username)),
+                )
+                create_user_dir(username)
 
-                else:
-                    cursor.execute(
-                        "UPDATE json_data SET data = ? WHERE username = ?",
-                        (json.dumps(user), str(username)),
-                    )
-                conn.commit()
+            else:
+                cursor.execute(
+                    "UPDATE json_data SET data = ? WHERE username = ?",
+                    (json.dumps(user), str(username)),
+                )
+            conn.commit()
 
             if current_app.config.get("PRODUCTION") == "0":
                 print("writing to json file for visibility")
@@ -255,12 +257,11 @@ def save_user(user, new_user=False):
             return False
 
 
-def delete_user(username):
+def delete_user(username: str) -> bool:
     try:
-        with sqlite3.connect(get_db_file()) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM json_data WHERE username = ?", (username,))
-            conn.commit()
+        conn = get_db()
+        conn.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
+        conn.commit()
         user_dir = os.path.join(get_users_dir(), username)
         if os.path.exists(user_dir):
             shutil.rmtree(user_dir)
@@ -271,14 +272,14 @@ def delete_user(username):
         return False
 
 
-def create_user_dir(user):
+def create_user_dir(user: str) -> None:
     # create the user directory if it doesn't exist
     user_dir = os.path.join(get_users_dir(), user)
     os.makedirs(os.path.join(user_dir, "configs"), exist_ok=True)
     os.makedirs(os.path.join(user_dir, "apps"), exist_ok=True)
 
 
-def get_apps_list(user):
+def get_apps_list(user: str) -> List[Dict[str, Any]]:
     app_list = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
@@ -327,7 +328,7 @@ def get_apps_list(user):
         return []
 
 
-def get_app_details(user, name):
+def get_app_details(user: str, name: str) -> Dict[str, Any]:
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
     print(user, name)
@@ -345,18 +346,18 @@ def get_app_details(user, name):
     return {}
 
 
-def sanitize(str):
-    str = str.replace(" ", "_")
-    str = str.replace("-", "")
-    str = str.replace(".", "")
-    str = str.replace("/", "")
-    str = str.replace("\\", "")
-    str = str.replace("%", "")
-    str = str.replace("'", "")
-    return str
+def sanitize(string: str) -> str:
+    string = string.replace(" ", "_")
+    string = string.replace("-", "")
+    string = string.replace(".", "")
+    string = string.replace("/", "")
+    string = string.replace("\\", "")
+    string = string.replace("%", "")
+    string = string.replace("'", "")
+    return string
 
 
-def sanitize_url(url):
+def sanitize_url(url: str) -> str:
     # Decode any percent-encoded characters
     url = unquote(url)
     # Replace spaces with underscores
@@ -370,16 +371,16 @@ def sanitize_url(url):
 
 
 # basically just call gen_apps_array.py script
-def generate_apps_list():
+def generate_apps_list() -> None:
     os.system("python3 gen_app_array.py")  # safe
     print("generated apps list")
 
 
-def allowed_file(filename):
+def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ["star"]
 
 
-def save_user_app(file, path):
+def save_user_app(file: Any, path: str) -> bool:
     filename = sanitize(file.filename)
     filename = secure_filename(filename)
 
@@ -391,7 +392,7 @@ def save_user_app(file, path):
         return False
 
 
-def delete_user_upload(user, filename):
+def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
     path = "{}/{}/apps/".format(get_users_dir(), user["username"])
     try:
         filename = secure_filename(filename)
@@ -402,24 +403,19 @@ def delete_user_upload(user, filename):
         return False
 
 
-def get_all_users():
+def get_all_users() -> List[Dict[str, Any]]:
     users = list()
-    with sqlite3.connect(get_db_file()) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT data FROM json_data")
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT data FROM json_data")
 
-        for row in cursor.fetchall():
-            # print(row[0])
-            user = json.loads(row[0])
-            # print(f"got user {user['username']}")
-            users.append(user)
-        # # for user in os.listdir(get_users_dir()):
-        # if (os.path.isdir(f"{get_users_dir()}/{user}")):
-        #     users.append(get_user(user))
+    for row in cursor.fetchall():
+        user = json.loads(row[0])
+        users.append(user)
     return users
 
 
-def get_user_render_port(username):
+def get_user_render_port(username: str) -> int:
     base_port = int(current_app.config.get("PIXLET_RENDER_PORT1")) or 5100
     users = get_all_users()
     for i in range(len(users)):
@@ -428,7 +424,7 @@ def get_user_render_port(username):
             return base_port + i
 
 
-def get_is_app_schedule_active(app):
+def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
     # Check if the app should be displayed based on start and end times and active days
     current_time = datetime.now().time()
     current_day = datetime.now().strftime("%A").lower()
@@ -464,35 +460,39 @@ def get_is_app_schedule_active(app):
     return schedule_active
 
 
-def get_device_by_name(user, name):
+def get_device_by_name(user: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
     for device_id, device in user.get("devices", {}).items():
         if device.get("name") == name:
             return device
     return None
 
 
-def get_device_webp_dir(device_id, create=True):
+def get_device_webp_dir(device_id: str, create: bool = True) -> str:
     path = f"{os.getcwd()}/tronbyt_server/webp/{device_id}"
     if not os.path.exists(path) and create:
         os.makedirs(path)
     return path
 
 
-def get_device_by_id(device_id):
+def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
     for user in get_all_users():
-        for device in user.get("devices", {}).values():
-            if device.get("id") == device_id:
-                return device
+        device = user.get("devices", {}).get(device_id)
+        if device:
+            return device
     return None
 
 
-def get_user_by_device_id(device_id):
+def get_user_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
     for user in get_all_users():
-        if "devices" in user and device_id in user.get("devices", {}).keys():
+        device = user.get("devices", {}).get(device_id)
+        if device:
             return user
+    return None
 
 
-def generate_firmware(label, url, ap, pw, gen2, swap_colors):
+def generate_firmware(
+    label: str, url: str, ap: str, pw: str, gen2: bool, swap_colors: bool
+) -> Dict[str, Union[str, int]]:
     # Usage
     if gen2:
         file_path = "firmware/gen2.bin"
@@ -557,13 +557,15 @@ def generate_firmware(label, url, ap, pw, gen2, swap_colors):
         return {"error": "no bytes written"}
 
 
-def add_pushed_app(device_id, path):
+def add_pushed_app(device_id: str, path: str) -> None:
     # Get the base name of the file
     filename = os.path.basename(path)
     # Remove the extension
     installation_id, _ = os.path.splitext(filename)
     user = get_user_by_device_id(device_id)
-    if installation_id in user.get("devices").keys():
+    if user is None:
+        return
+    if installation_id in user["devices"][device_id].get("apps", {}):
         # already in there
         return
     app = {

@@ -3,10 +3,11 @@ import datetime as dt
 import json
 import os
 import time
+from typing import Any, Dict, Optional
 
 from babel.dates import format_timedelta
 from dotenv import load_dotenv
-from flask import Flask, current_app, request
+from flask import Flask, current_app, g, request
 from flask_babel import Babel, _
 
 from tronbyt_server import db
@@ -15,16 +16,16 @@ babel = Babel()
 
 
 def render_app(
-    name,
-    config,
-    width,
-    height,
-    magnify,
-    maxDuration,
-    timeout,
-    render_gif,
-    silence_output,
-):
+    name: str,
+    config: Dict[str, Any],
+    width: int,
+    height: int,
+    magnify: int,
+    maxDuration: int,
+    timeout: int,
+    render_gif: bool,
+    silence_output: bool,
+) -> bytes:
     ret = pixlet_render_app(
         name.encode("utf-8"),
         json.dumps(config).encode("utf-8"),
@@ -42,14 +43,15 @@ def render_app(
         ).contents
         buf = bytes(data)
         free_bytes(ret.data)
-    return buf
+        return buf
+    return None
 
 
-def get_locale():
+def get_locale() -> Optional[str]:
     return request.accept_languages.best_match(current_app.config["LANGUAGES"])
 
 
-def create_app(test_config=None):
+def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     load_dotenv()
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
@@ -66,6 +68,10 @@ def create_app(test_config=None):
             DB_FILE="users/usersdb.sqlite",
             LANGUAGES=["en", "de"],
         )
+        if app.config.get("PRODUCTION") == "1":
+            if app.config["SERVER_PROTOCOL"] == "https":
+                app.config["SESSION_COOKIE_SECURE"] = True
+            app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     else:
         app.config.from_mapping(
             SECRET_KEY="lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh",
@@ -88,11 +94,12 @@ def create_app(test_config=None):
         pass
 
     if test_config is None:
-        print("Loading libpixlet")
+        libpixlet_path = os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so")
+        print("Loading {libpixlet_path}")
         try:
-            pixlet_library = ctypes.cdll.LoadLibrary("/usr/lib/libpixlet.so")
+            pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
         except OSError as e:
-            raise RuntimeError(f"Failed to load libpixlet: {e}")
+            raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
         init_cache = pixlet_library.init_cache
         init_cache()
 
@@ -141,7 +148,7 @@ def create_app(test_config=None):
     app.add_url_rule("/", endpoint="index")
 
     @app.template_filter("timeago")
-    def timeago(seconds):
+    def timeago(seconds: int) -> str:
         if seconds == 0:
             return _("Never")
         return format_timedelta(
@@ -150,5 +157,11 @@ def create_app(test_config=None):
             add_direction=True,
             locale=get_locale(),
         )
+
+    @app.teardown_appcontext
+    def close_connection(exception):
+        db = getattr(g, "_database", None)
+        if db is not None:
+            db.close()
 
     return app

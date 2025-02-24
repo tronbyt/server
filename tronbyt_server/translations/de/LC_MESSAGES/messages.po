@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-21 09:23+0000\n"
+"POT-Creation-Date: 2025-02-21 23:00+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/__init__.py:146
+#: tronbyt_server/__init__.py:148
 msgid "Never"
 msgstr "Nie"
 
@@ -117,7 +117,7 @@ msgid "Email Address (optional)"
 msgstr "E-Mail-Adresse (optional)"
 
 #: tronbyt_server/templates/manager/addapp.html:3
-#: tronbyt_server/templates/manager/adminindex.html:31
+#: tronbyt_server/templates/manager/adminindex.html:34
 #: tronbyt_server/templates/manager/index.html:145
 msgid "Add App"
 msgstr "App hinzufügen"
@@ -168,12 +168,12 @@ msgstr "Konfigurieren"
 msgid "New Tronbyt"
 msgstr "Neuer Tronbyt"
 
-#: tronbyt_server/templates/manager/adminindex.html:16
+#: tronbyt_server/templates/manager/adminindex.html:17
 #, fuzzy
 msgid "Delete User?"
 msgstr "Benutzer löschen?"
 
-#: tronbyt_server/templates/manager/adminindex.html:17
+#: tronbyt_server/templates/manager/adminindex.html:18
 #: tronbyt_server/templates/manager/index.html:206
 #: tronbyt_server/templates/manager/update.html:67
 #: tronbyt_server/templates/manager/updateapp.html:44
@@ -181,7 +181,7 @@ msgstr "Benutzer löschen?"
 msgid "Delete"
 msgstr "Löschen"
 
-#: tronbyt_server/templates/manager/adminindex.html:29
+#: tronbyt_server/templates/manager/adminindex.html:32
 #: tronbyt_server/templates/manager/index.html:143
 #: tronbyt_server/templates/manager/index.html:202
 #: tronbyt_server/templates/manager/update.html:3
@@ -189,54 +189,54 @@ msgstr "Löschen"
 msgid "Edit"
 msgstr "Bearbeiten"
 
-#: tronbyt_server/templates/manager/adminindex.html:36
+#: tronbyt_server/templates/manager/adminindex.html:39
 #: tronbyt_server/templates/manager/index.html:159
 msgid "API ID:"
 msgstr "API-ID:"
 
-#: tronbyt_server/templates/manager/adminindex.html:39
-#: tronbyt_server/templates/manager/adminindex.html:60
+#: tronbyt_server/templates/manager/adminindex.html:42
+#: tronbyt_server/templates/manager/adminindex.html:63
 #: tronbyt_server/templates/manager/index.html:164
 #: tronbyt_server/templates/manager/index.html:188
 msgid "Notes:"
 msgstr "Notizen:"
 
-#: tronbyt_server/templates/manager/adminindex.html:51
+#: tronbyt_server/templates/manager/adminindex.html:54
 msgid "installation id"
 msgstr "Installations-ID"
 
-#: tronbyt_server/templates/manager/adminindex.html:52
+#: tronbyt_server/templates/manager/adminindex.html:55
 #: tronbyt_server/templates/manager/index.html:177
 msgid "Enabled"
 msgstr "Aktiviert"
 
-#: tronbyt_server/templates/manager/adminindex.html:53
+#: tronbyt_server/templates/manager/adminindex.html:56
 #: tronbyt_server/templates/manager/index.html:179
 msgid "Disabled"
 msgstr "Deaktiviert"
 
-#: tronbyt_server/templates/manager/adminindex.html:56
+#: tronbyt_server/templates/manager/adminindex.html:59
 #: tronbyt_server/templates/manager/index.html:183
 msgid "App:"
 msgstr "App:"
 
-#: tronbyt_server/templates/manager/adminindex.html:57
+#: tronbyt_server/templates/manager/adminindex.html:60
 #: tronbyt_server/templates/manager/index.html:184
 msgid "Render Interval (minutes):"
 msgstr "Render-Intervall (Minuten):"
 
-#: tronbyt_server/templates/manager/adminindex.html:58
+#: tronbyt_server/templates/manager/adminindex.html:61
 #: tronbyt_server/templates/manager/index.html:185
 msgid "Display Time (secs):"
 msgstr "Anzeigedauer (Sekunden):"
 
-#: tronbyt_server/templates/manager/adminindex.html:63
+#: tronbyt_server/templates/manager/adminindex.html:66
 #: tronbyt_server/templates/manager/index.html:192
 #: tronbyt_server/templates/manager/updateapp.html:11
 msgid "Preview"
 msgstr "Vorschau"
 
-#: tronbyt_server/templates/manager/adminindex.html:65
+#: tronbyt_server/templates/manager/adminindex.html:68
 #: tronbyt_server/templates/manager/index.html:194
 msgid "Last Rendered:"
 msgstr "Zuletzt gerendert:"
@@ -345,11 +345,15 @@ msgstr "WiFi-Netzwerkname (AP)"
 msgid "WiFi Password"
 msgstr "WiFi-Passwort"
 
-#: tronbyt_server/templates/manager/firmware_form.html:28
+#: tronbyt_server/templates/manager/firmware_form.html:26
 msgid "Gen2 ?"
 msgstr "Gen2?"
 
-#: tronbyt_server/templates/manager/firmware_form.html:31
+#: tronbyt_server/templates/manager/firmware_form.html:30
+msgid "Swap Colors ? (Gen1 Only)"
+msgstr "Farben tauschen? (Nur Gen1)"
+
+#: tronbyt_server/templates/manager/firmware_form.html:33
 msgid "Generate Firmware File"
 msgstr "Firmware-Datei generieren"
 
@@ -405,8 +409,14 @@ msgid "Night Brightness"
 msgstr "Nacht-Helligkeit"
 
 #: tronbyt_server/templates/manager/update.html:42
-msgid "Night Start Hour (24hr) (-1 for disabled)"
-msgstr "Nacht-Startstunde (24h) (-1 für deaktiviert)"
+msgid "Night Start Hour (24hr)"
+msgstr "Nachtmodus Start (24h)"
+
+msgid "Night End Hour (24hr)"
+msgstr "Nachtmodus Ende (24h)"
+
+msgid "Enable Night Mode"
+msgstr "Nachtmodus aktivieren"
 
 #: tronbyt_server/templates/manager/update.html:47
 msgid "Night Mode App:"
