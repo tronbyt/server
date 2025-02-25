@@ -84,8 +84,10 @@ def uploadapp() -> str:
     os.makedirs(user_apps_path, exist_ok=True)
 
     star_files = [
-        file for _, _, files in os.walk(user_apps_path) 
-        for file in files if file.endswith(".star")
+        file
+        for _, _, files in os.walk(user_apps_path)
+        for file in files
+        if file.endswith(".star")
     ]
 
     return render_template("manager/uploadapp.html", files=star_files)
