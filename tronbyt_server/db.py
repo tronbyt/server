@@ -406,10 +406,8 @@ def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
             print("Security warning: Attempted path traversal")
             return False
 
-        os.remove(file_path)
-
-        if not os.listdir(folder_path):
-            os.rmdir(folder_path)
+        if os.path.exists(folder_path):
+            shutil.rmtree(folder_path)
 
         return True
     except OSError as e:
