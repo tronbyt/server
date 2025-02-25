@@ -11,6 +11,9 @@
 env
 certs
 **/system-apps/**
+!tronbyt_server/static/images/*.webp
+!tronbyt_server/static/images/*.png
+!tronbyt_server/static/images/*.gif
 system-apps/**
 firmware/*.bin
 users/*.idx

@@ -10,10 +10,10 @@
   <div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
     alt="{{ _('Preview') }}"></div>
   <label for="uinterval">{{ _('Render Interval Minutes (Update every X minutes)') }}</label>
-  <div><input type="number" name="uinterval" id="uinterval" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
+  <div><input type="number" name="uinterval" id="uinterval" min="0" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
 
   <label for="display_time">{{ _('Display Time Seconds (0 for device default)') }}</label>
-  <div><input type="number" name="display_time" id="display_time" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
+  <div><input type="number" name="display_time" id="display_time" min="0" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
 
   <label for="notes">{{ _('Notes: ') }}</label>
   <textarea name="notes" id="notes">{{ request.form['notes'] or app['notes'] }}</textarea>
