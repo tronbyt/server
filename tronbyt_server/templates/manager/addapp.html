@@ -72,9 +72,9 @@ function searchApps(inputId, gridId) {
   <input type="hidden" name="name" id="selected_app">
   <br>
   <label for="uinterval">{{ _('Render Interval (minutes)') }}</label>
-  <input name="uinterval" type="number" id="uinterval" value={{ request.form['uinterval'] or 10}} required>
+  <input name="uinterval" type="number" id="uinterval" min="0" value="{{ request.form['uinterval'] or 10 }}" required>
   <label for="display_time">{{ _('Display Time (seconds)') }}</label>
-  <input name="display_time" type="number" id="display_time" value={{ request.form['display_time'] or 0}} required>
+  <input name="display_time" type="number" id="display_time" min="0" value="{{ request.form['display_time'] or 0 }}" required>
 
   <label for="notes">{{ _('Notes') }}</label>
   <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>

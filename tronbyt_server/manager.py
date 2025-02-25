@@ -277,22 +277,6 @@ def deleteapp(device_id: str, iname: str) -> Response:
     if os.path.isfile(tmp_config_path):
         os.remove(tmp_config_path)
 
-    # use pixlet to delete installation of app if api_key exists (device_tidbyt server operation) and enabled flag is set to true
-    if (
-        "use_tidbyt" in g.user["devices"][device_id]
-        and "api_key" in g.user["devices"][device_id]
-        and g.user["devices"][device_id]["apps"][iname]["enabled"]
-    ):
-        command = [
-            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-            "delete",
-            g.user["devices"][device_id]["img_url"],
-            iname,
-            "-t",
-            g.user["devices"][device_id]["api_key"],
-        ]
-        print("Deleting installation id {}".format(iname))
-        subprocess.run(command)
     device = g.user["devices"][device_id]
     app = g.user["devices"][device_id]["apps"][iname]
 
@@ -386,29 +370,8 @@ def addapp(device_id: str) -> Response:
 def toggle_enabled(device_id: str, iname: str) -> Response:
     user = g.user
     app = user["devices"][device_id]["apps"][iname]
-
-    if user["devices"][device_id]["apps"][iname]["enabled"]:
-        app["enabled"] = False
-        # set fresh_disable so we can delete from tidbyt once and only once
-        # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-        if (
-            "use_tidbyt" in g.user["devices"][device_id]
-            and "api_key" in g.user["devices"][device_id]
-        ):
-            command = [
-                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                "delete",
-                g.user["devices"][device_id]["img_url"],
-                iname,
-                "-t",
-                g.user["devices"][device_id]["api_key"],
-            ]
-            print(command)
-            subprocess.run(command)
-            app["deleted"] = True
-    else:
-        # we should probably re-render and push but that's a pain so not doing it right now.
-        app["enabled"] = True
+    app["enabled"] = not app["enabled"]
+    # if enabled, we should probably re-render and push but that's a pain so not doing it right now.
 
     db.save_user(user)  # this saves all changes
     flash("Changes saved.")
@@ -441,25 +404,6 @@ def updateapp(device_id: str, iname: str) -> Response:
             app["start_time"] = request.form.get("start_time")
             app["end_time"] = request.form.get("end_time")
             app["days"] = request.form.getlist("days")
-
-            if user["devices"][device_id]["apps"][iname]["enabled"] and not enabled:
-                # set fresh_disable so we can delete from tidbyt once and only once
-                # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-                if (
-                    "use_tidbyt" in g.user["devices"][device_id]
-                    and "api_key" in g.user["devices"][device_id]
-                ):
-                    command = [
-                        os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                        "delete",
-                        g.user["devices"][device_id]["img_url"],
-                        iname,
-                        "-t",
-                        g.user["devices"][device_id]["api_key"],
-                    ]
-                    print(command)
-                    subprocess.run(command)
-                    app["deleted"] = True
             app["enabled"] = enabled
             db.save_user(user)  # this saves all changes
 
@@ -485,7 +429,7 @@ def render_app(app_path: str, config_path: str, webp_path: str) -> bool:
         True,
     )
     if not data:
-        print("\t\t\tError running pixlet render")
+        print("Error running pixlet render")
         return False
     with open(webp_path, "wb") as webp_file:
         webp_file.write(data)
@@ -493,13 +437,9 @@ def render_app(app_path: str, config_path: str, webp_path: str) -> bool:
 
 
 def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -> bool:
-    result = False
     if "pushed" in app:
         print("Pushed App -- NO RENDER")
-        return result
-    if not app.get("enabled", True):
-        print(f"{app['name']} -- Disabled")
-        return result
+        return True
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
@@ -510,29 +450,32 @@ def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -
     if "path" in app:
         app_path = app["path"]
     else:
-        # print("\t\t\tNo path for {}, trying default location".format(app["name"]))
+        # print("No path for {}, trying default location".format(app["name"]))
         app_path = "system-apps/apps/{}/{}.star".format(
             app["name"].replace("_", ""), app["name"]
         )
+
     if (
         "last_render" not in app
         or now - app["last_render"] > int(app["uinterval"]) * 60
     ):
-        print(f"\nRENDERING -- {app_basename}")
+        print(f"RENDERING -- {app_basename}")
         if render_app(app_path, config_path, webp_path):
-            # update the config file with the new last render time
+            # update the config with the new last render time
             app["last_render"] = int(time.time())
-            result = True
+            return True
     else:
-        print(f"\n{app_basename} -- NO RENDER")
-    return result
+        print(f"{app_basename} -- NO RENDER")
+        return True
+    return False
 
 
 @bp.route("/<string:device_id>/firmware", methods=["POST", "GET"])
 @login_required
 def generate_firmware(device_id: str) -> Response:
     # first ensure this device id exists in the current users config
-    if device_id not in g.user["devices"]:
+    device = g.user["devices"].get(device_id, None)
+    if not device:
         abort(404)
     # on GET just render the form for the user to input their wifi creds and auto fill the image_url
 
@@ -542,7 +485,7 @@ def generate_firmware(device_id: str) -> Response:
             ap = request.form.get("wifi_ap")
             password = request.form.get("wifi_password")
             image_url = request.form.get("img_url")
-            label = db.sanitize(g.user["devices"][device_id]["name"])
+            label = db.sanitize(device["name"])
             gen2 = request.form.get("gen2", False)
             swap_colors = request.form.get("swap_colors", False)
 
@@ -550,11 +493,11 @@ def generate_firmware(device_id: str) -> Response:
                 label, image_url, ap, password, gen2, swap_colors
             )
             if "file_path" in result:
-                g.user["devices"][device_id]["firmware_file_path"] = result["file_path"]
+                device["firmware_file_path"] = result["file_path"]
                 db.save_user(g.user)
                 return render_template(
                     "manager/firmware.html",
-                    device=g.user["devices"][device_id],
+                    device=device,
                     img_url=image_url,
                     ap=ap,
                     password=password,
@@ -567,7 +510,7 @@ def generate_firmware(device_id: str) -> Response:
 
     return render_template(
         "manager/firmware_form.html",
-        device=g.user["devices"][device_id],
+        device=device,
         server_root=f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}",
     )
 
@@ -630,46 +573,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
                 device["apps"][iname]["enabled"] = True
                 # set last_rendered to seconds
                 device["apps"][iname]["last_render"] = int(time.time())
-
-                if "use_tidyt" in device and device["api_key"] != "":
-                    device = g.user["devices"][device_id]
-                    # check for zero filesize
-                    if os.path.getsize(webp_path) > 0:
-                        command = [
-                            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                            "push",
-                            device["img_url"],
-                            webp_path,
-                            "-b",
-                            "-t",
-                            device["api_key"],
-                            "-i",
-                            app["iname"],
-                        ]
-
-                        print("pushing {}".format(app["iname"]))
-                        result = subprocess.run(command)
-                        if "deleted" in app:
-                            del app["deleted"]
-                    else:
-                        # delete installation may error if the installation doesn't exist but that's ok.
-                        command = [
-                            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                            "delete",
-                            device["img_url"],
-                            app["iname"],
-                            "-t",
-                            device["api_key"],
-                        ]
-                        print("blank output, deleting {}".format(app["iname"]))
-                        result = subprocess.run(command)
-                        app["deleted"] = True
-                    if result == 0:
-                        pass
-                    else:
-                        print("error pushing App: " + str(result))
-                        flash("Error Pushing App")
-
                 # always save
                 db.save_user(g.user)
             else:
@@ -759,7 +662,7 @@ def next_app(
         ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
         if ephemeral_files:
             ephemeral_file = ephemeral_files[0]
-            print(f"\nreturning ephemeral pushed file {ephemeral_file}")
+            print(f"returning ephemeral pushed file {ephemeral_file}")
             webp_path = os.path.join("webp", device_id, "pushed", ephemeral_file)
             # send_file doesn't need the full path, just the path after the tronbyt_server
             response = send_file(webp_path, mimetype="image/webp")
@@ -806,9 +709,11 @@ def next_app(
         print("disabled app")
         return next_app(device_id, user, last_app_index, recursion_depth + 1)
 
-    # check if the webp needs update/render and do it, save if rendered
-    if possibly_render(user, device_id, app):
-        db.save_user(user)
+    if not possibly_render(user, device_id, app):
+        # try the next app if rendering failed or produced an empty result (no screens)
+        return next_app(device_id, user, last_app_index, recursion_depth + 1)
+
+    db.save_user(user)
 
     if "pushed" in app:
         webp_path = "{}/pushed/{}.webp".format(
