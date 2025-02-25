@@ -277,22 +277,6 @@ def deleteapp(device_id: str, iname: str) -> Response:
     if os.path.isfile(tmp_config_path):
         os.remove(tmp_config_path)
 
-    # use pixlet to delete installation of app if api_key exists (device_tidbyt server operation) and enabled flag is set to true
-    if (
-        "use_tidbyt" in g.user["devices"][device_id]
-        and "api_key" in g.user["devices"][device_id]
-        and g.user["devices"][device_id]["apps"][iname]["enabled"]
-    ):
-        command = [
-            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-            "delete",
-            g.user["devices"][device_id]["img_url"],
-            iname,
-            "-t",
-            g.user["devices"][device_id]["api_key"],
-        ]
-        print("Deleting installation id {}".format(iname))
-        subprocess.run(command)
     device = g.user["devices"][device_id]
     app = g.user["devices"][device_id]["apps"][iname]
 
@@ -386,29 +370,8 @@ def addapp(device_id: str) -> Response:
 def toggle_enabled(device_id: str, iname: str) -> Response:
     user = g.user
     app = user["devices"][device_id]["apps"][iname]
-
-    if user["devices"][device_id]["apps"][iname]["enabled"]:
-        app["enabled"] = False
-        # set fresh_disable so we can delete from tidbyt once and only once
-        # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-        if (
-            "use_tidbyt" in g.user["devices"][device_id]
-            and "api_key" in g.user["devices"][device_id]
-        ):
-            command = [
-                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                "delete",
-                g.user["devices"][device_id]["img_url"],
-                iname,
-                "-t",
-                g.user["devices"][device_id]["api_key"],
-            ]
-            print(command)
-            subprocess.run(command)
-            app["deleted"] = True
-    else:
-        # we should probably re-render and push but that's a pain so not doing it right now.
-        app["enabled"] = True
+    app["enabled"] = not app["enabled"]
+    # if enabled, we should probably re-render and push but that's a pain so not doing it right now.
 
     db.save_user(user)  # this saves all changes
     flash("Changes saved.")
@@ -441,25 +404,6 @@ def updateapp(device_id: str, iname: str) -> Response:
             app["start_time"] = request.form.get("start_time")
             app["end_time"] = request.form.get("end_time")
             app["days"] = request.form.getlist("days")
-
-            if user["devices"][device_id]["apps"][iname]["enabled"] and not enabled:
-                # set fresh_disable so we can delete from tidbyt once and only once
-                # use pixlet to delete installation of app if api_key exists (tidbyt server operation) and enabled flag is set to true
-                if (
-                    "use_tidbyt" in g.user["devices"][device_id]
-                    and "api_key" in g.user["devices"][device_id]
-                ):
-                    command = [
-                        os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                        "delete",
-                        g.user["devices"][device_id]["img_url"],
-                        iname,
-                        "-t",
-                        g.user["devices"][device_id]["api_key"],
-                    ]
-                    print(command)
-                    subprocess.run(command)
-                    app["deleted"] = True
             app["enabled"] = enabled
             db.save_user(user)  # this saves all changes
 
@@ -629,46 +573,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
                 device["apps"][iname]["enabled"] = True
                 # set last_rendered to seconds
                 device["apps"][iname]["last_render"] = int(time.time())
-
-                if "use_tidyt" in device and device["api_key"] != "":
-                    device = g.user["devices"][device_id]
-                    # check for zero filesize
-                    if os.path.getsize(webp_path) > 0:
-                        command = [
-                            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                            "push",
-                            device["img_url"],
-                            webp_path,
-                            "-b",
-                            "-t",
-                            device["api_key"],
-                            "-i",
-                            app["iname"],
-                        ]
-
-                        print("pushing {}".format(app["iname"]))
-                        result = subprocess.run(command)
-                        if "deleted" in app:
-                            del app["deleted"]
-                    else:
-                        # delete installation may error if the installation doesn't exist but that's ok.
-                        command = [
-                            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                            "delete",
-                            device["img_url"],
-                            app["iname"],
-                            "-t",
-                            device["api_key"],
-                        ]
-                        print("blank output, deleting {}".format(app["iname"]))
-                        result = subprocess.run(command)
-                        app["deleted"] = True
-                    if result == 0:
-                        pass
-                    else:
-                        print("error pushing App: " + str(result))
-                        flash("Error Pushing App")
-
                 # always save
                 db.save_user(g.user)
             else:
