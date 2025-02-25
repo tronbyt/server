@@ -30,13 +30,13 @@ else:
     else:
         print("Repo Cloned")
 
-# run a command to generate a txt file withh all the .star file in the apps_path directory
-command = ["find", system_apps_path, "-name", "*.star"]
-output = subprocess.check_output(command, text=True)
-# print("got find output of {}".format(output))
-
+# find all the .star files in the apps_path directory
 apps_array = []
-apps = output.split("\n")
+apps = []
+for root, dirs, files in os.walk(system_apps_path):
+    for file in files:
+        if file.endswith(".star"):
+            apps.append(os.path.join(root, file))
 apps.sort()
 count = 0
 skip_count = 0
@@ -60,11 +60,6 @@ for app in apps:
                 # print("skipping {} (uses secret.star)".format(app))
                 skip_count += 1
                 continue
-            if "summary:" in app_str:
-                # loop though lines and pick out the summary line
-                for line in app_str.split("\n"):
-                    if "summary:" in line:
-                        app_dict["summary"] = line.split(": ")[1]
 
         app_base_path = ("/").join(app_path.split("/")[0:-1])
         yaml_path = "{}/manifest.yaml".format(app_base_path)

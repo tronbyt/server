@@ -70,6 +70,10 @@ msgstr ""
 msgid "Save"
 msgstr "Speichern"
 
+#: tronbyt_server/templates/auth/edit.html:14
+msgid "Refresh"
+msgstr "Aktualisieren"
+
 #: tronbyt_server/templates/auth/edit.html:15
 msgid "Custom App Repo URL (Public Github Only!)"
 msgstr "Benutzerdefinierte App-Repo-URL (nur öffentliches GitHub!)"
@@ -162,6 +166,12 @@ msgstr "Notizen"
 #: tronbyt_server/templates/manager/index.html:204
 msgid "Configure"
 msgstr "Konfigurieren"
+
+msgid "Move Up"
+msgstr "Nach oben"
+
+msgid "Move Down"
+msgstr "Nach unten"
 
 #: tronbyt_server/templates/manager/adminindex.html:8
 #: tronbyt_server/templates/manager/index.html:116

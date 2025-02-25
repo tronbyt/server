@@ -164,7 +164,7 @@
       <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
       {% endif %}
       {% if 'apps' in device %}
-      {% for app in device['apps'].values() %}
+      {% for app in device['apps'].values()|sort(attribute='order') %}
       <div class="w3-card-4 w3-padding">
         <table width="100%">
           <tr width="100%">
@@ -192,7 +192,6 @@
                 src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="{{ _('Preview') }}"></div>
               <br>
               {{ _('Last Rendered:') }} {{ app.get('last_render',0)|timeago }}
-
       </div>
       </li>
       </td>
@@ -204,6 +203,12 @@
             href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{ _('Configure') }}</a>
           <a class="action w3-button w3-blue w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
             href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete') }}</a>
+          {% if not loop.first %}
+          <a class="action w3-button w3-blue w3-round" href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=up">{{ _('Move Up') }}</a>
+          {% endif %}
+          {% if not loop.last %}
+          <a class="action w3-button w3-blue w3-round" href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=down">{{ _('Move Down') }}</a>
+          {% endif %}
         </td>
       </tr>
       </table>

@@ -33,7 +33,13 @@ def get_test_device_id():
 
 
 def get_user_uploads_list():
-    return os.listdir(uploads_path)
+    star_files = []
+    for root, _, files in os.walk(uploads_path):
+        for file in files:
+            if file.endswith(".star"):
+                relative_path = os.path.relpath(os.path.join(root, file), uploads_path)
+                star_files.append(relative_path)
+    return star_files
 
 
 def get_test_app_id():

@@ -34,12 +34,12 @@ def get_device(device_id):
     if not api_key:
         abort(400, description="Missing or invalid Authorization header")
     print(f"api_key : {api_key}")
-    device = db.get_device_by_id(device_id)
+    user = db.get_user_by_device_id(device_id)
+    device = user["devices"].get(device_id)
     if not device or device["api_key"] != api_key:
         abort(404)
 
     if request.method == "PATCH":
-        user = db.get_user_by_device_id(device_id)
         data = request.get_json()
         if "brightness" in data:
             brightness = data["brightness"]
@@ -48,7 +48,6 @@ def get_device(device_id):
             device["brightness"] = brightness
         if "autoDim" in data:
             device["night_mode_enabled"] = data["autoDim"]
-        user["devices"][device_id] = device
         db.save_user(user)
     metadata = {
         "id": device["id"],
@@ -117,9 +116,8 @@ def handle_push(device_id: str) -> Response:
         f.write(image_bytes)
 
     if timestamp == "":
-        db.add_pushed_app(
-            device_id, file_path
-        )  # add the app to user.json so it'll stay in the rotation
+        # add the app so it'll stay in the rotation
+        db.add_pushed_app(device_id, file_path)
 
     return "Webp received.", 200
 
