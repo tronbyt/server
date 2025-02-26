@@ -19,6 +19,8 @@ services:
     ports:
       - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
       - "${SERVER_PORT}:8000/udp"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/data
