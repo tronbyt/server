@@ -9,16 +9,16 @@ services:
     environment:
       - SERVER_PROTOCOL=https
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
-      - SERVER_PORT=${SERVER_PORT}
+      - SERVER_PORT
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
-      - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
-      - PRODUCTION=${PRODUCTION}
+      - SYSTEM_APPS_REPO
+      - PRODUCTION
   proxy:
     image: caddy:latest
     restart: unless-stopped
     ports:
-      - "${SERVER_PORT}:8000" # Map port 8000 on the host to port 8000 in the container
-      - "${SERVER_PORT}:8000/udp"
+      - "${SERVER_PORT}:${SERVER_PORT}"
+      - "${SERVER_PORT}:${SERVER_PORT}/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/data

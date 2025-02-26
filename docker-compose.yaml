@@ -10,10 +10,10 @@ services:
       - webp:/app/tronbyt_server/webp
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
-      - SERVER_PORT=${SERVER_PORT}
+      - SERVER_PORT
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
-      - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
-      - PRODUCTION=${PRODUCTION}
+      - SYSTEM_APPS_REPO
+      - PRODUCTION
 volumes:
   users:
   webp:

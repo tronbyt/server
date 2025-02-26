@@ -1,3 +1,3 @@
-https://localhost:8000 {
+https://localhost:{$SERVER_PORT} {
 	reverse_proxy http://web:8000
 }
