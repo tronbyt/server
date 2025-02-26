@@ -19,6 +19,8 @@ services:
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
       - "${SERVER_PORT}:${SERVER_PORT}/udp"
+    environment:
+      - SERVER_PORT
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/data
