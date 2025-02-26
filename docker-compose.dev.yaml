@@ -10,8 +10,8 @@ services:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
-      - SERVER_PORT=${SERVER_PORT}
+      - SERVER_PORT
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
       - PYTHONUNBUFFERED=1
-      - SYSTEM_APPS_REPO=${SYSTEM_APPS_REPO}
+      - SYSTEM_APPS_REPO
       - PRODUCTION=0
