@@ -8,6 +8,7 @@ import time
 import uuid
 from typing import Any, Dict, Optional
 from operator import itemgetter
+from werkzeug.utils import secure_filename
 
 import requests
 from flask import (
@@ -761,7 +762,6 @@ def appwebp(device_id: str, iname: str) -> Response:
             webp_path = "{}/{}.webp".format(
                 db.get_device_webp_dir(device_id), app_basename
             )
-        print(webp_path)
         if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
             return send_file(webp_path, mimetype="image/webp")
         else:
