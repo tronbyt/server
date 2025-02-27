@@ -87,7 +87,6 @@ def init_db() -> None:
 def get_db():
     db = getattr(g, "_database", None)
     if db is None:
-        print(f"using {current_app.config['DB_FILE']}")
         db = g._database = sqlite3.connect(current_app.config["DB_FILE"])
     return db
 
