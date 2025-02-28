@@ -439,7 +439,7 @@ def server_root() -> str:
     hostname = current_app.config["SERVER_HOSTNAME"]
     port = current_app.config["MAIN_PORT"]
     url = f"{protocol}://{hostname}"
-    if (protocol == "https" and port != 443) or (protocol == "http" and port != 80):
+    if (protocol == "https" and port != "443") or (protocol == "http" and port != "80"):
         url += f":{port}"
     return url
 
