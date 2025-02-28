@@ -43,9 +43,8 @@ def index() -> str:
 
     if "devices" in g.user:
         devices = reversed(list(g.user["devices"].values()))
-    server_root = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}"
     return render_template(
-        "manager/index.html", devices=devices, server_root=server_root
+        "manager/index.html", devices=devices, server_root=server_root()
     )
 
 
@@ -149,7 +148,7 @@ def create() -> str:
             print("device_id is :" + str(device["id"]))
             device["name"] = name
             if not img_url:
-                img_url = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
+                img_url = f"{server_root()}/{device['id']}/next"
             device["img_url"] = img_url
             if not api_key or api_key == "":
                 api_key = "".join(
@@ -225,7 +224,7 @@ def update(device_id: str) -> str:
             device["img_url"] = (
                 db.sanitize_url(img_url)
                 if len(img_url) > 0
-                else f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}/{device['id']}/next"
+                else f"{server_root()}/{device['id']}/next"
             )
             device["night_mode_app"] = request.form.get("night_mode_app")
             device["api_key"] = api_key
@@ -239,9 +238,8 @@ def update(device_id: str) -> str:
 
             return redirect(url_for("manager.index"))
     device = g.user["devices"][id]
-    server_root = f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}"
     return render_template(
-        "manager/update.html", device=device, server_root=server_root
+        "manager/update.html", device=device, server_root=server_root()
     )
 
 
@@ -436,6 +434,16 @@ def render_app(app_path: str, config_path: str, webp_path: str) -> bool:
     return True
 
 
+def server_root() -> str:
+    protocol = current_app.config["SERVER_PROTOCOL"]
+    hostname = current_app.config["SERVER_HOSTNAME"]
+    port = current_app.config["MAIN_PORT"]
+    url = f"{protocol}://{hostname}"
+    if (protocol == "https" and port != 443) or (protocol == "http" and port != 80):
+        url += f":{port}"
+    return url
+
+
 def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -> bool:
     if "pushed" in app:
         print("Pushed App -- NO RENDER")
@@ -511,7 +519,7 @@ def generate_firmware(device_id: str) -> Response:
     return render_template(
         "manager/firmware_form.html",
         device=device,
-        server_root=f"{current_app.config['SERVER_PROTOCOL']}://{current_app.config['SERVER_HOSTNAME']}:{current_app.config['MAIN_PORT']}",
+        server_root=server_root(),
     )
 
 
