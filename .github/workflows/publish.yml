@@ -2,9 +2,9 @@ name: Create and publish a container image
 
 on:
   push:
-    # Publish `master` branch as `latest` tag and track the 'development' branch with its own tag
+    # Publish `main` branch as `latest` tag and track the 'development' branch with its own tag
     branches:
-      - master
+      - main
       - development
 
     # Publish `v1.2.3` tags as releases.
