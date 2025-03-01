@@ -91,7 +91,7 @@ That said, the recommended installation method uses Docker Compose with a config
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/Tronbyt/server.git
+   git clone https://github.com/tronbyt/server.git
    cd server
    ```
 

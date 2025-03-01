@@ -8,7 +8,7 @@ import yaml
 
 system_apps_path = "system-apps"
 system_apps_repo = (
-    os.environ.get("SYSTEM_APPS_REPO") or "https://github.com/Tronbyt/apps.git"
+    os.environ.get("SYSTEM_APPS_REPO") or "https://github.com/tronbyt/apps.git"
 )
 # check for existence of apps_path dir
 if os.path.exists(system_apps_path):
