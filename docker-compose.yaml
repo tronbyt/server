@@ -14,6 +14,11 @@ services:
       - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
       - SYSTEM_APPS_REPO
       - PRODUCTION
+    healthcheck:
+      test: ["CMD", "python3", "/app/healthcheck.py", "http://localhost:8000/health"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
 volumes:
   users:
   webp:
