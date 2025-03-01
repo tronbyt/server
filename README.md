@@ -153,3 +153,9 @@ def ssl_context(conf, default_ssl_context_factory):
 Your Tronbyt server is now serving HTTPS.
 
 See https://docs.gunicorn.org/en/latest/settings.html#settings for an exhaustive list of settings for Gunicorn.
+
+### Cache
+
+By default, tronbyt-server uses an in-memory cache for HTTP requests made by applets. This requires no setup,
+but also means that the cache will start empty every time you start the container. To persist the cache across
+containe restarts, configure Redis as in the [docker-compose.redis.yaml](docker-compose.redis.yaml) example.

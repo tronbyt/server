@@ -1,0 +1,31 @@
+services:
+  web:
+    image: ghcr.io/tronbyt/server:latest
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
+      - users:/app/users
+      - webp:/app/tronbyt_server/webp
+    environment:
+      - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
+      - SERVER_PORT
+      - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
+      - SYSTEM_APPS_REPO
+      - PRODUCTION
+      - REDIS_URL=redis://redis:6379
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: "[ $$(redis-cli ping) = 'PONG' ]"
+      interval: 60s
+      timeout: 3s
+      retries: 3
+volumes:
+  users:
+  webp:
+  redis:
