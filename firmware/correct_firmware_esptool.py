@@ -52,7 +52,7 @@ if __name__ == "__main__":
     #     print(f"Usage: {sys.argv[0]} <esptool_path> <filename>")
     #     sys.exit(1)
 
-    esptool_path = "/usr/local/bin/esptool.py"
+    esptool_path = "/usr/bin/esptool"
     file_path = sys.argv[1]
 
     # Run esptool to get the initial checksum and SHA256
