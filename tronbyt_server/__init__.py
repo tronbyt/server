@@ -95,7 +95,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
 
     if test_config is None:
         libpixlet_path = os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so")
-        print("Loading {libpixlet_path}")
+        print(f"Loading {libpixlet_path}")
         try:
             pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
         except OSError as e:

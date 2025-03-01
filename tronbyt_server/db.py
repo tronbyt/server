@@ -558,6 +558,7 @@ def generate_firmware(
             text=True,
         )
         print(result.stdout)
+        print(result.stderr)
         return {"file_path": os.path.join(os.getcwd(), new_path)}
     else:
         return {"error": "no bytes written"}
