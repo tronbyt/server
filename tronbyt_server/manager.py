@@ -592,7 +592,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
             # run pixlet render with the new config file
             current_app.logger.debug("rendering")
             device = g.user["devices"][device_id]
-            if render_app(app_path, config_path, webp_path):
+            if render_app(app_path, config_path, webp_path, device):
                 # set the enabled key in app to true now that it has been configured.
                 device["apps"][iname]["enabled"] = True
                 # set last_rendered to seconds
