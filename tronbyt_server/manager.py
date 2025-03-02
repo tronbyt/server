@@ -969,3 +969,8 @@ def moveapp(device_id: str, iname: str):
     user["devices"][device_id]["apps"] = apps
     db.save_user(user)
     return redirect(url_for("manager.index"))
+
+
+@bp.route("/health", methods=["GET"])
+def health() -> Response:
+    return Response("OK", status=200)

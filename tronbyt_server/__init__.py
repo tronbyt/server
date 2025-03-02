@@ -100,8 +100,16 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
         except OSError as e:
             raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
-        init_cache = pixlet_library.init_cache
-        init_cache()
+
+        redis_url = os.getenv("REDIS_URL")
+        if redis_url:
+            print(f"Using Redis cache at {redis_url}")
+            init_redis_cache = pixlet_library.init_redis_cache
+            init_redis_cache.argtypes = [ctypes.c_char_p]
+            init_redis_cache(redis_url.encode("utf-8"))
+        else:
+            init_cache = pixlet_library.init_cache
+            init_cache()
 
         global pixlet_render_app
         pixlet_render_app = pixlet_library.render_app
