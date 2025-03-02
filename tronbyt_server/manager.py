@@ -39,7 +39,7 @@ def index() -> str:
     devices = dict()
 
     if not g.user:
-        print("check [user].json file, might be corrupted")
+        current_app.logger.error("check [user].json file, might be corrupted")
 
     if "devices" in g.user:
         devices = reversed(list(g.user["devices"].values()))
@@ -145,7 +145,7 @@ def create() -> str:
             device = dict()
             # just use first 8 chars is good enough
             device["id"] = str(uuid.uuid4())[0:8]
-            print("device_id is :" + str(device["id"]))
+            current_app.logger.debug("device_id is :" + str(device["id"]))
             device["name"] = name
             if not img_url:
                 img_url = f"{server_root()}/{device['id']}/next"
@@ -333,7 +333,7 @@ def addapp(device_id: str) -> Response:
         else:
             app = dict()
             app["iname"] = iname
-            print("iname is :" + str(app["iname"]))
+            current_app.logger.debug("iname is :" + str(app["iname"]))
             app["name"] = name
             app["uinterval"] = uinterval
             app["display_time"] = display_time
@@ -384,7 +384,7 @@ def updateapp(device_id: str, iname: str) -> Response:
         uinterval = request.form.get("uinterval")
         notes = request.form.get("notes")
         enabled = "enabled" in request.form
-        print(request.form)
+        current_app.logger.debug(request.form)
         error = None
         if not name or not iname:
             error = "Name and installation_id is required."
@@ -394,7 +394,7 @@ def updateapp(device_id: str, iname: str) -> Response:
             user = g.user
             app = user["devices"][device_id]["apps"][iname]
             app["iname"] = iname
-            print("iname is :" + str(app["iname"]))
+            current_app.logger.debug("iname is :" + str(app["iname"]))
             app["name"] = name
             app["uinterval"] = uinterval
             app["display_time"] = int(request.form.get("display_time")) or 0
@@ -427,7 +427,7 @@ def render_app(app_path: str, config_path: str, webp_path: str) -> bool:
         True,
     )
     if not data:
-        print("Error running pixlet render")
+        current_app.logger.error("Error running pixlet render")
         return False
     with open(webp_path, "wb") as webp_file:
         webp_file.write(data)
@@ -446,7 +446,7 @@ def server_root() -> str:
 
 def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -> bool:
     if "pushed" in app:
-        print("Pushed App -- NO RENDER")
+        current_app.logger.debug("Pushed App -- NO RENDER")
         return True
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
@@ -458,7 +458,7 @@ def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -
     if "path" in app:
         app_path = app["path"]
     else:
-        # print("No path for {}, trying default location".format(app["name"]))
+        # current_app.logger.debug("No path for {}, trying default location".format(app["name"]))
         app_path = "system-apps/apps/{}/{}.star".format(
             app["name"].replace("_", ""), app["name"]
         )
@@ -467,13 +467,13 @@ def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -
         "last_render" not in app
         or now - app["last_render"] > int(app["uinterval"]) * 60
     ):
-        print(f"RENDERING -- {app_basename}")
+        current_app.logger.debug(f"RENDERING -- {app_basename}")
         if render_app(app_path, config_path, webp_path):
             # update the config with the new last render time
             app["last_render"] = int(time.time())
             return True
     else:
-        print(f"{app_basename} -- NO RENDER")
+        current_app.logger.debug(f"{app_basename} -- NO RENDER")
         return True
     return False
 
@@ -488,7 +488,7 @@ def generate_firmware(device_id: str) -> Response:
     # on GET just render the form for the user to input their wifi creds and auto fill the image_url
 
     if request.method == "POST":
-        print(request.form)
+        current_app.logger.debug(request.form)
         if "wifi_ap" in request.form and "wifi_password" in request.form:
             ap = request.form.get("wifi_ap")
             password = request.form.get("wifi_password")
@@ -561,9 +561,9 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
 
     if request.method == "POST":
         #   do something to confirm configuration ?
-        print("checking for : " + tmp_config_path)
+        current_app.logger.debug("checking for : " + tmp_config_path)
         if os.path.exists(tmp_config_path):
-            print("file exists")
+            current_app.logger.debug("file exists")
             with open(tmp_config_path, "r") as c:
                 new_config = c.read()
             # flash(new_config)
@@ -574,7 +574,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
             os.remove(tmp_config_path)
 
             # run pixlet render with the new config file
-            print("rendering")
+            current_app.logger.debug("rendering")
             device = g.user["devices"][device_id]
             if render_app(app_path, config_path, webp_path):
                 # set the enabled key in app to true now that it has been configured.
@@ -598,14 +598,14 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
             with open(config_path, "r") as c:
                 config_dict = json.load(c)
             url_params = urllib.parse.urlencode(config_dict)
-            print(url_params)
+            current_app.logger.debug(url_params)
             if len(url_params) > 2:
                 flash(url_params)
 
         # should add the device location/timezome info to the url params here
 
         # execute the pixlet serve process and show in it an iframe on the config page.
-        print(app_path)
+        current_app.logger.debug(app_path)
         if os.path.exists(app_path):
             subprocess.Popen(
                 [
@@ -647,7 +647,7 @@ def get_brightness(device_id: str) -> Response:
     user = db.get_user_by_device_id(device_id)
     device = user["devices"][device_id]
     brightness_value = device.get("brightness", 30)
-    print(f"brightness value {brightness_value}")
+    current_app.logger.debug(f"brightness value {brightness_value}")
     return Response(str(brightness_value), mimetype="text/plain")
 
 
@@ -670,18 +670,22 @@ def next_app(
         ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
         if ephemeral_files:
             ephemeral_file = ephemeral_files[0]
-            print(f"returning ephemeral pushed file {ephemeral_file}")
+            current_app.logger.debug(
+                f"returning ephemeral pushed file {ephemeral_file}"
+            )
             webp_path = os.path.join("webp", device_id, "pushed", ephemeral_file)
             # send_file doesn't need the full path, just the path after the tronbyt_server
             response = send_file(webp_path, mimetype="image/webp")
             s = device.get("default_interval", 5)
             response.headers["Tronbyt-Dwell-Secs"] = s
-            print("removing ephemeral webp")
+            current_app.logger.debug("removing ephemeral webp")
             os.remove(os.path.join(pushed_dir, ephemeral_file))
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
-        print("Maximum recursion depth exceeded, sending default webp")
+        current_app.logger.warning(
+            "Maximum recursion depth exceeded, sending default webp"
+        )
         response = send_file("static/images/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
         return response
@@ -714,7 +718,7 @@ def next_app(
         not app["enabled"] or not db.get_is_app_schedule_active(app)
     ):
         # recurse until we find one that's enabled
-        print("disabled app")
+        current_app.logger.debug("disabled app")
         return next_app(device_id, user, last_app_index, recursion_depth + 1)
 
     if not possibly_render(user, device_id, app):
@@ -730,23 +734,23 @@ def next_app(
     else:
         app_basename = "{}-{}".format(app["name"], app["iname"])
         webp_path = "{}/{}.webp".format(db.get_device_webp_dir(device_id), app_basename)
-    print(webp_path)
+    current_app.logger.debug(webp_path)
 
     if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
         response = send_file(webp_path, mimetype="image/webp")
         b = db.get_device_brightness(device)
-        print(f"sending brightness {b} -- ", end="")
+        current_app.logger.debug(f"sending brightness {b} -- ", end="")
         response.headers["Tronbyt-Brightness"] = b
         s = app.get("display_time", None)
         if not s or int(s) == 0:
             s = device.get("default_interval", 5)
-        print(f"sending dwell seconds {s} -- ", end="")
+        current_app.logger.debug(f"sending dwell seconds {s} -- ", end="")
         response.headers["Tronbyt-Dwell-Secs"] = s
-        print(f"app index is {last_app_index}")
+        current_app.logger.debug(f"app index is {last_app_index}")
         db.save_last_app_index(device_id, last_app_index)
         return response
 
-    print("file not found")
+    current_app.logger.error(f"file {webp_path} not found")
     # run it recursively until we get a file.
     return next_app(device_id, user, last_app_index, recursion_depth + 1)
 
@@ -772,10 +776,10 @@ def appwebp(device_id: str, iname: str) -> Response:
         if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
             return send_file(webp_path, mimetype="image/webp")
         else:
-            print("file no exist or 0 size")
+            current_app.logger.error("file doesn't exist or 0 size")
             abort(404)
     except Exception as e:
-        print(f"Exception: {str(e)}")
+        current_app.logger.error(f"Exception: {str(e)}")
         abort(404)
 
 
@@ -792,14 +796,14 @@ def download_firmware(device_id: str) -> Response:
         else:
             abort(404)
 
-        print(f"checking for {file_path}")
+        current_app.logger.debug(f"checking for {file_path}")
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return send_file(file_path, mimetype="application/octet-stream")
         else:
-            print("file no exist or 0 size")
+            current_app.logger.errorr("file doesn't exist or 0 size")
             abort(404)
     except Exception as e:
-        print(f"Exception: {str(e)}")
+        current_app.logger.error(f"Exception: {str(e)}")
         abort(404)
 
 
@@ -909,7 +913,7 @@ def pixlet_proxy(path: str) -> Response:
             )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching {pixlet_url}: {e}")
+        current_app.logger.error(f"Error fetching {pixlet_url}: {e}")
         abort(500)
     excluded_headers = [
         "Content-Length",

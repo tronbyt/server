@@ -23,13 +23,6 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 DEBUG = True
 
 
-def dprint(*args: Any, **kwargs: Any) -> None:
-    if DEBUG:
-        print(*args, **kwargs)
-    # else:
-    #     logging.info(*args, **kwargs)
-
-
 @bp.route("/register", methods=("GET", "POST"))
 def register() -> Any:
     if not current_app.config["TESTING"]:
@@ -77,7 +70,7 @@ def login() -> Any:
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        dprint(f"username : {username} and hp : {password}")
+        current_app.logger.debug(f"username : {username} and hp : {password}")
         error: Optional[str] = None
         user = db.auth_user(username, password)
         if user is False or user is None:
@@ -88,7 +81,7 @@ def login() -> Any:
             session.clear()
             if current_app.config.get("PRODUCTION") == "1":
                 session.permanent = True
-            print("username " + username)
+            current_app.logger.debug("username " + username)
             session["username"] = username
             return redirect(url_for("index"))
         flash(error)

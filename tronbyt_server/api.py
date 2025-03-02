@@ -10,6 +10,7 @@ from flask import (
     Response,
     abort,
     request,
+    current_app,
 )
 
 # from tronbyt_server.auth import login_required
@@ -33,7 +34,7 @@ def get_device(device_id):
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
         abort(400, description="Missing or invalid Authorization header")
-    print(f"api_key : {api_key}")
+    current_app.logger.debug(f"api_key : {api_key}")
     user = db.get_user_by_device_id(device_id)
     device = user["devices"].get(device_id)
     if not device or device["api_key"] != api_key:
@@ -61,15 +62,15 @@ def get_device(device_id):
 @bp.route("/devices/<string:device_id>/push", methods=["POST"])
 def handle_push(device_id: str) -> Response:
     # Print out the whole request
-    print("Headers:", request.headers)
-    # print("JSON Data:", request.get_json())
-    print("Body:", request.get_data(as_text=True))
+    current_app.logger.debug("Headers:", request.headers)
+    # current_app.logger.debug("JSON Data:", request.get_json())
+    current_app.logger.debug("Body:", request.get_data(as_text=True))
 
     # get api_key from Authorization header
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
         abort(400, description="Missing or invalid Authorization header")
-    print(f"api_key : {api_key}")
+    current_app.logger.debug(f"api_key : {api_key}")
     device = db.get_device_by_id(device_id)
     if not device or device["api_key"] != api_key:
         abort(404)
@@ -80,11 +81,11 @@ def handle_push(device_id: str) -> Response:
     except json.JSONDecodeError:
         abort(400, description="Invalid JSON data")
     # data = request.get_json()
-    print(data)
+    current_app.logger.debug(data)
     installation_id = data.get(
         "installationID", data.get("installationId", "__")
     )  # get both cases ID and Id
-    print(f"installation_id:{installation_id}")
+    current_app.logger.debug(f"installation_id:{installation_id}")
     image_data = data.get("image")
 
     if not api_key or not image_data:
@@ -96,7 +97,7 @@ def handle_push(device_id: str) -> Response:
     try:
         image_bytes = base64.b64decode(image_data)
     except Exception as e:
-        print(str(e))
+        current_app.logger.error(str(e))
         abort(400, description="Invalid image data")
 
     device_webp_path = db.get_device_webp_dir(device_id)
@@ -155,7 +156,7 @@ def handle_delete(device_id: str, installation_id: str) -> Response:
 
     # Generate the filename using the installation_id
     file_path = os.path.join(pushed_webp_path, f"{installation_id}.webp")
-    print(file_path)
+    current_app.logger.debug(file_path)
     if not os.path.isfile(file_path):
         abort(404, description="File not found")
 
