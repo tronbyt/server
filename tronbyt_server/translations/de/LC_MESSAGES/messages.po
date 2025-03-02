@@ -407,8 +407,8 @@ msgid "clear to reset to default"
 msgstr "löschen, um auf Standard zurückzusetzen"
 
 #: tronbyt_server/templates/manager/update.html:27
-msgid "Timezone (UTC Offset)"
-msgstr "Zeitzone (UTC-Offset)"
+msgid "Timezone"
+msgstr "Zeitzone"
 
 #: tronbyt_server/templates/manager/update.html:29
 msgid "Server Timezone"
