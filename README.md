@@ -40,9 +40,9 @@ docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXL
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:
 
-1. Download the [Compose project](https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/docker-compose.yaml) (or use the contents to add a service to an existing project).
+1. Download the [Compose project](https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/docker-compose.yaml) (or use the contents to add a service to an existing project).
 
-2. Copy the [example environment file](https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/.env.example) and modify it as needed:
+2. Copy the [example environment file](https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example) and modify it as needed:
 
    ```sh
    curl https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/.env.example > .env
