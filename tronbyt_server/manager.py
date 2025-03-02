@@ -6,6 +6,7 @@ import string
 import subprocess
 import time
 import uuid
+from datetime import datetime
 from typing import Any, Dict, Optional
 from operator import itemgetter
 
@@ -220,7 +221,7 @@ def update(device_id: str) -> str:
             device["night_start"] = int(request.form.get("night_start"))
             device["night_end"] = int(request.form.get("night_end"))
             device["night_mode_enabled"] = bool(request.form.get("night_mode_enabled"))
-            device["timezone"] = int(request.form.get("timezone"))
+            device["timezone"] = str(request.form.get("timezone"))
             device["img_url"] = (
                 db.sanitize_url(img_url)
                 if len(img_url) > 0
@@ -410,11 +411,17 @@ def updateapp(device_id: str, iname: str) -> Response:
     return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
-def render_app(app_path: str, config_path: str, webp_path: str) -> bool:
+def render_app(
+    app_path: str, config_path: str, webp_path: str, device: Dict[str, Any]
+) -> bool:
     config_data = ""
     if os.path.exists(config_path):
         with open(config_path, "r") as config_file:
             config_data = json.load(config_file)
+    if "timezone" in device:
+        config_data["$tz"] = device["timezone"]
+    else:
+        config_data["$tz"] = datetime.now().astimezone().tzname()
     data = pixlet_render_app(
         app_path,
         config_data,
@@ -468,7 +475,8 @@ def possibly_render(user: Dict[str, Any], device_id: str, app: Dict[str, Any]) -
         or now - app["last_render"] > int(app["uinterval"]) * 60
     ):
         current_app.logger.debug(f"RENDERING -- {app_basename}")
-        if render_app(app_path, config_path, webp_path):
+        device = user["devices"][device_id]
+        if render_app(app_path, config_path, webp_path, device):
             # update the config with the new last render time
             app["last_render"] = int(time.time())
             return True
