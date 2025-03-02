@@ -95,7 +95,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
 
     if test_config is None:
         libpixlet_path = os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so")
-        print(f"Loading {libpixlet_path}")
+        app.logger.info(f"Loading {libpixlet_path}")
         try:
             pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
         except OSError as e:
@@ -103,7 +103,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
 
         redis_url = os.getenv("REDIS_URL")
         if redis_url:
-            print(f"Using Redis cache at {redis_url}")
+            app.logger.info(f"Using Redis cache at {redis_url}")
             init_redis_cache = pixlet_library.init_redis_cache
             init_redis_cache.argtypes = [ctypes.c_char_p]
             init_redis_cache(redis_url.encode("utf-8"))
