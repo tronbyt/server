@@ -11,6 +11,7 @@ import yaml
 from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+from zoneinfo import ZoneInfo
 
 
 def init_db() -> None:
@@ -44,7 +45,7 @@ def init_db() -> None:
                     "night_mode_enabled": False,
                     "night_start": 22,
                     "night_end": 6,
-                    "timezone": 100,
+                    "timezone": "",
                     "img_url": "",
                     "night_mode_app": "None",
                     "api_key": "CHANGEME",
@@ -139,9 +140,13 @@ def save_last_app_index(device_id: str, index: int) -> None:
 def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
     if not device.get("night_mode_enabled", False):
         return False
-    # configured, adjust current hour to set device timezone
-    if "timezone" in device and device["timezone"] != 100:
-        current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
+    if "timezone" in device and device["timezone"] != "":
+        if isinstance(device["timezone"], int):
+            # Legacy case: timezone is an int representing offset in hours
+            current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
+        else:
+            # configured, adjust current hour to set device timezone
+            current_hour = datetime.now(ZoneInfo(device["timezone"])).hour
     else:
         current_hour = datetime.now().hour
     # current_app.logger.debug(f"current_hour:{current_hour} -- ",end="")
