@@ -45,7 +45,7 @@ That said, the recommended installation method uses Docker Compose with a config
 2. Copy the [example environment file](https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example) and modify it as needed:
 
    ```sh
-   curl https://raw.githubusercontent.com/Tronbyt/server/refs/heads/master/.env.example > .env
+   curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > .env
    ```
 
 3. Set the `SERVER_HOSTNAME_OR_IP` value in the `.env` file. IP addresses will work too.
