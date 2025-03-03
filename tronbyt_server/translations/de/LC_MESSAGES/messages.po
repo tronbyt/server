@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-02-21 23:00+0000\n"
+"POT-Creation-Date: 2025-03-03 21:31+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,29 +18,29 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/__init__.py:148
+#: tronbyt_server/__init__.py:161
 msgid "Never"
 msgstr "Nie"
 
-#: tronbyt_server/templates/base.html:56
+#: tronbyt_server/templates/base.html:57
 msgid "Tronbyt Manager (Beta)"
 msgstr "Tronbyt Manager (Beta)"
 
-#: tronbyt_server/templates/base.html:59
+#: tronbyt_server/templates/base.html:60
 msgid "Home"
 msgstr "Home"
 
-#: tronbyt_server/templates/base.html:60
+#: tronbyt_server/templates/base.html:61
 msgid "Create User"
 msgstr "Benutzer anlegen"
 
-#: tronbyt_server/templates/base.html:62
+#: tronbyt_server/templates/base.html:63
 msgid "Log Out"
 msgstr "Abmelden"
 
 #: tronbyt_server/templates/auth/login.html:3
 #: tronbyt_server/templates/auth/login.html:11
-#: tronbyt_server/templates/base.html:64
+#: tronbyt_server/templates/base.html:65
 msgid "Log In"
 msgstr "Anmelden"
 
@@ -61,24 +61,25 @@ msgstr ""
 "alle Apps, die dieses Repo verwenden."
 
 #: tronbyt_server/templates/auth/edit.html:11
-#: tronbyt_server/templates/auth/edit.html:19
-#: tronbyt_server/templates/auth/edit.html:28
+#: tronbyt_server/templates/auth/edit.html:22
+#: tronbyt_server/templates/auth/edit.html:34
 #: tronbyt_server/templates/manager/configapp.html:9
 #: tronbyt_server/templates/manager/create.html:19
-#: tronbyt_server/templates/manager/update.html:63
+#: tronbyt_server/templates/manager/update.html:68
 #: tronbyt_server/templates/manager/updateapp.html:40
 msgid "Save"
 msgstr "Speichern"
 
 #: tronbyt_server/templates/auth/edit.html:14
+#: tronbyt_server/templates/auth/edit.html:25
 msgid "Refresh"
 msgstr "Aktualisieren"
 
-#: tronbyt_server/templates/auth/edit.html:15
+#: tronbyt_server/templates/auth/edit.html:18
 msgid "Custom App Repo URL (Public Github Only!)"
 msgstr "Benutzerdefinierte App-Repo-URL (nur öffentliches GitHub!)"
 
-#: tronbyt_server/templates/auth/edit.html:17
+#: tronbyt_server/templates/auth/edit.html:20
 msgid ""
 "Replacing an existing custom repo will delete the previous repo and break"
 " any apps using that repo."
@@ -86,15 +87,15 @@ msgstr ""
 "Das Ersetzen eines vorhandenen benutzerdefinierten Repos löscht das "
 "vorherige Repo und alle Apps, die dieses Repo verwenden."
 
-#: tronbyt_server/templates/auth/edit.html:22
+#: tronbyt_server/templates/auth/edit.html:28
 msgid "Edit Password"
 msgstr "Passwort bearbeiten"
 
-#: tronbyt_server/templates/auth/edit.html:24
+#: tronbyt_server/templates/auth/edit.html:30
 msgid "Old Password"
 msgstr "Altes Passwort"
 
-#: tronbyt_server/templates/auth/edit.html:26
+#: tronbyt_server/templates/auth/edit.html:32
 msgid "New Password"
 msgstr "Neues Passwort"
 
@@ -158,20 +159,14 @@ msgstr "Anzeigedauer (Sekunden)"
 
 #: tronbyt_server/templates/manager/addapp.html:79
 #: tronbyt_server/templates/manager/create.html:17
-#: tronbyt_server/templates/manager/update.html:59
+#: tronbyt_server/templates/manager/update.html:64
 msgid "Notes"
 msgstr "Notizen"
 
 #: tronbyt_server/templates/manager/addapp.html:82
-#: tronbyt_server/templates/manager/index.html:204
+#: tronbyt_server/templates/manager/index.html:203
 msgid "Configure"
 msgstr "Konfigurieren"
-
-msgid "Move Up"
-msgstr "Nach oben"
-
-msgid "Move Down"
-msgstr "Nach unten"
 
 #: tronbyt_server/templates/manager/adminindex.html:8
 #: tronbyt_server/templates/manager/index.html:116
@@ -184,8 +179,8 @@ msgid "Delete User?"
 msgstr "Benutzer löschen?"
 
 #: tronbyt_server/templates/manager/adminindex.html:18
-#: tronbyt_server/templates/manager/index.html:206
-#: tronbyt_server/templates/manager/update.html:67
+#: tronbyt_server/templates/manager/index.html:205
+#: tronbyt_server/templates/manager/update.html:72
 #: tronbyt_server/templates/manager/updateapp.html:44
 #: tronbyt_server/templates/manager/uploadapp.html:14
 msgid "Delete"
@@ -193,7 +188,7 @@ msgstr "Löschen"
 
 #: tronbyt_server/templates/manager/adminindex.html:32
 #: tronbyt_server/templates/manager/index.html:143
-#: tronbyt_server/templates/manager/index.html:202
+#: tronbyt_server/templates/manager/index.html:201
 #: tronbyt_server/templates/manager/update.html:3
 #: tronbyt_server/templates/manager/updateapp.html:3
 msgid "Edit"
@@ -397,46 +392,56 @@ msgstr "Deaktivieren"
 msgid "Enable"
 msgstr "Aktivieren"
 
-#: tronbyt_server/templates/manager/index.html:205
+#: tronbyt_server/templates/manager/index.html:204
 #: tronbyt_server/templates/manager/updateapp.html:44
 msgid "Delete App?"
 msgstr "App löschen?"
+
+#: tronbyt_server/templates/manager/index.html:207
+msgid "Move Up"
+msgstr "Nach oben"
+
+#: tronbyt_server/templates/manager/index.html:210
+msgid "Move Down"
+msgstr "Nach unten"
 
 #: tronbyt_server/templates/manager/update.html:11
 msgid "clear to reset to default"
 msgstr "löschen, um auf Standard zurückzusetzen"
 
-#: tronbyt_server/templates/manager/update.html:27
+#: tronbyt_server/templates/manager/update.html:26
 msgid "Timezone"
 msgstr "Zeitzone"
 
-#: tronbyt_server/templates/manager/update.html:29
+#: tronbyt_server/templates/manager/update.html:28
 msgid "Server Timezone"
 msgstr "Server-Zeitzone"
 
-#: tronbyt_server/templates/manager/update.html:37
-msgid "Night Brightness"
-msgstr "Nacht-Helligkeit"
-
-#: tronbyt_server/templates/manager/update.html:42
-msgid "Night Start Hour (24hr)"
-msgstr "Nachtmodus Start (24h)"
-
-msgid "Night End Hour (24hr)"
-msgstr "Nachtmodus Ende (24h)"
-
+#: tronbyt_server/templates/manager/update.html:36
 msgid "Enable Night Mode"
 msgstr "Nachtmodus aktivieren"
 
+#: tronbyt_server/templates/manager/update.html:39
+msgid "Night Brightness"
+msgstr "Nacht-Helligkeit"
+
+#: tronbyt_server/templates/manager/update.html:43
+msgid "Night Start Hour (24hr)"
+msgstr "Nachtmodus Start (24h)"
+
 #: tronbyt_server/templates/manager/update.html:47
+msgid "Night End Hour (24hr)"
+msgstr "Nachtmodus Ende (24h)"
+
+#: tronbyt_server/templates/manager/update.html:52
 msgid "Night Mode App:"
 msgstr "Nachtmodus-App:"
 
-#: tronbyt_server/templates/manager/update.html:61
+#: tronbyt_server/templates/manager/update.html:66
 msgid "API Key"
 msgstr "API-SCHLÜSSEL:"
 
-#: tronbyt_server/templates/manager/update.html:67
+#: tronbyt_server/templates/manager/update.html:72
 msgid "Delete device and ALL apps ?"
 msgstr "Gerät und alle Apps löschen?"
 
