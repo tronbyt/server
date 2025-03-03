@@ -35,36 +35,6 @@ def init_db() -> None:
         default_json = {
             "username": "admin",
             "password": generate_password_hash("password"),
-            # "devices": {
-            #     "9abe2858": {
-            #         "id": "9abe2858",
-            #         "name": "Tronbyt 1",
-            #         "default_interval": 18,
-            #         "brightness": 40,
-            #         "night_brightness": 10,
-            #         "night_mode_enabled": False,
-            #         "night_start": 22,
-            #         "night_end": 6,
-            #         "timezone": "",
-            #         "img_url": "",
-            #         "night_mode_app": "None",
-            #         "api_key": "CHANGEME",
-            #         "notes": "",
-            #         "apps": {
-            #             "994": {
-            #                 "iname": "994",
-            #                 "name": "fireflies",
-            #                 "uinterval": 1,
-            #                 "display_time": 0,
-            #                 "notes": "",
-            #                 "enabled": True,
-            #                 "last_render": 1739393487,
-            #                 "path": "system-apps/apps/fireflies/fireflies.star",
-            #                 "order": 0,
-            #             }
-            #         },
-            #     }
-            # },
         }
 
         # Insert default JSON
@@ -75,20 +45,11 @@ def init_db() -> None:
         conn.commit()
         current_app.logger.debug("Default JSON inserted for admin user")
 
-        # Copy the default files to the expected locations
-        # if not current_app.testing:
-        #     os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
-        #     shutil.copyfile(
-        #         "tronbyt_server/static/images/fireflies.webp",
-        #         "tronbyt_server/webp/9abe2858/fireflies-994.webp",
-        #     )
-    conn.commit()
-
 
 def get_db():
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = sqlite3.connect(current_app.config["DB_FILE"])
+        db = g._database = sqlite3.connect(current_app.config["DB_FILE"], autocommit=True)
     return db
 
 
