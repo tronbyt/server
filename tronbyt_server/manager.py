@@ -431,7 +431,7 @@ def render_app(
     else:
         config_data["$tz"] = datetime.now().astimezone().tzname()
 
-    if current_app.config.get("USE_LIBPIXLET") == "1": 
+    if current_app.config.get("USE_LIBPIXLET") == "1":
         data = pixlet_render_app(
             app_path,
             config_data,
@@ -788,7 +788,9 @@ def next_app(
         s = app.get("display_time", None)
         if not s or int(s) == 0:
             s = device.get("default_interval", 5)
-        current_app.logger.debug(f"sending dwell seconds {s} -- ",)
+        current_app.logger.debug(
+            f"sending dwell seconds {s} -- ",
+        )
         response.headers["Tronbyt-Dwell-Secs"] = s
         current_app.logger.debug(f"app index is {last_app_index}")
         db.save_last_app_index(device_id, last_app_index)
