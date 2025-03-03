@@ -430,22 +430,50 @@ def render_app(
         config_data["$tz"] = device["timezone"]
     else:
         config_data["$tz"] = datetime.now().astimezone().tzname()
-    data = pixlet_render_app(
-        app_path,
-        config_data,
-        64,
-        32,
-        1,
-        15000,
-        30000,
-        False,
-        True,
-    )
-    if not data:
-        current_app.logger.error("Error running pixlet render")
-        return False
-    with open(webp_path, "wb") as webp_file:
-        webp_file.write(data)
+
+    if current_app.config.get("USE_LIBPIXLET") == "1": 
+        data = pixlet_render_app(
+            app_path,
+            config_data,
+            64,
+            32,
+            1,
+            15000,
+            30000,
+            False,
+            True,
+        )
+        if not data:
+            current_app.logger.error("Error running pixlet render")
+            return False
+        with open(webp_path, "wb") as webp_file:
+            webp_file.write(data)
+    else:
+        current_app.logger.info("Rendering with pixlet binary")
+        # build the pixlet render command
+        if os.path.exists(config_path):
+            command = [
+                "/pixlet/pixlet",
+                "render",
+                "-c",
+                config_path,
+                app_path,
+                "-o",
+                webp_path,
+            ]
+        else:  # if the config path doesn't exist then don't include it in render command
+            command = [
+                "/pixlet/pixlet",
+                "render",
+                app_path,
+                "-o",
+                webp_path,
+            ]
+        # print(command)
+        result = subprocess.run(command)
+        if result.returncode != 0:
+            current_app.logger.error(f"Error running subprocess: {result.stderr}")
+            return False
     return True
 
 
