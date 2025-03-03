@@ -755,12 +755,12 @@ def next_app(
     if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
         response = send_file(webp_path, mimetype="image/webp")
         b = db.get_device_brightness(device)
-        current_app.logger.debug(f"sending brightness {b} -- ", end="")
+        current_app.logger.debug(f"sending brightness {b} -- ")
         response.headers["Tronbyt-Brightness"] = b
         s = app.get("display_time", None)
         if not s or int(s) == 0:
             s = device.get("default_interval", 5)
-        current_app.logger.debug(f"sending dwell seconds {s} -- ", end="")
+        current_app.logger.debug(f"sending dwell seconds {s} -- ",)
         response.headers["Tronbyt-Dwell-Secs"] = s
         current_app.logger.debug(f"app index is {last_app_index}")
         db.save_last_app_index(device_id, last_app_index)
