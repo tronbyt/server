@@ -13,18 +13,18 @@ from flask import (
     session,
     url_for,
 )
+from flask.typing import ResponseReturnValue
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
+from tronbyt_server.models.user import User
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
-DEBUG = True
-
 
 @bp.route("/register", methods=("GET", "POST"))
-def register() -> Any:
+def register() -> ResponseReturnValue:
     if not current_app.config["TESTING"]:
         time.sleep(2)
     # # only allow admin to register new users
@@ -49,7 +49,7 @@ def register() -> Any:
             if "email" in request.form:
                 if "@" in request.form["email"]:
                     email = request.form["email"]
-            user = {
+            user: User = {
                 "username": username,
                 "password": password,
                 "email": email,
@@ -66,7 +66,7 @@ def register() -> Any:
 
 
 @bp.route("/login", methods=("GET", "POST"))
-def login() -> Any:
+def login() -> ResponseReturnValue:
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -91,7 +91,7 @@ def login() -> Any:
 
 # edit user info, namely password
 @bp.route("/edit", methods=("GET", "POST"))
-def edit() -> Any:
+def edit() -> ResponseReturnValue:
     if request.method == "POST":
         username = session["username"]
         old_pass = request.form["old_password"]
@@ -101,8 +101,9 @@ def edit() -> Any:
         if user is False:
             error = "Bad old password."
         if error is None:
-            user["password"] = password
-            db.save_user(user)
+            if isinstance(user, dict):
+                user["password"] = password
+                db.save_user(user)
             flash("Success")
             return redirect(url_for("index"))
         flash(error)
@@ -120,7 +121,7 @@ def load_logged_in_user() -> None:
 
 
 @bp.route("/logout")
-def logout() -> Any:
+def logout() -> ResponseReturnValue:
     session.clear()
     flash("Logged Out")
     return redirect(url_for("auth.login"))

@@ -3,7 +3,7 @@ import datetime as dt
 import json
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from babel.dates import format_timedelta
 from dotenv import load_dotenv
@@ -13,6 +13,57 @@ from flask_babel import Babel, _
 from tronbyt_server import db
 
 babel = Babel()
+pixlet_render_app: Optional[
+    Callable[[bytes, bytes, int, int, int, int, int, int, int], Any]
+] = None
+free_bytes: Optional[Callable[[Any], None]] = None
+
+
+def initialize_pixlet_library(app: Flask) -> None:
+    libpixlet_path = os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so")
+    app.logger.info(f"Loading {libpixlet_path}")
+    try:
+        pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
+    except OSError as e:
+        raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
+
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        app.logger.info(f"Using Redis cache at {redis_url}")
+        init_redis_cache = pixlet_library.init_redis_cache
+        init_redis_cache.argtypes = [ctypes.c_char_p]
+        init_redis_cache(redis_url.encode("utf-8"))
+    else:
+        init_cache = pixlet_library.init_cache
+        init_cache()
+
+    global pixlet_render_app
+
+    pixlet_render_app = pixlet_library.render_app
+    pixlet_render_app.argtypes = [
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+    ]
+
+    class RenderAppReturn(ctypes.Structure):
+        _fields_ = [
+            ("data", ctypes.POINTER(ctypes.c_ubyte)),
+            ("length", ctypes.c_int),
+        ]
+
+    pixlet_render_app.restype = RenderAppReturn
+
+    global free_bytes
+
+    free_bytes = pixlet_library.free_bytes
+    free_bytes.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
 
 
 def render_app(
@@ -25,7 +76,9 @@ def render_app(
     timeout: int,
     render_gif: bool,
     silence_output: bool,
-) -> bytes:
+) -> Optional[bytes]:
+    if pixlet_render_app is None:
+        return None
     ret = pixlet_render_app(
         name.encode("utf-8"),
         json.dumps(config).encode("utf-8"),
@@ -42,7 +95,8 @@ def render_app(
             ret.data, ctypes.POINTER(ctypes.c_uint32 * ret.length)
         ).contents
         buf = bytes(data)
-        free_bytes(ret.data)
+        if free_bytes:
+            free_bytes(ret.data)
         return buf
     return None
 
@@ -94,48 +148,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         pass
 
     if test_config is None:
-        libpixlet_path = os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so")
-        app.logger.info(f"Loading {libpixlet_path}")
-        try:
-            pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
-        except OSError as e:
-            raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
-
-        redis_url = os.getenv("REDIS_URL")
-        if redis_url:
-            app.logger.info(f"Using Redis cache at {redis_url}")
-            init_redis_cache = pixlet_library.init_redis_cache
-            init_redis_cache.argtypes = [ctypes.c_char_p]
-            init_redis_cache(redis_url.encode("utf-8"))
-        else:
-            init_cache = pixlet_library.init_cache
-            init_cache()
-
-        global pixlet_render_app
-        pixlet_render_app = pixlet_library.render_app
-        pixlet_render_app.argtypes = [
-            ctypes.c_char_p,
-            ctypes.c_char_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        ]
-
-        class RenderAppReturn(ctypes.Structure):
-            _fields_ = [
-                ("data", ctypes.POINTER(ctypes.c_ubyte)),
-                ("length", ctypes.c_int),
-            ]
-
-        pixlet_render_app.restype = RenderAppReturn
-
-        global free_bytes
-        free_bytes = pixlet_library.free_bytes
-        free_bytes.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
+        initialize_pixlet_library(app)
 
     # Initialize the database within the application context
     with app.app_context():
@@ -158,7 +171,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     @app.template_filter("timeago")
     def timeago(seconds: int) -> str:
         if seconds == 0:
-            return _("Never")
+            return str(_("Never"))
         return format_timedelta(
             dt.timedelta(seconds=seconds - int(time.time())),
             granularity="second",
@@ -167,7 +180,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         )
 
     @app.teardown_appcontext
-    def close_connection(exception):
+    def close_connection(exception: Any) -> None:
         db = getattr(g, "_database", None)
         if db is not None:
             db.close()
