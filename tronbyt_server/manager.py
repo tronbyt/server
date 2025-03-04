@@ -451,7 +451,9 @@ def render_app(
     else:
         current_app.logger.info("Rendering with pixlet binary")
         # build the pixlet render command
-        if os.path.exists(config_path) and len(config_data.keys()) > 1: # if config_file has something in it.            
+        if (
+            os.path.exists(config_path) and len(config_data.keys()) > 1
+        ):  # if config_file has something in it.
             command = [
                 "/pixlet/pixlet",
                 "render",
@@ -460,7 +462,7 @@ def render_app(
                 app_path,
                 "-o",
                 webp_path,
-                f"$tz={config_data["$tz"]}",
+                f"$tz={config_data['$tz']}",
             ]
         else:  # if the config path doesn't exist then don't include it in render command
             command = [
@@ -469,7 +471,7 @@ def render_app(
                 app_path,
                 "-o",
                 webp_path,
-                f"$tz={config_data["$tz"]}",
+                f"$tz={config_data['$tz']}",
             ]
         # print(command)
         result = subprocess.run(command)
