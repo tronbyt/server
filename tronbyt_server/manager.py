@@ -638,19 +638,30 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
 
     # run the in browser configure interface via pixlet serve
     elif request.method == "GET":
+        device = g.user["devices"][device_id]
         url_params = ""
+        import urllib.parse
+
         if os.path.exists(config_path):
             import json
-            import urllib.parse
 
             with open(config_path, "r") as c:
                 config_dict = json.load(c)
-            url_params = urllib.parse.urlencode(config_dict)
-            current_app.logger.debug(url_params)
-            if len(url_params) > 2:
-                flash(url_params)
 
-        # should add the device location/timezome info to the url params here
+        if (
+            "timezone" in device
+            and isinstance(device["timezone"], str)
+            and device["timezone"] != ""
+        ):
+            config_dict["$tz"] = device["timezone"]
+        else:
+            config_dict["$tz"] = datetime.now().astimezone().tzname()
+
+        url_params = urllib.parse.urlencode(config_dict)
+
+        current_app.logger.debug(url_params)
+        if len(url_params) > 2:
+            flash(url_params)
 
         # execute the pixlet serve process and show in it an iframe on the config page.
         current_app.logger.debug(app_path)
