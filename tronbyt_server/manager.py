@@ -460,7 +460,7 @@ def render_app(
                 app_path,
                 "-o",
                 webp_path,
-                f"$tz={config_data["$tz"]}"
+                f"$tz={config_data["$tz"]}",
             ]
         else:  # if the config path doesn't exist then don't include it in render command
             command = [
@@ -469,7 +469,7 @@ def render_app(
                 app_path,
                 "-o",
                 webp_path,
-                f"$tz={config_data["$tz"]}"
+                f"$tz={config_data["$tz"]}",
             ]
         # print(command)
         result = subprocess.run(command)
