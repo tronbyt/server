@@ -39,7 +39,7 @@ def render_app(
     )
     if ret.length >= 0:
         data = ctypes.cast(
-            ret.data, ctypes.POINTER(ctypes.c_uint32 * ret.length)
+            ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
         ).contents
         buf = bytes(data)
         free_bytes(ret.data)
@@ -72,6 +72,9 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             if app.config["SERVER_PROTOCOL"] == "https":
                 app.config["SESSION_COOKIE_SECURE"] = True
             app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+            app.logger.setLevel(os.getenv("LOG_LEVEL", "WARNING"))
+        else:
+            app.logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
     else:
         app.config.from_mapping(
             SECRET_KEY="lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh",
