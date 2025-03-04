@@ -344,7 +344,7 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
 def get_app_details(user: str, name: str) -> Dict[str, Any]:
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
-    current_app.logger.debug(user, name)
+    current_app.logger.debug(f"{user} {name}")
     for app in custom_apps:
         current_app.logger.debug(app)
         if app["name"] == name:
@@ -433,7 +433,7 @@ def get_user_render_port(username: str) -> int:
     users = get_all_users()
     for i in range(len(users)):
         if users[i]["username"] == username:
-            current_app.logger.debug(f"got port {i} for {username}")
+            # current_app.logger.debug(f"got port {i} for {username}")
             return base_port + i
 
 

@@ -36,7 +36,8 @@ RUN apt-get update && \
         python3-requests \
         python3-websocket \
         python3-yaml \
-        tzdata && \
+        tzdata \
+        tzdata-legacy && \
     rm -rf /var/lib/apt/lists/*
 
 COPY . /app
