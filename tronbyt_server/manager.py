@@ -640,6 +640,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> Response:
     # run the in browser configure interface via pixlet serve
     elif request.method == "GET":
         device = g.user["devices"][device_id]
+        config_dict = {}
         url_params = ""
         import urllib.parse
 
