@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 from http import HTTPStatus
 from operator import itemgetter
+from pathlib import Path
 from typing import Optional
 from zoneinfo import available_timezones
 
@@ -28,6 +29,7 @@ from flask import (
 )
 from flask.typing import ResponseReturnValue
 from websocket import create_connection
+from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
 from tronbyt_server import render_app as pixlet_render_app
@@ -59,7 +61,7 @@ def index() -> str:
 @bp.route("/uploadapp", methods=["GET", "POST"])
 @login_required
 def uploadapp() -> ResponseReturnValue:
-    user_apps_path = f"{db.get_users_dir()}/{g.user['username']}/apps"
+    user_apps_path = db.get_users_dir() / g.user["username"] / "apps"
     if request.method == "POST":
         # check if the post request has the file part
         if "file" not in request.files:
@@ -74,9 +76,9 @@ def uploadapp() -> ResponseReturnValue:
                 return redirect("manager.uploadapp")
 
             # create a subdirectory for the app
-            app_name = os.path.splitext(file.filename)[0]
-            app_subdir = os.path.join(user_apps_path, app_name)
-            os.makedirs(app_subdir, exist_ok=True)
+            app_name = Path(file.filename).stem
+            app_subdir = user_apps_path / app_name
+            app_subdir.mkdir(parents=True, exist_ok=True)
 
             # save the file
             if db.save_user_app(file, app_subdir):
@@ -87,14 +89,9 @@ def uploadapp() -> ResponseReturnValue:
                 return redirect(url_for("manager.uploadapp"))
 
     # check for existance of apps path
-    os.makedirs(user_apps_path, exist_ok=True)
+    user_apps_path.mkdir(parents=True, exist_ok=True)
 
-    star_files = [
-        file
-        for _, _, files in os.walk(user_apps_path)
-        for file in files
-        if file.endswith(".star")
-    ]
+    star_files = [file for file in user_apps_path.rglob("*.star")]
 
     return render_template("manager/uploadapp.html", files=star_files)
 
@@ -170,10 +167,8 @@ def create() -> ResponseReturnValue:
             current_app.logger.debug("device_id is :" + str(device["id"]))
             user = g.user
             user.setdefault("devices", {})[device["id"]] = device
-            if db.save_user(user) and not os.path.isdir(
-                db.get_device_webp_dir(device["id"])
-            ):
-                os.mkdir(db.get_device_webp_dir(device["id"]))
+            if db.save_user(user) and not db.get_device_webp_dir(device["id"]).is_dir():
+                db.get_device_webp_dir(device["id"]).mkdir(parents=True)
 
             return redirect(url_for("manager.index"))
     return render_template("manager/create.html")
@@ -299,41 +294,39 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     users_dir = db.get_users_dir()
-    config_path = "{}/{}/configs/{}-{}.json".format(
-        users_dir,
-        g.user["username"],
-        g.user["devices"][device_id]["apps"][iname]["name"],
-        g.user["devices"][device_id]["apps"][iname]["iname"],
+    config_path = (
+        users_dir
+        / g.user["username"]
+        / "configs"
+        / f"{g.user['devices'][device_id]['apps'][iname]['name']}-{g.user['devices'][device_id]['apps'][iname]['iname']}.json"
     )
-    tmp_config_path = "{}/{}/configs/{}-{}.tmp".format(
-        users_dir,
-        g.user["username"],
-        g.user["devices"][device_id]["apps"][iname]["name"],
-        g.user["devices"][device_id]["apps"][iname]["iname"],
+    tmp_config_path = (
+        users_dir
+        / g.user["username"]
+        / "configs"
+        / f"{g.user['devices'][device_id]['apps'][iname]['name']}-{g.user['devices'][device_id]['apps'][iname]['iname']}.tmp"
     )
-    if os.path.isfile(config_path):
-        os.remove(config_path)
-    if os.path.isfile(tmp_config_path):
-        os.remove(tmp_config_path)
+
+    if config_path.is_file():
+        config_path.unlink()
+    if tmp_config_path.is_file():
+        tmp_config_path.unlink()
 
     device = g.user["devices"][device_id]
     app = g.user["devices"][device_id]["apps"][iname]
 
     if "pushed" in app:
-        webp_path = "{}/pushed/{}.webp".format(
-            db.get_device_webp_dir(device["id"]), app["name"]
+        webp_path = (
+            db.get_device_webp_dir(device["id"]) / "pushed" / f"{app['name']}.webp"
         )
     else:
-        # delete the webp file
-        webp_path = "{}/{}-{}.webp".format(
-            db.get_device_webp_dir(device["id"]),
-            app["name"],
-            app["iname"],
+        webp_path = (
+            db.get_device_webp_dir(device["id"]) / f"{app['name']}-{app['iname']}.webp"
         )
-    # if file exists remove it
-    if os.path.isfile(webp_path):
-        os.remove(webp_path)
-    # pop the app from the user object
+
+    if webp_path.is_file():
+        webp_path.unlink()
+
     g.user["devices"][device_id]["apps"].pop(iname)
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
@@ -361,7 +354,6 @@ def addapp(device_id: str) -> ResponseReturnValue:
         display_time = request.form.get("display_time")
         notes = request.form.get("notes")
 
-        # generate an iname from 3 digits. will be used later as the port number on which to run pixlet serve
         import random
 
         iname = str(random.randint(100, 999))
@@ -377,7 +369,8 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 )
             )
 
-        if os.path.exists("configs/{}-{}.json".format(name, iname)):
+        config_path = Path("configs") / f"{name}-{iname}.json"
+        if config_path.exists():
             flash("That installation id already exists")
             return redirect(
                 url_for(
@@ -435,7 +428,7 @@ def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
     app["enabled"] = not app["enabled"]
     # if enabled, we should probably re-render and push but that's a pain so not doing it right now.
 
-    db.save_user(user)  # this saves all changes
+    db.save_user(user)
     flash("Changes saved.")
     return redirect(url_for("manager.index"))
 
@@ -469,17 +462,19 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             app["end_time"] = request.form.get("end_time")
             app["days"] = request.form.getlist("days")
             app["enabled"] = enabled
-            db.save_user(user)  # this saves all changes
+            db.save_user(user)
 
             return redirect(url_for("manager.index"))
     app = g.user["devices"][device_id]["apps"][iname]
     return render_template("manager/updateapp.html", app=app, device_id=device_id)
 
 
-def render_app(app_path: str, config_path: str, webp_path: str, device: Device) -> bool:
+def render_app(
+    app_path: Path, config_path: Path, webp_path: Path, device: Device
+) -> bool:
     config_data = dict()
-    if os.path.exists(config_path):
-        with open(config_path, "r") as config_file:
+    if config_path.exists():
+        with config_path.open("r") as config_file:
             config_data = json.load(config_file)
     if (
         "timezone" in device
@@ -493,7 +488,7 @@ def render_app(app_path: str, config_path: str, webp_path: str, device: Device) 
     USE_LIBPIXLET = 1
     if USE_LIBPIXLET == 1:
         data = pixlet_render_app(
-            app_path,
+            str(app_path),
             config_data,
             64,
             32,
@@ -506,34 +501,30 @@ def render_app(app_path: str, config_path: str, webp_path: str, device: Device) 
         if not data:
             current_app.logger.error("Error running pixlet render")
             return False
-        with open(webp_path, "wb") as webp_file:
-            webp_file.write(data)
+        webp_path.write_bytes(data)
     else:
         current_app.logger.info("Rendering with pixlet binary")
         # build the pixlet render command
-        if (
-            os.path.exists(config_path) and len(config_data.keys()) > 1
-        ):  # if config_file has something in it.
+        if config_path.exists() and len(config_data.keys()) > 1:
             command = [
                 "/pixlet/pixlet",
                 "render",
                 "-c",
-                config_path,
-                app_path,
+                str(config_path),
+                str(app_path),
                 "-o",
-                webp_path,
+                str(webp_path),
                 f"$tz={config_data['$tz']}",
             ]
-        else:  # if the config path doesn't exist then don't include it in render command
+        else:
             command = [
                 "/pixlet/pixlet",
                 "render",
-                app_path,
+                str(app_path),
                 "-o",
-                webp_path,
+                str(webp_path),
                 f"$tz={config_data['$tz']}",
             ]
-        # print(command)
         result = subprocess.run(command)
         if result.returncode != 0:
             current_app.logger.error(
@@ -559,17 +550,19 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         return True
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
-    config_path = "users/{}/configs/{}.json".format(user["username"], app_basename)
+    config_path = Path("users") / user["username"] / "configs" / f"{app_basename}.json"
     webp_device_path = db.get_device_webp_dir(device_id)
-    os.makedirs(webp_device_path, exist_ok=True)
-    webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
+    webp_device_path.mkdir(parents=True, exist_ok=True)
+    webp_path = webp_device_path / f"{app_basename}.webp"
 
     if "path" in app:
-        app_path = app["path"]
+        app_path = Path(app["path"])
     else:
         # current_app.logger.debug("No path for {}, trying default location".format(app["name"]))
-        app_path = "system-apps/apps/{}/{}.star".format(
-            app["name"].replace("_", ""), app["name"]
+        app_path = (
+            Path("system-apps/apps")
+            / app["name"].replace("_", "")
+            / f"{app['name']}.star"
         )
 
     if (
@@ -611,7 +604,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
             image_url = request.form.get("img_url")
             if not image_url:
                 abort(HTTPStatus.BAD_REQUEST)
-            label = db.sanitize(device["name"])
+            label = secure_filename(device["name"])
             gen2 = bool(request.form.get("gen2", False))
             swap_colors = bool(request.form.get("swap_colors", False))
 
@@ -659,20 +652,18 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     app_basename = "{}-{}".format(app["name"], app["iname"])
     app_details = db.get_app_details(g.user["username"], app["name"])
     if "path" in app_details:
-        app_path = app_details["path"]
+        app_path = Path(app_details["path"])
     else:
-        app_path = "system-apps/apps/{}/{}.star".format(
-            app["name"].replace("_", ""), app["name"]
+        app_path = Path(
+            "system-apps/apps/{}/{}.star".format(
+                app["name"].replace("_", ""), app["name"]
+            )
         )
-    config_path = "{}/{}/configs/{}.json".format(
-        users_dir, g.user["username"], app_basename
-    )
-    tmp_config_path = "{}/{}/configs/{}.tmp".format(
-        users_dir, g.user["username"], app_basename
-    )
+    config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.json"
+    tmp_config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.tmp"
     webp_device_path = db.get_device_webp_dir(device_id)
-    os.makedirs(webp_device_path, exist_ok=True)
-    webp_path = "{}/{}.webp".format(webp_device_path, app_basename)
+    webp_device_path.mkdir(parents=True, exist_ok=True)
+    webp_path = webp_device_path / f"{app_basename}.webp"
 
     user_render_port = str(db.get_user_render_port(g.user["username"]))
     # always kill the pixlet proc based on port number.
@@ -682,17 +673,17 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
 
     if request.method == "POST":
         #   do something to confirm configuration ?
-        current_app.logger.debug("checking for : " + tmp_config_path)
-        if os.path.exists(tmp_config_path):
+        current_app.logger.debug("checking for : " + str(tmp_config_path))
+        if tmp_config_path.exists():
             current_app.logger.debug("file exists")
-            with open(tmp_config_path, "r") as c:
+            with tmp_config_path.open("r") as c:
                 new_config = c.read()
             # flash(new_config)
-            with open(config_path, "w") as config_file:
+            with config_path.open("w") as config_file:
                 config_file.write(new_config)
 
             # delete the tmp file
-            os.remove(tmp_config_path)
+            tmp_config_path.unlink()
 
             # run pixlet render with the new config file
             current_app.logger.debug("rendering")
@@ -716,10 +707,10 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         url_params = ""
         import urllib.parse
 
-        if os.path.exists(config_path):
+        if config_path.exists():
             import json
 
-            with open(config_path, "r") as c:
+            with config_path.open("r") as c:
                 config_dict = json.load(c)
 
         if (
@@ -738,8 +729,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             flash(url_params)
 
         # execute the pixlet serve process and show in it an iframe on the config page.
-        current_app.logger.debug(app_path)
-        if os.path.exists(app_path):
+        current_app.logger.debug(str(app_path))
+        if app_path.exists():
             subprocess.Popen(
                 [
                     "timeout",
@@ -748,9 +739,9 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                     "300",
                     os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                     "--saveconfig",
-                    tmp_config_path,
+                    str(tmp_config_path),
                     "serve",
-                    app_path,
+                    str(app_path),
                     "--port={}".format(user_render_port),
                     "--path=/pixlet/",
                 ],
@@ -805,21 +796,21 @@ def next_app(
     device = user["devices"][device_id] or abort(HTTPStatus.NOT_FOUND)
 
     # first check for a pushed file starting with __ and just return that and then delete it.
-    pushed_dir = os.path.join(db.get_device_webp_dir(device_id), "pushed")
-    if os.path.isdir(pushed_dir):
-        ephemeral_files = [f for f in os.listdir(pushed_dir) if f.startswith("__")]
+    pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+    if pushed_dir.is_dir():
+        ephemeral_files = [f for f in pushed_dir.iterdir() if f.name.startswith("__")]
         if ephemeral_files:
             ephemeral_file = ephemeral_files[0]
             current_app.logger.debug(
-                f"returning ephemeral pushed file {ephemeral_file}"
+                f"returning ephemeral pushed file {ephemeral_file.name}"
             )
-            webp_path = os.path.join("webp", device_id, "pushed", ephemeral_file)
+            webp_path = pushed_dir / ephemeral_file.name
             # send_file doesn't need the full path, just the path after the tronbyt_server
             response = send_file(webp_path, mimetype="image/webp")
             s = device.get("default_interval", 5)
             response.headers["Tronbyt-Dwell-Secs"] = s
             current_app.logger.debug("removing ephemeral webp")
-            os.remove(os.path.join(pushed_dir, ephemeral_file))
+            ephemeral_file.unlink()
             return response
 
     if recursion_depth > MAX_RECURSION_DEPTH:
@@ -870,15 +861,15 @@ def next_app(
     db.save_user(user)
 
     if "pushed" in app:
-        webp_path = "{}/pushed/{}.webp".format(
-            db.get_device_webp_dir(device_id), app["iname"]
+        webp_path = (
+            db.get_device_webp_dir(device_id) / "pushed" / f"{app['iname']}.webp"
         )
     else:
         app_basename = "{}-{}".format(app["name"], app["iname"])
-        webp_path = "{}/{}.webp".format(db.get_device_webp_dir(device_id), app_basename)
-    current_app.logger.debug(webp_path)
+        webp_path = db.get_device_webp_dir(device_id) / f"{app_basename}.webp"
+    current_app.logger.debug(str(webp_path))
 
-    if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
+    if webp_path.exists() and webp_path.stat().st_size > 0:
         response = send_file(webp_path, mimetype="image/webp")
         b = db.get_device_brightness(device)
         current_app.logger.debug(f"sending brightness {b} -- ")
@@ -912,14 +903,12 @@ def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
         if "pushed" in app:
-            webp_path = "{}/pushed/{}.webp".format(
-                db.get_device_webp_dir(device_id), app["iname"]
+            webp_path = (
+                db.get_device_webp_dir(device_id) / "pushed" / f"{app['iname']}.webp"
             )
         else:
-            webp_path = "{}/{}.webp".format(
-                db.get_device_webp_dir(device_id), app_basename
-            )
-        if os.path.exists(webp_path) and os.path.getsize(webp_path) > 0:
+            webp_path = db.get_device_webp_dir(device_id) / f"{app_basename}.webp"
+        if webp_path.exists() and webp_path.stat().st_size > 0:
             return send_file(webp_path, mimetype="image/webp")
         else:
             current_app.logger.error("file doesn't exist or 0 size")
@@ -941,12 +930,12 @@ def download_firmware(device_id: str) -> ResponseReturnValue:
             and device_id in g.user["devices"]
             and "firmware_file_path" in g.user["devices"][device_id]
         ):
-            file_path = g.user["devices"][device_id]["firmware_file_path"]
+            file_path = Path(g.user["devices"][device_id]["firmware_file_path"])
         else:
             abort(HTTPStatus.NOT_FOUND)
 
         current_app.logger.debug(f"checking for {file_path}")
-        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        if file_path.exists() and file_path.stat().st_size > 0:
             return send_file(file_path, mimetype="application/octet-stream")
         else:
             current_app.logger.error("file doesn't exist or 0 size")
@@ -956,7 +945,7 @@ def download_firmware(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND)
 
 
-def set_repo(repo_name: str, apps_path: str, repo_url: str) -> bool:
+def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
     if repo_url != "":
         old_repo = g.user.get(repo_name, "")
         if old_repo != repo_url:
@@ -965,7 +954,7 @@ def set_repo(repo_name: str, apps_path: str, repo_url: str) -> bool:
             g.user[repo_name] = repo_url
             db.save_user(g.user)
 
-            if os.path.exists(apps_path):
+            if apps_path.exists():
                 shutil.rmtree(apps_path)
             result = subprocess.run(
                 [
@@ -974,7 +963,7 @@ def set_repo(repo_name: str, apps_path: str, repo_url: str) -> bool:
                     "--depth",
                     "1",
                     f"https://blah:blah@github.com/{repo_url}",
-                    apps_path,
+                    str(apps_path),
                 ]
             )
             if result.returncode == 0:
@@ -984,7 +973,7 @@ def set_repo(repo_name: str, apps_path: str, repo_url: str) -> bool:
                 flash("Error Cloning Repo")
                 return False
         else:
-            result = subprocess.run(["git", "-C", apps_path, "pull"])
+            result = subprocess.run(["git", "-C", str(apps_path), "pull"])
             if result.returncode == 0:
                 flash("Repo Updated")
                 return True
@@ -1003,7 +992,7 @@ def set_user_repo() -> ResponseReturnValue:
         if "app_repo_url" not in request.form:
             abort(HTTPStatus.BAD_REQUEST)
         repo_url = str(request.form.get("app_repo_url"))
-        apps_path = os.path.join(db.get_users_dir(), g.user["username"], "apps")
+        apps_path = db.get_users_dir() / g.user["username"] / "apps"
         if set_repo("app_repo_url", apps_path, repo_url):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
@@ -1019,7 +1008,7 @@ def set_system_repo() -> ResponseReturnValue:
         if "app_repo_url" not in request.form:
             abort(HTTPStatus.BAD_REQUEST)
         repo_url = str(request.form.get("app_repo_url"))
-        if set_repo("system_repo_url", "system-apps", repo_url):
+        if set_repo("system_repo_url", Path("system-apps"), repo_url):
             # run the generate app list for custom repo
             # will just generate json file if already there.
             subprocess.run(["python3", "clone_system_apps_repo.py"])
@@ -1034,7 +1023,7 @@ def refresh_system_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if g.user["username"] != "admin":
             abort(HTTPStatus.FORBIDDEN)
-        if set_repo("system_repo_url", "system-apps", g.user["system_repo_url"]):
+        if set_repo("system_repo_url", Path("system-apps"), g.user["system_repo_url"]):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
@@ -1044,7 +1033,7 @@ def refresh_system_repo() -> ResponseReturnValue:
 @login_required
 def refresh_user_repo() -> ResponseReturnValue:
     if request.method == "POST":
-        apps_path = os.path.join(db.get_users_dir(), g.user["username"], "apps")
+        apps_path = db.get_users_dir() / g.user["username"] / "apps"
         if set_repo("app_repo_url", apps_path, g.user["app_repo_url"]):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))

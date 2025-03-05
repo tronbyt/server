@@ -3,6 +3,7 @@ import datetime as dt
 import json
 import os
 import time
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from babel.dates import format_timedelta
@@ -20,10 +21,10 @@ free_bytes: Optional[Callable[[Any], None]] = None
 
 
 def initialize_pixlet_library(app: Flask) -> None:
-    libpixlet_path = os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so")
+    libpixlet_path = Path(os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so"))
     app.logger.info(f"Loading {libpixlet_path}")
     try:
-        pixlet_library = ctypes.cdll.LoadLibrary(libpixlet_path)
+        pixlet_library = ctypes.cdll.LoadLibrary(str(libpixlet_path))
     except OSError as e:
         raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
 
@@ -145,8 +146,9 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         )
     babel.init_app(app, locale_selector=get_locale)
 
+    instance_path = Path(app.instance_path)
     try:
-        os.makedirs(app.instance_path)
+        instance_path.mkdir(parents=True, exist_ok=True)
     except OSError:
         pass
 

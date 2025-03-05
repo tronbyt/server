@@ -1,6 +1,5 @@
 import base64
 import json
-import os
 import re
 import time
 from http import HTTPStatus
@@ -121,20 +120,19 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid image data")
 
     device_webp_path = db.get_device_webp_dir(device_id)
-    os.makedirs(device_webp_path, exist_ok=True)
-    pushed_path = f"{device_webp_path}/pushed"
-    os.makedirs(pushed_path, exist_ok=True)
+    device_webp_path.mkdir(parents=True, exist_ok=True)
+    pushed_path = device_webp_path / "pushed"
+    pushed_path.mkdir(exist_ok=True)
 
     # Generate a unique filename using the sanitized installation_id and current timestamp
     timestamp = ""
     if installation_id == "__":
         timestamp = f"{int(time.time())}"
     filename = f"{installation_id}{timestamp}.webp"
-    file_path = os.path.join(pushed_path, filename)
+    file_path = pushed_path / filename
 
     # Save the decoded image data to a file
-    with open(file_path, "wb") as f:
-        f.write(image_bytes)
+    file_path.write_bytes(image_bytes)
 
     if timestamp == "":
         # add the app so it'll stay in the rotation
@@ -173,20 +171,20 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Missing required parameters")
 
     device = db.get_device_by_id(device_id) or abort(HTTPStatus.NOT_FOUND)
-    pushed_webp_path = f"{db.get_device_webp_dir(device['id'])}/pushed"
-    if not os.path.isdir(pushed_webp_path):
+    pushed_webp_path = db.get_device_webp_dir(device["id"]) / "pushed"
+    if not pushed_webp_path.is_dir():
         abort(HTTPStatus.NOT_FOUND, description="Device directory not found")
 
     # Sanitize installation_id to prevent path traversal attacks
     installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
 
     # Generate the filename using the installation_id
-    file_path = os.path.join(pushed_webp_path, f"{installation_id}.webp")
+    file_path = pushed_webp_path / f"{installation_id}.webp"
     current_app.logger.debug(file_path)
-    if not os.path.isfile(file_path):
+    if not file_path.is_file():
         abort(HTTPStatus.NOT_FOUND, description="File not found")
 
     # Delete the file
-    os.remove(file_path)
+    file_path.unlink()
 
     return Response("Webp deleted.", status=200)

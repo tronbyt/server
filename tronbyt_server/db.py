@@ -4,6 +4,7 @@ import shutil
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
@@ -19,7 +20,7 @@ from tronbyt_server.models.user import User
 
 
 def init_db() -> None:
-    os.makedirs("users/admin/configs", exist_ok=True)
+    Path("users/admin/configs").mkdir(parents=True, exist_ok=True)
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
@@ -64,7 +65,7 @@ def delete_device_dirs(device_id: str) -> None:
     app_name = current_app.name
 
     # Construct the path to the directory to delete
-    dir_to_delete = os.path.join(app_name, "webp", device_id)
+    dir_to_delete = Path(app_name) / "webp" / device_id
 
     # Delete the directory recursively
     try:
@@ -145,9 +146,9 @@ def brightness_int_from_string(brightness_string: str) -> int:
     return brightness_value
 
 
-def get_users_dir() -> str:
+def get_users_dir() -> Path:
     # current_app.logger.debug(f"users dir : {current_app.config['USERS_DIR']}")
-    return str(current_app.config["USERS_DIR"])
+    return Path(current_app.config["USERS_DIR"])
 
 
 # Ensure all apps have an "order" attribute
@@ -227,7 +228,7 @@ def save_user(user: User, new_user: bool = False) -> bool:
         if current_app.config.get("PRODUCTION") == "0":
             current_app.logger.debug("writing to json file for visibility")
             with open(
-                f"{get_users_dir()}/{username}/{username}_debug.json", "w"
+                get_users_dir() / username / f"{username}_debug.json", "w"
             ) as file:
                 json_string = json.dumps(user, indent=4)
                 if current_app.testing:
@@ -249,8 +250,8 @@ def delete_user(username: str) -> bool:
         conn = get_db()
         conn.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
         conn.commit()
-        user_dir = os.path.join(get_users_dir(), username)
-        if os.path.exists(user_dir):
+        user_dir = get_users_dir() / username
+        if user_dir.exists():
             shutil.rmtree(user_dir)
         current_app.logger.info(f"User {username} deleted successfully")
         return True
@@ -261,57 +262,46 @@ def delete_user(username: str) -> bool:
 
 def create_user_dir(user: str) -> None:
     # create the user directory if it doesn't exist
-    base_dir = get_users_dir()
-    user_dir = os.path.normpath(os.path.join(base_dir, user))
-    if not user_dir.startswith(base_dir):
-        raise Exception("Invalid user directory path")
-    os.makedirs(os.path.join(user_dir, "configs"), exist_ok=True)
-    os.makedirs(os.path.join(user_dir, "apps"), exist_ok=True)
+    user_dir = get_users_dir() / user
+    (user_dir / "configs").mkdir(parents=True, exist_ok=True)
+    (user_dir / "apps").mkdir(parents=True, exist_ok=True)
 
 
 def get_apps_list(user: str) -> List[Dict[str, Any]]:
     app_list: List[Dict[str, Any]] = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
-        list_file = "system-apps.json"
-        if not os.path.exists(list_file):
+        list_file = Path("system-apps.json")
+        if not list_file.exists():
             current_app.logger.info("Generating apps.json file...")
             subprocess.run(["python3", "clone_system_apps_repo.py"])
             current_app.logger.debug("apps.json file generated.")
 
-        with open(list_file, "r") as f:
+        with list_file.open("r") as f:
             app_list = json.load(f)
             return app_list
 
-    dir = os.path.join(get_users_dir(), user, "apps")
-    if os.path.exists(dir):
-        for root, _, files in os.walk(dir):
-            for file in files:
-                if file.endswith(".star"):
-                    app_path = os.path.join(root, file)
-                    app_name = os.path.splitext(os.path.basename(app_path))[0]
-                    app_dict = {
-                        "path": app_path,
-                        "name": app_name,
-                        "image_url": app_name + ".gif",
-                    }
-                    # look for a yaml file
-                    app_base_path = ("/").join(app_dict["path"].split("/")[0:-1])
-                    yaml_path = os.path.join(app_base_path, "manifest.yaml")
-                    current_app.logger.debug(
-                        "checking for manifest.yaml in {}".format(yaml_path)
-                    )
-                    # check for existence of yaml_path
-                    if os.path.exists(yaml_path):
-                        with open(yaml_path, "r") as f:
-                            yaml_dict = yaml.safe_load(f)
-                            app_dict.update(yaml_dict)
-                    else:
-                        app_dict["summary"] = "Custom App"
-                    app_list.append(app_dict)
+    dir = get_users_dir() / user / "apps"
+    if dir.exists():
+        for file in dir.rglob("*.star"):
+            app_name = file.stem
+            app_dict = {
+                "path": str(file),
+                "name": app_name,
+                "image_url": app_name + ".gif",
+            }
+            yaml_path = file.parent / "manifest.yaml"
+            current_app.logger.debug(f"checking for manifest.yaml in {yaml_path}")
+            if yaml_path.exists():
+                with yaml_path.open("r") as f:
+                    yaml_dict = yaml.safe_load(f)
+                    app_dict.update(yaml_dict)
+            else:
+                app_dict["summary"] = "Custom App"
+            app_list.append(app_dict)
         return app_list
     else:
-        current_app.logger.warning("no apps list found for {}".format(user))
+        current_app.logger.warning(f"no apps list found for {user}")
         return []
 
 
@@ -333,17 +323,6 @@ def get_app_details(user: str, name: str) -> Dict[str, Any]:
     return {}
 
 
-def sanitize(string: str) -> str:
-    string = string.replace(" ", "_")
-    string = string.replace("-", "")
-    string = string.replace(".", "")
-    string = string.replace("/", "")
-    string = string.replace("\\", "")
-    string = string.replace("%", "")
-    string = string.replace("'", "")
-    return string
-
-
 def sanitize_url(url: str) -> str:
     # Decode any percent-encoded characters
     url = unquote(url)
@@ -358,35 +337,32 @@ def sanitize_url(url: str) -> str:
 
 
 def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ["star"]
+    return filename.lower().endswith(".star")
 
 
-def save_user_app(file: Any, path: str) -> bool:
-    filename = sanitize(file.filename)
-    filename = secure_filename(filename)
-
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(path, filename))
+def save_user_app(file: Any, path: Path) -> bool:
+    filename = secure_filename(file.filename)
+    if file and allowed_file(filename):
+        file.save(path / filename)
         return True
     else:
         return False
 
 
 def delete_user_upload(user: User, filename: str) -> bool:
-    user_apps_path = os.path.join(get_users_dir(), user["username"], "apps")
+    user_apps_path = get_users_dir() / user["username"] / "apps"
 
     try:
         filename = secure_filename(filename)
-        folder_name = os.path.splitext(filename)[0]
-        file_path = os.path.join(user_apps_path, folder_name, filename)
-        folder_path = os.path.join(user_apps_path, folder_name)
+        folder_name = Path(filename).stem
+        file_path = user_apps_path / folder_name / filename
+        folder_path = user_apps_path / folder_name
 
-        if not file_path.startswith(user_apps_path):
+        if not str(file_path).startswith(str(user_apps_path)):
             current_app.logger.warning("Security warning: Attempted path traversal")
             return False
 
-        if os.path.exists(folder_path):
+        if folder_path.exists():
             shutil.rmtree(folder_path)
 
         return True
@@ -459,10 +435,11 @@ def get_device_by_name(user: User, name: str) -> Optional[Device]:
     return None
 
 
-def get_device_webp_dir(device_id: str, create: bool = True) -> str:
-    path = os.path.join(os.getcwd(), "tronbyt_server", "webp", device_id)
-    if not os.path.exists(path) and create:
-        os.makedirs(path)
+def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
+    base = os.getcwd()
+    path = Path(base) / "tronbyt_server" / "webp" / secure_filename(device_id)
+    if not path.exists() and create:
+        path.mkdir(parents=True, exist_ok=True)
     return path
 
 
@@ -485,18 +462,17 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
 def generate_firmware(
     label: str, url: str, ap: str, pw: str, gen2: bool, swap_colors: bool
 ) -> Dict[str, Union[str, int]]:
-    # Usage
     if gen2:
-        file_path = "firmware/gen2.bin"
-        new_path = f"firmware/gen2_{label}.bin"
+        file_path = Path("firmware/gen2.bin")
+        new_path = Path(f"firmware/gen2_{label}.bin")
     elif swap_colors:
-        file_path = "firmware/gen1_swap.bin"
-        new_path = f"firmware/gen1_swap_{label}.bin"
+        file_path = Path("firmware/gen1_swap.bin")
+        new_path = Path(f"firmware/gen1_swap_{label}.bin")
     else:
-        file_path = "firmware/gen1.bin"
-        new_path = f"firmware/gen1_{label}.bin"
+        file_path = Path("firmware/gen1.bin")
+        new_path = Path(f"firmware/gen1_{label}.bin")
 
-    if not os.path.exists(file_path):
+    if not file_path.exists():
         return {"error": f"Firmware file {file_path} not found."}
 
     shutil.copy(file_path, new_path)
@@ -507,8 +483,7 @@ def generate_firmware(
         "XplaceholderREMOTEURL_________________________________________________________________________________________": url,
     }
     bytes_written = None
-    with open(new_path, "r+b") as f:
-        # Read the binary file into memory
+    with new_path.open("r+b") as f:
         content = f.read()
 
         for old_string, new_string in dict.items():
@@ -525,11 +500,9 @@ def generate_firmware(
 
             # Create the new string, null-terminated, and padded to match the original length
             padded_new_string = new_string + "\x00"
-            padded_new_string = padded_new_string.ljust(
-                len(old_string) + 1, "\x00"
-            )  # Add padding if needed
+            # Add padding if needed
+            padded_new_string = padded_new_string.ljust(len(old_string) + 1, "\x00")
 
-            # Replace the string
             f.seek(position)
             bytes_written = f.write(padded_new_string.encode("ascii"))
     if bytes_written:
@@ -545,19 +518,16 @@ def generate_firmware(
         )
         current_app.logger.debug(result.stdout)
         current_app.logger.debug(result.stderr)
-        return {"file_path": os.path.join(os.getcwd(), new_path)}
+        return {"file_path": str(new_path.resolve())}
     else:
         return {"error": "no bytes written"}
 
 
-def add_pushed_app(device_id: str, path: str) -> None:
+def add_pushed_app(device_id: str, path: Path) -> None:
     user = get_user_by_device_id(device_id)
     if user is None:
         return
-    # Get the base name of the file
-    filename = os.path.basename(path)
-    # Remove the extension
-    installation_id = os.path.splitext(filename)[0]
+    installation_id = path.stem
     apps = user["devices"][device_id].setdefault("apps", {})
     if installation_id in apps:
         # already in there
