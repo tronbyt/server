@@ -431,7 +431,8 @@ def render_app(
     else:
         config_data["$tz"] = datetime.now().astimezone().tzname()
 
-    if current_app.config.get("USE_LIBPIXLET") == "1":
+    USE_LIBPIXLET = 1
+    if USE_LIBPIXLET == 1:
         data = pixlet_render_app(
             app_path,
             config_data,
