@@ -261,7 +261,10 @@ def delete_user(username: str) -> bool:
 
 def create_user_dir(user: str) -> None:
     # create the user directory if it doesn't exist
-    user_dir = os.path.join(get_users_dir(), user)
+    base_dir = get_users_dir()
+    user_dir = os.path.normpath(os.path.join(base_dir, user))
+    if not user_dir.startswith(base_dir):
+        raise Exception("Invalid user directory path")
     os.makedirs(os.path.join(user_dir, "configs"), exist_ok=True)
     os.makedirs(os.path.join(user_dir, "apps"), exist_ok=True)
 
