@@ -3,6 +3,7 @@ import json
 import os
 import re
 import time
+from http import HTTPStatus
 from typing import Any, Dict, Optional
 
 from flask import (
@@ -15,8 +16,8 @@ from flask import (
 from flask.typing import ResponseReturnValue
 from werkzeug.datastructures import Headers
 
-# from tronbyt_server.auth import login_required
 import tronbyt_server.db as db
+from tronbyt_server.models.device import validate_device_id
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
@@ -33,23 +34,32 @@ def get_api_key_from_headers(headers: Headers) -> Optional[str]:
 
 @bp.route("/devices/<string:device_id>", methods=["GET", "PATCH"])
 def get_device(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
-        abort(400, description="Missing or invalid Authorization header")
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
     current_app.logger.debug(f"api_key : {api_key}")
     user = db.get_user_by_device_id(device_id)
     if not user:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     device = user["devices"].get(device_id)
     if not device or device["api_key"] != api_key:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
 
     if request.method == "PATCH":
         data = request.get_json()
         if "brightness" in data:
             brightness = data["brightness"]
             if brightness < 0 or brightness > 255:
-                abort(400, description="Brightness must be between 0 and 255")
+                abort(
+                    HTTPStatus.BAD_REQUEST,
+                    description="Brightness must be between 0 and 255",
+                )
             device["brightness"] = brightness
         if "autoDim" in data:
             device["night_mode_enabled"] = data["autoDim"]
@@ -65,6 +75,9 @@ def get_device(device_id: str) -> ResponseReturnValue:
 
 @bp.post("/devices/<string:device_id>/push")
 def handle_push(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     # Print out the whole request
     current_app.logger.debug("Headers:", request.headers)
     # current_app.logger.debug("JSON Data:", request.get_json())
@@ -73,17 +86,20 @@ def handle_push(device_id: str) -> ResponseReturnValue:
     # get api_key from Authorization header
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
-        abort(400, description="Missing or invalid Authorization header")
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
     current_app.logger.debug(f"api_key : {api_key}")
     device = db.get_device_by_id(device_id)
     if not device or device["api_key"] != api_key:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
 
     # get parameters from JSON data
     try:
         data: Dict[str, Any] = json.loads(request.get_data(as_text=True))
     except json.JSONDecodeError:
-        abort(400, description="Invalid JSON data")
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid JSON data")
     # data = request.get_json()
     current_app.logger.debug(data)
     installation_id = data.get(
@@ -93,7 +109,7 @@ def handle_push(device_id: str) -> ResponseReturnValue:
     image_data = data.get("image")
 
     if not api_key or not image_data:
-        abort(400, description="Missing required parameters")
+        abort(HTTPStatus.BAD_REQUEST, description="Missing required parameters")
 
     # sanitize installation_id
     installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
@@ -102,7 +118,7 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         image_bytes = base64.b64decode(image_data)
     except Exception as e:
         current_app.logger.error(str(e))
-        abort(400, description="Invalid image data")
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid image data")
 
     device_webp_path = db.get_device_webp_dir(device_id)
     os.makedirs(device_webp_path, exist_ok=True)
@@ -133,6 +149,9 @@ def handle_push(device_id: str) -> ResponseReturnValue:
     methods=["DELETE"],
 )
 def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     # get api_key from Authorization header
     api_key = ""
     auth_header = request.headers.get("Authorization")
@@ -142,18 +161,21 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
         else:
             api_key = auth_header
     else:
-        abort(400, description="Missing or invalid Authorization header")
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
     device = db.get_device_by_id(device_id)
     if not device or device["api_key"] != api_key:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
 
     if not api_key:
-        abort(400, description="Missing required parameters")
+        abort(HTTPStatus.BAD_REQUEST, description="Missing required parameters")
 
-    device = db.get_device_by_id(device_id) or abort(404)
+    device = db.get_device_by_id(device_id) or abort(HTTPStatus.NOT_FOUND)
     pushed_webp_path = f"{db.get_device_webp_dir(device['id'])}/pushed"
     if not os.path.isdir(pushed_webp_path):
-        abort(404, description="Device directory not found")
+        abort(HTTPStatus.NOT_FOUND, description="Device directory not found")
 
     # Sanitize installation_id to prevent path traversal attacks
     installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
@@ -162,7 +184,7 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
     file_path = os.path.join(pushed_webp_path, f"{installation_id}.webp")
     current_app.logger.debug(file_path)
     if not os.path.isfile(file_path):
-        abort(404, description="File not found")
+        abort(HTTPStatus.NOT_FOUND, description="File not found")
 
     # Delete the file
     os.remove(file_path)

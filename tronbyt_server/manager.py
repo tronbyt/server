@@ -7,6 +7,7 @@ import subprocess
 import time
 import uuid
 from datetime import datetime
+from http import HTTPStatus
 from operator import itemgetter
 from typing import Optional
 from zoneinfo import available_timezones
@@ -32,7 +33,7 @@ import tronbyt_server.db as db
 from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device
+from tronbyt_server.models.device import Device, validate_device_id
 from tronbyt_server.models.user import User
 
 bp = Blueprint("manager", __name__)
@@ -110,7 +111,7 @@ def deleteupload(filename: str) -> ResponseReturnValue:
 @login_required
 def adminindex() -> str:
     if g.user["username"] != "admin":
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     userlist = list()
     # go through the users folder and build a list of all users
     users = os.listdir("users")
@@ -127,7 +128,7 @@ def adminindex() -> str:
 @login_required
 def deleteuser(username: str) -> ResponseReturnValue:
     if g.user["username"] != "admin":
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     if username != "admin":
         db.delete_user(username)
     return redirect(url_for("manager.adminindex"))
@@ -181,11 +182,13 @@ def create() -> ResponseReturnValue:
 @bp.post("/<string:device_id>/update_brightness")
 @login_required
 def update_brightness(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if device_id not in g.user["devices"]:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     brightness = request.form.get("brightness")
     if brightness is None:
-        abort(400)
+        abort(HTTPStatus.BAD_REQUEST)
     user = g.user
     user["devices"][device_id]["brightness"] = int(brightness)
     db.save_user(user)
@@ -195,11 +198,13 @@ def update_brightness(device_id: str) -> ResponseReturnValue:
 @bp.post("/<string:device_id>/update_interval")
 @login_required
 def update_interval(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if device_id not in g.user["devices"]:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     interval = request.form.get("interval")
     if interval is None:
-        abort(400)
+        abort(HTTPStatus.BAD_REQUEST)
     g.user["devices"][device_id]["default_interval"] = int(interval)
     db.save_user(g.user)
     return ""
@@ -208,9 +213,10 @@ def update_interval(device_id: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/update", methods=["GET", "POST"])
 @login_required
 def update(device_id: str) -> ResponseReturnValue:
-    id = device_id
-    if id not in g.user["devices"]:
-        abort(404)
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND)
     if request.method == "POST":
         name = request.form.get("name")
         notes = request.form.get("notes")
@@ -223,19 +229,19 @@ def update(device_id: str) -> ResponseReturnValue:
         night_end = request.form.get("night_end")
         night_mode_app = request.form.get("night_mode_app")
         error = None
-        if not name or not id:
+        if not name or not device_id:
             error = "Id and Name is required."
         if error is not None:
             flash(error)
         else:
             device: Device = {
-                "id": id,
+                "id": device_id,
                 "night_mode_enabled": bool(request.form.get("night_mode_enabled")),
                 "timezone": str(request.form.get("timezone")),
                 "img_url": (
                     db.sanitize_url(img_url)
                     if img_url and len(img_url) > 0
-                    else f"{server_root()}/{id}/next"
+                    else f"{server_root()}/{device_id}/next"
                 ),
             }
             if name:
@@ -258,13 +264,13 @@ def update(device_id: str) -> ResponseReturnValue:
                 device["night_mode_app"] = night_mode_app
 
             user = g.user
-            if "apps" in user["devices"][id]:
-                device["apps"] = user["devices"][id]["apps"]
-            user["devices"][id] = device
+            if "apps" in user["devices"][device_id]:
+                device["apps"] = user["devices"][device_id]["apps"]
+            user["devices"][device_id] = device
             db.save_user(user)
 
             return redirect(url_for("manager.index"))
-    device = g.user["devices"][id]
+    device = g.user["devices"][device_id]
     return render_template(
         "manager/update.html",
         device=device,
@@ -276,9 +282,11 @@ def update(device_id: str) -> ResponseReturnValue:
 @bp.post("/<string:device_id>/delete")
 @login_required
 def delete(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     device = g.user["devices"].get(device_id, None)
     if not device:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     g.user["devices"].pop(device_id)
     db.save_user(g.user)
     db.delete_device_dirs(device_id)
@@ -288,6 +296,8 @@ def delete(device_id: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/<string:iname>/delete", methods=["POST", "GET"])
 @login_required
 def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     users_dir = db.get_users_dir()
     config_path = "{}/{}/configs/{}-{}.json".format(
         users_dir,
@@ -332,6 +342,8 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/addapp", methods=["GET", "POST"])
 @login_required
 def addapp(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if request.method == "GET":
         # build the list of apps.
         custom_apps_list = db.get_apps_list(g.user["username"])
@@ -416,6 +428,8 @@ def addapp(device_id: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=["GET"])
 @login_required
 def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     user = g.user
     app = user["devices"][device_id]["apps"][iname]
     app["enabled"] = not app["enabled"]
@@ -429,6 +443,8 @@ def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/<string:iname>/updateapp", methods=["GET", "POST"])
 @login_required
 def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if request.method == "POST":
         name = request.form.get("name")
         uinterval = request.form.get("uinterval")
@@ -575,10 +591,12 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
 @bp.route("/<string:device_id>/firmware", methods=["POST", "GET"])
 @login_required
 def generate_firmware(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     # first ensure this device id exists in the current users config
     device = g.user["devices"].get(device_id, None)
     if not device:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     # on GET just render the form for the user to input their wifi creds and auto fill the image_url
 
     if request.method == "POST":
@@ -586,13 +604,13 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
         if "wifi_ap" in request.form and "wifi_password" in request.form:
             ap = request.form.get("wifi_ap")
             if not ap:
-                abort(400)
+                abort(HTTPStatus.BAD_REQUEST)
             password = request.form.get("wifi_password")
             if not password:
-                abort(400)
+                abort(HTTPStatus.BAD_REQUEST)
             image_url = request.form.get("img_url")
             if not image_url:
-                abort(400)
+                abort(HTTPStatus.BAD_REQUEST)
             label = db.sanitize(device["name"])
             gen2 = bool(request.form.get("gen2", False))
             swap_colors = bool(request.form.get("swap_colors", False))
@@ -629,6 +647,9 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
 )
 @login_required
 def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     users_dir = db.get_users_dir()
     # used when rendering configapp
     domain_host = current_app.config["SERVER_HOSTNAME"]
@@ -752,14 +773,16 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         else:
             flash("App Not Found")
             return redirect(url_for("manager.index"))
-    abort(400)
+    abort(HTTPStatus.BAD_REQUEST)
 
 
 @bp.route("/<string:device_id>/brightness", methods=["GET"])
 def get_brightness(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     user = db.get_user_by_device_id(device_id)
     if not user:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
     device = user["devices"][device_id]
     brightness_value = device.get("brightness", 30)
     current_app.logger.debug(f"brightness value {brightness_value}")
@@ -772,12 +795,14 @@ MAX_RECURSION_DEPTH = 10
 @bp.route("/<string:device_id>/next")
 def next_app(
     device_id: str,
-    user: Optional[User] = None,
     last_app_index: Optional[int] = None,
     recursion_depth: int = 0,
 ) -> ResponseReturnValue:
-    user = db.get_user_by_device_id(device_id) or abort(404)
-    device = user["devices"][device_id] or abort(404)
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    user = db.get_user_by_device_id(device_id) or abort(HTTPStatus.NOT_FOUND)
+    device = user["devices"][device_id] or abort(HTTPStatus.NOT_FOUND)
 
     # first check for a pushed file starting with __ and just return that and then delete it.
     pushed_dir = os.path.join(db.get_device_webp_dir(device_id), "pushed")
@@ -808,7 +833,7 @@ def next_app(
     if last_app_index is None:
         last_app_index = db.get_last_app_index(device_id)
         if last_app_index is None:
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
 
     # treat em like an array
     if "apps" not in device:
@@ -836,11 +861,11 @@ def next_app(
     ):
         # recurse until we find one that's enabled
         current_app.logger.debug("disabled app")
-        return next_app(device_id, user, last_app_index, recursion_depth + 1)
+        return next_app(device_id, last_app_index, recursion_depth + 1)
 
     if not possibly_render(user, device_id, app):
         # try the next app if rendering failed or produced an empty result (no screens)
-        return next_app(device_id, user, last_app_index, recursion_depth + 1)
+        return next_app(device_id, last_app_index, recursion_depth + 1)
 
     db.save_user(user)
 
@@ -869,11 +894,14 @@ def next_app(
 
     current_app.logger.error(f"file {webp_path} not found")
     # run it recursively until we get a file.
-    return next_app(device_id, user, last_app_index, recursion_depth + 1)
+    return next_app(device_id, last_app_index, recursion_depth + 1)
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")
 def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     try:
         if g.user:
             user = g.user
@@ -895,15 +923,18 @@ def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
             return send_file(webp_path, mimetype="image/webp")
         else:
             current_app.logger.error("file doesn't exist or 0 size")
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
     except Exception as e:
         current_app.logger.error(f"Exception: {str(e)}")
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/<string:device_id>/download_firmware")
 @login_required
 def download_firmware(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     try:
         if (
             g.user
@@ -912,17 +943,17 @@ def download_firmware(device_id: str) -> ResponseReturnValue:
         ):
             file_path = g.user["devices"][device_id]["firmware_file_path"]
         else:
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
 
         current_app.logger.debug(f"checking for {file_path}")
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return send_file(file_path, mimetype="application/octet-stream")
         else:
             current_app.logger.error("file doesn't exist or 0 size")
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
     except Exception as e:
         current_app.logger.error(f"Exception: {str(e)}")
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
 
 
 def set_repo(repo_name: str, apps_path: str, repo_url: str) -> bool:
@@ -970,13 +1001,13 @@ def set_repo(repo_name: str, apps_path: str, repo_url: str) -> bool:
 def set_user_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if "app_repo_url" not in request.form:
-            abort(400)
+            abort(HTTPStatus.BAD_REQUEST)
         repo_url = str(request.form.get("app_repo_url"))
         apps_path = os.path.join(db.get_users_dir(), g.user["username"], "apps")
         if set_repo("app_repo_url", apps_path, repo_url):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
-    abort(404)
+    abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/set_system_repo", methods=["GET", "POST"])
@@ -984,9 +1015,9 @@ def set_user_repo() -> ResponseReturnValue:
 def set_system_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if g.user["username"] != "admin":
-            abort(403)
+            abort(HTTPStatus.FORBIDDEN)
         if "app_repo_url" not in request.form:
-            abort(400)
+            abort(HTTPStatus.BAD_REQUEST)
         repo_url = str(request.form.get("app_repo_url"))
         if set_repo("system_repo_url", "system-apps", repo_url):
             # run the generate app list for custom repo
@@ -994,7 +1025,7 @@ def set_system_repo() -> ResponseReturnValue:
             subprocess.run(["python3", "clone_system_apps_repo.py"])
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
-    abort(404)
+    abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/refresh_system_repo", methods=["GET", "POST"])
@@ -1002,11 +1033,11 @@ def set_system_repo() -> ResponseReturnValue:
 def refresh_system_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if g.user["username"] != "admin":
-            abort(403)
+            abort(HTTPStatus.FORBIDDEN)
         if set_repo("system_repo_url", "system-apps", g.user["system_repo_url"]):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
-    abort(404)
+    abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/refresh_user_repo", methods=["GET", "POST"])
@@ -1017,7 +1048,7 @@ def refresh_user_repo() -> ResponseReturnValue:
         if set_repo("app_repo_url", apps_path, g.user["app_repo_url"]):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
-    abort(404)
+    abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/pixlet", defaults={"path": ""}, methods=["GET", "POST"])
@@ -1038,7 +1069,7 @@ def pixlet_proxy(path: str) -> ResponseReturnValue:
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Error fetching {pixlet_url}: {e}")
-        abort(500)
+        abort(HTTPStatus.INTERNAL_SERVER_ERROR)
     excluded_headers = [
         "Content-Length",
         "Transfer-Encoding",
@@ -1068,6 +1099,9 @@ def proxy_ws(url: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/<string:iname>/moveapp", methods=["GET", "POST"])
 @login_required
 def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
     direction = request.args.get("direction")
     if not direction:
         return redirect(url_for("manager.index"))
