@@ -6,12 +6,16 @@ import subprocess
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
+from zoneinfo import ZoneInfo
 
 import yaml
 from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from zoneinfo import ZoneInfo
+
+from tronbyt_server.models.app import App
+from tronbyt_server.models.device import Device
+from tronbyt_server.models.user import User
 
 
 def init_db() -> None:
@@ -35,36 +39,6 @@ def init_db() -> None:
         default_json = {
             "username": "admin",
             "password": generate_password_hash("password"),
-            # "devices": {
-            #     "9abe2858": {
-            #         "id": "9abe2858",
-            #         "name": "Tronbyt 1",
-            #         "default_interval": 18,
-            #         "brightness": 40,
-            #         "night_brightness": 10,
-            #         "night_mode_enabled": False,
-            #         "night_start": 22,
-            #         "night_end": 6,
-            #         "timezone": "",
-            #         "img_url": "",
-            #         "night_mode_app": "None",
-            #         "api_key": "CHANGEME",
-            #         "notes": "",
-            #         "apps": {
-            #             "994": {
-            #                 "iname": "994",
-            #                 "name": "fireflies",
-            #                 "uinterval": 1,
-            #                 "display_time": 0,
-            #                 "notes": "",
-            #                 "enabled": True,
-            #                 "last_render": 1739393487,
-            #                 "path": "system-apps/apps/fireflies/fireflies.star",
-            #                 "order": 0,
-            #             }
-            #         },
-            #     }
-            # },
         }
 
         # Insert default JSON
@@ -75,20 +49,13 @@ def init_db() -> None:
         conn.commit()
         current_app.logger.debug("Default JSON inserted for admin user")
 
-        # Copy the default files to the expected locations
-        # if not current_app.testing:
-        #     os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
-        #     shutil.copyfile(
-        #         "tronbyt_server/static/images/fireflies.webp",
-        #         "tronbyt_server/webp/9abe2858/fireflies-994.webp",
-        #     )
-    conn.commit()
 
-
-def get_db():
+def get_db() -> sqlite3.Connection:
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = sqlite3.connect(current_app.config["DB_FILE"])
+        db = g._database = sqlite3.connect(
+            current_app.config["DB_FILE"], autocommit=True
+        )
     return db
 
 
@@ -119,10 +86,10 @@ def server_tz_offset() -> int:
     return offset
 
 
-def get_last_app_index(device_id: str) -> int:
+def get_last_app_index(device_id: str) -> Optional[int]:
     device = get_device_by_id(device_id)
     if device is None:
-        return
+        return None
     return device.get("last_app_index", 0)
 
 
@@ -137,7 +104,7 @@ def save_last_app_index(device_id: str, index: int) -> None:
     save_user(user)
 
 
-def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
+def get_night_mode_is_active(device: Device) -> bool:
     if not device.get("night_mode_enabled", False):
         return False
     if "timezone" in device and device["timezone"] != "":
@@ -164,7 +131,7 @@ def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
     return False
 
 
-def get_device_brightness(device: Dict[str, Any]) -> int:
+def get_device_brightness(device: Device) -> int:
     if "night_brightness" in device and get_night_mode_is_active(device):
         return int(device["night_brightness"] * 2)
     else:
@@ -180,14 +147,14 @@ def brightness_int_from_string(brightness_string: str) -> int:
 
 def get_users_dir() -> str:
     # current_app.logger.debug(f"users dir : {current_app.config['USERS_DIR']}")
-    return current_app.config["USERS_DIR"]
+    return str(current_app.config["USERS_DIR"])
 
 
 # Ensure all apps have an "order" attribute
 # Earlier releases did not have this attribute,
 # so we need to ensure it exists to allow reordering of the app list.
 # Eventually, this function should be deleted.
-def ensure_app_order(user: Dict[str, Any]) -> None:
+def ensure_app_order(user: User) -> None:
     modified = False
     for device in user.get("devices", {}).values():
         apps = device.get("apps", {})
@@ -200,7 +167,7 @@ def ensure_app_order(user: Dict[str, Any]) -> None:
         save_user(user)
 
 
-def get_user(username: str) -> Optional[Dict[str, Any]]:
+def get_user(username: str) -> Optional[User]:
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -209,7 +176,7 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
         )
         row = cursor.fetchone()
         if row:
-            user = json.loads(row[0])
+            user: User = json.loads(row[0])
             ensure_app_order(user)
             return user
         else:
@@ -220,10 +187,11 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
+def auth_user(username: str, password: str) -> Optional[Union[User, bool]]:
     user = get_user(username)
     if user:
-        if check_password_hash(user.get("password"), password):
+        password_hash = user.get("password")
+        if password_hash and check_password_hash(password_hash, password):
             current_app.logger.debug(f"returning {user}")
             return user
         else:
@@ -232,7 +200,7 @@ def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
     return None
 
 
-def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
+def save_user(user: User, new_user: bool = False) -> bool:
     if "username" not in user:
         current_app.logger.warning("no username in user")
         return False
@@ -299,7 +267,7 @@ def create_user_dir(user: str) -> None:
 
 
 def get_apps_list(user: str) -> List[Dict[str, Any]]:
-    app_list = list()
+    app_list: List[Dict[str, Any]] = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
         list_file = "system-apps.json"
@@ -309,7 +277,8 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
             current_app.logger.debug("apps.json file generated.")
 
         with open(list_file, "r") as f:
-            return json.load(f)
+            app_list = json.load(f)
+            return app_list
 
     dir = os.path.join(get_users_dir(), user, "apps")
     if os.path.exists(dir):
@@ -317,10 +286,12 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
             for file in files:
                 if file.endswith(".star"):
                     app_path = os.path.join(root, file)
-                    app_dict = dict()
-                    app_dict["path"] = app_path
-                    app_dict["name"] = os.path.splitext(os.path.basename(app_path))[0]
-                    app_dict["image_url"] = app_dict["name"] + ".gif"
+                    app_name = os.path.splitext(os.path.basename(app_path))[0]
+                    app_dict = {
+                        "path": app_path,
+                        "name": app_name,
+                        "image_url": app_name + ".gif",
+                    }
                     # look for a yaml file
                     app_base_path = ("/").join(app_dict["path"].split("/")[0:-1])
                     yaml_path = os.path.join(app_base_path, "manifest.yaml")
@@ -399,7 +370,7 @@ def save_user_app(file: Any, path: str) -> bool:
         return False
 
 
-def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
+def delete_user_upload(user: User, filename: str) -> bool:
     user_apps_path = os.path.join(get_users_dir(), user["username"], "apps")
 
     try:
@@ -421,28 +392,29 @@ def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
         return False
 
 
-def get_all_users() -> List[Dict[str, Any]]:
+def get_all_users() -> List[User]:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT data FROM json_data")
     return [json.loads(row[0]) for row in cursor.fetchall()]
 
 
-def get_user_render_port(username: str) -> int:
-    base_port = int(current_app.config.get("PIXLET_RENDER_PORT1")) or 5100
+def get_user_render_port(username: str) -> Optional[int]:
+    base_port = int(current_app.config.get("PIXLET_RENDER_PORT1", 5100))
     users = get_all_users()
     for i in range(len(users)):
         if users[i]["username"] == username:
             # current_app.logger.debug(f"got port {i} for {username}")
             return base_port + i
+    return None
 
 
-def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
+def get_is_app_schedule_active(app: App) -> bool:
     # Check if the app should be displayed based on start and end times and active days
     current_time = datetime.now().time()
     current_day = datetime.now().strftime("%A").lower()
-    start_time_str = app.get("start_time", "00:00") or "00:00"
-    end_time_str = app.get("end_time", "23:59") or "23:59"
+    start_time_str = str(app.get("start_time", "00:00")) or "00:00"
+    end_time_str = str(app.get("end_time", "23:59")) or "23:59"
     start_time = datetime.strptime(start_time_str, "%H:%M").time()
     end_time = datetime.strptime(end_time_str, "%H:%M").time()
     active_days = app.get(
@@ -462,18 +434,22 @@ def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
 
     schedule_active = False
     if (
-        (start_time <= current_time <= end_time)
-        or (
-            start_time > end_time
-            and (current_time >= start_time or current_time <= end_time)
+        (
+            (start_time <= current_time <= end_time)
+            or (
+                start_time > end_time
+                and (current_time >= start_time or current_time <= end_time)
+            )
         )
-    ) and current_day in active_days:
+        and isinstance(active_days, list)
+        and current_day in active_days
+    ):
         schedule_active = True
 
     return schedule_active
 
 
-def get_device_by_name(user: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
+def get_device_by_name(user: User, name: str) -> Optional[Device]:
     for device in user.get("devices", {}).values():
         if device.get("name") == name:
             return device
@@ -487,7 +463,7 @@ def get_device_webp_dir(device_id: str, create: bool = True) -> str:
     return path
 
 
-def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
+def get_device_by_id(device_id: str) -> Optional[Device]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
@@ -495,7 +471,7 @@ def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_user_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
+def get_user_by_device_id(device_id: str) -> Optional[User]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
@@ -583,7 +559,7 @@ def add_pushed_app(device_id: str, path: str) -> None:
     if installation_id in apps:
         # already in there
         return
-    app = {
+    app: App = {
         "iname": installation_id,
         "name": "pushed",
         "uinterval": 10,

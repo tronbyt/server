@@ -3,15 +3,17 @@ import json
 import os
 import re
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from flask import (
     Blueprint,
     Response,
     abort,
-    request,
     current_app,
+    request,
 )
+from flask.typing import ResponseReturnValue
+from werkzeug.datastructures import Headers
 
 # from tronbyt_server.auth import login_required
 import tronbyt_server.db as db
@@ -19,7 +21,7 @@ import tronbyt_server.db as db
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
 
-def get_api_key_from_headers(headers):
+def get_api_key_from_headers(headers: Headers) -> Optional[str]:
     auth_header = headers.get("Authorization")
     if auth_header:
         if auth_header.startswith("Bearer "):
@@ -30,12 +32,14 @@ def get_api_key_from_headers(headers):
 
 
 @bp.route("/devices/<string:device_id>", methods=["GET", "PATCH"])
-def get_device(device_id):
+def get_device(device_id: str) -> ResponseReturnValue:
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
         abort(400, description="Missing or invalid Authorization header")
     current_app.logger.debug(f"api_key : {api_key}")
     user = db.get_user_by_device_id(device_id)
+    if not user:
+        abort(404)
     device = user["devices"].get(device_id)
     if not device or device["api_key"] != api_key:
         abort(404)
@@ -59,8 +63,8 @@ def get_device(device_id):
     return json.dumps(metadata), 200
 
 
-@bp.route("/devices/<string:device_id>/push", methods=["POST"])
-def handle_push(device_id: str) -> Response:
+@bp.post("/devices/<string:device_id>/push")
+def handle_push(device_id: str) -> ResponseReturnValue:
     # Print out the whole request
     current_app.logger.debug("Headers:", request.headers)
     # current_app.logger.debug("JSON Data:", request.get_json())
@@ -120,7 +124,7 @@ def handle_push(device_id: str) -> Response:
         # add the app so it'll stay in the rotation
         db.add_pushed_app(device_id, file_path)
 
-    return "Webp received.", 200
+    return Response("Webp received.", status=200)
 
 
 ########################################################################################################
@@ -128,7 +132,7 @@ def handle_push(device_id: str) -> Response:
     "/devices/<string:device_id>/installations/<string:installation_id>",
     methods=["DELETE"],
 )
-def handle_delete(device_id: str, installation_id: str) -> Response:
+def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
     # get api_key from Authorization header
     api_key = ""
     auth_header = request.headers.get("Authorization")
@@ -163,4 +167,4 @@ def handle_delete(device_id: str, installation_id: str) -> Response:
     # Delete the file
     os.remove(file_path)
 
-    return "Webp deleted.", 200
+    return Response("Webp deleted.", status=200)
