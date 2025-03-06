@@ -71,12 +71,13 @@ def uploadapp() -> ResponseReturnValue:
         # if user does not select file, browser also
         # submit an empty part without filename
         if file:
-            if file.filename == "":
+            filename = secure_filename(file.filename)
+            if filename == "":
                 flash("No file")
                 return redirect("manager.uploadapp")
 
             # create a subdirectory for the app
-            app_name = Path(file.filename).stem
+            app_name = Path(filename).stem
             app_subdir = user_apps_path / app_name
             app_subdir.mkdir(parents=True, exist_ok=True)
 
@@ -369,7 +370,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 )
             )
 
-        config_path = Path("configs") / f"{name}-{iname}.json"
+        config_path = Path("configs") / secure_filename(f"{name}-{iname}.json")
         if config_path.exists():
             flash("That installation id already exists")
             return redirect(

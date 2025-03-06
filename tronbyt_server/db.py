@@ -228,7 +228,8 @@ def save_user(user: User, new_user: bool = False) -> bool:
         if current_app.config.get("PRODUCTION") == "0":
             current_app.logger.debug("writing to json file for visibility")
             with open(
-                get_users_dir() / username / f"{username}_debug.json", "w"
+                get_users_dir() / secure_filename(username) / f"{username}_debug.json",
+                "w",
             ) as file:
                 json_string = json.dumps(user, indent=4)
                 if current_app.testing:
@@ -262,7 +263,7 @@ def delete_user(username: str) -> bool:
 
 def create_user_dir(user: str) -> None:
     # create the user directory if it doesn't exist
-    user_dir = get_users_dir() / user
+    user_dir = get_users_dir() / secure_filename(user)
     (user_dir / "configs").mkdir(parents=True, exist_ok=True)
     (user_dir / "apps").mkdir(parents=True, exist_ok=True)
 

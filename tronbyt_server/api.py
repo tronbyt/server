@@ -1,6 +1,5 @@
 import base64
 import json
-import re
 import time
 from http import HTTPStatus
 from typing import Any, Dict, Optional
@@ -14,6 +13,7 @@ from flask import (
 )
 from flask.typing import ResponseReturnValue
 from werkzeug.datastructures import Headers
+from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
 from tronbyt_server.models.device import validate_device_id
@@ -102,16 +102,13 @@ def handle_push(device_id: str) -> ResponseReturnValue:
     # data = request.get_json()
     current_app.logger.debug(data)
     installation_id = data.get(
-        "installationID", data.get("installationId", "__")
+        "installationID", data.get("installationId")
     )  # get both cases ID and Id
-    current_app.logger.debug(f"installation_id:{installation_id}")
+    current_app.logger.debug(f"installation_id: {installation_id}")
     image_data = data.get("image")
 
     if not api_key or not image_data:
         abort(HTTPStatus.BAD_REQUEST, description="Missing required parameters")
-
-    # sanitize installation_id
-    installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
 
     try:
         image_bytes = base64.b64decode(image_data)
@@ -124,17 +121,17 @@ def handle_push(device_id: str) -> ResponseReturnValue:
     pushed_path = device_webp_path / "pushed"
     pushed_path.mkdir(exist_ok=True)
 
-    # Generate a unique filename using the sanitized installation_id and current timestamp
-    timestamp = ""
-    if installation_id == "__":
-        timestamp = f"{int(time.time())}"
-    filename = f"{installation_id}{timestamp}.webp"
+    # Generate a unique filename using the sanitized installation_id or current timestamp
+    if installation_id:
+        filename = f"{secure_filename(installation_id)}.webp"
+    else:
+        filename = f"__{int(time.time())}.webp"
     file_path = pushed_path / filename
 
     # Save the decoded image data to a file
     file_path.write_bytes(image_bytes)
 
-    if timestamp == "":
+    if installation_id:
         # add the app so it'll stay in the rotation
         db.add_pushed_app(device_id, file_path)
 
@@ -176,7 +173,7 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND, description="Device directory not found")
 
     # Sanitize installation_id to prevent path traversal attacks
-    installation_id = re.sub(r"[^a-zA-Z0-9_-]", "", installation_id)
+    installation_id = secure_filename(installation_id)
 
     # Generate the filename using the installation_id
     file_path = pushed_webp_path / f"{installation_id}.webp"
