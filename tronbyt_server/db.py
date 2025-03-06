@@ -228,7 +228,9 @@ def save_user(user: User, new_user: bool = False) -> bool:
         if current_app.config.get("PRODUCTION") == "0":
             current_app.logger.debug("writing to json file for visibility")
             with open(
-                get_users_dir() / secure_filename(username) / f"{username}_debug.json",
+                get_users_dir()
+                / secure_filename(username)
+                / secure_filename(f"{username}_debug.json"),
                 "w",
             ) as file:
                 json_string = json.dumps(user, indent=4)
