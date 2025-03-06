@@ -473,6 +473,17 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 def render_app(
     app_path: Path, config_path: Path, webp_path: Path, device: Device
 ) -> bool:
+    """Renders a pixlet app to a webp image.
+
+    Args:
+        app_path: Path to the pixlet app.
+        config_path: Path to the app's configuration file.
+        webp_path: Path to save the rendered webp image.
+        device: Device configuration.
+
+    Returns:
+        True if the rendering was successful, False otherwise.
+    """
     config_data = dict()
     if config_path.exists():
         with config_path.open("r") as config_file:
