@@ -33,10 +33,21 @@ else:
 # find all the .star files in the apps_path directory
 apps_array = []
 apps = []
+broken_apps = []
+
 for root, dirs, files in os.walk(system_apps_path):
     for file in files:
         if file.endswith(".star"):
             apps.append(os.path.join(root, file))
+
+broken_apps_path = os.path.join(system_apps_path, "broken_apps.txt")
+if os.path.exists(broken_apps_path):
+    print(f"processing broken_apps file {broken_apps_path}")
+    with open(broken_apps_path, "r") as f:
+        broken_apps = f.read().splitlines()
+        print(str(broken_apps))
+
+
 apps.sort()
 count = 0
 skip_count = 0
@@ -52,6 +63,12 @@ for app in apps:
         app_dict["path"] = app
         # "{}/apps/{}/{}.star".format(system_apps_path, app.replace('_',''), app)
         app_path = app
+
+        # skip any broken apps
+        if os.path.basename(app) in broken_apps:
+            print(f"skipping broken app {os.path.basename(app)}")
+            skip_count += 1
+            continue
 
         # skip any files that include secret.star module and
         with open(app_path, "r") as f:

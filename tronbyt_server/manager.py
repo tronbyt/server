@@ -863,7 +863,7 @@ def next_app(
         not app["enabled"] or not db.get_is_app_schedule_active(app)
     ):
         # recurse until we find one that's enabled
-        current_app.logger.debug("disabled app")
+        current_app.logger.debug(f"{app['name']}-{app['iname']} is disabled")
         return next_app(device_id, last_app_index, recursion_depth + 1)
 
     if not possibly_render(user, device_id, app):
