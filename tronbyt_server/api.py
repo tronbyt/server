@@ -53,7 +53,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
     if request.method == "PATCH":
         data = request.get_json()
         if "brightness" in data:
-            brightness = data["brightness"]
+            brightness = int(data["brightness"])
             if brightness < 0 or brightness > 255:
                 abort(
                     HTTPStatus.BAD_REQUEST,
@@ -61,7 +61,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
                 )
             device["brightness"] = brightness
         if "autoDim" in data:
-            device["night_mode_enabled"] = data["autoDim"]
+            device["night_mode_enabled"] = bool(data["autoDim"])
         db.save_user(user)
     metadata = {
         "id": device["id"],
