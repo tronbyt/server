@@ -48,7 +48,7 @@ if os.path.exists(broken_apps_path):
             broken_apps = f.read().splitlines()
             print(str(broken_apps))
     except Exception as e:
-        print("problem reading broken_apps_txt {e}")
+        print(f"problem reading broken_apps_txt {e}")
 
 
 apps.sort()
