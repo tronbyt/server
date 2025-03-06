@@ -1,6 +1,7 @@
 name: Build and test
-
 on: [push, pull_request]
+permissions:
+  contents: read
 
 jobs:
   build-and-test:

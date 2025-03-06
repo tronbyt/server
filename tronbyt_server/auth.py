@@ -33,7 +33,7 @@ def register() -> ResponseReturnValue:
     if request.method == "POST":
         error: Optional[str] = None
 
-        username = db.sanitize(secure_filename(request.form["username"]))
+        username = secure_filename(request.form["username"])
         if username != request.form["username"]:
             error = "Invalid Username"
         password = generate_password_hash(request.form["password"])

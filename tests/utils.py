@@ -1,8 +1,8 @@
 import json
-import os
+from pathlib import Path
 
-config_path = "tests/users/testuser/testuser_debug.json"
-uploads_path = "tests/users/testuser/apps"
+config_path = Path("tests/users/testuser/testuser_debug.json")
+uploads_path = Path("tests/users/testuser/apps")
 
 
 def load_test_data(client):
@@ -22,7 +22,7 @@ def load_test_data(client):
 
 
 def get_testuser_config_string():
-    with open(config_path) as file:
+    with config_path.open() as file:
         data = file.read()
         return data
 
@@ -34,11 +34,9 @@ def get_test_device_id():
 
 def get_user_uploads_list():
     star_files = []
-    for root, _, files in os.walk(uploads_path):
-        for file in files:
-            if file.endswith(".star"):
-                relative_path = os.path.relpath(os.path.join(root, file), uploads_path)
-                star_files.append(relative_path)
+    for file in uploads_path.rglob("*.star"):
+        relative_path = file.relative_to(uploads_path)
+        star_files.append(str(relative_path))
     return star_files
 
 
