@@ -43,9 +43,12 @@ for root, dirs, files in os.walk(system_apps_path):
 broken_apps_path = os.path.join(system_apps_path, "broken_apps.txt")
 if os.path.exists(broken_apps_path):
     print(f"processing broken_apps file {broken_apps_path}")
-    with open(broken_apps_path, "r") as f:
-        broken_apps = f.read().splitlines()
-        print(str(broken_apps))
+    try:
+        with open(broken_apps_path, "r") as f:
+            broken_apps = f.read().splitlines()
+            print(str(broken_apps))
+    except Exception as e:
+        print("problem reading broken_apps_txt {e}")
 
 
 apps.sort()
@@ -65,7 +68,7 @@ for app in apps:
         app_path = app
 
         # skip any broken apps
-        if os.path.basename(app) in broken_apps:
+        if broken_apps and os.path.basename(app) in broken_apps:
             print(f"skipping broken app {os.path.basename(app)}")
             skip_count += 1
             continue
