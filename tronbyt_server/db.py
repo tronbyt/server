@@ -389,7 +389,7 @@ def get_user_render_port(username: str) -> Optional[int]:
     return None
 
 
-def get_is_app_schedule_active(app: App, tz_str: any) -> bool:
+def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
     # Check if the app should be displayed based on start and end times and active days
     current_time = datetime.now(timezone.utc)
     if tz_str:
