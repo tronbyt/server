@@ -391,10 +391,18 @@ def get_user_render_port(username: str) -> Optional[int]:
     return None
 
 
-def get_is_app_schedule_active(app: App) -> bool:
+def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
     # Check if the app should be displayed based on start and end times and active days
-    current_time = datetime.now().time()
-    current_day = datetime.now().strftime("%A").lower()
+    current_time = datetime.now(timezone.utc)
+    if tz_str:
+        try:
+            tz = ZoneInfo(tz_str)
+            current_time = current_time.astimezone(tz)
+            current_app.logger.debug(f"current device time is {current_time}")
+        except Exception as e:
+            current_app.logger.warn(f"Error converting timezone: {e}")
+
+    current_day = current_time.strftime("%A").lower()
     start_time_str = str(app.get("start_time", "00:00")) or "00:00"
     end_time_str = str(app.get("end_time", "23:59")) or "23:59"
     start_time = datetime.strptime(start_time_str, "%H:%M").time()
@@ -415,12 +423,13 @@ def get_is_app_schedule_active(app: App) -> bool:
         ]
 
     schedule_active = False
+    current_time_only = current_time.time()
     if (
         (
-            (start_time <= current_time <= end_time)
+            (start_time <= current_time_only <= end_time)
             or (
                 start_time > end_time
-                and (current_time >= start_time or current_time <= end_time)
+                and (current_time_only >= start_time or current_time_only <= end_time)
             )
         )
         and isinstance(active_days, list)
