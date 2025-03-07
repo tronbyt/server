@@ -2,6 +2,7 @@ esptool
 flask
 flask-babel
 gunicorn
+psutil
 python-dotenv
 requests
 websocket-client

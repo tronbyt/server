@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 import secrets
+import select
 import shutil
 import string
 import subprocess
@@ -10,9 +12,11 @@ from datetime import datetime
 from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
+from threading import Timer
 from typing import Optional
 from zoneinfo import available_timezones
 
+import psutil
 import requests
 from flask import (
     Blueprint,
@@ -44,7 +48,6 @@ bp = Blueprint("manager", __name__)
 @bp.route("/")
 @login_required
 def index() -> str:
-    # os.system("pkill -f serve") # kill any pixlet serve processes
     devices: list[Device] = list()
 
     if not g.user:
@@ -519,7 +522,7 @@ def render_app(
         # build the pixlet render command
         if config_path.exists() and len(config_data.keys()) > 1:
             command = [
-                "/pixlet/pixlet",
+                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                 "render",
                 "-c",
                 str(config_path),
@@ -530,7 +533,7 @@ def render_app(
             ]
         else:
             command = [
-                "/pixlet/pixlet",
+                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                 "render",
                 str(app_path),
                 "-o",
@@ -678,13 +681,24 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     webp_path = webp_device_path / f"{app_basename}.webp"
 
     user_render_port = str(db.get_user_render_port(g.user["username"]))
-    # always kill the pixlet proc based on port number.
-    os.system(
-        "pkill -f {}".format(user_render_port)
-    )  # kill pixlet process based on port
+    # always kill the pixlet process based on port number.
+    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+        if (
+            "pixlet" in proc.info["name"]
+            and proc.info["cmdline"]
+            and f"--port={user_render_port}" in proc.info["cmdline"]
+        ):
+            try:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+            except Exception as e:
+                current_app.logger.error(f"Error terminating pixlet process: {e}")
 
     if request.method == "POST":
-        #   do something to confirm configuration ?
+        #  do something to confirm configuration ?
         current_app.logger.debug("checking for : " + str(tmp_config_path))
         if tmp_config_path.exists():
             current_app.logger.debug("file exists")
@@ -743,12 +757,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         # execute the pixlet serve process and show in it an iframe on the config page.
         current_app.logger.debug(str(app_path))
         if app_path.exists():
-            subprocess.Popen(
+            p = subprocess.Popen(
                 [
-                    "timeout",
-                    "-k",
-                    "300",
-                    "300",
                     os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
                     "--saveconfig",
                     str(tmp_config_path),
@@ -757,11 +767,71 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                     "--port={}".format(user_render_port),
                     "--path=/pixlet/",
                 ],
+                stderr=subprocess.PIPE,
                 shell=False,
+                text=True,
+                bufsize=1,
             )
 
-            # give pixlet some time to start up
-            time.sleep(2)
+            # Start a watchdog timer to kill the process after some time
+            def terminate_process(
+                logger: logging.Logger, p: subprocess.Popen[str], port: str
+            ) -> None:
+                logger.debug(f"terminating pixlet on port {port}")
+                try:
+                    p.terminate()
+                    try:
+                        p.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        p.kill()
+                except Exception as e:
+                    logger.error(f"Error terminating pixlet process: {e}")
+
+            timer = Timer(
+                300.0, terminate_process, [current_app.logger, p, user_render_port]
+            )
+            timer.start()
+
+            # wait for pixlet to serve
+            # first, wait for the process to emit a message to stderr ("listening at")
+            # once that message is seen, wait for the health check to pass.
+            if p.stderr:
+                timeout = 10  # seconds
+                start_time = time.time()
+                saw_message = False
+                while True:
+                    if time.time() - start_time > timeout:
+                        current_app.logger.error("Timeout waiting for pixlet to start")
+                        p.terminate()
+                        try:
+                            p.wait(timeout=1)
+                        except subprocess.TimeoutExpired:
+                            p.kill()
+                        flash("Error: Timeout waiting for pixlet to start")
+                        return redirect(url_for("manager.index"))
+
+                    if saw_message:
+                        try:
+                            if requests.get(
+                                f"http://localhost:{user_render_port}/pixlet/health"
+                            ).ok:
+                                current_app.logger.debug(
+                                    f"pixlet ready on port {user_render_port}"
+                                )
+                                break
+                        except requests.ConnectionError:
+                            current_app.logger.debug(
+                                f"pixlet not ready yet for port {user_render_port}, retrying"
+                            )
+                    else:
+                        ready = select.select([p.stderr], [], [], 1.0)
+                        if ready[0]:
+                            output = p.stderr.readline()
+                            if "listening at" in output:
+                                saw_message = True
+                                continue
+                    time.sleep(0.1)
+
             return render_template(
                 "manager/configapp.html",
                 app=app,
