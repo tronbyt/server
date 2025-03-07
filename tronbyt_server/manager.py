@@ -860,7 +860,8 @@ def next_app(
         last_app_index = 0
 
     if not is_night_mode_app and (
-        not app["enabled"] or not db.get_is_app_schedule_active(app,device.get('timezone', None))
+        not app["enabled"]
+        or not db.get_is_app_schedule_active(app, device.get("timezone", None))
     ):
         # recurse until we find one that's enabled
         current_app.logger.debug(f"{app['name']}-{app['iname']} is disabled")
