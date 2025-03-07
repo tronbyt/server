@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from tronbyt_server import db
 from . import utils
 # from unittest.mock import patch
@@ -69,4 +69,5 @@ def test_app_create_edit_config_delete(client):
 
     # delete the test device webp dir
     db.delete_device_dirs(device_id)
-    assert not os.path.isdir(f"tronbyt_server/webp/{device_id}")
+    device_dir = Path("tronbyt_server") / "webp" / device_id
+    assert not device_dir.is_dir()
