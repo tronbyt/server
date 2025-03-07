@@ -4,12 +4,13 @@ from . import utils
 from unittest.mock import patch
 
 
-@patch("os.system")
-@patch("subprocess.Popen")
-def test_app_create_edit_config_delete(mock_os_system, mock_subprocess, client):
+# @patch("os.system")
+# @patch("subprocess.Popen")
+# def test_app_create_edit_config_delete(mock_os_system, mock_subprocess, client):
+def test_app_create_edit_config_delete(client):
     # Configure the mock to return a successful result
-    mock_subprocess.return_value.returncode = 0
-    mock_os_system.return_value.returncode = 0
+    # mock_subprocess.return_value.returncode = 0
+    # mock_os_system.return_value.returncode = 0
 
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
     client.post("/auth/login", data={"username": "testuser", "password": "password"})
