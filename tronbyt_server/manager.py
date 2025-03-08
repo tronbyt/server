@@ -779,6 +779,19 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     abort(HTTPStatus.BAD_REQUEST)
 
 
+@bp.route("/<string:device_id>/brightness", methods=["GET"])
+def get_brightness(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+    user = db.get_user_by_device_id(device_id)
+    if not user:
+        abort(HTTPStatus.NOT_FOUND)
+    device = user["devices"][device_id]
+    brightness_value = db.get_device_brightness_8bit(device)
+    current_app.logger.debug(f"brightness value {brightness_value}")
+    return Response(str(brightness_value), mimetype="text/plain")
+
+
 MAX_RECURSION_DEPTH = 10
 
 
@@ -871,7 +884,7 @@ def next_app(
 
     if webp_path.exists() and webp_path.stat().st_size > 0:
         response = send_file(webp_path, mimetype="image/webp")
-        b = db.get_device_brightness(device)
+        b = db.get_device_brightness_8bit(device)
         current_app.logger.debug(f"sending brightness {b} -- ")
         response.headers["Tronbyt-Brightness"] = b
         s = app.get("display_time", 0)

@@ -133,14 +133,14 @@ def get_night_mode_is_active(device: Device) -> bool:
 
 
 # selectable range is 0 - 5, lowest actually visiable value returned should be 3, so 0 = 0, 1 = 3, 2 =
-def get_device_brightness(device: Device) -> int:
+def get_device_brightness_8bit(device: Device) -> int:
     lookup = {0: 0, 1: 3, 2: 5, 3: 10, 4: 50, 5: 100}
     if get_night_mode_is_active(device):
         b = device.get("night_brightness", 1)
     else:
         b = device.get("brightness", 5)
 
-    return lookup[b] if b in lookup else 30
+    return lookup.get(b, 50)
 
 
 # map from 8bit values to 0 - 5
