@@ -59,7 +59,8 @@ value="{{ request.form['name'] or device['name'] }}" required>
       </option>
     {% endfor %}
     {% endif %}
-  </select>
+  </select><br>
+  <small>To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.</small>
 </span>
 <label for="body">{{ _('Notes') }}</label>
 <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
