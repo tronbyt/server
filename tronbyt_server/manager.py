@@ -1,12 +1,14 @@
 import json
 import logging
 import os
+import random
 import secrets
 import select
 import shutil
 import string
 import subprocess
 import time
+import urllib.parse
 import uuid
 from datetime import datetime
 from http import HTTPStatus
@@ -356,8 +358,6 @@ def addapp(device_id: str) -> ResponseReturnValue:
         uinterval = request.form.get("uinterval")
         display_time = request.form.get("display_time")
         notes = request.form.get("notes")
-
-        import random
 
         iname = str(random.randint(100, 999))
 
@@ -730,11 +730,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         device = g.user["devices"][device_id]
         config_dict = {}
         url_params = ""
-        import urllib.parse
 
         if config_path.exists():
-            import json
-
             with config_path.open("r") as c:
                 config_dict = json.load(c)
 
