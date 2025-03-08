@@ -28,7 +28,6 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
-from websocket import create_connection
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -1087,18 +1086,6 @@ def pixlet_proxy(path: str) -> ResponseReturnValue:
         if name not in excluded_headers
     ]
     return Response(response.content, status=response.status_code, headers=headers)
-
-
-@bp.route("/pixlet/api/v1/ws/<path:url>")
-@login_required
-def proxy_ws(url: str) -> ResponseReturnValue:
-    user_render_port = db.get_user_render_port(g.user["username"])
-    pixlet_url = f"ws://localhost:{user_render_port}/pixlet/{url}"
-    ws = create_connection(pixlet_url)
-    ws.send(request.data)
-    response = ws.recv()
-    ws.close()
-    return Response(response, content_type="application/json")
 
 
 @bp.route("/<string:device_id>/<string:iname>/moveapp", methods=["GET", "POST"])
