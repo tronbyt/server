@@ -144,7 +144,7 @@ def get_device_brightness(device: Device) -> int:
 
 
 # map from 8bit values to 0 - 5
-def brightness_map_8bit_to_levels(brightness) -> int:
+def brightness_map_8bit_to_levels(brightness: int) -> int:
     if brightness == 0:
         return 0
     elif brightness < 4:
