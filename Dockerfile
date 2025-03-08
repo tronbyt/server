@@ -5,8 +5,8 @@ FROM ghcr.io/tronbyt/pixlet:latest AS pixlet
 # build runtime image
 FROM debian:trixie-slim AS runtime
 
-# 8000 for main app, 5100, 5101 for pixlet serve iframe
-EXPOSE 8000 5100 5101
+# 8000 for main app
+EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
 ENV PIXLET_PATH=/pixlet/pixlet
@@ -34,7 +34,6 @@ RUN apt-get update && \
         python3-flask \
         python3-flask-babel \
         python3-requests \
-        python3-websocket \
         python3-yaml \
         tzdata \
         tzdata-legacy && \

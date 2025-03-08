@@ -4,4 +4,3 @@ flask-babel
 gunicorn
 python-dotenv
 requests
-websocket-client
