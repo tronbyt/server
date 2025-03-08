@@ -13,25 +13,18 @@ from flask import (
     session,
     url_for,
 )
+from flask.typing import ResponseReturnValue
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
+from tronbyt_server.models.user import User
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
-DEBUG = True
-
-
-def dprint(*args: Any, **kwargs: Any) -> None:
-    if DEBUG:
-        print(*args, **kwargs)
-    # else:
-    #     logging.info(*args, **kwargs)
-
 
 @bp.route("/register", methods=("GET", "POST"))
-def register() -> Any:
+def register() -> ResponseReturnValue:
     if not current_app.config["TESTING"]:
         time.sleep(2)
     # # only allow admin to register new users
@@ -40,7 +33,7 @@ def register() -> Any:
     if request.method == "POST":
         error: Optional[str] = None
 
-        username = db.sanitize(secure_filename(request.form["username"]))
+        username = secure_filename(request.form["username"])
         if username != request.form["username"]:
             error = "Invalid Username"
         password = generate_password_hash(request.form["password"])
@@ -56,7 +49,7 @@ def register() -> Any:
             if "email" in request.form:
                 if "@" in request.form["email"]:
                     email = request.form["email"]
-            user = {
+            user: User = {
                 "username": username,
                 "password": password,
                 "email": email,
@@ -73,11 +66,11 @@ def register() -> Any:
 
 
 @bp.route("/login", methods=("GET", "POST"))
-def login() -> Any:
+def login() -> ResponseReturnValue:
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        dprint(f"username : {username} and hp : {password}")
+        current_app.logger.debug(f"username : {username} and hp : {password}")
         error: Optional[str] = None
         user = db.auth_user(username, password)
         if user is False or user is None:
@@ -88,7 +81,7 @@ def login() -> Any:
             session.clear()
             if current_app.config.get("PRODUCTION") == "1":
                 session.permanent = True
-            print("username " + username)
+            current_app.logger.debug("username " + username)
             session["username"] = username
             return redirect(url_for("index"))
         flash(error)
@@ -98,7 +91,7 @@ def login() -> Any:
 
 # edit user info, namely password
 @bp.route("/edit", methods=("GET", "POST"))
-def edit() -> Any:
+def edit() -> ResponseReturnValue:
     if request.method == "POST":
         username = session["username"]
         old_pass = request.form["old_password"]
@@ -108,8 +101,9 @@ def edit() -> Any:
         if user is False:
             error = "Bad old password."
         if error is None:
-            user["password"] = password
-            db.save_user(user)
+            if isinstance(user, dict):
+                user["password"] = password
+                db.save_user(user)
             flash("Success")
             return redirect(url_for("index"))
         flash(error)
@@ -127,7 +121,7 @@ def load_logged_in_user() -> None:
 
 
 @bp.route("/logout")
-def logout() -> Any:
+def logout() -> ResponseReturnValue:
     session.clear()
     flash("Logged Out")
     return redirect(url_for("auth.login"))

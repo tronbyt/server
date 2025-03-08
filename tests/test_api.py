@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from tronbyt_server import db
 
@@ -27,9 +27,9 @@ def test_api(client):
         json=object,
     )
     # assert no exist because of bad key
-    push_path = f"{db.get_device_webp_dir(device_id)}/pushed/"
+    push_path = Path(db.get_device_webp_dir(device_id)) / "pushed"
 
-    assert not os.path.exists(push_path)
+    assert not push_path.exists()
 
     # good key
     client.post(
@@ -39,9 +39,7 @@ def test_api(client):
     )
     # assert a file starting with __ exist in the web device dir
     file_list = [
-        f
-        for f in os.listdir(push_path)
-        if os.path.isfile(os.path.join(push_path, f)) and f.startswith("__")
+        f for f in push_path.iterdir() if f.is_file() and f.name.startswith("__")
     ]
     assert len(file_list) > 0
 
@@ -49,13 +47,11 @@ def test_api(client):
     client.get(f"{device_id}/next")
     # assert the file is now deleted
     file_list = [
-        f
-        for f in os.listdir(push_path)
-        if os.path.isfile(os.path.join(push_path, f)) and f.startswith("__")
+        f for f in push_path.iterdir() if f.is_file() and f.name.startswith("__")
     ]
 
     assert len(file_list) == 0
 
     # delete the test device webp dir
     db.delete_device_dirs(device_id)
-    assert not os.path.isdir(f"tronbyt_server/webp/{device_id}")
+    assert not Path(f"tronbyt_server/webp/{device_id}").is_dir()

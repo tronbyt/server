@@ -4,17 +4,23 @@ import shutil
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
+from zoneinfo import ZoneInfo
 
 import yaml
 from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
+from tronbyt_server.models.app import App
+from tronbyt_server.models.device import Device
+from tronbyt_server.models.user import User
+
 
 def init_db() -> None:
-    os.makedirs("users/admin/configs", exist_ok=True)
+    Path("users/admin/configs").mkdir(parents=True, exist_ok=True)
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
@@ -34,36 +40,6 @@ def init_db() -> None:
         default_json = {
             "username": "admin",
             "password": generate_password_hash("password"),
-            "devices": {
-                "9abe2858": {
-                    "id": "9abe2858",
-                    "name": "Tronbyt 1",
-                    "default_interval": 18,
-                    "brightness": 40,
-                    "night_brightness": 10,
-                    "night_mode_enabled": False,
-                    "night_start": 22,
-                    "night_end": 6,
-                    "timezone": 100,
-                    "img_url": "",
-                    "night_mode_app": "None",
-                    "api_key": "CHANGEME",
-                    "notes": "",
-                    "apps": {
-                        "994": {
-                            "iname": "994",
-                            "name": "fireflies",
-                            "uinterval": 1,
-                            "display_time": 0,
-                            "notes": "",
-                            "enabled": True,
-                            "last_render": 1739393487,
-                            "path": "system-apps/apps/fireflies/fireflies.star",
-                            "order": 0,
-                        }
-                    },
-                }
-            },
         }
 
         # Insert default JSON
@@ -72,22 +48,15 @@ def init_db() -> None:
             (json.dumps(default_json),),
         )
         conn.commit()
-        print("Default JSON inserted for admin user")
-
-        # Copy the default files to the expected locations
-        if not current_app.testing:
-            os.makedirs("tronbyt_server/webp/9abe2858", exist_ok=True)
-            shutil.copyfile(
-                "tronbyt_server/static/images/fireflies.webp",
-                "tronbyt_server/webp/9abe2858/fireflies-994.webp",
-            )
-    conn.commit()
+        current_app.logger.debug("Default JSON inserted for admin user")
 
 
-def get_db():
+def get_db() -> sqlite3.Connection:
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = sqlite3.connect(current_app.config["DB_FILE"])
+        db = g._database = sqlite3.connect(
+            current_app.config["DB_FILE"], autocommit=True
+        )
     return db
 
 
@@ -96,16 +65,16 @@ def delete_device_dirs(device_id: str) -> None:
     app_name = current_app.name
 
     # Construct the path to the directory to delete
-    dir_to_delete = os.path.join(app_name, "webp", device_id)
+    dir_to_delete = Path(app_name) / "webp" / device_id
 
     # Delete the directory recursively
     try:
         shutil.rmtree(dir_to_delete)
-        print(f"Successfully deleted directory: {dir_to_delete}")
+        current_app.logger.debug(f"Successfully deleted directory: {dir_to_delete}")
     except FileNotFoundError:
-        print(f"Directory not found: {dir_to_delete}")
+        current_app.logger.error(f"Directory not found: {dir_to_delete}")
     except Exception as e:
-        print(f"Error deleting directory {dir_to_delete}: {str(e)}")
+        current_app.logger.error(f"Error deleting directory {dir_to_delete}: {str(e)}")
 
 
 def server_tz_offset() -> int:
@@ -118,10 +87,10 @@ def server_tz_offset() -> int:
     return offset
 
 
-def get_last_app_index(device_id: str) -> int:
+def get_last_app_index(device_id: str) -> Optional[int]:
     device = get_device_by_id(device_id)
     if device is None:
-        return
+        return None
     return device.get("last_app_index", 0)
 
 
@@ -136,30 +105,34 @@ def save_last_app_index(device_id: str, index: int) -> None:
     save_user(user)
 
 
-def get_night_mode_is_active(device: Dict[str, Any]) -> bool:
+def get_night_mode_is_active(device: Device) -> bool:
     if not device.get("night_mode_enabled", False):
         return False
-    # configured, adjust current hour to set device timezone
-    if "timezone" in device and device["timezone"] != 100:
-        current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
+    if "timezone" in device and device["timezone"] != "":
+        if isinstance(device["timezone"], int):
+            # Legacy case: timezone is an int representing offset in hours
+            current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
+        else:
+            # configured, adjust current hour to set device timezone
+            current_hour = datetime.now(ZoneInfo(device["timezone"])).hour
     else:
         current_hour = datetime.now().hour
-    # print(f"current_hour:{current_hour} -- ",end="")
+    # current_app.logger.debug(f"current_hour:{current_hour} -- ",end="")
     if device.get("night_start", -1) > -1:
         start_hour = device["night_start"]
         end_hour = device.get("night_end", 6)  # default to 6 am if not set
         if start_hour <= end_hour:  # Normal case (e.g., 9 to 17)
             if start_hour <= current_hour <= end_hour:
-                print("nightmode active")
+                current_app.logger.debug("nightmode active")
                 return True
         else:  # Wrapped case (e.g., 22 to 6 - overnight)
             if current_hour >= start_hour or current_hour <= end_hour:
-                print("nightmode active")
+                current_app.logger.debug("nightmode active")
                 return True
     return False
 
 
-def get_device_brightness(device: Dict[str, Any]) -> int:
+def get_device_brightness(device: Device) -> int:
     if "night_brightness" in device and get_night_mode_is_active(device):
         return int(device["night_brightness"] * 2)
     else:
@@ -173,16 +146,16 @@ def brightness_int_from_string(brightness_string: str) -> int:
     return brightness_value
 
 
-def get_users_dir() -> str:
-    # print(f"users dir : {current_app.config['USERS_DIR']}")
-    return current_app.config["USERS_DIR"]
+def get_users_dir() -> Path:
+    # current_app.logger.debug(f"users dir : {current_app.config['USERS_DIR']}")
+    return Path(current_app.config["USERS_DIR"])
 
 
 # Ensure all apps have an "order" attribute
 # Earlier releases did not have this attribute,
 # so we need to ensure it exists to allow reordering of the app list.
 # Eventually, this function should be deleted.
-def ensure_app_order(user: Dict[str, Any]) -> None:
+def ensure_app_order(user: User) -> None:
     modified = False
     for device in user.get("devices", {}).values():
         apps = device.get("apps", {})
@@ -195,7 +168,7 @@ def ensure_app_order(user: Dict[str, Any]) -> None:
         save_user(user)
 
 
-def get_user(username: str) -> Optional[Dict[str, Any]]:
+def get_user(username: str) -> Optional[User]:
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -204,35 +177,36 @@ def get_user(username: str) -> Optional[Dict[str, Any]]:
         )
         row = cursor.fetchone()
         if row:
-            user = json.loads(row[0])
+            user: User = json.loads(row[0])
             ensure_app_order(user)
             return user
         else:
-            print(f"{username} not found")
+            current_app.logger.error(f"{username} not found")
             return None
     except Exception as e:
-        print("problem with get_user" + str(e))
+        current_app.logger.error("problem with get_user" + str(e))
         return None
 
 
-def auth_user(username: str, password: str) -> Union[Dict[str, Any], bool]:
+def auth_user(username: str, password: str) -> Optional[Union[User, bool]]:
     user = get_user(username)
     if user:
-        if check_password_hash(user.get("password"), password):
-            print(f"returning {user}")
+        password_hash = user.get("password")
+        if password_hash and check_password_hash(password_hash, password):
+            current_app.logger.debug(f"returning {user}")
             return user
         else:
-            print("bad password")
+            current_app.logger.info("bad password")
             return False
     return None
 
 
-def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
+def save_user(user: User, new_user: bool = False) -> bool:
     if "username" not in user:
-        print("no username in user")
+        current_app.logger.warning("no username in user")
         return False
     if current_app.testing:
-        print(f"user data passed to save_user : {user}")
+        current_app.logger.debug(f"user data passed to save_user : {user}")
     username = user["username"]
     try:
         conn = get_db()
@@ -252,13 +226,16 @@ def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
         conn.commit()
 
         if current_app.config.get("PRODUCTION") == "0":
-            print("writing to json file for visibility")
+            current_app.logger.debug("writing to json file for visibility")
             with open(
-                f"{get_users_dir()}/{username}/{username}_debug.json", "w"
+                get_users_dir()
+                / secure_filename(username)
+                / secure_filename(f"{username}_debug.json"),
+                "w",
             ) as file:
                 json_string = json.dumps(user, indent=4)
                 if current_app.testing:
-                    print(f"writing json of {user}")
+                    current_app.logger.debug(f"writing json of {user}")
                 else:
                     json_string.replace(
                         user["username"], "DO NOT EDIT THIS FILE, FOR DEBUG ONLY"
@@ -267,7 +244,7 @@ def save_user(user: Dict[str, Any], new_user: bool = False) -> bool:
 
         return True
     except Exception as e:
-        print("couldn't save {} : {}".format(user, str(e)))
+        current_app.logger.error("couldn't save {} : {}".format(user, str(e)))
         return False
 
 
@@ -276,70 +253,67 @@ def delete_user(username: str) -> bool:
         conn = get_db()
         conn.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
         conn.commit()
-        user_dir = os.path.join(get_users_dir(), username)
-        if os.path.exists(user_dir):
+        user_dir = get_users_dir() / username
+        if user_dir.exists():
             shutil.rmtree(user_dir)
-        print(f"User {username} deleted successfully")
+        current_app.logger.info(f"User {username} deleted successfully")
         return True
     except Exception as e:
-        print(f"Error deleting user {username}: {e}")
+        current_app.logger.error(f"Error deleting user {username}: {e}")
         return False
 
 
 def create_user_dir(user: str) -> None:
     # create the user directory if it doesn't exist
-    user_dir = os.path.join(get_users_dir(), user)
-    os.makedirs(os.path.join(user_dir, "configs"), exist_ok=True)
-    os.makedirs(os.path.join(user_dir, "apps"), exist_ok=True)
+    user_dir = get_users_dir() / secure_filename(user)
+    (user_dir / "configs").mkdir(parents=True, exist_ok=True)
+    (user_dir / "apps").mkdir(parents=True, exist_ok=True)
 
 
 def get_apps_list(user: str) -> List[Dict[str, Any]]:
-    app_list = list()
+    app_list: List[Dict[str, Any]] = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
-        list_file = "system-apps.json"
-        if not os.path.exists(list_file):
-            print("Generating apps.json file...")
+        list_file = Path("system-apps.json")
+        if not list_file.exists():
+            current_app.logger.info("Generating apps.json file...")
             subprocess.run(["python3", "clone_system_apps_repo.py"])
-            print("apps.json file generated.")
+            current_app.logger.debug("apps.json file generated.")
 
-        with open(list_file, "r") as f:
-            return json.load(f)
+        with list_file.open("r") as f:
+            app_list = json.load(f)
+            return app_list
 
-    dir = os.path.join(get_users_dir(), user, "apps")
-    if os.path.exists(dir):
-        for root, _, files in os.walk(dir):
-            for file in files:
-                if file.endswith(".star"):
-                    app_path = os.path.join(root, file)
-                    app_dict = dict()
-                    app_dict["path"] = app_path
-                    app_dict["name"] = os.path.splitext(os.path.basename(app_path))[0]
-                    app_dict["image_url"] = app_dict["name"] + ".gif"
-                    # look for a yaml file
-                    app_base_path = ("/").join(app_dict["path"].split("/")[0:-1])
-                    yaml_path = os.path.join(app_base_path, "manifest.yaml")
-                    print("checking for manifest.yaml in {}".format(yaml_path))
-                    # check for existence of yaml_path
-                    if os.path.exists(yaml_path):
-                        with open(yaml_path, "r") as f:
-                            yaml_dict = yaml.safe_load(f)
-                            app_dict.update(yaml_dict)
-                    else:
-                        app_dict["summary"] = "Custom App"
-                    app_list.append(app_dict)
+    dir = get_users_dir() / user / "apps"
+    if dir.exists():
+        for file in dir.rglob("*.star"):
+            app_name = file.stem
+            app_dict = {
+                "path": str(file),
+                "name": app_name,
+                "image_url": app_name + ".gif",
+            }
+            yaml_path = file.parent / "manifest.yaml"
+            current_app.logger.debug(f"checking for manifest.yaml in {yaml_path}")
+            if yaml_path.exists():
+                with yaml_path.open("r") as f:
+                    yaml_dict = yaml.safe_load(f)
+                    app_dict.update(yaml_dict)
+            else:
+                app_dict["summary"] = "Custom App"
+            app_list.append(app_dict)
         return app_list
     else:
-        print("no apps list found for {}".format(user))
+        current_app.logger.warning(f"no apps list found for {user}")
         return []
 
 
 def get_app_details(user: str, name: str) -> Dict[str, Any]:
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
-    print(user, name)
+    current_app.logger.debug(f"{user} {name}")
     for app in custom_apps:
-        print(app)
+        current_app.logger.debug(app)
         if app["name"] == name:
             # we found it
             return app
@@ -350,17 +324,6 @@ def get_app_details(user: str, name: str) -> Dict[str, Any]:
         if app["name"] == name:
             return app
     return {}
-
-
-def sanitize(string: str) -> str:
-    string = string.replace(" ", "_")
-    string = string.replace("-", "")
-    string = string.replace(".", "")
-    string = string.replace("/", "")
-    string = string.replace("\\", "")
-    string = string.replace("%", "")
-    string = string.replace("'", "")
-    return string
 
 
 def sanitize_url(url: str) -> str:
@@ -377,65 +340,71 @@ def sanitize_url(url: str) -> str:
 
 
 def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ["star"]
+    return filename.lower().endswith(".star")
 
 
-def save_user_app(file: Any, path: str) -> bool:
-    filename = sanitize(file.filename)
-    filename = secure_filename(filename)
-
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(path, filename))
+def save_user_app(file: Any, path: Path) -> bool:
+    filename = secure_filename(file.filename)
+    if file and allowed_file(filename):
+        file.save(path / filename)
         return True
     else:
         return False
 
 
-def delete_user_upload(user: Dict[str, Any], filename: str) -> bool:
-    user_apps_path = os.path.join(get_users_dir(), user["username"], "apps")
+def delete_user_upload(user: User, filename: str) -> bool:
+    user_apps_path = get_users_dir() / user["username"] / "apps"
 
     try:
         filename = secure_filename(filename)
-        folder_name = os.path.splitext(filename)[0]
-        file_path = os.path.join(user_apps_path, folder_name, filename)
-        folder_path = os.path.join(user_apps_path, folder_name)
+        folder_name = Path(filename).stem
+        file_path = user_apps_path / folder_name / filename
+        folder_path = user_apps_path / folder_name
 
-        if not file_path.startswith(user_apps_path):
-            print("Security warning: Attempted path traversal")
+        if not str(file_path).startswith(str(user_apps_path)):
+            current_app.logger.warning("Security warning: Attempted path traversal")
             return False
 
-        if os.path.exists(folder_path):
+        if folder_path.exists():
             shutil.rmtree(folder_path)
 
         return True
     except OSError as e:
-        print(f"couldn't delete file: {e}")
+        current_app.logger.error(f"couldn't delete file: {e}")
         return False
 
 
-def get_all_users() -> List[Dict[str, Any]]:
+def get_all_users() -> List[User]:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT data FROM json_data")
     return [json.loads(row[0]) for row in cursor.fetchall()]
 
 
-def get_user_render_port(username: str) -> int:
-    base_port = int(current_app.config.get("PIXLET_RENDER_PORT1")) or 5100
+def get_user_render_port(username: str) -> Optional[int]:
+    base_port = int(current_app.config.get("PIXLET_RENDER_PORT1", 5100))
     users = get_all_users()
     for i in range(len(users)):
         if users[i]["username"] == username:
-            print(f"got port {i} for {username}")
+            # current_app.logger.debug(f"got port {i} for {username}")
             return base_port + i
+    return None
 
 
-def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
+def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
     # Check if the app should be displayed based on start and end times and active days
-    current_time = datetime.now().time()
-    current_day = datetime.now().strftime("%A").lower()
-    start_time_str = app.get("start_time", "00:00") or "00:00"
-    end_time_str = app.get("end_time", "23:59") or "23:59"
+    current_time = datetime.now(timezone.utc)
+    if tz_str:
+        try:
+            tz = ZoneInfo(tz_str)
+            current_time = current_time.astimezone(tz)
+            current_app.logger.debug(f"current device time is {current_time}")
+        except Exception as e:
+            current_app.logger.warn(f"Error converting timezone: {e}")
+
+    current_day = current_time.strftime("%A").lower()
+    start_time_str = str(app.get("start_time", "00:00")) or "00:00"
+    end_time_str = str(app.get("end_time", "23:59")) or "23:59"
     start_time = datetime.strptime(start_time_str, "%H:%M").time()
     end_time = datetime.strptime(end_time_str, "%H:%M").time()
     active_days = app.get(
@@ -454,33 +423,39 @@ def get_is_app_schedule_active(app: Dict[str, Any]) -> bool:
         ]
 
     schedule_active = False
+    current_time_only = current_time.time()
     if (
-        (start_time <= current_time <= end_time)
-        or (
-            start_time > end_time
-            and (current_time >= start_time or current_time <= end_time)
+        (
+            (start_time <= current_time_only <= end_time)
+            or (
+                start_time > end_time
+                and (current_time_only >= start_time or current_time_only <= end_time)
+            )
         )
-    ) and current_day in active_days:
+        and isinstance(active_days, list)
+        and current_day in active_days
+    ):
         schedule_active = True
 
     return schedule_active
 
 
-def get_device_by_name(user: Dict[str, Any], name: str) -> Optional[Dict[str, Any]]:
+def get_device_by_name(user: User, name: str) -> Optional[Device]:
     for device in user.get("devices", {}).values():
         if device.get("name") == name:
             return device
     return None
 
 
-def get_device_webp_dir(device_id: str, create: bool = True) -> str:
-    path = os.path.join(os.getcwd(), "tronbyt_server", "webp", device_id)
-    if not os.path.exists(path) and create:
-        os.makedirs(path)
+def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
+    base = os.getcwd()
+    path = Path(base) / "tronbyt_server" / "webp" / secure_filename(device_id)
+    if not path.exists() and create:
+        path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
+def get_device_by_id(device_id: str) -> Optional[Device]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
@@ -488,7 +463,7 @@ def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_user_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
+def get_user_by_device_id(device_id: str) -> Optional[User]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
@@ -499,18 +474,17 @@ def get_user_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
 def generate_firmware(
     label: str, url: str, ap: str, pw: str, gen2: bool, swap_colors: bool
 ) -> Dict[str, Union[str, int]]:
-    # Usage
     if gen2:
-        file_path = "firmware/gen2.bin"
-        new_path = f"firmware/gen2_{label}.bin"
+        file_path = Path("firmware/gen2.bin")
+        new_path = Path(f"firmware/gen2_{label}.bin")
     elif swap_colors:
-        file_path = "firmware/gen1_swap.bin"
-        new_path = f"firmware/gen1_swap_{label}.bin"
+        file_path = Path("firmware/gen1_swap.bin")
+        new_path = Path(f"firmware/gen1_swap_{label}.bin")
     else:
-        file_path = "firmware/gen1.bin"
-        new_path = f"firmware/gen1_{label}.bin"
+        file_path = Path("firmware/gen1.bin")
+        new_path = Path(f"firmware/gen1_{label}.bin")
 
-    if not os.path.exists(file_path):
+    if not file_path.exists():
         return {"error": f"Firmware file {file_path} not found."}
 
     shutil.copy(file_path, new_path)
@@ -521,8 +495,7 @@ def generate_firmware(
         "XplaceholderREMOTEURL_________________________________________________________________________________________": url,
     }
     bytes_written = None
-    with open(new_path, "r+b") as f:
-        # Read the binary file into memory
+    with new_path.open("r+b") as f:
         content = f.read()
 
         for old_string, new_string in dict.items():
@@ -539,11 +512,9 @@ def generate_firmware(
 
             # Create the new string, null-terminated, and padded to match the original length
             padded_new_string = new_string + "\x00"
-            padded_new_string = padded_new_string.ljust(
-                len(old_string) + 1, "\x00"
-            )  # Add padding if needed
+            # Add padding if needed
+            padded_new_string = padded_new_string.ljust(len(old_string) + 1, "\x00")
 
-            # Replace the string
             f.seek(position)
             bytes_written = f.write(padded_new_string.encode("ascii"))
     if bytes_written:
@@ -557,26 +528,23 @@ def generate_firmware(
             capture_output=True,
             text=True,
         )
-        print(result.stdout)
-        print(result.stderr)
-        return {"file_path": os.path.join(os.getcwd(), new_path)}
+        current_app.logger.debug(result.stdout)
+        current_app.logger.debug(result.stderr)
+        return {"file_path": str(new_path.resolve())}
     else:
         return {"error": "no bytes written"}
 
 
-def add_pushed_app(device_id: str, path: str) -> None:
+def add_pushed_app(device_id: str, path: Path) -> None:
     user = get_user_by_device_id(device_id)
     if user is None:
         return
-    # Get the base name of the file
-    filename = os.path.basename(path)
-    # Remove the extension
-    installation_id = os.path.splitext(filename)[0]
+    installation_id = path.stem
     apps = user["devices"][device_id].setdefault("apps", {})
     if installation_id in apps:
         # already in there
         return
-    app = {
+    app: App = {
         "iname": installation_id,
         "name": "pushed",
         "uinterval": 10,

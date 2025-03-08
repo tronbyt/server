@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytest
 
@@ -14,7 +14,9 @@ def app():
 
     # clean up / reset resources here
     print("delete testdb")
-    os.remove("users/testdb.sqlite")
+    test_db_path = Path("users/testdb.sqlite")
+    if test_db_path.exists():
+        test_db_path.unlink()
 
 
 @pytest.fixture()

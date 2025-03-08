@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from . import utils
 
@@ -41,9 +41,9 @@ def test_device_operations(client):
     r = client.post(f"/{device_id}/firmware", data=data)
     assert r.status_code == 200
 
-    # r = client.get(f"/{device_id}/download_firmware")
-    assert os.path.exists("firmware/gen1_TESTDEVICE.bin")
-    os.remove("firmware/gen1_TESTDEVICE.bin")
+    firmware_path = Path("firmware") / "gen1_TESTDEVICE.bin"
+    assert firmware_path.exists()
+    firmware_path.unlink()
 
     # test /device_id/next works even when no app configured
     assert client.get(f"{device_id}/next").status_code == 200

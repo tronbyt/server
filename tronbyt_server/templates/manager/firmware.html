@@ -11,5 +11,7 @@
 <label for="wifi_password">{{ _('WiFi Password:') }}</label> {{ password }}<br>
 <h2><label for="firmware">{{ _('Firmware File:') }}</label> <a href="{{ url_for('manager.download_firmware', device_id=device['id']) }}">{{ _('DOWNLOAD FIRMWARE FILE') }}</a></h2>
 <h2>{{ _('Download ESPHome Flasher here') }} <a href="https://github.com/esphome/esphome-flasher/releases">ESPHome Flasher</a></h2>
-{{ _('After downloading both files, run the ESPHome Flasher program and select your downloaded firmware file to flash your device.') }}
+{{ _('Connect your device to your computer with a data USB cable, run the ESPHome Flasher program and select your downloaded firmware file to flash your device.') }}
+<br><i>{{ _('Windows users may need to install a serial driver.') }} <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x Drivers</a>
+</i>
 {% endblock %}
