@@ -126,7 +126,7 @@
 <div>
         <label for="brightness">{{ _('Brightness') }}</label> =
         <span id="brightnessValue">{{device['brightness'] }}</span><br>
-        <input type="range" name="brightness" id="brightness" min="0" max="100" value="{{ device['brightness'] }}"
+        <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
           oninput="updateBrightnessValue(this.value)" onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
 </div>
 <div>

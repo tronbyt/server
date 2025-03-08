@@ -7,8 +7,8 @@
 <input name="name" id="name" value="{{ request.form['name'] }}" required>
 <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('Leave Blank unless advanced user.') }})</span>
 <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" >
-<span><label for="brightness">{{ _('Brightness') }}</label></span><output>30</output>
-<input type="range" name="brightness" id="brightness" min="0" max="100" value="30"
+<span><label for="brightness">{{ _('Brightness Level ( 0 - 5 )') }}</label></span><output>3</output>
+<input type="range" name="brightness" id="brightness" min="0" max="5" value="3"
     oninput="this.previousElementSibling.value = this.value">
 
 <!-- <span><label for="api_key">Device API KEY</label> (leave blank)</span> -->

@@ -59,14 +59,14 @@ def get_device(device_id: str) -> ResponseReturnValue:
                     HTTPStatus.BAD_REQUEST,
                     description="Brightness must be between 0 and 255",
                 )
-            device["brightness"] = brightness
+            device["brightness"] = db.brightness_map_8bit_to_levels(brightness)
         if "autoDim" in data:
             device["night_mode_enabled"] = bool(data["autoDim"])
         db.save_user(user)
     metadata = {
         "id": device["id"],
         "displayName": device["name"],
-        "brightness": device["brightness"],
+        "brightness": db.get_device_brightness(device),
         "autoDim": device["night_mode_enabled"],
     }
     return json.dumps(metadata), 200

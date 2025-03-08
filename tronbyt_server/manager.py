@@ -161,7 +161,7 @@ def create() -> ResponseReturnValue:
                 "name": name or device_id,
                 "img_url": img_url,
                 "api_key": api_key,
-                "brightness": int(brightness) if brightness else 30,
+                "brightness": int(brightness) if brightness else 3,
             }
             if notes:
                 device["notes"] = notes
@@ -777,19 +777,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             flash("App Not Found")
             return redirect(url_for("manager.index"))
     abort(HTTPStatus.BAD_REQUEST)
-
-
-@bp.route("/<string:device_id>/brightness", methods=["GET"])
-def get_brightness(device_id: str) -> ResponseReturnValue:
-    if not validate_device_id(device_id):
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-    user = db.get_user_by_device_id(device_id)
-    if not user:
-        abort(HTTPStatus.NOT_FOUND)
-    device = user["devices"][device_id]
-    brightness_value = device.get("brightness", 30)
-    current_app.logger.debug(f"brightness value {brightness_value}")
-    return Response(str(brightness_value), mimetype="text/plain")
 
 
 MAX_RECURSION_DEPTH = 10
