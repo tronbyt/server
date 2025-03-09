@@ -28,11 +28,11 @@ RUN apt-get update && \
         libwebp7 \
         libwebpdemux2 \
         libwebpmux3 \
-        procps \
         python3 \
         python3-dotenv \
         python3-flask \
         python3-flask-babel \
+        python3-psutil \
         python3-requests \
         python3-yaml \
         tzdata \

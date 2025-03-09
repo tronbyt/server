@@ -77,16 +77,6 @@ def delete_device_dirs(device_id: str) -> None:
         current_app.logger.error(f"Error deleting directory {dir_to_delete}: {str(e)}")
 
 
-def server_tz_offset() -> int:
-    output = subprocess.check_output(["date", "+%z"]).decode().strip()
-    # Convert the offset to a timedelta
-    sign = 1 if output[0] == "+" else -1
-    hours = int(output[1:3])
-    minutes = int(output[3:5])
-    offset = sign * (hours * 3600 + minutes * 60)
-    return offset
-
-
 def get_last_app_index(device_id: str) -> Optional[int]:
     device = get_device_by_id(device_id)
     if device is None:
