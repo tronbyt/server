@@ -408,11 +408,9 @@ def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
 def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool:
     current_day = current_time.strftime("%A").lower()
     start_time = datetime.strptime(
-        str(app.get("start_time", "") or "00:00"), "%H:%M"
+        str(app.get("start_time") or "00:00"), "%H:%M"
     ).time()
-    end_time = datetime.strptime(
-        str(app.get("end_time", "") or "23:59"), "%H:%M"
-    ).time()
+    end_time = datetime.strptime(str(app.get("end_time") or "23:59"), "%H:%M").time()
     active_days = app.get(
         "days",
         ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
