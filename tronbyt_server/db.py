@@ -132,7 +132,7 @@ def get_night_mode_is_active(device: Device) -> bool:
     return False
 
 
-# selectable range is 0 - 5, lowest actually visiable value returned should be 3, so 0 = 0, 1 = 3, 2 =
+# selectable range is 0 - 5, lowest actually visible value returned should be 3, so 0 = 0, 1 = 3, etc.
 def get_device_brightness_8bit(device: Device) -> int:
     lookup = {0: 0, 1: 3, 2: 5, 3: 10, 4: 50, 5: 100}
     if get_night_mode_is_active(device):
