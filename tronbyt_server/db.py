@@ -3,7 +3,7 @@ import os
 import shutil
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote
@@ -402,6 +402,10 @@ def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
         except Exception as e:
             current_app.logger.warning(f"Error converting timezone: {e}")
 
+    return get_is_app_schedule_active_at_time(app, current_time)
+
+
+def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool:
     current_day = current_time.strftime("%A").lower()
     start_time = datetime.strptime(
         str(app.get("start_time", "") or "00:00"), "%H:%M"
