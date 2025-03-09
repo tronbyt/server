@@ -27,10 +27,20 @@ jobs:
         run: |
           pip install mypy
           mypy --strict --install-types --non-interactive --ignore-missing-imports tronbyt_server
+      - name: Install pixlet
+        run: |
+          curl -LO "https://github.com/tronbyt/pixlet/releases/download/${PIXLET_VERSION}/pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
+          sudo tar -C /usr/local/bin -xvf "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
+          rm "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
+        env:
+          PIXLET_VERSION: v0.38.0
       - name: Test with pytest
         run: |
           pip install pytest
           pytest tests --doctest-modules --junitxml=junit/test-results.xml
+        env:
+          PIXLET_PATH: /usr/local/bin/pixlet
+          PIXLET_TIMEOUT: 10
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile

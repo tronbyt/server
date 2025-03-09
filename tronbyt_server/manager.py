@@ -668,10 +668,10 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     if "path" in app_details:
         app_path = Path(app_details["path"])
     else:
-        app_path = Path(
-            "system-apps/apps/{}/{}.star".format(
-                app["name"].replace("_", ""), app["name"]
-            )
+        app_path = (
+            Path("system-apps")
+            / "apps"
+            / "{}/{}.star".format(app["name"].replace("_", ""), app["name"])
         )
     config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.json"
     tmp_config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.tmp"
@@ -727,6 +727,15 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
 
     # run the in browser configure interface via pixlet serve
     elif request.method == "GET":
+        if not app_path.exists():
+            flash("App Not Found")
+            return redirect(url_for("manager.index"))
+
+        pixlet_path = Path(os.getenv("PIXLET_PATH", "/pixlet/pixlet"))
+        if not pixlet_path.exists():
+            flash("Pixlet binary not found")
+            return redirect(url_for("manager.index"))
+
         device = g.user["devices"][device_id]
         config_dict = {}
         url_params = ""
@@ -752,96 +761,93 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
 
         # execute the pixlet serve process and show in it an iframe on the config page.
         current_app.logger.debug(str(app_path))
-        if app_path.exists():
-            p = subprocess.Popen(
-                [
-                    os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                    "--saveconfig",
-                    str(tmp_config_path),
-                    "serve",
-                    str(app_path),
-                    "--port={}".format(user_render_port),
-                    "--path=/pixlet/",
-                ],
-                stderr=subprocess.PIPE,
-                shell=False,
-                text=True,
-                bufsize=1,
-            )
+        p = subprocess.Popen(
+            [
+                str(pixlet_path),
+                "--saveconfig",
+                str(tmp_config_path),
+                "serve",
+                str(app_path),
+                "--port={}".format(user_render_port),
+                "--path=/pixlet/",
+            ],
+            stderr=subprocess.PIPE,
+            shell=False,
+            text=True,
+            bufsize=1,
+        )
 
-            # Start a watchdog timer to kill the process after some time
-            def terminate_process(
-                logger: logging.Logger, p: subprocess.Popen[str], port: str
-            ) -> None:
-                logger.debug(f"terminating pixlet on port {port}")
+        # Start a watchdog timer to kill the process after some time
+        def terminate_process(
+            logger: logging.Logger, p: subprocess.Popen[str], port: str
+        ) -> None:
+            logger.debug(f"terminating pixlet on port {port}")
+            try:
+                p.terminate()
                 try:
+                    p.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+            except Exception as e:
+                logger.error(f"Error terminating pixlet process: {e}")
+
+        timer = Timer(
+            float(os.getenv("PIXLET_TIMEOUT", "300")),
+            terminate_process,
+            [current_app.logger, p, user_render_port],
+        )
+        timer.start()
+
+        # wait for pixlet to serve
+        # first, wait for the process to emit a message to stderr ("listening at")
+        # once that message is seen, wait for the health check to pass.
+        if p.stderr:
+            timeout = 10  # seconds
+            start_time = time.time()
+            saw_message = False
+            while True:
+                if time.time() - start_time > timeout:
+                    current_app.logger.error("Timeout waiting for pixlet to start")
                     p.terminate()
                     try:
                         p.wait(timeout=1)
                     except subprocess.TimeoutExpired:
                         p.kill()
-                except Exception as e:
-                    logger.error(f"Error terminating pixlet process: {e}")
+                    flash("Error: Timeout waiting for pixlet to start")
+                    return redirect(url_for("manager.index"))
 
-            timer = Timer(
-                300.0, terminate_process, [current_app.logger, p, user_render_port]
-            )
-            timer.start()
-
-            # wait for pixlet to serve
-            # first, wait for the process to emit a message to stderr ("listening at")
-            # once that message is seen, wait for the health check to pass.
-            if p.stderr:
-                timeout = 10  # seconds
-                start_time = time.time()
-                saw_message = False
-                while True:
-                    if time.time() - start_time > timeout:
-                        current_app.logger.error("Timeout waiting for pixlet to start")
-                        p.terminate()
-                        try:
-                            p.wait(timeout=1)
-                        except subprocess.TimeoutExpired:
-                            p.kill()
-                        flash("Error: Timeout waiting for pixlet to start")
-                        return redirect(url_for("manager.index"))
-
-                    if saw_message:
-                        try:
-                            if requests.get(
-                                f"http://localhost:{user_render_port}/pixlet/health"
-                            ).ok:
-                                current_app.logger.debug(
-                                    f"pixlet ready on port {user_render_port}"
-                                )
-                                break
-                        except requests.ConnectionError:
+                if saw_message:
+                    try:
+                        if requests.get(
+                            f"http://localhost:{user_render_port}/pixlet/health"
+                        ).ok:
                             current_app.logger.debug(
-                                f"pixlet not ready yet for port {user_render_port}, retrying"
+                                f"pixlet ready on port {user_render_port}"
                             )
-                    else:
-                        ready = select.select([p.stderr], [], [], 1.0)
-                        if ready[0]:
-                            output = p.stderr.readline()
-                            if "listening at" in output:
-                                saw_message = True
-                                continue
-                    time.sleep(0.1)
+                            break
+                    except requests.ConnectionError:
+                        current_app.logger.debug(
+                            f"pixlet not ready yet for port {user_render_port}, retrying"
+                        )
+                else:
+                    ready = select.select([p.stderr], [], [], 1.0)
+                    if ready[0]:
+                        output = p.stderr.readline()
+                        if "listening at" in output:
+                            saw_message = True
+                            continue
+                time.sleep(0.1)
 
-            return render_template(
-                "manager/configapp.html",
-                app=app,
-                domain_host=domain_host,
-                protocol=protocol,
-                url_params=url_params,
-                device_id=device_id,
-                delete_on_cancel=delete_on_cancel,
-                user_render_port=user_render_port,
-            )
-
-        else:
-            flash("App Not Found")
-            return redirect(url_for("manager.index"))
+        return render_template(
+            "manager/configapp.html",
+            app=app,
+            domain_host=domain_host,
+            protocol=protocol,
+            url_params=url_params,
+            device_id=device_id,
+            delete_on_cancel=delete_on_cancel,
+            user_render_port=user_render_port,
+        )
     abort(HTTPStatus.BAD_REQUEST)
 
 
