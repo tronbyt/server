@@ -395,60 +395,30 @@ def get_user_render_port(username: str) -> Optional[int]:
 
 
 def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
-    # Check if the app should be displayed based on start and end times and active days
-    current_time = datetime.now(timezone.utc)
+    current_time = datetime.now()
     if tz_str:
         try:
-            tz = ZoneInfo(tz_str)
-            current_time = current_time.astimezone(tz)
-            current_app.logger.debug(f"current device time is {current_time}")
+            current_time = datetime.now(ZoneInfo(tz_str))
         except Exception as e:
-            current_app.logger.warn(f"Error converting timezone: {e}")
-    else:
-        current_time = datetime.now()  # server time, not utc.
-        current_app.logger.debug(f"using server time {current_time}")
+            current_app.logger.warning(f"Error converting timezone: {e}")
 
     current_day = current_time.strftime("%A").lower()
-    start_time_str = str(app.get("start_time", "00:00")) or "00:00"
-    end_time_str = str(app.get("end_time", "23:59")) or "23:59"
-    start_time = datetime.strptime(start_time_str, "%H:%M").time()
-    end_time = datetime.strptime(end_time_str, "%H:%M").replace(second=59).time()
-
+    start_time = datetime.strptime(str(app.get("start_time", "00:00")), "%H:%M").time()
+    end_time = datetime.strptime(str(app.get("end_time", "23:59")), "%H:%M").time()
     active_days = app.get(
         "days",
         ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
     )
-    if not active_days:
-        active_days = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ]
 
-    schedule_active = False
-    current_time_only = current_time.time()
-    # Debug print to compare time strings
-    current_app.logger.debug(
-        f"start_time: {start_time}, end_time: {end_time}, current_time: {current_time_only}"
+    current_time_only = current_time.replace(second=0, microsecond=0).time()
+    if start_time > end_time:
+        in_time_range = current_time_only >= start_time or current_time_only <= end_time
+    else:
+        in_time_range = start_time <= current_time_only <= end_time
+
+    return (
+        in_time_range and isinstance(active_days, list) and current_day in active_days
     )
-    if (
-        (
-            (start_time <= current_time_only <= end_time)
-            or (
-                start_time > end_time
-                and (current_time_only >= start_time or current_time_only <= end_time)
-            )
-        )
-        and isinstance(active_days, list)
-        and current_day in active_days
-    ):
-        schedule_active = True
-
-    return schedule_active
 
 
 def get_device_by_name(user: User, name: str) -> Optional[Device]:

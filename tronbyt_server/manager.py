@@ -1,21 +1,21 @@
 import json
 import logging
 import os
-import random
 import secrets
 import select
 import shutil
 import string
 import subprocess
 import time
-import urllib.parse
 import uuid
 from datetime import datetime
 from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
+from random import randint
 from threading import Timer
 from typing import Optional
+from urllib.parse import urlencode
 from zoneinfo import available_timezones
 
 import psutil
@@ -359,7 +359,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
         display_time = request.form.get("display_time")
         notes = request.form.get("notes")
 
-        iname = str(random.randint(100, 999))
+        iname = str(randint(100, 999))
 
         if not name:
             flash("App name required.")
@@ -744,7 +744,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         else:
             config_dict["$tz"] = datetime.now().astimezone().tzname()
 
-        url_params = urllib.parse.urlencode(config_dict)
+        url_params = urlencode(config_dict)
 
         current_app.logger.debug(url_params)
         if len(url_params) > 2:
