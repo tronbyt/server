@@ -401,12 +401,16 @@ def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
             current_app.logger.debug(f"current device time is {current_time}")
         except Exception as e:
             current_app.logger.warn(f"Error converting timezone: {e}")
+    else:
+        current_time = datetime.now()  # server time, not utc.
+        current_app.logger.debug(f"using server time {current_time}")
 
     current_day = current_time.strftime("%A").lower()
     start_time_str = str(app.get("start_time", "00:00")) or "00:00"
     end_time_str = str(app.get("end_time", "23:59")) or "23:59"
     start_time = datetime.strptime(start_time_str, "%H:%M").time()
-    end_time = datetime.strptime(end_time_str, "%H:%M").time()
+    end_time = datetime.strptime(end_time_str, "%H:%M").replace(second=59).time()
+
     active_days = app.get(
         "days",
         ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
@@ -424,6 +428,10 @@ def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
 
     schedule_active = False
     current_time_only = current_time.time()
+    # Debug print to compare time strings
+    current_app.logger.debug(
+        f"start_time: {start_time}, end_time: {end_time}, current_time: {current_time_only}"
+    )
     if (
         (
             (start_time <= current_time_only <= end_time)
