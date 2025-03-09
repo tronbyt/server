@@ -15,7 +15,7 @@ def load_test_data(client):
             "img_url": "TESTID",
             "api_key": "TESTKEY",
             "notes": "TESTNOTES",
-            "brightness": "30",
+            "brightness": "3",
         },
     )
     return get_test_device_id()

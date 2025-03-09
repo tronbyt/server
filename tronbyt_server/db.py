@@ -132,18 +132,31 @@ def get_night_mode_is_active(device: Device) -> bool:
     return False
 
 
-def get_device_brightness(device: Device) -> int:
-    if "night_brightness" in device and get_night_mode_is_active(device):
-        return int(device["night_brightness"] * 2)
+# selectable range is 0 - 5, lowest actually visible value returned should be 3, so 0 = 0, 1 = 3, etc.
+def get_device_brightness_8bit(device: Device) -> int:
+    lookup = {0: 0, 1: 3, 2: 5, 3: 10, 4: 50, 5: 100}
+    if get_night_mode_is_active(device):
+        b = device.get("night_brightness", 1)
     else:
-        return int(device.get("brightness", 30) * 2)
+        b = device.get("brightness", 5)
+
+    return lookup.get(b, 50)
 
 
-def brightness_int_from_string(brightness_string: str) -> int:
-    brightness_mapping = {"dim": 10, "low": 20, "medium": 40, "high": 80}
-    # Get the numerical value from the dictionary, default to 50 if not found
-    brightness_value = brightness_mapping[brightness_string]
-    return brightness_value
+# map from 8bit values to 0 - 5
+def brightness_map_8bit_to_levels(brightness: int) -> int:
+    if brightness == 0:
+        return 0
+    elif brightness < 4:
+        return 1
+    elif brightness < 6:
+        return 2
+    elif brightness < 11:
+        return 3
+    elif brightness < 51:
+        return 4
+    else:
+        return 5
 
 
 def get_users_dir() -> Path:

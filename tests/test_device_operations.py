@@ -17,7 +17,7 @@ def test_device_operations(client):
             "img_url": "TESTID",
             "api_key": "TESTKEY",
             "notes": "TESTNOTES",
-            "brightness": "30",
+            "brightness": "3",
         },
     )
     print(r.text)

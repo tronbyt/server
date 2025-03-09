@@ -20,7 +20,7 @@ value="{{ request.form['name'] or device['name'] }}" required>
     value="{{ device['default_interval'] }}" oninput="this.previousElementSibling.value = this.value">
 
 <span><label for="brightness">{{ _('Brightness') }}</label></span><output>{{ device['brightness'] }}</output>
-<input type="range" name="brightness" id="brightness" min="0" max="100" value="{{ device['brightness'] }}"
+<input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
     oninput="this.previousElementSibling.value = this.value">
 
 <span><label for="timezone">{{ _('Timezone') }}</label></span>
@@ -36,8 +36,8 @@ value="{{ request.form['name'] or device['name'] }}" required>
 <span><label for="night_mode_enabled">{{ _('Enable Night Mode') }}</label></span>
 <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled'] %}checked{% endif %}>
 
-<span><label for="night_brightness">{{ _('Night Brightness') }}</label></span><output>{{ device['night_brightness'] or 10 }}</output>
-<input type="range" name="night_brightness" id="night_brightness" min="0" max="100" value="{{ device['night_brightness'] or 10 }}"
+<span><label for="night_brightness">{{ _('Night Brightness') }}</label></span><output>{{ device['night_brightness'] or 1 }}</output>
+<input type="range" name="night_brightness" id="night_brightness" min="0" max="5" value="{{ device['night_brightness'] or 1 }}"
     oninput="this.previousElementSibling.value = this.value">
 
 <span><label for="night_start">{{ _('Night Start Hour (24hr)') }}</label></span>

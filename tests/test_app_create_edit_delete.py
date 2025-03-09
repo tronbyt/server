@@ -15,7 +15,7 @@ def test_app_create_edit_delete(client):
             "img_url": "TESTID",
             "api_key": "TESTKEY",
             "notes": "TESTNOTES",
-            "brightness": "30",
+            "brightness": "3",
         },
     )
 
