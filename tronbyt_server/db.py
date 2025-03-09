@@ -403,8 +403,12 @@ def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
             current_app.logger.warning(f"Error converting timezone: {e}")
 
     current_day = current_time.strftime("%A").lower()
-    start_time = datetime.strptime(str(app.get("start_time", "") or "00:00"), "%H:%M").time()
-    end_time = datetime.strptime(str(app.get("end_time", "") or "23:59"), "%H:%M").time()
+    start_time = datetime.strptime(
+        str(app.get("start_time", "") or "00:00"), "%H:%M"
+    ).time()
+    end_time = datetime.strptime(
+        str(app.get("end_time", "") or "23:59"), "%H:%M"
+    ).time()
     active_days = app.get(
         "days",
         ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
