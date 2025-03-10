@@ -486,18 +486,7 @@ def render_app(
     Returns:
         True if the rendering was successful, False otherwise.
     """
-    config_data = dict()
-    if config_path.exists():
-        with config_path.open("r") as config_file:
-            config_data = json.load(config_file)
-    if (
-        "timezone" in device
-        and isinstance(device["timezone"], str)
-        and device["timezone"] != ""
-    ):
-        config_data["$tz"] = device["timezone"]
-    else:
-        config_data["$tz"] = datetime.now().astimezone().tzname()
+    config_data = load_app_config(config_path, device)
 
     USE_LIBPIXLET = 1
     if USE_LIBPIXLET == 1:
@@ -648,6 +637,22 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
     )
 
 
+def load_app_config(config_file: Path, device: Device) -> dict:
+    config = {}
+    if config_file.exists():
+        with config_file.open("r") as c:
+            config = json.load(c)
+    if (
+        "timezone" in device
+        and isinstance(device["timezone"], str)
+        and device["timezone"] != ""
+    ):
+        config["$tz"] = device["timezone"]
+    else:
+        config["$tz"] = datetime.now().astimezone().tzname()
+    return config
+
+
 @bp.route(
     "/<string:device_id>/<string:iname>/<int:delete_on_cancel>/configapp",
     methods=["GET", "POST"],
@@ -737,22 +742,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             return redirect(url_for("manager.index"))
 
         device = g.user["devices"][device_id]
-        config_dict = {}
-        url_params = ""
-
-        if config_path.exists():
-            with config_path.open("r") as c:
-                config_dict = json.load(c)
-
-        if (
-            "timezone" in device
-            and isinstance(device["timezone"], str)
-            and device["timezone"] != ""
-        ):
-            config_dict["$tz"] = device["timezone"]
-        else:
-            config_dict["$tz"] = datetime.now().astimezone().tzname()
-
+        config_dict = load_app_config(config_path, device)
+        config_dict["$watch"] = "false"
         url_params = urlencode(config_dict)
 
         current_app.logger.debug(url_params)
