@@ -14,7 +14,7 @@ from operator import itemgetter
 from pathlib import Path
 from random import randint
 from threading import Timer
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlencode
 from zoneinfo import available_timezones
 
@@ -637,7 +637,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
     )
 
 
-def load_app_config(config_file: Path, device: Device) -> dict:
+def load_app_config(config_file: Path, device: Device) -> dict[str, Any]:
     config = {}
     if config_file.exists():
         with config_file.open("r") as c:
@@ -658,6 +658,7 @@ def load_app_config(config_file: Path, device: Device) -> dict:
         and device["location"] != ""
     ):
         config["location"] = device["location"]
+
     return config
 
 
