@@ -13,7 +13,7 @@ from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
 from random import randint
-from threading import Timer
+from threading import Thread, Timer
 from typing import Any, Optional
 from urllib.parse import urlencode
 from zoneinfo import available_timezones
@@ -488,8 +488,7 @@ def render_app(
     """
     config_data = load_app_config(config_path, device)
 
-    USE_LIBPIXLET = 1
-    if USE_LIBPIXLET == 1:
+    if os.getenv("USE_LIBPIXLET", "1") == "1":
         data = pixlet_render_app(
             str(app_path),
             config_data,
@@ -695,7 +694,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             try:
                 proc.terminate()
                 try:
-                    proc.wait(timeout=1)
+                    proc.wait(timeout=2)
                 except subprocess.TimeoutExpired:
                     proc.kill()
             except Exception as e:
@@ -707,10 +706,12 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         if tmp_config_path.exists():
             current_app.logger.debug("file exists")
             with tmp_config_path.open("r") as c:
-                new_config = c.read()
+                new_config = json.load(c)
+            # remove internal settings like `$tz` and `$watch` from the stored config
+            new_config = {k: v for k, v in new_config.items() if not k.startswith("$")}
             # flash(new_config)
             with config_path.open("w") as config_file:
-                config_file.write(new_config)
+                json.dump(new_config, config_file)
 
             # delete the tmp file
             tmp_config_path.unlink()
@@ -763,6 +764,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                 "--path=/pixlet/",
             ],
             stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
             shell=False,
             text=True,
             bufsize=1,
@@ -776,7 +778,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             try:
                 p.terminate()
                 try:
-                    p.wait(timeout=1)
+                    p.wait(timeout=2)
                 except subprocess.TimeoutExpired:
                     p.kill()
             except Exception as e:
@@ -801,7 +803,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                     current_app.logger.error("Timeout waiting for pixlet to start")
                     p.terminate()
                     try:
-                        p.wait(timeout=1)
+                        p.wait(timeout=2)
                     except subprocess.TimeoutExpired:
                         p.kill()
                     flash("Error: Timeout waiting for pixlet to start")
@@ -828,6 +830,18 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                             saw_message = True
                             continue
                 time.sleep(0.1)
+
+            def log_subprocess_output(pipe: Any, logger: logging.Logger) -> None:
+                with pipe:
+                    for line in iter(pipe.readline, ""):
+                        logger.debug(line.strip())
+
+            Thread(
+                target=log_subprocess_output, args=(p.stderr, current_app.logger)
+            ).start()
+            Thread(
+                target=log_subprocess_output, args=(p.stdout, current_app.logger)
+            ).start()
 
         return render_template(
             "manager/configapp.html",
