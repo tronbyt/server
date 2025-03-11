@@ -35,7 +35,7 @@ If you've been invited to use my public instance of this server login there and 
 It is possible to just start the server on the default ports in the background with a one-liner:
 
 ```sh
-docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXLET_RENDER_PORT1=5100 -e PRODUCTION=1 -p 8000:8000 -p 5100:5100 -p 5101:5101 ghcr.io/tronbyt/server
+docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PIXLET_RENDER_PORT1=5100 -e PRODUCTION=1 -p 8000:8000 ghcr.io/tronbyt/server
 ```
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:
@@ -65,7 +65,7 @@ That said, the recommended installation method uses Docker Compose with a config
 ### Quick Start Guide
 
 1. Access the web app at [http://localhost:8000](http://localhost:8000) (or your configured domain) with the default login credentials: `admin/password`.
-2. Add your Tronbyt as a device in the manager. The default installation will already have a device named "Tronbyt 1".
+2. Add your Tronbyt as a device in the manager.
 3. Click on the "Firmware" button and enter your WiFi credentials. The image URL should be prefilled.
 4. Click "Generate Firmware" and download your firmware file.
 5. Download the ESPHome firmware flasher from [this link](https://github.com/esphome/esphome-flasher/releases) and use it to flash your Tidbyt into a Tronbyt.
@@ -75,7 +75,6 @@ That said, the recommended installation method uses Docker Compose with a config
 ### Ports
 
 - The web app is exposed on port `8000`.
-- Additional ports `5100` and `5101` are also exposed.
 
 ### Default Login
 
