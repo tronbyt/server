@@ -229,7 +229,7 @@ def save_user(user: User, new_user: bool = False) -> bool:
         conn.commit()
 
         if current_app.config.get("PRODUCTION") == "0":
-            current_app.logger.debug("writing to json file for visibility")
+            # current_app.logger.debug("writing to json file for visibility")
             with open(
                 get_users_dir()
                 / secure_filename(username)
@@ -307,7 +307,7 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
             app_list.append(app_dict)
         return app_list
     else:
-        current_app.logger.warning(f"no apps list found for {user}")
+        # current_app.logger.warning(f"no apps list found for {user}")
         return []
 
 
