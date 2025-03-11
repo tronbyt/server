@@ -6,6 +6,10 @@
 <form method="post">
     <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
 <input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
+<label for="location_as_default">
+        <input type="checkbox" name="location_as_default" id="location_as_default">
+        {{ _('Save picked location as device default?') }}
+    </label>
     <input type="submit" value="{{ _('Save') }}">
 </form>
 {% if delete_on_cancel == 1 %}

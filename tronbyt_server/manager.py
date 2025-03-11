@@ -650,6 +650,14 @@ def load_app_config(config_file: Path, device: Device) -> dict:
         config["$tz"] = device["timezone"]
     else:
         config["$tz"] = datetime.now().astimezone().tzname()
+    # add device location if available
+    if (
+        "location" not in config
+        and "location" in device
+        and isinstance(device["location"], str)
+        and device["location"] != ""
+    ):
+        config["location"] = device["location"]
     return config
 
 
@@ -708,16 +716,22 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             current_app.logger.debug("file exists")
             with tmp_config_path.open("r") as c:
                 new_config = c.read()
-            # flash(new_config)
+
             with config_path.open("w") as config_file:
                 config_file.write(new_config)
+
+            # save location as default if checked
+            device = g.user["devices"][device_id]
+            if request.form.get("location_as_default",None):
+                j = json.loads(new_config)
+                if "location" in j:
+                    device['location'] = j['location']
 
             # delete the tmp file
             tmp_config_path.unlink()
 
             # run pixlet render with the new config file
             current_app.logger.debug("rendering")
-            device = g.user["devices"][device_id]
             if render_app(app_path, config_path, webp_path, device):
                 # set the enabled key in app to true now that it has been configured.
                 device["apps"][iname]["enabled"] = True
