@@ -365,10 +365,8 @@ def addapp(device_id: str) -> ResponseReturnValue:
             flash("App name required.")
             return redirect(
                 url_for(
-                    "manager.configapp",
+                    "manager.addapp",
                     device_id=device_id,
-                    iname=iname,
-                    delete_on_cancel=1,
                 )
             )
 
@@ -377,10 +375,8 @@ def addapp(device_id: str) -> ResponseReturnValue:
             flash("That installation id already exists")
             return redirect(
                 url_for(
-                    "manager.configapp",
+                    "manager.addapp",
                     device_id=device_id,
-                    iname=iname,
-                    delete_on_cancel=1,
                 )
             )
 
