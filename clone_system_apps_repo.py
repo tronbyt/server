@@ -3,15 +3,15 @@ import json
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import yaml
 
-system_apps_path = "system-apps"
-system_apps_repo = (
-    os.environ.get("SYSTEM_APPS_REPO") or "https://github.com/tronbyt/apps.git"
-)
+system_apps_path = Path("system-apps")
+system_apps_repo = os.getenv("SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git")
+
 # check for existence of apps_path dir
-if os.path.exists(system_apps_path):
+if system_apps_path.exists():
     print("{} found, updating {}".format(system_apps_path, system_apps_repo))
 
     result = subprocess.run(["git", "pull", "--rebase=true"], cwd=system_apps_path)
@@ -35,21 +35,18 @@ apps_array = []
 apps = []
 broken_apps = []
 
-for root, dirs, files in os.walk(system_apps_path):
-    for file in files:
-        if file.endswith(".star"):
-            apps.append(os.path.join(root, file))
+for file in system_apps_path.rglob("*.star"):
+    apps.append(file)
 
-broken_apps_path = os.path.join(system_apps_path, "broken_apps.txt")
-if os.path.exists(broken_apps_path):
+broken_apps_path = system_apps_path / "broken_apps.txt"
+if broken_apps_path.exists():
     print(f"processing broken_apps file {broken_apps_path}")
     try:
-        with open(broken_apps_path, "r") as f:
+        with broken_apps_path.open("r") as f:
             broken_apps = f.read().splitlines()
             print(str(broken_apps))
     except Exception as e:
         print(f"problem reading broken_apps_txt {e}")
-
 
 apps.sort()
 count = 0
@@ -61,33 +58,33 @@ for app in apps:
     try:
         # read in the file from system_apps_path/apps/
         app_dict = dict()
-        app_basename = os.path.basename(app).replace(".star", "")
+        app_basename = app.stem
         app_dict["name"] = app_basename
-        app_dict["path"] = app
+        app_dict["path"] = str(app)
         # "{}/apps/{}/{}.star".format(system_apps_path, app.replace('_',''), app)
         app_path = app
 
         # skip any broken apps
-        if broken_apps and os.path.basename(app) in broken_apps:
-            print(f"skipping broken app {os.path.basename(app)}")
+        if broken_apps and app.name in broken_apps:
+            print(f"skipping broken app {app.name}")
             skip_count += 1
             continue
 
         # skip any files that include secret.star module and
-        with open(app_path, "r") as f:
+        with app_path.open("r") as f:
             app_str = f.read()
             if "secret.star" in app_str:
                 # print("skipping {} (uses secret.star)".format(app))
                 skip_count += 1
                 continue
 
-        app_base_path = ("/").join(app_path.split("/")[0:-1])
-        yaml_path = "{}/manifest.yaml".format(app_base_path)
-        static_images_path = "tronbyt_server/static/images"
+        app_base_path = app_path.parent
+        yaml_path = app_base_path / "manifest.yaml"
+        static_images_path = Path("tronbyt_server") / "static" / "images"
 
         # check for existence of yaml_path
-        if os.path.exists(yaml_path):
-            with open(yaml_path, "r") as f:
+        if yaml_path.exists():
+            with yaml_path.open("r") as f:
                 yaml_dict = yaml.safe_load(f)
                 app_dict.update(yaml_dict)
         else:
@@ -102,32 +99,28 @@ for app in apps:
             "screenshot.gif",
             "screenshot.png",
         ]:
-            image_path = os.path.join(app_base_path, image_name)
-            static_image_path = os.path.join(
-                static_images_path, f"{app_basename}{os.path.splitext(image_name)[1]}"
+            image_path = app_base_path / image_name
+            static_image_path = (
+                static_images_path / f"{app_basename}{image_path.suffix}"
             )
 
             # less than a meg only
-            if (
-                os.path.exists(image_path)
-                and os.path.getsize(image_path) < 1 * 1024 * 1024
-            ):
+            if image_path.exists() and image_path.stat().st_size < 1 * 1024 * 1024:
                 # print(f"copying {image_path}")
-                if not os.path.exists(static_image_path):
+                if not static_image_path.exists():
                     print(f"copying preview to static dir {static_image_path}")
                     new_previews += 1
                     shutil.copy(image_path, static_image_path)
 
             # set the preview for the app to the static preview location
-            if os.path.exists(static_image_path):
+            if static_image_path.exists():
                 num_previews += 1
-                app_dict["preview"] = os.path.basename(static_image_path)
+                app_dict["preview"] = static_image_path.name
                 break
-
         count += 1
         apps_array.append(app_dict)
     except Exception as e:
-        print("skipped " + app + " due to error: " + repr(e))
+        print("skipped " + str(app) + " due to error: " + repr(e))
 # print(apps_array)
 
 # writeout apps_array as a json file
@@ -136,4 +129,4 @@ print(f"skipped {skip_count} secrets.star using apps")
 print(f"copied {new_previews} new previews into static")
 print(f"total previews found {num_previews}")
 with open("system-apps.json", "w") as f:
-    json.dump(apps_array, f)
+    json.dump(apps_array, f, indent=4)

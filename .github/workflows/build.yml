@@ -33,7 +33,7 @@ jobs:
           sudo tar -C /usr/local/bin -xvf "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
           rm "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
         env:
-          PIXLET_VERSION: v0.38.0
+          PIXLET_VERSION: v0.40.0
       - name: Test with pytest
         run: |
           pip install pytest

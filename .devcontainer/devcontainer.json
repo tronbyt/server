@@ -12,7 +12,7 @@
 		5101
 	],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install --user -r requirements.txt pytest && mypy --install-types --non-interactive",
+	"postCreateCommand": "pip3 install --user -r requirements.txt pytest && mypy --install-types --non-interactive --ignore-missing-imports tronbyt_server",
 	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {
