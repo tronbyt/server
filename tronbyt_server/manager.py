@@ -96,7 +96,7 @@ def uploadapp() -> ResponseReturnValue:
     # check for existance of apps path
     user_apps_path.mkdir(parents=True, exist_ok=True)
 
-    star_files = [file for file in user_apps_path.rglob("*.star")]
+    star_files = [file.name for file in user_apps_path.rglob("*.star")]
 
     return render_template("manager/uploadapp.html", files=star_files)
 
