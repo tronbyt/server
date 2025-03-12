@@ -23,10 +23,6 @@ jobs:
         run: ruff check --output-format=github --target-version=py312
       - name: Check code formatting with Ruff
         run: ruff format --diff --target-version=py312
-      - name: Type check with mypy
-        run: |
-          pip install mypy
-          mypy --strict --install-types --non-interactive --ignore-missing-imports tronbyt_server
       - name: Install pixlet
         run: |
           curl -LO "https://github.com/tronbyt/pixlet/releases/download/${PIXLET_VERSION}/pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
@@ -41,6 +37,10 @@ jobs:
         env:
           PIXLET_PATH: /usr/local/bin/pixlet
           PIXLET_TIMEOUT: 10
+      - name: Type check with mypy
+        run: |
+          pip install mypy
+          mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps .
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile

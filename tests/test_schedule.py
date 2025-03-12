@@ -2,14 +2,17 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from tronbyt_server import db
+from tronbyt_server.models.app import App
 
 
-def test_get_is_app_schedule_active():
+def test_get_is_app_schedule_active() -> None:
     assert db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "18:00",
-            "end_time": "22:00",
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="18:00",
+            end_time="22:00",
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -22,10 +25,12 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "18:00",
-            "end_time": "22:00",
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="18:00",
+            end_time="22:00",
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -36,10 +41,12 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert not db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "18:00",
-            "end_time": "22:00",
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="18:00",
+            end_time="22:00",
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -49,10 +56,12 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "22:00",
-            "end_time": "06:00",
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="22:00",
+            end_time="06:00",
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -62,10 +71,12 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert not db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "22:00",
-            "end_time": "06:00",
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="22:00",
+            end_time="06:00",
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -75,10 +86,12 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "22:00",
-            "end_time": "06:00",
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="22:00",
+            end_time="06:00",
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -90,14 +103,17 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert db.get_is_app_schedule_active_at_time(
-        {}, datetime.datetime(year=2025, month=1, day=1, hour=10, minute=0, second=10)
+        App(name="testing", iname="testing"),
+        datetime.datetime(year=2025, month=1, day=1, hour=10, minute=0, second=10),
     )
     assert db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "18:00",
-            "end_time": "22:00",
-            "days": ["wednesday"],
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="18:00",
+            end_time="22:00",
+            days=["wednesday"],
+        ),
         datetime.datetime(
             year=2025,
             month=1,
@@ -108,11 +124,13 @@ def test_get_is_app_schedule_active():
         ),
     )
     assert not db.get_is_app_schedule_active_at_time(
-        {
-            "start_time": "18:00",
-            "end_time": "22:00",
-            "days": ["monday", "tuesday"],
-        },
+        App(
+            name="testing",
+            iname="testing",
+            start_time="18:00",
+            end_time="22:00",
+            days=["monday", "tuesday"],
+        ),
         datetime.datetime(
             year=2025,
             month=1,
