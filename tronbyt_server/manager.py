@@ -666,7 +666,11 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     domain_host = current_app.config["SERVER_HOSTNAME"]
     protocol = current_app.config["SERVER_PROTOCOL"]
 
-    app = g.user["devices"][device_id]["apps"][iname]
+    app = g.user.get("devices", {}).get(device_id, {}).get("apps", {}).get(iname)
+    if app is None:
+        current_app.logger.error("couldn't get app iname {iname} from user {g.user}")
+        flash("Error saving app, please try again.")
+        return redirect(url_for("manager.addapp", device_id=device_id))
     app_basename = "{}-{}".format(app["name"], app["iname"])
     app_details = db.get_app_details(g.user["username"], app["name"])
     if "path" in app_details:
