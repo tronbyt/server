@@ -531,15 +531,15 @@ def add_pushed_app(device_id: str, path: Path) -> None:
     if installation_id in apps:
         # already in there
         return
-    app: App = {
-        "iname": installation_id,
-        "name": "pushed",
-        "uinterval": 10,
-        "display_time": 0,
-        "notes": "",
-        "enabled": True,
-        "pushed": 1,
-        "order": len(apps),
-    }
+    app = App(
+        iname=installation_id,
+        name="pushed",
+        uinterval=10,
+        display_time=0,
+        notes="",
+        enabled=True,
+        pushed=1,
+        order=len(apps),
+    )
     apps[installation_id] = app
     save_user(user)

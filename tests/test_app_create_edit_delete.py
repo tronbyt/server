@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from flask.testing import FlaskClient
+
 from tronbyt_server import db
 
 from . import utils
@@ -10,7 +12,7 @@ from . import utils
 # @patch("os.system")
 # @patch("subprocess.Popen")
 # def test_app_create_edit_config_delete(mock_os_system, mock_subprocess, client):
-def test_app_create_edit_config_delete(client):
+def test_app_create_edit_config_delete(client: FlaskClient) -> None:
     # Configure the mock to return a successful result
     # mock_subprocess.return_value.returncode = 0
     # mock_os_system.return_value.returncode = 0
@@ -62,7 +64,7 @@ def test_app_create_edit_config_delete(client):
     test_app_dict = utils.get_test_app_dict()
     print(str(test_app_dict))
 
-    assert test_app_dict["uinterval"] == "69"
+    assert test_app_dict["uinterval"] == 69
     assert test_app_dict["display_time"] == 69
     assert test_app_dict["notes"] == "69"
 

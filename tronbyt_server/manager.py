@@ -160,13 +160,13 @@ def create() -> ResponseReturnValue:
                     secrets.choice(string.ascii_letters + string.digits)
                     for _ in range(32)
                 )
-            device: Device = {
-                "id": device_id,
-                "name": name or device_id,
-                "img_url": img_url,
-                "api_key": api_key,
-                "brightness": int(brightness) if brightness else 3,
-            }
+            device = Device(
+                id=device_id,
+                name=name or device_id,
+                img_url=img_url,
+                api_key=api_key,
+                brightness=int(brightness) if brightness else 3,
+            )
             if notes:
                 device["notes"] = notes
             current_app.logger.debug("device_id is :" + str(device["id"]))
@@ -234,16 +234,16 @@ def update(device_id: str) -> ResponseReturnValue:
         if error is not None:
             flash(error)
         else:
-            device: Device = {
-                "id": device_id,
-                "night_mode_enabled": bool(request.form.get("night_mode_enabled")),
-                "timezone": str(request.form.get("timezone")),
-                "img_url": (
+            device = Device(
+                id=device_id,
+                night_mode_enabled=bool(request.form.get("night_mode_enabled")),
+                timezone=str(request.form.get("timezone")),
+                img_url=(
                     db.sanitize_url(img_url)
                     if img_url and len(img_url) > 0
                     else f"{server_root()}/{device_id}/next"
                 ),
-            }
+            )
             if name:
                 device["name"] = name
             if api_key:
@@ -380,12 +380,12 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 )
             )
 
-        app: App = {
-            "name": name,
-            "iname": iname,
-            "enabled": False,  # start out false, only set to true after configure is finished
-            "last_render": 0,
-        }
+        app = App(
+            name=name,
+            iname=iname,
+            enabled=False,  # start out false, only set to true after configure is finished
+            last_render=0,
+        )
         app_details = db.get_app_details(g.user["username"], name)
         app_path = app_details.get("path")
         if app_path:
@@ -439,26 +439,34 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if request.method == "POST":
         name = request.form.get("name")
-        uinterval = request.form.get("uinterval")
-        notes = request.form.get("notes")
-        enabled = "enabled" in request.form
-        current_app.logger.debug(request.form)
         error = None
         if not name or not iname:
             error = "Name and installation_id is required."
         if error is not None:
             flash(error)
         else:
+            uinterval = request.form.get("uinterval")
+            notes = request.form.get("notes")
+            enabled = "enabled" in request.form
+            current_app.logger.debug(request.form)
+            start_time = request.form.get("start_time")
+            end_time = request.form.get("end_time")
+
             user = g.user
-            app = user["devices"][device_id]["apps"][iname]
+            app: App = user["devices"][device_id]["apps"][iname]
             app["iname"] = iname
             current_app.logger.debug("iname is :" + str(app["iname"]))
-            app["name"] = name
-            app["uinterval"] = uinterval
+            if name:
+                app["name"] = name
+            if uinterval:
+                app["uinterval"] = int(uinterval)
             app["display_time"] = int(request.form.get("display_time", 0))
-            app["notes"] = notes
-            app["start_time"] = request.form.get("start_time")
-            app["end_time"] = request.form.get("end_time")
+            if notes:
+                app["notes"] = notes
+            if start_time:
+                app["start_time"] = start_time
+            if end_time:
+                app["end_time"] = end_time
             app["days"] = request.form.getlist("days")
             app["enabled"] = enabled
             db.save_user(user)

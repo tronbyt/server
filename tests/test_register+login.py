@@ -1,4 +1,7 @@
-def test_register_login_logout(client):
+from flask.testing import FlaskClient
+
+
+def test_register_login_logout(client: FlaskClient) -> None:
     response = client.get("/auth/register")
     assert response.status_code == 200
     response = client.post(
@@ -22,7 +25,7 @@ def test_register_login_logout(client):
     assert response.headers["Location"] == "/auth/login"
 
 
-def test_login_with_wrong_password(client):
+def test_login_with_wrong_password(client: FlaskClient) -> None:
     response = client.post(
         "/auth/login", data={"username": "testuser", "password": "BADDPASSWORD"}
     )
@@ -30,7 +33,7 @@ def test_login_with_wrong_password(client):
     assert "Incorrect username/password." in response.text
 
 
-def test_unauth_index(client):
+def test_unauth_index(client: FlaskClient) -> None:
     response = client.get("/")
     assert response.status_code == 302  # should redirect to login
     assert "auth/login" in response.text
