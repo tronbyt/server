@@ -34,6 +34,7 @@ RUN apt-get update && \
         python3-flask-babel \
         python3-psutil \
         python3-requests \
+        python3-tzlocal \
         python3-yaml \
         tzdata \
         tzdata-legacy && \
