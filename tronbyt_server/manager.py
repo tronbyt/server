@@ -577,22 +577,19 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
             / f"{app['name']}.star"
         )
 
-    if (
-        "last_render" not in app
-        or now - app["last_render"] > int(app["uinterval"]) * 60
-    ):
+    if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
-        device = user["devices"][device_id]
-        success, empty = render_app(app_path, config_path, webp_path, device)
-        if success:
-            # update the config with the new last render time
-            app["last_render"] = int(time.time())
-        if not empty:
-            return True
-    else:
-        current_app.logger.debug(f"{app_basename} -- NO RENDER")
-        return True
-    return False
+        # always update the config with the new last render time
+        app["last_render"] = now
+        success, empty = render_app(
+            app_path, config_path, webp_path, user["devices"][device_id]
+        )
+        if not success:
+            current_app.logger.error(f"Error rendering {app_basename}")
+        return success and not empty
+
+    current_app.logger.debug(f"{app_basename} -- NO RENDER")
+    return True
 
 
 @bp.route("/<string:device_id>/firmware", methods=["POST", "GET"])
