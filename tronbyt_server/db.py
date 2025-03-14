@@ -49,6 +49,30 @@ def init_db() -> None:
         )
         conn.commit()
         current_app.logger.debug("Default JSON inserted for admin user")
+    else:
+        migrate_app_configs()
+
+
+def migrate_app_configs() -> None:
+    users = get_all_users()
+    users_dir = get_users_dir()
+    need_save = False
+    for user in users:
+        for device in user.get("devices", {}).values():
+            for app in device.get("apps", {}).values():
+                config_path = (
+                    users_dir
+                    / user["username"]
+                    / "configs"
+                    / f"{app['name']}-{app['iname']}.json"
+                )
+                if config_path.exists():
+                    with config_path.open("r") as config_file:
+                        app["config"] = json.load(config_file)
+                    config_path.unlink()
+                    need_save = True
+        if need_save:
+            save_user(user)
 
 
 def get_db() -> sqlite3.Connection:
