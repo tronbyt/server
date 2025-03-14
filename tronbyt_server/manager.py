@@ -477,13 +477,13 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
 
 def render_app(
-    app_path: Path, config_path: Path, webp_path: Path, device: Device
+    app_path: Path, config: dict[str, Any], webp_path: Path, device: Device
 ) -> Tuple[bool, bool]:
     """Renders a pixlet app to a webp image.
 
     Args:
         app_path: Path to the pixlet app.
-        config_path: Path to the app's configuration file.
+        config: The app's configuration settings.
         webp_path: Path to save the rendered webp image.
         device: Device configuration.
 
@@ -492,58 +492,30 @@ def render_app(
             - The first flag indicates whether the rendering was successful.
             - The second flag indicates whether the result was empty.
     """
-    config_data = load_app_config(config_path, device)
+    config_data = config.copy()  # Create a copy to avoid modifying the original config
+    add_default_config(config_data, device)
 
-    if os.getenv("USE_LIBPIXLET", "1") == "1":
-        data = pixlet_render_app(
-            name=str(app_path),
-            config=config_data,
-            width=64,
-            height=32,
-            magnify=1,
-            maxDuration=15000,
-            timeout=30000,
-            image_format=0,  # 0 == WebP
-            silence_output=True,
-        )
-        if data is None:
-            current_app.logger.error("Error running pixlet render")
-            return False, False
-        # leave the previous file in place if the new one is empty
-        # this way, we still display the last successful render on the index page,
-        # even if the app returns no screens
-        if len(data) > 0:
-            webp_path.write_bytes(data)
-            return True, False
-        return True, True
-
-    current_app.logger.info("Rendering with pixlet binary")
-    # build the pixlet render command
-    if config_path.exists() and len(config_data.keys()) > 1:
-        command = [
-            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-            "render",
-            "-c",
-            str(config_path),
-            str(app_path),
-            "-o",
-            str(webp_path),
-            f"$tz={config_data['$tz']}",
-        ]
-    else:
-        command = [
-            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-            "render",
-            str(app_path),
-            "-o",
-            str(webp_path),
-            f"$tz={config_data['$tz']}",
-        ]
-    result = subprocess.run(command)
-    if result.returncode != 0:
-        current_app.logger.error(f"Error running subprocess: {result.stderr.decode()}")
-        return False, True
-    return True, webp_path.stat().st_size == 0
+    data = pixlet_render_app(
+        name=str(app_path),
+        config=config_data,
+        width=64,
+        height=32,
+        magnify=1,
+        maxDuration=15000,
+        timeout=30000,
+        image_format=0,  # 0 == WebP
+        silence_output=True,
+    )
+    if data is None:
+        current_app.logger.error("Error running pixlet render")
+        return False, False
+    # leave the previous file in place if the new one is empty
+    # this way, we still display the last successful render on the index page,
+    # even if the app returns no screens
+    if len(data) > 0:
+        webp_path.write_bytes(data)
+        return True, False
+    return True, True
 
 
 def server_root() -> str:
@@ -581,9 +553,10 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
         # always update the config with the new last render time
         app["last_render"] = now
-        success, empty = render_app(
-            app_path, config_path, webp_path, user["devices"][device_id]
-        )
+        db.save_user(user)
+        device = user["devices"][device_id]
+        config = load_app_config(app, config_path, device)
+        success, empty = render_app(app_path, config, webp_path, device)
         if not success:
             current_app.logger.error(f"Error rendering {app_basename}")
         return success and not empty
@@ -645,11 +618,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
     )
 
 
-def load_app_config(config_file: Path, device: Device) -> dict[str, Any]:
-    config = {}
-    if config_file.exists():
-        with config_file.open("r") as c:
-            config = json.load(c)
+def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:
     if (
         "timezone" in device
         and isinstance(device["timezone"], str)
@@ -668,6 +637,22 @@ def load_app_config(config_file: Path, device: Device) -> dict[str, Any]:
     return config
 
 
+def load_app_config(app: App, config_file: Path, device: Device) -> dict[str, Any]:
+    config = app.get("config")
+    if config is None:
+        if config_file.exists():
+            with config_file.open("r") as c:
+                config = json.load(c)
+        if not config:
+            config = {}
+        app["config"] = config
+        db.save_user(g.user)
+    else:
+        config = config.copy()
+    add_default_config(config, device)
+    return config
+
+
 @bp.route(
     "/<string:device_id>/<string:iname>/<int:delete_on_cancel>/configapp",
     methods=["GET", "POST"],
@@ -682,7 +667,10 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     domain_host = current_app.config["SERVER_HOSTNAME"]
     protocol = current_app.config["SERVER_PROTOCOL"]
 
-    app = g.user.get("devices", {}).get(device_id, {}).get("apps", {}).get(iname)
+    device = g.user.get("devices", {}).get(device_id)
+    if not device:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+    app = device.get("apps", {}).get(iname)
     if app is None:
         current_app.logger.error("couldn't get app iname {iname} from user {g.user}")
         flash("Error saving app, please try again.")
@@ -732,19 +720,20 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             # flash(new_config)
             with config_path.open("w") as config_file:
                 json.dump(new_config, config_file)
+            app["config"] = new_config
+            db.save_user(g.user)
 
             # delete the tmp file
             tmp_config_path.unlink()
 
-            # run pixlet render with the new config file
+            # run pixlet render with the new config
             current_app.logger.debug("rendering")
-            device = g.user["devices"][device_id]
-            success, _ = render_app(app_path, config_path, webp_path, device)
+            success, _ = render_app(app_path, new_config, webp_path, device)
             if success:
                 # set the enabled key in app to true now that it has been configured.
-                device["apps"][iname]["enabled"] = True
+                app["enabled"] = True
                 # set last_rendered to seconds
-                device["apps"][iname]["last_render"] = int(time.time())
+                app["last_render"] = int(time.time())
                 # always save
                 db.save_user(g.user)
             else:
@@ -764,7 +753,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             return redirect(url_for("manager.index"))
 
         device = g.user["devices"][device_id]
-        config_dict = load_app_config(config_path, device)
+        config_dict = load_app_config(app, config_path, device)
         config_dict["$watch"] = "false"
         url_params = urlencode(config_dict)
 
