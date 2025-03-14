@@ -8,7 +8,6 @@ import string
 import subprocess
 import time
 import uuid
-from datetime import datetime
 from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
@@ -34,6 +33,7 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
+from tzlocal import get_localzone_name
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -652,7 +652,14 @@ def load_app_config(config_file: Path, device: Device) -> dict[str, Any]:
     ):
         config["$tz"] = device["timezone"]
     else:
-        config["$tz"] = datetime.now().astimezone().tzname()
+        localzone = get_localzone_name()
+        if localzone:
+            config["$tz"] = localzone
+        else:
+            current_app.logger.warning(
+                "Could not determine local timezone, using UTC as default"
+            )
+            config["$tz"] = "Etc/UTC"
     return config
 
 
