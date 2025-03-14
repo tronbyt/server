@@ -13,7 +13,7 @@ from operator import itemgetter
 from pathlib import Path
 from random import randint
 from threading import Thread, Timer
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 from urllib.parse import urlencode
 from zoneinfo import available_timezones
 
@@ -478,7 +478,7 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
 def render_app(
     app_path: Path, config_path: Path, webp_path: Path, device: Device
-) -> bool:
+) -> Tuple[bool, bool]:
     """Renders a pixlet app to a webp image.
 
     Args:
@@ -488,56 +488,62 @@ def render_app(
         device: Device configuration.
 
     Returns:
-        True if the rendering was successful, False otherwise.
+        A tuple of two flags:
+            - The first flag indicates whether the rendering was successful.
+            - The second flag indicates whether the result was empty.
     """
     config_data = load_app_config(config_path, device)
 
     if os.getenv("USE_LIBPIXLET", "1") == "1":
         data = pixlet_render_app(
-            str(app_path),
-            config_data,
-            64,
-            32,
-            1,
-            15000,
-            30000,
-            False,
-            True,
+            name=str(app_path),
+            config=config_data,
+            width=64,
+            height=32,
+            magnify=1,
+            maxDuration=15000,
+            timeout=30000,
+            image_format=0,  # 0 == WebP
+            silence_output=True,
         )
-        if not data:
+        if data is None:
             current_app.logger.error("Error running pixlet render")
-            return False
-        webp_path.write_bytes(data)
+            return False, False
+        # leave the previous file in place if the new one is empty
+        # this way, we still display the last successful render on the index page,
+        # even if the app returns no screens
+        if len(data) > 0:
+            webp_path.write_bytes(data)
+            return True, False
+        return True, True
+
+    current_app.logger.info("Rendering with pixlet binary")
+    # build the pixlet render command
+    if config_path.exists() and len(config_data.keys()) > 1:
+        command = [
+            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
+            "render",
+            "-c",
+            str(config_path),
+            str(app_path),
+            "-o",
+            str(webp_path),
+            f"$tz={config_data['$tz']}",
+        ]
     else:
-        current_app.logger.info("Rendering with pixlet binary")
-        # build the pixlet render command
-        if config_path.exists() and len(config_data.keys()) > 1:
-            command = [
-                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                "render",
-                "-c",
-                str(config_path),
-                str(app_path),
-                "-o",
-                str(webp_path),
-                f"$tz={config_data['$tz']}",
-            ]
-        else:
-            command = [
-                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                "render",
-                str(app_path),
-                "-o",
-                str(webp_path),
-                f"$tz={config_data['$tz']}",
-            ]
-        result = subprocess.run(command)
-        if result.returncode != 0:
-            current_app.logger.error(
-                f"Error running subprocess: {result.stderr.decode()}"
-            )
-            return False
-    return True
+        command = [
+            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
+            "render",
+            str(app_path),
+            "-o",
+            str(webp_path),
+            f"$tz={config_data['$tz']}",
+        ]
+    result = subprocess.run(command)
+    if result.returncode != 0:
+        current_app.logger.error(f"Error running subprocess: {result.stderr.decode()}")
+        return False, True
+    return True, webp_path.stat().st_size == 0
 
 
 def server_root() -> str:
@@ -577,9 +583,11 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
     ):
         current_app.logger.debug(f"RENDERING -- {app_basename}")
         device = user["devices"][device_id]
-        if render_app(app_path, config_path, webp_path, device):
+        success, empty = render_app(app_path, config_path, webp_path, device)
+        if success:
             # update the config with the new last render time
             app["last_render"] = int(time.time())
+        if not empty:
             return True
     else:
         current_app.logger.debug(f"{app_basename} -- NO RENDER")
@@ -734,7 +742,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             # run pixlet render with the new config file
             current_app.logger.debug("rendering")
             device = g.user["devices"][device_id]
-            if render_app(app_path, config_path, webp_path, device):
+            success, _ = render_app(app_path, config_path, webp_path, device)
+            if success:
                 # set the enabled key in app to true now that it has been configured.
                 device["apps"][iname]["enabled"] = True
                 # set last_rendered to seconds
