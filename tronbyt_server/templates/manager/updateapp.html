@@ -1,8 +1,18 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}{{ _('Edit') }} "{{ app['name'] }}-{{ app['iname'] }}"{% endblock %}</h1>
+<h1>{% block title %}{{ _('Edit') }} "{{ app['name'] }}-{{ app['iname'] }}"{% endblock %}</h1><br>
 {% endblock %}
 {% block content %}
+<!-- Container for flexbox alignment -->
+<div class="flex-container">
+  <!-- Show Config Toggle Button -->
+  <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">Show Starlark Config</button>
+
+  <!-- Config Content -->
+  <div id="configContent" class="hidden">
+    <pre class="flash">{{ config }}</pre>
+  </div>
+</div>
 <form method="post">
   <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
@@ -43,4 +53,37 @@
 <form action="{{ url_for('manager.deleteapp', device_id=device_id,iname=app['iname']) }}" method="post">
   <input class="danger" type="submit" value="{{ _('Delete') }}" onclick="return confirm('{{ _('Delete App?') }}');">
 </form>
+
+<!-- style and javascript to show and hide the config -->
+<style>
+  .hidden {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+  }
+
+  .visible {
+    display: block;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+  }
+</style>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toggleBtn = document.getElementById("toggleConfigBtn");
+    const configContent = document.getElementById("configContent");
+
+    toggleBtn.addEventListener("click", function() {
+      if (configContent.classList.contains("hidden")) {
+        configContent.classList.remove("hidden");
+        configContent.classList.add("visible");
+        toggleBtn.textContent = "Hide Starlark Config";
+      } else {
+        configContent.classList.remove("visible");
+        configContent.classList.add("hidden");
+        toggleBtn.textContent = "Show Starlark Config";
+      }
+    });
+  });
+</script>
 {% endblock %}

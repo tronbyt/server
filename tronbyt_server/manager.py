@@ -360,6 +360,16 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 break
         else:
             flash("Could not generate a unique installation ID.")
+            return redirect(url_for("manager.addapp", device_id=device_id))
+
+        # Generate a unique iname
+        max_attempts = 10
+        for _ in range(max_attempts):
+            iname = str(randint(100, 999))
+            if iname not in g.user["devices"][device_id].get("apps", {}):
+                break
+        else:
+            flash("Could not generate a unique installation ID.")
             return redirect(
                 url_for(
                     "manager.addapp",
@@ -460,7 +470,13 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     app = g.user["devices"][device_id]["apps"][iname]
-    return render_template("manager/updateapp.html", app=app, device_id=device_id)
+
+    return render_template(
+        "manager/updateapp.html",
+        app=app,
+        device_id=device_id,
+        config=json.dumps(app.get("config", {}), indent=4),
+    )
 
 
 def render_app(
@@ -903,7 +919,7 @@ def next_app(
         if last_app_index is None:
             abort(HTTPStatus.NOT_FOUND)
 
-    # treat em like an array
+    # if no apps return default.webp
     if "apps" not in device:
         response = send_file("static/images/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
@@ -965,6 +981,24 @@ def next_app(
     current_app.logger.error(f"file {webp_path} not found")
     # run it recursively until we get a file.
     return next_app(device_id, last_app_index, recursion_depth + 1)
+
+
+# manager.currentwebp
+@bp.route("/<string:device_id>/currentapp")
+def currentwebp(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    try:
+        user = g.user
+        device = user["devices"][device_id]
+        current_app_index = db.get_last_app_index(device_id) or 0
+        apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
+        current_app_iname = apps_list[current_app_index]["iname"]
+        return appwebp(device_id, current_app_iname)
+    except Exception as e:
+        current_app.logger.error(f"Exception: {str(e)}")
+        abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")

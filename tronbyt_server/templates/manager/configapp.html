@@ -3,7 +3,16 @@
 <h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
-<pre class="flash">{{config}}</pre>
+<!-- Container for flexbox alignment -->
+<div class="flex-container">
+  <!-- Show Config Toggle Button -->
+  <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">Show Starlark Config</button>
+
+  <!-- Config Content -->
+  <div id="configContent" class="hidden">
+    <pre class="flash">{{ config }}</pre>
+  </div>
+</div>
 <form method="post">
     <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
 <input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
@@ -24,4 +33,36 @@
 {% endif %}
 <iframe src="{{ url_for('manager.pixlet_proxy') }}?{{url_params}}" width=100% height=2000
     title="{{ _('Pixlet Serve') }}"></iframe>
+    <!-- style and javascript to show and hide the config -->
+<style>
+  .hidden {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+  }
+
+  .visible {
+    display: block;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+  }
+</style>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toggleBtn = document.getElementById("toggleConfigBtn");
+    const configContent = document.getElementById("configContent");
+
+    toggleBtn.addEventListener("click", function() {
+      if (configContent.classList.contains("hidden")) {
+        configContent.classList.remove("hidden");
+        configContent.classList.add("visible");
+        toggleBtn.textContent = "Hide Starlark Config";
+      } else {
+        configContent.classList.remove("visible");
+        configContent.classList.add("hidden");
+        toggleBtn.textContent = "Show Starlark Config";
+      }
+    });
+  });
+</script>
 {% endblock %}
