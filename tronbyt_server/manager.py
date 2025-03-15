@@ -649,7 +649,9 @@ def load_app_config(app: App, config_file: Path, device: Device) -> dict[str, An
         if not config:
             config = {}
         app["config"] = config
-        db.save_user(g.user)
+        # guard against calling save_user during unauthenicated requests
+        if g.user:
+            db.save_user(g.user)
     else:
         config = config.copy()
     add_default_config(config, device)
