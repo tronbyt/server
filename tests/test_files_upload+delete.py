@@ -1,9 +1,11 @@
 from io import BytesIO
 
+from flask.testing import FlaskClient
+
 from . import utils
 
 
-def test_upload_and_delete(client):
+def test_upload_and_delete(client: FlaskClient) -> None:
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
     client.post("/auth/login", data={"username": "testuser", "password": "password"})
 

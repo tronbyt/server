@@ -1,11 +1,11 @@
 import re
-from typing import Dict, TypedDict
+from typing import Dict, Required, TypedDict
 
 from tronbyt_server.models.app import App
 
 
 class Device(TypedDict, total=False):
-    id: str
+    id: Required[str]
     name: str
     api_key: str
     img_url: str

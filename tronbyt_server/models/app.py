@@ -1,9 +1,9 @@
-from typing import TypedDict
+from typing import List, Required, TypedDict
 
 
 class App(TypedDict, total=False):
-    iname: str
-    name: str
+    iname: Required[str]
+    name: Required[str]
     uinterval: int
     display_time: int
     notes: str
@@ -12,3 +12,6 @@ class App(TypedDict, total=False):
     order: int
     last_render: int
     path: str
+    start_time: str
+    end_time: str
+    days: List[str]

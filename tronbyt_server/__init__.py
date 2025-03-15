@@ -75,7 +75,7 @@ def render_app(
     magnify: int,
     maxDuration: int,
     timeout: int,
-    render_gif: bool,
+    image_format: int,
     silence_output: bool,
 ) -> Optional[bytes]:
     if not pixlet_render_app:
@@ -88,7 +88,7 @@ def render_app(
         magnify,
         maxDuration,
         timeout,
-        1 if render_gif else 0,
+        image_format,
         1 if silence_output else 0,
     )
     if ret.length >= 0:

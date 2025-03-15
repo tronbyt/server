@@ -1,11 +1,13 @@
 from pathlib import Path
 
+from flask.testing import FlaskClient
+
 from tronbyt_server import db
 
 from . import utils
 
 
-def test_api(client):
+def test_api(client: FlaskClient) -> None:
     # load the test data (register,login,create device)
     device_id = utils.load_test_data(client)
 

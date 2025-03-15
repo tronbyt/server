@@ -8,13 +8,12 @@ import string
 import subprocess
 import time
 import uuid
-from datetime import datetime
 from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
 from random import randint
 from threading import Thread, Timer
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 from urllib.parse import urlencode
 from zoneinfo import available_timezones
 
@@ -34,6 +33,7 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
+from tzlocal import get_localzone_name
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -160,13 +160,13 @@ def create() -> ResponseReturnValue:
                     secrets.choice(string.ascii_letters + string.digits)
                     for _ in range(32)
                 )
-            device: Device = {
-                "id": device_id,
-                "name": name or device_id,
-                "img_url": img_url,
-                "api_key": api_key,
-                "brightness": int(brightness) if brightness else 3,
-            }
+            device = Device(
+                id=device_id,
+                name=name or device_id,
+                img_url=img_url,
+                api_key=api_key,
+                brightness=int(brightness) if brightness else 3,
+            )
             if notes:
                 device["notes"] = notes
             current_app.logger.debug("device_id is :" + str(device["id"]))
@@ -234,16 +234,16 @@ def update(device_id: str) -> ResponseReturnValue:
         if error is not None:
             flash(error)
         else:
-            device: Device = {
-                "id": device_id,
-                "night_mode_enabled": bool(request.form.get("night_mode_enabled")),
-                "timezone": str(request.form.get("timezone")),
-                "img_url": (
+            device = Device(
+                id=device_id,
+                night_mode_enabled=bool(request.form.get("night_mode_enabled")),
+                timezone=str(request.form.get("timezone")),
+                img_url=(
                     db.sanitize_url(img_url)
                     if img_url and len(img_url) > 0
                     else f"{server_root()}/{device_id}/next"
                 ),
-            }
+            )
             if name:
                 device["name"] = name
             if api_key:
@@ -380,12 +380,12 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 )
             )
 
-        app: App = {
-            "name": name,
-            "iname": iname,
-            "enabled": False,  # start out false, only set to true after configure is finished
-            "last_render": 0,
-        }
+        app = App(
+            name=name,
+            iname=iname,
+            enabled=False,  # start out false, only set to true after configure is finished
+            last_render=0,
+        )
         app_details = db.get_app_details(g.user["username"], name)
         app_path = app_details.get("path")
         if app_path:
@@ -439,26 +439,34 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if request.method == "POST":
         name = request.form.get("name")
-        uinterval = request.form.get("uinterval")
-        notes = request.form.get("notes")
-        enabled = "enabled" in request.form
-        current_app.logger.debug(request.form)
         error = None
         if not name or not iname:
             error = "Name and installation_id is required."
         if error is not None:
             flash(error)
         else:
+            uinterval = request.form.get("uinterval")
+            notes = request.form.get("notes")
+            enabled = "enabled" in request.form
+            current_app.logger.debug(request.form)
+            start_time = request.form.get("start_time")
+            end_time = request.form.get("end_time")
+
             user = g.user
-            app = user["devices"][device_id]["apps"][iname]
+            app: App = user["devices"][device_id]["apps"][iname]
             app["iname"] = iname
             current_app.logger.debug("iname is :" + str(app["iname"]))
-            app["name"] = name
-            app["uinterval"] = uinterval
+            if name:
+                app["name"] = name
+            if uinterval:
+                app["uinterval"] = int(uinterval)
             app["display_time"] = int(request.form.get("display_time", 0))
-            app["notes"] = notes
-            app["start_time"] = request.form.get("start_time")
-            app["end_time"] = request.form.get("end_time")
+            if notes:
+                app["notes"] = notes
+            if start_time:
+                app["start_time"] = start_time
+            if end_time:
+                app["end_time"] = end_time
             app["days"] = request.form.getlist("days")
             app["enabled"] = enabled
             db.save_user(user)
@@ -470,7 +478,7 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
 def render_app(
     app_path: Path, config_path: Path, webp_path: Path, device: Device
-) -> bool:
+) -> Tuple[bool, bool]:
     """Renders a pixlet app to a webp image.
 
     Args:
@@ -480,56 +488,62 @@ def render_app(
         device: Device configuration.
 
     Returns:
-        True if the rendering was successful, False otherwise.
+        A tuple of two flags:
+            - The first flag indicates whether the rendering was successful.
+            - The second flag indicates whether the result was empty.
     """
     config_data = load_app_config(config_path, device)
 
     if os.getenv("USE_LIBPIXLET", "1") == "1":
         data = pixlet_render_app(
-            str(app_path),
-            config_data,
-            64,
-            32,
-            1,
-            15000,
-            30000,
-            False,
-            True,
+            name=str(app_path),
+            config=config_data,
+            width=64,
+            height=32,
+            magnify=1,
+            maxDuration=15000,
+            timeout=30000,
+            image_format=0,  # 0 == WebP
+            silence_output=True,
         )
-        if not data:
+        if data is None:
             current_app.logger.error("Error running pixlet render")
-            return False
-        webp_path.write_bytes(data)
+            return False, False
+        # leave the previous file in place if the new one is empty
+        # this way, we still display the last successful render on the index page,
+        # even if the app returns no screens
+        if len(data) > 0:
+            webp_path.write_bytes(data)
+            return True, False
+        return True, True
+
+    current_app.logger.info("Rendering with pixlet binary")
+    # build the pixlet render command
+    if config_path.exists() and len(config_data.keys()) > 1:
+        command = [
+            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
+            "render",
+            "-c",
+            str(config_path),
+            str(app_path),
+            "-o",
+            str(webp_path),
+            f"$tz={config_data['$tz']}",
+        ]
     else:
-        current_app.logger.info("Rendering with pixlet binary")
-        # build the pixlet render command
-        if config_path.exists() and len(config_data.keys()) > 1:
-            command = [
-                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                "render",
-                "-c",
-                str(config_path),
-                str(app_path),
-                "-o",
-                str(webp_path),
-                f"$tz={config_data['$tz']}",
-            ]
-        else:
-            command = [
-                os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
-                "render",
-                str(app_path),
-                "-o",
-                str(webp_path),
-                f"$tz={config_data['$tz']}",
-            ]
-        result = subprocess.run(command)
-        if result.returncode != 0:
-            current_app.logger.error(
-                f"Error running subprocess: {result.stderr.decode()}"
-            )
-            return False
-    return True
+        command = [
+            os.getenv("PIXLET_PATH", "/pixlet/pixlet"),
+            "render",
+            str(app_path),
+            "-o",
+            str(webp_path),
+            f"$tz={config_data['$tz']}",
+        ]
+    result = subprocess.run(command)
+    if result.returncode != 0:
+        current_app.logger.error(f"Error running subprocess: {result.stderr.decode()}")
+        return False, True
+    return True, webp_path.stat().st_size == 0
 
 
 def server_root() -> str:
@@ -563,20 +577,19 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
             / f"{app['name']}.star"
         )
 
-    if (
-        "last_render" not in app
-        or now - app["last_render"] > int(app["uinterval"]) * 60
-    ):
+    if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
-        device = user["devices"][device_id]
-        if render_app(app_path, config_path, webp_path, device):
-            # update the config with the new last render time
-            app["last_render"] = int(time.time())
-            return True
-    else:
-        current_app.logger.debug(f"{app_basename} -- NO RENDER")
-        return True
-    return False
+        # always update the config with the new last render time
+        app["last_render"] = now
+        success, empty = render_app(
+            app_path, config_path, webp_path, user["devices"][device_id]
+        )
+        if not success:
+            current_app.logger.error(f"Error rendering {app_basename}")
+        return success and not empty
+
+    current_app.logger.debug(f"{app_basename} -- NO RENDER")
+    return True
 
 
 @bp.route("/<string:device_id>/firmware", methods=["POST", "GET"])
@@ -644,16 +657,14 @@ def load_app_config(config_file: Path, device: Device) -> dict[str, Any]:
     ):
         config["$tz"] = device["timezone"]
     else:
-        config["$tz"] = datetime.now().astimezone().tzname()
-    # add device location if available
-    if (
-        "location" not in config
-        and "location" in device
-        and isinstance(device["location"], str)
-        and device["location"] != ""
-    ):
-        config["location"] = device["location"]
-
+        localzone = get_localzone_name()
+        if localzone:
+            config["$tz"] = localzone
+        else:
+            current_app.logger.warning(
+                "Could not determine local timezone, using UTC as default"
+            )
+            config["$tz"] = "Etc/UTC"
     return config
 
 
@@ -733,7 +744,9 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
 
             # run pixlet render with the new config file
             current_app.logger.debug("rendering")
-            if render_app(app_path, config_path, webp_path, device):
+            device = g.user["devices"][device_id]
+            success, _ = render_app(app_path, config_path, webp_path, device)
+            if success:
                 # set the enabled key in app to true now that it has been configured.
                 device["apps"][iname]["enabled"] = True
                 # set last_rendered to seconds

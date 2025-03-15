@@ -69,7 +69,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
         "brightness": db.get_device_brightness_8bit(device),
         "autoDim": device["night_mode_enabled"],
     }
-    return json.dumps(metadata), 200
+    return Response(json.dumps(metadata), status=200, mimetype="application/json")
 
 
 @bp.post("/devices/<string:device_id>/push")

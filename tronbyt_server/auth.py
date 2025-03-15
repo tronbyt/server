@@ -49,11 +49,11 @@ def register() -> ResponseReturnValue:
             if "email" in request.form:
                 if "@" in request.form["email"]:
                     email = request.form["email"]
-            user: User = {
-                "username": username,
-                "password": password,
-                "email": email,
-            }
+            user = User(
+                username=username,
+                password=password,
+                email=email,
+            )
 
             if db.save_user(user, new_user=True):
                 db.create_user_dir(username)

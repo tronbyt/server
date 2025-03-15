@@ -1,9 +1,11 @@
 from pathlib import Path
 
+from flask.testing import FlaskClient
+
 from . import utils
 
 
-def test_device_operations(client):
+def test_device_operations(client: FlaskClient) -> None:
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
     client.post("/auth/login", data={"username": "testuser", "password": "password"})
 
