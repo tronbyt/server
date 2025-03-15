@@ -66,11 +66,11 @@
 <!-- ...existing script code... -->
 <script>
   // Function to update the numeric display in real-time (on slider move)
-  function updateBrightnessValue(brightness) {
-    document.getElementById('brightnessValue').innerText = brightness;
+  function updateBrightnessValue(deviceId, brightness) {
+    document.getElementById(`brightnessValue-${deviceId}`).innerText = brightness;
   }
-  function updateIntervalValue(interval) {
-    document.getElementById('intervalValue').innerText = interval;
+  function updateIntervalValue(deviceId, interval) {
+    document.getElementById(`intervalValue-${deviceId}`).innerText = interval;
   }
 
   // Function to send the value to the server only when the slider is released
@@ -177,19 +177,19 @@
         </tr>
         <tr>
           <td>
-            <label for="brightness">{{ _('Brightness') }}</label> =
-            <span id="brightnessValue">{{device['brightness'] }}</span><br>
-            <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
-              oninput="updateBrightnessValue(this.value)" onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
+            <label for="brightness-{{ device['id'] }}">{{ _('Brightness') }}</label> =
+            <span id="brightnessValue-{{ device['id'] }}">{{device['brightness'] }}</span><br>
+            <input type="range" name="brightness" id="brightness-{{ device['id'] }}" min="0" max="5" value="{{ device['brightness'] }}"
+              oninput="updateBrightnessValue('{{ device['id'] }}', this.value)" onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
           </td>
 
         </tr>
         <tr>
           <td>
-            <label for="default_interval">{{ _('App Cycle Time (Seconds)') }}</label> = <span id="intervalValue">{{
+            <label for="default_interval-{{ device['id'] }}">{{ _('App Cycle Time (Seconds)') }}</label> = <span id="intervalValue-{{ device['id'] }}">{{
               device['default_interval'] }} </span> s<br>
-            <input type="range" name="default_interval" id="default_interval" min="1" max="30"
-              value="{{ device['default_interval'] }}" oninput="updateIntervalValue(this.value)"
+            <input type="range" name="default_interval" id="default_interval-{{ device['id'] }}" min="1" max="30"
+              value="{{ device['default_interval'] }}" oninput="updateIntervalValue('{{ device['id'] }}', this.value)"
               onmouseup="updateInterval('{{ device['id'] }}', this.value)">
           </td>
         </tr>
