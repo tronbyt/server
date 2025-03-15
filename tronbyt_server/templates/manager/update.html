@@ -67,6 +67,7 @@ value="{{ request.form['name'] or device['name'] }}" required>
 <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
 <input type="submit" value="{{ _('Save') }}">
 </form>
+{% if 'location' in device %}{{ device['location'] }}{% endif %}
 <hr>
 <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post">
   <input class="danger" type="submit" value="{{ _('Delete') }}" onclick="return confirm('{{ _('Delete device and ALL apps ?') }}');">

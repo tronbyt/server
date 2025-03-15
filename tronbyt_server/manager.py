@@ -729,9 +729,15 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                 new_config = json.load(c)
             # remove internal settings like `$tz` and `$watch` from the stored config
             new_config = {k: v for k, v in new_config.items() if not k.startswith("$")}
-            # flash(new_config)
             with config_path.open("w") as config_file:
                 json.dump(new_config, config_file)
+
+            # save location as default if checked
+            device = g.user["devices"][device_id]
+            if request.form.get("location_as_default", None):
+                j = json.loads(new_config)
+                if "location" in j:
+                    device["location"] = j["location"]
 
             # delete the tmp file
             tmp_config_path.unlink()

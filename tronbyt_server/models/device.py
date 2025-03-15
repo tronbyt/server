@@ -18,6 +18,7 @@ class Device(TypedDict, total=False):
     night_brightness: int
     default_interval: int
     timezone: str
+    location: str
     apps: Dict[str, App]
     firmware_file_path: str
     last_app_index: int
