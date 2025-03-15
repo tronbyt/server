@@ -867,7 +867,6 @@ def get_brightness(device_id: str) -> ResponseReturnValue:
 
 MAX_RECURSION_DEPTH = 10
 
-
 @bp.route("/<string:device_id>/next")
 def next_app(
     device_id: str,
@@ -911,7 +910,7 @@ def next_app(
         if last_app_index is None:
             abort(HTTPStatus.NOT_FOUND)
 
-    # treat em like an array
+    # if no apps return default.webp
     if "apps" not in device:
         response = send_file("static/images/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
@@ -973,6 +972,23 @@ def next_app(
     current_app.logger.error(f"file {webp_path} not found")
     # run it recursively until we get a file.
     return next_app(device_id, last_app_index, recursion_depth + 1)
+
+# manager.currentwebp
+@bp.route("/<string:device_id>/currentapp")
+def currentwebp(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    try:
+        user = g.user
+        device = user["devices"][device_id]
+        current_app_index = db.get_last_app_index(device_id)
+        apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
+        current_app_iname = apps_list[current_app_index]['iname']
+        return appwebp(device_id,current_app_iname)
+    except Exception as e:
+        current_app.logger.error(f"Exception: {str(e)}")
+        abort(HTTPStatus.NOT_FOUND)
 
 
 @bp.route("/<string:device_id>/<string:iname>/appwebp")
