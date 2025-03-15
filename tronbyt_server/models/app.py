@@ -1,4 +1,4 @@
-from typing import List, Required, TypedDict
+from typing import Any, Dict, List, Required, TypedDict
 
 
 class App(TypedDict, total=False):
@@ -15,3 +15,4 @@ class App(TypedDict, total=False):
     start_time: str
     end_time: str
     days: List[str]
+    config: Dict[str, Any]
