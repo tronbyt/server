@@ -462,7 +462,13 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     app = g.user["devices"][device_id]["apps"][iname]
-    return render_template("manager/updateapp.html", app=app, device_id=device_id)
+
+    return render_template(
+        "manager/updateapp.html",
+        app=app,
+        device_id=device_id,
+        config=json.dumps(app.get("config",{}), indent=4),
+    )
 
 
 def render_app(
