@@ -528,7 +528,7 @@ def server_root() -> str:
     return url
 
 
-# render if necessary, returns false on failure or empty render, true for all else
+# render if necessary, returns false on failure, true for all else
 def possibly_render(user: User, device_id: str, app: App) -> bool:
     if "pushed" in app:
         current_app.logger.debug("Pushed App -- NO RENDER")
