@@ -134,6 +134,22 @@
       toggleBtn.textContent = "Show Details";
     }
   }
+
+  // Function to reload the currentwebp image at the interval of app cycle time
+  function reloadCurrentWebp(deviceId, interval) {
+    const currentWebpImg = document.getElementById(`currentWebp-${deviceId}`);
+    setInterval(() => {
+      const timestamp = new Date().getTime(); // Prevent caching
+      currentWebpImg.src = `${currentWebpImg.dataset.src}?t=${timestamp}`;
+    }, interval * 1000);
+  }
+
+  // Initialize the reload function for each device
+  document.addEventListener("DOMContentLoaded", function() {
+    {% for device in devices %}
+      reloadCurrentWebp('{{ device['id'] }}', {{ device['default_interval'] }});
+    {% endfor %}
+  });
 </script>
 <h1>{% block title %}{% endblock %}</h1>
 {% endblock %}
@@ -154,6 +170,10 @@
               <h1>{{ device['name'] }}</h1>
             </header>
           </td>
+          <td rowspan="4" width="40%">
+            <div class="app-img"><img id="currentWebp-{{ device['id'] }}" data-src="{{url_for('manager.currentwebp', device_id=device['id']) }}" src="{{url_for('manager.currentwebp', device_id=device['id']) }}" alt="{{ _('Preview') }}"></div>
+            <br>Currently Displaying App
+          </td>
         </tr>
         <tr>
           <td>
@@ -162,9 +182,7 @@
             <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
               oninput="updateBrightnessValue(this.value)" onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
           </td>
-          <td rowspan="3" width="33%">
-            <div class="app-img"><img src="{{url_for('manager.currentwebp', device_id=device['id']) }}" alt="{{ _('Preview') }}"></div>
-          </td>
+
         </tr>
         <tr>
           <td>
