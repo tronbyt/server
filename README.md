@@ -84,6 +84,7 @@ That said, the recommended installation method uses Docker Compose with a config
 ### Notes
 
 - Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
+- To update your install to the latest version simply run `docker compose pull && docker compose up -d`
 
 ### Development
 
