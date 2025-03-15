@@ -49,6 +49,30 @@ def init_db() -> None:
         )
         conn.commit()
         current_app.logger.debug("Default JSON inserted for admin user")
+    else:
+        migrate_app_configs()
+
+
+def migrate_app_configs() -> None:
+    users = get_all_users()
+    users_dir = get_users_dir()
+    need_save = False
+    for user in users:
+        for device in user.get("devices", {}).values():
+            for app in device.get("apps", {}).values():
+                config_path = (
+                    users_dir
+                    / user["username"]
+                    / "configs"
+                    / f"{app['name']}-{app['iname']}.json"
+                )
+                if config_path.exists():
+                    with config_path.open("r") as config_file:
+                        app["config"] = json.load(config_file)
+                    config_path.unlink()
+                    need_save = True
+        if need_save:
+            save_user(user)
 
 
 def get_db() -> sqlite3.Connection:
@@ -154,23 +178,6 @@ def get_users_dir() -> Path:
     return Path(current_app.config["USERS_DIR"])
 
 
-# Ensure all apps have an "order" attribute
-# Earlier releases did not have this attribute,
-# so we need to ensure it exists to allow reordering of the app list.
-# Eventually, this function should be deleted.
-def ensure_app_order(user: User) -> None:
-    modified = False
-    for device in user.get("devices", {}).values():
-        apps = device.get("apps", {})
-        for idx, app in enumerate(apps.values()):
-            if "order" not in app:
-                app["order"] = idx
-                modified = True
-
-    if modified:
-        save_user(user)
-
-
 def get_user(username: str) -> Optional[User]:
     try:
         conn = get_db()
@@ -181,7 +188,6 @@ def get_user(username: str) -> Optional[User]:
         row = cursor.fetchone()
         if row:
             user: User = json.loads(row[0])
-            ensure_app_order(user)
             return user
         else:
             current_app.logger.error(f"{username} not found")
