@@ -51,7 +51,7 @@ value="{{ request.form['name'] or device['name'] }}" required>
 <span>
   <label for="installed_apps">{{ _('Night Mode App:') }}</label>
   <select name="night_mode_app" id="night_mode_app">
-    <option value="None">
+    <option value="None">{{ _('None') }}</option>
     {% if 'apps' in device %}
     {% for app in device['apps'].values() %}
       <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app'] == app['iname'] %}selected{% endif %}>
@@ -60,7 +60,7 @@ value="{{ request.form['name'] or device['name'] }}" required>
     {% endfor %}
     {% endif %}
   </select><br>
-  <small>To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.</small>
+  <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
 </span>
 <label for="body">{{ _('Notes') }}</label>
 <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">

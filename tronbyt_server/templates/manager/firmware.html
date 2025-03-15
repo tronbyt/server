@@ -7,7 +7,7 @@
 <p>{{ device['name'] }}</p>
 <label for="img_url">{{ _('Image URL:') }}</label>
 <p>{{ img_url }}</p>
-<label for="wifi_ap">{{ _('WiFi Network Name (AP):') }}</label> {{ ap }}<br>
+<label for="wifi_ap">{{ _('WiFi Network Name (SSID):') }}</label> {{ ap }}<br>
 <label for="wifi_password">{{ _('WiFi Password:') }}</label> {{ password }}<br>
 <h2><label for="firmware">{{ _('Firmware File:') }}</label> <a href="{{ url_for('manager.download_firmware', device_id=device['id']) }}">{{ _('DOWNLOAD FIRMWARE FILE') }}</a></h2>
 <h2>{{ _('Download ESPHome Flasher here') }} <a href="https://github.com/esphome/esphome-flasher/releases">ESPHome Flasher</a></h2>

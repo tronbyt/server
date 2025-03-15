@@ -158,7 +158,7 @@
       {% endif %}
       <p class="body">{{ _('API ID:') }} {{ device['id'] }}</p>
       {% if not device['api_key'] == "" %}
-      <p class="body">{{ _('API KEY:') }} {{ device['api_key'] }}</p>
+      <p class="body">{{ _('API Key') }}: {{ device['api_key'] }}</p>
       {% endif %}
       {% if device['notes'] != '' %}
       <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
