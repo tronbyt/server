@@ -48,6 +48,19 @@
       margin: 10px 0;
     }
   }
+
+  /* Styles for collapsible content */
+  .hidden {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+  }
+
+  .visible {
+    display: block;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+  }
 </style>
 
 <!-- ...existing script code... -->
@@ -107,9 +120,22 @@
       });
   }
 
+  // Function to toggle the visibility of the device details
+  function toggleDetails(deviceId) {
+    const details = document.getElementById(`details-${deviceId}`);
+    const toggleBtn = document.getElementById(`toggleBtn-${deviceId}`);
+    if (details.classList.contains("hidden")) {
+      details.classList.remove("hidden");
+      details.classList.add("visible");
+      toggleBtn.textContent = "Hide Details";
+    } else {
+      details.classList.remove("visible");
+      details.classList.add("hidden");
+      toggleBtn.textContent = "Show Details";
+    }
+  }
 </script>
 <h1>{% block title %}{% endblock %}</h1>
-
 {% endblock %}
 {% block content %}
 {% if g.user %}
@@ -123,46 +149,50 @@
     <div>
       <header>
         <h1>{{ device['name'] }}</h1>
-<div>
+      </header>
+
+      <div>
         <label for="brightness">{{ _('Brightness') }}</label> =
         <span id="brightnessValue">{{device['brightness'] }}</span><br>
         <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
           oninput="updateBrightnessValue(this.value)" onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
-</div>
-<div>
+      </div>
+      <div>
         <label for="default_interval">{{ _('App Cycle Time (Seconds)') }}</label> = <span id="intervalValue">{{
           device['default_interval'] }} </span> s<br>
         <input type="range" name="default_interval" id="default_interval" min="1" max="30"
           value="{{ device['default_interval'] }}" oninput="updateIntervalValue(this.value)"
           onmouseup="updateInterval('{{ device['id'] }}', this.value)">
-                </div>
-          <table>
-          <tr>
-            <td>
-              <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a>
-              <a class="w3-button w3-teal w3-round"
-                style="min-width: 100px;" href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
-              <a class="w3-button w3-teal w3-round"
-                style="min-width: 100px;" href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
-            </td>
-          </tr>
-        </table>
-      </header>
+      </div>
+      <table>
+        <tr>
+          <td>
+        <button id="toggleBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round" onclick="toggleDetails('{{ device['id'] }}')">Show Details</button>
 
-      {% if not device['img_url'].startswith('http') %}
-      <p class="body">{{ _('Image URL:') }} {{ server_root }}{{ device['img_url'] }} - <a
-          href="{{ server_root }}{{ device['img_url'] }}">{{ _('Test!') }}</a>
-      {% else %}
-      <p class="body">{{ _('Image URL:') }} {{ device['img_url'] }} - <a href="{{ device['img_url'] }}">{{ _('Test!') }}</a></p>
-      {% endif %}
-      <p class="body">{{ _('API ID:') }} {{ device['id'] }}</p>
-      {% if not device['api_key'] == "" %}
-      <p class="body">{{ _('API KEY:') }} {{ device['api_key'] }}</p>
-      {% endif %}
-      {% if device['notes'] != '' %}
-      <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
-      {% endif %}
+            <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
+              href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a>
+            <a class="w3-button w3-teal w3-round"
+              style="min-width: 100px;" href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
+            <a class="w3-button w3-teal w3-round"
+              style="min-width: 100px;" href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
+          </td>
+        </tr>
+              <div id="details-{{ device['id'] }}" class="hidden">
+        {% if not device['img_url'].startswith('http') %}
+        <p class="body">{{ _('Image URL:') }} {{ server_root }}{{ device['img_url'] }} - <a
+            href="{{ server_root }}{{ device['img_url'] }}">{{ _('Test!') }}</a>
+        {% else %}
+        <p class="body">{{ _('Image URL:') }} {{ device['img_url'] }} - <a href="{{ device['img_url'] }}">{{ _('Test!') }}</a></p>
+        {% endif %}
+        <p class="body">{{ _('API ID:') }} {{ device['id'] }}</p>
+        {% if not device['api_key'] == "" %}
+        <p class="body">{{ _('API KEY:') }} {{ device['api_key'] }}</p>
+        {% endif %}
+        {% if device['notes'] != '' %}
+        <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
+        {% endif %}
+      </div>
+      </table>
       {% if 'apps' in device %}
       {% for app in device['apps'].values()|sort(attribute='order') %}
       <div class="w3-card-4 w3-padding">
