@@ -78,10 +78,9 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
     # Print out the whole request
-    current_app.logger.debug("Headers:", request.headers)
+    current_app.logger.debug(f"Headers: {request.headers}")
     # current_app.logger.debug("JSON Data:", request.get_json())
-    current_app.logger.debug("Body:", request.get_data(as_text=True))
-
+    current_app.logger.debug(f"Body: {request.get_data(as_text=True)}")
     # get api_key from Authorization header
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
