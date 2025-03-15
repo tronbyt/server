@@ -527,6 +527,7 @@ def server_root() -> str:
         url += f":{port}"
     return url
 
+
 # render if necessary, returns false on failure or empty render, true for all else
 def possibly_render(user: User, device_id: str, app: App) -> bool:
     if "pushed" in app:
@@ -561,7 +562,7 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         # always update the config with the new last render time
         app["last_render"] = now
         db.save_user(user)
-        return success # return false if error
+        return success  # return false if error
 
     current_app.logger.debug(f"{app_basename} -- NO RENDER")
     return True
@@ -986,7 +987,9 @@ def next_app(
         if s == 0:
             s = device.get("default_interval", 5)
         response.headers["Tronbyt-Dwell-Secs"] = s
-        current_app.logger.debug(f"brightness {b} -- dwell seconds {s} -- app index is {last_app_index}")
+        current_app.logger.debug(
+            f"brightness {b} -- dwell seconds {s} -- app index is {last_app_index}"
+        )
         db.save_last_app_index(device_id, last_app_index)
         return response
 
