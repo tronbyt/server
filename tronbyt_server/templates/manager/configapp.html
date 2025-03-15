@@ -3,6 +3,7 @@
 <h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
+<pre class="flash">{{config}}</pre>
 <form method="post">
     <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
 <input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
