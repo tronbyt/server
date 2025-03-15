@@ -728,9 +728,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             # save location as default if checked
             device = g.user["devices"][device_id]
             if request.form.get("location_as_default", None):
-                j = json.loads(new_config)
-                if "location" in j:
-                    device["location"] = j["location"]
+                if "location" in new_config:
+                    device["location"] = new_config["location"]
 
             # delete the tmp file
             tmp_config_path.unlink()
