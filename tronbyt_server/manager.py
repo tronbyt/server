@@ -992,7 +992,7 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
     try:
         user = g.user
         device = user["devices"][device_id]
-        current_app_index = db.get_last_app_index(device_id)
+        current_app_index = db.get_last_app_index(device_id) or 0
         apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
         current_app_iname = apps_list[current_app_index]["iname"]
         return appwebp(device_id, current_app_iname)
