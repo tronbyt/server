@@ -299,17 +299,15 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     users_dir = db.get_users_dir()
-    config_base = f"{g.user['devices'][device_id]['apps'][iname]['name']}-{g.user['devices'][device_id]['apps'][iname]['iname']}.json"
-    config_path = users_dir / g.user["username"] / "configs" / f"{config_base}.json"
-    tmp_config_path = users_dir / g.user["username"] / "configs" / f"{config_base}.tmp"
+    device = g.user["devices"][device_id]
+    app = device["apps"][iname]
 
-    if config_path.is_file():
-        config_path.unlink()
+    tmp_config_path = (
+        users_dir / g.user["username"] / "configs" / f"{app['name']}-{app['iname']}.tmp"
+    )
+
     if tmp_config_path.is_file():
         tmp_config_path.unlink()
-
-    device = g.user["devices"][device_id]
-    app = g.user["devices"][device_id]["apps"][iname]
 
     if "pushed" in app:
         webp_path = (
@@ -323,7 +321,7 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     if webp_path.is_file():
         webp_path.unlink()
 
-    g.user["devices"][device_id]["apps"].pop(iname)
+    device["apps"].pop(iname)
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
 
