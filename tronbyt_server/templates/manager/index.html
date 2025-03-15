@@ -191,8 +191,8 @@
             <td width="33%"><br><div class="app-img"><img
                 src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="{{ _('Preview') }}"></div>
               <br>
-              {{ _('Last Rendered:') }} {{ app.get('last_render',0)|timeago }}
-      </div>
+              {% if app.get('empty_last_render') %}{{_('No output for ') }}{% endif %}
+              {{ _('Last Render:') }} {{ app.get('last_render',0)|timeago }}
       </li>
       </td>
       </tr>

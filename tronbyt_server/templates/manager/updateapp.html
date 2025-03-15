@@ -16,7 +16,7 @@
   <div><input type="number" name="display_time" id="display_time" min="0" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
 
   <label for="notes">{{ _('Notes: ') }}</label>
-  <textarea name="notes" id="notes">{{ request.form['notes'] or app['notes'] }}</textarea>
+  <input name="notes" id="notes" value="{{request.form['notes'] or app['notes'] }}" >
 
   <!-- Schedule Section -->
   <h2>{{ _('Schedule') }}</h2>
