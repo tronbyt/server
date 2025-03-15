@@ -178,23 +178,6 @@ def get_users_dir() -> Path:
     return Path(current_app.config["USERS_DIR"])
 
 
-# Ensure all apps have an "order" attribute
-# Earlier releases did not have this attribute,
-# so we need to ensure it exists to allow reordering of the app list.
-# Eventually, this function should be deleted.
-def ensure_app_order(user: User) -> None:
-    modified = False
-    for device in user.get("devices", {}).values():
-        apps = device.get("apps", {})
-        for idx, app in enumerate(apps.values()):
-            if "order" not in app:
-                app["order"] = idx
-                modified = True
-
-    if modified:
-        save_user(user)
-
-
 def get_user(username: str) -> Optional[User]:
     try:
         conn = get_db()
@@ -205,7 +188,6 @@ def get_user(username: str) -> Optional[User]:
         row = cursor.fetchone()
         if row:
             user: User = json.loads(row[0])
-            ensure_app_order(user)
             return user
         else:
             current_app.logger.error(f"{username} not found")

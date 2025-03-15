@@ -299,18 +299,9 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     users_dir = db.get_users_dir()
-    config_path = (
-        users_dir
-        / g.user["username"]
-        / "configs"
-        / f"{g.user['devices'][device_id]['apps'][iname]['name']}-{g.user['devices'][device_id]['apps'][iname]['iname']}.json"
-    )
-    tmp_config_path = (
-        users_dir
-        / g.user["username"]
-        / "configs"
-        / f"{g.user['devices'][device_id]['apps'][iname]['name']}-{g.user['devices'][device_id]['apps'][iname]['iname']}.tmp"
-    )
+    config_base = f"{g.user['devices'][device_id]['apps'][iname]['name']}-{g.user['devices'][device_id]['apps'][iname]['iname']}.json"
+    config_path = users_dir / g.user["username"] / "configs" / f"{config_base}.json"
+    tmp_config_path = users_dir / g.user["username"] / "configs" / f"{config_base}.tmp"
 
     if config_path.is_file():
         config_path.unlink()
@@ -359,20 +350,18 @@ def addapp(device_id: str) -> ResponseReturnValue:
         display_time = request.form.get("display_time")
         notes = request.form.get("notes")
 
-        iname = str(randint(100, 999))
-
         if not name:
             flash("App name required.")
-            return redirect(
-                url_for(
-                    "manager.addapp",
-                    device_id=device_id,
-                )
-            )
+            return redirect(url_for("manager.addapp", device_id=device_id))
 
-        config_path = Path("configs") / secure_filename(f"{name}-{iname}.json")
-        if config_path.exists():
-            flash("That installation id already exists")
+        # Generate a unique iname
+        max_attempts = 10
+        for _ in range(max_attempts):
+            iname = str(randint(100, 999))
+            if iname not in g.user["devices"][device_id].get("apps", {}):
+                break
+        else:
+            flash("Could not generate a unique installation ID.")
             return redirect(
                 url_for(
                     "manager.addapp",
@@ -535,7 +524,6 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         return True
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
-    config_path = Path("users") / user["username"] / "configs" / f"{app_basename}.json"
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
     webp_path = webp_device_path / f"{app_basename}.webp"
@@ -553,7 +541,7 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
     if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
         device = user["devices"][device_id]
-        config = load_app_config(app, config_path, device)
+        config = load_app_config(app, device)
         success, empty = render_app(app_path, config, webp_path, device)
         if not success:
             current_app.logger.error(f"Error rendering {app_basename}")
@@ -640,22 +628,8 @@ def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]
     return config
 
 
-def load_app_config(app: App, config_file: Path, device: Device) -> dict[str, Any]:
-    config = app.get("config")
-    if config is None:
-        if config_file.exists():
-            with config_file.open("r") as c:
-                config = json.load(c)
-        if not config:
-            config = {}
-        app["config"] = config
-        # guard against calling save_user during unauthenicated requests
-        if g.user:
-            db.save_user(g.user)
-    else:
-        config = config.copy()
-    add_default_config(config, device)
-    return config
+def load_app_config(app: App, device: Device) -> Dict[str, Any]:
+    return add_default_config(app.get("config", {}).copy(), device)
 
 
 @bp.route(
@@ -690,7 +664,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             / "apps"
             / "{}/{}.star".format(app["name"].replace("_", ""), app["name"])
         )
-    config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.json"
     tmp_config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.tmp"
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
@@ -722,8 +695,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                 new_config = json.load(c)
             # remove internal settings like `$tz` and `$watch` from the stored config
             new_config = {k: v for k, v in new_config.items() if not k.startswith("$")}
-            with config_path.open("w") as config_file:
-                json.dump(new_config, config_file)
             app["config"] = new_config
             db.save_user(g.user)
 
@@ -763,7 +734,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             return redirect(url_for("manager.index"))
 
         device = g.user["devices"][device_id]
-        config_dict = load_app_config(app, config_path, device)
+        config_dict = load_app_config(app, device)
         config_dict["$watch"] = "false"
         url_params = urlencode(config_dict)
 
