@@ -528,6 +528,7 @@ def server_root() -> str:
     return url
 
 
+# render if necessary, returns false on failure, true for all else
 def possibly_render(user: User, device_id: str, app: App) -> bool:
     if "pushed" in app:
         current_app.logger.debug("Pushed App -- NO RENDER")
@@ -551,15 +552,17 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
 
     if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
-        # always update the config with the new last render time
-        app["last_render"] = now
-        db.save_user(user)
         device = user["devices"][device_id]
         config = load_app_config(app, config_path, device)
         success, empty = render_app(app_path, config, webp_path, device)
         if not success:
             current_app.logger.error(f"Error rendering {app_basename}")
-        return success and not empty
+        # set the empty flag in the app whilst keeping last render image
+        app["empty_last_render"] = empty
+        # always update the config with the new last render time
+        app["last_render"] = now
+        db.save_user(user)
+        return success  # return false if error
 
     current_app.logger.debug(f"{app_basename} -- NO RENDER")
     return True
@@ -960,7 +963,8 @@ def next_app(
         current_app.logger.debug(f"{app['name']}-{app['iname']} is disabled")
         return next_app(device_id, last_app_index, recursion_depth + 1)
 
-    if not possibly_render(user, device_id, app):
+    # render if necessary, returns false on failure, true for all else
+    if not possibly_render(user, device_id, app) or app.get("empty_last_render", False):
         # try the next app if rendering failed or produced an empty result (no screens)
         return next_app(device_id, last_app_index, recursion_depth + 1)
 
@@ -978,14 +982,14 @@ def next_app(
     if webp_path.exists() and webp_path.stat().st_size > 0:
         response = send_file(webp_path, mimetype="image/webp")
         b = db.get_device_brightness_8bit(device)
-        current_app.logger.debug(f"sending brightness {b} -- ")
         response.headers["Tronbyt-Brightness"] = b
         s = app.get("display_time", 0)
         if s == 0:
             s = device.get("default_interval", 5)
-        current_app.logger.debug(f"sending dwell seconds {s} -- ")
         response.headers["Tronbyt-Dwell-Secs"] = s
-        current_app.logger.debug(f"app index is {last_app_index}")
+        current_app.logger.debug(
+            f"brightness {b} -- dwell seconds {s} -- app index is {last_app_index}"
+        )
         db.save_last_app_index(device_id, last_app_index)
         return response
 

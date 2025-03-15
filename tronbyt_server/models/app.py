@@ -16,3 +16,4 @@ class App(TypedDict, total=False):
     end_time: str
     days: List[str]
     config: Dict[str, Any]
+    empty_last_render: bool
