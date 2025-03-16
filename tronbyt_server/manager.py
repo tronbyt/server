@@ -360,7 +360,12 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 break
         else:
             flash("Could not generate a unique installation ID.")
-            return redirect(url_for("manager.addapp", device_id=device_id))
+            return redirect(
+                url_for(
+                    "manager.addapp",
+                    device_id=device_id,
+                )
+            )
 
         app = App(
             name=name,
