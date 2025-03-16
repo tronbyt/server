@@ -77,11 +77,11 @@
       if (configContent.classList.contains("hidden")) {
         configContent.classList.remove("hidden");
         configContent.classList.add("visible");
-        toggleBtn.textContent = "Hide Starlark Config";
+        toggleBtn.textContent = "{{ _('Hide App Config') }}";
       } else {
         configContent.classList.remove("visible");
         configContent.classList.add("hidden");
-        toggleBtn.textContent = "Show Starlark Config";
+        toggleBtn.textContent = "{{ _('Show App Config') }}";
       }
     });
   });

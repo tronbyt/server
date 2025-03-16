@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-03-15 21:47+0000\n"
+"POT-Creation-Date: 2025-03-16 18:49+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -22,25 +22,25 @@ msgstr ""
 msgid "Never"
 msgstr "Nie"
 
-#: tronbyt_server/templates/base.html:57
+#: tronbyt_server/templates/base.html:58
 msgid "Tronbyt Manager (Beta)"
 msgstr "Tronbyt Manager (Beta)"
 
-#: tronbyt_server/templates/base.html:60
+#: tronbyt_server/templates/base.html:61
 msgid "Home"
 msgstr "Home"
 
-#: tronbyt_server/templates/base.html:61
+#: tronbyt_server/templates/base.html:62
 msgid "Create User"
 msgstr "Benutzer anlegen"
 
-#: tronbyt_server/templates/base.html:63
+#: tronbyt_server/templates/base.html:64
 msgid "Log Out"
 msgstr "Abmelden"
 
 #: tronbyt_server/templates/auth/login.html:3
 #: tronbyt_server/templates/auth/login.html:11
-#: tronbyt_server/templates/base.html:65
+#: tronbyt_server/templates/base.html:66
 msgid "Log In"
 msgstr "Anmelden"
 
@@ -63,10 +63,10 @@ msgstr ""
 #: tronbyt_server/templates/auth/edit.html:11
 #: tronbyt_server/templates/auth/edit.html:22
 #: tronbyt_server/templates/auth/edit.html:34
-#: tronbyt_server/templates/manager/configapp.html:14
+#: tronbyt_server/templates/manager/configapp.html:23
 #: tronbyt_server/templates/manager/create.html:19
 #: tronbyt_server/templates/manager/update.html:69
-#: tronbyt_server/templates/manager/updateapp.html:40
+#: tronbyt_server/templates/manager/updateapp.html:50
 msgid "Save"
 msgstr "Speichern"
 
@@ -123,7 +123,7 @@ msgstr "E-Mail-Adresse (optional)"
 
 #: tronbyt_server/templates/manager/addapp.html:3
 #: tronbyt_server/templates/manager/adminindex.html:34
-#: tronbyt_server/templates/manager/index.html:145
+#: tronbyt_server/templates/manager/index.html:202
 msgid "Add App"
 msgstr "App hinzufügen"
 
@@ -164,12 +164,12 @@ msgid "Notes"
 msgstr "Notizen"
 
 #: tronbyt_server/templates/manager/addapp.html:82
-#: tronbyt_server/templates/manager/index.html:203
+#: tronbyt_server/templates/manager/index.html:260
 msgid "Configure"
 msgstr "Konfigurieren"
 
 #: tronbyt_server/templates/manager/adminindex.html:8
-#: tronbyt_server/templates/manager/index.html:116
+#: tronbyt_server/templates/manager/index.html:158
 msgid "New Tronbyt"
 msgstr "Neuer Tronbyt"
 
@@ -178,30 +178,30 @@ msgid "Delete User?"
 msgstr "Benutzer löschen?"
 
 #: tronbyt_server/templates/manager/adminindex.html:18
-#: tronbyt_server/templates/manager/index.html:205
+#: tronbyt_server/templates/manager/index.html:262
 #: tronbyt_server/templates/manager/update.html:74
-#: tronbyt_server/templates/manager/updateapp.html:44
+#: tronbyt_server/templates/manager/updateapp.html:54
 #: tronbyt_server/templates/manager/uploadapp.html:14
 msgid "Delete"
 msgstr "Löschen"
 
 #: tronbyt_server/templates/manager/adminindex.html:32
-#: tronbyt_server/templates/manager/index.html:143
-#: tronbyt_server/templates/manager/index.html:201
+#: tronbyt_server/templates/manager/index.html:200
+#: tronbyt_server/templates/manager/index.html:258
 #: tronbyt_server/templates/manager/update.html:3
 #: tronbyt_server/templates/manager/updateapp.html:3
 msgid "Edit"
 msgstr "Bearbeiten"
 
 #: tronbyt_server/templates/manager/adminindex.html:39
-#: tronbyt_server/templates/manager/index.html:159
+#: tronbyt_server/templates/manager/index.html:215
 msgid "API ID:"
 msgstr "API-ID:"
 
 #: tronbyt_server/templates/manager/adminindex.html:42
 #: tronbyt_server/templates/manager/adminindex.html:63
-#: tronbyt_server/templates/manager/index.html:164
-#: tronbyt_server/templates/manager/index.html:188
+#: tronbyt_server/templates/manager/index.html:220
+#: tronbyt_server/templates/manager/index.html:245
 msgid "Notes:"
 msgstr "Notizen:"
 
@@ -210,33 +210,34 @@ msgid "installation id"
 msgstr "Installations-ID"
 
 #: tronbyt_server/templates/manager/adminindex.html:55
-#: tronbyt_server/templates/manager/index.html:177
+#: tronbyt_server/templates/manager/index.html:234
 msgid "Enabled"
 msgstr "Aktiviert"
 
 #: tronbyt_server/templates/manager/adminindex.html:56
-#: tronbyt_server/templates/manager/index.html:179
+#: tronbyt_server/templates/manager/index.html:236
 msgid "Disabled"
 msgstr "Deaktiviert"
 
 #: tronbyt_server/templates/manager/adminindex.html:59
-#: tronbyt_server/templates/manager/index.html:183
+#: tronbyt_server/templates/manager/index.html:240
 msgid "App:"
 msgstr "App:"
 
 #: tronbyt_server/templates/manager/adminindex.html:60
-#: tronbyt_server/templates/manager/index.html:184
+#: tronbyt_server/templates/manager/index.html:241
 msgid "Render Interval (minutes):"
 msgstr "Render-Intervall (Minuten):"
 
 #: tronbyt_server/templates/manager/adminindex.html:61
-#: tronbyt_server/templates/manager/index.html:185
+#: tronbyt_server/templates/manager/index.html:242
 msgid "Display Time (secs):"
 msgstr "Anzeigedauer (Sekunden):"
 
 #: tronbyt_server/templates/manager/adminindex.html:66
-#: tronbyt_server/templates/manager/index.html:192
-#: tronbyt_server/templates/manager/updateapp.html:11
+#: tronbyt_server/templates/manager/index.html:174
+#: tronbyt_server/templates/manager/index.html:249
+#: tronbyt_server/templates/manager/updateapp.html:21
 msgid "Preview"
 msgstr "Vorschau"
 
@@ -245,20 +246,20 @@ msgid "Last Rendered:"
 msgstr "Zuletzt gerendert:"
 
 #: tronbyt_server/templates/manager/configapp.html:3
-#: tronbyt_server/templates/manager/configapp.html:8
+#: tronbyt_server/templates/manager/configapp.html:17
 msgid "Configuring"
 msgstr "Konfigurieren"
 
-#: tronbyt_server/templates/manager/configapp.html:12
+#: tronbyt_server/templates/manager/configapp.html:21
 msgid "Save picked location as device default?"
 msgstr "Ausgewählten Standort als Geräte-Standard speichern?"
 
-#: tronbyt_server/templates/manager/configapp.html:18
-#: tronbyt_server/templates/manager/configapp.html:22
+#: tronbyt_server/templates/manager/configapp.html:27
+#: tronbyt_server/templates/manager/configapp.html:31
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: tronbyt_server/templates/manager/configapp.html:26
+#: tronbyt_server/templates/manager/configapp.html:35
 msgid "Pixlet Serve"
 msgstr "Pixlet-Dienst"
 
@@ -299,8 +300,8 @@ msgid "Name:"
 msgstr "Name:"
 
 #: tronbyt_server/templates/manager/firmware.html:8
-#: tronbyt_server/templates/manager/index.html:154
-#: tronbyt_server/templates/manager/index.html:157
+#: tronbyt_server/templates/manager/index.html:210
+#: tronbyt_server/templates/manager/index.html:213
 msgid "Image URL:"
 msgstr "Bild-URL:"
 
@@ -364,60 +365,71 @@ msgstr "Farben tauschen (nur Gen1)?"
 msgid "Generate Firmware File"
 msgstr "Firmware-Datei generieren"
 
-#: tronbyt_server/templates/manager/index.html:117
+#: tronbyt_server/templates/manager/index.html:130
+msgid "Hide Details"
+msgstr "Details ausblenden"
+
+#: tronbyt_server/templates/manager/index.html:134
+msgid "Show Details"
+msgstr "Details anzeigen"
+
+#: tronbyt_server/templates/manager/index.html:159
 msgid "Upload .star file"
 msgstr ".star-Datei hochladen"
 
-#: tronbyt_server/templates/manager/index.html:127
+#: tronbyt_server/templates/manager/index.html:175
+msgid "Currently Displaying App"
+msgstr "Derzeit angezeigte App"
+
+#: tronbyt_server/templates/manager/index.html:180
 #: tronbyt_server/templates/manager/update.html:22
 msgid "Brightness"
 msgstr "Helligkeit"
 
-#: tronbyt_server/templates/manager/index.html:133
+#: tronbyt_server/templates/manager/index.html:189
 #: tronbyt_server/templates/manager/update.html:17
 msgid "App Cycle Time (Seconds)"
 msgstr "App-Zykluszeit (Sekunden)"
 
-#: tronbyt_server/templates/manager/index.html:147
+#: tronbyt_server/templates/manager/index.html:204
 msgid "Firmware"
 msgstr "Firmware"
 
-#: tronbyt_server/templates/manager/index.html:155
-#: tronbyt_server/templates/manager/index.html:157
+#: tronbyt_server/templates/manager/index.html:211
+#: tronbyt_server/templates/manager/index.html:213
 msgid "Test!"
 msgstr "Testen!"
 
-#: tronbyt_server/templates/manager/index.html:161
-#: tronbyt_server/templates/manager/update.html:67
-msgid "API Key"
+#: tronbyt_server/templates/manager/index.html:217
+msgid "API Key:"
 msgstr "API Schlüssel"
 
-#: tronbyt_server/templates/manager/index.html:178
+#: tronbyt_server/templates/manager/index.html:235
 msgid "Disable"
 msgstr "Deaktivieren"
 
-#: tronbyt_server/templates/manager/index.html:180
+#: tronbyt_server/templates/manager/index.html:237
 msgid "Enable"
 msgstr "Aktivieren"
 
-#: tronbyt_server/templates/manager/index.html:194
+#: tronbyt_server/templates/manager/index.html:251
 msgid "No output for "
 msgstr "Keine Ausgabe für "
 
-#: tronbyt_server/templates/manager/index.html:195
+#: tronbyt_server/templates/manager/index.html:252
 msgid "Last Render:"
 msgstr "Zuletzt gerendert:"
 
-#: tronbyt_server/templates/manager/index.html:204
-#: tronbyt_server/templates/manager/updateapp.html:44
+#: tronbyt_server/templates/manager/index.html:261
+#: tronbyt_server/templates/manager/updateapp.html:54
 msgid "Delete App?"
 msgstr "App löschen?"
 
-#: tronbyt_server/templates/manager/index.html:207
+#: tronbyt_server/templates/manager/index.html:264
 msgid "Move Up"
 msgstr "Nach oben"
 
-#: tronbyt_server/templates/manager/index.html:210
+#: tronbyt_server/templates/manager/index.html:267
 msgid "Move Down"
 msgstr "Nach unten"
 
@@ -465,73 +477,85 @@ msgstr ""
 "Um zu verhindern, dass die Nachtmodus-App tagsüber angezeigt wird, setzen"
 " Sie sie auf der App-Bearbeitungsseite auf deaktiviert."
 
+#: tronbyt_server/templates/manager/update.html:67
+msgid "API Key"
+msgstr "API Schlüssel"
+
 #: tronbyt_server/templates/manager/update.html:74
 msgid "Delete device and ALL apps ?"
 msgstr "Gerät und alle Apps löschen?"
 
-#: tronbyt_server/templates/manager/updateapp.html:9
+#: tronbyt_server/templates/manager/updateapp.html:19
 msgid "Enabled: "
 msgstr "Aktiviert:"
 
-#: tronbyt_server/templates/manager/updateapp.html:12
+#: tronbyt_server/templates/manager/updateapp.html:22
 msgid "Render Interval Minutes (Update every X minutes)"
 msgstr "Render-Intervall Minuten (Aktualisierung alle X Minuten)"
 
-#: tronbyt_server/templates/manager/updateapp.html:15
+#: tronbyt_server/templates/manager/updateapp.html:25
 msgid "Display Time Seconds (0 for device default)"
 msgstr "Anzeigedauer Sekunden (0 für Gerätestandard)"
 
-#: tronbyt_server/templates/manager/updateapp.html:18
+#: tronbyt_server/templates/manager/updateapp.html:28
 msgid "Notes: "
 msgstr "Notizen:"
 
-#: tronbyt_server/templates/manager/updateapp.html:22
+#: tronbyt_server/templates/manager/updateapp.html:32
 msgid "Schedule"
 msgstr "Zeitplan"
 
-#: tronbyt_server/templates/manager/updateapp.html:23
+#: tronbyt_server/templates/manager/updateapp.html:33
 msgid "Start Time"
 msgstr "Startzeit"
 
-#: tronbyt_server/templates/manager/updateapp.html:26
+#: tronbyt_server/templates/manager/updateapp.html:36
 msgid "End Time"
 msgstr "Endzeit"
 
-#: tronbyt_server/templates/manager/updateapp.html:29
+#: tronbyt_server/templates/manager/updateapp.html:39
 msgid "Active Days"
 msgstr "Aktive Tage"
 
-#: tronbyt_server/templates/manager/updateapp.html:29
+#: tronbyt_server/templates/manager/updateapp.html:39
 msgid "(none selected is ALL selected)"
 msgstr "(keine Auswahl bedeutet ALLE ausgewählt)"
 
-#: tronbyt_server/templates/manager/updateapp.html:31
+#: tronbyt_server/templates/manager/updateapp.html:41
 msgid "Monday"
 msgstr "Montag"
 
-#: tronbyt_server/templates/manager/updateapp.html:32
+#: tronbyt_server/templates/manager/updateapp.html:42
 msgid "Tuesday"
 msgstr "Dienstag"
 
-#: tronbyt_server/templates/manager/updateapp.html:33
+#: tronbyt_server/templates/manager/updateapp.html:43
 msgid "Wednesday"
 msgstr "Mittwoch"
 
-#: tronbyt_server/templates/manager/updateapp.html:34
+#: tronbyt_server/templates/manager/updateapp.html:44
 msgid "Thursday"
 msgstr "Donnerstag"
 
-#: tronbyt_server/templates/manager/updateapp.html:35
+#: tronbyt_server/templates/manager/updateapp.html:45
 msgid "Friday"
 msgstr "Freitag"
 
-#: tronbyt_server/templates/manager/updateapp.html:36
+#: tronbyt_server/templates/manager/updateapp.html:46
 msgid "Saturday"
 msgstr "Samstag"
 
-#: tronbyt_server/templates/manager/updateapp.html:37
+#: tronbyt_server/templates/manager/updateapp.html:47
 msgid "Sunday"
 msgstr "Sonntag"
+
+#: tronbyt_server/templates/manager/updateapp.html:80
+msgid "Hide App Config"
+msgstr "App-Konfiguration ausblenden"
+
+#: tronbyt_server/templates/manager/updateapp.html:84
+msgid "Show App Config"
+msgstr "App-Konfiguration anzeigen"
 
 #: tronbyt_server/templates/manager/uploadapp.html:3
 msgid "Upload App (.star files only)"
