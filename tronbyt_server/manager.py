@@ -858,9 +858,6 @@ def get_brightness(device_id: str) -> ResponseReturnValue:
     return Response(str(brightness_value), mimetype="text/plain")
 
 
-MAX_RECURSION_DEPTH = 10
-
-
 @bp.route("/<string:device_id>/next")
 def next_app(
     device_id: str,
@@ -891,9 +888,9 @@ def next_app(
             ephemeral_file.unlink()
             return response
 
-    if recursion_depth > MAX_RECURSION_DEPTH:
+    if recursion_depth > len(device.get("apps", {})):
         current_app.logger.warning(
-            "Maximum recursion depth exceeded, sending default webp"
+            "Maximum recursion depth exceeded, sending default image"
         )
         response = send_file("static/images/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
