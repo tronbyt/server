@@ -362,21 +362,6 @@ def addapp(device_id: str) -> ResponseReturnValue:
             flash("Could not generate a unique installation ID.")
             return redirect(url_for("manager.addapp", device_id=device_id))
 
-        # Generate a unique iname
-        max_attempts = 10
-        for _ in range(max_attempts):
-            iname = str(randint(100, 999))
-            if iname not in g.user["devices"][device_id].get("apps", {}):
-                break
-        else:
-            flash("Could not generate a unique installation ID.")
-            return redirect(
-                url_for(
-                    "manager.addapp",
-                    device_id=device_id,
-                )
-            )
-
         app = App(
             name=name,
             iname=iname,
