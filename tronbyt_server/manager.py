@@ -1123,7 +1123,9 @@ def refresh_system_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if g.user["username"] != "admin":
             abort(HTTPStatus.FORBIDDEN)
-        if set_repo("system_repo_url", Path("system-apps"), g.user["system_repo_url"]):
+        if set_repo(
+            "system_repo_url", Path("system-apps"), g.user.get("system_repo_url", "")
+        ):
             # run the generate app list for custom repo
             # will just generate json file if already there.
             subprocess.run(["python3", "clone_system_apps_repo.py"])
@@ -1137,7 +1139,7 @@ def refresh_system_repo() -> ResponseReturnValue:
 def refresh_user_repo() -> ResponseReturnValue:
     if request.method == "POST":
         apps_path = db.get_users_dir() / g.user["username"] / "apps"
-        if set_repo("app_repo_url", apps_path, g.user["app_repo_url"]):
+        if set_repo("app_repo_url", apps_path, g.user.get("app_repo_url", "")):
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
