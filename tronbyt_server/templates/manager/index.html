@@ -195,7 +195,7 @@
         </tr>
         <tr>
           <td>
-            <button id="toggleBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round" onclick="toggleDetails('{{ device['id'] }}')">Show Details</button>
+            <button id="toggleBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round" onclick="toggleDetails('{{ device['id'] }}')">{{ _('Show Details') }}</button>
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a>
             <a class="w3-button w3-teal w3-round"

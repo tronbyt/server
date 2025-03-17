@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-03-16 18:49+0000\n"
+"POT-Creation-Date: 2025-03-17 11:43+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -250,6 +250,13 @@ msgstr "Zuletzt gerendert:"
 msgid "Configuring"
 msgstr "Konfigurieren"
 
+#: tronbyt_server/templates/manager/configapp.html:9
+#: tronbyt_server/templates/manager/configapp.html:63
+#: tronbyt_server/templates/manager/updateapp.html:9
+#: tronbyt_server/templates/manager/updateapp.html:84
+msgid "Show App Config"
+msgstr "App-Konfiguration anzeigen"
+
 #: tronbyt_server/templates/manager/configapp.html:21
 msgid "Save picked location as device default?"
 msgstr "Ausgewählten Standort als Geräte-Standard speichern?"
@@ -262,6 +269,11 @@ msgstr "Abbrechen"
 #: tronbyt_server/templates/manager/configapp.html:35
 msgid "Pixlet Serve"
 msgstr "Pixlet-Dienst"
+
+#: tronbyt_server/templates/manager/configapp.html:59
+#: tronbyt_server/templates/manager/updateapp.html:80
+msgid "Hide App Config"
+msgstr "App-Konfiguration ausblenden"
 
 #: tronbyt_server/templates/manager/create.html:3
 msgid "New Tronbyt Device"
@@ -370,6 +382,7 @@ msgid "Hide Details"
 msgstr "Details ausblenden"
 
 #: tronbyt_server/templates/manager/index.html:134
+#: tronbyt_server/templates/manager/index.html:198
 msgid "Show Details"
 msgstr "Details anzeigen"
 
@@ -548,14 +561,6 @@ msgstr "Samstag"
 #: tronbyt_server/templates/manager/updateapp.html:47
 msgid "Sunday"
 msgstr "Sonntag"
-
-#: tronbyt_server/templates/manager/updateapp.html:80
-msgid "Hide App Config"
-msgstr "App-Konfiguration ausblenden"
-
-#: tronbyt_server/templates/manager/updateapp.html:84
-msgid "Show App Config"
-msgstr "App-Konfiguration anzeigen"
 
 #: tronbyt_server/templates/manager/uploadapp.html:3
 msgid "Upload App (.star files only)"
