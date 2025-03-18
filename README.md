@@ -4,20 +4,21 @@ This is a Flask app for managing your apps on your Tronbyt (flashed Tidbyt). Thi
 
 ## Why use this?
 
-Compared to the stock firmware, Tronbyt provides the following advantages:
+Compared to the original Tidbyt, Tronbyt provides the following advantages:
 
 - A web UI with much better discoverability. You'd be surprised how many community apps could never be found in the Tidbyt app.
 - Everything runs locally without a cloud dependency. If Tidbyt's servers go offline, your Tronbyt will keep working indefinitely.
-- Fresher community apps (because the Tidbyt community repository is stale).
 - When running locally, some APIs start working again whereas Tidbyt's servers were blocked (for example the Surfline apps).
 - Community support.
+- Support for custom hardware: you can point your own firmware to a Tronbyt server to pull images for display on any 64x32 matrix LED display.
 
 Of course, there are also some drawbacks:
 
 - There is no mobile app yet (that would be a nice project for you!).
 - Notifications have a slightly higher latency (because the device waits for the next poll instead of getting a push via MQTT).
 - Some built-in apps are not available (a shrinking number, thanks to community members who recreate them).
-- Tools which use `pixlet push` to push images to a Tidbyt are incompatible (they need to be changed to accept different URLs).
+- Apps which rely on Tidbyt's cloud services for storing secrets (such as OAuth credentials) are not yet supported.
+- Tools which use `pixlet push` to push images to a device are incompatible unless they have been updated to accept alternative URLs.
 
 Some community projects like [TidbytAssistant](https://github.com/savdagod/TidbytAssistant) have already been updated to work with Tronbyt.
 
