@@ -12,4 +12,5 @@ Caddyfile
 Dockerfile
 docker-compose*.yaml
 README.md
+system-apps
 tests
