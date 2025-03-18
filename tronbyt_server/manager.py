@@ -545,7 +545,8 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
     if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
         device = user["devices"][device_id]
-        config = load_app_config(app, device)
+        config = app.get("config", {}).copy()
+        add_default_config(config, device)
         success, empty = render_app(app_path, config, webp_path, device)
         if not success:
             current_app.logger.error(f"Error rendering {app_basename}")
@@ -630,10 +631,6 @@ def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]
             )
             config["$tz"] = "Etc/UTC"
     return config
-
-
-def load_app_config(app: App, device: Device) -> Dict[str, Any]:
-    return add_default_config(app.get("config", {}).copy(), device)
 
 
 @bp.route(
@@ -738,11 +735,11 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             return redirect(url_for("manager.index"))
 
         device = g.user["devices"][device_id]
-        config_dict = load_app_config(app, device)
+        config_dict = app.get("config", {}).copy()
+        formatted_config = json.dumps(config_dict, indent=4)
+        add_default_config(config_dict, device)
         config_dict["$watch"] = "false"
         url_params = urlencode(config_dict)
-
-        current_app.logger.debug(url_params)
 
         # execute the pixlet serve process and show in it an iframe on the config page.
         current_app.logger.debug(str(app_path))
@@ -845,7 +842,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             device_id=device_id,
             delete_on_cancel=delete_on_cancel,
             user_render_port=user_render_port,
-            config=json.dumps(config_dict, indent=4),
+            config=formatted_config,
         )
     abort(HTTPStatus.BAD_REQUEST)
 
