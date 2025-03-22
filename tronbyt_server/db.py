@@ -465,11 +465,14 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
 
 
 def generate_firmware(
-    label: str, url: str, ap: str, pw: str, gen2: bool, swap_colors: bool
+    label: str, url: str, ap: str, pw: str, device_type: str, swap_colors: bool
 ) -> Dict[str, Union[str, int]]:
-    if gen2:
+    if device_type == "gen2":
         file_path = Path("firmware/gen2.bin")
         new_path = Path(f"firmware/gen2_{label}.bin")
+    elif device_type == "pixoticker":
+        file_path = Path("firmware/pixoticker.bin")
+        new_path = Path(f"firmware/pixoticker_{label}.bin")
     elif swap_colors:
         file_path = Path("firmware/gen1_swap.bin")
         new_path = Path(f"firmware/gen1_swap_{label}.bin")
