@@ -566,12 +566,12 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
 def generate_firmware(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-    
+
     # Ensure the device exists in the current user's configuration
     device = g.user["devices"].get(device_id, None)
     if not device:
         abort(HTTPStatus.NOT_FOUND)
-    
+
     if request.method == "POST":
         current_app.logger.debug(request.form)
         if "wifi_ap" in request.form and "wifi_password" in request.form:
@@ -584,7 +584,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
             image_url = request.form.get("img_url")
             if not image_url:
                 abort(HTTPStatus.BAD_REQUEST)
-            
+
             # Get the device type from the dropdown
             device_type = request.form.get("device_type", "gen1")
             swap_colors = bool(request.form.get("swap_colors", False))
