@@ -145,18 +145,33 @@
   }
 
   // Initialize the reload function for each device
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     {% for device in devices %}
-      reloadCurrentWebp('{{ device['id'] }}', {{ device['default_interval'] }});
-    {% endfor %}
+    reloadCurrentWebp('{{ device['id'] }}', {{ device['default_interval'] }});
+  {% endfor %}
   });
+
+  function toggleApps(deviceId) {
+    const appsList = document.getElementById(`appsList-${deviceId}`);
+    const toggleBtn = document.getElementById(`toggleAppsBtn-${deviceId}`);
+    if (appsList.classList.contains("hidden")) {
+      appsList.classList.remove("hidden");
+      appsList.classList.add("visible");
+      toggleBtn.textContent = "{{ _('Hide Apps') }}";
+    } else {
+      appsList.classList.remove("visible");
+      appsList.classList.add("hidden");
+      toggleBtn.textContent = "{{ _('Show Apps') }}";
+    }
+  }
 </script>
 <h1>{% block title %}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 {% if g.user %}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a> <a
-  class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp') }}">{{ _('Upload .star file') }}</a>
+<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a>
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp') }}">{{ _('Upload .star file')
+  }}</a>
 <hr>
 {% endif %}
 {% for device in devices %}
@@ -171,7 +186,9 @@
             </header>
           </td>
           <td rowspan="4" width="40%">
-            <div class="app-img"><img id="currentWebp-{{ device['id'] }}" data-src="{{url_for('manager.currentwebp', device_id=device['id']) }}" src="{{url_for('manager.currentwebp', device_id=device['id']) }}" alt="{{ _('Preview') }}"></div>
+            <div class="app-img"><img id="currentWebp-{{ device['id'] }}"
+                data-src="{{url_for('manager.currentwebp', device_id=device['id']) }}"
+                src="{{url_for('manager.currentwebp', device_id=device['id']) }}" alt="{{ _('Preview') }}"></div>
             <br>{{ _('Currently Displaying App') }}
           </td>
         </tr>
@@ -179,14 +196,15 @@
           <td>
             <label for="brightness-{{ device['id'] }}">{{ _('Brightness') }}</label> =
             <span id="brightnessValue-{{ device['id'] }}">{{device['brightness'] }}</span><br>
-            <input type="range" name="brightness" id="brightness-{{ device['id'] }}" min="0" max="5" value="{{ device['brightness'] }}"
-              oninput="updateBrightnessValue('{{ device['id'] }}', this.value)" onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
+            <input type="range" name="brightness" id="brightness-{{ device['id'] }}" min="0" max="5"
+              value="{{ device['brightness'] }}" oninput="updateBrightnessValue('{{ device['id'] }}', this.value)"
+              onmouseup="updateBrightness('{{ device['id'] }}', this.value)">
           </td>
-
         </tr>
         <tr>
           <td>
-            <label for="default_interval-{{ device['id'] }}">{{ _('App Cycle Time (Seconds)') }}</label> = <span id="intervalValue-{{ device['id'] }}">{{
+            <label for="default_interval-{{ device['id'] }}">{{ _('App Cycle Time (Seconds)') }}</label> = <span
+              id="intervalValue-{{ device['id'] }}">{{
               device['default_interval'] }} </span> s<br>
             <input type="range" name="default_interval" id="default_interval-{{ device['id'] }}" min="1" max="30"
               value="{{ device['default_interval'] }}" oninput="updateIntervalValue('{{ device['id'] }}', this.value)"
@@ -195,88 +213,89 @@
         </tr>
         <tr>
           <td>
-            <button id="toggleBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round" onclick="toggleDetails('{{ device['id'] }}')">{{ _('Show Details') }}</button>
+            {% if devices|length > 1 %}
+            <button id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
+              onclick="toggleApps('{{ device['id'] }}')">{{ _('Show Apps') }}</button>
+            {% endif %}
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-              href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a>
-            <a class="w3-button w3-teal w3-round"
-              style="min-width: 100px;" href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
-            <a class="w3-button w3-teal w3-round"
-              style="min-width: 100px;" href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
+              href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
+            <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
+              href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit Device') }}</a>
+            <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
+              href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
           </td>
         </tr>
       </table>
-      <div id="details-{{ device['id'] }}" class="hidden">
-        {% if not device['img_url'].startswith('http') %}
-        <p class="body">{{ _('Image URL:') }} {{ server_root }}{{ device['img_url'] }} - <a
-            href="{{ server_root }}{{ device['img_url'] }}">{{ _('Test!') }}</a>
-        {% else %}
-        <p class="body">{{ _('Image URL:') }} {{ device['img_url'] }} - <a href="{{ device['img_url'] }}">{{ _('Test!') }}</a></p>
+      <div id="appsList-{{ device['id'] }}" class="{% if devices|length > 1 %}hidden{% else %}visible{% endif %}">
+        {% if 'apps' in device %}
+        {% for app in device['apps'].values()|sort(attribute='order') %}
+        <div class="w3-card-4 w3-padding">
+          <table width="100%">
+            <tr width="100%">
+              <td>
+                <ul>
+                  <li>
+                    <div class="post">
+                      <header>
+                        <h1>{{ app['name'] }}-{{ app['iname'] }} </h1>
+                        <h1>{% if app['enabled'] %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled> <a
+                            href="{{ url_for('manager.toggle_enabled', device_id=device['id'],iname=app['iname']) }}">{{
+                            _('Disable') }}</a>
+                          {% else %}<disabled>&nbsp -- {{ _('Disabled') }} -- </disabled> <a
+                            href="{{ url_for('manager.toggle_enabled', device_id=device['id'],iname=app['iname']) }}">{{
+                            _('Enable') }}</a {% endif %}</h1>
+                      </header>
+                      <p class="body">{{ _('App:') }} {{ app['name'] }}</p>
+                      <p class="body">{{ _('Render Interval (minutes):') }} {{ app['uinterval'] }}</p>
+                      {% if app['display_time'] != 0 %}<p class="body">{{ _('Display Time (secs):') }} {{
+                        app['display_time'] }}</p>
+                      {% endif %}
+                      {% if app['notes'] != '' %}
+                      <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
+                      {% endif %}
+                  </li>
+                </ul>
+              </td>
+              <td width="33%"><br>
+                <div class="app-img"><img
+                    src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}"
+                    alt="{{ _('Preview') }}"></div>
+                <br>
+                {% if app.get('empty_last_render') %}{{_('No output for ') }}{% endif %}
+                {{ _('Last Render:') }} {{ app.get('last_render',0)|timeago }}
+              </td>
+            </tr>
+            <tr>
+              <td><a class="action w3-button w3-blue w3-round"
+                  href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}">{{ _('Edit')
+                  }}</a>
+                <a class="action w3-button w3-blue w3-round"
+                  href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{
+                  _('Configure') }}</a>
+                <a class="action w3-button w3-blue w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
+                  href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete')
+                  }}</a>
+                {% if not loop.first %}
+                <a class="action w3-button w3-blue w3-round"
+                  href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=up"
+                  aria-label="{{ _('Move Up') }}">&#9650;</a>
+                {% endif %}
+                {% if not loop.last %}
+                <a class="action w3-button w3-blue w3-round"
+                  href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=down"
+                  aria-label="{{ _('Move Down') }}">&#9660;</a>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        </div>
+        {% if not loop.last %}
+        <hr>
         {% endif %}
-        <p class="body">{{ _('API ID:') }} {{ device['id'] }}</p>
-        {% if not device['api_key'] == "" %}
-        <p class="body">{{ _('API Key:') }} {{ device['api_key'] }}</p>
-        {% endif %}
-        {% if device['notes'] != '' %}
-        <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
+        {% endfor %}
         {% endif %}
       </div>
-      {% if 'apps' in device %}
-      {% for app in device['apps'].values()|sort(attribute='order') %}
-      <div class="w3-card-4 w3-padding">
-        <table width="100%">
-          <tr width="100%">
-            <td>
-              <ul>
-                <li>
-                  <div class="post">
-                    <header>
-                      <h1>{{ app['name'] }}-{{ app['iname'] }} </h1>
-                      <h1>{% if app['enabled'] %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled> <a
-                          href="{{ url_for('manager.toggle_enabled', device_id=device['id'],iname=app['iname']) }}">{{ _('Disable') }}</a>
-                        {% else %}<disabled>&nbsp -- {{ _('Disabled') }} -- </disabled> <a
-                          href="{{ url_for('manager.toggle_enabled', device_id=device['id'],iname=app['iname']) }}">{{ _('Enable') }}</a
-                          {% endif %}</h1>
-                    </header>
-                    <p class="body">{{ _('App:') }} {{ app['name'] }}</p>
-                    <p class="body">{{ _('Render Interval (minutes):') }} {{ app['uinterval'] }}</p>
-                    {% if app['display_time'] != 0 %}<p class="body">{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
-                    {% endif %}
-                    {% if app['notes'] != '' %}
-                    <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
-                    {% endif %}
-            </td>
-            <td width="33%"><br><div class="app-img"><img
-                src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="{{ _('Preview') }}"></div>
-              <br>
-              {% if app.get('empty_last_render') %}{{_('No output for ') }}{% endif %}
-              {{ _('Last Render:') }} {{ app.get('last_render',0)|timeago }}
-      </li>
-      </td>
-      </tr>
-      <tr>
-        <td><a class="action w3-button w3-blue w3-round"
-            href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}">{{ _('Edit') }}</a>
-          <a class="action w3-button w3-blue w3-round"
-            href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{ _('Configure') }}</a>
-          <a class="action w3-button w3-blue w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
-            href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete') }}</a>
-          {% if not loop.first %}
-          <a class="action w3-button w3-blue w3-round" href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=up" aria-label="{{ _('Move Up') }}">&#9650;</a>
-          {% endif %}
-          {% if not loop.last %}
-          <a class="action w3-button w3-blue w3-round" href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=down" aria-label="{{ _('Move Down') }}">&#9660;</a>
-          {% endif %}
-        </td>
-      </tr>
-      </table>
     </div>
-
-    {% if not loop.last %}
-    <hr>
-    {% endif %}
-    {% endfor %}
-    </ul>
-    {% endif %}
   </article>
 </div>
 {% if not loop.last %}

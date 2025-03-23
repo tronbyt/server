@@ -166,6 +166,7 @@ def create() -> ResponseReturnValue:
                 img_url=img_url,
                 api_key=api_key,
                 brightness=int(brightness) if brightness else 3,
+                default_interval = 10,
             )
             if notes:
                 device["notes"] = notes
