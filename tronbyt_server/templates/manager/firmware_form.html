@@ -25,8 +25,8 @@
  <div class="left-align">
     <label for="device_type">{{ _('Device Type') }}</label>
     <select name="device_type" id="device_type">
-        <option value="gen1" {% if request.form.get('device_type') == 'gen1' or not request.form.get('device_type') %} selected {% endif %}>{{ _('Gen1') }}</option>
-        <option value="gen2" {% if request.form.get('device_type') == 'gen2' %} selected {% endif %}>{{ _('Gen2') }}</option>
+        <option value="gen1" {% if request.form.get('device_type') == 'gen1' or not request.form.get('device_type') %} selected {% endif %}>{{ _('Tidbyt Gen1') }}</option>
+        <option value="gen2" {% if request.form.get('device_type') == 'gen2' %} selected {% endif %}>{{ _('Tidbyt Gen2') }}</option>
         <option value="pixoticker" {% if request.form.get('device_type') == 'pixoticker' %} selected {% endif %}>{{ _('Pixoticker') }}</option>
     </select>
 </div>
