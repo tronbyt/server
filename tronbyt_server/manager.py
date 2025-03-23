@@ -566,11 +566,11 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
 def generate_firmware(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-    # first ensure this device id exists in the current users config
+
+    # Ensure the device exists in the current user's configuration
     device = g.user["devices"].get(device_id, None)
     if not device:
         abort(HTTPStatus.NOT_FOUND)
-    # on GET just render the form for the user to input their wifi creds and auto fill the image_url
 
     if request.method == "POST":
         current_app.logger.debug(request.form)
@@ -584,12 +584,19 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
             image_url = request.form.get("img_url")
             if not image_url:
                 abort(HTTPStatus.BAD_REQUEST)
-            label = secure_filename(device["name"])
-            gen2 = bool(request.form.get("gen2", False))
+
+            # Get the device type from the dropdown
+            device_type = request.form.get("device_type", "gen1")
             swap_colors = bool(request.form.get("swap_colors", False))
 
+            # Pass the device type options to the firmware generation function
             result = db.generate_firmware(
-                label, image_url, ap, password, gen2, swap_colors
+                label=secure_filename(device["name"]),
+                url=image_url,
+                ap=ap,
+                pw=password,
+                device_type=device_type,
+                swap_colors=swap_colors,
             )
             if "file_path" in result:
                 device["firmware_file_path"] = result["file_path"]
@@ -600,12 +607,13 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                     img_url=image_url,
                     ap=ap,
                     password=password,
+                    device_type=device_type,
                     firmware_file=result["file_path"],
                 )
             elif "error" in result:
                 flash(str(result["error"]))
             else:
-                flash("firmware modification failed")
+                flash("Firmware modification failed")
 
     return render_template(
         "manager/firmware_form.html",

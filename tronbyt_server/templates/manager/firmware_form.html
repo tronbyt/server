@@ -22,10 +22,15 @@
     }
 </style>
 
-    <div class="left-align">
-        <label for="gen2">{{ _('Gen2?') }}</label>
-        <input type="checkbox" name="gen2" id="gen2" {% if request.form.get('gen2') %} checked {% endif %}>
-    </div>
+ <div class="left-align">
+    <label for="device_type">{{ _('Device Type') }}</label>
+    <select name="device_type" id="device_type">
+        <option value="gen1" {% if request.form.get('device_type') == 'gen1' or not request.form.get('device_type') %} selected {% endif %}>{{ _('Gen1') }}</option>
+        <option value="gen2" {% if request.form.get('device_type') == 'gen2' %} selected {% endif %}>{{ _('Gen2') }}</option>
+        <option value="pixoticker" {% if request.form.get('device_type') == 'pixoticker' %} selected {% endif %}>{{ _('Pixoticker') }}</option>
+    </select>
+</div>
+    
     <div class="left-align">
         <label for="swap_colors">{{ _('Swap Colors (Gen1 Only)?') }}</label>
         <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {% endif %}>
