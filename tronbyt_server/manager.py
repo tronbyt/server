@@ -498,7 +498,7 @@ def render_app(
         maxDuration=15000,
         timeout=30000,
         image_format=0,  # 0 == WebP
-        silence_output=True,
+        silence_output=current_app.config.get("PRODUCTION") == "1",
     )
     if data is None:
         current_app.logger.error("Error running pixlet render")
@@ -903,9 +903,7 @@ def next_app(
         current_app.logger.warning(
             "Maximum recursion depth exceeded, sending default image"
         )
-        response = send_file("static/images/default.webp", mimetype="image/webp")
-        response.headers["Tronbyt-Brightness"] = 8
-        return response
+        return send_default_image(device)
 
     if last_app_index is None:
         last_app_index = db.get_last_app_index(device_id)
@@ -915,9 +913,7 @@ def next_app(
     apps = device.get("apps", {})
     # if no apps return default.webp
     if not apps:
-        response = send_file("static/images/default.webp", mimetype="image/webp")
-        response.headers["Tronbyt-Brightness"] = 8
-        return response
+        return send_default_image(device)
 
     apps_list = sorted(apps.values(), key=itemgetter("order"))
     is_night_mode_app = False
@@ -977,6 +973,13 @@ def next_app(
     return next_app(device_id, last_app_index, recursion_depth + 1)
 
 
+def send_default_image(device: Device) -> ResponseReturnValue:
+    response = send_file("static/images/default.webp", mimetype="image/webp")
+    response.headers["Tronbyt-Brightness"] = 8
+    response.headers["Tronbyt-Dwell-secs"] = device.get("default_interval", 5)
+    return response
+
+
 # manager.currentwebp
 @bp.route("/<string:device_id>/currentapp")
 def currentwebp(device_id: str) -> ResponseReturnValue:
@@ -988,9 +991,7 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
         device = user["devices"][device_id]
         apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
         if not apps_list:
-            response = send_file("static/images/default.webp", mimetype="image/webp")
-            response.headers["Tronbyt-Brightness"] = 8
-            return response
+            return send_default_image(device)
         current_app_index = db.get_last_app_index(device_id) or 0
         if current_app_index >= len(apps_list):
             current_app_index = 0

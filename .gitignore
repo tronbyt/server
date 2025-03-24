@@ -16,7 +16,7 @@ certs
 !tronbyt_server/static/images/*.gif
 system-apps/**
 firmware/*.bin
-users/*.idx
+users
 /system-apps
 users/usersdb.sqlite
 junit
