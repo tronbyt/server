@@ -912,19 +912,20 @@ def next_app(
         if last_app_index is None:
             abort(HTTPStatus.NOT_FOUND)
 
+    apps = device.get("apps", {})
     # if no apps return default.webp
-    if "apps" not in device:
+    if not apps:
         response = send_file("static/images/default.webp", mimetype="image/webp")
         response.headers["Tronbyt-Brightness"] = 8
         return response
 
-    apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
+    apps_list = sorted(apps.values(), key=itemgetter("order"))
     is_night_mode_app = False
     if (
         db.get_night_mode_is_active(device)
-        and device.get("night_mode_app", "") in device["apps"].keys()
+        and device.get("night_mode_app", "") in apps.keys()
     ):
-        app = device["apps"][device["night_mode_app"]]
+        app = apps[device["night_mode_app"]]
         is_night_mode_app = True
     elif last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
         app = apps_list[last_app_index + 1]  # add 1 to get the next app
@@ -985,8 +986,14 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
     try:
         user = g.user
         device = user["devices"][device_id]
-        current_app_index = db.get_last_app_index(device_id) or 0
         apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
+        if not apps_list:
+            response = send_file("static/images/default.webp", mimetype="image/webp")
+            response.headers["Tronbyt-Brightness"] = 8
+            return response
+        current_app_index = db.get_last_app_index(device_id) or 0
+        if current_app_index >= len(apps_list):
+            current_app_index = 0
         current_app_iname = apps_list[current_app_index]["iname"]
         return appwebp(device_id, current_app_iname)
     except Exception as e:
