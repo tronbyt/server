@@ -7,6 +7,7 @@
 <div class="flex-container">
   <!-- Show Config Toggle Button -->
   <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
+  <a href="{{ url_for('manager.configapp', device_id=device_id, iname=app['iname'], delete_on_cancel=0) }}" class="w3-button" style="background-color: #608ff3;">{{ _('Configure') }}</a>
 
   <!-- Config Content -->
   <div id="configContent" class="hidden">
