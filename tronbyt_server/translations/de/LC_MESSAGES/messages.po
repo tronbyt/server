@@ -423,9 +423,8 @@ msgid "App Cycle Time (Seconds)"
 msgstr "App-Zykluszeit (Sekunden)"
 
 #: tronbyt_server/templates/manager/index.html:223
-#, fuzzy
 msgid "Edit Device"
-msgstr "Neues Tronbyt-Gerät"
+msgstr "Gerät bearbeiten"
 
 #: tronbyt_server/templates/manager/index.html:225
 msgid "Firmware"
