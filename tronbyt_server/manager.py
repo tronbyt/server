@@ -385,8 +385,6 @@ def addapp(device_id: str) -> ResponseReturnValue:
         if notes:
             app["notes"] = notes
 
-        current_app.logger.debug("iname is :" + str(app["iname"]))
-
         user = g.user
         apps = user["devices"][device_id].setdefault("apps", {})
         app["order"] = len(apps)
@@ -436,14 +434,12 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             uinterval = request.form.get("uinterval")
             notes = request.form.get("notes")
             enabled = "enabled" in request.form
-            current_app.logger.debug(request.form)
             start_time = request.form.get("start_time")
             end_time = request.form.get("end_time")
 
             user = g.user
             app: App = user["devices"][device_id]["apps"][iname]
             app["iname"] = iname
-            current_app.logger.debug("iname is :" + str(app["iname"]))
             if name:
                 app["name"] = name
             if uinterval:
@@ -574,7 +570,6 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND)
 
     if request.method == "POST":
-        current_app.logger.debug(request.form)
         if "wifi_ap" in request.form and "wifi_password" in request.form:
             ap = request.form.get("wifi_ap")
             if not ap:
@@ -892,9 +887,7 @@ def next_app(
             )
             webp_path = pushed_dir / ephemeral_file.name
             # send_file doesn't need the full path, just the path after the tronbyt_server
-            response = send_file(webp_path, mimetype="image/webp")
-            s = device.get("default_interval", 5)
-            response.headers["Tronbyt-Dwell-Secs"] = s
+            response = send_image(webp_path, device, None)
             current_app.logger.debug("removing ephemeral webp")
             ephemeral_file.unlink()
             return response
@@ -955,16 +948,8 @@ def next_app(
     current_app.logger.debug(str(webp_path))
 
     if webp_path.exists() and webp_path.stat().st_size > 0:
-        response = send_file(webp_path, mimetype="image/webp")
-        b = db.get_device_brightness_8bit(device)
-        response.headers["Tronbyt-Brightness"] = b
-        s = app.get("display_time", 0)
-        if s == 0:
-            s = device.get("default_interval", 5)
-        response.headers["Tronbyt-Dwell-Secs"] = s
-        current_app.logger.debug(
-            f"brightness {b} -- dwell seconds {s} -- app index is {last_app_index}"
-        )
+        response = send_image(webp_path, device, app)
+        current_app.logger.debug(f"app index is {last_app_index}")
         db.save_last_app_index(device_id, last_app_index)
         return response
 
@@ -974,9 +959,19 @@ def next_app(
 
 
 def send_default_image(device: Device) -> ResponseReturnValue:
-    response = send_file("static/images/default.webp", mimetype="image/webp")
-    response.headers["Tronbyt-Brightness"] = 8
-    response.headers["Tronbyt-Dwell-secs"] = device.get("default_interval", 5)
+    return send_image(Path("static/images/default.webp"), device, None)
+
+
+def send_image(
+    webp_path: Path, device: Device, app: Optional[App]
+) -> ResponseReturnValue:
+    response = send_file(webp_path, mimetype="image/webp")
+    b = db.get_device_brightness_8bit(device)
+    device_interval = device.get("default_interval", 5)
+    s = app.get("display_time", device_interval) if app else device_interval
+    response.headers["Tronbyt-Brightness"] = b
+    response.headers["Tronbyt-Dwell-Secs"] = s
+    current_app.logger.debug(f"brightness {b} -- dwell seconds {s}")
     return response
 
 
