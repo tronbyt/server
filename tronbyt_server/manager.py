@@ -969,6 +969,8 @@ def send_image(
     b = db.get_device_brightness_8bit(device)
     device_interval = device.get("default_interval", 5)
     s = app.get("display_time", device_interval) if app else device_interval
+    if s == 0:
+        s = device_interval
     response.headers["Tronbyt-Brightness"] = b
     response.headers["Tronbyt-Dwell-Secs"] = s
     current_app.logger.debug(f"brightness {b} -- dwell seconds {s}")
