@@ -31,6 +31,15 @@ If you've been invited to use my public instance of this server login there and 
 - Docker
 - Docker Compose (optional, but recommended)
 
+### Supported Devices
+
+- [Tidbyt Gen1](https://tidbyt.com/collections/tidbyt-smart-displays)
+- [Tidbyt Gen2](https://tidbyt.com/collections/tidbyt-smart-displays)
+- [Pixoticker](https://www.etsy.com/listing/1801658771/pixoticker-live-stock-crypto-forex)
+- [Raspberry Pi](https://github.com/tronbyt/tronberry) connected to a 64x32 matrix LED
+
+It's rather easy to develop additional clients for Tronbyt Server: just pull images in WebP format from a the `/next` endpoint and loop the animation for the number of seconds specified in the `Tronbyt-Dwell-Secs` response header. Optionally set the display brightness to the value in the `Tronbyt-Brightness` header (0 - 100).
+
 ### Installation
 
 It is possible to just start the server on the default ports in the background with a one-liner:
