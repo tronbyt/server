@@ -378,8 +378,8 @@ msgid "Pixoticker"
 msgstr "Pixoticker"
 
 #: tronbyt_server/templates/manager/firmware_form.html:35
-msgid "Swap Colors (Gen1 Only)?"
-msgstr "Farben tauschen (nur Gen1)?"
+msgid "Swap Colors?"
+msgstr "Farben tauschen?"
 
 #: tronbyt_server/templates/manager/firmware_form.html:38
 msgid "Generate Firmware File"
@@ -508,7 +508,7 @@ msgid "API Key"
 msgstr "API Schlüssel"
 
 #: tronbyt_server/templates/manager/update.html:74
-msgid "Delete device and ALL apps ?"
+msgid "Delete device and ALL apps?"
 msgstr "Gerät und alle Apps löschen?"
 
 #: tronbyt_server/templates/manager/updateapp.html:20
