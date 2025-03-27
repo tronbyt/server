@@ -4,73 +4,85 @@
 {% endblock %}
 {% block content %}
 <form method="post">
-<input type="hidden" name="id" id="id" value="device['id']">
-<label for="name">{{ _('Name') }}</label>
-<input name="name" id="name"
-value="{{ request.form['name'] or device['name'] }}" required>
-<span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('clear to reset to default') }})</span>
-{% if not device['img_url'].startswith('http') %}
-<input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
-{% else %}
-<input name="img_url" id="img_url" value="{{ device['img_url'] }}">
-{% endif %}
+  <input type="hidden" name="id" id="id" value="device['id']">
+  <label for="name">{{ _('Name') }}</label>
+  <input name="name" id="name" value="{{ request.form['name'] or device['name'] }}" required>
+  <span><label for="device_type">{{ _('Device Type') }}</label></span>
+  <select name="device_type" id="device_type">
+    <option value="tidbyt_gen1" {% if device.get('type')=='tidbyt_gen1' %}selected{% endif %}>Tidbyt Gen1</option>
+    <option value="tidbyt_gen2" {% if device.get('type')=='tidbyt_gen2' %}selected{% endif %}>Tidbyt Gen2</option>
+    <option value="pixoticker" {% if device.get('type')=='pixoticker' %}selected{% endif %}>Pixoticker</option>
+    <option value="raspberrypi" {% if device.get('type')=='raspberrypi' %}selected{% endif %}>Raspberry Pi</option>
+    <option value="other" {% if device.get('type')=='other' %}selected{% endif %}>Other</option>
+  </select>
+  <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('clear to reset to default') }})</span>
+  {% if not device['img_url'].startswith('http') %}
+  <input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
+  {% else %}
+  <input name="img_url" id="img_url" value="{{ device['img_url'] }}">
+  {% endif %}
   <label for="default_interval">{{ _('App Cycle Time (Seconds)') }}</label>
   <output>{{ device['default_interval'] }}</output>
   <input type="range" name="default_interval" id="default_interval" min="1" max="30"
     value="{{ device['default_interval'] }}" oninput="this.previousElementSibling.value = this.value">
 
-<span><label for="brightness">{{ _('Brightness') }}</label></span><output>{{ device['brightness'] }}</output>
-<input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
+  <span><label for="brightness">{{ _('Brightness') }}</label></span><output>{{ device['brightness'] }}</output>
+  <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
     oninput="this.previousElementSibling.value = this.value">
 
-<span><label for="timezone">{{ _('Timezone') }}</label></span>
-<select name="timezone" id="timezone">
-  <option value="">{{ _('Server Timezone') }}</option>
-  {% for tz in available_timezones|sort %}
-    <option value="{{ tz }}" {% if device['timezone'] == tz %}selected{% endif %}>
+  <span><label for="timezone">{{ _('Timezone') }}</label></span>
+  <select name="timezone" id="timezone">
+    <option value="">{{ _('Server Timezone') }}</option>
+    {% for tz in available_timezones|sort %}
+    <option value="{{ tz }}" {% if device['timezone']==tz %}selected{% endif %}>
       {{ tz }}
     </option>
-  {% endfor %}
-</select>
+    {% endfor %}
+  </select>
 
-<span><label for="night_mode_enabled">{{ _('Enable Night Mode') }}</label></span>
-<input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled'] %}checked{% endif %}>
+  <span><label for="night_mode_enabled">{{ _('Enable Night Mode') }}</label></span>
+  <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled']
+    %}checked{% endif %}>
 
-<span><label for="night_brightness">{{ _('Night Brightness') }}</label></span><output>{{ device['night_brightness'] or 1 }}</output>
-<input type="range" name="night_brightness" id="night_brightness" min="0" max="5" value="{{ device['night_brightness'] or 1 }}"
-    oninput="this.previousElementSibling.value = this.value">
+  <span><label for="night_brightness">{{ _('Night Brightness') }}</label></span><output>{{ device['night_brightness'] or
+    1 }}</output>
+  <input type="range" name="night_brightness" id="night_brightness" min="0" max="5"
+    value="{{ device['night_brightness'] or 1 }}" oninput="this.previousElementSibling.value = this.value">
 
-<span><label for="night_start">{{ _('Night Start Hour (24hr)') }}</label></span>
-<div>
+  <span><label for="night_start">{{ _('Night Start Hour (24hr)') }}</label></span>
+  <div>
     <input type="number" name="night_start" id="night_start" min="0" max="24" value="{{ device['night_start'] or 22 }}">
-</div>
-<span><label for="night_end">{{ _('Night End Hour (24hr)') }}</label></span>
-<div>
+  </div>
+  <span><label for="night_end">{{ _('Night End Hour (24hr)') }}</label></span>
+  <div>
     <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device['night_end'] or 6 }}">
-</div>
-<span>
-  <label for="installed_apps">{{ _('Night Mode App:') }}</label>
-  <select name="night_mode_app" id="night_mode_app">
-    <option value="None">{{ _('None') }}</option>
-    {% if 'apps' in device %}
-    {% for app in device['apps'].values() %}
-      <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app'] == app['iname'] %}selected{% endif %}>
+  </div>
+  <span>
+    <label for="installed_apps">{{ _('Night Mode App:') }}</label>
+    <select name="night_mode_app" id="night_mode_app">
+      <option value="None">{{ _('None') }}</option>
+      {% if 'apps' in device %}
+      {% for app in device['apps'].values() %}
+      <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname']
+        %}selected{% endif %}>
         {{ app['iname'] }} {{ app['name'] }}
       </option>
-    {% endfor %}
-    {% endif %}
-  </select><br>
-  <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
-</span>
-<label for="body">{{ _('Notes') }}</label>
-<input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
-<label for="api_key">{{ _('API Key') }}</label>
-<input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
-<input type="submit" value="{{ _('Save') }}">
+      {% endfor %}
+      {% endif %}
+    </select><br>
+    <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit
+      page.') }}</small>
+  </span>
+  <label for="body">{{ _('Notes') }}</label>
+  <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
+  <label for="api_key">{{ _('API Key') }}</label>
+  <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
+  <input type="submit" value="{{ _('Save') }}">
 </form>
 {% if 'location' in device %}{{ device['location'] }}{% endif %}
 <hr>
 <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post">
-  <input class="danger" type="submit" value="{{ _('Delete') }}" onclick="return confirm('{{ _('Delete device and ALL apps ?') }}');">
+  <input class="danger" type="submit" value="{{ _('Delete') }}"
+    onclick="return confirm('{{ _('Delete device and ALL apps?') }}');">
 </form>
 {% endblock %}

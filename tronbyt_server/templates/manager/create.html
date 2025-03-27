@@ -5,6 +5,14 @@
 {% block content %} <form method="post">
 <span><label for="name">{{ _('Name') }}</label> ({{ _('Descriptive name for this Tronbyt device') }})</span>
 <input name="name" id="name" value="{{ request.form['name'] }}" required>
+<span><label for="device_type">{{ _('Device Type') }}</label></span>
+<select name="device_type" id="device_type">
+  <option value="tidbyt_gen1" selected>Tidbyt Gen1</option>
+  <option value="tidbyt_gen2">Tidbyt Gen2</option>
+  <option value="pixoticker">Pixoticker</option>
+  <option value="raspberrypi">Raspberry Pi</option>
+  <option value="other">Other</option>
+</select>
 <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('Leave Blank unless advanced user.') }})</span>
 <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" >
 <span><label for="brightness">{{ _('Brightness Level ( 0 - 5 )') }}</label></span><output>3</output>

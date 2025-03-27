@@ -40,7 +40,12 @@ import tronbyt_server.db as db
 from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device, validate_device_id
+from tronbyt_server.models.device import (
+    DEFAULT_DEVICE_TYPE,
+    Device,
+    validate_device_id,
+    validate_device_type,
+)
 from tronbyt_server.models.user import User
 
 bp = Blueprint("manager", __name__)
@@ -141,6 +146,7 @@ def deleteuser(username: str) -> ResponseReturnValue:
 def create() -> ResponseReturnValue:
     if request.method == "POST":
         name = request.form.get("name")
+        device_type = request.form.get("device_type")
         img_url = request.form.get("img_url")
         api_key = request.form.get("api_key")
         notes = request.form.get("notes")
@@ -152,7 +158,14 @@ def create() -> ResponseReturnValue:
             flash(error)
         else:
             # just use first 8 chars is good enough
-            device_id = str(uuid.uuid4())[0:8]
+            max_attempts = 10
+            for _ in range(max_attempts):
+                device_id = str(uuid.uuid4())[0:8]
+                if device_id not in g.user.get("devices", {}):
+                    break
+            else:
+                flash("Could not generate a unique device ID.")
+                return redirect(url_for("manager.create"))
             if not img_url:
                 img_url = f"{server_root()}/{device_id}/next"
             if not api_key or api_key == "":
@@ -160,9 +173,14 @@ def create() -> ResponseReturnValue:
                     secrets.choice(string.ascii_letters + string.digits)
                     for _ in range(32)
                 )
+            device_type = device_type or DEFAULT_DEVICE_TYPE
+            if not validate_device_type(device_type):
+                flash("Invalid device type")
+                return redirect(url_for("manager.create"))
             device = Device(
                 id=device_id,
                 name=name or device_id,
+                type=device_type,
                 img_url=img_url,
                 api_key=api_key,
                 brightness=int(brightness) if brightness else 3,
@@ -220,6 +238,7 @@ def update(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND)
     if request.method == "POST":
         name = request.form.get("name")
+        device_type = request.form.get("device_type")
         notes = request.form.get("notes")
         img_url = request.form.get("img_url")
         api_key = request.form.get("api_key")
@@ -247,6 +266,10 @@ def update(device_id: str) -> ResponseReturnValue:
             )
             if name:
                 device["name"] = name
+            if device_type:
+                if not validate_device_type(device_type):
+                    abort(HTTPStatus.BAD_REQUEST, description="Invalid device type")
+                device["type"] = device_type
             if api_key:
                 device["api_key"] = api_key
             if notes:
@@ -581,11 +604,10 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
             if not image_url:
                 abort(HTTPStatus.BAD_REQUEST)
 
-            # Get the device type from the dropdown
-            device_type = request.form.get("device_type", "gen1")
+            device_type = device.get("type", DEFAULT_DEVICE_TYPE)
             swap_colors = bool(request.form.get("swap_colors", False))
 
-            # Pass the device type options to the firmware generation function
+            # Pass the device type to the firmware generation function
             result = db.generate_firmware(
                 label=secure_filename(device["name"]),
                 url=image_url,

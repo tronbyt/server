@@ -22,20 +22,13 @@
     }
 </style>
 
- <div class="left-align">
-    <label for="device_type">{{ _('Device Type') }}</label>
-    <select name="device_type" id="device_type">
-        <option value="gen1" {% if request.form.get('device_type') == 'gen1' or not request.form.get('device_type') %} selected {% endif %}>{{ _('Tidbyt Gen1') }}</option>
-        <option value="gen2" {% if request.form.get('device_type') == 'gen2' %} selected {% endif %}>{{ _('Tidbyt Gen2') }}</option>
-        <option value="pixoticker" {% if request.form.get('device_type') == 'pixoticker' %} selected {% endif %}>{{ _('Pixoticker') }}</option>
-    </select>
-</div>
-    
-    <div class="left-align">
-        <label for="swap_colors">{{ _('Swap Colors (Gen1 Only)?') }}</label>
-        <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {% endif %}>
-    </div>
-<input type="submit" value="{{ _('Generate Firmware File') }}">
+    {% if device.get('type') == 'tidbyt_gen1' %}
+        <div class="left-align">
+            <label for="swap_colors">{{ _('Swap Colors?') }}</label>
+            <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {% endif %}>
+        </div>
+    {% endif %}
+    <input type="submit" value="{{ _('Generate Firmware File') }}">
 </form>
 <hr>
 

@@ -3,10 +3,13 @@ from typing import Dict, Required, TypedDict
 
 from tronbyt_server.models.app import App
 
+DEFAULT_DEVICE_TYPE = "tidbyt_gen1"
+
 
 class Device(TypedDict, total=False):
     id: Required[str]
     name: str
+    type: str
     api_key: str
     img_url: str
     notes: str
@@ -35,3 +38,13 @@ def validate_device_id(device_id: str) -> bool:
     if not device_id:
         return False
     return bool(re.match(r"^[a-fA-F0-9]{8}$", device_id))
+
+
+def validate_device_type(device_type: str) -> bool:
+    return device_type in [
+        "tidbyt_gen1",
+        "tidbyt_gen2",
+        "pixoticker",
+        "raspberrypi",
+        "other",
+    ]
