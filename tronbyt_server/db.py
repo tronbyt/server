@@ -51,6 +51,7 @@ def init_db() -> None:
         current_app.logger.debug("Default JSON inserted for admin user")
     else:
         migrate_app_configs()
+        migrate_app_paths()
 
 
 def migrate_app_configs() -> None:
@@ -70,6 +71,40 @@ def migrate_app_configs() -> None:
                     with config_path.open("r") as config_file:
                         app["config"] = json.load(config_file)
                     config_path.unlink()
+                    need_save = True
+        if need_save:
+            save_user(user)
+
+
+def migrate_app_paths() -> None:
+    """
+    Populates the "path" attribute for apps that were added before the "path" attribute
+    was introduced. This function iterates through all users, their devices, and the apps
+    associated with those devices. If an app does not have a "path" attribute, it assigns
+    a default path based on the app's name or retrieves it from the app details. If any
+    changes are made, the updated user data is saved.
+    Steps:
+    1. Retrieve all users.
+    2. Iterate through each user's devices and their associated apps.
+    3. Check if the "path" attribute is missing for an app.
+    4. Assign a default path or fetch the path from app details.
+    5. Save the user data if any changes were made.
+    """
+
+    users = get_all_users()
+    need_save = False
+    for user in users:
+        for device in user.get("devices", {}).values():
+            for app in device.get("apps", {}).values():
+                if "path" not in app:
+                    app["path"] = get_app_details(user["username"], app["name"]).get(
+                        "path"
+                    ) or str(
+                        Path("system-apps")
+                        / "apps"
+                        / app["name"].replace("_", "")
+                        / f"{app['name']}.star"
+                    )
                     need_save = True
         if need_save:
             save_user(user)

@@ -653,16 +653,7 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
     webp_path = webp_device_path / f"{app_basename}.webp"
-
-    if "path" in app:
-        app_path = Path(app["path"])
-    else:
-        # current_app.logger.debug("No path for {}, trying default location".format(app["name"]))
-        app_path = (
-            Path("system-apps/apps")
-            / app["name"].replace("_", "")
-            / f"{app['name']}.star"
-        )
+    app_path = Path(app["path"])
 
     if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
         current_app.logger.debug(f"RENDERING -- {app_basename}")
@@ -784,15 +775,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         flash("Error saving app, please try again.")
         return redirect(url_for("manager.addapp", device_id=device_id))
     app_basename = "{}-{}".format(app["name"], app["iname"])
-    app_details = db.get_app_details(g.user["username"], app["name"])
-    if "path" in app_details:
-        app_path = Path(app_details["path"])
-    else:
-        app_path = (
-            Path("system-apps")
-            / "apps"
-            / "{}/{}.star".format(app["name"].replace("_", ""), app["name"])
-        )
+    app_path = Path(app["path"])
 
     if os.getenv("USE_PIXLET_SCHEMA", "0") == "1":
         if request.method == "GET":
