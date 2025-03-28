@@ -44,6 +44,7 @@ from tronbyt_server.models.app import App
 from tronbyt_server.models.device import (
     DEFAULT_DEVICE_TYPE,
     Device,
+    Location,
     validate_device_id,
     validate_device_type,
 )
@@ -239,22 +240,13 @@ def update(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND)
     if request.method == "POST":
         name = request.form.get("name")
-        device_type = request.form.get("device_type")
-        notes = request.form.get("notes")
-        img_url = request.form.get("img_url")
-        api_key = request.form.get("api_key")
-        default_interval = request.form.get("default_interval")
-        brightness = request.form.get("brightness")
-        night_brightness = request.form.get("night_brightness")
-        night_start = request.form.get("night_start")
-        night_end = request.form.get("night_end")
-        night_mode_app = request.form.get("night_mode_app")
         error = None
         if not name or not device_id:
             error = "Id and Name is required."
         if error is not None:
             flash(error)
         else:
+            img_url = request.form.get("img_url")
             device = Device(
                 id=device_id,
                 night_mode_enabled=bool(request.form.get("night_mode_enabled")),
@@ -267,26 +259,55 @@ def update(device_id: str) -> ResponseReturnValue:
             )
             if name:
                 device["name"] = name
+            device_type = request.form.get("device_type")
             if device_type:
                 if not validate_device_type(device_type):
                     abort(HTTPStatus.BAD_REQUEST, description="Invalid device type")
                 device["type"] = device_type
+            api_key = request.form.get("api_key")
             if api_key:
                 device["api_key"] = api_key
+            notes = request.form.get("notes")
             if notes:
                 device["notes"] = notes
+            default_interval = request.form.get("default_interval")
             if default_interval:
                 device["default_interval"] = int(default_interval)
+            brightness = request.form.get("brightness")
             if brightness:
                 device["brightness"] = int(brightness)
+            night_brightness = request.form.get("night_brightness")
             if night_brightness:
                 device["night_brightness"] = int(night_brightness)
+            night_start = request.form.get("night_start")
             if night_start:
                 device["night_start"] = int(night_start)
+            night_end = request.form.get("night_end")
             if night_end:
                 device["night_end"] = int(night_end)
+            night_mode_app = request.form.get("night_mode_app")
             if night_mode_app:
                 device["night_mode_app"] = night_mode_app
+            locationJSON = request.form.get("location")
+            if locationJSON:
+                try:
+                    loc = json.loads(locationJSON)
+                    lat = loc.get("lat")
+                    lng = loc.get("lng")
+                    if lat is None or lng is None:
+                        abort(HTTPStatus.BAD_REQUEST, description="Invalid location")
+                    location = Location(
+                        lat=lat,
+                        lng=lng,
+                    )
+
+                    if "name" in loc:
+                        location["name"] = loc["name"]
+                    if "timezone" in loc:
+                        location["timezone"] = loc["timezone"]
+                    device["location"] = location
+                except json.JSONDecodeError:
+                    abort(HTTPStatus.BAD_REQUEST, description="Invalid location format")
 
             user = g.user
             if "apps" in user["devices"][device_id]:
@@ -748,10 +769,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
                 app=app,
                 domain_host=domain_host,
                 protocol=protocol,
-                url_params=None,
-                device_id=device_id,
+                device=device,
                 delete_on_cancel=delete_on_cancel,
-                user_render_port=None,
                 config=app.get("config", {}),
                 schema=schema,
             )
@@ -810,11 +829,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             new_config = {k: v for k, v in new_config.items() if not k.startswith("$")}
             app["config"] = new_config
             db.save_user(g.user)
-
-            # save location as default if checked
-            if request.form.get("location_as_default", None):
-                if "location" in new_config:
-                    device["location"] = new_config["location"]
 
             # delete the tmp file
             tmp_config_path.unlink()

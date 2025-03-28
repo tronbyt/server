@@ -1,9 +1,16 @@
 import re
-from typing import Dict, Required, TypedDict
+from typing import Dict, Optional, Required, TypedDict
 
 from tronbyt_server.models.app import App
 
 DEFAULT_DEVICE_TYPE = "tidbyt_gen1"
+
+
+class Location(TypedDict, total=False):
+    name: str
+    timezone: str
+    lat: Required[float]
+    lng: Required[float]
 
 
 class Device(TypedDict, total=False):
@@ -21,7 +28,7 @@ class Device(TypedDict, total=False):
     night_brightness: int
     default_interval: int
     timezone: str
-    location: str
+    location: Optional[Location]
     apps: Dict[str, App]
     firmware_file_path: str
     last_app_index: int

@@ -16,4 +16,4 @@ services:
       - SYSTEM_APPS_REPO
       - PRODUCTION=0
       - LOG_LEVEL=DEBUG
-      - USE_PIXLET_SCHEMA=0
+      - USE_PIXLET_SCHEMA

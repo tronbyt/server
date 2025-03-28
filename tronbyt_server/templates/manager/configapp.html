@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
+<script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
@@ -18,9 +19,19 @@
 <script>
   // Make the config object available to JavaScript
   const config = {{ config| tojson }};
+
+  // Function to update the config text and preview image
+  function updateConfigAndPreview() {
+    configContent.textContent = JSON.stringify(config, null, 2);
+
+    // Reload the preview image to reflect updated config
+    const url = new URL(previewImage.src);
+    url.searchParams.set("config", JSON.stringify(config));
+    previewImage.src = url.toString();
+  }
 </script>
 <div class="app-img" style="width: 400px;"><img id="previewImage"
-    src="{{ url_for('manager.preview', device_id=device_id, iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
     alt="{{ _('Preview') }}" width="400" style="width: 400px; height: auto;"></div>
 <form method="post" id="dynamicForm">
   <table class="form-table" style="border-spacing: 0 15px;"> <!-- Added vertical spacing -->
@@ -42,8 +53,8 @@
           value="{{ config.get(field['id'], field.get('default', '')) }}" class="form-control"
           data-default="{{ field.get('default', '') }}">
         {% elif field['type'] == 'onoff' %}
-        <input type="checkbox" id="{{ field['id'] }}" name="{{ field['id'] }}" value="true"
-          {% if config.get(field['id'], field.get('default', 'false')) == 'true' %}checked{% endif %}
+        <input type="checkbox" id="{{ field['id'] }}" name="{{ field['id'] }}" value="true" {% if
+          config.get(field['id'], field.get('default', 'false' ))=='true' %}checked{% endif %}
           data-default="{{ 'true' if field.get('default', 'false') == 'true' else 'false' }}">
         {% elif field['type'] == 'dropdown' %}
         <select id="{{ field['id'] }}" name="{{ field['id'] }}" class="form-control"
@@ -56,27 +67,44 @@
           {% endfor %}
         </select>
         {% elif field['type'] == 'location' %}
-        <div id="{{ field['id'] }}_picker" class="location-picker">
-          <label for="{{ field['id'] }}_lat">{{ _('Latitude') }}</label>
-          <input type="text" id="{{ field['id'] }}_lat" name="{{ field['id'] }}_lat"
-            value="{{ config.get(field['id'], {}).get('lat', '') }}" class="form-control"
-            placeholder="{{ _('Enter latitude') }}" data-default="{{ field.get('default', {}).get('lat', '') }}">
-          <br />
-          <label for="{{ field['id'] }}_lng">{{ _('Longitude') }}</label>
-          <input type="text" id="{{ field['id'] }}_lng" name="{{ field['id'] }}_lng"
-            value="{{ config.get(field['id'], {}).get('lng', '') }}" class="form-control"
-            placeholder="{{ _('Enter longitude') }}" data-default="{{ field.get('default', {}).get('lng', '') }}">
-          <button type="button" id="{{ field['id'] }}_pickBtn" class="w3-button">{{ _('Pick Location') }}</button>
+        <div>
+          <label for="{{ field['id'] }}_search">{{ _('Location') }}</label>
+          <input type="text" id="{{ field['id'] }}_search" placeholder="{{ _('Enter a location') }}" value=""
+            data-ignore-config="true">
+          <script>
+            document.addEventListener('DOMContentLoaded', function () {
+              const searchInput = document.getElementById('{{ field["id"] }}_search');
+              const configValue = config["{{ field['id'] }}"];
+              if (configValue) {
+                try {
+                  const parsedConfig = JSON.parse(configValue);
+                  searchInput.value = parsedConfig.name || '';
+                } catch (e) {
+                  console.error('Error parsing config for field {{ field["id"] }}:', e);
+                  searchInput.value = '';
+                }
+              } else {
+                searchInput.value = "{{ device.get('location', {}).get('name', '') }}";
+              }
+              searchInput.setAttribute('data-default', searchInput.value);
+            });
+          </script>
+          <ul id="{{ field['id'] }}_results"></ul>
         </div>
+        <input type="hidden" name="{{ field['id'] }}" id="{{ field['id'] }}"
+          value='{{ config.get(field["id"], device.get("location", {})) | tojson }}'
+          data-default='{{ field.get("default", device.get("location", {})) | tojson }}'>
         <script>
-          document.getElementById("{{ field['id'] }}_pickBtn").addEventListener("click", function () {
-            const lat = prompt("{{ _('Enter latitude:') }}", "");
-            const lng = prompt("{{ _('Enter longitude:') }}", "");
-            if (lat && lng) {
-              document.getElementById("{{ field['id'] }}_lat").value = lat;
-              document.getElementById("{{ field['id'] }}_lng").value = lng;
-              config["{{ field['id'] }}"] = { lat: lat, lng: lng };
-            }
+          document.addEventListener('DOMContentLoaded', function () {
+            enableLocationSearch(
+              document.getElementById('{{ field["id"] }}_search'),
+              document.getElementById('{{ field["id"] }}_results'),
+              document.getElementById('{{ field["id"] }}'),
+              function (location) {
+                config["{{ field['id'] }}"] = location;
+                updateConfigAndPreview();
+              }
+            );
           });
         </script>
         {% elif field['type'] == 'color' %}
@@ -115,7 +143,7 @@
   <button type="button" id="resetButton" style="align-self: start; min-width: 10em;">{{ _('Reset') }}</button>
 </form>
 {% if delete_on_cancel == 1 %}
-<form action="{{ url_for('manager.deleteapp', device_id=device_id, iname=app['iname'])}}" method="get">
+<form action="{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname'])}}" method="get">
   <input type="submit" value="{{ _('Cancel') }}">
 </form>
 {% else %}
@@ -130,21 +158,13 @@
     const configContent = document.getElementById("configContent").querySelector("pre");
     const previewImage = document.getElementById("previewImage");
 
-    // Function to update the config text and preview image
-    function updateConfigAndPreview() {
-      configContent.textContent = JSON.stringify(config, null, 2);
-
-      // Reload the preview image to reflect updated config
-      const url = new URL(previewImage.src);
-      url.searchParams.set("config", JSON.stringify(config));
-      previewImage.src = url.toString();
-    }
-
     // Update the config object whenever a field changes
     form.addEventListener("input", function (event) {
       const target = event.target;
       const fieldId = target.id;
-
+      if (target.hasAttribute("data-ignore-config")) {
+        return;
+      }
       if (target.type === "checkbox") {
         config[fieldId] = target.checked ? "true" : "false";
       } else if (target.type === "select-one") {
@@ -158,7 +178,7 @@
 
     // Reset form values to defaults
     resetButton.addEventListener("click", function () {
-      const inputs = form.querySelectorAll("[data-default]");
+      const inputs = form.querySelectorAll("[data-default], div [data-default]");
       inputs.forEach(input => {
         const defaultValue = input.getAttribute("data-default");
         if (input.type === "checkbox") {
@@ -167,6 +187,10 @@
           input.value = defaultValue;
         } else {
           input.value = defaultValue;
+        }
+
+        if (input.hasAttribute("data-ignore-config")) {
+          return;
         }
 
         // Update the config object to reflect the reset values
@@ -182,10 +206,6 @@
 <form method="post">
   <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
 <input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
-  <label for="location_as_default">
-    <input type="checkbox" name="location_as_default" id="location_as_default">
-    {{ _('Save picked location as device default?') }}
-  </label>
   <input type="submit" value="{{ _('Save') }}">
 </form>
 {% if delete_on_cancel == 1 %}
