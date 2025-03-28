@@ -34,8 +34,8 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                                 const hiddenValue = JSON.stringify({
                                     name: this.dataset.name,
                                     timezone: this.dataset.timezone,
-                                    lat: parseFloat(this.dataset.lat),
-                                    lng: parseFloat(this.dataset.lon)
+                                    lat: this.dataset.lat,
+                                    lng: this.dataset.lon
                                 });
                                 hiddenInputElement.value = hiddenValue;
 

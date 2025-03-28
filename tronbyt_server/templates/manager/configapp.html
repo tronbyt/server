@@ -161,7 +161,10 @@
 
                 // Update config with the selected dropdown value
                 dropdown.addEventListener('change', function () {
-                  config["{{ field['id'] }}"] = dropdown.value;
+                  config["{{ field['id'] }}"] = JSON.stringify({
+                    value: dropdown.value,
+                    display: dropdown.options[dropdown.selectedIndex].textContent
+                  });
                   updateConfigAndPreview();
                 });
 
@@ -180,9 +183,8 @@
             );
 
             // Fetch options on form load using the current location value
-            const initialLocation = JSON.parse(hiddenInput.value || '{}');
-            if (initialLocation) {
-              await fetchOptions(initialLocation);
+            if (hiddenInput.value) {
+              await fetchOptions(hiddenInput.value);
             }
           });
         </script>
