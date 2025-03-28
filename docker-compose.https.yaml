@@ -10,7 +10,6 @@ services:
       - SERVER_PROTOCOL=https
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
       - SERVER_PORT
-      - PIXLET_RENDER_PORT1=${PIXLET_SERVE_PORT1}
       - SYSTEM_APPS_REPO
       - PRODUCTION
     healthcheck:

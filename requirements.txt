@@ -2,7 +2,6 @@ esptool
 flask
 flask-babel
 gunicorn
-psutil
 python-dotenv
 requests
 tzlocal
