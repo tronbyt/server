@@ -22,6 +22,7 @@
 
   // Function to update the config text and preview image
   function updateConfigAndPreview() {
+    const configContent = document.getElementById("configContent").querySelector("pre");
     configContent.textContent = JSON.stringify(config, null, 2);
 
     // Reload the preview image to reflect updated config
@@ -116,7 +117,7 @@
         </div>
         <input type="hidden" name="{{ field['id'] }}_location" id="{{ field['id'] }}_location"
           value='{{ config.get(field["id"], device.get("location", {})) | tojson }}'
-          data-default='{{ field.get("default", device.get("location", {})) | tojson }}'>
+          data-default='{{ field.get("default", device.get("location", {})) | tojson }}' data-ignore-config="true">
         <select id="{{ field['id'] }}" name="{{ field['id'] }}" id="{{ field['id'] }}" class="form-control">
           <!-- Options will be dynamically populated -->
         </select>
@@ -141,10 +142,10 @@
 
                 let options;
                 try {
-                    options = await response.json();
+                  options = await response.json();
                 } catch (error) {
-                    console.error('Error parsing JSON response:', error);
-                    return;
+                  console.error('Error parsing JSON response:', error);
+                  return;
                 }
                 dropdown.innerHTML = ''; // Clear existing options
 

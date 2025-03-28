@@ -156,15 +156,12 @@ def call_handler(path: Path, handler: str, parameter: str) -> Optional[str]:
         ctypes.c_char_p(parameter.encode("utf-8")),
     )
     if ret.length >= 0:
-        data = ctypes.string_at(ret.data, ret.length)
+        data = ctypes.string_at(ret.data)
         try:
             buf = data.decode("utf-8")
-            print(f"buf: {buf}")
         except Exception as e:
             current_app.logger.error(f"Error: {e}")
             buf = None
-        if free_bytes and ret.data:
-            free_bytes(ret.data)
         return buf
     return None
 

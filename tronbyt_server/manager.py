@@ -582,7 +582,7 @@ def schema_handler(device_id: str, iname: str, handler: str) -> ResponseReturnVa
             abort(HTTPStatus.BAD_REQUEST, description="Invalid request body")
 
         # Call the handler with the provided parameter
-        result = call_handler(Path(app["path"]), handler, json.dumps(data["param"]))
+        result = call_handler(Path(app["path"]), handler, data["param"])
 
         # Return the result as JSON
         return Response(result, mimetype="application/json")
