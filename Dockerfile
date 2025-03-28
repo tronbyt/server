@@ -9,13 +9,11 @@ FROM debian:trixie-slim AS runtime
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
-ENV PIXLET_PATH=/pixlet/pixlet
 ENV LIBPIXLET_PATH=/usr/lib/libpixlet.so
 
 WORKDIR /app
 
-# copy pixlet binary and python dependencies
-COPY --from=pixlet /bin/pixlet /pixlet/pixlet
+# copy pixlet library and python dependencies
 COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
 
 RUN apt-get update && \
@@ -32,7 +30,6 @@ RUN apt-get update && \
         python3-dotenv \
         python3-flask \
         python3-flask-babel \
-        python3-psutil \
         python3-requests \
         python3-tzlocal \
         python3-yaml \

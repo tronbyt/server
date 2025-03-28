@@ -15,7 +15,6 @@
   </div>
 </div>
 
-{% if schema %}
 <script>
   // Make the config object available to JavaScript
   const config = {{ config| tojson }};
@@ -280,25 +279,6 @@
     });
   });
 </script>
-{% else %}
-<form method="post">
-  <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
-<input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
-  <input type="submit" value="{{ _('Save') }}">
-</form>
-{% if delete_on_cancel == 1 %}
-<form action="{{ url_for('manager.deleteapp', device_id=device_id, iname=app['iname'])}}" method="get">
-  <input type="submit" value="{{ _('Cancel') }}">
-</form>
-{% else %}
-<form action="{{ url_for('manager.index') }}" method="get">
-  <input type="submit" value="{{ _('Cancel') }}">
-</form>
-{% endif %}
-
-<iframe src="{{ url_for('manager.pixlet_proxy') }}?{{url_params}}" width="100%" height="2000"
-  title="{{ _('Pixlet Serve') }}"></iframe>
-{% endif %}
 
 <!-- style and javascript to show and hide the config -->
 <style>

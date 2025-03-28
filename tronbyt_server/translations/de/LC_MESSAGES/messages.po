@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-03-28 08:53+0000\n"
+"POT-Creation-Date: 2025-03-28 20:41+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/__init__.py:206
+#: tronbyt_server/__init__.py:246
 msgid "Never"
 msgstr "Nie"
 
@@ -63,8 +63,7 @@ msgstr ""
 #: tronbyt_server/templates/auth/edit.html:11
 #: tronbyt_server/templates/auth/edit.html:22
 #: tronbyt_server/templates/auth/edit.html:34
-#: tronbyt_server/templates/manager/configapp.html:142
-#: tronbyt_server/templates/manager/configapp.html:209
+#: tronbyt_server/templates/manager/configapp.html:219
 #: tronbyt_server/templates/manager/create.html:41
 #: tronbyt_server/templates/manager/update.html:94
 #: tronbyt_server/templates/manager/updateapp.html:51
@@ -234,8 +233,8 @@ msgid "Display Time (secs):"
 msgstr "Anzeigedauer (Sekunden):"
 
 #: tronbyt_server/templates/manager/adminindex.html:66
-#: tronbyt_server/templates/manager/configapp.html:35
-#: tronbyt_server/templates/manager/configapp.html:120
+#: tronbyt_server/templates/manager/configapp.html:34
+#: tronbyt_server/templates/manager/configapp.html:197
 #: tronbyt_server/templates/manager/index.html:191
 #: tronbyt_server/templates/manager/index.html:262
 #: tronbyt_server/templates/manager/updateapp.html:22
@@ -247,53 +246,48 @@ msgid "Last Rendered:"
 msgstr "Zuletzt gerendert:"
 
 #: tronbyt_server/templates/manager/configapp.html:4
-#: tronbyt_server/templates/manager/configapp.html:207
 msgid "Configuring"
 msgstr "Konfigurieren"
 
 #: tronbyt_server/templates/manager/configapp.html:10
-#: tronbyt_server/templates/manager/configapp.html:252
+#: tronbyt_server/templates/manager/configapp.html:310
 #: tronbyt_server/templates/manager/updateapp.html:9
 #: tronbyt_server/templates/manager/updateapp.html:85
 msgid "Show App Config"
 msgstr "App-Konfiguration anzeigen"
 
-#: tronbyt_server/templates/manager/configapp.html:71
+#: tronbyt_server/templates/manager/configapp.html:70
+#: tronbyt_server/templates/manager/configapp.html:111
 #: tronbyt_server/templates/manager/create.html:30
 #: tronbyt_server/templates/manager/update.html:82
 msgid "Location"
 msgstr "Standort"
 
-#: tronbyt_server/templates/manager/configapp.html:72
+#: tronbyt_server/templates/manager/configapp.html:71
+#: tronbyt_server/templates/manager/configapp.html:112
 #: tronbyt_server/templates/manager/create.html:31
 #: tronbyt_server/templates/manager/update.html:83
 msgid "Enter a location"
 msgstr "Standort eingeben"
 
-#: tronbyt_server/templates/manager/configapp.html:115
+#: tronbyt_server/templates/manager/configapp.html:192
 msgid "Upload Image"
 msgstr "Bild hochladen"
 
-#: tronbyt_server/templates/manager/configapp.html:133
+#: tronbyt_server/templates/manager/configapp.html:210
 msgid "Please upload a valid image file (PNG, JPEG, GIF, or SVG)."
 msgstr "Bitte ein gültiges Bild hochladen (PNG, JPEG, GIF oder SVG)"
 
-#: tronbyt_server/templates/manager/configapp.html:143
+#: tronbyt_server/templates/manager/configapp.html:220
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: tronbyt_server/templates/manager/configapp.html:147
-#: tronbyt_server/templates/manager/configapp.html:151
-#: tronbyt_server/templates/manager/configapp.html:213
-#: tronbyt_server/templates/manager/configapp.html:217
+#: tronbyt_server/templates/manager/configapp.html:224
+#: tronbyt_server/templates/manager/configapp.html:228
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: tronbyt_server/templates/manager/configapp.html:222
-msgid "Pixlet Serve"
-msgstr "Pixlet-Dienst"
-
-#: tronbyt_server/templates/manager/configapp.html:248
+#: tronbyt_server/templates/manager/configapp.html:306
 #: tronbyt_server/templates/manager/updateapp.html:81
 msgid "Hide App Config"
 msgstr "App-Konfiguration ausblenden"

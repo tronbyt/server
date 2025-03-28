@@ -1,8 +1,6 @@
 import json
-import logging
 import os
 import secrets
-import select
 import shutil
 import string
 import subprocess
@@ -12,13 +10,9 @@ from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
 from random import randint
-from threading import Thread, Timer
 from typing import Any, Dict, Optional, Tuple
-from urllib.parse import urlencode
 from zoneinfo import available_timezones
 
-import psutil
-import requests
 from flask import (
     Blueprint,
     Response,
@@ -761,11 +755,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
-    users_dir = db.get_users_dir()
-    # used when rendering configapp
-    domain_host = current_app.config["SERVER_HOSTNAME"]
-    protocol = current_app.config["SERVER_PROTOCOL"]
-
     device = g.user.get("devices", {}).get(device_id)
     if not device:
         abort(HTTPStatus.NOT_FOUND, description="Device not found")
@@ -777,214 +766,40 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     app_basename = "{}-{}".format(app["name"], app["iname"])
     app_path = Path(app["path"])
 
-    if os.getenv("USE_PIXLET_SCHEMA", "0") == "1":
-        if request.method == "GET":
-            schema_json = get_schema(app_path)
-            schema = json.loads(schema_json) if schema_json else None
-            return render_template(
-                "manager/configapp.html",
-                app=app,
-                domain_host=domain_host,
-                protocol=protocol,
-                device=device,
-                delete_on_cancel=delete_on_cancel,
-                config=app.get("config", {}),
-                schema=schema,
-            )
-
-        if request.method == "POST":
-            config = request.form.to_dict()
-            app["config"] = config
-            db.save_user(g.user)
-
-            # render the app with the new config to store the preview
-            webp_device_path = db.get_device_webp_dir(device_id)
-            webp_device_path.mkdir(parents=True, exist_ok=True)
-            webp_path = webp_device_path / f"{app_basename}.webp"
-            success, _ = render_app(app_path, config, webp_path, device)
-            if success:
-                # set the enabled key in app to true now that it has been configured.
-                app["enabled"] = True
-                # set last_rendered to seconds
-                app["last_render"] = int(time.time())
-                # always save
-                db.save_user(g.user)
-            else:
-                flash("Error Rendering App")
-
-            return redirect(url_for("manager.index"))
-
-    user_render_port = str(db.get_user_render_port(g.user["username"]))
-    # always kill the pixlet process based on port number.
-    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
-        if (
-            "pixlet" in proc.info["name"]
-            and proc.info["cmdline"]
-            and f"--port={user_render_port}" in proc.info["cmdline"]
-        ):
-            try:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-            except Exception as e:
-                current_app.logger.error(f"Error terminating pixlet process: {e}")
-
-    tmp_config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.tmp"
-    if request.method == "POST":
-        #  do something to confirm configuration ?
-        webp_device_path = db.get_device_webp_dir(device_id)
-        webp_device_path.mkdir(parents=True, exist_ok=True)
-        webp_path = webp_device_path / f"{app_basename}.webp"
-        current_app.logger.debug("checking for : " + str(tmp_config_path))
-        if tmp_config_path.exists():
-            current_app.logger.debug("file exists")
-            with tmp_config_path.open("r") as c:
-                new_config = json.load(c)
-            # remove internal settings like `$tz` and `$watch` from the stored config
-            new_config = {k: v for k, v in new_config.items() if not k.startswith("$")}
-            app["config"] = new_config
-            db.save_user(g.user)
-
-            # delete the tmp file
-            tmp_config_path.unlink()
-
-            # run pixlet render with the new config
-            success, _ = render_app(app_path, new_config, webp_path, device)
-            if success:
-                # set the enabled key in app to true now that it has been configured.
-                app["enabled"] = True
-                # set last_rendered to seconds
-                app["last_render"] = int(time.time())
-                # always save
-                db.save_user(g.user)
-            else:
-                flash("Error Rendering App")
-
-        return redirect(url_for("manager.index"))
-
-    # run the in browser configure interface via pixlet serve
-    elif request.method == "GET":
-        if not app_path.exists():
-            flash("App Not Found")
-            return redirect(url_for("manager.index"))
-
-        pixlet_path = Path(os.getenv("PIXLET_PATH", "/pixlet/pixlet"))
-        if not pixlet_path.exists():
-            flash("Pixlet binary not found")
-            return redirect(url_for("manager.index"))
-
-        config_dict = app.get("config", {}).copy()
-        formatted_config = config_dict.copy()
-        add_default_config(config_dict, device)
-        config_dict["$watch"] = "false"
-        url_params = urlencode(config_dict)
-
-        # execute the pixlet serve process and show in it an iframe on the config page.
-        current_app.logger.debug(str(app_path))
-        p = subprocess.Popen(
-            [
-                str(pixlet_path),
-                "--saveconfig",
-                str(tmp_config_path),
-                "serve",
-                str(app_path),
-                "--port={}".format(user_render_port),
-                "--path=/pixlet/",
-            ],
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            shell=False,
-            text=True,
-            bufsize=1,
-        )
-
-        # Start a watchdog timer to kill the process after some time
-        def terminate_process(
-            logger: logging.Logger, p: subprocess.Popen[str], port: str
-        ) -> None:
-            logger.debug(f"terminating pixlet on port {port}")
-            try:
-                p.terminate()
-                try:
-                    p.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    p.kill()
-            except Exception as e:
-                logger.error(f"Error terminating pixlet process: {e}")
-
-        timer = Timer(
-            float(os.getenv("PIXLET_TIMEOUT", "300")),
-            terminate_process,
-            [current_app.logger, p, user_render_port],
-        )
-        timer.start()
-
-        # wait for pixlet to serve
-        # first, wait for the process to emit a message to stderr ("listening at")
-        # once that message is seen, wait for the health check to pass.
-        if p.stderr:
-            timeout = 10  # seconds
-            start_time = time.time()
-            saw_message = False
-            while True:
-                if time.time() - start_time > timeout:
-                    current_app.logger.error("Timeout waiting for pixlet to start")
-                    p.terminate()
-                    try:
-                        p.wait(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        p.kill()
-                    flash("Error: Timeout waiting for pixlet to start")
-                    return redirect(url_for("manager.index"))
-
-                if saw_message:
-                    try:
-                        if requests.get(
-                            f"http://localhost:{user_render_port}/pixlet/health"
-                        ).ok:
-                            current_app.logger.debug(
-                                f"pixlet ready on port {user_render_port}"
-                            )
-                            break
-                    except requests.ConnectionError:
-                        current_app.logger.debug(
-                            f"pixlet not ready yet for port {user_render_port}, retrying"
-                        )
-                else:
-                    ready = select.select([p.stderr], [], [], 1.0)
-                    if ready[0]:
-                        output = p.stderr.readline()
-                        if "listening at" in output:
-                            saw_message = True
-                            continue
-                time.sleep(0.1)
-
-            def log_subprocess_output(pipe: Any, logger: logging.Logger) -> None:
-                with pipe:
-                    for line in iter(pipe.readline, ""):
-                        logger.debug(line.strip())
-
-            Thread(
-                target=log_subprocess_output, args=(p.stderr, current_app.logger)
-            ).start()
-            Thread(
-                target=log_subprocess_output, args=(p.stdout, current_app.logger)
-            ).start()
-
+    if request.method == "GET":
+        schema_json = get_schema(app_path)
+        schema = json.loads(schema_json) if schema_json else None
         return render_template(
             "manager/configapp.html",
             app=app,
-            domain_host=domain_host,
-            protocol=protocol,
-            url_params=url_params,
-            device_id=device_id,
+            device=device,
             delete_on_cancel=delete_on_cancel,
-            user_render_port=user_render_port,
-            config=formatted_config,
-            schema=None,
+            config=app.get("config", {}),
+            schema=schema,
         )
+
+    if request.method == "POST":
+        config = request.form.to_dict()
+        app["config"] = config
+        db.save_user(g.user)
+
+        # render the app with the new config to store the preview
+        webp_device_path = db.get_device_webp_dir(device_id)
+        webp_device_path.mkdir(parents=True, exist_ok=True)
+        webp_path = webp_device_path / f"{app_basename}.webp"
+        success, _ = render_app(app_path, config, webp_path, device)
+        if success:
+            # set the enabled key in app to true now that it has been configured.
+            app["enabled"] = True
+            # set last_rendered to seconds
+            app["last_render"] = int(time.time())
+            # always save
+            db.save_user(g.user)
+        else:
+            flash("Error Rendering App")
+
+        return redirect(url_for("manager.index"))
+
     abort(HTTPStatus.BAD_REQUEST)
 
 
@@ -1291,39 +1106,6 @@ def refresh_user_repo() -> ResponseReturnValue:
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
-
-
-@bp.route("/pixlet", defaults={"path": ""}, methods=["GET", "POST"])
-@bp.route("/pixlet/<path:path>", methods=["GET", "POST"])
-@login_required
-def pixlet_proxy(path: str) -> ResponseReturnValue:
-    user_render_port = db.get_user_render_port(g.user["username"])
-    pixlet_url = f"http://localhost:{user_render_port}/pixlet/{path}?{request.query_string.decode()}"
-    try:
-        if request.method == "GET":
-            response = requests.get(
-                pixlet_url, params=request.args.to_dict(), headers=dict(request.headers)
-            )
-        elif request.method == "POST":
-            response = requests.post(
-                pixlet_url, data=request.get_data(), headers=dict(request.headers)
-            )
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Error fetching {pixlet_url}: {e}")
-        abort(HTTPStatus.INTERNAL_SERVER_ERROR)
-    excluded_headers = [
-        "Content-Length",
-        "Transfer-Encoding",
-        "Content-Encoding",
-        "Connection",
-    ]
-    headers = [
-        (name, value)
-        for (name, value) in response.raw.headers.items()
-        if name not in excluded_headers
-    ]
-    return Response(response.content, status=response.status_code, headers=headers)
 
 
 @bp.route("/<string:device_id>/<string:iname>/moveapp", methods=["GET", "POST"])

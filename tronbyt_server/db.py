@@ -425,18 +425,6 @@ def get_all_users() -> List[User]:
     return [json.loads(row[0]) for row in cursor.fetchall()]
 
 
-def get_user_render_port(username: str) -> Optional[int]:
-    base_port = int(
-        current_app.config.get("PIXLET_RENDER_PORT1", 5100) or 5100
-    )  # guard against empty string
-    users = get_all_users()
-    for i in range(len(users)):
-        if users[i]["username"] == username:
-            # current_app.logger.debug(f"got port {i} for {username}")
-            return base_port + i
-    return None
-
-
 def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
     current_time = datetime.now()
     if tz_str:
