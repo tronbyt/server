@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
+<script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('Edit') }} "{{ device['name'] }}"{% endblock %}</h1>
 {% endblock %}
 {% block content %}
@@ -77,9 +78,21 @@
   <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
   <label for="api_key">{{ _('API Key') }}</label>
   <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
+  <div>
+    <label for="location_search">{{ _('Location') }}</label>
+    <input type="text" id="location_search" style="width: 100%" placeholder="{{ _('Enter a location') }}"
+      value="{{ request.form['location_search'] or device.get('location', {}).get('name', '') }}">
+    <ul id="location_results"></ul>
+  </div>
+  <input type="hidden" name="location" id="location"
+    value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
+    });
+  </script>
   <input type="submit" value="{{ _('Save') }}">
 </form>
-{% if 'location' in device %}{{ device['location'] }}{% endif %}
 <hr>
 <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post">
   <input class="danger" type="submit" value="{{ _('Delete') }}"
