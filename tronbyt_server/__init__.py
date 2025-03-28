@@ -19,6 +19,9 @@ pixlet_render_app: Optional[
     Callable[[bytes, bytes, int, int, int, int, int, int, int], Any]
 ] = None
 pixlet_get_schema: Optional[Callable[[bytes], Any]] = None
+pixlet_call_handler: Optional[
+    Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any]
+] = None
 free_bytes: Optional[Callable[[Any], None]] = None
 
 
@@ -61,6 +64,12 @@ def initialize_pixlet_library(app: Flask) -> None:
             ("length", ctypes.c_int),
         ]
 
+    class StringReturn(ctypes.Structure):
+        _fields_ = [
+            ("data", ctypes.c_char_p),
+            ("length", ctypes.c_int),
+        ]
+
     pixlet_render_app.restype = DataReturn
 
     global pixlet_get_schema
@@ -69,10 +78,19 @@ def initialize_pixlet_library(app: Flask) -> None:
     pixlet_get_schema.argtypes = [ctypes.c_char_p]
     pixlet_get_schema.restype = DataReturn
 
+    global pixlet_call_handler
+    pixlet_call_handler = pixlet_library.call_handler
+    pixlet_call_handler.argtypes = [
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+    ]
+    pixlet_call_handler.restype = StringReturn
+
     global free_bytes
 
     free_bytes = pixlet_library.free_bytes
-    free_bytes.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
+    free_bytes.argtypes = [ctypes.c_void_p]
 
 
 def render_app(
@@ -122,6 +140,28 @@ def get_schema(path: Path) -> Optional[str]:
             buf = bytes(data).decode("utf-8")
         except UnicodeDecodeError as e:
             current_app.logger.error(f"UnicodeDecodeError: {e}")
+            buf = None
+        if free_bytes and ret.data:
+            free_bytes(ret.data)
+        return buf
+    return None
+
+
+def call_handler(path: Path, handler: str, parameter: str) -> Optional[str]:
+    if not pixlet_call_handler:
+        return None
+    ret = pixlet_call_handler(
+        ctypes.c_char_p(str(path).encode("utf-8")),
+        ctypes.c_char_p(handler.encode("utf-8")),
+        ctypes.c_char_p(parameter.encode("utf-8")),
+    )
+    if ret.length >= 0:
+        data = ctypes.string_at(ret.data, ret.length)
+        try:
+            buf = data.decode("utf-8")
+            print(f"buf: {buf}")
+        except Exception as e:
+            current_app.logger.error(f"Error: {e}")
             buf = None
         if free_bytes and ret.data:
             free_bytes(ret.data)
