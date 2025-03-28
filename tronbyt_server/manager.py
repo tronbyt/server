@@ -37,7 +37,7 @@ from tzlocal import get_localzone_name
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
-from tronbyt_server import get_schema
+from tronbyt_server import call_handler, get_schema
 from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
@@ -555,6 +555,40 @@ def preview(device_id: str, iname: str) -> ResponseReturnValue:
     except Exception as e:
         current_app.logger.error(f"Error in preview: {e}")
         abort(HTTPStatus.INTERNAL_SERVER_ERROR, description="Error generating preview")
+
+
+@bp.route(
+    "/<string:device_id>/<string:iname>/schema_handler/<string:handler>",
+    methods=["POST"],
+)
+@login_required
+def schema_handler(device_id: str, iname: str, handler: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    device = g.user.get("devices", {}).get(device_id)
+    if not device:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    app = device.get("apps", {}).get(iname)
+    if app is None:
+        current_app.logger.error("couldn't get app iname {iname} from user {g.user}")
+        abort(HTTPStatus.NOT_FOUND, description="App not found")
+
+    try:
+        # Parse the JSON body
+        data = request.get_json()
+        if not data or "param" not in data:
+            abort(HTTPStatus.BAD_REQUEST, description="Invalid request body")
+
+        # Call the handler with the provided parameter
+        result = call_handler(Path(app["path"]), handler, json.dumps(data["param"]))
+
+        # Return the result as JSON
+        return Response(result, mimetype="application/json")
+    except Exception as e:
+        current_app.logger.error(f"Error in schema_handler: {e}")
+        abort(HTTPStatus.INTERNAL_SERVER_ERROR, description="Handler execution failed")
 
 
 def render_app(
