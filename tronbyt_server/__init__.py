@@ -2,6 +2,7 @@ import ctypes
 import datetime as dt
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
@@ -17,6 +18,7 @@ babel = Babel()
 pixlet_render_app: Optional[
     Callable[[bytes, bytes, int, int, int, int, int, int, int], Any]
 ] = None
+pixlet_get_schema: Optional[Callable[[bytes], Any]] = None
 free_bytes: Optional[Callable[[Any], None]] = None
 
 
@@ -53,13 +55,19 @@ def initialize_pixlet_library(app: Flask) -> None:
         ctypes.c_int,
     ]
 
-    class RenderAppReturn(ctypes.Structure):
+    class DataReturn(ctypes.Structure):
         _fields_ = [
             ("data", ctypes.POINTER(ctypes.c_ubyte)),
             ("length", ctypes.c_int),
         ]
 
-    pixlet_render_app.restype = RenderAppReturn
+    pixlet_render_app.restype = DataReturn
+
+    global pixlet_get_schema
+
+    pixlet_get_schema = pixlet_library.get_schema
+    pixlet_get_schema.argtypes = [ctypes.c_char_p]
+    pixlet_get_schema.restype = DataReturn
 
     global free_bytes
 
@@ -68,7 +76,7 @@ def initialize_pixlet_library(app: Flask) -> None:
 
 
 def render_app(
-    name: str,
+    path: Path,
     config: Dict[str, Any],
     width: int,
     height: int,
@@ -81,7 +89,7 @@ def render_app(
     if not pixlet_render_app:
         return None
     ret = pixlet_render_app(
-        name.encode("utf-8"),
+        str(path).encode("utf-8"),
         json.dumps(config).encode("utf-8"),
         width,
         height,
@@ -96,6 +104,25 @@ def render_app(
             ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
         ).contents
         buf = bytes(data)
+        if free_bytes and ret.data:
+            free_bytes(ret.data)
+        return buf
+    return None
+
+
+def get_schema(path: Path) -> Optional[str]:
+    if not pixlet_get_schema:
+        return None
+    ret = pixlet_get_schema(str(path).encode("utf-8"))
+    if ret.length >= 0:
+        data = ctypes.cast(
+            ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
+        ).contents
+        try:
+            buf = bytes(data).decode("utf-8")
+        except UnicodeDecodeError as e:
+            current_app.logger.error(f"UnicodeDecodeError: {e}")
+            buf = None
         if free_bytes and ret.data:
             free_bytes(ret.data)
         return buf
@@ -183,6 +210,10 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             add_direction=True,
             locale=get_locale(),
         )
+
+    @app.template_filter("icon_format")
+    def icon_format(icon_name: str) -> str:
+        return re.sub(r"([A-Z])", r"-\1", icon_name).lower()
 
     @app.teardown_appcontext
     def close_connection(exception: Any) -> None:

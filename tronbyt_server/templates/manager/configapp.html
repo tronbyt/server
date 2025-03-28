@@ -10,30 +10,199 @@
 
   <!-- Config Content -->
   <div id="configContent" class="hidden">
-    <pre class="flash">{{ config }}</pre>
+    <pre class="flash">{{ config | tojson(indent=2) }}</pre>
   </div>
 </div>
-<form method="post">
-    <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
-<input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
-<label for="location_as_default">
-        <input type="checkbox" name="location_as_default" id="location_as_default">
-        {{ _('Save picked location as device default?') }}
-    </label>
-    <input type="submit" value="{{ _('Save') }}">
+
+{% if schema %}
+<script>
+  // Make the config object available to JavaScript
+  const config = {{ config| tojson }};
+</script>
+<div class="app-img" style="width: 400px;"><img id="previewImage"
+    src="{{ url_for('manager.preview', device_id=device_id, iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    alt="{{ _('Preview') }}" width="400" style="width: 400px; height: auto;"></div>
+<form method="post" id="dynamicForm">
+  <table class="form-table" style="border-spacing: 0 15px;"> <!-- Added vertical spacing -->
+    {% for field in schema['schema'] %}
+    <tr>
+      <td>
+        <label for="{{ field['id'] }}">
+          {% if field['icon'] %}
+          <i class="fa fa-{{ field['icon'] | icon_format }}"></i>
+          {% endif %}
+          {{ field['name'] }}
+        </label>
+        <br>
+        <small>{{ field['description'] }}</small>
+      </td>
+      <td>
+        {% if field['type'] == 'text' %}
+        <input type="text" id="{{ field['id'] }}" name="{{ field['id'] }}"
+          value="{{ config.get(field['id'], field.get('default', '')) }}" class="form-control"
+          data-default="{{ field.get('default', '') }}">
+        {% elif field['type'] == 'onoff' %}
+        <input type="checkbox" id="{{ field['id'] }}" name="{{ field['id'] }}" value="true"
+          {% if config.get(field['id'], field.get('default', 'false')) == 'true' %}checked{% endif %}
+          data-default="{{ 'true' if field.get('default', 'false') == 'true' else 'false' }}">
+        {% elif field['type'] == 'dropdown' %}
+        <select id="{{ field['id'] }}" name="{{ field['id'] }}" class="form-control"
+          data-default="{{ field.get('default', '') }}">
+          {% for option in field['options'] %}
+          <option value="{{ option['value'] }}" {% if config.get(field['id'], field.get('default', ''
+            ))==option['value'] %}selected{% endif %}>
+            {{ option['text'] }}
+          </option>
+          {% endfor %}
+        </select>
+        {% elif field['type'] == 'location' %}
+        <div id="{{ field['id'] }}_picker" class="location-picker">
+          <label for="{{ field['id'] }}_lat">{{ _('Latitude') }}</label>
+          <input type="text" id="{{ field['id'] }}_lat" name="{{ field['id'] }}_lat"
+            value="{{ config.get(field['id'], {}).get('lat', '') }}" class="form-control"
+            placeholder="{{ _('Enter latitude') }}" data-default="{{ field.get('default', {}).get('lat', '') }}">
+          <br />
+          <label for="{{ field['id'] }}_lng">{{ _('Longitude') }}</label>
+          <input type="text" id="{{ field['id'] }}_lng" name="{{ field['id'] }}_lng"
+            value="{{ config.get(field['id'], {}).get('lng', '') }}" class="form-control"
+            placeholder="{{ _('Enter longitude') }}" data-default="{{ field.get('default', {}).get('lng', '') }}">
+          <button type="button" id="{{ field['id'] }}_pickBtn" class="w3-button">{{ _('Pick Location') }}</button>
+        </div>
+        <script>
+          document.getElementById("{{ field['id'] }}_pickBtn").addEventListener("click", function () {
+            const lat = prompt("{{ _('Enter latitude:') }}", "");
+            const lng = prompt("{{ _('Enter longitude:') }}", "");
+            if (lat && lng) {
+              document.getElementById("{{ field['id'] }}_lat").value = lat;
+              document.getElementById("{{ field['id'] }}_lng").value = lng;
+              config["{{ field['id'] }}"] = { lat: lat, lng: lng };
+            }
+          });
+        </script>
+        {% elif field['type'] == 'color' %}
+        <input type="color" id="{{ field['id'] }}" name="{{ field['id'] }}"
+          value="{{ config.get(field['id'], field.get('default', '#000000')) }}" class="form-control"
+          data-default="{{ field.get('default', '#000000') }}">
+        {% elif field['type'] == 'png' %}
+        <label for="{{ field['id'] }}_upload">{{ _('Upload Image') }}</label>
+        <input type="file" id="{{ field['id'] }}_upload" accept="image/png" class="form-control">
+        <input type="hidden" id="{{ field['id'] }}" name="{{ field['id'] }}" value="{{ config.get(field['id'], '') }}"
+          data-default="{{ field.get('default', '') }}">
+        <img id="{{ field['id'] }}_preview" src="data:image/png;base64,{{ config.get(field['id'], '') }}"
+          alt="{{ _('Preview') }}" style="max-width: 100%; height: auto; margin-top: 10px;">
+        <script>
+          document.getElementById("{{ field['id'] }}_upload").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (file && (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif" || file.type === "image/svg+xml")) {
+              const reader = new FileReader();
+              reader.onload = function (e) {
+                const base64Data = e.target.result.split(",")[1];
+                document.getElementById("{{ field['id'] }}").value = base64Data;
+                document.getElementById("{{ field['id'] }}_preview").src = e.target.result;
+              };
+              reader.readAsDataURL(file);
+            } else {
+              alert("{{ _('Please upload a valid image file (PNG, JPEG, GIF, or SVG).') }}");
+            }
+          });
+        </script>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <input type="submit" value="{{ _('Save') }}">
+  <button type="button" id="resetButton" style="align-self: start; min-width: 10em;">{{ _('Reset') }}</button>
 </form>
 {% if delete_on_cancel == 1 %}
 <form action="{{ url_for('manager.deleteapp', device_id=device_id, iname=app['iname'])}}" method="get">
-    <input type="submit" value="{{ _('Cancel') }}">
+  <input type="submit" value="{{ _('Cancel') }}">
 </form>
 {% else %}
 <form action="{{ url_for('manager.index') }}" method="get">
-    <input type="submit" value="{{ _('Cancel') }}">
+  <input type="submit" value="{{ _('Cancel') }}">
 </form>
 {% endif %}
-<iframe src="{{ url_for('manager.pixlet_proxy') }}?{{url_params}}" width=100% height=2000
-    title="{{ _('Pixlet Serve') }}"></iframe>
-    <!-- style and javascript to show and hide the config -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("dynamicForm");
+    const resetButton = document.getElementById("resetButton");
+    const configContent = document.getElementById("configContent").querySelector("pre");
+    const previewImage = document.getElementById("previewImage");
+
+    // Function to update the config text and preview image
+    function updateConfigAndPreview() {
+      configContent.textContent = JSON.stringify(config, null, 2);
+
+      // Reload the preview image to reflect updated config
+      const url = new URL(previewImage.src);
+      url.searchParams.set("config", JSON.stringify(config));
+      previewImage.src = url.toString();
+    }
+
+    // Update the config object whenever a field changes
+    form.addEventListener("input", function (event) {
+      const target = event.target;
+      const fieldId = target.id;
+
+      if (target.type === "checkbox") {
+        config[fieldId] = target.checked ? "true" : "false";
+      } else if (target.type === "select-one") {
+        config[fieldId] = target.value;
+      } else {
+        config[fieldId] = target.value;
+      }
+
+      updateConfigAndPreview();
+    });
+
+    // Reset form values to defaults
+    resetButton.addEventListener("click", function () {
+      const inputs = form.querySelectorAll("[data-default]");
+      inputs.forEach(input => {
+        const defaultValue = input.getAttribute("data-default");
+        if (input.type === "checkbox") {
+          input.checked = defaultValue === "true";
+        } else if (input.type === "select-one") {
+          input.value = defaultValue;
+        } else {
+          input.value = defaultValue;
+        }
+
+        // Update the config object to reflect the reset values
+        const fieldId = input.id;
+        config[fieldId] = defaultValue;
+      });
+
+      updateConfigAndPreview();
+    });
+  });
+</script>
+{% else %}
+<form method="post">
+  <!-- <label for="iname">{{ _('Configuring') }} {{app["iname"]}}</label>
+<input name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>  -->
+  <label for="location_as_default">
+    <input type="checkbox" name="location_as_default" id="location_as_default">
+    {{ _('Save picked location as device default?') }}
+  </label>
+  <input type="submit" value="{{ _('Save') }}">
+</form>
+{% if delete_on_cancel == 1 %}
+<form action="{{ url_for('manager.deleteapp', device_id=device_id, iname=app['iname'])}}" method="get">
+  <input type="submit" value="{{ _('Cancel') }}">
+</form>
+{% else %}
+<form action="{{ url_for('manager.index') }}" method="get">
+  <input type="submit" value="{{ _('Cancel') }}">
+</form>
+{% endif %}
+
+<iframe src="{{ url_for('manager.pixlet_proxy') }}?{{url_params}}" width="100%" height="2000"
+  title="{{ _('Pixlet Serve') }}"></iframe>
+{% endif %}
+
+<!-- style and javascript to show and hide the config -->
 <style>
   .hidden {
     display: none;
@@ -48,11 +217,11 @@
   }
 </style>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     const toggleBtn = document.getElementById("toggleConfigBtn");
     const configContent = document.getElementById("configContent");
 
-    toggleBtn.addEventListener("click", function() {
+    toggleBtn.addEventListener("click", function () {
       if (configContent.classList.contains("hidden")) {
         configContent.classList.remove("hidden");
         configContent.classList.add("visible");

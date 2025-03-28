@@ -37,6 +37,7 @@ from tzlocal import get_localzone_name
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
+from tronbyt_server import get_schema
 from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
@@ -489,6 +490,52 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
     )
 
 
+@bp.route("/<string:device_id>/<string:iname>/preview", methods=["GET"])
+@login_required
+def preview(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    device = g.user.get("devices", {}).get(device_id)
+    if not device:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    app = device.get("apps", {}).get(iname)
+    if app is None:
+        current_app.logger.error("couldn't get app iname {iname} from user {g.user}")
+        abort(HTTPStatus.NOT_FOUND, description="App not found")
+
+    config = json.loads(request.args.get("config", "{}"))
+    add_default_config(config, device)
+
+    app_path = Path(app["path"])
+    if not app_path.exists():
+        abort(HTTPStatus.NOT_FOUND, description="App path not found")
+
+    try:
+        data = pixlet_render_app(
+            path=app_path,
+            config=config,
+            width=64,
+            height=32,
+            magnify=1,
+            maxDuration=15000,
+            timeout=30000,
+            image_format=0,  # 0 == WebP
+            silence_output=current_app.config.get("PRODUCTION") == "1",
+        )
+        if data is None:
+            abort(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                description="Error running pixlet render",
+            )
+
+        return Response(data, mimetype="image/webp")
+    except Exception as e:
+        current_app.logger.error(f"Error in preview: {e}")
+        abort(HTTPStatus.INTERNAL_SERVER_ERROR, description="Error generating preview")
+
+
 def render_app(
     app_path: Path, config: Dict[str, Any], webp_path: Path, device: Device
 ) -> Tuple[bool, bool]:
@@ -509,7 +556,7 @@ def render_app(
     add_default_config(config_data, device)
 
     data = pixlet_render_app(
-        name=str(app_path),
+        path=app_path,
         config=config_data,
         width=64,
         height=32,
@@ -691,10 +738,45 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             / "apps"
             / "{}/{}.star".format(app["name"].replace("_", ""), app["name"])
         )
-    tmp_config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.tmp"
-    webp_device_path = db.get_device_webp_dir(device_id)
-    webp_device_path.mkdir(parents=True, exist_ok=True)
-    webp_path = webp_device_path / f"{app_basename}.webp"
+
+    if os.getenv("USE_PIXLET_SCHEMA", "0") == "1":
+        if request.method == "GET":
+            schema_json = get_schema(app_path)
+            schema = json.loads(schema_json) if schema_json else None
+            return render_template(
+                "manager/configapp.html",
+                app=app,
+                domain_host=domain_host,
+                protocol=protocol,
+                url_params=None,
+                device_id=device_id,
+                delete_on_cancel=delete_on_cancel,
+                user_render_port=None,
+                config=app.get("config", {}),
+                schema=schema,
+            )
+
+        if request.method == "POST":
+            config = request.form.to_dict()
+            app["config"] = config
+            db.save_user(g.user)
+
+            # render the app with the new config to store the preview
+            webp_device_path = db.get_device_webp_dir(device_id)
+            webp_device_path.mkdir(parents=True, exist_ok=True)
+            webp_path = webp_device_path / f"{app_basename}.webp"
+            success, _ = render_app(app_path, config, webp_path, device)
+            if success:
+                # set the enabled key in app to true now that it has been configured.
+                app["enabled"] = True
+                # set last_rendered to seconds
+                app["last_render"] = int(time.time())
+                # always save
+                db.save_user(g.user)
+            else:
+                flash("Error Rendering App")
+
+            return redirect(url_for("manager.index"))
 
     user_render_port = str(db.get_user_render_port(g.user["username"]))
     # always kill the pixlet process based on port number.
@@ -713,8 +795,12 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             except Exception as e:
                 current_app.logger.error(f"Error terminating pixlet process: {e}")
 
+    tmp_config_path = users_dir / g.user["username"] / "configs" / f"{app_basename}.tmp"
     if request.method == "POST":
         #  do something to confirm configuration ?
+        webp_device_path = db.get_device_webp_dir(device_id)
+        webp_device_path.mkdir(parents=True, exist_ok=True)
+        webp_path = webp_device_path / f"{app_basename}.webp"
         current_app.logger.debug("checking for : " + str(tmp_config_path))
         if tmp_config_path.exists():
             current_app.logger.debug("file exists")
@@ -726,7 +812,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             db.save_user(g.user)
 
             # save location as default if checked
-            device = g.user["devices"][device_id]
             if request.form.get("location_as_default", None):
                 if "location" in new_config:
                     device["location"] = new_config["location"]
@@ -735,7 +820,6 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             tmp_config_path.unlink()
 
             # run pixlet render with the new config
-            current_app.logger.debug("rendering")
             success, _ = render_app(app_path, new_config, webp_path, device)
             if success:
                 # set the enabled key in app to true now that it has been configured.
@@ -760,9 +844,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             flash("Pixlet binary not found")
             return redirect(url_for("manager.index"))
 
-        device = g.user["devices"][device_id]
         config_dict = app.get("config", {}).copy()
-        formatted_config = json.dumps(config_dict, indent=4)
+        formatted_config = config_dict.copy()
         add_default_config(config_dict, device)
         config_dict["$watch"] = "false"
         url_params = urlencode(config_dict)
@@ -869,6 +952,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             delete_on_cancel=delete_on_cancel,
             user_render_port=user_render_port,
             config=formatted_config,
+            schema=None,
         )
     abort(HTTPStatus.BAD_REQUEST)
 
