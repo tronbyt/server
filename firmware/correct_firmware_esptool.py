@@ -1,3 +1,4 @@
+import os
 import struct
 import subprocess
 import sys
@@ -48,13 +49,8 @@ def update_firmware_file_with_sha256(file_path: str, sha256: str) -> None:
         f.write(sha256_bytes)
 
 
-if __name__ == "__main__":
-    # if len(sys.argv) != 3:
-    #     print(f"Usage: {sys.argv[0]} <esptool_path> <filename>")
-    #     sys.exit(1)
-
-    esptool_path = "/usr/bin/esptool"
-    file_path = sys.argv[1]
+def update_firmware_file(file_path: str) -> None:
+    esptool_path = os.getenv("ESPTOOL_PATH", "/usr/bin/esptool")
 
     # Run esptool to get the initial checksum and SHA256
     esptool_output = get_esptool_output(esptool_path, file_path)
@@ -62,10 +58,9 @@ if __name__ == "__main__":
     checksum, sha256 = parse_esptool_output(esptool_output)
 
     if not checksum or not sha256:
-        print(
-            "Failed to parse esptool output: did not find checksum or validation hash"
+        raise ValueError(
+            f"Failed to parse esptool output for file {file_path}: did not find checksum or validation hash"
         )
-        sys.exit(1)
 
     # Update the file with the correct checksum
     update_firmware_file_with_checksum(file_path, checksum)
@@ -76,11 +71,20 @@ if __name__ == "__main__":
     _, sha256 = parse_esptool_output(esptool_output)
 
     if not sha256:
-        print(
-            "Failed to parse esptool output: did not find validation hash after fixing the checksum"
+        raise ValueError(
+            f"Failed to parse esptool output for file {file_path}: did not find validation hash after fixing the checksum"
         )
-        sys.exit(1)
 
     # Update the file with the new SHA256
     update_firmware_file_with_sha256(file_path, sha256)
     print(f"Updated file with SHA256 {sha256}.")
+
+
+if __name__ == "__main__":
+    file_path = sys.argv[1]
+
+    try:
+        update_firmware_file(file_path)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)

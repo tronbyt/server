@@ -1,7 +1,5 @@
 #!/bin/sh
 
-python3 clone_system_apps_repo.py
-
 if [ "$PRODUCTION" = "1" ]; then
     # PRODUCTION
     exec python3 -m gunicorn --config gunicorn.conf.py "tronbyt_server:create_app()"
