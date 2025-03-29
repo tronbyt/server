@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from flask import Flask, current_app, g, request
 from flask_babel import Babel, _
 
-from tronbyt_server import db
+from tronbyt_server import db, system_apps
 
 babel = Babel()
 pixlet_render_app: Optional[
@@ -172,6 +172,9 @@ def get_locale() -> Optional[str]:
 
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     load_dotenv()
+
+    system_apps.update_system_repo()
+
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     if test_config is None:
