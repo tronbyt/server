@@ -31,7 +31,7 @@ from tzlocal import get_localzone_name
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
-from tronbyt_server import call_handler, get_schema
+from tronbyt_server import call_handler, get_schema, system_apps
 from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
@@ -1074,7 +1074,7 @@ def set_system_repo() -> ResponseReturnValue:
         if set_repo("system_repo_url", Path("system-apps"), repo_url):
             # run the generate app list for custom repo
             # will just generate json file if already there.
-            subprocess.run(["python3", "clone_system_apps_repo.py"])
+            system_apps.update_system_repo()
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
@@ -1091,7 +1091,7 @@ def refresh_system_repo() -> ResponseReturnValue:
         ):
             # run the generate app list for custom repo
             # will just generate json file if already there.
-            subprocess.run(["python3", "clone_system_apps_repo.py"])
+            system_apps.update_system_repo()
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)

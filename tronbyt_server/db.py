@@ -2,7 +2,6 @@ import json
 import os
 import shutil
 import sqlite3
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -14,6 +13,8 @@ from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
+from firmware import correct_firmware_esptool
+from tronbyt_server import system_apps
 from tronbyt_server.models.app import App
 from tronbyt_server.models.device import Device
 from tronbyt_server.models.user import User
@@ -321,7 +322,7 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
         list_file = Path("system-apps.json")
         if not list_file.exists():
             current_app.logger.info("Generating apps.json file...")
-            subprocess.run(["python3", "clone_system_apps_repo.py"])
+            system_apps.update_system_repo()
             current_app.logger.debug("apps.json file generated.")
 
         with list_file.open("r") as f:
@@ -540,17 +541,7 @@ def generate_firmware(
             bytes_written = f.write(padded_new_string.encode("ascii"))
     if bytes_written:
         # run the correct checksum/hash script
-        result = subprocess.run(
-            [
-                "python3",
-                "firmware/correct_firmware_esptool.py",
-                f"{new_path}",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        current_app.logger.debug(result.stdout)
-        current_app.logger.debug(result.stderr)
+        correct_firmware_esptool.update_firmware_file(str(new_path))
         return {"file_path": str(new_path.resolve())}
     else:
         return {"error": "no bytes written"}
