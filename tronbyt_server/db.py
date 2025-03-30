@@ -10,12 +10,13 @@ from zoneinfo import ZoneInfo
 
 import yaml
 from flask import current_app, g
+from werkzeug.datastructures import FileStorage
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from firmware import correct_firmware_esptool
 from tronbyt_server import system_apps
-from tronbyt_server.models.app import App
+from tronbyt_server.models.app import App, AppMetadata
 from tronbyt_server.models.device import Device
 from tronbyt_server.models.user import User
 
@@ -315,8 +316,8 @@ def create_user_dir(user: str) -> None:
     (user_dir / "apps").mkdir(parents=True, exist_ok=True)
 
 
-def get_apps_list(user: str) -> List[Dict[str, Any]]:
-    app_list: List[Dict[str, Any]] = list()
+def get_apps_list(user: str) -> List[AppMetadata]:
+    app_list: List[AppMetadata] = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
         list_file = Path("system-apps.json")
@@ -333,11 +334,13 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
     if dir.exists():
         for file in dir.rglob("*.star"):
             app_name = file.stem
-            app_dict = {
-                "path": str(file),
-                "name": app_name,
-                "image_url": app_name + ".gif",
-            }
+            app_dict = AppMetadata(
+                path=str(file),
+                name=app_name,
+            )
+            preview = Path("tronbyt_server/static/apps") / f"{app_name}.webp"
+            if preview.exists() and preview.stat().st_size > 0:
+                app_dict["preview"] = str(preview.name)
             yaml_path = file.parent / "manifest.yaml"
             current_app.logger.debug(f"checking for manifest.yaml in {yaml_path}")
             if yaml_path.exists():
@@ -353,7 +356,7 @@ def get_apps_list(user: str) -> List[Dict[str, Any]]:
         return []
 
 
-def get_app_details(user: str, name: str) -> Dict[str, Any]:
+def get_app_details(user: str, name: str) -> AppMetadata:
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
     current_app.logger.debug(f"{user} {name}")
@@ -388,7 +391,7 @@ def allowed_file(filename: str) -> bool:
     return filename.lower().endswith(".star")
 
 
-def save_user_app(file: Any, path: Path) -> bool:
+def save_user_app(file: FileStorage, path: Path) -> bool:
     filename = secure_filename(file.filename)
     if file and allowed_file(filename):
         file.save(path / filename)

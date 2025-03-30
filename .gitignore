@@ -1,25 +1,20 @@
 .DS_Store
-**/*.webp
-**/configs/**
 *.pyc
-*.tmp
 !devcontainer.json
-**/*.json
 **/*.log
 .coverage
 .env
-env
 certs
-**/system-apps/**
-!tronbyt_server/static/images/*.webp
-!tronbyt_server/static/images/*.png
-!tronbyt_server/static/images/*.gif
-system-apps/**
+env
 firmware/*.bin
-users
-/system-apps
-users/usersdb.sqlite
 junit
+system-apps
+system-apps.json
+tests/webp
+tronbyt_server/static/apps
+tronbyt_server/webp
+!tronbyt_server/webp/README
+users
 
 # Translations
 *.mo
