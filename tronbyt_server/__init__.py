@@ -44,9 +44,8 @@ def initialize_pixlet_library(app: Flask) -> None:
         init_cache = pixlet_library.init_cache
         init_cache()
 
-    # Store pixlet functions in the app context
-    app.pixlet_render_app = pixlet_library.render_app
-    app.pixlet_render_app.argtypes = [
+    pixlet_render_app = pixlet_library.render_app
+    pixlet_render_app.argtypes = [
         ctypes.c_char_p,
         ctypes.c_char_p,
         ctypes.c_int,
@@ -70,22 +69,28 @@ def initialize_pixlet_library(app: Flask) -> None:
             ("length", ctypes.c_int),
         ]
 
-    app.pixlet_render_app.restype = DataReturn
+    pixlet_render_app.restype = DataReturn
 
-    app.pixlet_get_schema = pixlet_library.get_schema
-    app.pixlet_get_schema.argtypes = [ctypes.c_char_p]
-    app.pixlet_get_schema.restype = DataReturn
+    pixlet_get_schema = pixlet_library.get_schema
+    pixlet_get_schema.argtypes = [ctypes.c_char_p]
+    pixlet_get_schema.restype = DataReturn
 
-    app.pixlet_call_handler = pixlet_library.call_handler
-    app.pixlet_call_handler.argtypes = [
+    pixlet_call_handler = pixlet_library.call_handler
+    pixlet_call_handler.argtypes = [
         ctypes.c_char_p,
         ctypes.c_char_p,
         ctypes.c_char_p,
     ]
-    app.pixlet_call_handler.restype = StringReturn
+    pixlet_call_handler.restype = StringReturn
 
-    app.free_bytes = pixlet_library.free_bytes
-    app.free_bytes.argtypes = [ctypes.c_void_p]
+    free_bytes = pixlet_library.free_bytes
+    free_bytes.argtypes = [ctypes.c_void_p]
+
+    # Store pixlet functions in the app context
+    setattr(app, "pixlet_render_app", pixlet_library.render_app)
+    setattr(app, "pixlet_get_schema", pixlet_library.get_schema)
+    setattr(app, "pixlet_call_handler", pixlet_library.call_handler)
+    setattr(app, "free_bytes", pixlet_library.free_bytes)
 
 
 def render_app(
