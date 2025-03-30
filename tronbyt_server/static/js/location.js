@@ -51,6 +51,6 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                     }
                 })
                 .catch(error => console.error('Error fetching location data:', error));
-        }, 100);
+        }, 300);
     });
 }

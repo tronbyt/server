@@ -12,11 +12,12 @@ function searchApps(inputId, gridId) {
 
   // Loop through all list items, and hide those which don't match the search query
   for (i = 0; i < li.length; i++) {
-    var name = li[i].getAttribute('data-value');
+    var item = li[i]
+    var name = item.getAttribute('data-value');
     if (name.toUpperCase().indexOf(filter) > -1) {
-      li[i].style.display = "";
+      item.style.display = "";
     } else {
-      li[i].style.display = "none";
+      item.style.display = "none";
     }
   }
 }
