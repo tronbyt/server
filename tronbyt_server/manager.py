@@ -689,6 +689,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                 abort(HTTPStatus.BAD_REQUEST)
 
             device_type = device.get("type", DEFAULT_DEVICE_TYPE)
+            current_app.logger.info(f"device type is : {device_type}")
             swap_colors = bool(request.form.get("swap_colors", False))
 
             # Pass the device type to the firmware generation function

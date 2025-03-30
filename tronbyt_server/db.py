@@ -496,7 +496,7 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
 def generate_firmware(
     label: str, url: str, ap: str, pw: str, device_type: str, swap_colors: bool
 ) -> Dict[str, Union[str, int]]:
-    if device_type == "gen2":
+    if device_type == "tidbyt_gen2":
         file_path = Path("firmware/gen2.bin")
         new_path = Path(f"firmware/gen2_{label}.bin")
     elif device_type == "pixoticker":

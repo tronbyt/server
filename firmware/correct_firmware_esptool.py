@@ -11,7 +11,7 @@ def get_esptool_output(esptool_path: str, file_path: str) -> str:
         capture_output=True,
         text=True,
     )
-    print(result.stdout)
+    # print(result.stdout)
     return result.stdout
 
 
@@ -20,7 +20,7 @@ def parse_esptool_output(output: str) -> Tuple[Optional[str], Optional[str]]:
     checksum = None
     sha256 = None
     for line in lines:
-        print(line)
+        # print(line)
         if line.startswith("Checksum:"):
             parts = line.split()
             if "(invalid" in line:
@@ -54,7 +54,7 @@ def update_firmware_file(file_path: str) -> None:
 
     # Run esptool to get the initial checksum and SHA256
     esptool_output = get_esptool_output(esptool_path, file_path)
-    print(f"esptool output: {esptool_output}")
+    # print(f"esptool output: {esptool_output}")
     checksum, sha256 = parse_esptool_output(esptool_output)
 
     if not checksum or not sha256:
