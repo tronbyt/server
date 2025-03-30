@@ -22,7 +22,7 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                     if (data.features && data.features.length > 0) {
                         data.features.forEach(feature => {
                             const li = document.createElement('li');
-                            li.textContent = feature.properties.formatted;
+                            li.textContent = `📍 ${feature.properties.formatted}`;
                             li.dataset.lat = feature.properties.lat;
                             li.dataset.lon = feature.properties.lon;
                             li.dataset.timezone = feature.properties.timezone?.name;

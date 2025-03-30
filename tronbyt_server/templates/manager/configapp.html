@@ -89,7 +89,7 @@
               searchInput.setAttribute('data-default', searchInput.value);
             });
           </script>
-          <ul id="{{ field['id'] }}_results"></ul>
+          <ul id="{{ field['id'] }}_results" style="list-style-type: none; padding: 0;"></ul>
         </div>
         <input type="hidden" name="{{ field['id'] }}" id="{{ field['id'] }}"
           value='{{ config.get(field["id"], device.get("location", {})) | tojson }}'
@@ -112,7 +112,7 @@
           <label for="{{ field['id'] }}_search">{{ _('Location') }}</label>
           <input type="text" id="{{ field['id'] }}_search" placeholder="{{ _('Enter a location') }}" value=""
             data-ignore-config="true">
-          <ul id="{{ field['id'] }}_results"></ul>
+          <ul id="{{ field['id'] }}_results" style="list-style-type: none; padding: 0;"></ul>
         </div>
         <input type="hidden" name="{{ field['id'] }}_location" id="{{ field['id'] }}_location"
           value='{{ device.get("location", {}) | tojson }}' data-default='{{ device.get("location", {}) | tojson }}'
