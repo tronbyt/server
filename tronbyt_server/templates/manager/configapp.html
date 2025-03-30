@@ -117,8 +117,7 @@
         <input type="hidden" name="{{ field['id'] }}_location" id="{{ field['id'] }}_location"
           value='{{ device.get("location", {}) | tojson }}' data-default='{{ device.get("location", {}) | tojson }}'
           data-ignore-config="true">
-        <select id="{{ field['id'] }}" name="{{ field['id'] }}" id="{{ field['id'] }}" class="form-control"
-          data-ignore-config="true">
+        <select id="{{ field['id'] }}" name="{{ field['id'] }}" id="{{ field['id'] }}" class="form-control">
           <!-- Options will be dynamically populated -->
         </select>
         <script>
@@ -149,28 +148,23 @@
                 }
                 dropdown.innerHTML = ''; // Clear existing options
 
-                const configValue = JSON.parse(config["{{ field['id'] }}"] || '{}').value;
+                var configValue;
+                try {
+                  configValue = JSON.parse(config["{{ field['id'] }}"] || '{}').value;
+                } catch (error) {
+                  console.error('Error parsing config for field {{ field["id"] }}:', error);
+                  configValue = '';
+                }
                 options.forEach(option => {
                   const opt = document.createElement('option');
-                  opt.value = option.value;
+                  opt.value = JSON.stringify({
+                    value: option.value,
+                    display: option.display
+                  });
                   opt.textContent = option.display;
                   opt.selected = configValue === option.value;
                   dropdown.appendChild(opt);
                 });
-
-                // Update config with the selected dropdown value
-                dropdown.removeEventListener('change', dropdown._changeHandler); // Remove existing listener
-                dropdown._changeHandler = function () {
-                  if (dropdown.selectedIndex === -1) {
-                    return; // No selection made
-                  }
-                  config["{{ field['id'] }}"] = JSON.stringify({
-                    value: dropdown.value,
-                    display: dropdown.options[dropdown.selectedIndex].textContent
-                  });
-                  updateConfigAndPreview();
-                };
-                dropdown.addEventListener('change', dropdown._changeHandler); // Add new listener
 
                 // Trigger change event to update config and preview
                 dropdown.dispatchEvent(new Event('change'));
