@@ -11,6 +11,7 @@ from babel.dates import format_timedelta
 from dotenv import load_dotenv
 from flask import Flask, current_app, g, request
 from flask_babel import Babel, _
+from werkzeug.serving import is_running_from_reloader
 
 from tronbyt_server import db, system_apps
 
@@ -43,10 +44,9 @@ def initialize_pixlet_library(app: Flask) -> None:
         init_cache = pixlet_library.init_cache
         init_cache()
 
-    global pixlet_render_app
-
-    pixlet_render_app = pixlet_library.render_app
-    pixlet_render_app.argtypes = [
+    # Store pixlet functions in the app context
+    app.pixlet_render_app = pixlet_library.render_app
+    app.pixlet_render_app.argtypes = [
         ctypes.c_char_p,
         ctypes.c_char_p,
         ctypes.c_int,
@@ -70,27 +70,22 @@ def initialize_pixlet_library(app: Flask) -> None:
             ("length", ctypes.c_int),
         ]
 
-    pixlet_render_app.restype = DataReturn
+    app.pixlet_render_app.restype = DataReturn
 
-    global pixlet_get_schema
+    app.pixlet_get_schema = pixlet_library.get_schema
+    app.pixlet_get_schema.argtypes = [ctypes.c_char_p]
+    app.pixlet_get_schema.restype = DataReturn
 
-    pixlet_get_schema = pixlet_library.get_schema
-    pixlet_get_schema.argtypes = [ctypes.c_char_p]
-    pixlet_get_schema.restype = DataReturn
-
-    global pixlet_call_handler
-    pixlet_call_handler = pixlet_library.call_handler
-    pixlet_call_handler.argtypes = [
+    app.pixlet_call_handler = pixlet_library.call_handler
+    app.pixlet_call_handler.argtypes = [
         ctypes.c_char_p,
         ctypes.c_char_p,
         ctypes.c_char_p,
     ]
-    pixlet_call_handler.restype = StringReturn
+    app.pixlet_call_handler.restype = StringReturn
 
-    global free_bytes
-
-    free_bytes = pixlet_library.free_bytes
-    free_bytes.argtypes = [ctypes.c_void_p]
+    app.free_bytes = pixlet_library.free_bytes
+    app.free_bytes.argtypes = [ctypes.c_void_p]
 
 
 def render_app(
@@ -104,6 +99,8 @@ def render_app(
     image_format: int,
     silence_output: bool,
 ) -> Optional[bytes]:
+    pixlet_render_app = getattr(current_app, "pixlet_render_app", None)
+    free_bytes = getattr(current_app, "free_bytes", None)
     if not pixlet_render_app:
         return None
     ret = pixlet_render_app(
@@ -129,6 +126,8 @@ def render_app(
 
 
 def get_schema(path: Path) -> Optional[str]:
+    pixlet_get_schema = getattr(current_app, "pixlet_get_schema", None)
+    free_bytes = getattr(current_app, "free_bytes", None)
     if not pixlet_get_schema:
         return None
     ret = pixlet_get_schema(str(path).encode("utf-8"))
@@ -148,6 +147,7 @@ def get_schema(path: Path) -> Optional[str]:
 
 
 def call_handler(path: Path, handler: str, parameter: str) -> Optional[str]:
+    pixlet_call_handler = getattr(current_app, "pixlet_call_handler", None)
     if not pixlet_call_handler:
         return None
     ret = pixlet_call_handler(
@@ -173,7 +173,10 @@ def get_locale() -> Optional[str]:
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     load_dotenv()
 
-    system_apps.update_system_repo()
+    # The reloader will run this code twice, once in the main process and once in the child process.
+    # This is a workaround to avoid running the update_system_repo() function twice.
+    if not is_running_from_reloader():
+        system_apps.update_system_repo()
 
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
