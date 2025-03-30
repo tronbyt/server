@@ -283,26 +283,27 @@ def update(device_id: str) -> ResponseReturnValue:
             if night_mode_app:
                 device["night_mode_app"] = night_mode_app
             locationJSON = request.form.get("location")
-            if locationJSON:
+            if locationJSON and locationJSON != "{}":
                 try:
                     loc = json.loads(locationJSON)
-                    lat = loc.get("lat")
-                    lng = loc.get("lng")
-                    if lat is None or lng is None:
-                        abort(HTTPStatus.BAD_REQUEST, description="Invalid location")
-                    location = Location(
-                        lat=lat,
-                        lng=lng,
-                    )
+                    lat = loc.get("lat", None)
+                    lng = loc.get("lng", None)
+                    if lat and lng:
+                        location = Location(
+                            lat=lat,
+                            lng=lng,
+                        )
+                        if "name" in loc:
+                            location["name"] = loc["name"]
+                        if "timezone" in loc:
+                            location["timezone"] = loc["timezone"]
+                        device["location"] = location
+                    else:
+                        flash("Invalid location")
+                        # abort(HTTPStatus.BAD_REQUEST, description="Invalid location")
 
-                    if "name" in loc:
-                        location["name"] = loc["name"]
-                    if "timezone" in loc:
-                        location["timezone"] = loc["timezone"]
-                    device["location"] = location
-                except json.JSONDecodeError:
-                    abort(HTTPStatus.BAD_REQUEST, description="Invalid location format")
-
+                except json.JSONDecodeError as e:
+                    flash(f"Location JSON error {e}")
             user = g.user
             if "apps" in user["devices"][device_id]:
                 device["apps"] = user["devices"][device_id]["apps"]
