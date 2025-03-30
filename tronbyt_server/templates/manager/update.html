@@ -80,12 +80,17 @@
   <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
   <div>
     <label for="location_search">{{ _('Location') }}</label>
-    <input type="text" id="location_search" style="width: 100%" placeholder="{{ _('Enter a location') }}"
-      value="{{ request.form['location_search'] or device.get('location', {}).get('name', '') }}">
+    <input type="text" 
+           id="location_search" 
+           style="width: 100%" 
+           placeholder="{{ _('Enter a location') }}"
+           value="{{ request.form['location_search'] or (device.get('location', {}).get('name', '') if device.get('location') is mapping else '') }}">
     <ul id="location_results"></ul>
   </div>
-  <input type="hidden" name="location" id="location"
-    value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
+  <input type="hidden" 
+         name="location" 
+         id="location"
+         value='{{ (request.form["location"] or (device["location"] if device.get("location") is mapping else {})) | tojson }}'>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
