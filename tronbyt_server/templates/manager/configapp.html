@@ -56,6 +56,10 @@
         <input type="checkbox" id="{{ field['id'] }}" name="{{ field['id'] }}" value="true" {% if
           config.get(field['id'], field.get('default', 'false' ))=='true' %}checked{% endif %}
           data-default="{{ 'true' if field.get('default', 'false') == 'true' else 'false' }}">
+        {% elif field['type'] == 'datetime' %}
+        <input type="datetime-local" id="{{ field['id'] }}" name="{{ field['id'] }}"
+          value="{{ config.get(field['id'], field.get('default', '')).replace('Z', '') }}" class="form-control"
+          data-default="{{ field.get('default', '') }}">
         {% elif field['type'] == 'dropdown' %}
         <select id="{{ field['id'] }}" name="{{ field['id'] }}" class="form-control"
           data-default="{{ field.get('default', '') }}">
@@ -239,6 +243,28 @@
     const configContent = document.getElementById("configContent").querySelector("pre");
     const previewImage = document.getElementById("previewImage");
 
+    form.addEventListener("submit", function (event) {
+      event.preventDefault(); // Prevent the default form submission
+
+      // Submit the form data
+      fetch(form.action, {
+        method: form.method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config),
+      }).then(response => {
+        if (response.ok) {
+          console.log("Form submitted successfully");
+          window.location.href = response.url;
+        } else {
+          console.error("Form submission failed");
+        }
+      }).catch(error => {
+        console.error("Error submitting form:", error);
+      });
+    });
+
     // Update the config object whenever a field changes
     form.addEventListener("input", function (event) {
       const target = event.target;
@@ -250,6 +276,8 @@
         config[fieldId] = target.checked ? "true" : "false";
       } else if (target.type === "select-one") {
         config[fieldId] = target.value;
+      } else if (target.type === "datetime-local") {
+        config[fieldId] = new Date(target.value).toISOString();
       } else {
         config[fieldId] = target.value;
       }

@@ -776,7 +776,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         )
 
     if request.method == "POST":
-        config = request.form.to_dict()
+        config = request.get_json()
         app["config"] = config
         db.save_user(g.user)
 
