@@ -87,14 +87,18 @@ def uploadapp() -> ResponseReturnValue:
             app_subdir.mkdir(parents=True, exist_ok=True)
 
             # save the file
-            if db.save_user_app(file, app_subdir):
-                flash("Upload Successful")
-                return redirect(url_for("manager.index"))
-            else:
+            if not db.save_user_app(file, app_subdir):
                 flash("Save Failed")
                 return redirect(url_for("manager.uploadapp"))
+            flash("Upload Successful")
 
-    # check for existance of apps path
+            # try to generate a preview with an empty config (ignore errors)
+            preview = Path("tronbyt_server") / "static" / "apps" / f"{app_name}.webp"
+            render_app(app_subdir, {}, preview, Device(id=""))
+
+            return redirect(url_for("manager.index"))
+
+    # check for existence of apps path
     user_apps_path.mkdir(parents=True, exist_ok=True)
 
     star_files = [file.name for file in user_apps_path.rglob("*.star")]
@@ -339,16 +343,8 @@ def delete(device_id: str) -> ResponseReturnValue:
 def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-    users_dir = db.get_users_dir()
     device = g.user["devices"][device_id]
     app = device["apps"][iname]
-
-    tmp_config_path = (
-        users_dir / g.user["username"] / "configs" / f"{app['name']}-{app['iname']}.tmp"
-    )
-
-    if tmp_config_path.is_file():
-        tmp_config_path.unlink()
 
     if "pushed" in app:
         webp_path = (

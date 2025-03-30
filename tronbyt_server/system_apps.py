@@ -7,6 +7,8 @@ from pathlib import Path
 
 import yaml
 
+from tronbyt_server.models.app import AppMetadata
+
 
 def update_system_repo() -> None:
     system_apps_path = Path("system-apps")
@@ -60,12 +62,15 @@ def update_system_repo() -> None:
     skip_count = 0
     new_previews = 0
     num_previews = 0
+    static_images_path = Path("tronbyt_server") / "static" / "apps"
+    os.makedirs(static_images_path, exist_ok=True)
     for app in apps:
         try:
-            app_dict = dict()
             app_basename = app.stem
-            app_dict["name"] = app_basename
-            app_dict["path"] = str(app)
+            app_dict = AppMetadata(
+                name=app_basename,
+                path=str(app),
+            )
 
             # skip any broken apps
             if broken_apps and app.name in broken_apps:
@@ -81,7 +86,6 @@ def update_system_repo() -> None:
 
             app_base_path = app.parent
             yaml_path = app_base_path / "manifest.yaml"
-            static_images_path = Path("tronbyt_server") / "static" / "images"
 
             # check for existence of yaml_path
             if yaml_path.exists():
@@ -90,9 +94,13 @@ def update_system_repo() -> None:
                     app_dict.update(yaml_dict)
             else:
                 app_dict["summary"] = "System App"
+            package_name = app_dict.get("packageName", app_base_path.name)
 
             # Check for a preview in the repo and copy it over to static previews directory
             for image_name in [
+                f"{package_name}.webp",
+                f"{package_name}.gif",
+                f"{package_name}.png",
                 f"{app_basename}.webp",
                 f"{app_basename}.gif",
                 f"{app_basename}.png",

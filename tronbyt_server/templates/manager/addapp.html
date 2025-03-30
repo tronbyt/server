@@ -24,40 +24,20 @@ function searchApps(inputId, gridId) {
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
-  {% if custom_apps_list %}
+  {% macro render_app_list(title, search_id, grid_id, app_list) %}
   <div class="app-group">
-    <h3>{{ _('Custom Apps') }}</h3>
-    <input type="search" id="custom_search" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('custom_search', 'custom_app_grid')" />
-    <div id="custom_app_grid" class="app-grid">
-      {% for app in custom_apps_list %}
-      <div class="app-item" data-value="{{app['name']}}">
-        <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/') }}" alt="{{ app['name'] }}">
-        </div>
-        <p>{{ app['name'] }} - {{ app['summary'] }}</p>
-        {% if 'author' in app %}
-        <p>{{ _('From') }} {{ app['author'] }}</p>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  <hr>
-  {% endif %}
-
-  <div class="app-group">
-    <h3>{{ _('System Apps') }}</h3>
-    <input type="search" id="system_search" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('system_search', 'system_app_grid')" />
-    <div id="system_app_grid" class="app-grid">
-      {% for app in apps_list %}
-      <div class="app-item" data-value="{{app['name']}}">
+    <h3>{{ title }}</h3>
+    <input type="search" id="{{ search_id }}" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" />
+    <div id="{{ grid_id }}" class="app-grid">
+      {% for app in app_list %}
+      <div class="app-item" data-value="{{ app['name'] }}">
         {% if 'preview' in app %}
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/' ~ app['preview']) }}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='apps/' ~ app['preview']) }}" alt="{{ app['name'] }}">
         </div>
         {% else %}
         <div>
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg')}}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}" alt="{{ app['name'] }}">
         </div>
         {% endif %}
         <p>{{ app['name'] }} - {{ app['summary'] }}</p>
@@ -68,6 +48,13 @@ function searchApps(inputId, gridId) {
       {% endfor %}
     </div>
   </div>
+  {% endmacro %}
+
+  {% if custom_apps_list %}
+  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list) }}
+  <hr>
+  {% endif %}
+  {{ render_app_list(_('System Apps'), 'system_search', 'system_app_grid', apps_list) }}
 
   <input type="hidden" name="name" id="selected_app">
   <br>

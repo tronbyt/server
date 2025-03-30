@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Required, TypedDict
+from typing import Any, Dict, List, Optional, Required, TypedDict
 
 
 class App(TypedDict, total=False):
@@ -17,3 +17,15 @@ class App(TypedDict, total=False):
     days: List[str]
     config: Dict[str, Any]
     empty_last_render: bool
+
+
+class AppMetadata(TypedDict, total=False):
+    id: str
+    name: str
+    summary: str
+    desc: str
+    author: str
+    path: str
+    fileName: Optional[str]
+    packageName: Optional[str]
+    preview: Optional[str]
