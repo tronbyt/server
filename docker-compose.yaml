@@ -8,6 +8,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
       - webp:/app/tronbyt_server/webp
+      - system-apps:/app/system-apps
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
       - SERVER_PORT
@@ -21,3 +22,4 @@ services:
 volumes:
   users:
   webp:
+  system-apps:

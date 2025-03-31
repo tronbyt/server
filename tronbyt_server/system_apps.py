@@ -11,14 +11,17 @@ from tronbyt_server.models.app import AppMetadata
 
 
 def update_system_repo() -> None:
-    system_apps_path = Path("system-apps")
+    system_apps_path = Path("system-apps").absolute()  # Get absolute path
     system_apps_repo = os.getenv(
         "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
     )
 
-    # check for existence of apps_path dir
-    if system_apps_path.exists():
-        print(f"{system_apps_path} found, updating {system_apps_repo}")
+    # check for existence of .git directory
+    git_dir = system_apps_path / ".git"
+    print(f"Checking for git directory at: {git_dir}")
+
+    if git_dir.is_dir():  # Check if it's actually a directory
+        print(f"{system_apps_path} git repo found, updating {system_apps_repo}")
 
         result = subprocess.run(["git", "pull", "--rebase=true"], cwd=system_apps_path)
         if result.returncode != 0:
@@ -26,7 +29,7 @@ def update_system_repo() -> None:
         else:
             print("Repo updated")
     else:
-        print(f"{system_apps_path} not found, cloning {system_apps_repo}")
+        print(f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}")
 
         result = subprocess.run(
             [
