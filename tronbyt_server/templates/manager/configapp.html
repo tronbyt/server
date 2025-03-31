@@ -2,6 +2,20 @@
 {% block header %}
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
+<!-- style and javascript to show and hide the config -->
+<style>
+  .hidden {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+  }
+
+  .visible {
+    display: block;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+  }
+</style>
 {% endblock %}
 {% block content %}
 <!-- Container for flexbox alignment -->
@@ -16,232 +30,471 @@
 </div>
 
 <script>
-  // Make the config object available to JavaScript
-  const config = {{ config| tojson }};
+  // Make the schema and config objects available to JavaScript
+  const schema = {{ schema | tojson }};
+  const config = {{ config | tojson }};
+  {% if "location" in device %}
+  const deviceLocation = JSON.stringify({{ device['location'] | tojson }});
+  {% else %}
+  const deviceLocation = null;
+  {% endif %}
 
   // Function to update the config text and preview image
   function updateConfigAndPreview() {
     const configContent = document.getElementById("configContent").querySelector("pre");
+    const previewImage = document.getElementById("previewImage");
     configContent.textContent = JSON.stringify(config, null, 2);
-
     // Reload the preview image to reflect updated config
     const url = new URL(previewImage.src);
     url.searchParams.set("config", JSON.stringify(config));
     previewImage.src = url.toString();
   }
-</script>
-<div class="app-img" style="width: 400px;"><img id="previewImage"
-    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}" width="400" style="width: 400px; height: auto;"></div>
-<form method="post" id="dynamicForm">
-  <table class="form-table" style="border-spacing: 0 15px;"> <!-- Added vertical spacing -->
-    {% for field in schema['schema'] %}
-    <tr>
-      <td>
-        <label for="{{ field['id'] }}">
-          {% if field['icon'] %}
-          <i class="fa fa-{{ field['icon'] | icon_format }}"></i>
-          {% endif %}
-          {{ field['name'] }}
-        </label>
-        <br>
-        <small>{{ field['description'] }}</small>
-      </td>
-      <td>
-        {% if field['type'] == 'text' %}
-        <input type="text" id="{{ field['id'] }}" name="{{ field['id'] }}"
-          value="{{ config.get(field['id'], field.get('default', '')) }}" class="form-control"
-          data-default="{{ field.get('default', '') }}">
-        {% elif field['type'] == 'onoff' %}
-        <input type="checkbox" id="{{ field['id'] }}" name="{{ field['id'] }}" value="true" {% if
-          config.get(field['id'], field.get('default', 'false' ))=='true' %}checked{% endif %}
-          data-default="{{ 'true' if field.get('default', 'false') == 'true' else 'false' }}">
-        {% elif field['type'] == 'datetime' %}
-        <input type="datetime-local" id="{{ field['id'] }}" name="{{ field['id'] }}"
-          value="{{ config.get(field['id'], field.get('default', '')).replace('Z', '') }}" class="form-control"
-          data-default="{{ field.get('default', '') }}">
-        {% elif field['type'] == 'dropdown' %}
-        <select id="{{ field['id'] }}" name="{{ field['id'] }}" class="form-control"
-          data-default="{{ field.get('default', '') }}">
-          {% for option in field['options'] %}
-          <option value="{{ option['value'] }}" {% if config.get(field['id'], field.get('default', ''
-            ))==option['value'] %}selected{% endif %}>
-            {{ option['text'] }}
-          </option>
-          {% endfor %}
-        </select>
-        {% elif field['type'] == 'location' %}
-        <div>
-          <label for="{{ field['id'] }}_search">{{ _('Location') }}</label>
-          <input type="text" id="{{ field['id'] }}_search" placeholder="{{ _('Enter a location') }}" value=""
-            data-ignore-config="true">
-          <script>
-            document.addEventListener('DOMContentLoaded', function () {
-              const searchInput = document.getElementById('{{ field["id"] }}_search');
-              const configValue = config["{{ field['id'] }}"];
-              if (configValue) {
-                try {
-                  const parsedConfig = JSON.parse(configValue);
-                  searchInput.value = parsedConfig.name || '';
-                } catch (e) {
-                  console.error('Error parsing config for field {{ field["id"] }}:', e);
-                  searchInput.value = '';
-                }
-              } else {
-                searchInput.value = "{{ device.get('location', {}).get('name', '') }}";
-              }
-              searchInput.setAttribute('data-default', searchInput.value);
-            });
-          </script>
-          <ul id="{{ field['id'] }}_results" style="list-style-type: none; padding: 0;"></ul>
-        </div>
-        <input type="hidden" name="{{ field['id'] }}" id="{{ field['id'] }}"
-          value='{{ config.get(field["id"], device.get("location", {})) | tojson }}'
-          data-default='{{ field.get("default", device.get("location", {})) | tojson }}'>
-        <script>
-          document.addEventListener('DOMContentLoaded', function () {
-            enableLocationSearch(
-              document.getElementById('{{ field["id"] }}_search'),
-              document.getElementById('{{ field["id"] }}_results'),
-              document.getElementById('{{ field["id"] }}'),
-              function (location) {
-                config["{{ field['id'] }}"] = location;
-                updateConfigAndPreview();
-              }
-            );
+
+  // Function to create form fields dynamically
+  function createFormFields(schema, config) {
+    const rows = [];
+
+    schema.schema.filter(field => field.type !== "generated").forEach(field => {
+      const row = document.createElement("tr");
+      // Create label and description
+      const labelCell = document.createElement("td");
+      const label = document.createElement("label");
+      label.htmlFor = field.id;
+      if (field.icon) {
+        const icon = document.createElement("i");
+        icon.className = `fa fa-${field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
+        label.appendChild(icon);
+        label.appendChild(document.createTextNode(" "));
+      }
+      label.appendChild(document.createTextNode(field.name));
+      labelCell.appendChild(label);
+      labelCell.appendChild(document.createElement("br"));
+
+      const description = document.createElement("small");
+      description.textContent = field.description;
+      labelCell.appendChild(description);
+      row.appendChild(labelCell);
+
+      // Create input field
+      const inputCell = document.createElement("td");
+      let inputElement;
+
+      switch (field.type) {
+        case "text":
+          inputElement = document.createElement("input");
+          inputElement.type = "text";
+          inputElement.value = config[field.id] || field.default || "";
+          break;
+
+        case "onoff":
+          inputElement = document.createElement("input");
+          inputElement.type = "checkbox";
+          inputElement.checked = config[field.id] === "true" || (config[field.id] === undefined && field.default === "true");
+          break;
+
+        case "datetime":
+          inputElement = document.createElement("input");
+          inputElement.type = "datetime-local";
+          inputElement.value = (config[field.id] || field.default || "").replace("Z", "");
+          break;
+
+        case "dropdown":
+          inputElement = document.createElement("select");
+          field.options.forEach(option => {
+            const opt = document.createElement("option");
+            opt.value = option.value;
+            opt.textContent = option.text;
+            opt.selected = config[field.id] === option.value;
+            inputElement.appendChild(opt);
           });
-        </script>
-        {% elif field['type'] == 'locationbased' %}
-        <div>
-          <label for="{{ field['id'] }}_search">{{ _('Location') }}</label>
-          <input type="text" id="{{ field['id'] }}_search" placeholder="{{ _('Enter a location') }}" value=""
-            data-ignore-config="true">
-          <ul id="{{ field['id'] }}_results" style="list-style-type: none; padding: 0;"></ul>
-        </div>
-        <input type="hidden" name="{{ field['id'] }}_location" id="{{ field['id'] }}_location"
-          value='{{ device.get("location", {}) | tojson }}' data-default='{{ device.get("location", {}) | tojson }}'
-          data-ignore-config="true">
-        <select id="{{ field['id'] }}" name="{{ field['id'] }}" id="{{ field['id'] }}" class="form-control">
-          <!-- Options will be dynamically populated -->
-        </select>
-        <script>
-          document.addEventListener('DOMContentLoaded', async function () {
-            const searchInput = document.getElementById('{{ field["id"] }}_search');
-            const resultsList = document.getElementById('{{ field["id"] }}_results');
-            const hiddenInput = document.getElementById('{{ field["id"] }}_location');
-            const dropdown = document.getElementById('{{ field["id"] }}');
+          break;
 
-            async function fetchOptions(location) {
-              try {
-                const response = await fetch(`{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler=field['handler']) }}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ id: "{{ field['id'] }}", param: location })
-                });
+        case "location":
+          inputElement = createLocationField(field, config);
+          break;
 
-                if (!response.ok) {
-                  throw new Error('Failed to fetch options');
-                }
+        case "locationbased":
+          inputElement = createLocationBasedField(field, config);
+          break;
 
-                let options;
-                try {
-                  options = await response.json();
-                } catch (error) {
-                  console.error('Error parsing JSON response:', error);
-                  return;
-                }
-                dropdown.innerHTML = ''; // Clear existing options
+        case "color":
+          inputElement = document.createElement("input");
+          inputElement.type = "color";
+          inputElement.value = config[field.id] || field.default || "#000000";
+          break;
 
-                var configValue;
-                try {
-                  configValue = JSON.parse(config["{{ field['id'] }}"] || '{}').value;
-                } catch (error) {
-                  console.error('Error parsing config for field {{ field["id"] }}:', error);
-                  configValue = '';
-                }
-                options.forEach(option => {
-                  const opt = document.createElement('option');
-                  opt.value = JSON.stringify({
-                    value: option.value,
-                    display: option.display
-                  });
-                  opt.textContent = option.display;
-                  opt.selected = configValue === option.value;
-                  dropdown.appendChild(opt);
-                });
+        case "png":
+          inputElement = createImageUploadField(field, config);
+          break;
 
-                // Trigger change event to update config and preview
-                dropdown.dispatchEvent(new Event('change'));
-              } catch (error) {
-                console.error('Error fetching options:', error);
-              }
-            }
+        case "typeahead":
+          inputElement = createTypeaheadField(field, config);
+          break;
 
-            enableLocationSearch(
-              searchInput,
-              resultsList,
-              hiddenInput,
-              async function (location) {
-                await fetchOptions(location);
-              }
-            );
+        default:
+          console.warn(`Unknown field type "${field.type}" for field "${field.id}".`);
+          break;
+      };
+      if (inputElement) {
+        inputElement.id = field.id;
+        inputElement.name = field.id;
+        inputElement.className = "form-control";
+        inputElement.setAttribute("data-default", config[field.id] || field.default || "");
+        inputCell.appendChild(inputElement);
+      }
 
-            // Fetch options on form load using the current location value
-            if (hiddenInput.value) {
-              await fetchOptions(hiddenInput.value);
-            }
+      row.appendChild(inputCell);
+      rows.push(row);
+    });
+
+    return rows;
+  }
+
+  function createGeneratedFormFields(schema, config) {
+    schema.schema
+      .filter(field => field.type === "generated")
+      .forEach(field => createGeneratedField(field, config));
+  }
+
+  function createLocationSearchElements(field, config) {
+    const container = document.createElement("div");
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.id = `${field.id}_search`;
+    searchInput.placeholder = "{{ _('Enter a location') }}";
+    searchInput.setAttribute("data-ignore-config", "true");
+
+    let locationValue;
+    try {
+      locationValue = JSON.parse(config[field.id] || deviceLocation || field.default || "{}");
+      if (locationValue && locationValue.name) {
+        searchInput.value = locationValue.name;
+      }
+    } catch (e) {
+      console.error("Error parsing location value:", e);
+    }
+
+    container.appendChild(searchInput);
+
+    const resultsList = document.createElement("ul");
+    resultsList.id = `${field.id}_results`;
+    resultsList.style.listStyleType = "none";
+    resultsList.style.padding = "0";
+    container.appendChild(resultsList);
+
+    return { container, searchInput, resultsList };
+  }
+
+  // Helper function to create location field
+  function createLocationField(field, config) {
+    const { container, searchInput, resultsList } = createLocationSearchElements(field, config);
+
+    const locationValue = config[field.id] || deviceLocation || field.default || {}
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = field.id;
+    hiddenInput.name = field.id;
+    hiddenInput.value = locationValue;
+    hiddenInput.setAttribute("data-default", locationValue);
+    container.appendChild(hiddenInput);
+
+    enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
+      config[field.id] = location;
+      updateConfigAndPreview();
+    });
+
+    return container;
+  }
+
+  // Helper function to create location-based field
+  function createLocationBasedField(field, config) {
+    const { container, searchInput, resultsList } = createLocationSearchElements(field, config);
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = `${field.id}_location`;
+    hiddenInput.name = `${field.id}_location`;
+    hiddenInput.value = deviceLocation;
+    hiddenInput.setAttribute("data-default", deviceLocation);
+    hiddenInput.setAttribute("data-ignore-config", "true");
+    container.appendChild(hiddenInput);
+
+    const dropdown = document.createElement("select");
+    dropdown.id = field.id;
+    dropdown.name = field.id;
+    dropdown.className = "form-control";
+    container.appendChild(dropdown);
+
+    enableLocationSearch(searchInput, resultsList, hiddenInput, async location => {
+      await fetchOptionsForLocation(field, location, dropdown);
+    });
+
+    return container;
+  }
+
+  // Helper function to create image upload field
+  function createImageUploadField(field, config) {
+    const container = document.createElement("div");
+
+    const uploadLabel = document.createElement("label");
+    uploadLabel.htmlFor = `${field.id}_upload`;
+    uploadLabel.textContent = "{{ _('Upload Image') }}";
+    container.appendChild(uploadLabel);
+
+    const uploadInput = document.createElement("input");
+    uploadInput.type = "file";
+    uploadInput.id = `${field.id}_upload`;
+    uploadInput.setAttribute("data-ignore-config", "true");
+    uploadInput.accept = "image/png, image/jpeg, image/gif, image/svg+xml";
+    container.appendChild(uploadInput);
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = field.id;
+    hiddenInput.name = field.id;
+    hiddenInput.value = config[field.id] || "";
+    hiddenInput.setAttribute("data-default", field.default || "");
+    container.appendChild(hiddenInput);
+
+    const previewImage = document.createElement("img");
+    previewImage.id = `${field.id}_preview`;
+    previewImage.src = config[field.id] ? `data:image/png;base64,${config[field.id]}` : "";
+    previewImage.alt = "{{ _('Preview') }}";
+    previewImage.style.maxWidth = "100%";
+    previewImage.style.height = "auto";
+    previewImage.style.marginTop = "10px";
+    previewImage.style.display = config[field.id] ? "inline" : "none"; // Hide if content is empty
+    container.appendChild(previewImage);
+
+    uploadInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (file && (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif" || file.type === "image/svg+xml")) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const base64Data = e.target.result.split(",")[1];
+          hiddenInput.value = base64Data;
+          previewImage.src = e.target.result;
+          previewImage.style.display = "inline"; // Show when content is updated
+          config[field.id] = base64Data;
+          updateConfigAndPreview();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert("{{ _('Please upload a valid image file (PNG, JPEG, GIF, or SVG).') }}");
+      }
+    });
+
+    return container;
+  }
+
+  // Helper function to create typeahead field
+  function createTypeaheadField(field, config) {
+    let inputElement = document.createElement("div");
+
+    const typeaheadInput = document.createElement("input");
+    typeaheadInput.type = "text";
+    typeaheadInput.id = `${field.id}_typeahead`;
+    typeaheadInput.setAttribute("data-ignore-config", "true");
+    typeaheadInput.placeholder = "{{ _('Start typing...') }}";
+    typeaheadInput.className = "form-control";
+    inputElement.appendChild(typeaheadInput);
+
+    const hiddenTypeaheadInput = document.createElement("input");
+    hiddenTypeaheadInput.type = "hidden";
+    hiddenTypeaheadInput.id = field.id;
+    hiddenTypeaheadInput.name = field.id;
+    hiddenTypeaheadInput.value = JSON.stringify(config[field.id] || {});
+    hiddenTypeaheadInput.setAttribute("data-default", JSON.stringify(field.default || {}));
+    inputElement.appendChild(hiddenTypeaheadInput);
+
+    const typeaheadResults = document.createElement("ul");
+    typeaheadResults.id = `${field.id}_results`;
+    typeaheadResults.style.listStyleType = "none";
+    typeaheadResults.style.padding = "0";
+    typeaheadResults.style.margin = "0";
+    typeaheadResults.style.border = "1px solid #ccc";
+    typeaheadResults.style.maxHeight = "150px";
+    typeaheadResults.style.overflowY = "auto";
+    typeaheadResults.style.display = "none";
+    inputElement.appendChild(typeaheadResults);
+
+    typeaheadInput.addEventListener("input", async function () {
+      const query = typeaheadInput.value.trim();
+      if (!query) {
+        typeaheadResults.style.display = "none";
+        typeaheadResults.innerHTML = "";
+        return;
+      }
+
+      try {
+        const handlerUrl = `{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
+        const response = await fetch(handlerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: field.id, param: query })
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch typeahead options");
+        }
+
+        const options = await response.json();
+        typeaheadResults.innerHTML = ""; // Clear existing options
+
+        options.forEach(option => {
+          const listItem = document.createElement("li");
+          listItem.textContent = option.display;
+          listItem.style.cursor = "pointer";
+          listItem.style.padding = "5px";
+          listItem.addEventListener("click", () => {
+            typeaheadInput.value = option.display;
+            hiddenTypeaheadInput.value = JSON.stringify(option);
+            typeaheadResults.style.display = "none";
+            typeaheadResults.innerHTML = "";
+            config[field.id] = JSON.stringify(option);
+            updateConfigAndPreview();
           });
-        </script>
-        {% elif field['type'] == 'color' %}
-        <input type="color" id="{{ field['id'] }}" name="{{ field['id'] }}"
-          value="{{ config.get(field['id'], field.get('default', '#000000')) }}" class="form-control"
-          data-default="{{ field.get('default', '#000000') }}">
-        {% elif field['type'] == 'png' %}
-        <label for="{{ field['id'] }}_upload">{{ _('Upload Image') }}</label>
-        <input type="file" id="{{ field['id'] }}_upload" accept="image/png" class="form-control">
-        <input type="hidden" id="{{ field['id'] }}" name="{{ field['id'] }}" value="{{ config.get(field['id'], '') }}"
-          data-default="{{ field.get('default', '') }}">
-        <img id="{{ field['id'] }}_preview" src="data:image/png;base64,{{ config.get(field['id'], '') }}"
-          alt="{{ _('Preview') }}" style="max-width: 100%; height: auto; margin-top: 10px;">
-        <script>
-          document.getElementById("{{ field['id'] }}_upload").addEventListener("change", function (event) {
-            const file = event.target.files[0];
-            if (file && (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif" || file.type === "image/svg+xml")) {
-              const reader = new FileReader();
-              reader.onload = function (e) {
-                const base64Data = e.target.result.split(",")[1];
-                document.getElementById("{{ field['id'] }}").value = base64Data;
-                document.getElementById("{{ field['id'] }}_preview").src = e.target.result;
-              };
-              reader.readAsDataURL(file);
-            } else {
-              alert("{{ _('Please upload a valid image file (PNG, JPEG, GIF, or SVG).') }}");
-            }
-          });
-        </script>
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-  <input type="submit" value="{{ _('Save') }}">
-  <button type="button" id="resetButton" style="align-self: start; min-width: 10em;">{{ _('Reset') }}</button>
-</form>
-{% if delete_on_cancel == 1 %}
-<form action="{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname'])}}" method="get">
-  <input type="submit" value="{{ _('Cancel') }}">
-</form>
-{% else %}
-<form action="{{ url_for('manager.index') }}" method="get">
-  <input type="submit" value="{{ _('Cancel') }}">
-</form>
-{% endif %}
-<script>
+          typeaheadResults.appendChild(listItem);
+        });
+        typeaheadResults.style.display = "block";
+      } catch (error) {
+        console.error("Error fetching typeahead options:", error);
+      }
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!inputElement.contains(event.target)) {
+        typeaheadResults.style.display = "none";
+      }
+    });
+    return inputElement;
+  }
+
+  // Helper function to create generated field
+  function createGeneratedField(field, config) {
+    const sourceField = document.getElementById(field.source);
+    if (!sourceField) {
+      console.warn(`Source field with id "${field.source}" not found for generated field "${field.id}"`);
+      return;
+    }
+
+    const updateGeneratedFields = async () => {
+      const sourceValue = sourceField.value;
+      try {
+        const handlerUrl = `{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
+        const response = await fetch(handlerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: field.id, param: sourceValue })
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch generated fields");
+        }
+
+        const generatedFields = await response.json();
+
+        // Clear existing rows
+        const existingRows = document.querySelectorAll(`[data-generated-field="${field.id}"]`);
+        existingRows.forEach(row => row.remove());
+
+        const generatedInput = createFormFields(generatedFields, config);
+        const formTable = document.querySelector(".form-table");
+        generatedInput.forEach(row => {
+          row.setAttribute("data-generated-field", field.id); // Mark rows for easy identification
+          formTable.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Error fetching generated fields:", error);
+      }
+    };
+
+    sourceField.addEventListener("input", updateGeneratedFields);
+
+    updateGeneratedFields(); // Initial call to populate fields
+  }
+
+  // Function to fetch options for location-based fields
+  async function fetchOptionsForLocation(field, location, dropdown) {
+    try {
+      const response = await fetch(`{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: field.id, param: location })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch options");
+      }
+
+      const options = await response.json();
+      dropdown.innerHTML = ""; // Clear existing options
+
+      options.forEach(option => {
+        const opt = document.createElement("option");
+        opt.value = JSON.stringify(option);
+        opt.textContent = option.display;
+        dropdown.appendChild(opt);
+      });
+
+      dropdown.dispatchEvent(new Event("change"));
+    } catch (error) {
+      console.error("Error fetching options:", error);
+    }
+  }
+
+  // Initialize the form on page load
   document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("dynamicForm");
-    const resetButton = document.getElementById("resetButton");
-    const configContent = document.getElementById("configContent").querySelector("pre");
-    const previewImage = document.getElementById("previewImage");
+
+    const formTable = document.createElement("table");
+    formTable.className = "form-table";
+    formTable.style.borderSpacing = "0 15px";
+
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => formTable.appendChild(row));
+
+    form.appendChild(formTable);
+
+    // Create generated fields after adding the base fields to the DOM
+    createGeneratedFormFields(schema, config);
+
+    const buttonContainer = document.createElement("div");
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.gap = "10px";
+    buttonContainer.style.marginTop = "15px";
+
+    const submitButton = document.createElement("input");
+    submitButton.className = "w3-button w3-green";
+    submitButton.type = "submit";
+    submitButton.value = "{{ _('Save') }}";
+    buttonContainer.appendChild(submitButton);
+
+    const resetButton = document.createElement("button");
+    resetButton.className = "w3-button w3-blue";
+    resetButton.type = "button";
+    resetButton.id = "resetButton";
+    resetButton.textContent = "{{ _('Reset') }}";
+    resetButton.style.minWidth = "10em";
+    buttonContainer.appendChild(resetButton);
+
+    const cancelButton = document.createElement("input");
+    cancelButton.className = "w3-button w3-red";
+    cancelButton.type = "submit";
+    cancelButton.formMethod = "get";
+
+    {% if delete_on_cancel == 1 %}
+    cancelButton.formAction = "{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname']) }}";
+    {% else %}
+    cancelButton.formAction = "{{ url_for('manager.index') }}";
+    {% endif %}
+    cancelButton.value = "{{ _('Cancel') }}";
+
+    buttonContainer.appendChild(cancelButton);
+
+    form.appendChild(buttonContainer);
 
     form.addEventListener("submit", function (event) {
       event.preventDefault(); // Prevent the default form submission
@@ -303,34 +556,14 @@
         }
 
         // Update the config object to reflect the reset values
-        const fieldId = input.id;
-        config[fieldId] = defaultValue;
+        config[input.id] = defaultValue;
       });
 
       updateConfigAndPreview();
     });
-  });
-</script>
 
-<!-- style and javascript to show and hide the config -->
-<style>
-  .hidden {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .visible {
-    display: block;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
-  }
-</style>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const toggleBtn = document.getElementById("toggleConfigBtn");
     const configContent = document.getElementById("configContent");
-
+    const toggleBtn = document.getElementById("toggleConfigBtn");
     toggleBtn.addEventListener("click", function () {
       if (configContent.classList.contains("hidden")) {
         configContent.classList.remove("hidden");
@@ -344,4 +577,9 @@
     });
   });
 </script>
+
+<div class="app-img" style="width: 400px;"><img id="previewImage"
+    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    alt="{{ _('Preview') }}" width="400" style="width: 400px; height: auto;"></div>
+<form method="post" id="dynamicForm"></form>
 {% endblock %}

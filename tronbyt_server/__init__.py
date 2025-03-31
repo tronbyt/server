@@ -2,7 +2,6 @@ import ctypes
 import datetime as dt
 import json
 import os
-import re
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
@@ -256,10 +255,6 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             add_direction=True,
             locale=get_locale(),
         )
-
-    @app.template_filter("icon_format")
-    def icon_format(icon_name: str) -> str:
-        return re.sub(r"([A-Z])", r"-\1", icon_name).lower()
 
     @app.teardown_appcontext
     def close_connection(exception: Any) -> None:

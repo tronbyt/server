@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-03-28 20:41+0000\n"
+"POT-Creation-Date: 2025-03-31 09:16+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/__init__.py:246
+#: tronbyt_server/__init__.py:252
 msgid "Never"
 msgstr "Nie"
 
@@ -63,7 +63,7 @@ msgstr ""
 #: tronbyt_server/templates/auth/edit.html:11
 #: tronbyt_server/templates/auth/edit.html:22
 #: tronbyt_server/templates/auth/edit.html:34
-#: tronbyt_server/templates/manager/configapp.html:219
+#: tronbyt_server/templates/manager/configapp.html:454
 #: tronbyt_server/templates/manager/create.html:41
 #: tronbyt_server/templates/manager/update.html:94
 #: tronbyt_server/templates/manager/updateapp.html:51
@@ -127,43 +127,41 @@ msgstr "E-Mail-Adresse (optional)"
 msgid "Add App"
 msgstr "App hinzufügen"
 
-#: tronbyt_server/templates/manager/addapp.html:25
+#: tronbyt_server/templates/manager/addapp.html:26
 msgid "App Selection"
 msgstr "App-Auswahl"
 
-#: tronbyt_server/templates/manager/addapp.html:29
-msgid "Custom Apps"
-msgstr "Benutzerdefinierte Apps"
-
-#: tronbyt_server/templates/manager/addapp.html:30
-#: tronbyt_server/templates/manager/addapp.html:50
+#: tronbyt_server/templates/manager/addapp.html:31
 msgid "Search apps"
 msgstr "Apps suchen"
 
-#: tronbyt_server/templates/manager/addapp.html:39
-#: tronbyt_server/templates/manager/addapp.html:65
+#: tronbyt_server/templates/manager/addapp.html:46
 msgid "From"
 msgstr "Von"
 
-#: tronbyt_server/templates/manager/addapp.html:49
+#: tronbyt_server/templates/manager/addapp.html:55
+msgid "Custom Apps"
+msgstr "Benutzerdefinierte Apps"
+
+#: tronbyt_server/templates/manager/addapp.html:58
 msgid "System Apps"
 msgstr "System-Apps"
 
-#: tronbyt_server/templates/manager/addapp.html:74
+#: tronbyt_server/templates/manager/addapp.html:62
 msgid "Render Interval (minutes)"
 msgstr "Render-Intervall (Minuten)"
 
-#: tronbyt_server/templates/manager/addapp.html:76
+#: tronbyt_server/templates/manager/addapp.html:64
 msgid "Display Time (seconds)"
 msgstr "Anzeigedauer (Sekunden)"
 
-#: tronbyt_server/templates/manager/addapp.html:79
+#: tronbyt_server/templates/manager/addapp.html:67
 #: tronbyt_server/templates/manager/create.html:27
 #: tronbyt_server/templates/manager/update.html:77
 msgid "Notes"
 msgstr "Notizen"
 
-#: tronbyt_server/templates/manager/addapp.html:82
+#: tronbyt_server/templates/manager/addapp.html:70
 #: tronbyt_server/templates/manager/index.html:274
 #: tronbyt_server/templates/manager/updateapp.html:10
 msgid "Configure"
@@ -233,8 +231,8 @@ msgid "Display Time (secs):"
 msgstr "Anzeigedauer (Sekunden):"
 
 #: tronbyt_server/templates/manager/adminindex.html:66
-#: tronbyt_server/templates/manager/configapp.html:34
-#: tronbyt_server/templates/manager/configapp.html:197
+#: tronbyt_server/templates/manager/configapp.html:254
+#: tronbyt_server/templates/manager/configapp.html:551
 #: tronbyt_server/templates/manager/index.html:191
 #: tronbyt_server/templates/manager/index.html:262
 #: tronbyt_server/templates/manager/updateapp.html:22
@@ -249,48 +247,45 @@ msgstr "Zuletzt gerendert:"
 msgid "Configuring"
 msgstr "Konfigurieren"
 
-#: tronbyt_server/templates/manager/configapp.html:10
-#: tronbyt_server/templates/manager/configapp.html:310
+#: tronbyt_server/templates/manager/configapp.html:24
+#: tronbyt_server/templates/manager/configapp.html:542
 #: tronbyt_server/templates/manager/updateapp.html:9
 #: tronbyt_server/templates/manager/updateapp.html:85
 msgid "Show App Config"
 msgstr "App-Konfiguration anzeigen"
 
-#: tronbyt_server/templates/manager/configapp.html:70
-#: tronbyt_server/templates/manager/configapp.html:111
-#: tronbyt_server/templates/manager/create.html:30
-#: tronbyt_server/templates/manager/update.html:82
-msgid "Location"
-msgstr "Standort"
-
-#: tronbyt_server/templates/manager/configapp.html:71
-#: tronbyt_server/templates/manager/configapp.html:112
+#: tronbyt_server/templates/manager/configapp.html:163
+#: tronbyt_server/templates/manager/configapp.html:196
 #: tronbyt_server/templates/manager/create.html:31
 #: tronbyt_server/templates/manager/update.html:83
 msgid "Enter a location"
 msgstr "Standort eingeben"
 
-#: tronbyt_server/templates/manager/configapp.html:192
+#: tronbyt_server/templates/manager/configapp.html:233
 msgid "Upload Image"
 msgstr "Bild hochladen"
 
-#: tronbyt_server/templates/manager/configapp.html:210
+#: tronbyt_server/templates/manager/configapp.html:273
 msgid "Please upload a valid image file (PNG, JPEG, GIF, or SVG)."
 msgstr "Bitte ein gültiges Bild hochladen (PNG, JPEG, GIF oder SVG)"
 
-#: tronbyt_server/templates/manager/configapp.html:220
+#: tronbyt_server/templates/manager/configapp.html:288
+msgid "Start typing..."
+msgstr "Bitte eingeben…"
+
+#: tronbyt_server/templates/manager/configapp.html:460
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: tronbyt_server/templates/manager/configapp.html:224
-#: tronbyt_server/templates/manager/configapp.html:228
-msgid "Cancel"
-msgstr "Abbrechen"
-
-#: tronbyt_server/templates/manager/configapp.html:306
+#: tronbyt_server/templates/manager/configapp.html:538
 #: tronbyt_server/templates/manager/updateapp.html:81
 msgid "Hide App Config"
 msgstr "App-Konfiguration ausblenden"
+
+#: tronbyt_server/templates/manager/configapp.html:555
+#: tronbyt_server/templates/manager/configapp.html:559
+msgid "Cancel"
+msgstr "Abbrechen"
 
 #: tronbyt_server/templates/manager/create.html:4
 msgid "New Tronbyt Device"
@@ -323,6 +318,11 @@ msgstr "Leer lassen, es sei denn, Sie sind ein fortgeschrittener Benutzer."
 #: tronbyt_server/templates/manager/create.html:20
 msgid "Brightness Level ( 0 - 5 )"
 msgstr "Helligkeitsstufe ( 0 - 5 )"
+
+#: tronbyt_server/templates/manager/create.html:30
+#: tronbyt_server/templates/manager/update.html:82
+msgid "Location"
+msgstr "Standort"
 
 #: tronbyt_server/templates/manager/firmware.html:3
 msgid "Firmware Flash"
@@ -592,3 +592,4 @@ msgstr "Hochladen"
 #: tronbyt_server/templates/manager/uploadapp.html:12
 msgid "Current files:"
 msgstr "Aktuelle Dateien:"
+
