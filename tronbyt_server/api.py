@@ -2,6 +2,7 @@ import base64
 import json
 import time
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from flask import (
@@ -16,6 +17,7 @@ from werkzeug.datastructures import Headers
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
+import tronbyt_server.manager as manager
 from tronbyt_server.models.device import validate_device_id
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
@@ -72,49 +74,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
     return Response(json.dumps(metadata), status=200, mimetype="application/json")
 
 
-@bp.post("/devices/<string:device_id>/push")
-def handle_push(device_id: str) -> ResponseReturnValue:
-    if not validate_device_id(device_id):
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-
-    # Print out the whole request
-    current_app.logger.debug(f"Headers: {request.headers}")
-    # current_app.logger.debug("JSON Data:", request.get_json())
-    current_app.logger.debug(f"Body: {request.get_data(as_text=True)}")
-    # get api_key from Authorization header
-    api_key = get_api_key_from_headers(request.headers)
-    if not api_key:
-        abort(
-            HTTPStatus.BAD_REQUEST,
-            description="Missing or invalid Authorization header",
-        )
-    current_app.logger.debug(f"api_key : {api_key}")
-    device = db.get_device_by_id(device_id)
-    if not device or device["api_key"] != api_key:
-        abort(HTTPStatus.NOT_FOUND)
-
-    # get parameters from JSON data
-    try:
-        data: Dict[str, Any] = json.loads(request.get_data(as_text=True))
-    except json.JSONDecodeError:
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid JSON data")
-    # data = request.get_json()
-    current_app.logger.debug(data)
-    installation_id = data.get(
-        "installationID", data.get("installationId")
-    )  # get both cases ID and Id
-    current_app.logger.debug(f"installation_id: {installation_id}")
-    image_data = data.get("image")
-
-    if not api_key or not image_data:
-        abort(HTTPStatus.BAD_REQUEST, description="Missing required parameters")
-
-    try:
-        image_bytes = base64.b64decode(image_data)
-    except Exception as e:
-        current_app.logger.error(str(e))
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid image data")
-
+def push_image(device_id: str, installation_id: str, image_bytes: bytes) -> None:
     device_webp_path = db.get_device_webp_dir(device_id)
     device_webp_path.mkdir(parents=True, exist_ok=True)
     pushed_path = device_webp_path / "pushed"
@@ -134,27 +94,64 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         # add the app so it'll stay in the rotation
         db.add_pushed_app(device_id, file_path)
 
-    return Response("Webp received.", status=200)
+
+@bp.post("/devices/<string:device_id>/push")
+def handle_push(device_id: str) -> ResponseReturnValue:
+    try:
+        if not validate_device_id(device_id):
+            raise ValueError("Invalid device ID")
+
+        # get api_key from Authorization header
+        api_key = get_api_key_from_headers(request.headers)
+        if not api_key:
+            raise ValueError("Missing or invalid Authorization header")
+        current_app.logger.debug(f"api_key : {api_key}")
+
+        device = db.get_device_by_id(device_id)
+        if not device or device["api_key"] != api_key:
+            raise FileNotFoundError("Device not found or invalid API key")
+
+        # get parameters from JSON data
+        data: Dict[str, Any] = request.get_json()
+        installation_id = data.get(
+            "installationID", data.get("installationId")
+        )  # get both cases ID and Id
+        current_app.logger.debug(f"installation_id: {installation_id}")
+        image_data = data.get("image")
+
+        if not image_data:
+            raise ValueError("Missing required image data")
+
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            current_app.logger.error(str(e))
+            raise ValueError("Invalid image data")
+
+        push_image(device_id, installation_id, image_bytes)
+
+        return Response("WebP received.", status=200)
+
+    except ValueError as e:
+        abort(HTTPStatus.BAD_REQUEST, description=str(e))
+    except FileNotFoundError as e:
+        abort(HTTPStatus.NOT_FOUND, description=str(e))
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error: {str(e)}")
+        abort(
+            HTTPStatus.INTERNAL_SERVER_ERROR, description="An unexpected error occurred"
+        )
 
 
 ########################################################################################################
-@bp.route(
-    "/devices/<string:device_id>/installations/<string:installation_id>",
-    methods=["DELETE"],
-)
+@bp.delete("/devices/<string:device_id>/installations/<string:installation_id>")
 def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
     # get api_key from Authorization header
-    api_key = ""
-    auth_header = request.headers.get("Authorization")
-    if auth_header:
-        if auth_header.startswith("Bearer "):
-            api_key = auth_header.split(" ")[1]
-        else:
-            api_key = auth_header
-    else:
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
         abort(
             HTTPStatus.BAD_REQUEST,
             description="Missing or invalid Authorization header",
@@ -163,10 +160,6 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
     if not device or device["api_key"] != api_key:
         abort(HTTPStatus.NOT_FOUND)
 
-    if not api_key:
-        abort(HTTPStatus.BAD_REQUEST, description="Missing required parameters")
-
-    device = db.get_device_by_id(device_id) or abort(HTTPStatus.NOT_FOUND)
     pushed_webp_path = db.get_device_webp_dir(device["id"]) / "pushed"
     if not pushed_webp_path.is_dir():
         abort(HTTPStatus.NOT_FOUND, description="Device directory not found")
@@ -184,3 +177,67 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
     file_path.unlink()
 
     return Response("Webp deleted.", status=200)
+
+
+@bp.post("/devices/<string:device_id>/push_app")
+def handle_installation_push(device_id: str) -> ResponseReturnValue:
+    try:
+        if not validate_device_id(device_id):
+            raise ValueError("Invalid device ID")
+
+        # get api_key from Authorization header
+        api_key = get_api_key_from_headers(request.headers)
+        if not api_key:
+            raise ValueError("Missing or invalid Authorization header")
+
+        device = db.get_device_by_id(device_id)
+        if not device or device["api_key"] != api_key:
+            raise FileNotFoundError("Device not found or invalid API key")
+
+        user = db.get_user_by_device_id(device_id)
+        if not user:
+            raise FileNotFoundError("User not found")
+
+        # Read the request body as a JSON object
+        data: Dict[str, Any] = request.get_json()
+
+        config = data.get("config")
+        app_id = data.get("app_id")
+        if not app_id:
+            raise ValueError("Missing app data")
+        if config is None:
+            raise ValueError("Missing config data")
+
+        app_details = db.get_app_details_by_id(user["username"], app_id)
+        app_path_name = app_details.get("path")
+        if not app_path_name:
+            raise FileNotFoundError("Missing app path")
+
+        app_path = Path(app_path_name)
+        if not app_path.exists():
+            raise FileNotFoundError("App not found")
+
+        image_bytes = manager.render_app(
+            app_path=app_path, config=config, webp_path=None, device=device
+        )
+        if image_bytes is None:
+            raise RuntimeError("Rendering failed")
+        if len(image_bytes) == 0:
+            current_app.logger.debug("Empty image, not pushing")
+            return Response("Empty image, not pushing", status=200)
+
+        installation_id = data.get(
+            "installationID", data.get("installationId")
+        )  # get both cases ID and Id
+        current_app.logger.debug(f"installation_id: {installation_id}")
+
+        push_image(device_id, installation_id, image_bytes)
+
+        return Response("App pushed.", status=200)
+
+    except ValueError as e:
+        abort(HTTPStatus.BAD_REQUEST, description=str(e))
+    except FileNotFoundError as e:
+        abort(HTTPStatus.NOT_FOUND, description=str(e))
+    except RuntimeError as e:
+        abort(HTTPStatus.INTERNAL_SERVER_ERROR, description=str(e))

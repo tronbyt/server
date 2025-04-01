@@ -4,7 +4,9 @@
 .git
 .github
 .gitignore
+.mypy_cache
 .pytest_cache
+.ruff_cache
 .trunk
 .venv
 .vscode
@@ -15,3 +17,4 @@ README.md
 system-apps
 tests
 users
+__pycache__
