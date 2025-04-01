@@ -4,7 +4,7 @@ import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -99,9 +99,9 @@ def migrate_app_paths() -> None:
         for device in user.get("devices", {}).values():
             for app in device.get("apps", {}).values():
                 if "path" not in app:
-                    app["path"] = get_app_details(user["username"], app["name"]).get(
-                        "path"
-                    ) or str(
+                    app["path"] = get_app_details_by_name(
+                        user["username"], app["name"]
+                    ).get("path") or str(
                         Path("system-apps")
                         / "apps"
                         / app["name"].replace("_", "")
@@ -336,6 +336,7 @@ def get_apps_list(user: str) -> List[AppMetadata]:
             app_name = file.stem
             app_dict = AppMetadata(
                 path=str(file),
+                id=app_name,
                 name=app_name,
             )
             preview = Path("tronbyt_server/static/apps") / f"{app_name}.webp"
@@ -356,22 +357,29 @@ def get_apps_list(user: str) -> List[AppMetadata]:
         return []
 
 
-def get_app_details(user: str, name: str) -> AppMetadata:
+def get_app_details(user: str, field: Literal["id", "name"], value: str) -> AppMetadata:
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
-    current_app.logger.debug(f"{user} {name}")
     for app in custom_apps:
         current_app.logger.debug(app)
-        if app["name"] == name:
+        if app[field] == value:
             # we found it
             return app
     # if we get here then the app is not in custom apps
     # so we need to look in the system-apps directory
     apps = get_apps_list("system")
     for app in apps:
-        if app["name"] == name:
+        if app[field] == value:
             return app
     return {}
+
+
+def get_app_details_by_name(user: str, name: str) -> AppMetadata:
+    return get_app_details(user, "name", name)
+
+
+def get_app_details_by_id(user: str, id: str) -> AppMetadata:
+    return get_app_details(user, "id", id)
 
 
 def sanitize_url(url: str) -> str:

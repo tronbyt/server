@@ -10,7 +10,7 @@ from http import HTTPStatus
 from operator import itemgetter
 from pathlib import Path
 from random import randint
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 from zoneinfo import available_timezones
 
 from flask import (
@@ -410,7 +410,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
             enabled=False,  # start out false, only set to true after configure is finished
             last_render=0,
         )
-        app_details = db.get_app_details(g.user["username"], name)
+        app_details = db.get_app_details_by_name(g.user["username"], name)
         app_path = app_details.get("path")
         if app_path:
             app["path"] = app_path
@@ -525,16 +525,11 @@ def preview(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND, description="App path not found")
 
     try:
-        data = pixlet_render_app(
-            path=app_path,
+        data = render_app(
+            app_path=app_path,
             config=config,
-            width=64,
-            height=32,
-            magnify=1,
-            maxDuration=15000,
-            timeout=30000,
-            image_format=0,  # 0 == WebP
-            silence_output=current_app.config.get("PRODUCTION") == "1",
+            webp_path=None,
+            device=device,
         )
         if data is None:
             abort(
@@ -583,8 +578,8 @@ def schema_handler(device_id: str, iname: str, handler: str) -> ResponseReturnVa
 
 
 def render_app(
-    app_path: Path, config: Dict[str, Any], webp_path: Path, device: Device
-) -> Tuple[bool, bool]:
+    app_path: Path, config: Dict[str, Any], webp_path: Optional[Path], device: Device
+) -> Optional[bytes]:
     """Renders a pixlet app to a webp image.
 
     Args:
@@ -593,10 +588,7 @@ def render_app(
         webp_path: Path to save the rendered webp image.
         device: Device configuration.
 
-    Returns:
-        A tuple of two flags:
-            - The first flag indicates whether the rendering was successful.
-            - The second flag indicates whether the result was empty.
+    Returns: The rendered image as bytes or None if rendering fails.
     """
     config_data = config.copy()  # Create a copy to avoid modifying the original config
     add_default_config(config_data, device)
@@ -614,14 +606,13 @@ def render_app(
     )
     if data is None:
         current_app.logger.error("Error running pixlet render")
-        return False, False
+        return None
     # leave the previous file in place if the new one is empty
     # this way, we still display the last successful render on the index page,
     # even if the app returns no screens
-    if len(data) > 0:
+    if len(data) > 0 and webp_path:
         webp_path.write_bytes(data)
-        return True, False
-    return True, True
+    return data
 
 
 def server_root() -> str:
@@ -651,15 +642,15 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         device = user["devices"][device_id]
         config = app.get("config", {}).copy()
         add_default_config(config, device)
-        success, empty = render_app(app_path, config, webp_path, device)
-        if not success:
+        image = render_app(app_path, config, webp_path, device)
+        if image is None:
             current_app.logger.error(f"Error rendering {app_basename}")
         # set the empty flag in the app whilst keeping last render image
-        app["empty_last_render"] = empty
+        app["empty_last_render"] = len(image) == 0 if image is not None else False
         # always update the config with the new last render time
         app["last_render"] = now
         db.save_user(user)
-        return success  # return false if error
+        return image is not None  # return false if error
 
     current_app.logger.debug(f"{app_basename} -- NO RENDER")
     return True
@@ -785,8 +776,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         webp_device_path = db.get_device_webp_dir(device_id)
         webp_device_path.mkdir(parents=True, exist_ok=True)
         webp_path = webp_device_path / f"{app_basename}.webp"
-        success, _ = render_app(app_path, config, webp_path, device)
-        if success:
+        image = render_app(app_path, config, webp_path, device)
+        if image is not None:
             # set the enabled key in app to true now that it has been configured.
             app["enabled"] = True
             # set last_rendered to seconds
