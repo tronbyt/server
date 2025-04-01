@@ -519,7 +519,7 @@ msgstr "Gerät und alle Apps löschen?"
 
 #: tronbyt_server/templates/manager/updateapp.html:20
 msgid "Enabled: "
-msgstr "Aktiviert:"
+msgstr "Aktiviert: "
 
 #: tronbyt_server/templates/manager/updateapp.html:23
 msgid "Render Interval Minutes (Update every X minutes)"
