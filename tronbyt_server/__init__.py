@@ -4,6 +4,7 @@ import json
 import os
 import time
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable, Dict, Optional
 
 from babel.dates import format_timedelta
@@ -22,27 +23,27 @@ pixlet_get_schema: Optional[Callable[[bytes], Any]] = None
 pixlet_call_handler: Optional[
     Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any]
 ] = None
-free_bytes: Optional[Callable[[Any], None]] = None
+pixlet_init_cache: Optional[Callable[[], None]] = None
+pixlet_init_redis_cache: Optional[Callable[[bytes], None]] = None
+pixlet_free_bytes: Optional[Callable[[Any], None]] = None
 
 
-def initialize_pixlet_library(app: Flask) -> None:
+def load_pixlet_library() -> None:
     libpixlet_path = Path(os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so"))
-    app.logger.info(f"Loading {libpixlet_path}")
+    current_app.logger.info(f"Loading {libpixlet_path}")
     try:
         pixlet_library = ctypes.cdll.LoadLibrary(str(libpixlet_path))
     except OSError as e:
         raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
 
-    redis_url = os.getenv("REDIS_URL")
-    if redis_url:
-        app.logger.info(f"Using Redis cache at {redis_url}")
-        init_redis_cache = pixlet_library.init_redis_cache
-        init_redis_cache.argtypes = [ctypes.c_char_p]
-        init_redis_cache(redis_url.encode("utf-8"))
-    else:
-        init_cache = pixlet_library.init_cache
-        init_cache()
+    global pixlet_init_redis_cache
+    pixlet_init_redis_cache = pixlet_library.init_redis_cache
+    pixlet_init_redis_cache.argtypes = [ctypes.c_char_p]
 
+    global pixlet_init_cache
+    pixlet_init_cache = pixlet_library.init_cache
+
+    global pixlet_render_app
     pixlet_render_app = pixlet_library.render_app
     pixlet_render_app.argtypes = [
         ctypes.c_char_p,
@@ -70,10 +71,12 @@ def initialize_pixlet_library(app: Flask) -> None:
 
     pixlet_render_app.restype = DataReturn
 
+    global pixlet_get_schema
     pixlet_get_schema = pixlet_library.get_schema
     pixlet_get_schema.argtypes = [ctypes.c_char_p]
     pixlet_get_schema.restype = DataReturn
 
+    global pixlet_call_handler
     pixlet_call_handler = pixlet_library.call_handler
     pixlet_call_handler.argtypes = [
         ctypes.c_char_p,
@@ -82,14 +85,30 @@ def initialize_pixlet_library(app: Flask) -> None:
     ]
     pixlet_call_handler.restype = StringReturn
 
-    free_bytes = pixlet_library.free_bytes
-    free_bytes.argtypes = [ctypes.c_void_p]
+    global pixlet_free_bytes
+    pixlet_free_bytes = pixlet_library.free_bytes
+    pixlet_free_bytes.argtypes = [ctypes.c_void_p]
 
-    # Store pixlet functions in the app context
-    setattr(app, "pixlet_render_app", pixlet_library.render_app)
-    setattr(app, "pixlet_get_schema", pixlet_library.get_schema)
-    setattr(app, "pixlet_call_handler", pixlet_library.call_handler)
-    setattr(app, "free_bytes", pixlet_library.free_bytes)
+
+_pixlet_initialized = False
+_pixlet_lock = Lock()
+
+
+def initialize_pixlet_library() -> None:
+    global _pixlet_initialized
+    with _pixlet_lock:
+        if _pixlet_initialized:
+            return
+
+        load_pixlet_library()
+
+        redis_url = os.getenv("REDIS_URL")
+        if redis_url and pixlet_init_redis_cache:
+            current_app.logger.info(f"Using Redis cache at {redis_url}")
+            pixlet_init_redis_cache(redis_url.encode("utf-8"))
+        elif pixlet_init_cache:
+            pixlet_init_cache()
+        _pixlet_initialized = True
 
 
 def render_app(
@@ -103,8 +122,7 @@ def render_app(
     image_format: int,
     silence_output: bool,
 ) -> Optional[bytes]:
-    pixlet_render_app = getattr(current_app, "pixlet_render_app", None)
-    free_bytes = getattr(current_app, "free_bytes", None)
+    initialize_pixlet_library()
     if not pixlet_render_app:
         return None
     ret = pixlet_render_app(
@@ -123,15 +141,14 @@ def render_app(
             ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
         ).contents
         buf = bytes(data)
-        if free_bytes and ret.data:
-            free_bytes(ret.data)
+        if pixlet_free_bytes and ret.data:
+            pixlet_free_bytes(ret.data)
         return buf
     return None
 
 
 def get_schema(path: Path) -> Optional[str]:
-    pixlet_get_schema = getattr(current_app, "pixlet_get_schema", None)
-    free_bytes = getattr(current_app, "free_bytes", None)
+    initialize_pixlet_library()
     if not pixlet_get_schema:
         return None
     ret = pixlet_get_schema(str(path).encode("utf-8"))
@@ -144,14 +161,14 @@ def get_schema(path: Path) -> Optional[str]:
         except UnicodeDecodeError as e:
             current_app.logger.error(f"UnicodeDecodeError: {e}")
             buf = None
-        if free_bytes and ret.data:
-            free_bytes(ret.data)
+        if pixlet_free_bytes and ret.data:
+            pixlet_free_bytes(ret.data)
         return buf
     return None
 
 
 def call_handler(path: Path, handler: str, parameter: str) -> Optional[str]:
-    pixlet_call_handler = getattr(current_app, "pixlet_call_handler", None)
+    initialize_pixlet_library()
     if not pixlet_call_handler:
         return None
     ret = pixlet_call_handler(
@@ -224,9 +241,6 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     except OSError:
         pass
 
-    if test_config is None:
-        initialize_pixlet_library(app)
-
     # Initialize the database within the application context
     with app.app_context():
         db.init_db()
@@ -238,7 +252,6 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     from . import api
 
     app.register_blueprint(api.bp)
-    # app.add_url_rule("/api", endpoint="api")
 
     from . import manager
 

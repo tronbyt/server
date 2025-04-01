@@ -8,4 +8,5 @@ errorlog = "-"
 workers = 1
 threads = 4
 timeout = 120
-reload = True
+reload = False
+preload_app = True
