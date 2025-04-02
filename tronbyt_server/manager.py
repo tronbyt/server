@@ -1203,7 +1203,7 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
 
             # Check if the device already exists
             user = g.user
-            if device_config["id"] not in user["devices"]:
+            if device_config["id"] not in user["devices"] and device_config["id"] == device_id:
                 flash("Not the same device id. Import skipped.")
                 return redirect(url_for("manager.index"))
 
@@ -1256,7 +1256,7 @@ def import_device() -> ResponseReturnValue:
 
             # Check if the device already exists
             user = g.user
-            if device_config["id"] in user["devices"]:
+            if device_config["id"] in user["devices"] or db.get_device_by_id(device_config["id"]):
                 flash("Device already exists. Import skipped.")
                 return redirect(url_for("manager.index"))
 
