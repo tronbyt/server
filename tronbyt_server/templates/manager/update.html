@@ -193,12 +193,12 @@
 
     <div class="form-actions">
       <button type="submit" class="w3-button w3-green">{{ _('Save') }}</button>
+    </form>
       <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post" style="display: inline;">
         <button type="submit" class="w3-button w3-red"
           onclick="return confirm('{{ _('Delete device and ALL apps?') }}');">{{ _('Delete') }}</button>
       </form>
     </div>
-  </form>
 
   <hr>
 

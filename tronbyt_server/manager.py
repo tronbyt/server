@@ -1160,7 +1160,7 @@ def export_device_config(device_id: str) -> ResponseReturnValue:
     return response
 
 
-@bp.route("/<string:device_id>/import_config", methods=["GET", "POST"])
+@bp.route("/<string:device_id>/update_config", methods=["GET", "POST"])
 @login_required
 def import_device_config(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -1203,8 +1203,8 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
 
             # Check if the device already exists
             user = g.user
-            if device_config["id"] in user["devices"]:
-                flash("Device already exists. Import skipped.")
+            if device_config["id"] not in user["devices"]:
+                flash("Not the same device id. Import skipped.")
                 return redirect(url_for("manager.index"))
 
             # Add the new device to the user's devices
@@ -1222,3 +1222,70 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
 
     # Render the import form
     return render_template("manager/import_config.html", device_id=device_id)
+
+
+@bp.route("/import_device", methods=["GET", "POST"])
+@login_required
+def import_device() -> ResponseReturnValue:
+
+    if request.method == "POST":
+        # Check if the POST request has the file part
+        if "file" not in request.files:
+            flash("No file part")
+            return redirect(
+                url_for("manager.import_device_config", device_id=device_id)
+            )
+
+        file = request.files["file"]
+
+        # If no file is selected
+        if file.filename == "":
+            flash("No selected file")
+            return redirect(
+                url_for("manager.import_device_config", device_id=device_id)
+            )
+
+        # Ensure the uploaded file is a JSON file
+        if not file.filename.endswith(".json"):
+            flash("Invalid file type. Please upload a JSON file.")
+            return redirect(
+                url_for("manager.import_device_config", device_id=device_id)
+            )
+
+        try:
+            # Parse the JSON file
+            device_config = json.load(file)
+
+            # Validate the JSON structure (basic validation)
+            if not isinstance(device_config, dict):
+                flash("Invalid JSON structure")
+                return redirect(
+                    url_for("manager.create")
+                )
+
+            # Check if the device already exists
+            user = g.user
+            if device_config["id"] in user["devices"]:
+                flash("Device already exists. Import skipped.")
+                return redirect(url_for("manager.index"))
+
+            device = device_config
+            # Add the new device to the user's devices
+            user["devices"][device_config["id"]] = device
+            user.setdefault("devices", {})[device["id"]] = device
+            if db.save_user(user) and not db.get_device_webp_dir(device["id"]).is_dir():
+                db.get_device_webp_dir(device["id"]).mkdir(parents=True)
+            # probably want to call a db function actually create the device.
+            db.save_user(user)
+
+            flash("Device configuration imported successfully")
+            return redirect(url_for("manager.index"))
+
+        except json.JSONDecodeError as e:
+            flash(f"Error parsing JSON file: {e}")
+            return redirect(
+                url_for("manager.import_device_config")
+            )
+
+    # Render the import form
+    return render_template("manager/import_config.html")
