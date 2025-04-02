@@ -6,7 +6,7 @@
 .env
 certs
 env
-firmware/*.bin
+firmware/generated/*.bin
 junit
 system-apps
 system-apps.json

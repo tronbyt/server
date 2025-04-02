@@ -12,6 +12,7 @@ from pathlib import Path
 from random import randint
 from typing import Any, Dict, Optional
 from zoneinfo import available_timezones
+import datetime
 
 from flask import (
     Blueprint,
@@ -45,6 +46,8 @@ from tronbyt_server.models.device import (
 from tronbyt_server.models.user import User
 
 bp = Blueprint("manager", __name__)
+
+_last_cleanup: float = 0
 
 
 @bp.route("/")
@@ -1136,7 +1139,31 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
 
 @bp.route("/health", methods=["GET"])
 def health() -> ResponseReturnValue:
+    delete_stale_firmware()
     return Response("OK", status=200)
+
+
+@bp.route("/delete_firmware", methods=["GET", "POST"])
+def delete_stale_firmware() -> None:
+    firmware_dir = Path(
+        "firmware/generated"
+    )  # Adjust this path if your firmware directory is elsewhere
+    if not firmware_dir.is_dir():
+        current_app.logger.warning(f"Firmware directory {firmware_dir} does not exist.")
+        return
+
+    now = datetime.datetime.now()
+    cutoff = now - datetime.timedelta(minutes=10)
+
+    for bin_file in firmware_dir.glob("*.bin"):
+        file_mtime = datetime.datetime.fromtimestamp(bin_file.stat().st_mtime)
+        if file_mtime < cutoff:
+            try:
+                bin_file.unlink()
+                current_app.logger.info(f"Deleted old firmware file: {bin_file}")
+            except Exception as e:
+                current_app.logger.error(f"Error deleting file {bin_file}: {e}")
+    return "Done", 200
 
 
 @bp.route("/<string:device_id>/export_config", methods=["GET", "POST"])

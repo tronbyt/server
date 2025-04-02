@@ -506,16 +506,16 @@ def generate_firmware(
 ) -> Dict[str, Union[str, int]]:
     if device_type == "tidbyt_gen2":
         file_path = Path("firmware/gen2.bin")
-        new_path = Path(f"firmware/gen2_{label}.bin")
+        new_path = Path(f"firmware/generated/gen2_{label}.bin")
     elif device_type == "pixoticker":
         file_path = Path("firmware/pixoticker.bin")
-        new_path = Path(f"firmware/pixoticker_{label}.bin")
+        new_path = Path(f"firmware/generated/pixoticker_{label}.bin")
     elif swap_colors:
         file_path = Path("firmware/gen1_swap.bin")
-        new_path = Path(f"firmware/gen1_swap_{label}.bin")
+        new_path = Path(f"firmware/generated/gen1_swap_{label}.bin")
     else:
         file_path = Path("firmware/gen1.bin")
-        new_path = Path(f"firmware/gen1_{label}.bin")
+        new_path = Path(f"firmware/generated/gen1_{label}.bin")
 
     if not file_path.exists():
         return {"error": f"Firmware file {file_path} not found."}
