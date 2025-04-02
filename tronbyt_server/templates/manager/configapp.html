@@ -449,22 +449,11 @@
   document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("dynamicForm");
 
-    const formTable = document.createElement("table");
-    formTable.className = "form-table";
-    formTable.style.borderSpacing = "0 15px";
-
-    const formFields = createFormFields(schema, config);
-    formFields.forEach(row => formTable.appendChild(row));
-
-    form.appendChild(formTable);
-
-    // Create generated fields after adding the base fields to the DOM
-    createGeneratedFormFields(schema, config);
-
+    // Create and add button container first
     const buttonContainer = document.createElement("div");
     buttonContainer.style.display = "flex";
     buttonContainer.style.gap = "10px";
-    buttonContainer.style.marginTop = "15px";
+    buttonContainer.style.marginBottom = "15px"; // Changed from marginTop to marginBottom
 
     const submitButton = document.createElement("input");
     submitButton.className = "w3-button w3-green";
@@ -495,6 +484,19 @@
     buttonContainer.appendChild(cancelButton);
 
     form.appendChild(buttonContainer);
+
+    // Then create and add the form table
+    const formTable = document.createElement("table");
+    formTable.className = "form-table";
+    formTable.style.borderSpacing = "0 15px";
+
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => formTable.appendChild(row));
+
+    form.appendChild(formTable);
+
+    // Create generated fields after adding the base fields to the DOM
+    createGeneratedFormFields(schema, config);
 
     form.addEventListener("submit", function (event) {
       event.preventDefault(); // Prevent the default form submission

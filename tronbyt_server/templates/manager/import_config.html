@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{{ _('Import Device Configuration') }}</h1>
+<form method="post" enctype="multipart/form-data">
+  <div>
+    <label for="file">{{ _('Upload JSON File') }}</label>
+    <input type="file" name="file" id="file" accept=".json">
+  </div>
+  <button type="submit" class="w3-button w3-green">{{ _('Import Configuration') }}</button>
+</form>
+<a href="{{ url_for('manager.index') }}" class="w3-button w3-gray">{{ _('Cancel') }}</a>
+{% endblock %}

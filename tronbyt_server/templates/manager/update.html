@@ -1,101 +1,214 @@
 {% extends 'base.html' %}
 {% block header %}
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
-<h1>{% block title %}{{ _('Edit') }} "{{ device['name'] }}"{% endblock %}</h1>
+<h1 class="page-title">{% block title %}{{ _('Edit Device') }}: "{{ device['name'] }}"{% endblock %}</h1>
+<style>
+  body {
+    background-color: #121212;
+    color: #e0e0e0;
+  }
+
+  .form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+
+  .form-container h2 {
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    color: #ffffff;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #b0b0b0;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+  }
+
+  .form-group input[type="range"] {
+    width: calc(100% - 50px);
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .form-group output {
+    display: inline-block;
+    width: 50px;
+    text-align: center;
+    font-weight: bold;
+    color: #ffffff;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+
+  .form-actions .w3-button {
+    padding: 10px 20px;
+    font-size: 1rem;
+  }
+
+  .config-links {
+    margin-top: 30px;
+    text-align: center;
+  }
+
+  .config-links a {
+    margin: 0 10px;
+  }
+
+  hr {
+    margin: 30px 0;
+    border: 0;
+    border-top: 1px solid #444;
+  }
+
+  small {
+    color: #888;
+  }
+</style>
 {% endblock %}
 {% block content %}
-<form method="post">
-  <input type="hidden" name="id" id="id" value="device['id']">
-  <label for="name">{{ _('Name') }}</label>
-  <input name="name" id="name" value="{{ request.form['name'] or device['name'] }}" required>
-  <span><label for="device_type">{{ _('Device Type') }}</label></span>
-  <select name="device_type" id="device_type">
-    <option value="tidbyt_gen1" {% if device.get('type')=='tidbyt_gen1' %}selected{% endif %}>Tidbyt Gen1</option>
-    <option value="tidbyt_gen2" {% if device.get('type')=='tidbyt_gen2' %}selected{% endif %}>Tidbyt Gen2</option>
-    <option value="pixoticker" {% if device.get('type')=='pixoticker' %}selected{% endif %}>Pixoticker</option>
-    <option value="raspberrypi" {% if device.get('type')=='raspberrypi' %}selected{% endif %}>Raspberry Pi</option>
-    <option value="other" {% if device.get('type')=='other' %}selected{% endif %}>Other</option>
-  </select>
-  <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('clear to reset to default') }})</span>
-  {% if not device['img_url'].startswith('http') %}
-  <input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
-  {% else %}
-  <input name="img_url" id="img_url" value="{{ device['img_url'] }}">
-  {% endif %}
-  <label for="default_interval">{{ _('App Cycle Time (Seconds)') }}</label>
-  <output>{{ device['default_interval'] }}</output>
-  <input type="range" name="default_interval" id="default_interval" min="1" max="30"
-    value="{{ device['default_interval'] }}" oninput="this.previousElementSibling.value = this.value">
+<div class="form-container">
+  <form method="post">
+    <div class="form-group">
+      <label for="name">{{ _('Name') }}</label>
+      <input name="name" id="name" value="{{ request.form['name'] or device['name'] }}" required>
+    </div>
 
-  <span><label for="brightness">{{ _('Brightness') }}</label></span><output>{{ device['brightness'] }}</output>
-  <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
-    oninput="this.previousElementSibling.value = this.value">
+    <div class="form-group">
+      <label for="device_type">{{ _('Device Type') }}</label>
+      <select name="device_type" id="device_type">
+        <option value="tidbyt_gen1" {% if device.get('type')=='tidbyt_gen1' %}selected{% endif %}>Tidbyt Gen1</option>
+        <option value="tidbyt_gen2" {% if device.get('type')=='tidbyt_gen2' %}selected{% endif %}>Tidbyt Gen2</option>
+        <option value="pixoticker" {% if device.get('type')=='pixoticker' %}selected{% endif %}>Pixoticker</option>
+        <option value="raspberrypi" {% if device.get('type')=='raspberrypi' %}selected{% endif %}>Raspberry Pi</option>
+        <option value="other" {% if device.get('type')=='other' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
 
-  <span><label for="timezone">{{ _('Timezone') }}</label></span>
-  <select name="timezone" id="timezone">
-    <option value="">{{ _('Server Timezone') }}</option>
-    {% for tz in available_timezones|sort %}
-    <option value="{{ tz }}" {% if device['timezone']==tz %}selected{% endif %}>
-      {{ tz }}
-    </option>
-    {% endfor %}
-  </select>
+    <div class="form-group">
+      <label for="img_url">{{ _('Image URL') }}</label>
+      <input name="img_url" id="img_url" value="{{ device['img_url'] }}" readonly>
+    </div>
 
-  <span><label for="night_mode_enabled">{{ _('Enable Night Mode') }}</label></span>
-  <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled']
-    %}checked{% endif %}>
+    <div class="form-group">
+      <label for="default_interval">{{ _('App Cycle Time (Seconds)') }}</label>
+      <output>{{ device['default_interval'] }}</output>
+      <input type="range" name="default_interval" id="default_interval" min="1" max="30"
+        value="{{ device['default_interval'] }}" oninput="this.previousElementSibling.value = this.value">
+    </div>
 
-  <span><label for="night_brightness">{{ _('Night Brightness') }}</label></span><output>{{ device['night_brightness'] or
-    1 }}</output>
-  <input type="range" name="night_brightness" id="night_brightness" min="0" max="5"
-    value="{{ device['night_brightness'] or 1 }}" oninput="this.previousElementSibling.value = this.value">
+    <div class="form-group">
+      <label for="brightness">{{ _('Brightness') }}</label>
+      <output>{{ device['brightness'] }}</output>
+      <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
+        oninput="this.previousElementSibling.value = this.value">
+    </div>
 
-  <span><label for="night_start">{{ _('Night Start Hour (24hr)') }}</label></span>
-  <div>
-    <input type="number" name="night_start" id="night_start" min="0" max="24" value="{{ device['night_start'] or 22 }}">
+    <div class="form-group">
+      <label for="night_mode_enabled">{{ _('Enable Night Mode') }}</label>
+      <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled'] %}checked{% endif %}>
+    </div>
+
+    <div class="form-group">
+      <label for="night_brightness">{{ _('Night Brightness') }}</label>
+      <output>{{ device['night_brightness'] or 1 }}</output>
+      <input type="range" name="night_brightness" id="night_brightness" min="0" max="5"
+        value="{{ device['night_brightness'] or 1 }}" oninput="this.previousElementSibling.value = this.value">
+    </div>
+
+    <div class="form-group">
+      <label for="night_start">{{ _('Night Start Hour (24hr)') }}</label>
+      <input type="number" name="night_start" id="night_start" min="0" max="24" value="{{ device['night_start'] or 22 }}">
+    </div>
+
+    <div class="form-group">
+      <label for="night_end">{{ _('Night End Hour (24hr)') }}</label>
+      <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device['night_end'] or 6 }}">
+    </div>
+
+    <div class="form-group">
+      <label for="night_mode_app">{{ _('Night Mode App') }}</label>
+      <select name="night_mode_app" id="night_mode_app">
+        <option value="None">{{ _('None') }}</option>
+        {% if 'apps' in device %}
+        {% for app in device['apps'].values() %}
+        <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname'] %}selected{% endif %}>
+          {{ app['iname'] }} {{ app['name'] }}
+        </option>
+        {% endfor %}
+        {% endif %}
+      </select>
+      <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
+    </div>
+
+    <div class="form-group">
+      <label for="notes">{{ _('Notes') }}</label>
+      <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
+    </div>
+
+    <div class="form-group">
+      <label for="api_key">{{ _('API Key') }}</label>
+      <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
+    </div>
+
+    <div class="form-group">
+      <label for="location_search">{{ _('Location') }}</label>
+      <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
+        value="{{ request.form['location_search'] or device.get('location', {}).get('name', '') }}">
+      <ul id="location_results"></ul>
+      <input type="hidden" name="location" id="location"
+        value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
+      });
+    </script>
+
+    <div class="form-actions">
+      <button type="submit" class="w3-button w3-green">{{ _('Save') }}</button>
+    </form>
+      <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post" style="display: inline;">
+        <button type="submit" class="w3-button w3-red"
+          onclick="return confirm('{{ _('Delete device and ALL apps?') }}');">{{ _('Delete') }}</button>
+      </form>
+    </div>
+
+  <hr>
+
+  <div class="config-links">
+    <a href="{{ url_for('manager.export_device_config', device_id=device['id']) }}" class="w3-button w3-blue">
+      {{ _('Export Configuration') }}
+    </a>
+    <a href="{{ url_for('manager.import_device_config', device_id=device['id']) }}" class="w3-button w3-orange">
+      {{ _('Import Configuration') }}
+    </a>
   </div>
-  <span><label for="night_end">{{ _('Night End Hour (24hr)') }}</label></span>
-  <div>
-    <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device['night_end'] or 6 }}">
-  </div>
-  <span>
-    <label for="installed_apps">{{ _('Night Mode App:') }}</label>
-    <select name="night_mode_app" id="night_mode_app">
-      <option value="None">{{ _('None') }}</option>
-      {% if 'apps' in device %}
-      {% for app in device['apps'].values() %}
-      <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname']
-        %}selected{% endif %}>
-        {{ app['iname'] }} {{ app['name'] }}
-      </option>
-      {% endfor %}
-      {% endif %}
-    </select><br>
-    <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit
-      page.') }}</small>
-  </span>
-  <label for="body">{{ _('Notes') }}</label>
-  <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
-  <label for="api_key">{{ _('API Key') }}</label>
-  <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
-  <div>
-    <label for="location_search">{{ _('Location') }}</label>
-    <input type="text" id="location_search" style="width: 100%" placeholder="{{ _('Enter a location') }}"
-      value="{{ request.form['location_search'] or device.get('location', {}).get('name', '') }}">
-    <ul id="location_results"></ul>
-  </div>
-  <input type="hidden" name="location" id="location"
-    value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
-    });
-  </script>
-  <input type="submit" value="{{ _('Save') }}">
-</form>
-<hr>
-<form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post">
-  <input class="danger" type="submit" value="{{ _('Delete') }}"
-    onclick="return confirm('{{ _('Delete device and ALL apps?') }}');">
-</form>
+</div>
 {% endblock %}

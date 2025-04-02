@@ -40,4 +40,7 @@
   </script>
   <input type="submit" value="{{ _('Save') }}">
 </form>
+    <a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange">
+      {{ _('Import Configuration') }}
+    </a>
 {% endblock %}
