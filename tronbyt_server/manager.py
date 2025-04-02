@@ -1227,7 +1227,6 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
 @bp.route("/import_device", methods=["GET", "POST"])
 @login_required
 def import_device() -> ResponseReturnValue:
-
     if request.method == "POST":
         # Check if the POST request has the file part
         if "file" not in request.files:
@@ -1259,9 +1258,7 @@ def import_device() -> ResponseReturnValue:
             # Validate the JSON structure (basic validation)
             if not isinstance(device_config, dict):
                 flash("Invalid JSON structure")
-                return redirect(
-                    url_for("manager.create")
-                )
+                return redirect(url_for("manager.create"))
 
             # Check if the device already exists
             user = g.user
@@ -1283,9 +1280,7 @@ def import_device() -> ResponseReturnValue:
 
         except json.JSONDecodeError as e:
             flash(f"Error parsing JSON file: {e}")
-            return redirect(
-                url_for("manager.import_device_config")
-            )
+            return redirect(url_for("manager.import_device_config"))
 
     # Render the import form
     return render_template("manager/import_config.html")
