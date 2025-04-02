@@ -1143,7 +1143,6 @@ def health() -> ResponseReturnValue:
     return Response("OK", status=200)
 
 
-
 def delete_stale_firmware() -> None:
     firmware_dir = Path(
         "firmware/generated"
