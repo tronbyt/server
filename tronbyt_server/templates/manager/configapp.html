@@ -54,6 +54,10 @@
   function createFormFields(schema, config) {
     const rows = [];
 
+    if (!schema || !schema.schema) {
+      return rows;
+    }
+
     schema.schema.filter(field => field.type !== "generated").forEach(field => {
       const row = document.createElement("tr");
       // Create label and description
@@ -151,6 +155,10 @@
   }
 
   function createGeneratedFormFields(schema, config) {
+    if (!schema || !schema.schema) {
+      return;
+    }
+
     schema.schema
       .filter(field => field.type === "generated")
       .forEach(field => createGeneratedField(field, config));
@@ -470,6 +478,7 @@
     buttonContainer.appendChild(resetButton);
 
     const cancelButton = document.createElement("input");
+    cancelButton.id = "cancelButton";
     cancelButton.className = "w3-button w3-red";
     cancelButton.type = "submit";
     cancelButton.formMethod = "get";
@@ -499,7 +508,12 @@
     createGeneratedFormFields(schema, config);
 
     form.addEventListener("submit", function (event) {
-      event.preventDefault(); // Prevent the default form submission
+      // Check if the form was submitted using the cancel button
+      if (event.submitter && event.submitter.id === "cancelButton") {
+        return; // Use the default action for the cancel button
+      }
+
+      event.preventDefault(); // Prevent the default form submission for other cases
 
       // Submit the form data
       fetch(form.action, {
