@@ -43,7 +43,7 @@ def test_device_operations(client: FlaskClient) -> None:
     r = client.post(f"/{device_id}/firmware", data=data)
     assert r.status_code == 200
 
-    firmware_path = Path("firmware") / "gen1_TESTDEVICE.bin"
+    firmware_path = Path("firmware/generated") / "gen1_TESTDEVICE.bin"
     assert firmware_path.exists()
     firmware_path.unlink()
 
