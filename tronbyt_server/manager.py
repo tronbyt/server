@@ -1143,7 +1143,7 @@ def health() -> ResponseReturnValue:
     return Response("OK", status=200)
 
 
-@bp.route("/delete_firmware", methods=["GET", "POST"])
+
 def delete_stale_firmware() -> None:
     firmware_dir = Path(
         "firmware/generated"
@@ -1163,7 +1163,6 @@ def delete_stale_firmware() -> None:
                 current_app.logger.info(f"Deleted old firmware file: {bin_file}")
             except Exception as e:
                 current_app.logger.error(f"Error deleting file {bin_file}: {e}")
-    return "Done", 200
 
 
 @bp.route("/<string:device_id>/export_config", methods=["GET", "POST"])
