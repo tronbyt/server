@@ -508,12 +508,13 @@
     createGeneratedFormFields(schema, config);
 
     form.addEventListener("submit", function (event) {
+      event.preventDefault(); // Prevent the default form submission
+
       // Check if the form was submitted using the cancel button
       if (event.submitter && event.submitter.id === "cancelButton") {
-        return; // Use the default action for the cancel button
+        window.location.href = event.submitter.formAction;
+        return; // Navigate to the form action URL
       }
-
-      event.preventDefault(); // Prevent the default form submission for other cases
 
       // Submit the form data
       fetch(form.action, {
