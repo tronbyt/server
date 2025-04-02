@@ -1231,25 +1231,19 @@ def import_device() -> ResponseReturnValue:
         # Check if the POST request has the file part
         if "file" not in request.files:
             flash("No file part")
-            return redirect(
-                url_for("manager.import_device_config", device_id=device_id)
-            )
+            return redirect(url_for("manager.import_device"))
 
         file = request.files["file"]
 
         # If no file is selected
         if file.filename == "":
             flash("No selected file")
-            return redirect(
-                url_for("manager.import_device_config", device_id=device_id)
-            )
+            return redirect(url_for("manager.import_device"))
 
         # Ensure the uploaded file is a JSON file
         if not file.filename.endswith(".json"):
             flash("Invalid file type. Please upload a JSON file.")
-            return redirect(
-                url_for("manager.import_device_config", device_id=device_id)
-            )
+            return redirect(url_for("manager.import_device"))
 
         try:
             # Parse the JSON file
