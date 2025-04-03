@@ -38,7 +38,7 @@ If you've been invited to use my public instance of this server login there and 
 - [Pixoticker](https://www.etsy.com/listing/1801658771/pixoticker-live-stock-crypto-forex)
 - [Raspberry Pi](https://github.com/tronbyt/tronberry) connected to a 64x32 matrix LED
 
-It's rather easy to develop additional clients for Tronbyt Server: just pull images in WebP format from a the `/next` endpoint and loop the animation for the number of seconds specified in the `Tronbyt-Dwell-Secs` response header. Optionally set the display brightness to the value in the `Tronbyt-Brightness` header (0 - 100).
+It's rather easy to develop additional clients for Tronbyt Server: just pull images in WebP format from the `/next` endpoint and loop the animation for the number of seconds specified in the `Tronbyt-Dwell-Secs` response header. Optionally set the display brightness to the value in the `Tronbyt-Brightness` header (0 - 100).
 
 ### Installation
 
