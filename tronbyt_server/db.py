@@ -3,6 +3,7 @@ import os
 import shutil
 import sqlite3
 from datetime import datetime
+from tzlocal import get_localzone_name
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 from urllib.parse import quote, unquote
@@ -165,25 +166,28 @@ def get_device_timezone(device: Device) -> ZoneInfo:
         if tz := location.get("timezone"):
             if validate_timezone(tz):
                 return ZoneInfo(tz)
-    # legacy timezone
+
+    # Legacy timezone handling
     if tz := device.get("timezone"):
         if validate_timezone(tz):
             return ZoneInfo(tz)
         elif isinstance(tz, int):
-            # Convert integer offset to a valid timezone string
+            # Convert integer offset to a valid timezone name
             hours_offset = int(tz)
-            minutes_offset = abs(tz - hours_offset) * 60
             sign = "+" if hours_offset >= 0 else "-"
-            return ZoneInfo(
-                f"Etc/GMT{sign}{abs(hours_offset):02}:{int(minutes_offset):02}"
-            )
+            return ZoneInfo(f"Etc/GMT{sign}{abs(hours_offset)}")
 
     # Default to the server's local timezone
-    return ZoneInfo(datetime.now().astimezone().tzinfo.key)
+    local_tz = get_localzone_name()
+    return ZoneInfo(local_tz)
 
 
-def get_device_timezone_str(tz: ZoneInfo) -> str:
-    return tz.tzname()
+def get_device_timezone_str(device: Device) -> str:
+    zone_info = get_device_timezone(device)
+    if tz_str := datetime.now(zone_info).tzname():
+        return tz_str
+    tz_str = str(get_localzone_name)
+    return tz_str
 
 
 def get_night_mode_is_active(device: Device) -> bool:

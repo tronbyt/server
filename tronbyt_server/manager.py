@@ -27,6 +27,7 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
+
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
