@@ -1,18 +1,45 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}{{ _('Firmware Flash') }} "{{ device['name'] }}"'{% endblock %}</h1>
+<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
-<label for="name">{{ _('Name:') }}</label>
-<p>{{ device['name'] }}</p>
-<label for="img_url">{{ _('Image URL:') }}</label>
-<p>{{ img_url }}</p>
-<label for="wifi_ap">{{ _('WiFi Network Name (SSID):') }}</label> {{ ap }}<br>
-<label for="wifi_password">{{ _('WiFi Password:') }}</label> {{ password }}<br>
-<h2><label for="firmware">{{ _('Firmware File:') }}</label> <a href="{{ url_for('manager.download_firmware', device_id=device['id']) }}">{{ _('DOWNLOAD FIRMWARE FILE') }}</a></h2>
-<i style="color: red;">For security reasons, the firmware file will be deleted from the server in 10 minutes.</i>
-<h2>{{ _('Download ESPHome Flasher here') }} <a href="https://github.com/esphome/esphome-flasher/releases">ESPHome Flasher</a></h2>
-{{ _('Connect your device to your computer with a data USB cable, run the ESPHome Flasher program and select your downloaded firmware file to flash your device.') }}
-<br><i>{{ _('Windows users may need to install a serial driver.') }} <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x Drivers</a>
-</i>
+<form method="post">
+    <h2>{{ _('Download ESPHome Flasher here') }} <a href="https://github.com/esphome/esphome-flasher/releases">ESPHome
+            Flasher</a></h2>
+    {{ _('Connect your device to your computer with a data USB cable, run the ESPHome Flasher program and select your
+    downloaded firmware file to flash your device.') }}
+    <br><i>{{ _('Windows users may need to install a serial driver.') }} <a
+            href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x
+            Drivers</a>
+    </i>
+    <br>
+    <input type="hidden" name="id" id="id" value="device['id']">
+    <span><label for="img_url">{{ _('Image URL') }}</label></span>
+    {% if not device['img_url'].startswith('http') %}
+    <input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
+    {% else %}
+    <input name="img_url" id="img_url" value="{{ device['img_url'] }}"></p>
+    {% endif %}
+
+    <label for="wifi_ap">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
+    <input name="wifi_ap" id="wifi_ap" required>
+    <label for="wifi_password">{{ _('WiFi Password') }}</label>
+    <input name="wifi_password" id="wifi_password" required>
+    <style>
+        .left-align {
+            text-align: left;
+        }
+    </style>
+
+    {% if device.get('type') == 'tidbyt_gen1' %}
+    <div class="left-align">
+        <label for="swap_colors">{{ _('Swap Colors?') }}</label>
+        <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {%
+            endif %}>
+    </div>
+    {% endif %}
+    <input class="w3-button w3-blue" type="submit" value="{{ _('Generate Firmware File') }}">
+</form>
+<hr>
+
 {% endblock %}

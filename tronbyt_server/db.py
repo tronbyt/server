@@ -4,7 +4,7 @@ import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -502,60 +502,52 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
 
 
 def generate_firmware(
-    label: str, url: str, ap: str, pw: str, device_type: str, swap_colors: bool
-) -> Dict[str, Union[str, int]]:
+    url: str, ap: str, pw: str, device_type: str, swap_colors: bool
+) -> bytes:
     if device_type == "tidbyt_gen2":
         file_path = Path("firmware/gen2.bin")
-        new_path = Path(f"firmware/generated/gen2_{label}.bin")
     elif device_type == "pixoticker":
         file_path = Path("firmware/pixoticker.bin")
-        new_path = Path(f"firmware/generated/pixoticker_{label}.bin")
     elif swap_colors:
         file_path = Path("firmware/gen1_swap.bin")
-        new_path = Path(f"firmware/generated/gen1_swap_{label}.bin")
     else:
         file_path = Path("firmware/gen1.bin")
-        new_path = Path(f"firmware/generated/gen1_{label}.bin")
 
     if not file_path.exists():
-        return {"error": f"Firmware file {file_path} not found."}
-
-    shutil.copy(file_path, new_path)
+        raise ValueError(f"Firmware file {file_path} not found.")
 
     dict = {
         "XplaceholderWIFISSID________________________________": ap,
         "XplaceholderWIFIPASSWORD____________________________": pw,
         "XplaceholderREMOTEURL_________________________________________________________________________________________": url,
     }
-    bytes_written = None
-    with new_path.open("r+b") as f:
+    with file_path.open("rb") as f:
         content = f.read()
 
-        for old_string, new_string in dict.items():
-            # Ensure the new string is not longer than the original
-            if len(new_string) > len(old_string):
-                return {
-                    "error": "Replacement string cannot be longer than the original string."
-                }
+    for old_string, new_string in dict.items():
+        # Ensure the new string is not longer than the original
+        if len(new_string) > len(old_string):
+            raise ValueError(
+                "Replacement string cannot be longer than the original string."
+            )
 
-            # Find the position of the old string
-            position = content.find(old_string.encode("ascii") + b"\x00")
-            if position == -1:
-                return {"error": f"String '{old_string}' not found in the binary."}
+        # Find the position of the old string
+        position = content.find(old_string.encode("ascii") + b"\x00")
+        if position == -1:
+            raise ValueError(f"String '{old_string}' not found in the binary.")
 
-            # Create the new string, null-terminated, and padded to match the original length
-            padded_new_string = new_string + "\x00"
-            # Add padding if needed
-            padded_new_string = padded_new_string.ljust(len(old_string) + 1, "\x00")
+        # Create the new string, null-terminated, and padded to match the original length
+        padded_new_string = new_string + "\x00"
+        # Add padding if needed
+        padded_new_string = padded_new_string.ljust(len(old_string) + 1, "\x00")
 
-            f.seek(position)
-            bytes_written = f.write(padded_new_string.encode("ascii"))
-    if bytes_written:
-        # run the correct checksum/hash script
-        correct_firmware_esptool.update_firmware_file(str(new_path))
-        return {"file_path": str(new_path.resolve())}
-    else:
-        return {"error": "no bytes written"}
+        content = (
+            content[:position]
+            + padded_new_string.encode("ascii")
+            + content[position + len(old_string) + 1 :]
+        )
+    # update the checksum
+    return correct_firmware_esptool.update_firmware_data(content)
 
 
 def add_pushed_app(device_id: str, path: Path) -> None:

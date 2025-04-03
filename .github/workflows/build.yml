@@ -35,8 +35,6 @@ jobs:
         run: |
           pip install pytest
           pytest tests --doctest-modules --junitxml=junit/test-results.xml
-        env:
-          ESPTOOL_PATH: esptool.py
       - name: Type check with mypy
         run: |
           pip install mypy
