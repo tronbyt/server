@@ -304,6 +304,7 @@ def update(device_id: str) -> ResponseReturnValue:
                             location["name"] = loc["name"]
                         if "timezone" in loc:
                             location["timezone"] = loc["timezone"]
+                            device["timezone"] = loc["timezone"]
                         device["location"] = location
                     else:
                         flash("Invalid location")
