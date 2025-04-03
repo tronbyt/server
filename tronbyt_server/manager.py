@@ -12,7 +12,6 @@ from pathlib import Path
 from random import randint
 from typing import Any, Dict, Optional
 from zoneinfo import available_timezones
-import datetime
 
 from flask import (
     Blueprint,
@@ -667,7 +666,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
     # Ensure the device exists in the current user's configuration
-    device = g.user["devices"].get(device_id, None)
+    device: Device = g.user["devices"].get(device_id, None)
     if not device:
         abort(HTTPStatus.NOT_FOUND)
 
@@ -684,37 +683,35 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                 abort(HTTPStatus.BAD_REQUEST)
 
             device_type = device.get("type", DEFAULT_DEVICE_TYPE)
-            current_app.logger.info(f"device type is : {device_type}")
+            current_app.logger.info(f"device type is: {device_type}")
             swap_colors = bool(request.form.get("swap_colors", False))
 
             # Pass the device type to the firmware generation function
-            result = db.generate_firmware(
-                label=secure_filename(device["name"]),
-                url=image_url,
-                ap=ap,
-                pw=password,
-                device_type=device_type,
-                swap_colors=swap_colors,
-            )
-            if "file_path" in result:
-                device["firmware_file_path"] = result["file_path"]
-                db.save_user(g.user)
-                return render_template(
-                    "manager/firmware.html",
-                    device=device,
-                    img_url=image_url,
+            try:
+                firmware_data = db.generate_firmware(
+                    url=image_url,
                     ap=ap,
-                    password=password,
+                    pw=password,
                     device_type=device_type,
-                    firmware_file=result["file_path"],
+                    swap_colors=swap_colors,
                 )
-            elif "error" in result:
-                flash(str(result["error"]))
-            else:
-                flash("Firmware modification failed")
+            except Exception as e:
+                current_app.logger.error(f"Error generating firmware: {e}")
+                flash("Firmware generation failed. Please try again.")
+                return redirect(
+                    url_for("manager.generate_firmware", device_id=device_id)
+                )
+
+            return Response(
+                firmware_data,
+                mimetype="application/octet-stream",
+                headers={
+                    "Content-Disposition": f"attachment;filename=firmware_{device_type}_{device_id}.bin"
+                },
+            )
 
     return render_template(
-        "manager/firmware_form.html",
+        "manager/firmware.html",
         device=device,
         server_root=server_root(),
     )
@@ -974,33 +971,6 @@ def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND)
 
 
-@bp.route("/<string:device_id>/download_firmware")
-@login_required
-def download_firmware(device_id: str) -> ResponseReturnValue:
-    if not validate_device_id(device_id):
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-
-    try:
-        if (
-            g.user
-            and device_id in g.user["devices"]
-            and "firmware_file_path" in g.user["devices"][device_id]
-        ):
-            file_path = Path(g.user["devices"][device_id]["firmware_file_path"])
-        else:
-            abort(HTTPStatus.NOT_FOUND)
-
-        current_app.logger.debug(f"checking for {file_path}")
-        if file_path.exists() and file_path.stat().st_size > 0:
-            return send_file(file_path, mimetype="application/octet-stream")
-        else:
-            current_app.logger.error("file doesn't exist or 0 size")
-            abort(HTTPStatus.NOT_FOUND)
-    except Exception as e:
-        current_app.logger.error(f"Exception: {str(e)}")
-        abort(HTTPStatus.NOT_FOUND)
-
-
 def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
     if repo_url != "":
         old_repo = g.user.get(repo_name, "")
@@ -1140,29 +1110,7 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
 
 @bp.route("/health", methods=["GET"])
 def health() -> ResponseReturnValue:
-    delete_stale_firmware()
     return Response("OK", status=200)
-
-
-def delete_stale_firmware() -> None:
-    firmware_dir = Path(
-        "firmware/generated"
-    )  # Adjust this path if your firmware directory is elsewhere
-    if not firmware_dir.is_dir():
-        current_app.logger.warning(f"Firmware directory {firmware_dir} does not exist.")
-        return
-
-    now = datetime.datetime.now()
-    cutoff = now - datetime.timedelta(minutes=10)
-
-    for bin_file in firmware_dir.glob("*.bin"):
-        file_mtime = datetime.datetime.fromtimestamp(bin_file.stat().st_mtime)
-        if file_mtime < cutoff:
-            try:
-                bin_file.unlink()
-                current_app.logger.info(f"Deleted old firmware file: {bin_file}")
-            except Exception as e:
-                current_app.logger.error(f"Error deleting file {bin_file}: {e}")
 
 
 @bp.route("/<string:device_id>/export_config", methods=["GET", "POST"])

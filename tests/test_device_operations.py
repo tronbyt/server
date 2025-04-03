@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from flask.testing import FlaskClient
 
 from . import utils
@@ -43,9 +41,14 @@ def test_device_operations(client: FlaskClient) -> None:
     r = client.post(f"/{device_id}/firmware", data=data)
     assert r.status_code == 200
 
-    firmware_path = Path("firmware/generated") / "gen1_TESTDEVICE.bin"
-    assert firmware_path.exists()
-    firmware_path.unlink()
+    r = client.post(f"/{device_id}/firmware", data=data)
+    assert r.status_code == 200
+    assert r.mimetype == "application/octet-stream"
+    assert (
+        r.headers["Content-Disposition"]
+        == f"attachment;filename=firmware_tidbyt_gen1_{device_id}.bin"
+    )
+    assert len(r.data) > 0
 
     # test /device_id/next works even when no app configured
     assert client.get(f"{device_id}/next").status_code == 200
