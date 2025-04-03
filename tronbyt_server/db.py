@@ -184,10 +184,7 @@ def get_device_timezone(device: Device) -> ZoneInfo:
 
 def get_device_timezone_str(device: Device) -> str:
     zone_info = get_device_timezone(device)
-    if tz_str := datetime.now(zone_info).tzname():
-        return tz_str
-    tz_str = str(get_localzone_name)
-    return tz_str
+    return datetime.now(zone_info).tzname() or get_localzone_name()
 
 
 def get_night_mode_is_active(device: Device) -> bool:
