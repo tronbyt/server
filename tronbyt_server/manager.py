@@ -27,7 +27,6 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
-from tzlocal import get_localzone_name
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -303,7 +302,6 @@ def update(device_id: str) -> ResponseReturnValue:
                             location["name"] = loc["name"]
                         if "timezone" in loc:
                             location["timezone"] = loc["timezone"]
-                            device["timezone"] = loc["timezone"]
                         device["location"] = location
                     else:
                         flash("Invalid location")
@@ -718,21 +716,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
 
 
 def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]:
-    if (
-        "timezone" in device
-        and isinstance(device["timezone"], str)
-        and device["timezone"] != ""
-    ):
-        config["$tz"] = device["timezone"]
-    else:
-        localzone = get_localzone_name()
-        if localzone:
-            config["$tz"] = localzone
-        else:
-            current_app.logger.warning(
-                "Could not determine local timezone, using UTC as default"
-            )
-            config["$tz"] = "Etc/UTC"
+    config["$tz"] = db.get_device_timezone(device)
     return config
 
 
@@ -866,8 +850,7 @@ def next_app(
         last_app_index = 0
 
     if not is_night_mode_app and (
-        not app["enabled"]
-        or not db.get_is_app_schedule_active(app, device.get("timezone", None))
+        not app["enabled"] or not db.get_is_app_schedule_active(app, device)
     ):
         # recurse until we find one that's enabled
         current_app.logger.debug(f"{app['name']}-{app['iname']} is disabled")
