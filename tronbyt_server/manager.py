@@ -716,7 +716,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
 
 
 def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]:
-    config["$tz"] = db.get_device_timezone(device)
+    config["$tz"] = db.get_device_timezone_str(device)
     return config
 
 

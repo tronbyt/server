@@ -159,24 +159,31 @@ def save_last_app_index(device_id: str, index: int) -> None:
     save_user(user)
 
 
-# function will always return a valid timezone str so we don't have to check for it in other places.
-def get_device_timezone(device: Device) -> str:
+def get_device_timezone(device: Device) -> ZoneInfo:
     """Get timezone in order of precedence: location -> device -> local timezone."""
     if location := device.get("location"):
         if tz := location.get("timezone"):
             if validate_timezone(tz):
-                return tz
+                return ZoneInfo(tz)
     # legacy timezone
     if tz := device.get("timezone"):
-        if isinstance(tz, int):
+        if validate_timezone(tz):
+            return ZoneInfo(tz)
+        elif isinstance(tz, int):
             # Convert integer offset to a valid timezone string
             hours_offset = int(tz)
             minutes_offset = abs(tz - hours_offset) * 60
             sign = "+" if hours_offset >= 0 else "-"
-            return f"Etc/GMT{sign}{abs(hours_offset):02}:{int(minutes_offset):02}"
-        return tz
+            return ZoneInfo(
+                f"Etc/GMT{sign}{abs(hours_offset):02}:{int(minutes_offset):02}"
+            )
+
     # Default to the server's local timezone
-    return datetime.now().astimezone().tzname()
+    return ZoneInfo(datetime.now().astimezone().tzinfo.key)
+
+
+def get_device_timezone_str(tz: ZoneInfo) -> str:
+    return tz.tzname()
 
 
 def get_night_mode_is_active(device: Device) -> bool:
@@ -457,7 +464,7 @@ def get_all_users() -> List[User]:
 
 
 def get_is_app_schedule_active(app: App, device: Device) -> bool:
-    current_time = datetime.now(ZoneInfo(get_device_timezone(device)))
+    current_time = datetime.now(get_device_timezone(device))
     return get_is_app_schedule_active_at_time(app, current_time)
 
 
