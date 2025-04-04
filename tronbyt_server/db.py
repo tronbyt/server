@@ -2,7 +2,8 @@ import json
 import os
 import shutil
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime
+from tzlocal import get_localzone_name
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 from urllib.parse import quote, unquote
@@ -17,7 +18,10 @@ from werkzeug.utils import secure_filename
 from firmware import correct_firmware_esptool
 from tronbyt_server import system_apps
 from tronbyt_server.models.app import App, AppMetadata
-from tronbyt_server.models.device import Device
+from tronbyt_server.models.device import (
+    Device,
+    validate_timezone,
+)
 from tronbyt_server.models.user import User
 
 
@@ -156,30 +160,53 @@ def save_last_app_index(device_id: str, index: int) -> None:
     save_user(user)
 
 
+def get_device_timezone(device: Device) -> ZoneInfo:
+    """Get timezone in order of precedence: location -> device -> local timezone."""
+    if location := device.get("location"):
+        if tz := location.get("timezone"):
+            if validate_timezone(tz):
+                return ZoneInfo(tz)
+
+    # Legacy timezone handling
+    if tz := device.get("timezone"):
+        if validate_timezone(tz):
+            return ZoneInfo(tz)
+        elif isinstance(tz, int):
+            # Convert integer offset to a valid timezone name
+            hours_offset = int(tz)
+            sign = "+" if hours_offset >= 0 else "-"
+            return ZoneInfo(f"Etc/GMT{sign}{abs(hours_offset)}")
+
+    # Default to the server's local timezone
+    local_tz = get_localzone_name()
+    return ZoneInfo(local_tz)
+
+
+def get_device_timezone_str(device: Device) -> str:
+    zone_info = get_device_timezone(device)
+    return datetime.now(zone_info).tzname() or get_localzone_name()
+
+
 def get_night_mode_is_active(device: Device) -> bool:
     if not device.get("night_mode_enabled", False):
         return False
-    if "timezone" in device and device["timezone"] != "":
-        if isinstance(device["timezone"], int):
-            # Legacy case: timezone is an int representing offset in hours
-            current_hour = (datetime.now(timezone.utc).hour + device["timezone"]) % 24
-        else:
-            # configured, adjust current hour to set device timezone
-            current_hour = datetime.now(ZoneInfo(device["timezone"])).hour
-    else:
-        current_hour = datetime.now().hour
-    # current_app.logger.debug(f"current_hour:{current_hour} -- ",end="")
+
+    # get_device_timezone will always return a valid tz string
+    current_hour = datetime.now(get_device_timezone(device)).hour
+
+    # Determine if night mode is active
     if device.get("night_start", -1) > -1:
         start_hour = device["night_start"]
         end_hour = device.get("night_end", 6)  # default to 6 am if not set
         if start_hour <= end_hour:  # Normal case (e.g., 9 to 17)
             if start_hour <= current_hour <= end_hour:
-                current_app.logger.debug("nightmode active")
+                current_app.logger.debug("Night mode active")
                 return True
         else:  # Wrapped case (e.g., 22 to 6 - overnight)
             if current_hour >= start_hour or current_hour <= end_hour:
-                current_app.logger.debug("nightmode active")
+                current_app.logger.debug("Night mode active")
                 return True
+
     return False
 
 
@@ -437,14 +464,8 @@ def get_all_users() -> List[User]:
     return [json.loads(row[0]) for row in cursor.fetchall()]
 
 
-def get_is_app_schedule_active(app: App, tz_str: Optional[str]) -> bool:
-    current_time = datetime.now()
-    if tz_str:
-        try:
-            current_time = datetime.now(ZoneInfo(tz_str))
-        except Exception as e:
-            current_app.logger.warning(f"Error converting timezone: {e}")
-
+def get_is_app_schedule_active(app: App, device: Device) -> bool:
+    current_time = datetime.now(get_device_timezone(device))
     return get_is_app_schedule_active_at_time(app, current_time)
 
 

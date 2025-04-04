@@ -1,5 +1,6 @@
 import re
 from typing import Dict, Optional, Required, TypedDict
+from zoneinfo import ZoneInfo
 
 from tronbyt_server.models.app import App
 
@@ -31,6 +32,15 @@ class Device(TypedDict, total=False):
     location: Optional[Location]
     apps: Dict[str, App]
     last_app_index: int
+
+
+def validate_timezone(tz: str) -> bool:
+    """Validate if a timezone string is valid"""
+    try:
+        ZoneInfo(tz)
+        return True
+    except Exception:
+        return False
 
 
 def validate_device_id(device_id: str) -> bool:
