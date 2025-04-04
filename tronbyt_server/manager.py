@@ -81,7 +81,7 @@ def uploadapp(device_id: str) -> ResponseReturnValue:
             filename = secure_filename(file.filename)
             if filename == "":
                 flash("No file")
-                return redirect("manager.addapp", device_id=device_id)
+                return redirect(url_for("manager.addapp", device_id=device_id))
 
             # create a subdirectory for the app
             app_name = Path(filename).stem

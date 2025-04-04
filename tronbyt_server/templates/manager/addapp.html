@@ -46,8 +46,8 @@ function searchApps(inputId, gridId) {
         {% if 'author' in app %}
         <p>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
-        {% if 'basename' in app %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['basename'], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        {% if app['path'].startswith("users/") %}
+        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
         {% endif %}
       </div>
       {% endfor %}
