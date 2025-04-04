@@ -1,5 +1,15 @@
+# repos:
+#   - repo: https://github.com/astral-sh/ruff-pre-commit
+#     rev: v0.3.7  # Use the latest version
+#     hooks:
+#       - id: ruff-format
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.7  # Use the latest version
     hooks:
+      - id: ruff
+        args: [--fix, --fix-only]
+        stages: [pre-commit]
+        autofixing_enabled: true
       - id: ruff-format
+        autofixing_enabled: true

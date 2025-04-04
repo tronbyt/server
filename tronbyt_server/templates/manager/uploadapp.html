@@ -11,6 +11,6 @@
 </form>
 <h3>{{ _('Current files:') }}</h3>
 {% for filename in files %}
-<p>{{ filename }} - <a href="{{ url_for('manager.deleteupload', filename=filename) }}">{{ _('Delete') }}</a></p>
+<p>{{ filename }} - <a href="{{ url_for('manager.deleteupload', filename=filename, device_id=device_id) }}">{{ _('Delete') }}</a></p>
 {% endfor %}
 {% endblock %}

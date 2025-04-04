@@ -365,6 +365,7 @@ def get_apps_list(user: str) -> List[AppMetadata]:
                 path=str(file),
                 id=app_name,
                 name=app_name,
+                basename=os.path.basename(file),
             )
             preview = Path("tronbyt_server/static/apps") / f"{app_name}.webp"
             if preview.exists() and preview.stat().st_size > 0:
