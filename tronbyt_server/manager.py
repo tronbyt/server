@@ -65,9 +65,9 @@ def index() -> str:
 
 
 # function to handle uploading a an app
-@bp.route("/uploadapp", methods=["GET", "POST"])
+@bp.route("/<string:device_id>/uploadapp", methods=["GET", "POST"])
 @login_required
-def uploadapp() -> ResponseReturnValue:
+def uploadapp(device_id: str) -> ResponseReturnValue:
     user_apps_path = db.get_users_dir() / g.user["username"] / "apps"
     if request.method == "POST":
         # check if the post request has the file part
@@ -81,7 +81,7 @@ def uploadapp() -> ResponseReturnValue:
             filename = secure_filename(file.filename)
             if filename == "":
                 flash("No file")
-                return redirect("manager.uploadapp")
+                return redirect(url_for("manager.addapp", device_id=device_id))
 
             # create a subdirectory for the app
             app_name = Path(filename).stem
@@ -91,29 +91,31 @@ def uploadapp() -> ResponseReturnValue:
             # save the file
             if not db.save_user_app(file, app_subdir):
                 flash("Save Failed")
-                return redirect(url_for("manager.uploadapp"))
+                return redirect(url_for("manager.uploadapp", device_id=device_id))
             flash("Upload Successful")
 
             # try to generate a preview with an empty config (ignore errors)
             preview = Path("tronbyt_server") / "static" / "apps" / f"{app_name}.webp"
             render_app(app_subdir, {}, preview, Device(id=""))
 
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("manager.addapp", device_id=device_id))
 
     # check for existence of apps path
     user_apps_path.mkdir(parents=True, exist_ok=True)
 
     star_files = [file.name for file in user_apps_path.rglob("*.star")]
 
-    return render_template("manager/uploadapp.html", files=star_files)
+    return render_template(
+        "manager/uploadapp.html", files=star_files, device_id=device_id
+    )
 
 
 # function to delete an uploaded star file
-@bp.route("/deleteupload/<string:filename>", methods=["POST", "GET"])
+@bp.route("/<string:device_id>/deleteupload/<string:filename>", methods=["POST", "GET"])
 @login_required
-def deleteupload(filename: str) -> ResponseReturnValue:
+def deleteupload(device_id: str, filename: str) -> ResponseReturnValue:
     db.delete_user_upload(g.user, filename)
-    return redirect(url_for("manager.uploadapp"))
+    return redirect(url_for("manager.addapp", device_id=device_id))
 
 
 @bp.route("/adminindex")

@@ -170,8 +170,6 @@
 {% block content %}
 {% if g.user %}
 <br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp') }}">{{ _('Upload .star file')
-  }}</a>
 <hr>
 {% endif %}
 {% for device in devices %}

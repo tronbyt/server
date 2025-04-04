@@ -12,12 +12,24 @@ def test_upload_and_delete(client: FlaskClient) -> None:
     data = dict(
         file=(BytesIO(b"my file contents"), "report.star"),
     )
-
-    client.post("/uploadapp", content_type="multipart/form-data", data=data)
+    # device is required to upload a file now.
+    client.get("/create")
+    client.post(
+        "/create",
+        data={
+            "name": "TESTDEVICE",
+            "img_url": "TESTID",
+            "api_key": "TESTKEY",
+            "notes": "TESTNOTES",
+            "brightness": "3",
+        },
+    )
+    dev_id = utils.get_test_device_id()
+    client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
 
     assert "report/report.star" in utils.get_user_uploads_list()
 
-    client.get("/deleteupload/report.star")
+    client.get(f"/{dev_id}/deleteupload/report.star")
 
     assert "report/report.star" not in utils.get_user_uploads_list()
 
@@ -26,5 +38,5 @@ def test_upload_and_delete(client: FlaskClient) -> None:
         file=(BytesIO(b"my file contents"), "report.exe"),
     )
 
-    client.post("/uploadapp", content_type="multipart/form-data", data=data)
+    client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
     assert "report.exe" not in utils.get_user_uploads_list()

@@ -22,6 +22,7 @@ function searchApps(inputId, gridId) {
   }
 }
 </script>
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp', device_id=device['id']) }}">{{ _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
@@ -45,6 +46,9 @@ function searchApps(inputId, gridId) {
         {% if 'author' in app %}
         <p>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
+        {% if app['path'].startswith("users/") %}
+        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -53,6 +57,7 @@ function searchApps(inputId, gridId) {
 
   {% if custom_apps_list %}
   {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list) }}
+
   <hr>
   {% endif %}
   {{ render_app_list(_('System Apps'), 'system_search', 'system_app_grid', apps_list) }}
