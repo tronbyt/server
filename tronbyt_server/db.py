@@ -164,13 +164,13 @@ def get_device_timezone(device: Device) -> ZoneInfo:
     """Get timezone in order of precedence: location -> device -> local timezone."""
     if location := device.get("location"):
         if tz := location.get("timezone"):
-            if validate_timezone(tz):
-                return ZoneInfo(tz)
+            if zi := validate_timezone(tz):
+                return zi
 
     # Legacy timezone handling
     if tz := device.get("timezone"):
-        if validate_timezone(tz):
-            return ZoneInfo(tz)
+        if zi := validate_timezone(tz):
+            return zi
         elif isinstance(tz, int):
             # Convert integer offset to a valid timezone name
             hours_offset = int(tz)
