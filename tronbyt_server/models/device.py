@@ -34,13 +34,21 @@ class Device(TypedDict, total=False):
     last_app_index: int
 
 
-def validate_timezone(tz: str) -> bool:
-    """Validate if a timezone string is valid"""
+def validate_timezone(tz: str) -> Optional[ZoneInfo]:
+    """
+    Validate if a timezone string is valid.
+
+    Args:
+        tz (str): The timezone string to validate.
+
+    Returns:
+        Optional[ZoneInfo]: A ZoneInfo object if the timezone string is valid,
+        None otherwise.
+    """
     try:
-        ZoneInfo(tz)
-        return True
+        return ZoneInfo(tz)
     except Exception:
-        return False
+        return None
 
 
 def validate_device_id(device_id: str) -> bool:
