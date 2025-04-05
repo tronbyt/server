@@ -112,7 +112,11 @@ def handle_push(device_id: str) -> ResponseReturnValue:
             raise FileNotFoundError("Device not found or invalid API key")
 
         # get parameters from JSON data
-        data: Dict[str, Any] = request.get_json()
+        # can't use request.get_json() because the media type might not be set to application/json
+        try:
+            data: Dict[str, Any] = json.loads(request.get_data(as_text=True))
+        except json.JSONDecodeError:
+            abort(HTTPStatus.BAD_REQUEST, description="Invalid JSON data")
         installation_id = data.get(
             "installationID", data.get("installationId")
         )  # get both cases ID and Id
