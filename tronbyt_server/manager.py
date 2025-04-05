@@ -1219,7 +1219,7 @@ def import_device() -> ResponseReturnValue:
 
             # Check if the device already exists
             user = g.user
-            if device_config["id"] in user["devices"] or db.get_device_by_id(
+            if device_config["id"] in user.get("devices", {}) or db.get_device_by_id(
                 device_config["id"]
             ):
                 flash("Device already exists. Import skipped.")
@@ -1227,8 +1227,7 @@ def import_device() -> ResponseReturnValue:
 
             device = device_config
             # Add the new device to the user's devices
-            user["devices"][device_config["id"]] = device
-            user.setdefault("devices", {})[device["id"]] = device
+            user.setdefault("devices", {})[device_config["id"]] = device
             if db.save_user(user) and not db.get_device_webp_dir(device["id"]).is_dir():
                 db.get_device_webp_dir(device["id"]).mkdir(parents=True)
             # probably want to call a db function actually create the device.
