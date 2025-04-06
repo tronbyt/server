@@ -15,9 +15,6 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Create a non-root user
-RUN groupadd -r -g 1000 tronbyt && useradd -r -u 1000 -g tronbyt tronbyt
-
 # copy pixlet library and python dependencies
 COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
 
@@ -44,9 +41,6 @@ RUN apt-get update && \
 
 COPY . /app
 RUN pybabel compile -d tronbyt_server/translations
-
-RUN chown -R tronbyt:tronbyt /app && chmod -R 755 /app
-USER tronbyt
 
 # start the app
 CMD ["./run"]
