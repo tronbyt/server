@@ -13,6 +13,9 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1 \
     LIBPIXLET_PATH=/usr/lib/libpixlet.so
 
+# Create a non-root user
+RUN groupadd -r -g 1000 tronbyt && useradd -r -u 1000 -g tronbyt tronbyt
+
 WORKDIR /app
 
 # copy pixlet library and python dependencies
