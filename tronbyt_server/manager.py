@@ -1227,7 +1227,7 @@ def import_device() -> ResponseReturnValue:
                 return redirect(url_for("manager.index"))
 
             device = device_config
-            device["img_url"] = f"{server_root()}/{device_id}/next"
+            device["img_url"] = f"{server_root()}/{device_config["id"]}/next"
 
             # Add the new device to the user's devices
             user.setdefault("devices", {})[device_config["id"]] = device
