@@ -20,6 +20,20 @@ def update_system_repo() -> None:
     git_dir = system_apps_path / ".git"
     print(f"Checking for git directory at: {git_dir}")
 
+    # If running as root, add the system-apps directory to the safe.directory list
+    if os.geteuid() == 0:  # Check if the script is running as root
+        subprocess.run(
+            [
+                "git",
+                "config",
+                "--global",
+                "--add",
+                "safe.directory",
+                str(system_apps_path),
+            ],
+            check=True,
+        )
+
     if git_dir.is_dir():  # Check if it's actually a directory
         print(f"{system_apps_path} git repo found, updating {system_apps_repo}")
 

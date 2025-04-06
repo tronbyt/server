@@ -23,27 +23,38 @@ COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ca-certificates \
-        esptool \
-        git \
-        gunicorn \
-        libsharpyuv0 \
-        libwebp7 \
-        libwebpdemux2 \
-        libwebpmux3 \
-        python3 \
-        python3-dotenv \
-        python3-flask \
-        python3-flask-babel \
-        python3-requests \
-        python3-tzlocal \
-        python3-yaml \
-        tzdata \
-        tzdata-legacy && \
+    ca-certificates \
+    esptool \
+    git \
+    gunicorn \
+    libsharpyuv0 \
+    libwebp7 \
+    libwebpdemux2 \
+    libwebpmux3 \
+    python3 \
+    python3-dotenv \
+    python3-flask \
+    python3-flask-babel \
+    python3-requests \
+    python3-tzlocal \
+    python3-yaml \
+    tzdata \
+    tzdata-legacy && \
     rm -rf /var/lib/apt/lists/*
 
 COPY . /app
 RUN pybabel compile -d tronbyt_server/translations
 
+# Create the directories for dynamic content ahead of time so that they are
+# owned by the non-root user (newly created named volumes are owned by root,
+# if their target doesn't exist).
+RUN touch /app/system-apps.json && \
+    mkdir -p /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users && \
+    chown -R tronbyt:tronbyt /app/system-apps.json /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users && \
+    chmod -R 755 /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users
+
+# Set the user to non-root (disabled for a while to support legacy setups which ran as root)
+#USER tronbyt
+
 # start the app
-CMD ["./run"]
+ENTRYPOINT ["./run"]
