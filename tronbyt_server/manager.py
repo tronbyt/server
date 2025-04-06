@@ -1170,6 +1170,7 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
                 flash("Not the same device id. Import skipped.")
                 return redirect(url_for("manager.index"))
 
+            device_config["img_url"] = f"{server_root()}/{device_id}/next"
             # Add the new device to the user's devices
             user["devices"][device_config["id"]] = device_config
             db.save_user(user)
@@ -1226,6 +1227,8 @@ def import_device() -> ResponseReturnValue:
                 return redirect(url_for("manager.index"))
 
             device = device_config
+            device["img_url"] = f"{server_root()}/{device_id}/next"
+
             # Add the new device to the user's devices
             user.setdefault("devices", {})[device_config["id"]] = device
             if db.save_user(user) and not db.get_device_webp_dir(device["id"]).is_dir():
