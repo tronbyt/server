@@ -38,7 +38,7 @@
       enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
     });
   </script>
-  <input type="submit" value="{{ _('Save') }}">
+  <input type="submit" class="w3-button w3-green" value="{{ _('Save') }}">
 </form>
     <a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange">
       {{ _('Import Configuration') }}

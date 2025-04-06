@@ -184,7 +184,7 @@ def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
 
 
 @bp.post("/devices/<string:device_id>/push_app")
-def handle_installation_push(device_id: str) -> ResponseReturnValue:
+def handle_app_push(device_id: str) -> ResponseReturnValue:
     try:
         if not validate_device_id(device_id):
             raise ValueError("Invalid device ID")

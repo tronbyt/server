@@ -27,7 +27,6 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
-
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -49,7 +48,7 @@ bp = Blueprint("manager", __name__)
 _last_cleanup: float = 0
 
 
-@bp.route("/")
+@bp.get("/")
 @login_required
 def index() -> str:
     devices: list[Device] = list()
@@ -118,7 +117,7 @@ def deleteupload(device_id: str, filename: str) -> ResponseReturnValue:
     return redirect(url_for("manager.addapp", device_id=device_id))
 
 
-@bp.route("/adminindex")
+@bp.get("/adminindex")
 @login_required
 def adminindex() -> str:
     if g.user["username"] != "admin":
@@ -443,7 +442,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
     return Response("Method not allowed", 405)
 
 
-@bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=["GET"])
+@bp.get("/<string:device_id>/<string:iname>/toggle_enabled")
 @login_required
 def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -506,7 +505,7 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
     )
 
 
-@bp.route("/<string:device_id>/<string:iname>/preview", methods=["GET"])
+@bp.get("/<string:device_id>/<string:iname>/preview")
 @login_required
 def preview(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -547,10 +546,7 @@ def preview(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.INTERNAL_SERVER_ERROR, description="Error generating preview")
 
 
-@bp.route(
-    "/<string:device_id>/<string:iname>/schema_handler/<string:handler>",
-    methods=["POST"],
-)
+@bp.post("/<string:device_id>/<string:iname>/schema_handler/<string:handler>")
 @login_required
 def schema_handler(device_id: str, iname: str, handler: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -780,7 +776,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     abort(HTTPStatus.BAD_REQUEST)
 
 
-@bp.route("/<string:device_id>/brightness", methods=["GET"])
+@bp.get("/<string:device_id>/brightness")
 def get_brightness(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
@@ -793,7 +789,7 @@ def get_brightness(device_id: str) -> ResponseReturnValue:
     return Response(str(brightness_value), mimetype="text/plain")
 
 
-@bp.route("/<string:device_id>/next")
+@bp.get("/<string:device_id>/next")
 def next_app(
     device_id: str,
     last_app_index: Optional[int] = None,
@@ -906,7 +902,7 @@ def send_image(
 
 
 # manager.currentwebp
-@bp.route("/<string:device_id>/currentapp")
+@bp.get("/<string:device_id>/currentapp")
 def currentwebp(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
@@ -914,7 +910,7 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
     try:
         user = g.user
         device = user["devices"][device_id]
-        apps_list = sorted(device["apps"].values(), key=itemgetter("order"))
+        apps_list = sorted(device.get("apps", {}).values(), key=itemgetter("order"))
         if not apps_list:
             return send_default_image(device)
         current_app_index = db.get_last_app_index(device_id) or 0
@@ -927,7 +923,7 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND)
 
 
-@bp.route("/<string:device_id>/<string:iname>/appwebp")
+@bp.get("/<string:device_id>/<string:iname>/appwebp")
 def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
@@ -1094,7 +1090,7 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
     return redirect(url_for("manager.index"))
 
 
-@bp.route("/health", methods=["GET"])
+@bp.get("/health")
 def health() -> ResponseReturnValue:
     return Response("OK", status=200)
 

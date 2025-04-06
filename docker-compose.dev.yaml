@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    init: true
     ports:
       - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
     volumes:

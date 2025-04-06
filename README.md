@@ -96,6 +96,34 @@ That said, the recommended installation method uses Docker Compose with a config
 - Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
 - To update your install to the latest version simply run `docker compose pull && docker compose up -d`
 
+### Updating from Earlier Versions
+
+If you are upgrading from an earlier version of Tronbyt Server that was running as `root`, you can switch to a non-root user for improved security. Follow these steps:
+
+1. Stop your server:
+
+   ```sh
+   docker compose down
+   ```
+
+2. Adjust the permissions of the existing data files:
+
+   ```sh
+   docker compose run --rm --user=0 --entrypoint="" web chown -R tronbyt:tronbyt -f /app/system-apps.json /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users
+   ```
+
+3. Update your Compose file to include the following line under the service definition:
+
+   ```yaml
+   user: "tronbyt:tronbyt"
+   ```
+
+4. Restart the server:
+
+   ```sh
+   docker compose up -d
+   ```
+
 ### Development
 
 1. Clone the repository:
