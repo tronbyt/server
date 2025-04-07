@@ -17,7 +17,7 @@ from werkzeug.datastructures import Headers
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
-import tronbyt_server.manager as manager
+from tronbyt_server.manager import push_new_image, render_app
 from tronbyt_server.models.device import validate_device_id
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
@@ -93,6 +93,8 @@ def push_image(device_id: str, installation_id: str, image_bytes: bytes) -> None
     if installation_id:
         # add the app so it'll stay in the rotation
         db.add_pushed_app(device_id, file_path)
+
+    push_new_image(device_id)
 
 
 @bp.post("/devices/<string:device_id>/push")
@@ -221,7 +223,7 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
         if not app_path.exists():
             raise FileNotFoundError("App not found")
 
-        image_bytes = manager.render_app(
+        image_bytes = render_app(
             app_path=app_path, config=config, webp_path=None, device=device
         )
         if image_bytes is None:

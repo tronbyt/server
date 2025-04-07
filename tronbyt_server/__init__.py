@@ -11,11 +11,13 @@ from babel.dates import format_timedelta
 from dotenv import load_dotenv
 from flask import Flask, current_app, g, request
 from flask_babel import Babel, _
+from flask_sock import Sock
 from werkzeug.serving import is_running_from_reloader
 
 from tronbyt_server import db, system_apps
 
 babel = Babel()
+sock = Sock()
 pixlet_render_app: Optional[
     Callable[[bytes, bytes, int, int, int, int, int, int, int], Any]
 ] = None
@@ -257,6 +259,8 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
 
     app.register_blueprint(manager.bp)
     app.add_url_rule("/", endpoint="index")
+
+    sock.init_app(app)
 
     @app.template_filter("timeago")
     def timeago(seconds: int) -> str:

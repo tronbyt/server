@@ -7,9 +7,11 @@ import subprocess
 import time
 import uuid
 from http import HTTPStatus
+from io import BytesIO
 from operator import itemgetter
 from pathlib import Path
 from random import randint
+from threading import Event, Lock
 from typing import Any, Dict, Optional
 from zoneinfo import available_timezones
 
@@ -27,10 +29,11 @@ from flask import (
     url_for,
 )
 from flask.typing import ResponseReturnValue
+from flask_sock import Server as WebSocketServer
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
-from tronbyt_server import call_handler, get_schema, system_apps
+from tronbyt_server import call_handler, get_schema, sock, system_apps
 from tronbyt_server import render_app as pixlet_render_app
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
@@ -44,8 +47,6 @@ from tronbyt_server.models.device import (
 from tronbyt_server.models.user import User
 
 bp = Blueprint("manager", __name__)
-
-_last_cleanup: float = 0
 
 
 @bp.get("/")
@@ -804,15 +805,12 @@ def next_app(
     # first check for a pushed file starting with __ and just return that and then delete it.
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
-        ephemeral_files = [f for f in pushed_dir.iterdir() if f.name.startswith("__")]
-        if ephemeral_files:
-            ephemeral_file = ephemeral_files[0]
+        for ephemeral_file in pushed_dir.glob("__*"):
             current_app.logger.debug(
                 f"returning ephemeral pushed file {ephemeral_file.name}"
             )
-            webp_path = pushed_dir / ephemeral_file.name
-            # send_file doesn't need the full path, just the path after the tronbyt_server
-            response = send_image(webp_path, device, None)
+            # Use the `immediate` flag because we're going to delete the file right after
+            response = send_image(ephemeral_file, device, None, True)
             current_app.logger.debug("removing ephemeral webp")
             ephemeral_file.unlink()
             return response
@@ -859,7 +857,6 @@ def next_app(
     if not possibly_render(user, device_id, app) or app.get("empty_last_render", False):
         # try the next app if rendering failed or produced an empty result (no screens)
         return next_app(device_id, last_app_index, recursion_depth + 1)
-
     db.save_user(user)
 
     if "pushed" in app:
@@ -887,9 +884,13 @@ def send_default_image(device: Device) -> ResponseReturnValue:
 
 
 def send_image(
-    webp_path: Path, device: Device, app: Optional[App]
+    webp_path: Path, device: Device, app: Optional[App], immediate: bool = False
 ) -> ResponseReturnValue:
-    response = send_file(webp_path, mimetype="image/webp")
+    if immediate:
+        with webp_path.open("rb") as f:
+            response = send_file(BytesIO(f.read()), mimetype="image/webp")
+    else:
+        response = send_file(webp_path, mimetype="image/webp")
     b = db.get_device_brightness_8bit(device)
     device_interval = device.get("default_interval", 5)
     s = app.get("display_time", device_interval) if app else device_interval
@@ -1241,3 +1242,73 @@ def import_device() -> ResponseReturnValue:
 
     # Render the import form
     return render_template("manager/import_config.html")
+
+
+# Thread-safe dictionaries to store events and dwell times for each device
+device_events = {}
+device_dwell_times = {}
+device_locks = Lock()
+
+
+# Ignore untyped decorator: https://github.com/miguelgrinberg/flask-sock/issues/55
+@sock.route("/<string:device_id>/ws")  # type: ignore
+def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
+    if not validate_device_id(device_id):
+        ws.close()
+        return
+
+    user = db.get_user_by_device_id(device_id)
+    if not user:
+        ws.close()
+        return
+
+    device = user["devices"].get(device_id)
+    if not device:
+        ws.close()
+        return
+
+    with device_locks:
+        if device_id not in device_events:
+            device_events[device_id] = Event()
+            device_dwell_times[device_id] = device.get("default_interval", 5)
+
+    device_event = device_events[device_id]
+
+    try:
+        while ws.connected:
+            # Wait for the event or timeout
+            device_event.wait(timeout=device_dwell_times[device_id])
+            device_event.clear()  # Reset the event
+
+            response = next_app(device_id)
+            if isinstance(response, Response):
+                if response.status_code == 200:
+                    response.direct_passthrough = False  # Disable passthrough mode
+                    ws.send(bytes(response.get_data()))
+                    # Update the dwell time based on the response header
+                    dwell_secs = response.headers.get("Tronbyt-Dwell-Secs")
+                    if dwell_secs:
+                        with device_locks:
+                            device_dwell_times[device_id] = int(dwell_secs)
+                else:
+                    message = {
+                        "status": "error",
+                        "message": f"Error fetching image: {response.status_code}",
+                    }
+                    ws.send(json.dumps(message))
+            else:
+                message = {
+                    "status": "error",
+                    "message": "Error fetching image, unknown response type",
+                }
+                ws.send(json.dumps(message))
+    except Exception as e:
+        current_app.logger.error(f"WebSocket error: {e}")
+        ws.close()
+
+
+def push_new_image(device_id: str) -> None:
+    """Wake up the WebSocket loop to push a new image."""
+    with device_locks:
+        if device_id in device_events:
+            device_events[device_id].set()
