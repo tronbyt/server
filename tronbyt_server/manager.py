@@ -1273,6 +1273,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
             device_dwell_times[device_id] = device.get("default_interval", 5)
 
     device_event = device_events[device_id]
+    last_brightness = None
 
     try:
         while ws.connected:
@@ -1284,24 +1285,48 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
             if isinstance(response, Response):
                 if response.status_code == 200:
                     response.direct_passthrough = False  # Disable passthrough mode
+
+                    # Send brightness as a text message, if it has changed
+                    # This must be done before sending the image so that the new value is applied to the next image
+                    brightness = response.headers.get("Tronbyt-Brightness")
+                    if brightness is not None:
+                        brightness_value = int(brightness)
+                        if brightness_value != last_brightness:
+                            last_brightness = brightness_value
+                            ws.send(
+                                json.dumps(
+                                    {
+                                        "brightness": brightness_value,
+                                    }
+                                )
+                            )
+
+                    # Send the image as a binary message
                     ws.send(bytes(response.get_data()))
+
                     # Update the dwell time based on the response header
                     dwell_secs = response.headers.get("Tronbyt-Dwell-Secs")
                     if dwell_secs:
                         with device_locks:
                             device_dwell_times[device_id] = int(dwell_secs)
                 else:
-                    message = {
-                        "status": "error",
-                        "message": f"Error fetching image: {response.status_code}",
-                    }
-                    ws.send(json.dumps(message))
+                    ws.send(
+                        json.dumps(
+                            {
+                                "status": "error",
+                                "message": f"Error fetching image: {response.status_code}",
+                            }
+                        )
+                    )
             else:
-                message = {
-                    "status": "error",
-                    "message": "Error fetching image, unknown response type",
-                }
-                ws.send(json.dumps(message))
+                ws.send(
+                    json.dumps(
+                        {
+                            "status": "error",
+                            "message": "Error fetching image, unknown response type",
+                        }
+                    )
+                )
     except Exception as e:
         current_app.logger.error(f"WebSocket error: {e}")
         ws.close()
