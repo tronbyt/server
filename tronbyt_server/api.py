@@ -19,6 +19,8 @@ from werkzeug.utils import secure_filename
 import tronbyt_server.db as db
 import tronbyt_server.manager as manager
 from tronbyt_server.models.device import validate_device_id
+from tronbyt_server.models.app import App
+from tronbyt_server.models.device import Device
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
@@ -160,20 +162,33 @@ def handle_put_device_app(device_id: str, installation_id: str) -> ResponseRetur
             HTTPStatus.BAD_REQUEST,
             description="Missing or invalid Authorization header",
         )
-    device = db.get_device_by_id(device_id)
-    if not device or device["api_key"] != api_key:
+
+    raw_device = db.get_device_by_id(device_id)
+    if raw_device is None:
         abort(HTTPStatus.NOT_FOUND)
 
-    print(request.json)
+    device: Device = raw_device
+
     # Handle the set_enabled json command
-    if "set_enabled" in request.json:
-        set_enabled = request.json.get(
-            "set_enabled"
-        )  # Get the "is_enabled" value or default to False if not present
+    if request.json is not None and "set_enabled" in request.json:
+        set_enabled = request.json["set_enabled"]
+        if not isinstance(set_enabled, bool):
+            return Response(
+                "Invalid value for set_enabled. Must be a boolean.", status=400
+            )
 
         # Sanitize installation_id to prevent path traversal attacks
         installation_id = secure_filename(installation_id)
-        app = device.get("apps", {}).get(installation_id, {})
+        apps = device.get("apps", {})
+
+        # Get app_data and immediately return if it's not a valid dictionary
+        app_data: Optional[App] = apps.get(installation_id)
+
+        if app_data is None or "iname" not in app_data or "name" not in app_data:
+            abort(HTTPStatus.NOT_FOUND)
+
+        # Proceed with using app_data safely
+        app: App = app_data
         if not app:
             abort(HTTPStatus.NOT_FOUND)
 

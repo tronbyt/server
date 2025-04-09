@@ -598,6 +598,8 @@ def save_app(device_id: str, app: App) -> bool:
     try:
         # first get the user from the device, should already be validated elsewhere
         user = get_user_by_device_id(device_id)
+        if not user:
+            return False
         # user.get("devices",{}).get("apps",{})
         print(app)
         user["devices"][device_id]["apps"][app["iname"]] = app
