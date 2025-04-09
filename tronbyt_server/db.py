@@ -592,3 +592,16 @@ def add_pushed_app(device_id: str, path: Path) -> None:
     )
     apps[installation_id] = app
     save_user(user)
+
+
+def save_app(device_id: str, app: App) -> bool:
+    try:
+        # first get the user from the device, should already be validated elsewhere
+        user = get_user_by_device_id(device_id)
+        # user.get("devices",{}).get("apps",{})
+        print(app)
+        user["devices"][device_id]["apps"][app["iname"]] = app
+        save_user(user)
+        return True
+    except Exception:
+        return False

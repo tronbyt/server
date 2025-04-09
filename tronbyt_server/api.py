@@ -148,6 +148,62 @@ def handle_push(device_id: str) -> ResponseReturnValue:
 
 
 ########################################################################################################
+@bp.put("/devices/<string:device_id>/installations/<string:installation_id>")
+def handle_put_device_app(device_id: str, installation_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    # get api_key from Authorization header
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
+        abort(HTTPStatus.NOT_FOUND)
+
+    print(request.json)
+    # Handle the set_enabled json command
+    if "set_enabled" in request.json:
+        set_enabled = request.json.get(
+            "set_enabled"
+        )  # Get the "is_enabled" value or default to False if not present
+
+        # Sanitize installation_id to prevent path traversal attacks
+        installation_id = secure_filename(installation_id)
+        app = device.get("apps", {}).get(installation_id, {})
+        if not app:
+            abort(HTTPStatus.NOT_FOUND)
+
+        # Enable it. Should probably render it right away too.
+        if set_enabled:
+            app["enabled"] = True
+            app["last_render"] = 0  # this will trigger render on next fetch
+            if db.save_app(device_id, app):
+                return Response("App Enabled.", status=200)
+
+        else:
+            app["enabled"] = False
+            webp_path = db.get_device_webp_dir(device["id"])
+            if not webp_path.is_dir():
+                abort(HTTPStatus.NOT_FOUND, description="Device directory not found")
+
+            # Generate the filename using the installation_id eg. Acidwarp-220.webp
+            file_path = webp_path / f"{app['name']}-{installation_id}.webp"
+            current_app.logger.debug(file_path)
+            if file_path.is_file():
+                # Delete the file
+                file_path.unlink()
+            if db.save_app(device_id, app):
+                return Response("App disabled.", status=200)
+        return Response("Couldn't complete the operation", status=500)
+    else:
+        return Response("Unknown Operation", status=500)
+
+
+########################################################################################################
 @bp.delete("/devices/<string:device_id>/installations/<string:installation_id>")
 def handle_delete(device_id: str, installation_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
