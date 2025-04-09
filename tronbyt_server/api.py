@@ -19,6 +19,8 @@ from werkzeug.utils import secure_filename
 import tronbyt_server.db as db
 from tronbyt_server.manager import push_new_image, render_app
 from tronbyt_server.models.device import validate_device_id
+from tronbyt_server.models.app import App
+from tronbyt_server.models.device import Device
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
@@ -147,6 +149,75 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         abort(
             HTTPStatus.INTERNAL_SERVER_ERROR, description="An unexpected error occurred"
         )
+
+
+########################################################################################################
+@bp.put("/devices/<string:device_id>/installations/<string:installation_id>")
+def handle_put_device_app(device_id: str, installation_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    # get api_key from Authorization header
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    raw_device = db.get_device_by_id(device_id)
+    if raw_device is None:
+        abort(HTTPStatus.NOT_FOUND)
+
+    device: Device = raw_device
+
+    # Handle the set_enabled json command
+    if request.json is not None and "set_enabled" in request.json:
+        set_enabled = request.json["set_enabled"]
+        if not isinstance(set_enabled, bool):
+            return Response(
+                "Invalid value for set_enabled. Must be a boolean.", status=400
+            )
+
+        # Sanitize installation_id to prevent path traversal attacks
+        installation_id = secure_filename(installation_id)
+        apps = device.get("apps", {})
+
+        # Get app_data and immediately return if it's not a valid dictionary
+        app_data: Optional[App] = apps.get(installation_id)
+
+        if app_data is None or "iname" not in app_data or "name" not in app_data:
+            abort(HTTPStatus.NOT_FOUND)
+
+        # Proceed with using app_data safely
+        app: App = app_data
+        if not app:
+            abort(HTTPStatus.NOT_FOUND)
+
+        # Enable it. Should probably render it right away too.
+        if set_enabled:
+            app["enabled"] = True
+            app["last_render"] = 0  # this will trigger render on next fetch
+            if db.save_app(device_id, app):
+                return Response("App Enabled.", status=200)
+
+        else:
+            app["enabled"] = False
+            webp_path = db.get_device_webp_dir(device["id"])
+            if not webp_path.is_dir():
+                abort(HTTPStatus.NOT_FOUND, description="Device directory not found")
+
+            # Generate the filename using the installation_id eg. Acidwarp-220.webp
+            file_path = webp_path / f"{app['name']}-{installation_id}.webp"
+            current_app.logger.debug(file_path)
+            if file_path.is_file():
+                # Delete the file
+                file_path.unlink()
+            if db.save_app(device_id, app):
+                return Response("App disabled.", status=200)
+        return Response("Couldn't complete the operation", status=500)
+    else:
+        return Response("Unknown Operation", status=500)
 
 
 ########################################################################################################
