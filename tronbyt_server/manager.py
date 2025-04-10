@@ -1277,10 +1277,6 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
 
     try:
         while ws.connected:
-            # Wait for the event or timeout
-            device_event.wait(timeout=device_dwell_times[device_id])
-            device_event.clear()  # Reset the event
-
             response = next_app(device_id)
             if isinstance(response, Response):
                 if response.status_code == 200:
@@ -1327,6 +1323,10 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                         }
                     )
                 )
+
+            # Wait for the next event or timeout
+            device_event.wait(timeout=device_dwell_times[device_id])
+            device_event.clear()  # Reset the event
     except Exception as e:
         current_app.logger.error(f"WebSocket error: {e}")
         ws.close()
