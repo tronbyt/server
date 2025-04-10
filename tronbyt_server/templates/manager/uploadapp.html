@@ -7,7 +7,7 @@
 {% endif %}
 <form method="POST" enctype="multipart/form-data">
     <input type="file" name=file>
-    <input type="submit" value="{{ _('Upload') }}">
+    <input type="submit" class="w3-button w3-green" value="{{ _('Upload') }}">
 </form>
 <h3>{{ _('Current files:') }}</h3>
 {% for filename in files %}
