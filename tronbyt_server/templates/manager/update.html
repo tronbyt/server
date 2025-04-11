@@ -112,7 +112,7 @@
 
     <div class="form-group">
       <label for="img_url">{{ _('Image URL') }}</label>
-      <input name="img_url" id="img_url" value="{{ device['img_url'] }}" >
+      <input name="img_url" id="img_url" value="{{ device['img_url'] }}">
     </div>
 
     <div class="form-group">
@@ -131,7 +131,8 @@
 
     <div class="form-group">
       <label for="night_mode_enabled">{{ _('Enable Night Mode') }}</label>
-      <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled'] %}checked{% endif %}>
+      <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled']
+        %}checked{% endif %}>
     </div>
 
     <div class="form-group">
@@ -143,7 +144,8 @@
 
     <div class="form-group">
       <label for="night_start">{{ _('Night Start Hour (24hr)') }}</label>
-      <input type="number" name="night_start" id="night_start" min="0" max="24" value="{{ device['night_start'] or 22 }}">
+      <input type="number" name="night_start" id="night_start" min="0" max="24"
+        value="{{ device['night_start'] or 22 }}">
     </div>
 
     <div class="form-group">
@@ -157,13 +159,15 @@
         <option value="None">{{ _('None') }}</option>
         {% if 'apps' in device %}
         {% for app in device['apps'].values() %}
-        <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname'] %}selected{% endif %}>
+        <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname']
+          %}selected{% endif %}>
           {{ app['iname'] }} {{ app['name'] }}
         </option>
         {% endfor %}
         {% endif %}
       </select>
-      <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
+      <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit
+        page.') }}</small>
     </div>
 
     <div class="form-group">
@@ -193,22 +197,21 @@
 
     <div class="form-actions">
       <button type="submit" class="w3-button w3-green">{{ _('Save') }}</button>
-    </form>
-      <form action="{{ url_for('manager.delete', device_id=device['id']) }}" method="post" style="display: inline;">
-        <button type="submit" class="w3-button w3-red"
-          onclick="return confirm('{{ _('Delete device and ALL apps?') }}');">{{ _('Delete') }}</button>
-      </form>
+      <button type="submit" formaction="{{ url_for('manager.delete', device_id=device['id']) }}" formmethod="post"
+        class="w3-button w3-red" onclick="return confirm('{{ _('Delete device and ALL apps?') }}');">{{ _('Delete')
+        }}</button>
     </div>
+  </form>
+</div>
 
-  <hr>
+<hr>
 
-  <div class="config-links">
-    <a href="{{ url_for('manager.export_device_config', device_id=device['id']) }}" class="w3-button w3-blue">
-      {{ _('Export Configuration') }}
-    </a>
-    <a href="{{ url_for('manager.import_device_config', device_id=device['id']) }}" class="w3-button w3-orange">
-      {{ _('Import Configuration') }}
-    </a>
-  </div>
+<div class="config-links">
+  <a href="{{ url_for('manager.export_device_config', device_id=device['id']) }}" class="w3-button w3-blue">
+    {{ _('Export Configuration') }}
+  </a>
+  <a href="{{ url_for('manager.import_device_config', device_id=device['id']) }}" class="w3-button w3-orange">
+    {{ _('Import Configuration') }}
+  </a>
 </div>
 {% endblock %}
