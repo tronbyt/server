@@ -155,6 +155,7 @@ def create() -> ResponseReturnValue:
         api_key = request.form.get("api_key")
         notes = request.form.get("notes")
         brightness = request.form.get("brightness")
+        locationJSON = request.form.get("location")
         error = None
         if not name or db.get_device_by_name(g.user, name):
             error = "Unique name is required."
@@ -190,6 +191,28 @@ def create() -> ResponseReturnValue:
                 brightness=int(brightness) if brightness else 3,
                 default_interval=10,
             )
+            #  This is duplicated coded from update function
+            if locationJSON and locationJSON != "{}":
+                try:
+                    loc = json.loads(locationJSON)
+                    lat = loc.get("lat", None)
+                    lng = loc.get("lng", None)
+                    if lat and lng:
+                        location = Location(
+                            lat=lat,
+                            lng=lng,
+                        )
+                        if "name" in loc:
+                            location["name"] = loc["name"]
+                        if "timezone" in loc:
+                            location["timezone"] = loc["timezone"]
+                        device["location"] = location
+                    else:
+                        flash("Invalid location")
+                        # abort(HTTPStatus.BAD_REQUEST, description="Invalid location")
+
+                except json.JSONDecodeError as e:
+                    flash(f"Location JSON error {e}")
             if notes:
                 device["notes"] = notes
             current_app.logger.debug("device_id is :" + str(device["id"]))
