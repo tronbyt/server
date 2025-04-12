@@ -4,7 +4,6 @@ services:
     restart: unless-stopped
     user: "tronbyt:tronbyt"
     init: true
-    
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
