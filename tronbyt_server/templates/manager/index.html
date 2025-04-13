@@ -193,6 +193,15 @@
   const autoUpdateStates = {};
   const autoUpdateIntervals = {};
 
+  // Initialize auto-update for all devices when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    const autoUpdateCheckboxes = document.querySelectorAll('[id^="autoUpdate-"]');
+    autoUpdateCheckboxes.forEach(checkbox => {
+      const deviceId = checkbox.id.replace('autoUpdate-', '');
+      toggleAutoUpdate(deviceId);
+    });
+  });
+
   function toggleAutoUpdate(deviceId) {
     const checkbox = document.getElementById(`autoUpdate-${deviceId}`);
     
@@ -260,7 +269,8 @@
             <div style="display: inline-block; margin-left: 10px;">
               <label class="switch">
                 <input type="checkbox" id="autoUpdate-{{ device['id'] }}" 
-                       onchange="toggleAutoUpdate('{{ device['id'] }}')">
+                       onchange="toggleAutoUpdate('{{ device['id'] }}')"
+                       checked>
                 <span class="slider"></span>
               </label>
               <label for="autoUpdate-{{ device['id'] }}" 
