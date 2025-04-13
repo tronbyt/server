@@ -61,6 +61,13 @@
     opacity: 1;
     transition: opacity 0.5s ease-in-out;
   }
+
+  .device-container {
+    border: 4px solid #000000;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+  }
 </style>
 
 <!-- ...existing script code... -->
@@ -173,7 +180,7 @@
 <hr>
 {% endif %}
 {% for device in devices %}
-<div class="w3-card-4 w3-padding">
+<div class="w3-card-4 w3-padding device-container">
   <article>
     <div>
       <table width="100%">
