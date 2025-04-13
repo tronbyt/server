@@ -68,6 +68,53 @@
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
     margin-bottom: 20px;
   }
+
+  /* Add these styles to your existing CSS */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    vertical-align: middle;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 20px;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+
+  input:checked + .slider {
+    background-color: #009688;
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(20px);
+  }
 </style>
 
 <!-- ...existing script code... -->
@@ -142,21 +189,42 @@
     }
   }
 
-  // Function to reload the currentwebp image at the interval of app cycle time
-  function reloadCurrentWebp(deviceId, interval) {
-    const currentWebpImg = document.getElementById(`currentWebp-${deviceId}`);
-    setInterval(() => {
-      const timestamp = new Date().getTime(); // Prevent caching
-      currentWebpImg.src = `${currentWebpImg.dataset.src}?t=${timestamp}`;
-    }, interval * 1000);
+  // Add autoUpdate state tracking
+  const autoUpdateStates = {};
+  const autoUpdateIntervals = {};
+
+  // Initialize auto-update for all devices when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    const autoUpdateCheckboxes = document.querySelectorAll('[id^="autoUpdate-"]');
+    autoUpdateCheckboxes.forEach(checkbox => {
+      const deviceId = checkbox.id.replace('autoUpdate-', '');
+      toggleAutoUpdate(deviceId);
+    });
+  });
+
+  function toggleAutoUpdate(deviceId) {
+    const checkbox = document.getElementById(`autoUpdate-${deviceId}`);
+    
+    if (checkbox.checked) {
+      // Start auto-updating
+      autoUpdateStates[deviceId] = true;
+      autoUpdateIntervals[deviceId] = setInterval(() => {
+        reloadImage(deviceId);
+      }, 5000); // Update every 5 seconds
+    } else {
+      // Stop auto-updating
+      autoUpdateStates[deviceId] = false;
+      if (autoUpdateIntervals[deviceId]) {
+        clearInterval(autoUpdateIntervals[deviceId]);
+      }
+    }
   }
 
-  // Initialize the reload function for each device
-  document.addEventListener("DOMContentLoaded", function () {
-    {% for device in devices %}
-    reloadCurrentWebp('{{ device['id'] }}', {{ device['default_interval'] }});
-  {% endfor %}
-  });
+  function reloadImage(deviceId) {
+    const currentWebpImg = document.getElementById(`currentWebp-${deviceId}`);
+    const timestamp = new Date().getTime(); // Prevent caching
+    currentWebpImg.src = `${currentWebpImg.dataset.src}?t=${timestamp}`;
+  }
 
   function toggleApps(deviceId) {
     const appsList = document.getElementById(`appsList-${deviceId}`);
@@ -194,8 +262,20 @@
           <td rowspan="4" width="40%">
             <div class="app-img"><img id="currentWebp-{{ device['id'] }}"
                 data-src="{{url_for('manager.currentwebp', device_id=device['id']) }}"
-                src="{{url_for('manager.currentwebp', device_id=device['id']) }}" alt="{{ _('Preview') }}"></div>
+                src="{{url_for('manager.currentwebp', device_id=device['id']) }}" 
+                alt="{{ _('Preview') }}">
+            </div>
             <br>{{ _('Currently Displaying App') }}
+            <div style="display: inline-block; margin-left: 10px;">
+              <label class="switch">
+                <input type="checkbox" id="autoUpdate-{{ device['id'] }}" 
+                       onchange="toggleAutoUpdate('{{ device['id'] }}')"
+                       checked>
+                <span class="slider"></span>
+              </label>
+              <label for="autoUpdate-{{ device['id'] }}" 
+                     style="vertical-align: middle; margin-left: 5px;">{{ _('Auto Refresh') }}</label>
+            </div>
           </td>
         </tr>
         <tr>
