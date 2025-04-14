@@ -529,6 +529,11 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
     )
 
 
+def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]:
+    config["$tz"] = db.get_device_timezone_str(device)
+    return config
+
+
 @bp.get("/<string:device_id>/<string:iname>/preview")
 @login_required
 def preview(device_id: str, iname: str) -> ResponseReturnValue:
@@ -617,7 +622,7 @@ def render_app(
     config_data = config.copy()  # Create a copy to avoid modifying the original config
     add_default_config(config_data, device)
 
-    data = pixlet_render_app(
+    data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
         width=64,
@@ -626,11 +631,13 @@ def render_app(
         maxDuration=15000,
         timeout=30000,
         image_format=0,  # 0 == WebP
-        silence_output=current_app.config.get("PRODUCTION") == "1",
     )
     if data is None:
         current_app.logger.error("Error running pixlet render")
         return None
+    if messages and current_app.config.get("PRODUCTION") != "1":
+        current_app.logger.debug(f"{app_path}: {messages}")
+
     # leave the previous file in place if the new one is empty
     # this way, we still display the last successful render on the index page,
     # even if the app returns no screens
@@ -736,11 +743,6 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
         device=device,
         server_root=server_root(),
     )
-
-
-def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]:
-    config["$tz"] = db.get_device_timezone_str(device)
-    return config
 
 
 @bp.route(

@@ -5,7 +5,7 @@ import os
 import time
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from babel.dates import format_timedelta
 from dotenv import load_dotenv
@@ -59,24 +59,28 @@ def load_pixlet_library() -> None:
         ctypes.c_int,
     ]
 
-    class DataReturn(ctypes.Structure):
+    # Use c_void_p for the return type to avoid ctype's automatic copying into bytes() objects.
+    # We need the exact pointer value so that we can free it later using pixlet_free_bytes.
+    class RenderAppReturn(ctypes.Structure):
         _fields_ = [
-            ("data", ctypes.POINTER(ctypes.c_ubyte)),
+            ("data", ctypes.c_void_p),
             ("length", ctypes.c_int),
+            ("messages", ctypes.c_void_p),
+            ("error", ctypes.c_void_p),
         ]
 
     class StringReturn(ctypes.Structure):
         _fields_ = [
-            ("data", ctypes.c_char_p),
-            ("length", ctypes.c_int),
+            ("data", ctypes.c_void_p),
+            ("status", ctypes.c_int),
         ]
 
-    pixlet_render_app.restype = DataReturn
+    pixlet_render_app.restype = RenderAppReturn
 
     global pixlet_get_schema
     pixlet_get_schema = pixlet_library.get_schema
     pixlet_get_schema.argtypes = [ctypes.c_char_p]
-    pixlet_get_schema.restype = DataReturn
+    pixlet_get_schema.restype = StringReturn
 
     global pixlet_call_handler
     pixlet_call_handler = pixlet_library.call_handler
@@ -113,6 +117,16 @@ def initialize_pixlet_library() -> None:
         _pixlet_initialized = True
 
 
+def c_char_p_to_string(c_pointer: ctypes.c_char_p) -> Optional[str]:
+    if not c_pointer:
+        return None
+    data = ctypes.string_at(c_pointer)  # Extract the NUL-terminated C-String
+    result = data.decode("utf-8")  # Decode the C-String to Python string
+    if pixlet_free_bytes:
+        pixlet_free_bytes(c_pointer)  # Free the original C pointer
+    return result
+
+
 def render_app(
     path: Path,
     config: Dict[str, Any],
@@ -122,11 +136,10 @@ def render_app(
     maxDuration: int,
     timeout: int,
     image_format: int,
-    silence_output: bool,
-) -> Optional[bytes]:
+) -> Tuple[Optional[bytes], List[str]]:
     initialize_pixlet_library()
     if not pixlet_render_app:
-        return None
+        return None, []
     ret = pixlet_render_app(
         str(path).encode("utf-8"),
         json.dumps(config).encode("utf-8"),
@@ -136,8 +149,12 @@ def render_app(
         maxDuration,
         timeout,
         image_format,
-        1 if silence_output else 0,
+        1,
     )
+    error = c_char_p_to_string(ret.error)
+    messagesJSON = c_char_p_to_string(ret.messages)
+    if error:
+        current_app.logger.error(f"Error while rendering {path}: {error}")
     if ret.length >= 0:
         data = ctypes.cast(
             ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
@@ -145,8 +162,14 @@ def render_app(
         buf = bytes(data)
         if pixlet_free_bytes and ret.data:
             pixlet_free_bytes(ret.data)
-        return buf
-    return None
+        if messagesJSON:
+            try:
+                messages = json.loads(messagesJSON)
+            except Exception as e:
+                current_app.logger.error(f"Error: {e}")
+                messages = []
+        return buf, messages
+    return None, []
 
 
 def get_schema(path: Path) -> Optional[str]:
@@ -154,19 +177,10 @@ def get_schema(path: Path) -> Optional[str]:
     if not pixlet_get_schema:
         return None
     ret = pixlet_get_schema(str(path).encode("utf-8"))
-    if ret.length >= 0:
-        data = ctypes.cast(
-            ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
-        ).contents
-        try:
-            buf = bytes(data).decode("utf-8")
-        except UnicodeDecodeError as e:
-            current_app.logger.error(f"UnicodeDecodeError: {e}")
-            buf = None
-        if pixlet_free_bytes and ret.data:
-            pixlet_free_bytes(ret.data)
-        return buf
-    return None
+    schema = c_char_p_to_string(ret.data)
+    if ret.status != 0:
+        return None
+    return schema
 
 
 def call_handler(path: Path, handler: str, parameter: str) -> Optional[str]:
@@ -178,15 +192,10 @@ def call_handler(path: Path, handler: str, parameter: str) -> Optional[str]:
         ctypes.c_char_p(handler.encode("utf-8")),
         ctypes.c_char_p(parameter.encode("utf-8")),
     )
-    if ret.length >= 0:
-        data = ctypes.string_at(ret.data)
-        try:
-            buf = data.decode("utf-8")
-        except Exception as e:
-            current_app.logger.error(f"Error: {e}")
-            buf = None
-        return buf
-    return None
+    res = c_char_p_to_string(ret.data)
+    if ret.status != 0:
+        return None
+    return res
 
 
 def get_locale() -> Optional[str]:
