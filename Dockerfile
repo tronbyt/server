@@ -2,7 +2,7 @@
 
 # Ignore hadolint findings about version pinning
 # hadolint global ignore=DL3007,DL3008,DL3013
-FROM ghcr.io/tronbyt/pixlet:latest AS pixlet
+FROM ghcr.io/tronbyt/pixlet:0.42.0 AS pixlet
 
 # build runtime image
 FROM debian:trixie-slim AS runtime
