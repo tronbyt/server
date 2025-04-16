@@ -17,7 +17,7 @@ class App(TypedDict, total=False):
     days: List[str]
     config: Dict[str, Any]
     empty_last_render: bool
-    render_messages: str
+    render_messages: List[str]  # Changed from str to List[str]
 
 
 class AppMetadata(TypedDict, total=False):
