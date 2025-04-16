@@ -301,7 +301,7 @@
           <td>
             {% if devices|length > 1 %}
             <button id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
-              onclick="toggleApps('{{ device['id'] }}')">{{ _('Show Apps') }}</button>
+              onclick="toggleApps('{{ device['id'] }}')">{{ _('Hide Apps') }}</button>
             {% endif %}
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
@@ -313,7 +313,7 @@
             {% endif %}
         </tr>
       </table>
-      <div id="appsList-{{ device['id'] }}" class="{% if devices|length > 1 %}hidden{% else %}visible{% endif %}">
+      <div id="appsList-{{ device['id'] }}" class="visible">
         {% for app in device.get('apps', {}).values()|sort(attribute='order') %}
         <div class="w3-card-4 w3-padding">
           <table width="100%">
