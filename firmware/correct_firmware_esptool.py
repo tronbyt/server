@@ -7,9 +7,9 @@ from esptool.bin_image import LoadFirmwareImage
 
 def get_chip_config(device_type: str) -> Tuple[str, int]:
     """Return chip type and flash offset based on device type."""
-    if device_type == "tronbyt_s3":
-        return "esp32s3", 0x0  # Different offset for S3
-    return "esp32", 0x10000    # Standard offset for ESP32
+    if device_type in ["tronbyt_s3","matrixportal_s3"]:
+        return "esp32s3", 0x10000  # Same offset as ESP32 for application
+    return "esp32", 0x10000        # Standard offset for ESP32
 
 def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
     buffer = io.BytesIO(data)
