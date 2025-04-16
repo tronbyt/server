@@ -635,8 +635,12 @@ def render_app(
     if data is None:
         current_app.logger.error("Error running pixlet render")
         return None
-    if messages and current_app.config.get("PRODUCTION") != "1":
-        current_app.logger.debug(f"{app_path}: {messages}")
+    if messages:
+        # store the output of pixlet run for later. db function will parse the webp_path to figure out which app instance this is.
+        db.save_render_messages(device, webp_path, messages)
+        if current_app.config.get("PRODUCTION") != "1":
+            current_app.logger.debug(f"{app_path}: {messages}")
+
 
     # leave the previous file in place if the new one is empty
     # this way, we still display the last successful render on the index page,
@@ -1362,3 +1366,29 @@ def push_new_image(device_id: str) -> None:
     with device_locks:
         if device_id in device_events:
             device_events[device_id].set()
+
+
+@bp.route("/<string:device_id>/<string:iname>/render_messages")
+@login_required
+def get_render_messages(device_id: str, iname: str):
+    """Get render messages for an app."""
+    try:
+        device = g.user.get("devices", {}).get(device_id)
+        if not device:
+            return jsonify({"messages": [], "error": "Device not found"}), 404
+        
+        app = device.get("apps", {}).get(iname)
+        if app is None:
+            return jsonify({"messages": [], "error": "App not found"}), 404
+        
+        messages = app.get("render_messages", [])
+        # Ensure messages is always a list
+        if messages is None:
+            messages = []
+        elif not isinstance(messages, list):
+            messages = [str(messages)]
+        
+        return jsonify({"messages": messages})
+    except Exception as e:
+        current_app.logger.error(f"Error in get_render_messages: {str(e)}")
+        return jsonify({"messages": [], "error": "Internal server error"}), 500
