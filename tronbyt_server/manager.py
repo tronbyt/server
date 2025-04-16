@@ -641,7 +641,6 @@ def render_app(
         if current_app.config.get("PRODUCTION") != "1":
             current_app.logger.debug(f"{app_path}: {messages}")
 
-
     # leave the previous file in place if the new one is empty
     # this way, we still display the last successful render on the index page,
     # even if the app returns no screens
@@ -1376,18 +1375,18 @@ def get_render_messages(device_id: str, iname: str):
         device = g.user.get("devices", {}).get(device_id)
         if not device:
             return jsonify({"messages": [], "error": "Device not found"}), 404
-        
+
         app = device.get("apps", {}).get(iname)
         if app is None:
             return jsonify({"messages": [], "error": "App not found"}), 404
-        
+
         messages = app.get("render_messages", [])
         # Ensure messages is always a list
         if messages is None:
             messages = []
         elif not isinstance(messages, list):
             messages = [str(messages)]
-        
+
         return jsonify({"messages": messages})
     except Exception as e:
         current_app.logger.error(f"Error in get_render_messages: {str(e)}")
