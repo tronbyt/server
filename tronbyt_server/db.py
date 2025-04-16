@@ -529,6 +529,9 @@ def generate_firmware(
         file_path = Path("firmware/gen2.bin")
     elif device_type == "pixoticker":
         file_path = Path("firmware/pixoticker.bin")
+    elif device_type == "tronbyt_s3":
+        # For S3, we need a complete firmware image that includes bootloader
+        file_path = Path("firmware/tronbyt_S3.bin")
     elif swap_colors:
         file_path = Path("firmware/gen1_swap.bin")
     else:
@@ -546,29 +549,22 @@ def generate_firmware(
         content = f.read()
 
     for old_string, new_string in dict.items():
-        # Ensure the new string is not longer than the original
         if len(new_string) > len(old_string):
             raise ValueError(
                 "Replacement string cannot be longer than the original string."
             )
-
-        # Find the position of the old string
         position = content.find(old_string.encode("ascii") + b"\x00")
         if position == -1:
             raise ValueError(f"String '{old_string}' not found in the binary.")
-
-        # Create the new string, null-terminated, and padded to match the original length
         padded_new_string = new_string + "\x00"
-        # Add padding if needed
         padded_new_string = padded_new_string.ljust(len(old_string) + 1, "\x00")
-
         content = (
             content[:position]
             + padded_new_string.encode("ascii")
             + content[position + len(old_string) + 1 :]
         )
-    # update the checksum
-    return correct_firmware_esptool.update_firmware_data(content)
+
+    return correct_firmware_esptool.update_firmware_data(content, device_type)
 
 
 def add_pushed_app(device_id: str, path: Path) -> None:
