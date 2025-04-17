@@ -64,7 +64,7 @@ def index() -> str:
     )
 
 
-# function to handle uploading a an app
+# function to handle uploading an app
 @bp.route("/<string:device_id>/uploadapp", methods=["GET", "POST"])
 @login_required
 def uploadapp(device_id: str) -> ResponseReturnValue:
@@ -96,7 +96,7 @@ def uploadapp(device_id: str) -> ResponseReturnValue:
 
             # try to generate a preview with an empty config (ignore errors)
             preview = Path("tronbyt_server") / "static" / "apps" / f"{app_name}.webp"
-            render_app(app_subdir, {}, preview, Device(id=""))
+            render_app(app_subdir, {}, preview, Device(id=""), None)
 
             return redirect(url_for("manager.addapp", device_id=device_id))
 
@@ -562,6 +562,7 @@ def preview(device_id: str, iname: str) -> ResponseReturnValue:
             config=config,
             webp_path=None,
             device=device,
+            app=app,
         )
         if data is None:
             abort(
@@ -607,7 +608,11 @@ def schema_handler(device_id: str, iname: str, handler: str) -> ResponseReturnVa
 
 
 def render_app(
-    app_path: Path, config: Dict[str, Any], webp_path: Optional[Path], device: Device
+    app_path: Path,
+    config: Dict[str, Any],
+    webp_path: Optional[Path],
+    device: Device,
+    app: Optional[App],
 ) -> Optional[bytes]:
     """Renders a pixlet app to a webp image.
 
@@ -616,6 +621,7 @@ def render_app(
         config: The app's configuration settings.
         webp_path: Path to save the rendered webp image.
         device: Device configuration.
+        app: The application configuration.
 
     Returns: The rendered image as bytes or None if rendering fails.
     """
@@ -640,8 +646,8 @@ def render_app(
     if data is None:
         current_app.logger.error("Error running pixlet render")
         return None
-    if messages and webp_path is not None:
-        db.save_render_messages(device, webp_path, messages)
+    if messages is not None and app is not None:
+        db.save_render_messages(device, app, messages)
     if current_app.config.get("PRODUCTION") != "1":
         current_app.logger.debug(f"{app_path}: {messages}")
 
@@ -680,7 +686,7 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         device = user["devices"][device_id]
         config = app.get("config", {}).copy()
         add_default_config(config, device)
-        image = render_app(app_path, config, webp_path, device)
+        image = render_app(app_path, config, webp_path, device, app)
         if image is None:
             current_app.logger.error(f"Error rendering {app_basename}")
         # set the empty flag in the app whilst keeping last render image
@@ -793,7 +799,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
         webp_device_path = db.get_device_webp_dir(device_id)
         webp_device_path.mkdir(parents=True, exist_ok=True)
         webp_path = webp_device_path / f"{app_basename}.webp"
-        image = render_app(app_path, config, webp_path, device)
+        image = render_app(app_path, config, webp_path, device, app)
         if image is not None:
             # set the enabled key in app to true now that it has been configured.
             app["enabled"] = True

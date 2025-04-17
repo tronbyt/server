@@ -275,13 +275,11 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     def timeago(seconds: int) -> str:
         if seconds == 0:
             return str(_("Never"))
-        return str(
-            format_timedelta(
-                dt.timedelta(seconds=seconds - int(time.time())),
-                granularity="second",
-                add_direction=True,
-                locale=get_locale(),
-            )
+        return format_timedelta(
+            dt.timedelta(seconds=seconds - int(time.time())),
+            granularity="second",
+            add_direction=True,
+            locale=get_locale(),
         )
 
     @app.teardown_appcontext

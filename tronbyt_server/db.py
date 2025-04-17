@@ -3,7 +3,6 @@ import os
 import shutil
 import sqlite3
 from datetime import datetime
-from tzlocal import get_localzone_name
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 from urllib.parse import quote, unquote
@@ -11,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 from flask import current_app, g
+from tzlocal import get_localzone_name
 from werkzeug.datastructures import FileStorage
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -567,15 +567,11 @@ def generate_firmware(
     return correct_firmware_esptool.update_firmware_data(content, device_type)
 
 
-def add_pushed_app(device_id: str, path: Path) -> None:
-    user = get_user_by_device_id(device_id)
-    if user is None:
-        return
-    installation_id = path.stem
+def get_pushed_app(user: User, device_id: str, installation_id: str) -> App:
     apps = user["devices"][device_id].setdefault("apps", {})
     if installation_id in apps:
         # already in there
-        return
+        return apps[installation_id]
     app = App(
         iname=installation_id,
         name="pushed",
@@ -583,9 +579,19 @@ def add_pushed_app(device_id: str, path: Path) -> None:
         display_time=0,
         notes="",
         enabled=True,
-        pushed=1,
+        pushed=True,
         order=len(apps),
     )
+    return app
+
+
+def add_pushed_app(device_id: str, installation_id: str) -> None:
+    user = get_user_by_device_id(device_id)
+    if not user:
+        raise ValueError("User not found")
+
+    app = get_pushed_app(user, device_id, installation_id)
+    apps = user["devices"][device_id].setdefault("apps", {})
     apps[installation_id] = app
     save_user(user)
 
@@ -605,24 +611,17 @@ def save_app(device_id: str, app: App) -> bool:
         return False
 
 
-def save_render_messages(device: Device, webp_path: Path, messages: List[str]) -> None:
+def save_render_messages(device: Device, app: App, messages: List[str]) -> None:
     """Save render messages from pixlet to the app configuration.
 
     Args:
         device: The device configuration
-        webp_path: Path to the webp file, used to determine app instance
+        app: The app configuration
         messages: List of messages from pixlet render output
     """
-    try:
-        # Parse the app name and instance from the webp path
-        app_basename = webp_path.stem  # Gets filename without extension
-        app_name, app_iname = app_basename.rsplit("-", 1)
+    # Get the app from device and update its messages
+    app["render_messages"] = messages
 
-        # Get the app from device and update its messages
-        app = device["apps"][app_iname]
-        app["render_messages"] = messages
-
-        # Save the updated app
-        save_app(device["id"], app)
-    except Exception as e:
-        current_app.logger.error(f"Error saving render messages: {str(e)}")
+    # Save the updated app
+    if not save_app(device["id"], app):
+        current_app.logger.error("Error saving render messages: Failed to save app.")

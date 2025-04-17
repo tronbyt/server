@@ -8,7 +8,7 @@ class App(TypedDict, total=False):
     display_time: int
     notes: str
     enabled: bool
-    pushed: int
+    pushed: bool
     order: int
     last_render: int
     path: str
