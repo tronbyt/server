@@ -93,7 +93,7 @@ def push_image(device_id: str, installation_id: str, image_bytes: bytes) -> None
 
     if installation_id:
         # add the app so it'll stay in the rotation
-        db.add_pushed_app(device_id, file_path)
+        db.add_pushed_app(device_id, installation_id)
 
     push_new_image(device_id)
 
@@ -320,19 +320,23 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
         if not app_path.exists():
             raise FileNotFoundError("App not found")
 
-        image_bytes = render_app(
-            app_path=app_path, config=config, webp_path=None, device=device
-        )
+        installation_id = data.get(
+            "installationID", data.get("installationId")
+        )  # get both cases ID and Id
+        current_app.logger.debug(f"installation_id: {installation_id}")
+
+        app = db.get_pushed_app(user, device_id, installation_id)
+
+        image_bytes = render_app(app_path, config, None, device, app)
         if image_bytes is None:
             raise RuntimeError("Rendering failed")
         if len(image_bytes) == 0:
             current_app.logger.debug("Empty image, not pushing")
             return Response("Empty image, not pushing", status=200)
 
-        installation_id = data.get(
-            "installationID", data.get("installationId")
-        )  # get both cases ID and Id
-        current_app.logger.debug(f"installation_id: {installation_id}")
+        apps = user["devices"][device_id].setdefault("apps", {})
+        apps[installation_id] = app
+        db.save_user(user)
 
         push_image(device_id, installation_id, image_bytes)
 

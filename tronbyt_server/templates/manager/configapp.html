@@ -32,7 +32,7 @@
 
   <!-- Debug Content -->
   <div id="debugContent" class="hidden">
-    <pre class="flash">{{ app.get('render_messages', []) | tojson(indent=2) }}</pre>
+    <pre class="flash">{{ app.get('render_messages', []) | join('\n') }}</pre>
   </div>
 </div>
 
