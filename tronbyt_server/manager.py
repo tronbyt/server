@@ -632,10 +632,17 @@ def render_app(
         timeout=30000,
         image_format=0,  # 0 == WebP
     )
+    # Ensure messages is always a list
+    messages = (
+        messages if isinstance(messages, list) else [messages] if messages else []
+    )
+
     if data is None:
         current_app.logger.error("Error running pixlet render")
         return None
-    if messages and current_app.config.get("PRODUCTION") != "1":
+    if messages and webp_path is not None:
+        db.save_render_messages(device, webp_path, messages)
+    if current_app.config.get("PRODUCTION") != "1":
         current_app.logger.debug(f"{app_path}: {messages}")
 
     # leave the previous file in place if the new one is empty

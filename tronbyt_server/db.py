@@ -603,3 +603,26 @@ def save_app(device_id: str, app: App) -> bool:
         return True
     except Exception:
         return False
+
+
+def save_render_messages(device: Device, webp_path: Path, messages: List[str]) -> None:
+    """Save render messages from pixlet to the app configuration.
+
+    Args:
+        device: The device configuration
+        webp_path: Path to the webp file, used to determine app instance
+        messages: List of messages from pixlet render output
+    """
+    try:
+        # Parse the app name and instance from the webp path
+        app_basename = webp_path.stem  # Gets filename without extension
+        app_name, app_iname = app_basename.rsplit("-", 1)
+
+        # Get the app from device and update its messages
+        app = device["apps"][app_iname]
+        app["render_messages"] = messages
+
+        # Save the updated app
+        save_app(device["id"], app)
+    except Exception as e:
+        current_app.logger.error(f"Error saving render messages: {str(e)}")

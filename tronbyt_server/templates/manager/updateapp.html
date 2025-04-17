@@ -8,10 +8,17 @@
   <!-- Show Config Toggle Button -->
   <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Show App Config') }}</button>
   <a href="{{ url_for('manager.configapp', device_id=device_id, iname=app['iname'], delete_on_cancel=0) }}" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Configure') }}</a>
+  <!-- Show Debug Toggle Button -->
+  <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Show Render Debug') }}</button>
 
   <!-- Config Content -->
   <div id="configContent" class="hidden">
     <pre class="flash">{{ config }}</pre>
+  </div>
+  
+  <!-- Debug Content -->
+  <div id="debugContent" class="hidden">
+    <pre class="flash">{{ app.get('render_messages', []) | tojson(indent=2) }}</pre>
   </div>
 </div>
 <form method="post">
@@ -86,6 +93,22 @@
         configContent.classList.remove("visible");
         configContent.classList.add("hidden");
         toggleBtn.textContent = "{{ _('Show App Config') }}";
+      }
+    });
+
+    // Add debug toggle functionality
+    const toggleDebugBtn = document.getElementById("toggleDebugBtn");
+    const debugContent = document.getElementById("debugContent");
+
+    toggleDebugBtn.addEventListener("click", function() {
+      if (debugContent.classList.contains("hidden")) {
+        debugContent.classList.remove("hidden");
+        debugContent.classList.add("visible");
+        toggleDebugBtn.textContent = "{{ _('Hide Render Debug') }}";
+      } else {
+        debugContent.classList.remove("visible");
+        debugContent.classList.add("hidden");
+        toggleDebugBtn.textContent = "{{ _('Show Render Debug') }}";
       }
     });
   });

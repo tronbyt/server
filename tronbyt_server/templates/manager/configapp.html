@@ -22,10 +22,17 @@
 <div class="flex-container">
   <!-- Show Config Toggle Button -->
   <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
+  <!-- Show Debug Toggle Button -->
+  <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
 
   <!-- Config Content -->
   <div id="configContent" class="hidden">
     <pre class="flash">{{ config | tojson(indent=2) }}</pre>
+  </div>
+
+  <!-- Debug Content -->
+  <div id="debugContent" class="hidden">
+    <pre class="flash">{{ app.get('render_messages', []) | tojson(indent=2) }}</pre>
   </div>
 </div>
 
@@ -590,6 +597,20 @@
         configContent.classList.remove("visible");
         configContent.classList.add("hidden");
         toggleBtn.textContent = "{{ _('Show App Config') }}";
+      }
+    });
+
+    const debugContent = document.getElementById("debugContent");
+    const toggleDebugBtn = document.getElementById("toggleDebugBtn");
+    toggleDebugBtn.addEventListener("click", function () {
+      if (debugContent.classList.contains("hidden")) {
+        debugContent.classList.remove("hidden");
+        debugContent.classList.add("visible");
+        toggleDebugBtn.textContent = "{{ _('Hide Render Debug') }}";
+      } else {
+        debugContent.classList.remove("visible");
+        debugContent.classList.add("hidden");
+        toggleDebugBtn.textContent = "{{ _('Show Render Debug') }}";
       }
     });
   });
