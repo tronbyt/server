@@ -18,9 +18,8 @@ from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
 from tronbyt_server.manager import push_new_image, render_app
-from tronbyt_server.models.device import validate_device_id
 from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device
+from tronbyt_server.models.device import validate_device_id
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
@@ -151,6 +150,35 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         )
 
 
+@bp.get("/devices/<string:device_id>/installations")
+def list_installations(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    # get api_key from Authorization header
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
+        abort(HTTPStatus.NOT_FOUND)
+
+    apps = device.get("apps", {})
+    installations = [
+        {"id": installation_id, "appID": app_data.get("name", "")}
+        for installation_id, app_data in apps.items()
+    ]
+    return Response(
+        json.dumps({"installations": installations}),
+        status=200,
+        mimetype="application/json",
+    )
+
+
 ########################################################################################################
 @bp.put("/devices/<string:device_id>/installations/<string:installation_id>")
 def handle_put_device_app(device_id: str, installation_id: str) -> ResponseReturnValue:
@@ -165,11 +193,9 @@ def handle_put_device_app(device_id: str, installation_id: str) -> ResponseRetur
             description="Missing or invalid Authorization header",
         )
 
-    raw_device = db.get_device_by_id(device_id)
-    if raw_device is None:
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
         abort(HTTPStatus.NOT_FOUND)
-
-    device: Device = raw_device
 
     # Handle the set_enabled json command
     if request.json is not None and "set_enabled" in request.json:
