@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 from flask import current_app, g
-from tzlocal import get_localzone_name
+from tzlocal import get_localzone, get_localzone_name
 from werkzeug.datastructures import FileStorage
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -178,13 +178,12 @@ def get_device_timezone(device: Device) -> ZoneInfo:
             return ZoneInfo(f"Etc/GMT{sign}{abs(hours_offset)}")
 
     # Default to the server's local timezone
-    local_tz = get_localzone_name()
-    return ZoneInfo(local_tz)
+    return get_localzone()
 
 
 def get_device_timezone_str(device: Device) -> str:
     zone_info = get_device_timezone(device)
-    return datetime.now(zone_info).tzname() or get_localzone_name()
+    return zone_info.key or get_localzone_name()
 
 
 def get_night_mode_is_active(device: Device) -> bool:
