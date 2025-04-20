@@ -20,6 +20,7 @@ class Device(TypedDict, total=False):
     type: str
     api_key: str
     img_url: str
+    ws_url: str
     notes: str
     brightness: int
     night_mode_enabled: bool

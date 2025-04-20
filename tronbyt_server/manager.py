@@ -59,9 +59,7 @@ def index() -> str:
 
     if "devices" in g.user:
         devices = list(reversed(list(g.user["devices"].values())))
-    return render_template(
-        "manager/index.html", devices=devices, server_root=server_root()
-    )
+    return render_template("manager/index.html", devices=devices)
 
 
 # function to handle uploading an app
@@ -343,10 +341,10 @@ def update(device_id: str) -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     device = g.user["devices"][device_id]
+    device["ws_url"] = ws_root() + f"/{device_id}/ws"
     return render_template(
         "manager/update.html",
         device=device,
-        server_root=server_root(),
         available_timezones=available_timezones(),
     )
 
@@ -669,6 +667,17 @@ def server_root() -> str:
     return url
 
 
+def ws_root() -> str:
+    server_protocol = current_app.config["SERVER_PROTOCOL"]
+    protocol = "wss" if server_protocol == "https" else "ws"
+    hostname = current_app.config["SERVER_HOSTNAME"]
+    port = current_app.config["MAIN_PORT"]
+    url = f"{protocol}://{hostname}"
+    if (protocol == "wss" and port != "443") or (protocol == "ws" and port != "80"):
+        url += f":{port}"
+    return url
+
+
 # render if necessary, returns false on failure, true for all else
 def possibly_render(user: User, device_id: str, app: App) -> bool:
     if "pushed" in app:
@@ -751,11 +760,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                 },
             )
 
-    return render_template(
-        "manager/firmware.html",
-        device=device,
-        server_root=server_root(),
-    )
+    return render_template("manager/firmware.html", device=device)
 
 
 @bp.route(
