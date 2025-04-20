@@ -15,11 +15,7 @@
     <br>
     <input type="hidden" name="id" id="id" value="device['id']">
     <span><label for="img_url">{{ _('Image URL') }}</label></span>
-    {% if not device['img_url'].startswith('http') %}
-    <input name="img_url" id="img_url" value="{{ server_root }}{{ device['img_url'] }}">
-    {% else %}
     <input name="img_url" id="img_url" value="{{ device['img_url'] }}"></p>
-    {% endif %}
 
     <label for="wifi_ap">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
     <input name="wifi_ap" id="wifi_ap" required>
