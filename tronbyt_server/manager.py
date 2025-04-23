@@ -371,7 +371,7 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     device = g.user["devices"][device_id]
     app = device["apps"][iname]
 
-    if "pushed" in app:
+    if app.get("pushed", False):
         webp_path = (
             db.get_device_webp_dir(device["id"]) / "pushed" / f"{app['name']}.webp"
         )
@@ -680,7 +680,7 @@ def ws_root() -> str:
 
 # render if necessary, returns false on failure, true for all else
 def possibly_render(user: User, device_id: str, app: App) -> bool:
-    if "pushed" in app:
+    if app.get("pushed", False):
         current_app.logger.debug("Pushed App -- NO RENDER")
         return True
     now = int(time.time())
@@ -902,7 +902,7 @@ def next_app(
         return next_app(device_id, last_app_index, recursion_depth + 1)
     db.save_user(user)
 
-    if "pushed" in app:
+    if app.get("pushed", False):
         webp_path = (
             db.get_device_webp_dir(device_id) / "pushed" / f"{app['iname']}.webp"
         )
@@ -981,7 +981,7 @@ def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
 
         app_basename = "{}-{}".format(app["name"], app["iname"])
 
-        if "pushed" in app:
+        if app.get("pushed", False):
             webp_path = (
                 db.get_device_webp_dir(device_id) / "pushed" / f"{app['iname']}.webp"
             )
@@ -1287,9 +1287,8 @@ def import_device() -> ResponseReturnValue:
     return render_template("manager/import_config.html")
 
 
-# Thread-safe dictionaries to store events and dwell times for each device
-device_events = {}
-device_dwell_times = {}
+# Thread-safe dictionary to store events for each device
+device_events: Dict[str, Event] = {}
 device_locks = Lock()
 
 
@@ -1311,11 +1310,12 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
         return
 
     with device_locks:
-        if device_id not in device_events:
-            device_events[device_id] = Event()
-            device_dwell_times[device_id] = device.get("default_interval", 5)
-
-    device_event = device_events[device_id]
+        if device_id in device_events:
+            device_event = device_events[device_id]
+        else:
+            device_event = Event()
+            device_events[device_id] = device_event
+    dwell_time = device.get("default_interval", 5)
     last_brightness = None
 
     try:
@@ -1346,8 +1346,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                     # Update the dwell time based on the response header
                     dwell_secs = response.headers.get("Tronbyt-Dwell-Secs")
                     if dwell_secs:
-                        with device_locks:
-                            device_dwell_times[device_id] = int(dwell_secs)
+                        dwell_time = int(dwell_secs)
                 else:
                     ws.send(
                         json.dumps(
@@ -1368,7 +1367,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                 )
 
             # Wait for the next event or timeout
-            device_event.wait(timeout=device_dwell_times[device_id])
+            device_event.wait(timeout=dwell_time)
             device_event.clear()  # Reset the event
     except Exception as e:
         current_app.logger.error(f"WebSocket error: {e}")
