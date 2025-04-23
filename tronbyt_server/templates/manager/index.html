@@ -204,7 +204,7 @@
 
   function toggleAutoUpdate(deviceId) {
     const checkbox = document.getElementById(`autoUpdate-${deviceId}`);
-    
+
     if (checkbox.checked) {
       // Start auto-updating
       autoUpdateStates[deviceId] = true;
@@ -262,18 +262,18 @@
           <td rowspan="4" width="40%">
             <div class="app-img"><img id="currentWebp-{{ device['id'] }}"
                 data-src="{{url_for('manager.currentwebp', device_id=device['id']) }}"
-                src="{{url_for('manager.currentwebp', device_id=device['id']) }}" 
+                src="{{url_for('manager.currentwebp', device_id=device['id']) }}"
                 alt="{{ _('Preview') }}">
             </div>
             <br>{{ _('Currently Displaying App') }}
             <div style="display: inline-block; margin-left: 10px;">
               <label class="switch">
-                <input type="checkbox" id="autoUpdate-{{ device['id'] }}" 
+                <input type="checkbox" id="autoUpdate-{{ device['id'] }}"
                        onchange="toggleAutoUpdate('{{ device['id'] }}')"
                        checked>
                 <span class="slider"></span>
               </label>
-              <label for="autoUpdate-{{ device['id'] }}" 
+              <label for="autoUpdate-{{ device['id'] }}"
                      style="vertical-align: middle; margin-left: 5px;">{{ _('Auto Refresh') }}</label>
             </div>
           </td>
@@ -336,7 +336,7 @@
                       {% if app['display_time'] != 0 %}<p class="body">{{ _('Display Time (secs):') }} {{
                         app['display_time'] }}</p>
                       {% endif %}
-                      {% if app['notes'] != '' %}
+                      {% if app.get('notes', '') != '' %}
                       <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
                       {% endif %}
                   </li>

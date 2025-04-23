@@ -38,7 +38,7 @@
           </header>
           <p class="body">{{ _('API ID:') }} {{ device['img_url'] }}</p>
           <!-- <p class="body">API KEY: {{ device['api_key'] }}</p> -->
-          {% if device['notes'] != '' %}
+          {% if device.get('notes', '') != '' %}
           <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
           {% endif %}
           {% if 'apps' in device %}
@@ -59,7 +59,7 @@
                         <p class="body">{{ _('App:') }} {{ app['name'] }}</p>
                         <p class="body">{{ _('Render Interval (minutes):') }} {{ app['uinterval'] }}</p>
                         <p class="body">{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
-                        {% if app['notes'] != '' %}
+                        {% if app.get('notes', '') != '' %}
                         <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
                         {% endif %}
                 </td>
