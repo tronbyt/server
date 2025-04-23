@@ -334,9 +334,10 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
             current_app.logger.debug("Empty image, not pushing")
             return Response("Empty image, not pushing", status=200)
 
-        apps = user["devices"][device_id].setdefault("apps", {})
-        apps[installation_id] = app
-        db.save_user(user)
+        if installation_id:
+            apps = user["devices"][device_id].setdefault("apps", {})
+            apps[installation_id] = app
+            db.save_user(user)
 
         push_image(device_id, installation_id, image_bytes)
 
