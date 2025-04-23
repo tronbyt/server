@@ -66,6 +66,9 @@ def migrate_app_configs() -> None:
     need_save = False
     for user in users:
         for device in user.get("devices", {}).values():
+            if "" in device.get("apps", {}):
+                del device["apps"][""]
+                need_save = True
             for app in device.get("apps", {}).values():
                 config_path = (
                     users_dir
@@ -601,6 +604,10 @@ def save_app(device_id: str, app: App) -> bool:
         user = get_user_by_device_id(device_id)
         if not user:
             return False
+        if not app["iname"]:
+            # don't save apps without an instance name
+            # this can happen when an app is pushed, but fails to render
+            return True
         # user.get("devices",{}).get("apps",{})
         print(app)
         user["devices"][device_id]["apps"][app["iname"]] = app
