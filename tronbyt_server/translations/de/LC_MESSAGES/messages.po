@@ -587,3 +587,11 @@ msgstr "Hochladen"
 msgid "Current files:"
 msgstr "Aktuelle Dateien:"
 
+#: tronbyt_server/templates/manager/create.html:21
+msgid "Brightness Level ( 0 - 5 )"
+msgstr "Helligkeitsstufe ( 0 - 5 )"
+
+#: tronbyt_server/templates/manager/create.html:21
+msgid "If your device stays dark at level 1, add legacy_brightness to the Notes field"
+msgstr "Wenn Ihr Gerät bei Stufe 1 dunkel bleibt, fügen Sie legacy_brightness zum Notizen-Feld hinzu"
+
