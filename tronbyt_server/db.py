@@ -543,20 +543,20 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     return None
 
 
+# firmare bin files named after env targets in firmware project.
 def generate_firmware(
     url: str, ap: str, pw: str, device_type: str, swap_colors: bool
 ) -> bytes:
     if device_type == "tidbyt_gen2":
-        file_path = Path("firmware/gen2.bin")
+        file_path = Path("firmware/tidbyt-gen2.bin")
     elif device_type == "pixoticker":
         file_path = Path("firmware/pixoticker.bin")
     elif device_type == "tronbyt_s3":
-        # For S3, we need a complete firmware image that includes bootloader
-        file_path = Path("firmware/tronbyt_S3.bin")
+        file_path = Path("firmware/tronbyt-S3.bin")
     elif swap_colors:
-        file_path = Path("firmware/gen1_swap.bin")
+        file_path = Path("firmware/tidbyt-gen1_swap.bin")
     else:
-        file_path = Path("firmware/gen1.bin")
+        file_path = Path("firmware/tidbyt-gen1.bin")
 
     if not file_path.exists():
         raise ValueError(f"Firmware file {file_path} not found.")
