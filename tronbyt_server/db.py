@@ -209,9 +209,28 @@ def get_night_mode_is_active(device: Device) -> bool:
     return False
 
 
-# selectable range is 0 - 5, lowest actually visible value returned should be 3, so 0 = 0, 1 = 3, etc.
+# selectable range is 0 - 5 new brightness scale based on percentage value sent to firmware
+# new lookup lowest visible value should be 1 (percent brightness)
 def get_device_brightness_8bit(device: Device) -> int:
-    lookup = {0: 0, 1: 3, 2: 5, 3: 10, 4: 50, 5: 100}
+    lookup = {
+        0: 0,
+        1: 1,
+        2: 5,
+        3: 10,
+        4: 25,
+        5: 50,
+    }
+    # old_lookup : lowest  visible value returned should be 3
+    if "legacy_brightness" in device.get("notes", ""):
+        lookup = {
+            0: 0,
+            1: 3,
+            2: 5,
+            3: 10,
+            4: 50,
+            5: 100,
+        }
+
     if get_night_mode_is_active(device):
         b = device.get("night_brightness", 1)
     else:
