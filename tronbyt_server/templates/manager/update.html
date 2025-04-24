@@ -122,6 +122,7 @@
 
     <div class="form-group">
       <label for="brightness">{{ _('Brightness') }}</label>
+      <span class="tooltip-icon" title="{{ _('If your device stays dark at level 1, add legacy_brightness to the Notes field') }}">ⓘ</span>
       <output>{{ device['brightness'] }}</output>
       <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
         oninput="this.previousElementSibling.value = this.value">
