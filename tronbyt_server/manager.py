@@ -58,7 +58,20 @@ def index() -> str:
         current_app.logger.error("check [user].json file, might be corrupted")
 
     if "devices" in g.user:
-        devices = list(reversed(list(g.user["devices"].values())))
+        # Get the devices and convert brightness values to UI scale for display
+        devices = []
+        for device in reversed(list(g.user["devices"].values())):
+            ui_device = device.copy()
+            if "brightness" in ui_device:
+                ui_device["brightness"] = db.percent_to_ui_scale(
+                    ui_device["brightness"]
+                )
+            if "night_brightness" in ui_device:
+                ui_device["night_brightness"] = db.percent_to_ui_scale(
+                    ui_device["night_brightness"]
+                )
+            devices.append(ui_device)
+
     return render_template("manager/index.html", devices=devices)
 
 
@@ -180,13 +193,17 @@ def create() -> ResponseReturnValue:
             if not validate_device_type(device_type):
                 flash("Invalid device type")
                 return redirect(url_for("manager.create"))
+            # Convert UI scale brightness to percentage
+            ui_brightness = int(brightness) if brightness else 3
+            percent_brightness = db.ui_scale_to_percent(ui_brightness)
+
             device = Device(
                 id=device_id,
                 name=name or device_id,
                 type=device_type,
                 img_url=img_url,
                 api_key=api_key,
-                brightness=int(brightness) if brightness else 3,
+                brightness=percent_brightness,  # Store as percentage
                 default_interval=10,
             )
             #  This is duplicated coded from update function
@@ -233,8 +250,14 @@ def update_brightness(device_id: str) -> ResponseReturnValue:
     brightness = request.form.get("brightness")
     if brightness is None:
         abort(HTTPStatus.BAD_REQUEST)
+
     user = g.user
-    user["devices"][device_id]["brightness"] = int(brightness)
+    device = user["devices"][device_id]
+
+    # Convert UI scale (0-5) to percentage (0-100) and store only the percentage
+    ui_brightness = int(brightness)
+    device["brightness"] = db.ui_scale_to_percent(ui_brightness)
+
     db.save_user(user)
     return ""
 
@@ -298,10 +321,12 @@ def update(device_id: str) -> ResponseReturnValue:
                 device["default_interval"] = int(default_interval)
             brightness = request.form.get("brightness")
             if brightness:
-                device["brightness"] = int(brightness)
+                ui_brightness = int(brightness)
+                device["brightness"] = db.ui_scale_to_percent(ui_brightness)
             night_brightness = request.form.get("night_brightness")
             if night_brightness:
-                device["night_brightness"] = int(night_brightness)
+                ui_night_brightness = int(night_brightness)
+                device["night_brightness"] = db.ui_scale_to_percent(ui_night_brightness)
             night_start = request.form.get("night_start")
             if night_start:
                 device["night_start"] = int(night_start)
@@ -342,9 +367,19 @@ def update(device_id: str) -> ResponseReturnValue:
             return redirect(url_for("manager.index"))
     device = g.user["devices"][device_id]
     device["ws_url"] = ws_root() + f"/{device_id}/ws"
+
+    # Convert percentage brightness values to UI scale (0-5) for display
+    ui_device = device.copy()
+    if "brightness" in ui_device:
+        ui_device["brightness"] = db.percent_to_ui_scale(ui_device["brightness"])
+    if "night_brightness" in ui_device:
+        ui_device["night_brightness"] = db.percent_to_ui_scale(
+            ui_device["night_brightness"]
+        )
+
     return render_template(
         "manager/update.html",
-        device=device,
+        device=ui_device,
         available_timezones=available_timezones(),
     )
 
