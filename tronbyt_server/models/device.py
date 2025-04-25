@@ -22,12 +22,12 @@ class Device(TypedDict, total=False):
     img_url: str
     ws_url: str
     notes: str
-    brightness: int
+    brightness: int  # Percentage-based brightness (0-100)
     night_mode_enabled: bool
     night_mode_app: str
     night_start: int
     night_end: int
-    night_brightness: int
+    night_brightness: int  # Percentage-based night brightness (0-100)
     default_interval: int
     timezone: str
     location: Optional[Location]

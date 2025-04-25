@@ -58,6 +58,7 @@ def init_db() -> None:
     else:
         migrate_app_configs()
         migrate_app_paths()
+        migrate_brightness_to_percent()
 
 
 def migrate_app_configs() -> None:
@@ -116,6 +117,51 @@ def migrate_app_paths() -> None:
                     )
                     need_save = True
         if need_save:
+            save_user(user)
+
+
+def migrate_brightness_to_percent() -> None:
+    """
+    Migrates legacy brightness values (0-5 scale) to percentage-based values.
+    This function iterates through all users and their devices, converting
+    brightness and night_brightness values from the old 0-5 scale to
+    percentage values (0-100).
+
+    Steps:
+    1. Retrieve all users.
+    2. Iterate through each user's devices.
+    3. Check if brightness values are in the old 0-5 scale.
+    4. Convert them to percentage values.
+    5. Save the user data if any changes were made.
+    """
+    users = get_all_users()
+    current_app.logger.info("Migrating brightness values to percentage-based storage")
+
+    for user in users:
+        need_save = False
+        for device in user.get("devices", {}).values():
+            # Check if brightness is in the old 0-5 scale
+            if "brightness" in device and device["brightness"] <= 5:
+                old_value = device["brightness"]
+                device["brightness"] = ui_scale_to_percent(old_value)
+                need_save = True
+                current_app.logger.debug(
+                    f"Converted brightness from {old_value} to {device['brightness']}%"
+                )
+
+            # Check if night_brightness is in the old 0-5 scale
+            if "night_brightness" in device and device["night_brightness"] <= 5:
+                old_value = device["night_brightness"]
+                device["night_brightness"] = ui_scale_to_percent(old_value)
+                need_save = True
+                current_app.logger.debug(
+                    f"Converted night_brightness from {old_value} to {device['night_brightness']}%"
+                )
+
+        if need_save:
+            current_app.logger.info(
+                f"Migrating brightness for user: {user['username']}"
+            )
             save_user(user)
 
 
@@ -212,50 +258,50 @@ def get_night_mode_is_active(device: Device) -> bool:
     return False
 
 
-# selectable range is 0 - 5 new brightness scale based on percentage value sent to firmware
-# new lookup lowest visible value should be 1 (percent brightness)
+# Get the brightness percentage value to send to firmware
 def get_device_brightness_8bit(device: Device) -> int:
-    lookup = {
-        0: 0,
-        1: 1,
-        2: 5,
-        3: 10,
-        4: 25,
-        5: 50,
-    }
-    # old_lookup : lowest  visible value returned should be 3
-    if "legacy_brightness" in device.get("notes", ""):
-        lookup = {
-            0: 0,
-            1: 3,
-            2: 5,
-            3: 10,
-            4: 50,
-            5: 100,
-        }
-
+    # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
-        b = device.get("night_brightness", 1)
+        return device.get("night_brightness", 1)
     else:
-        b = device.get("brightness", 5)
-
-    return lookup.get(b, 50)
+        return device.get("brightness", 50)
 
 
-# map from 8bit values to 0 - 5
-def brightness_map_8bit_to_levels(brightness: int) -> int:
-    if brightness == 0:
+# Convert percentage brightness (0-100) to UI scale (0-5)
+def percent_to_ui_scale(percent: int) -> int:
+    if percent == 0:
         return 0
-    elif brightness < 4:
+    elif percent <= 3:  # Changed from 1 to 3 to match ui_scale_to_percent
         return 1
-    elif brightness < 6:
+    elif percent <= 12:
         return 2
-    elif brightness < 11:
+    elif percent <= 20:
         return 3
-    elif brightness < 51:
+    elif percent <= 35:
         return 4
     else:
         return 5
+
+
+# Convert UI scale (0-5) to percentage (0-100)
+def ui_scale_to_percent(scale_value: int) -> int:
+    lookup = {
+        0: 0,
+        1: 3,  # Changed from 1 to 3 as requested
+        2: 12,
+        3: 20,
+        4: 35,
+        5: 100,
+    }
+    # Handle legacy brightness if needed
+    if scale_value in lookup:
+        return lookup[scale_value]
+    return 50
+
+
+# For API compatibility - map from 8bit values to 0-5 scale
+def brightness_map_8bit_to_levels(brightness: int) -> int:
+    return percent_to_ui_scale(brightness)
 
 
 def get_users_dir() -> Path:

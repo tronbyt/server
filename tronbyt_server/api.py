@@ -62,7 +62,8 @@ def get_device(device_id: str) -> ResponseReturnValue:
                     HTTPStatus.BAD_REQUEST,
                     description="Brightness must be between 0 and 255",
                 )
-            device["brightness"] = db.brightness_map_8bit_to_levels(brightness)
+            # Store only the percentage value
+            device["brightness"] = brightness
         if "autoDim" in data:
             device["night_mode_enabled"] = bool(data["autoDim"])
         db.save_user(user)
