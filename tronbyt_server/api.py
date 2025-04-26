@@ -181,8 +181,13 @@ def list_installations(device_id: str) -> ResponseReturnValue:
 
 
 ########################################################################################################
-@bp.put("/devices/<string:device_id>/installations/<string:installation_id>")
-def handle_put_device_app(device_id: str, installation_id: str) -> ResponseReturnValue:
+@bp.route(
+    "/devices/<string:device_id>/installations/<string:installation_id>",
+    methods=["PATCH", "PUT"],
+)
+def handle_patch_device_app(
+    device_id: str, installation_id: str
+) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
