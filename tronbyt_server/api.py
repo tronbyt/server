@@ -45,7 +45,6 @@ def get_device(device_id: str) -> ResponseReturnValue:
             HTTPStatus.BAD_REQUEST,
             description="Missing or invalid Authorization header",
         )
-    current_app.logger.debug(f"api_key : {api_key}")
     user = db.get_user_by_device_id(device_id)
     if not user:
         abort(HTTPStatus.NOT_FOUND)
@@ -86,7 +85,7 @@ def push_image(device_id: str, installation_id: str, image_bytes: bytes) -> None
     if installation_id:
         filename = f"{secure_filename(installation_id)}.webp"
     else:
-        filename = f"__{int(time.time())}.webp"
+        filename = f"__{time.monotonic_ns()}.webp"
     file_path = pushed_path / filename
 
     # Save the decoded image data to a file
@@ -109,7 +108,6 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         api_key = get_api_key_from_headers(request.headers)
         if not api_key:
             raise ValueError("Missing or invalid Authorization header")
-        current_app.logger.debug(f"api_key : {api_key}")
 
         device = db.get_device_by_id(device_id)
         if not device or device["api_key"] != api_key:

@@ -884,7 +884,7 @@ def next_app(
     # first check for a pushed file starting with __ and just return that and then delete it.
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
-        for ephemeral_file in pushed_dir.glob("__*"):
+        for ephemeral_file in sorted(pushed_dir.glob("__*")):
             current_app.logger.debug(
                 f"returning ephemeral pushed file {ephemeral_file.name}"
             )
@@ -1325,7 +1325,7 @@ def import_device() -> ResponseReturnValue:
 
 # Use a Manager to create a shared dictionary for events across processes
 manager = Manager()
-device_events = manager.dict()
+device_conditions = manager.dict()
 device_locks = Lock()
 
 
@@ -1347,17 +1347,23 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
         return
 
     with device_locks:
-        if device_id in device_events:
-            device_event = device_events[device_id]
+        if device_id in device_conditions:
+            device_condition = device_conditions[device_id]
         else:
-            device_event = manager.Event()
-            device_events[device_id] = device_event
+            device_condition = manager.Condition()
+            device_conditions[device_id] = device_condition
+
     dwell_time = device.get("default_interval", 5)
     last_brightness = None
 
     try:
         while ws.connected:
-            response = next_app(device_id)
+            try:
+                response = next_app(device_id)
+            except Exception as e:
+                current_app.logger.error(f"Error in next_app: {e}")
+                continue
+
             if isinstance(response, Response):
                 if response.status_code == 200:
                     response.direct_passthrough = False  # Disable passthrough mode
@@ -1404,15 +1410,16 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                 )
 
             # Wait for the next event or timeout
-            device_event.wait(timeout=dwell_time)
-            device_event.clear()  # Reset the event
+            with device_condition:
+                device_condition.wait(timeout=dwell_time)
     except Exception as e:
         current_app.logger.error(f"WebSocket error: {e}")
         ws.close()
 
 
 def push_new_image(device_id: str) -> None:
-    """Wake up the WebSocket loop to push a new image."""
+    """Wake up one WebSocket loop to push a new image."""
     with device_locks:
-        if device_id in device_events:
-            device_events[device_id].set()
+        if device_id in device_conditions:
+            with device_conditions[device_id]:
+                device_conditions[device_id].notify(1)
