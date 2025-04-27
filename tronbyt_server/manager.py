@@ -8,10 +8,11 @@ import time
 import uuid
 from http import HTTPStatus
 from io import BytesIO
+from multiprocessing import Manager
 from operator import itemgetter
 from pathlib import Path
 from random import randint
-from threading import Event, Lock
+from threading import Lock
 from typing import Any, Dict, Optional
 from zoneinfo import available_timezones
 
@@ -1322,8 +1323,9 @@ def import_device() -> ResponseReturnValue:
     return render_template("manager/import_config.html")
 
 
-# Thread-safe dictionary to store events for each device
-device_events: Dict[str, Event] = {}
+# Use a Manager to create a shared dictionary for events across processes
+manager = Manager()
+device_events = manager.dict()
 device_locks = Lock()
 
 
@@ -1348,7 +1350,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
         if device_id in device_events:
             device_event = device_events[device_id]
         else:
-            device_event = Event()
+            device_event = manager.Event()
             device_events[device_id] = device_event
     dwell_time = device.get("default_interval", 5)
     last_brightness = None
