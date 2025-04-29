@@ -3,7 +3,7 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<title>{% block title %}{% endblock %}Tronbyt Manager (Beta)</title>
+<title>{% block title %}{% endblock %}Tronbyt Manager</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/w3.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -62,7 +62,7 @@
   }
 </style>
 <nav>
-  <h1 class="w3-sans-serif">{{ _('Tronbyt Manager (Beta)') }}</h1>
+  <h1 class="w3-sans-serif">{{ _('Tronbyt Manager') }}</h1>
   <ul>
     {% if g.user %}
     <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>

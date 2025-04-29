@@ -23,8 +23,8 @@ msgid "Never"
 msgstr "Nie"
 
 #: tronbyt_server/templates/base.html:61
-msgid "Tronbyt Manager (Beta)"
-msgstr "Tronbyt Manager (Beta)"
+msgid "Tronbyt Manager"
+msgstr "Tronbyt Manager"
 
 #: tronbyt_server/templates/base.html:64
 msgid "Home"
