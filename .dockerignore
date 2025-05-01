@@ -13,7 +13,6 @@
 Caddyfile
 Dockerfile
 docker-compose*.yaml
-README.md
 system-apps
 tronbyt_server/static/apps
 tronbyt_server/webp

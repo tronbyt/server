@@ -1,7 +1,7 @@
 #!/bin/bash
 
-pip3 install --user -r requirements.txt pytest
-mypy --install-types --non-interactive --ignore-missing-imports --exclude system-apps .
+pipx install pdm
+pdm sync -d
 
 PIXLET_VERSION=v0.42.0
 curl -LO "https://github.com/tronbyt/pixlet/releases/download/${PIXLET_VERSION}/pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"

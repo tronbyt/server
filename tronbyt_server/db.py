@@ -674,7 +674,6 @@ def save_app(device_id: str, app: App) -> bool:
             # this can happen when an app is pushed, but fails to render
             return True
         # user.get("devices",{}).get("apps",{})
-        print(app)
         user["devices"][device_id]["apps"][app["iname"]] = app
         save_user(user)
         return True

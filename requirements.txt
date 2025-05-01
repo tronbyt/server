@@ -1,8 +1,0 @@
-esptool
-flask
-flask-babel
-flask-sock
-gunicorn
-python-dotenv
-requests
-tzlocal

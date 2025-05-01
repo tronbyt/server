@@ -5,6 +5,7 @@
 .coverage
 .env
 certs
+dist
 env
 junit
 system-apps
