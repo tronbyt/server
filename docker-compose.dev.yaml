@@ -7,7 +7,8 @@ services:
     ports:
       - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
     volumes:
-      - .:/app # for development
+      - ./tronbyt_server:/app/tronbyt_server # for development
+      - ./users:/app/users # for development
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}

@@ -1,0 +1,51 @@
+[project]
+name = "tronbyt-server"
+version = "1.0.0"
+description = "Manage your apps on your Tronbyt completely locally"
+authors = [
+    {name = "tavdog", email = "tavdog@users.noreply.github.com"},
+    {name = "ingmarstein", email = "490610+IngmarStein@users.noreply.github.com"},
+]
+dependencies = [
+    "esptool",
+    "flask",
+    "flask-babel",
+    "flask-sock",
+    "gunicorn",
+    "python-dotenv",
+    "requests",
+    "tzlocal",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "MIT"}
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.build]
+source-includes = [ "**/*.po", "babel.cfg" ]
+excludes = [ "**/messages.pot", "**/.DS_Store", "**/.*.swp", "**/.gitignore" ]
+
+[tool.pdm.scripts]
+pre_build = "pybabel compile -d tronbyt_server/translations"
+test = "pytest"
+
+[tool.mypy]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict = true
+show_error_codes = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "mypy>=1.15.0",
+    "ruff>=0.11.8",
+    "pip>=25.1",
+]

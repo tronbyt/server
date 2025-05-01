@@ -1,5 +1,13 @@
 # syntax=docker/dockerfile:1.5
 
+FROM debian:trixie-slim AS builder
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-pdm
+ENV PDM_CHECK_UPDATE=false
+COPY . /app/
+WORKDIR /app
+RUN pdm install --check --prod --no-editable
+
 # Ignore hadolint findings about version pinning
 # hadolint global ignore=DL3007,DL3008,DL3013
 FROM ghcr.io/tronbyt/pixlet:0.42.0 AS pixlet
@@ -24,30 +32,17 @@ COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates \
-    esptool \
     git \
-    gunicorn \
     libsharpyuv0 \
     libwebp7 \
     libwebpdemux2 \
     libwebpmux3 \
     python3 \
-    python3-dotenv \
-    python3-flask \
-    python3-flask-babel \
-    python3-pip \
-    python3-requests \
-    python3-tzlocal \
-    python3-yaml \
     tzdata \
     tzdata-legacy && \
-    pip3 install --no-cache-dir --root-user-action=ignore --break-system-packages flask-sock && \
-    rm -rf /root/.cache/pip && \
-    apt-get -y purge python3-pip && \
-    apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/* /usr/lib/python3/dist-packages/pip /usr/bin/pip3
-COPY . /app
-RUN pybabel compile -d tronbyt_server/translations
+    rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Create the directories for dynamic content ahead of time so that they are
 # owned by the non-root user (newly created named volumes are owned by root,

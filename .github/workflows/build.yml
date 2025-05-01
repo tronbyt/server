@@ -8,21 +8,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup PDM
+        uses: pdm-project/setup-pdm@v4
         with:
-          python-version: '3.x'
-          cache: 'pip'
+          cache: true
+          python-version: 3.13
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Install the code linting and formatting tool Ruff
-        run: pipx install ruff
+        run: pdm sync -d
       - name: Lint code with Ruff
-        run: ruff check --output-format=github --target-version=py312
+        run: pdm run ruff check --output-format=github --target-version=py312
       - name: Check code formatting with Ruff
-        run: ruff format --diff --target-version=py312
+        run: pdm run ruff format --diff --target-version=py312 --check
       - name: Install pixlet
         run: |
           curl -LO "https://github.com/tronbyt/pixlet/releases/download/${PIXLET_VERSION}/pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
@@ -32,13 +28,41 @@ jobs:
         env:
           PIXLET_VERSION: v0.42.0
       - name: Test with pytest
-        run: |
-          pip install pytest
-          pytest tests --doctest-modules --junitxml=junit/test-results.xml
+        run: pdm run -v pytest tests --doctest-modules --junitxml=junit/test-results.xml
       - name: Type check with mypy
-        run: |
-          pip install mypy
-          mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps .
+        run: pdm run mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps .
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
+      - name: Build
+        run: pdm build
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist
+
+  create-release:
+    name: Create Github Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-and-test
+    permissions:
+      contents: write
+
+    steps:
+      - name: Fetch Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: release-artifacts
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+        run: |
+          gh release create "$tag" \
+              --repo="${GITHUB_REPOSITORY}" \
+              --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+              --generate-notes \
+              dist/*
