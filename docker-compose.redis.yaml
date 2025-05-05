@@ -9,7 +9,7 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
-      - webp:/app/tronbyt_server/webp
+      - data:/app/data
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}
       - SERVER_PORT
@@ -24,7 +24,7 @@ services:
     depends_on:
       - redis
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     volumes:
       - redis:/data
@@ -34,6 +34,5 @@ services:
       timeout: 3s
       retries: 3
 volumes:
-  users:
-  webp:
+  data:
   redis:

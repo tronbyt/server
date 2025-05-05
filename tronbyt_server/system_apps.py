@@ -10,8 +10,8 @@ import yaml
 from tronbyt_server.models.app import AppMetadata
 
 
-def update_system_repo() -> None:
-    system_apps_path = Path("system-apps").absolute()  # Get absolute path
+def update_system_repo(base_path: Path) -> None:
+    system_apps_path = base_path / "system-apps"
     system_apps_repo = os.getenv(
         "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
     )
@@ -79,7 +79,7 @@ def update_system_repo() -> None:
     skip_count = 0
     new_previews = 0
     num_previews = 0
-    static_images_path = Path("tronbyt_server") / "static" / "apps"
+    static_images_path = base_path / "apps"
     os.makedirs(static_images_path, exist_ok=True)
     for app in apps:
         try:
@@ -152,9 +152,9 @@ def update_system_repo() -> None:
     print(f"skipped {skip_count} secrets.star using apps")
     print(f"copied {new_previews} new previews into static")
     print(f"total previews found {num_previews}")
-    with (Path("system-apps.json")).open("w") as f:
+    with (base_path / "system-apps.json").open("w") as f:
         json.dump(apps_array, f, indent=4)
 
 
 if __name__ == "__main__":
-    update_system_repo()
+    update_system_repo(Path(os.getcwd()))

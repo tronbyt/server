@@ -4,15 +4,13 @@
 **/*.log
 .coverage
 .env
+.pdm-python
 certs
+data
 dist
 env
 junit
-system-apps
-system-apps.json
 tests/webp
-tronbyt_server/static/apps
-tronbyt_server/webp
 !tronbyt_server/webp/README
 users
 
