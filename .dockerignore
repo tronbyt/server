@@ -12,10 +12,8 @@
 .vscode
 Caddyfile
 Dockerfile
+data
 docker-compose*.yaml
-system-apps
-tronbyt_server/static/apps
-tronbyt_server/webp
 tests
 users
 __pycache__

@@ -205,11 +205,6 @@ def get_locale() -> Optional[str]:
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     load_dotenv()
 
-    # The reloader will run this code twice, once in the main process and once in the child process.
-    # This is a workaround to avoid running the update_system_repo() function twice.
-    if not is_running_from_reloader():
-        system_apps.update_system_repo()
-
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     if test_config is None:
@@ -220,6 +215,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             SERVER_PROTOCOL=os.getenv("SERVER_PROTOCOL", "http"),
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
             USERS_DIR="users",
+            DATA_DIR=os.getenv("DATA_DIR", "data"),
             PRODUCTION=os.getenv("PRODUCTION", "1"),
             DB_FILE="users/usersdb.sqlite",
             LANGUAGES=["en", "de"],
@@ -241,6 +237,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             SERVER_HOSTNAME="localhost",
             MAIN_PORT=os.getenv("SERVER_PORT", "8000"),
             USERS_DIR="tests/users",
+            DATA_DIR=os.getenv("DATA_DIR", "data"),
             PRODUCTION="0",
             TESTING=True,
         )
@@ -255,6 +252,11 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     # Initialize the database within the application context
     with app.app_context():
         db.init_db()
+
+        # The reloader will run this code twice, once in the main process and once in the child process.
+        # This is a workaround to avoid running the update_system_repo() function twice.
+        if not is_running_from_reloader():
+            system_apps.update_system_repo(db.get_data_dir())
 
     from . import auth
 

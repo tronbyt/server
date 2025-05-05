@@ -47,10 +47,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Create the directories for dynamic content ahead of time so that they are
 # owned by the non-root user (newly created named volumes are owned by root,
 # if their target doesn't exist).
-RUN touch /app/system-apps.json && \
-    mkdir -p /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users && \
-    chown -R tronbyt:tronbyt /app/system-apps.json /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users && \
-    chmod -R 755 /app/system-apps /app/tronbyt_server/static/apps /app/tronbyt_server/webp /app/users
+RUN mkdir -p /app/data /app/users && \
+    chown -R tronbyt:tronbyt /app/data /app/users && \
+    chmod -R 755 /app/data /app/users
 
 # Set the user to non-root (disabled for a while to support legacy setups which ran as root)
 #USER tronbyt

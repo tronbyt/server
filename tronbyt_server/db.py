@@ -1,5 +1,4 @@
 import json
-import os
 import shutil
 import sqlite3
 from datetime import datetime
@@ -304,9 +303,12 @@ def brightness_map_8bit_to_levels(brightness: int) -> int:
     return percent_to_ui_scale(brightness)
 
 
+def get_data_dir() -> Path:
+    return Path(current_app.config["DATA_DIR"]).absolute()
+
+
 def get_users_dir() -> Path:
-    # current_app.logger.debug(f"users dir : {current_app.config['USERS_DIR']}")
-    return Path(current_app.config["USERS_DIR"])
+    return Path(current_app.config["USERS_DIR"]).absolute()
 
 
 def get_user(username: str) -> Optional[User]:
@@ -414,10 +416,10 @@ def get_apps_list(user: str) -> List[AppMetadata]:
     app_list: List[AppMetadata] = list()
     # test for directory named dir and if not exist create it
     if user == "system" or user == "":
-        list_file = Path("system-apps.json")
+        list_file = get_data_dir() / "system-apps.json"
         if not list_file.exists():
             current_app.logger.info("Generating apps.json file...")
-            system_apps.update_system_repo()
+            system_apps.update_system_repo(get_data_dir())
             current_app.logger.debug("apps.json file generated.")
 
         with list_file.open("r") as f:
@@ -566,8 +568,7 @@ def get_device_by_name(user: User, name: str) -> Optional[Device]:
 
 
 def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
-    base = os.getcwd()
-    path = Path(base) / "tronbyt_server" / "webp" / secure_filename(device_id)
+    path = get_data_dir() / "webp" / secure_filename(device_id)
     if not path.exists() and create:
         path.mkdir(parents=True, exist_ok=True)
     return path

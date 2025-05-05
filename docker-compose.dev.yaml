@@ -9,6 +9,7 @@ services:
     volumes:
       - ./tronbyt_server:/app/tronbyt_server # for development
       - ./users:/app/users # for development
+      - ./data:/app/data # for development
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:
       - SERVER_HOSTNAME=${SERVER_HOSTNAME_OR_IP:?SERVER_HOSTNAME_OR_IP MUST BE SET IN .env FILE !!!!!!!!!!!!!!!!!.}

@@ -107,7 +107,7 @@ def uploadapp(device_id: str) -> ResponseReturnValue:
             flash("Upload Successful")
 
             # try to generate a preview with an empty config (ignore errors)
-            preview = Path("tronbyt_server") / "static" / "apps" / f"{app_name}.webp"
+            preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
             render_app(app_subdir, {}, preview, Device(id=""), None)
 
             return redirect(url_for("manager.addapp", device_id=device_id))
@@ -662,6 +662,9 @@ def render_app(
     config_data = config.copy()  # Create a copy to avoid modifying the original config
     add_default_config(config_data, device)
 
+    if not app_path.is_absolute():
+        app_path = db.get_data_dir() / app_path
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
@@ -1026,7 +1029,7 @@ def appwebp(device_id: str, iname: str) -> ResponseReturnValue:
         if webp_path.exists() and webp_path.stat().st_size > 0:
             return send_file(webp_path, mimetype="image/webp")
         else:
-            current_app.logger.error("file doesn't exist or 0 size")
+            current_app.logger.error(f"file {webp_path} doesn't exist or 0 size")
             abort(HTTPStatus.NOT_FOUND)
     except Exception as e:
         current_app.logger.error(f"Exception: {str(e)}")
@@ -1099,7 +1102,7 @@ def set_system_repo() -> ResponseReturnValue:
         if set_repo("system_repo_url", Path("system-apps"), repo_url):
             # run the generate app list for custom repo
             # will just generate json file if already there.
-            system_apps.update_system_repo()
+            system_apps.update_system_repo(db.get_data_dir())
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
@@ -1116,7 +1119,7 @@ def refresh_system_repo() -> ResponseReturnValue:
         ):
             # run the generate app list for custom repo
             # will just generate json file if already there.
-            system_apps.update_system_repo()
+            system_apps.update_system_repo(db.get_data_dir())
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
