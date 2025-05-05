@@ -1,6 +1,6 @@
 [project]
 name = "tronbyt-server"
-version = "1.0.0"
+version = "1.0.1"
 description = "Manage your apps on your Tronbyt completely locally"
 authors = [
     {name = "tavdog", email = "tavdog@users.noreply.github.com"},

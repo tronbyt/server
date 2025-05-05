@@ -65,4 +65,4 @@ jobs:
               --repo="${GITHUB_REPOSITORY}" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
               --generate-notes \
-              dist/*
+              dist/release-artifacts/*
