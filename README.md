@@ -131,7 +131,7 @@ That said, the recommended installation method uses Docker Compose with a config
 
 - Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
 - To update your containers to the latest version simply run `docker compose pull && docker compose up -d`.
-- To update your native installation, run `brew upgrade tronbyt-server`.
+- To update your native installation, run `brew upgrade tronbyt-server` and `brew services restart tronbyt-server`.
 
 ### Updating from Earlier Versions
 
