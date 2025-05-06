@@ -42,6 +42,8 @@ It's rather easy to develop additional clients for Tronbyt Server: just pull ima
 
 ### Installation
 
+#### Docker
+
 It is possible to just start the server on the default ports in the background with a one-liner:
 
 ```sh
@@ -60,12 +62,32 @@ That said, the recommended installation method uses Docker Compose with a config
 
 3. Set the `SERVER_HOSTNAME_OR_IP` value in the `.env` file. IP addresses will work too.
 
+#### Bare metal
+
+1. Install tronbyt-server using [Homebrew](https://brew.sh) (available on macOS and Linux):
+
+   ```sh
+   brew install tronbyt/tronbyt/tronbyt-server
+   ```
+
+2. Copy the [example environment file](https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example) and modify it as needed:
+
+   ```sh
+   curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > $(brew --prefix)/tronbyt-server/.env
+   ```
+
 ### Running the Application
 
-1. Build and start the Docker containers:
+1. If you installed the application using Docker, build and start the containers:
 
    ```sh
    docker compose up -d
+   ```
+
+   If you followed the native route, start the service using
+
+   ```
+   brew services start tronbyt-server
    ```
 
 2. Access the web app at [http://localhost:8000](http://localhost:8000) (or your configured domain or IP) with the default login credentials:
@@ -98,7 +120,7 @@ That said, the recommended installation method uses Docker Compose with a config
 
 ### Updating from Earlier Versions
 
-If you are upgrading from an earlier version of Tronbyt Server that was running as `root`, you can switch to a non-root user for improved security. Follow these steps:
+If you are upgrading from an earlier version of Tronbyt Server (earlier than version 1.0.0) that was running as `root`, you can switch to a non-root user for improved security. Follow these steps:
 
 1. Stop your server:
 
