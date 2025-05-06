@@ -148,7 +148,7 @@ def adminindex() -> str:
         abort(HTTPStatus.NOT_FOUND)
     userlist = list()
     # go through the users folder and build a list of all users
-    users = os.listdir("users")
+    users = os.listdir(db.get_users_dir())
     # read in the user.config file
     for username in users:
         user = db.get_user(username)

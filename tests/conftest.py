@@ -18,7 +18,7 @@ def app() -> Iterator[Flask]:
 
     # clean up / reset resources here
     print("delete testdb")
-    test_db_path = Path("users/testdb.sqlite")
+    test_db_path = Path("tests/users/testdb.sqlite")
     if test_db_path.exists():
         test_db_path.unlink()
 
