@@ -28,8 +28,14 @@ If you've been invited to use my public instance of this server login there and 
 
 ### Prerequisites
 
-- Docker
-- Docker Compose (optional, but recommended)
+If you want to run Tronbyt Server as a container, you need
+
+- [Docker](https://www.docker.com)
+- [Docker Compose](https://docs.docker.com/compose/install/) (optional, but recommended)
+
+Otherwise, you need
+
+- [Homebrew](https://brew.sh)
 
 ### Supported Devices
 
