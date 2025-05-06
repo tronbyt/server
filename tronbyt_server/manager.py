@@ -27,6 +27,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     url_for,
 )
 from flask.typing import ResponseReturnValue
@@ -239,6 +240,11 @@ def create() -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     return render_template("manager/create.html")
+
+
+@bp.get("/app_preview/<string:filename>")
+def app_preview(filename: str) -> ResponseReturnValue:
+    return send_from_directory(db.get_data_dir() / "apps", filename)
 
 
 @bp.post("/<string:device_id>/update_brightness")
