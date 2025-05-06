@@ -4,10 +4,20 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import yaml
 
 from tronbyt_server.models.app import AppMetadata
+
+
+def git_command(
+    command: list[str], cwd: Optional[Path] = None, check: bool = False
+) -> subprocess.CompletedProcess[bytes]:
+    """Run a git command in the specified path."""
+    env = os.environ.copy()
+    env.setdefault("HOME", os.getcwd())
+    return subprocess.run(command, cwd=cwd, env=env, check=check)
 
 
 def update_system_repo(base_path: Path) -> None:
@@ -22,7 +32,7 @@ def update_system_repo(base_path: Path) -> None:
 
     # If running as root, add the system-apps directory to the safe.directory list
     if os.geteuid() == 0:  # Check if the script is running as root
-        subprocess.run(
+        git_command(
             [
                 "git",
                 "config",
@@ -37,7 +47,7 @@ def update_system_repo(base_path: Path) -> None:
     if git_dir.is_dir():  # Check if it's actually a directory
         print(f"{system_apps_path} git repo found, updating {system_apps_repo}")
 
-        result = subprocess.run(["git", "pull", "--rebase=true"], cwd=system_apps_path)
+        result = git_command(["git", "pull", "--rebase=true"], cwd=system_apps_path)
         if result.returncode != 0:
             print(f"Error updating repository. Return code: {result.returncode}")
         else:
@@ -45,7 +55,7 @@ def update_system_repo(base_path: Path) -> None:
     else:
         print(f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}")
 
-        result = subprocess.run(
+        result = git_command(
             [
                 "git",
                 "clone",

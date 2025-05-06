@@ -51,6 +51,16 @@ from tronbyt_server.models.user import User
 bp = Blueprint("manager", __name__)
 
 
+def git_command(
+    command: list[str], cwd: Optional[Path] = None, check: bool = False
+) -> subprocess.CompletedProcess[bytes]:
+    """Run a git command in the specified path."""
+    # ensure `HOME` is set because it's required by `git`
+    env = os.environ.copy()
+    env.setdefault("HOME", os.getcwd())
+    return subprocess.run(command, cwd=cwd, env=env, check=check)
+
+
 @bp.get("/")
 @login_required
 def index() -> str:
@@ -1053,7 +1063,7 @@ def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
 
             if apps_path.exists():
                 shutil.rmtree(apps_path)
-            result = subprocess.run(
+            result = git_command(
                 [
                     "git",
                     "clone",
@@ -1070,7 +1080,7 @@ def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
                 flash("Error Cloning Repo")
                 return False
         else:
-            result = subprocess.run(["git", "-C", str(apps_path), "pull"])
+            result = git_command(["git", "-C", str(apps_path), "pull"])
             if result.returncode == 0:
                 flash("Repo Updated")
                 return True
