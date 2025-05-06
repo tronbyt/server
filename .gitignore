@@ -15,5 +15,4 @@ tests/webp
 users
 
 # Translations
-*.mo
 messages.pot
