@@ -76,11 +76,19 @@ That said, the recommended installation method uses Docker Compose with a config
    brew install tronbyt/tronbyt/tronbyt-server
    ```
 
+   The command above installs the most recent release. If you like to live at the bleeding edge, you can also install the most recent code:
+
+   ```sh
+   brew install --HEAD tronbyt/tronbyt/tronbyt-server
+   ```
+
 2. Copy the [example environment file](https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example) and modify it as needed:
 
    ```sh
-   curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > $(brew --prefix)/tronbyt-server/.env
+   curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > $(brew --prefix)/etc/tronbyt-server/.env
    ```
+
+   You can further customize the server by editing the [Gunicorn settings](https://docs.gunicorn.org/en/latest/settings.html#settings) (listening address, TLS certificate, etc.) in `$(brew --prefix)/etc/tronbyt-server/gunicorn.conf.py`.
 
 ### Running the Application
 
@@ -122,7 +130,8 @@ That said, the recommended installation method uses Docker Compose with a config
 ### Notes
 
 - Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
-- To update your install to the latest version simply run `docker compose pull && docker compose up -d`
+- To update your containers to the latest version simply run `docker compose pull && docker compose up -d`.
+- To update your native installation, run `brew upgrade tronbyt-server`.
 
 ### Updating from Earlier Versions
 
