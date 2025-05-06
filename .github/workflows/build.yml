@@ -30,7 +30,7 @@ jobs:
       - name: Test with pytest
         run: pdm run -v pytest tests --doctest-modules --junitxml=junit/test-results.xml
       - name: Type check with mypy
-        run: pdm run mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps .
+        run: pdm run mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps --exclude dist .
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile

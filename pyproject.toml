@@ -1,6 +1,6 @@
 [project]
 name = "tronbyt-server"
-version = "1.0.1"
+dynamic = ["version"]
 description = "Manage your apps on your Tronbyt completely locally"
 authors = [
     {name = "tavdog", email = "tavdog@users.noreply.github.com"},
@@ -18,9 +18,10 @@ dependencies = [
 ]
 requires-python = ">=3.12"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
+
 [build-system]
-requires = ["pdm-backend"]
+requires = ["pdm-backend", "babel>=2.17.0"]
 build-backend = "pdm.backend"
 
 [tool.pdm]
@@ -33,6 +34,15 @@ excludes = [ "**/messages.pot", "**/.DS_Store", "**/.*.swp", "**/.gitignore" ]
 [tool.pdm.scripts]
 pre_build = "pybabel compile -d tronbyt_server/translations"
 test = "pytest"
+extract = "pybabel extract -F babel.cfg -k _l -o messages.pot ."
+_init = "pybabel init -i messages.pot -d tronbyt_server/translations -l {args}"
+init = { composite = ["extract", "_init {args}"] }
+_update = "pybabel update -i messages.pot -d tronbyt_server/translations"
+update = { composite = ["extract", "_update"] }
+
+[tool.pdm.version]
+source = "scm"
+fallback_version = "0.0.0"
 
 [tool.mypy]
 disallow_untyped_defs = true

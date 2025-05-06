@@ -178,13 +178,13 @@ If you are upgrading from an earlier version of Tronbyt Server (earlier than ver
 
 ### HTTPS (TLS)
 
-If you'd like to serve tronbyt-server over HTTPS, you can do so by configuring Gunicorn or by fronting the service with a reverse proxy. The reverse proxy approach is more flexible and allows for automatic certificate provisioning and renewal. If you already have a certificate, you can also use that directly and avoid the sidecar container.
+If you'd like to serve Tronbyt Server over HTTPS, you can do so by configuring Gunicorn or by fronting the service with a reverse proxy. The reverse proxy approach is more flexible and allows for automatic certificate provisioning and renewal. If you already have a certificate, you can also use that directly and avoid the sidecar container.
 
 #### Reverse Proxy
 
 The `docker-compose.https.yaml` file contains an example using [Caddy](https://caddyserver.com) as a lightweight reverse proxy which provides TLS termination. The default configuration uses [Local HTTPS](https://caddyserver.com/docs/automatic-https#local-https), for which Caddy generates its own certificate authority (CA) and uses it to sign certificates. The certificates are stored in the `certs` directory at `pki/authorities/local`.
 
-If you want to make tronbyt-server accessible using a public DNS name, adjust `Caddyfile` to match your domain name and use one of the supporte [ACME challenges](https://caddyserver.com/docs/automatic-https#acme-challenges) (HTTP, TLS-ALPN, or DNS).
+If you want to make Tronbyt Server accessible using a public DNS name, adjust `Caddyfile` to match your domain name and use one of the supporte [ACME challenges](https://caddyserver.com/docs/automatic-https#acme-challenges) (HTTP, TLS-ALPN, or DNS).
 
 #### Gunicorn
 
@@ -231,6 +231,14 @@ See https://docs.gunicorn.org/en/latest/settings.html#settings for an exhaustive
 
 ### Cache
 
-By default, tronbyt-server uses an in-memory cache for HTTP requests made by applets. This requires no setup,
+By default, Tronbyt Server uses an in-memory cache for HTTP requests made by applets. This requires no setup,
 but also means that the cache will start empty every time you start the container. To persist the cache across
 containe restarts, configure Redis as in the [docker-compose.redis.yaml](docker-compose.redis.yaml) example.
+
+## Development
+
+### Creating a new release
+
+1. Create a tag: `git tag vX.Y.Z`.
+2. Push the tag `git push --tags`.
+3. Bump the version number in https://github.com/tronbyt/homebrew-tronbyt/blob/main/Formula/tronbyt-server.rb and update the checksum.
