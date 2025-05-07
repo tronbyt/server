@@ -10,3 +10,12 @@ threads = 4
 timeout = 120
 reload = False
 preload_app = True
+
+
+# https://github.com/benoitc/gunicorn/issues/1391
+def post_worker_init(worker):
+    import atexit
+    from multiprocessing.util import _exit_function
+
+    atexit.unregister(_exit_function)
+    worker.log.info("worker post_worker_init done, (pid: {})".format(worker.pid))
