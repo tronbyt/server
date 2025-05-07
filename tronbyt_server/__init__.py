@@ -204,6 +204,7 @@ def get_locale() -> Optional[str]:
 
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
     if dotenv_path := find_dotenv(usecwd=True):
+        print(f"Loading environment variables from {dotenv_path}")
         load_dotenv(dotenv_path)
 
     # create and configure the app

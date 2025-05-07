@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
+from flask import current_app
 
 from tronbyt_server.models.app import AppMetadata
 
@@ -20,6 +21,14 @@ def git_command(
     return subprocess.run(command, cwd=cwd, env=env, check=check)
 
 
+def log_message(message: str) -> None:
+    """Log a message using Flask's logger if in app context, otherwise use print."""
+    if current_app:
+        current_app.logger.info(message)
+    else:
+        print(message)
+
+
 def update_system_repo(base_path: Path) -> None:
     system_apps_path = base_path / "system-apps"
     system_apps_repo = os.getenv(
@@ -28,7 +37,7 @@ def update_system_repo(base_path: Path) -> None:
 
     # check for existence of .git directory
     git_dir = system_apps_path / ".git"
-    print(f"Checking for git directory at: {git_dir}")
+    log_message(f"Checking for git directory at: {git_dir}")
 
     # If running as root, add the system-apps directory to the safe.directory list
     if os.geteuid() == 0:  # Check if the script is running as root
@@ -45,15 +54,17 @@ def update_system_repo(base_path: Path) -> None:
         )
 
     if git_dir.is_dir():  # Check if it's actually a directory
-        print(f"{system_apps_path} git repo found, updating {system_apps_repo}")
+        log_message(f"{system_apps_path} git repo found, updating {system_apps_repo}")
 
         result = git_command(["git", "pull", "--rebase=true"], cwd=system_apps_path)
         if result.returncode != 0:
-            print(f"Error updating repository. Return code: {result.returncode}")
+            log_message(f"Error updating repository. Return code: {result.returncode}")
         else:
-            print("Repo updated")
+            log_message("Repo updated")
     else:
-        print(f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}")
+        log_message(
+            f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}"
+        )
 
         result = git_command(
             [
@@ -66,9 +77,9 @@ def update_system_repo(base_path: Path) -> None:
             ]
         )
         if result.returncode != 0:
-            print("Error Cloning Repo")
+            log_message("Error Cloning Repo")
         else:
-            print("Repo Cloned")
+            log_message("Repo Cloned")
 
     # find all the .star files in the apps_path directory
     apps_array = []
@@ -77,12 +88,12 @@ def update_system_repo(base_path: Path) -> None:
 
     broken_apps_path = system_apps_path / "broken_apps.txt"
     if broken_apps_path.exists():
-        print(f"processing broken_apps file {broken_apps_path}")
+        log_message(f"processing broken_apps file {broken_apps_path}")
         try:
             broken_apps = broken_apps_path.read_text().splitlines()
-            print(str(broken_apps))
+            log_message(str(broken_apps))
         except Exception as e:
-            print(f"problem reading broken_apps_txt {e}")
+            log_message(f"problem reading broken_apps_txt {e}")
 
     apps.sort()
     count = 0
@@ -101,7 +112,7 @@ def update_system_repo(base_path: Path) -> None:
 
             # skip any broken apps
             if broken_apps and app.name in broken_apps:
-                print(f"skipping broken app {app.name}")
+                log_message(f"skipping broken app {app.name}")
                 skip_count += 1
                 continue
 
@@ -143,7 +154,9 @@ def update_system_repo(base_path: Path) -> None:
                 # less than a meg only
                 if image_path.exists() and image_path.stat().st_size < 1 * 1024 * 1024:
                     if not static_image_path.exists():
-                        print(f"copying preview to static dir {static_image_path}")
+                        log_message(
+                            f"copying preview to static dir {static_image_path}"
+                        )
                         new_previews += 1
                         shutil.copy(image_path, static_image_path)
 
@@ -155,13 +168,13 @@ def update_system_repo(base_path: Path) -> None:
             count += 1
             apps_array.append(app_dict)
         except Exception as e:
-            print(f"skipped {app} due to error: {repr(e)}")
+            log_message(f"skipped {app} due to error: {repr(e)}")
 
     # writeout apps_array as a json file
-    print(f"got {count} useable apps")
-    print(f"skipped {skip_count} secrets.star using apps")
-    print(f"copied {new_previews} new previews into static")
-    print(f"total previews found {num_previews}")
+    log_message(f"got {count} useable apps")
+    log_message(f"skipped {skip_count} secrets.star using apps")
+    log_message(f"copied {new_previews} new previews into static")
+    log_message(f"total previews found {num_previews}")
     with (base_path / "system-apps.json").open("w") as f:
         json.dump(apps_array, f, indent=4)
 
