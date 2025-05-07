@@ -8,7 +8,7 @@ from threading import Lock
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from babel.dates import format_timedelta
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from flask import Flask, current_app, g, request
 from flask_babel import Babel, _
 from flask_sock import Sock
@@ -203,7 +203,8 @@ def get_locale() -> Optional[str]:
 
 
 def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
-    load_dotenv()
+    if dotenv_path := find_dotenv(usecwd=True):
+        load_dotenv(dotenv_path)
 
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)

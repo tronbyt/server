@@ -85,7 +85,7 @@ That said, the recommended installation method uses Docker Compose with a config
 2. Copy the [example environment file](https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example) and modify it as needed:
 
    ```sh
-   curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > $(brew --prefix)/etc/tronbyt-server/.env
+   curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > $(brew --prefix)/var/tronbyt-server/.env
    ```
 
    You can further customize the server by editing the [Gunicorn settings](https://docs.gunicorn.org/en/latest/settings.html#settings) (listening address, TLS certificate, etc.) in `$(brew --prefix)/etc/tronbyt-server/gunicorn.conf.py`.
