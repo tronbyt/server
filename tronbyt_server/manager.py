@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import secrets
 import shutil
 import string
@@ -1058,6 +1059,12 @@ def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
         if old_repo != repo_url:
             # just get the last two words of the repo
             repo_url = "/".join(repo_url.split("/")[-2:])
+
+            github_repo_pattern = r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$"
+            if not re.match(github_repo_pattern, repo_url):
+                flash("Invalid repository URL format")
+                return False
+
             g.user[repo_name] = repo_url
             db.save_user(g.user)
 
