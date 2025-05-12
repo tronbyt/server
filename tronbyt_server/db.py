@@ -44,7 +44,10 @@ def init_db() -> None:
     cursor.execute("SELECT * FROM json_data WHERE username='admin'")
     row = cursor.fetchone()
 
+    new_install = False
     if not row:  # If no row is found
+        new_install = True
+
         # Load the default JSON data
         default_json = {
             "username": "admin",
@@ -58,28 +61,29 @@ def init_db() -> None:
         )
         conn.commit()
         current_app.logger.debug("Default JSON inserted for admin user")
-    else:
-        migrate_app_configs()
-        migrate_app_paths()
-        migrate_brightness_to_percent()
 
     cursor.execute("SELECT * FROM meta")
     row = cursor.fetchone()
     if row:
         schema_version = row[0]
     else:
+        schema_version = get_current_schema_version() if new_install else 0
         cursor.execute(
             "INSERT INTO meta (schema_version) VALUES (?)",
-            (get_current_schema_version(),),
+            (schema_version,),
         )
-        schema_version = get_current_schema_version()
 
     if schema_version < get_current_schema_version():
         current_app.logger.info(
             f"Schema version {schema_version} is outdated. Migrating to version {get_current_schema_version()}"
         )
+
         # Perform migration tasks here
-        # For example, you can call a function to handle the migration
+        if schema_version < 1:
+            migrate_app_configs()
+            migrate_app_paths()
+            migrate_brightness_to_percent()
+
         cursor.execute(
             "UPDATE meta SET schema_version = ? WHERE schema_version = ?",
             (get_current_schema_version(), schema_version),
