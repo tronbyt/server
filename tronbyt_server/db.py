@@ -28,14 +28,18 @@ def init_db() -> None:
     (get_users_dir() / "admin" / "configs").mkdir(parents=True, exist_ok=True)
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute(
-        """CREATE TABLE IF NOT EXISTS json_data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        data TEXT NOT NULL
-    )
-    """
-    )
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS json_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            data TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS meta (
+            schema_version INTEGER NOT NULL
+        )
+    """)
     conn.commit()
     cursor.execute("SELECT * FROM json_data WHERE username='admin'")
     row = cursor.fetchone()
@@ -58,6 +62,42 @@ def init_db() -> None:
         migrate_app_configs()
         migrate_app_paths()
         migrate_brightness_to_percent()
+
+    cursor.execute("SELECT * FROM meta")
+    row = cursor.fetchone()
+    if row:
+        schema_version = row[0]
+    else:
+        cursor.execute(
+            "INSERT INTO meta (schema_version) VALUES (?)",
+            (get_current_schema_version(),),
+        )
+        schema_version = get_current_schema_version()
+
+    if schema_version < get_current_schema_version():
+        current_app.logger.info(
+            f"Schema version {schema_version} is outdated. Migrating to version {get_current_schema_version()}"
+        )
+        # Perform migration tasks here
+        # For example, you can call a function to handle the migration
+        cursor.execute(
+            "UPDATE meta SET schema_version = ? WHERE schema_version = ?",
+            (get_current_schema_version(), schema_version),
+        )
+        current_app.logger.info(
+            f"Schema version {schema_version} migrated to {get_current_schema_version()}"
+        )
+
+
+def get_current_schema_version() -> int:
+    """
+    Retrieves the current schema version of the database.
+    Increment this version when making changes to the database schema.
+    Returns:
+        int: The current schema version as an integer.
+    """
+
+    return 1
 
 
 def migrate_app_configs() -> None:
