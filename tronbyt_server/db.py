@@ -105,7 +105,9 @@ def migrate_app_paths() -> None:
     for user in users:
         for device in user.get("devices", {}).values():
             for app in device.get("apps", {}).values():
-                if "path" not in app:
+                if "path" not in app or app.get("path", "").startswith(
+                    "/"
+                ):  # regenerate any absolute paths
                     app["path"] = get_app_details_by_name(
                         user["username"], app["name"]
                     ).get("path") or str(
