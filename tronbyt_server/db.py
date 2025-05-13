@@ -656,9 +656,9 @@ def generate_firmware(
         raise ValueError(f"Firmware file {file_path} not found.")
 
     dict = {
-        "XplaceholderWIFISSID________________________________": ap,
-        "XplaceholderWIFIPASSWORD____________________________": pw,
-        "XplaceholderREMOTEURL_________________________________________________________________________________________": url,
+        "XplaceholderWIFISSID____________": ap,
+        "XplaceholderWIFIPASSWORD________________________________________": pw,
+        "XplaceholderREMOTEURL___________________________________________________________________________________________________________": url,
     }
     with file_path.open("rb") as f:
         content = f.read()
