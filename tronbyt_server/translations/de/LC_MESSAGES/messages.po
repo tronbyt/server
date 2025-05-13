@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-05-07 00:07+0200\n"
+"POT-Creation-Date: 2025-05-13 21:10+0000\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/__init__.py:279
+#: tronbyt_server/__init__.py:281
 msgid "Never"
 msgstr "Nie"
 
@@ -321,7 +321,7 @@ msgid "Device Type"
 msgstr "Gerätetyp"
 
 #: tronbyt_server/templates/manager/create.html:19
-#: tronbyt_server/templates/manager/firmware.html:16
+#: tronbyt_server/templates/manager/firmware.html:18
 #: tronbyt_server/templates/manager/update.html:110
 msgid "Image URL"
 msgstr "Bild-URL"
@@ -365,24 +365,24 @@ msgstr ""
 "heruntergeladene Firmware-Datei aus, um Ihr Gerät zu flashen."
 
 #: tronbyt_server/templates/manager/firmware.html:10
-msgid "Windows users may need to install a serial driver."
+msgid "macOS and Windows users may need to install a serial driver:"
 msgstr ""
-"Windows-Benutzer müssen möglicherweise einen seriellen Treiber "
+"Benutzer von macOS oder Windows müssen möglicherweise einen seriellen Treiber "
 "installieren."
 
-#: tronbyt_server/templates/manager/firmware.html:19
+#: tronbyt_server/templates/manager/firmware.html:21
 msgid "WiFi Network Name (SSID) 2.4Ghz Only"
 msgstr "WiFi-Netzwerkname (SSID) Nur 2.4 GHz"
 
-#: tronbyt_server/templates/manager/firmware.html:21
+#: tronbyt_server/templates/manager/firmware.html:23
 msgid "WiFi Password"
 msgstr "WiFi-Passwort"
 
-#: tronbyt_server/templates/manager/firmware.html:31
+#: tronbyt_server/templates/manager/firmware.html:33
 msgid "Swap Colors?"
 msgstr "Farben tauschen?"
 
-#: tronbyt_server/templates/manager/firmware.html:36
+#: tronbyt_server/templates/manager/firmware.html:38
 msgid "Generate Firmware File"
 msgstr "Firmware-Datei generieren"
 

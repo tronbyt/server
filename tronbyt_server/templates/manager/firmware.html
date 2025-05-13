@@ -7,9 +7,11 @@
     <h2>{{ _('Download ESP Flasher here') }} <a href="https://github.com/Jason2866/ESP_Flasher/releases">ESP Flasher</a></h2>
     {{ _('Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your
     downloaded firmware file to flash your device. Do NOT use a web based flasher.') }}
-    <br><i>{{ _('Windows users may need to install a serial driver.') }} <a
-            href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x
-            Drivers</a>
+    <br><i>{{ _('macOS and Windows users may need to install a serial driver:') }}
+        <br>
+        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x Drivers</a>
+        <br>
+        <a href="https://github.com/WCHSoftGroup/ch34xser_macos">CH34x Drivers</a>
     </i>
     <br>
     <input type="hidden" name="id" id="id" value="device['id']">
