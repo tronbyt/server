@@ -72,5 +72,6 @@ def validate_device_type(device_type: str) -> bool:
         "pixoticker",
         "raspberrypi",
         "tronbyt_s3",
+        "tronbyt_s3_wide",
         "other",
     ]

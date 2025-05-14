@@ -8,7 +8,7 @@ from esptool.bin_image import LoadFirmwareImage
 
 def get_chip_config(device_type: str) -> Tuple[str, int]:
     """Return chip type and flash offset based on device type."""
-    if device_type in ["tronbyt_s3", "matrixportal_s3"]:
+    if device_type in ["tronbyt_s3", "matrixportal_s3", "tronbyt_s3_wide"]:
         return "esp32s3", 0x10000  # Same offset as ESP32 for application
     return "esp32", 0x10000  # Standard offset for ESP32
 
