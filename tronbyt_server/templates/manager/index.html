@@ -307,7 +307,7 @@
               href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit Device') }}</a>
-            {% if device.get('type') in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3"] %}
+            {% if device.get('type') in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide"] %}
                   <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
                     href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
             {% endif %}

@@ -647,6 +647,8 @@ def generate_firmware(
         file_path = firmware_path / "pixoticker.bin"
     elif device_type == "tronbyt_s3":
         file_path = firmware_path / "tronbyt-S3.bin"
+    elif device_type == "tronbyt_s3-wide":
+        file_path = firmware_path / "tronbyt-s3-wide.bin"
     elif swap_colors:
         file_path = firmware_path / "tidbyt-gen1_swap.bin"
     else:
