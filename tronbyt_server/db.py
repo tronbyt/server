@@ -648,7 +648,7 @@ def generate_firmware(
     elif device_type == "tronbyt_s3":
         file_path = firmware_path / "tronbyt-S3.bin"
     elif device_type == "tronbyt_s3_wide":
-        file_path = firmware_path / "tronbyt-s3_wide.bin"
+        file_path = firmware_path / "tronbyt-s3-wide.bin"
     elif swap_colors:
         file_path = firmware_path / "tidbyt-gen1_swap.bin"
     else:
