@@ -300,8 +300,8 @@
         <tr>
           <td>
             {% if devices|length > 1 %}
-            <button id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
-              onclick="toggleApps('{{ device['id'] }}')">{{ _('Hide Apps') }}</button>
+            <a id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
+              onclick="toggleApps('{{ device['id'] }}')">{{ _('Hide Apps') }}</a>
             {% endif %}
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
