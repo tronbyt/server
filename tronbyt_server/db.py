@@ -288,15 +288,15 @@ def get_night_mode_is_active(device: Device) -> bool:
     current_hour = datetime.now(get_device_timezone(device)).hour
 
     # Determine if night mode is active
-    if device.get("night_start", -1) > -1:
-        start_hour = device["night_start"]
+    start_hour = device.get("night_start", -1)
+    if start_hour > -1:
         end_hour = device.get("night_end", 6)  # default to 6 am if not set
         if start_hour <= end_hour:  # Normal case (e.g., 9 to 17)
-            if start_hour <= current_hour <= end_hour:
+            if start_hour <= current_hour < end_hour:
                 current_app.logger.debug("Night mode active")
                 return True
-        else:  # Wrapped case (e.g., 22 to 6 - overnight)
-            if current_hour >= start_hour or current_hour <= end_hour:
+        else:  # Wrapped case (e.g., 22 to 7 - overnight)
+            if current_hour >= start_hour or current_hour < end_hour:
                 current_app.logger.debug("Night mode active")
                 return True
 
