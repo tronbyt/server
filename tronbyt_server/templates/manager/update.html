@@ -137,20 +137,20 @@
 
     <div class="form-group">
       <label for="night_brightness">{{ _('Night Brightness') }}</label>
-      <output>{{ device['night_brightness'] or 1 }}</output>
+      <output>{{ device.get('night_brightness', 1) }}</output>
       <input type="range" name="night_brightness" id="night_brightness" min="0" max="5"
-        value="{{ device['night_brightness'] or 1 }}" oninput="this.previousElementSibling.value = this.value">
+        value="{{ device.get('night_brightness', 1) }}" oninput="this.previousElementSibling.value = this.value">
     </div>
 
     <div class="form-group">
       <label for="night_start">{{ _('Night Start Hour (24hr)') }}</label>
       <input type="number" name="night_start" id="night_start" min="0" max="24"
-        value="{{ device['night_start'] or 22 }}">
+        value="{{ device.get('night_start', 22) }}">
     </div>
 
     <div class="form-group">
       <label for="night_end">{{ _('Night End Hour (24hr)') }}</label>
-      <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device['night_end'] or 6 }}">
+      <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device.get('night_end', 6) }}">
     </div>
 
     <div class="form-group">
