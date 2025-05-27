@@ -20,8 +20,7 @@ def test_device_operations(client: FlaskClient) -> None:
             "brightness": "3",
         },
     )
-    print(r.text)
-    assert "TESTDEVICE" in utils.get_testuser_config_string()
+    assert utils.get_test_device()["name"] == "TESTDEVICE"
 
     device_id = utils.get_test_device_id()
     # Test firmware generation page
@@ -55,4 +54,5 @@ def test_device_operations(client: FlaskClient) -> None:
 
     # Delete the device.
     r = client.post(f"{device_id}/delete")
-    assert "TESTDEVICE" not in utils.get_testuser_config_string()
+    testuser = utils.get_testuser()
+    assert not testuser.get("devices", {})
