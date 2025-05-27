@@ -1161,33 +1161,63 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
     direction = request.args.get("direction")
-    if not direction:
+    if not direction or direction not in ["up", "down"]:
+        flash("Invalid direction.")
         return redirect(url_for("manager.index"))
 
     user = g.user
-    apps = user["devices"][device_id]["apps"]
-    app = apps[iname]
+    apps_dict = user["devices"][device_id].get("apps")
+
+    if not apps_dict:
+        # No apps to move
+        return redirect(url_for("manager.index"))
+
+    # Convert apps_dict to a list of app dictionaries, including iname
+    apps_list = []
+    for app_iname, app_data in apps_dict.items():
+        app_item = app_data.copy()
+        app_item["iname"] = app_iname
+        apps_list.append(app_item)
+
+    # Sort the list by 'order', then by 'iname' for stability if orders are not unique
+    apps_list.sort(key=lambda x: (x.get("order", 0), x.get("iname", "")))
+
+    # Find the current index of the app to be moved
+    current_idx = -1
+    for i, app_item in enumerate(apps_list):
+        if app_item["iname"] == iname:
+            current_idx = i
+            break
+
+    if current_idx == -1:
+        # App to move not found in the list, should not happen if iname is valid
+        flash("App not found.")
+        return redirect(url_for("manager.index"))
+
+    # Determine target index and perform boundary checks
     if direction == "up":
-        if app["order"] == 0:
+        if current_idx == 0:
+            # Already at the top
             return redirect(url_for("manager.index"))
-        app["order"] -= 1
-    elif direction == "down":
-        if app["order"] == len(apps) - 1:
+        target_idx = current_idx - 1
+    else:  # direction == "down"
+        if current_idx == len(apps_list) - 1:
+            # Already at the bottom
             return redirect(url_for("manager.index"))
-        app["order"] += 1
-    apps[iname] = app
+        target_idx = current_idx + 1
 
-    # Ensure no two apps have the same order
-    for other_iname, other_app in apps.items():
-        if other_iname != iname and other_app["order"] == app["order"]:
-            if direction == "up":
-                other_app["order"] += 1
-            elif direction == "down":
-                other_app["order"] -= 1
+    # Move the app
+    moved_app = apps_list.pop(current_idx)
+    apps_list.insert(target_idx, moved_app)
 
-    # Sort apps by order
-    user["devices"][device_id]["apps"] = apps
+    # Update 'order' attribute for all apps in the list and in the original apps_dict
+    for i, app_item in enumerate(apps_list):
+        app_item["order"] = i  # Update order in the list item
+        apps_dict[app_item["iname"]]["order"] = i  # Update order in the original dict
+
+    user["devices"][device_id]["apps"] = apps_dict
     db.save_user(user)
+
     return redirect(url_for("manager.index"))
 
 

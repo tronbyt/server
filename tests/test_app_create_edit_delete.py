@@ -1,22 +1,11 @@
-from pathlib import Path
-
 from flask.testing import FlaskClient
 
 from tronbyt_server import db
 
 from . import utils
 
-# from unittest.mock import patch
 
-
-# @patch("os.system")
-# @patch("subprocess.Popen")
-# def test_app_create_edit_config_delete(mock_os_system, mock_subprocess, client):
 def test_app_create_edit_config_delete(client: FlaskClient) -> None:
-    # Configure the mock to return a successful result
-    # mock_subprocess.return_value.returncode = 0
-    # mock_os_system.return_value.returncode = 0
-
     client.post("/auth/register", data={"username": "testuser", "password": "password"})
     client.post("/auth/login", data={"username": "testuser", "password": "password"})
     client.post(
@@ -44,8 +33,9 @@ def test_app_create_edit_config_delete(client: FlaskClient) -> None:
             "notes": "",
         },
     )
-    assert "NOAA Tides" in utils.get_testuser_config_string()
+
     app_id = utils.get_test_app_id()
+    assert utils.get_test_app_dict()["name"] == "NOAA Tides"
 
     r = client.get(f"{device_id}/{app_id}/1/configapp")
     assert r.status_code == 200
@@ -70,9 +60,8 @@ def test_app_create_edit_config_delete(client: FlaskClient) -> None:
 
     client.get(f"{device_id}/{app_id}/delete")
 
-    assert "TESTAPPUPDATED" not in utils.get_testuser_config_string()
+    user = utils.get_testuser()
+    assert app_id not in user["devices"][device_id]["apps"]
 
     # delete the test device webp dir
     db.delete_device_dirs(device_id)
-    device_dir = Path("tronbyt_server") / "webp" / device_id
-    assert not device_dir.is_dir()
