@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Required, TypedDict
 
 
 class App(TypedDict, total=False):
+    id: str
     iname: Required[str]
     name: Required[str]
     uinterval: int
@@ -30,3 +31,4 @@ class AppMetadata(TypedDict, total=False):
     fileName: Optional[str]
     packageName: Optional[str]
     preview: Optional[str]
+    supports2x: bool

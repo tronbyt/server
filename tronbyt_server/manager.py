@@ -43,6 +43,7 @@ from tronbyt_server.models.device import (
     DEFAULT_DEVICE_TYPE,
     Device,
     Location,
+    device_supports_2x,
     validate_device_id,
     validate_device_type,
 )
@@ -681,12 +682,28 @@ def render_app(
     if not app_path.is_absolute():
         app_path = db.get_data_dir() / app_path
 
+    # default: render at 1x
+    magnify = 1
+    width = 64
+    height = 32
+
+    if device_supports_2x(device):
+        # if the device supports 2x rendering, we scale up the app image
+        magnify = 2
+        # ...except for the apps which support 2x natively where we use the original size
+        if app and "id" in app:
+            app_details = db.get_app_details_by_id(g.user["username"], app["id"])
+            if app_details.get("supports2x", False):
+                magnify = 1
+                width = 128
+                height = 64
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
-        width=64,
-        height=32,
-        magnify=1,
+        width=width,
+        height=height,
+        magnify=magnify,
         maxDuration=15000,
         timeout=30000,
         image_format=0,  # 0 == WebP
