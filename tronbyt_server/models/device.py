@@ -6,6 +6,8 @@ from tronbyt_server.models.app import App
 
 DEFAULT_DEVICE_TYPE = "tidbyt_gen1"
 
+TWO_X_CAPABLE_DEVICE_TYPES = ["tronbyt_s3_wide"]
+
 
 class Location(TypedDict, total=False):
     name: str
@@ -75,3 +77,13 @@ def validate_device_type(device_type: str) -> bool:
         "tronbyt_s3_wide",
         "other",
     ]
+
+
+def device_supports_2x(device: Device) -> bool:
+    """
+    Check if the device supports 2x apps.
+
+    :param device: The device to check.
+    :return: True if the device supports 2x apps, False otherwise.
+    """
+    return device.get("type") in TWO_X_CAPABLE_DEVICE_TYPES
