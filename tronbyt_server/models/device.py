@@ -75,3 +75,13 @@ def validate_device_type(device_type: str) -> bool:
         "tronbyt_s3_wide",
         "other",
     ]
+
+
+def device_supports_2x(device: Device) -> bool:
+    """
+    Check if the device supports 2x apps.
+
+    :param device: The device to check.
+    :return: True if the device supports 2x apps, False otherwise.
+    """
+    return device.get("type") in ["tronbyt_s3_wide"]
