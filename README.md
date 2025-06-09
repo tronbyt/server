@@ -114,7 +114,7 @@ That said, the recommended installation method uses Docker Compose with a config
 2. Add your Tronbyt as a device in the manager.
 3. Click on the "Firmware" button and enter your WiFi credentials. The image URL should be prefilled.
 4. Click "Generate Firmware" and download your firmware file.
-5. Download the ESPHome firmware flasher from [this link](https://github.com/esphome/esphome-flasher/releases) and use it to flash your Tidbyt into a Tronbyt.
+5. Download the ESPHome firmware flasher from [this link](https://github.com/Jason2866/ESP_Flasher/releases) and use it to flash your Tidbyt into a Tronbyt.
 6. Add an app and configure it via the built-in Pixlet interface.
 7. Click "Save" and you'll see the app preview on the app listing page.
 
