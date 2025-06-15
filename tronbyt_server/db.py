@@ -464,7 +464,7 @@ def get_apps_list(user: str) -> List[AppMetadata]:
                 id=app_name,
                 name=app_name,
             )
-            preview = Path("tronbyt_server/static/apps") / f"{app_name}.webp"
+            preview = get_data_dir() / "apps" / f"{app_name}.webp"
             if preview.exists() and preview.stat().st_size > 0:
                 app_dict["preview"] = str(preview.name)
             yaml_path = file.parent / "manifest.yaml"
