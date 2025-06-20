@@ -32,6 +32,7 @@ If you want to run Tronbyt Server as a container, you need
 
 - [Docker](https://www.docker.com)
 - [Docker Compose](https://docs.docker.com/compose/install/) (optional, but recommended)
+- [Video Walkthrough on Raspberry PI](https://youtu.be/ZyE1IC97dVw)
 
 Otherwise, you need
 
