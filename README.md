@@ -109,8 +109,8 @@ That said, the recommended installation method uses Docker Compose with a config
    - Username: `admin`
    - Password: `password`
 
-### Quick Start Guide
-
+### Quick Start Guide 
+For a more detailed walkthrough click here : [Walkthrough in google docs by JeffLac](https://docs.google.com/document/d/e/2PACX-1vS-TRGPnYvjnwR37GXy6GFsvGdhBeDC6iypncZ5jFNaT9mxcczneGqmRtdM98UVUi7Cl-KDl4XYedkZ/pub)
 1. Access the web app at [http://localhost:8000](http://localhost:8000) (or your configured domain) with the default login credentials: `admin/password`.
 2. Add your Tronbyt as a device in the manager.
 3. Click on the "Firmware" button and enter your WiFi credentials. The image URL should be prefilled.
