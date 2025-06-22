@@ -140,19 +140,12 @@ def uploadapp(device_id: str) -> ResponseReturnValue:
 def deleteupload(device_id: str, filename: str) -> ResponseReturnValue:
     # Check if the file is use by any devices
     user = g.user
-    is_in_use = False
-
-    # Check all devices and their apps
-    for device in user.get("devices", {}).values():
-        for app in device.get("apps", {}).values():
-            app_path = Path(app.get("path", ""))
-            if app_path.name == filename:
-                is_in_use = True
-                break
-        if is_in_use:
-            break
-
-    if is_in_use:
+    if any(
+        app_path.name == filename
+        for device in user.get("devices", {}).values()
+        for app in device.get("apps", {}).values()
+        for app_path in [Path(app.get("path", ""))]
+    ):
         flash(
             f"Cannot delete {filename} because it is installed on a device. To replace an app just re-upload the file."
         )
