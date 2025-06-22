@@ -18,3 +18,4 @@ services:
       - SYSTEM_APPS_REPO
       - PRODUCTION=0
       - LOG_LEVEL=DEBUG
+      - MAX_USERS
