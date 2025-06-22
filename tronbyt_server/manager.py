@@ -444,7 +444,7 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/addapp", methods=["GET", "POST"])
 @login_required
 def addapp(device_id: str) -> ResponseReturnValue:
-    if not validate_device_id(device_id):
+    if not validate_device_id(device_id) or device_id not in g.user["devices"]:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if request.method == "GET":
         # build the list of apps.
