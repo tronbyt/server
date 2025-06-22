@@ -446,6 +446,8 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
 def addapp(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
     if request.method == "GET":
         # build the list of apps.
         custom_apps_list = db.get_apps_list(g.user["username"])
