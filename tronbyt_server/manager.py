@@ -138,6 +138,20 @@ def uploadapp(device_id: str) -> ResponseReturnValue:
 @bp.route("/<string:device_id>/deleteupload/<string:filename>", methods=["POST", "GET"])
 @login_required
 def deleteupload(device_id: str, filename: str) -> ResponseReturnValue:
+    # Check if the file is use by any devices
+    user = g.user
+    if any(
+        app_path.name == filename
+        for device in user.get("devices", {}).values()
+        for app in device.get("apps", {}).values()
+        for app_path in [Path(app.get("path", ""))]
+    ):
+        flash(
+            f"Cannot delete {filename} because it is installed on a device. To replace an app just re-upload the file."
+        )
+        return redirect(url_for("manager.addapp", device_id=device_id))
+
+    # If not referenced, proceed with deletion
     db.delete_user_upload(g.user, filename)
     return redirect(url_for("manager.addapp", device_id=device_id))
 
