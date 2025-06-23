@@ -42,8 +42,9 @@ Otherwise, you need
 
 - [Tidbyt Gen1](https://tidbyt.com/collections/tidbyt-smart-displays)
 - [Tidbyt Gen2](https://tidbyt.com/collections/tidbyt-smart-displays)
-- [Pixoticker](https://www.etsy.com/listing/1801658771/pixoticker-live-stock-crypto-forex)
+- [Tronbyt S3](https://pixohardware.store/product/tronbyt-dev-kit/)
 - [Raspberry Pi](https://github.com/tronbyt/tronberry) connected to a 64x32 matrix LED
+- [Pixoticker](https://www.etsy.com/listing/1801658771/pixoticker-live-stock-crypto-forex) (Limited memory, not recommended)
 
 It's rather easy to develop additional clients for Tronbyt Server: just pull images in WebP format from the `/next` endpoint and loop the animation for the number of seconds specified in the `Tronbyt-Dwell-Secs` response header. Optionally set the display brightness to the value in the `Tronbyt-Brightness` header (0 - 100).
 
