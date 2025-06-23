@@ -25,6 +25,14 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 @bp.route("/register", methods=("GET", "POST"))
 def register() -> ResponseReturnValue:
+    # Check if max users limit is reached
+    max_users = current_app.config.get("MAX_USERS", 100)  # Default to 0 (unlimited)
+    if max_users > 0:
+        users_count = len(db.get_all_users())
+        if users_count >= max_users:
+            flash("Maximum number of users reached. Registration is disabled.")
+            return redirect(url_for("auth.login"))
+
     if not current_app.config["TESTING"]:
         time.sleep(2)
     # # only allow admin to register new users

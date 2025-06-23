@@ -221,6 +221,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             PRODUCTION=os.getenv("PRODUCTION", "1"),
             DB_FILE="users/usersdb.sqlite",
             LANGUAGES=["en", "de"],
+            MAX_USERS=int(os.getenv("MAX_USERS", "100")),
         )
         if app.config.get("PRODUCTION") == "1":
             if app.config["SERVER_PROTOCOL"] == "https":
@@ -241,6 +242,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             USERS_DIR="tests/users",
             DATA_DIR=os.getenv("DATA_DIR", "data"),
             PRODUCTION="0",
+            MAX_USERS=int(os.getenv("MAX_USERS", "100")),
             TESTING=True,
         )
     babel.init_app(app, locale_selector=get_locale)
