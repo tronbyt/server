@@ -26,7 +26,7 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 @bp.route("/register", methods=("GET", "POST"))
 def register() -> ResponseReturnValue:
     # Check if max users limit is reached
-    max_users = int(current_app.config.get("MAX_USERS"))  # default to something big
+    max_users = current_app.config.get("MAX_USERS", 100)  # Default to 0 (unlimited)
     if max_users > 0:
         users_count = len(db.get_all_users())
         if users_count >= max_users:
