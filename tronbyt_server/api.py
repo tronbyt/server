@@ -14,6 +14,7 @@ from flask import (
 )
 from flask.typing import ResponseReturnValue
 from werkzeug.datastructures import Headers
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -32,6 +33,42 @@ def get_api_key_from_headers(headers: Headers) -> Optional[str]:
         else:
             return auth_header
     return None
+
+
+@bp.route("/users/<string:username>/devices", methods=["GET"])
+def list_user_devices(username: str) -> ResponseReturnValue:
+    user = db.get_user_by_username(username)
+    if not user:
+        abort(HTTPStatus.NOT_FOUND, description="User not found")
+
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    if not check_password_hash(user["password"], api_key):
+        abort(
+            HTTPStatus.UNAUTHORIZED,
+            description="Invalid API key",
+        )
+
+    devices = user.get("devices", {})
+    metadata = [
+        {
+            "id": device_id,
+            "displayName": device["name"],
+            "brightness": db.get_device_brightness_8bit(device),
+            "autoDim": device.get("night_mode_enabled", False),
+        }
+        for device_id, device in devices.items()
+    ]
+    return Response(
+        json.dumps({"devices": metadata}),
+        status=200,
+        mimetype="application/json",
+    )
 
 
 @bp.route("/devices/<string:device_id>", methods=["GET", "PATCH"])

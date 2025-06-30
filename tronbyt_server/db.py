@@ -619,6 +619,13 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     return None
 
 
+def get_user_by_username(username: str) -> Optional[User]:
+    for user in get_all_users():
+        if user.get("username") == username:
+            return user
+    return None
+
+
 # firmare bin files named after env targets in firmware project.
 def generate_firmware(
     url: str, ap: str, pw: str, device_type: str, swap_colors: bool
