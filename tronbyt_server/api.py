@@ -61,6 +61,7 @@ def list_user_devices(username: str) -> ResponseReturnValue:
             "displayName": device["name"],
             "brightness": db.get_device_brightness_8bit(device),
             "autoDim": device.get("night_mode_enabled", False),
+            "apiKey": device["api_key"],
         }
         for device_id, device in devices.items()
     ]
