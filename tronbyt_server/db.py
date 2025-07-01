@@ -1,6 +1,8 @@
 import json
+import secrets
 import shutil
 import sqlite3
+import string
 from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Optional, Union
@@ -83,6 +85,8 @@ def init_db() -> None:
             migrate_app_configs()
             migrate_app_paths()
             migrate_brightness_to_percent()
+        if schema_version < 2:
+            migrate_user_api_keys()
 
         cursor.execute(
             "UPDATE meta SET schema_version = ? WHERE schema_version = ?",
@@ -101,7 +105,7 @@ def get_current_schema_version() -> int:
         int: The current schema version as an integer.
     """
 
-    return 1
+    return 2
 
 
 def migrate_app_configs() -> None:
@@ -207,6 +211,30 @@ def migrate_brightness_to_percent() -> None:
             current_app.logger.info(
                 f"Migrating brightness for user: {user['username']}"
             )
+            save_user(user)
+
+
+def migrate_user_api_keys() -> None:
+    """
+    Generates API keys for existing users who don't have them.
+    This migration ensures all users have API keys for API authentication.
+
+    Steps:
+    1. Retrieve all users.
+    2. Check if user has an api_key field.
+    3. Generate a 32-character API key if missing.
+    4. Save the user data if any changes were made.
+    """
+    users = get_all_users()
+    current_app.logger.info("Migrating users to add API keys")
+
+    for user in users:
+        if not user.get("api_key"):
+            api_key = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
+            )
+            user["api_key"] = api_key
+            current_app.logger.info(f"Generated API key for user: {user['username']}")
             save_user(user)
 
 
@@ -619,9 +647,9 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     return None
 
 
-def get_user_by_username(username: str) -> Optional[User]:
+def get_user_by_api_key(api_key: str) -> Optional[User]:
     for user in get_all_users():
-        if user.get("username") == username:
+        if user.get("api_key") == api_key:
             return user
     return None
 

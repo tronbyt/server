@@ -1,4 +1,6 @@
 import functools
+import secrets
+import string
 import time
 from typing import Any, Callable, Optional
 
@@ -57,10 +59,15 @@ def register() -> ResponseReturnValue:
             if "email" in request.form:
                 if "@" in request.form["email"]:
                     email = request.form["email"]
+            api_key = "".join(
+                secrets.choice(string.ascii_letters + string.digits)
+                for _ in range(32)
+            )
             user = User(
                 username=username,
                 password=password,
                 email=email,
+                api_key=api_key,
             )
 
             if db.save_user(user, new_user=True):

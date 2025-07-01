@@ -34,4 +34,11 @@
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 
+<h1>{{ _('Edit API Key') }}</h1>
+<form method="post" action="{{ url_for('manager.set_api_key') }}">
+    <label for="api_key">{{ _('API Key') }}</label>
+    <input type="text" name="api_key" id="api_key" required value="{{ user['api_key'] }}">
+    <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
+</form>
+
 {% endblock %}

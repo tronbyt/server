@@ -14,7 +14,6 @@ from flask import (
 )
 from flask.typing import ResponseReturnValue
 from werkzeug.datastructures import Headers
-from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
@@ -35,12 +34,8 @@ def get_api_key_from_headers(headers: Headers) -> Optional[str]:
     return None
 
 
-@bp.route("/users/<string:username>/devices", methods=["GET"])
-def list_user_devices(username: str) -> ResponseReturnValue:
-    user = db.get_user_by_username(username)
-    if not user:
-        abort(HTTPStatus.NOT_FOUND, description="User not found")
-
+@bp.route("/devices", methods=["GET"])
+def list_devices() -> ResponseReturnValue:
     api_key = get_api_key_from_headers(request.headers)
     if not api_key:
         abort(
@@ -48,11 +43,9 @@ def list_user_devices(username: str) -> ResponseReturnValue:
             description="Missing or invalid Authorization header",
         )
 
-    if not check_password_hash(user["password"], api_key):
-        abort(
-            HTTPStatus.UNAUTHORIZED,
-            description="Invalid API key",
-        )
+    user = db.get_user_by_api_key(api_key)
+    if not user:
+        abort(HTTPStatus.UNAUTHORIZED, description="Invalid API key")
 
     devices = user.get("devices", {})
     metadata = [
@@ -87,7 +80,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
     if not user:
         abort(HTTPStatus.NOT_FOUND)
     device = user["devices"].get(device_id)
-    if not device or device["api_key"] != api_key:
+    if not device or not (device["api_key"] == api_key or user["api_key"] == api_key):
         abort(HTTPStatus.NOT_FOUND)
 
     if request.method == "PATCH":

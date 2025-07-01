@@ -1144,6 +1144,19 @@ def set_user_repo() -> ResponseReturnValue:
     abort(HTTPStatus.NOT_FOUND)
 
 
+@bp.route("/set_api_key", methods=["GET", "POST"])
+@login_required
+def set_api_key() -> ResponseReturnValue:
+    if request.method == "POST":
+        if "api_key" not in request.form:
+            abort(HTTPStatus.BAD_REQUEST)
+        api_key = str(request.form.get("api_key"))
+        g.user["api_key"] = api_key
+        db.save_user(g.user)
+        return redirect(url_for("manager.index"))
+    abort(HTTPStatus.NOT_FOUND)
+
+
 @bp.route("/set_system_repo", methods=["GET", "POST"])
 @login_required
 def set_system_repo() -> ResponseReturnValue:
