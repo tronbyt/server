@@ -1151,6 +1151,9 @@ def set_api_key() -> ResponseReturnValue:
         if "api_key" not in request.form:
             abort(HTTPStatus.BAD_REQUEST)
         api_key = str(request.form.get("api_key"))
+        if not api_key:
+            flash("API Key cannot be empty.")
+            return redirect(url_for("auth.edit"))
         g.user["api_key"] = api_key
         db.save_user(g.user)
         return redirect(url_for("manager.index"))
