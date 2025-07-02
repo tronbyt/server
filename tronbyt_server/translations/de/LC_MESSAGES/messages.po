@@ -91,6 +91,14 @@ msgstr ""
 msgid "Edit Password"
 msgstr "Passwort bearbeiten"
 
+#: tronbyt_server/templates/auth/edit.html:37
+msgid "Edit API Key"
+msgstr "API-Schlüssel bearbeiten"
+
+#: tronbyt_server/templates/auth/edit.html:39
+msgid "API Key"
+msgstr "API-Schlüssel"
+
 #: tronbyt_server/templates/auth/edit.html:30
 msgid "Old Password"
 msgstr "Altes Passwort"
