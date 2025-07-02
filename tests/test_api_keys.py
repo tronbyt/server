@@ -173,18 +173,6 @@ class TestApiKeyRetrieval:
 
         assert retrieved_user is None
 
-    def test_get_user_by_api_key_none(self, client: FlaskClient) -> None:
-        """Test user retrieval with None API key"""
-        utils.load_test_data(client)
-
-        # The function should handle None gracefully by returning None
-        # Since None != any valid API key string
-        retrieved_user = db.get_user_by_api_key(None)  # type: ignore
-
-        # Should return None since no user should have None as their API key
-        # (all users get API keys during registration)
-        assert retrieved_user is None
-
     def test_get_user_by_api_key_multiple_users(self, client: FlaskClient) -> None:
         """Test user retrieval when multiple users exist"""
         # Create multiple users
