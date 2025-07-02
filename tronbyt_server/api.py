@@ -101,7 +101,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
         "id": device["id"],
         "displayName": device["name"],
         "brightness": db.get_device_brightness_8bit(device),
-        "autoDim": device["night_mode_enabled"],
+        "autoDim": device.get("night_mode_enabled", False),
     }
     return Response(json.dumps(metadata), status=200, mimetype="application/json")
 
