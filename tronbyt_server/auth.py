@@ -1,4 +1,6 @@
 import functools
+import secrets
+import string
 import time
 from typing import Any, Callable, Optional
 
@@ -21,6 +23,13 @@ import tronbyt_server.db as db
 from tronbyt_server.models.user import User
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+
+def _generate_api_key() -> str:
+    """Generate a random API key."""
+    return "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
+    )
 
 
 @bp.route("/register", methods=("GET", "POST"))
@@ -57,10 +66,12 @@ def register() -> ResponseReturnValue:
             if "email" in request.form:
                 if "@" in request.form["email"]:
                     email = request.form["email"]
+            api_key = _generate_api_key()
             user = User(
                 username=username,
                 password=password,
                 email=email,
+                api_key=api_key,
             )
 
             if db.save_user(user, new_user=True):

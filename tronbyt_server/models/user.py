@@ -8,3 +8,4 @@ class User(TypedDict, total=False):
     password: Required[str]
     email: str
     devices: Dict[str, Device]
+    api_key: str

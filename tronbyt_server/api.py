@@ -19,7 +19,7 @@ from werkzeug.utils import secure_filename
 import tronbyt_server.db as db
 from tronbyt_server.manager import push_new_image, render_app
 from tronbyt_server.models.app import App
-from tronbyt_server.models.device import validate_device_id
+from tronbyt_server.models.device import Device, validate_device_id
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
@@ -32,6 +32,37 @@ def get_api_key_from_headers(headers: Headers) -> Optional[str]:
         else:
             return auth_header
     return None
+
+
+def get_device_payload(device: Device) -> dict[str, Any]:
+    return {
+        "id": device["id"],
+        "displayName": device["name"],
+        "brightness": db.get_device_brightness_8bit(device),
+        "autoDim": device.get("night_mode_enabled", False),
+    }
+
+
+@bp.route("/devices", methods=["GET"])
+def list_devices() -> ResponseReturnValue:
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    user = db.get_user_by_api_key(api_key)
+    if not user:
+        abort(HTTPStatus.UNAUTHORIZED, description="Invalid API key")
+
+    devices = user.get("devices", {})
+    metadata = [get_device_payload(device) for device in devices.values()]
+    return Response(
+        json.dumps({"devices": metadata}),
+        status=200,
+        mimetype="application/json",
+    )
 
 
 @bp.route("/devices/<string:device_id>", methods=["GET", "PATCH"])
@@ -49,7 +80,13 @@ def get_device(device_id: str) -> ResponseReturnValue:
     if not user:
         abort(HTTPStatus.NOT_FOUND)
     device = user["devices"].get(device_id)
-    if not device or device["api_key"] != api_key:
+
+    if not device:
+        abort(HTTPStatus.NOT_FOUND)
+
+    user_api_key_matches = user.get("api_key") and user["api_key"] == api_key
+    device_api_key_matches = device.get("api_key") and device["api_key"] == api_key
+    if not user_api_key_matches and not device_api_key_matches:
         abort(HTTPStatus.NOT_FOUND)
 
     if request.method == "PATCH":
@@ -66,12 +103,7 @@ def get_device(device_id: str) -> ResponseReturnValue:
         if "autoDim" in data:
             device["night_mode_enabled"] = bool(data["autoDim"])
         db.save_user(user)
-    metadata = {
-        "id": device["id"],
-        "displayName": device["name"],
-        "brightness": db.get_device_brightness_8bit(device),
-        "autoDim": device["night_mode_enabled"],
-    }
+    metadata = get_device_payload(device)
     return Response(json.dumps(metadata), status=200, mimetype="application/json")
 
 
