@@ -54,7 +54,6 @@ def list_devices() -> ResponseReturnValue:
             "displayName": device["name"],
             "brightness": db.get_device_brightness_8bit(device),
             "autoDim": device.get("night_mode_enabled", False),
-            "apiKey": device["api_key"],
         }
         for device_id, device in devices.items()
     ]
@@ -80,7 +79,13 @@ def get_device(device_id: str) -> ResponseReturnValue:
     if not user:
         abort(HTTPStatus.NOT_FOUND)
     device = user["devices"].get(device_id)
-    if not device or not (device["api_key"] == api_key or user["api_key"] == api_key):
+
+    if not device:
+        abort(HTTPStatus.NOT_FOUND)
+
+    user_api_key_matches = user.get("api_key") and user["api_key"] == api_key
+    device_api_key_matches = device.get("api_key") and device["api_key"] == api_key
+    if not user_api_key_matches and not device_api_key_matches:
         abort(HTTPStatus.NOT_FOUND)
 
     if request.method == "PATCH":

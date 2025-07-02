@@ -30,7 +30,6 @@ class TestDevicesEndpoint:
         assert device_data["displayName"] == "TESTDEVICE"
         assert "brightness" in device_data
         assert "autoDim" in device_data
-        assert device_data["apiKey"] == "TESTKEY"
 
     def test_list_devices_with_direct_auth_header(self, client: FlaskClient) -> None:
         """Test listing devices with direct Authorization header (no Bearer prefix)"""
