@@ -219,8 +219,8 @@
     hiddenInput.type = "hidden";
     hiddenInput.id = field.id;
     hiddenInput.name = field.id;
-    hiddenInput.value = locationValue;
-    hiddenInput.setAttribute("data-default", locationValue);
+    hiddenInput.value = initialLocationJsonString;
+    hiddenInput.setAttribute("data-default", initialLocationJsonString);
     container.appendChild(hiddenInput);
 
     enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
