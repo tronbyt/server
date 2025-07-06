@@ -496,7 +496,6 @@
 
           if (currentOptionFromConfig && typeof currentOptionFromConfig === 'object' && typeof option === 'object') {
             // Compare stringified JSON of the option objects for simplicity.
-            // A more robust comparison might involve checking a specific ID field if available.
             if (JSON.stringify(option) === JSON.stringify(currentOptionFromConfig)) {
               selectedIndex = index;
             }

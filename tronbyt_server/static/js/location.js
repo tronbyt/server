@@ -17,8 +17,7 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                 resultsElement.innerHTML = '';
 
                 if (data.features && data.features.length > 0) {
-                    let exactMatchFound = false;
-                    data.features.forEach((feature, index) => {
+                    const listItems = data.features.map(feature => {
                         const li = document.createElement('li');
                         li.textContent = `📍 ${feature.properties.formatted}`;
                         li.dataset.lat = feature.properties.lat;
@@ -28,7 +27,7 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
 
                         li.addEventListener('click', function () {
                             inputElement.value = this.dataset.name;
-                            resultsElement.innerHTML = '';
+                            resultsElement.innerHTML = ''; // Clear results after click
                             const hiddenValue = JSON.stringify({
                                 name: this.dataset.name,
                                 timezone: this.dataset.timezone,
@@ -38,24 +37,22 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                             hiddenInputElement.value = hiddenValue;
 
                             if (onChangeCallback) {
-                                onChangeCallback(hiddenValue); // Simplified callback
+                                onChangeCallback(hiddenValue);
                             }
                         });
 
                         resultsElement.appendChild(li);
-
-                        if (isInitialSearch && feature.properties.formatted === query) {
-                            exactMatchFound = true;
-                            // Simulate click on the exact match
-                            li.click(); // This will trigger the above event listener
-                        }
+                        return li;
                     });
 
-                    if (isInitialSearch && !exactMatchFound && resultsElement.firstChild) {
-                        // If no exact match was found during initial search, and there are results, click the first one.
-                        resultsElement.firstChild.click(); // This will trigger the event listener on the first child
+                    if (isInitialSearch) {
+                        const exactMatchLi = listItems.find(li => li.dataset.name === query);
+                        if (exactMatchLi) {
+                            exactMatchLi.click();
+                        } else if (listItems.length > 0) {
+                            listItems[0].click();
+                        }
                     }
-
                 } else {
                     resultsElement.innerHTML = `<li>{{ _('No results found') }}</li>`;
                 }
