@@ -31,8 +31,24 @@
         })
         .then(response => {
             if (!response.ok) {
-                console.error('Server responded with an error:', response.status);
-                return response.json().then(err => Promise.reject(err));
+                console.error('Server responded with an error:', response.status, response.statusText);
+                // Try to parse as JSON, but provide a fallback if it's not
+                return response.text().then(text => {
+                    try {
+                        // Attempt to parse as JSON first, as the original code expected JSON error messages
+                        const errJson = JSON.parse(text);
+                        // Ensure it's an error structure we expect, otherwise treat as a generic error
+                        if (errJson && (errJson.message || errJson.error)) {
+                           return Promise.reject(errJson);
+                        }
+                        // If not a structured JSON error, or empty JSON, fall through to generic error
+                        throw new Error(`Server error: ${response.status} ${response.statusText}. Response: ${text.substring(0, 100)}`);
+                    } catch (e) {
+                        // If JSON parsing fails, or it's not our expected error format,
+                        // throw an error with the status text and part of the response
+                        throw new Error(`Server error: ${response.status} ${response.statusText}. Response: ${text.substring(0, 100)}`);
+                    }
+                });
             }
             return response.json();
         })

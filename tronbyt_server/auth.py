@@ -173,18 +173,17 @@ def set_theme_preference() -> ResponseReturnValue:
     if theme not in valid_themes:
         return {"status": "error", "message": "Invalid theme value"}, 400
 
-    user = db.get_user(g.user["username"])  # Fetch the full user object
-    if not user:
+    # g.user is already the full user object from load_logged_in_user
+    # No need to call db.get_user(g.user["username"]) again.
+    if not g.user: # Should be caught by @login_required, but as a safeguard
         return {
             "status": "error",
-            "message": "User not found",
-        }, 404  # Should not happen if login_required works
+            "message": "User not found in session", # More accurate message
+        }, 401 # Unauthorized or 404 if prefered
 
-    user["theme_preference"] = theme
-    if db.save_user(user):
-        # Update the theme in the session/g.user immediately if needed elsewhere in the same request,
-        # though typically this is for subsequent requests.
-        g.user["theme_preference"] = theme
+    g.user["theme_preference"] = theme
+    if db.save_user(g.user): # Save the g.user object directly
+        # g.user is already updated in memory for the current request.
         current_app.logger.info(f"User {g.user['username']} set theme to {theme}")
         return {"status": "success", "message": "Theme preference updated"}
     else:
