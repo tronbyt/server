@@ -103,15 +103,7 @@ def login() -> ResponseReturnValue:
             if remember_me:
                 session.permanent = True
             else:
-                # Ensure session is not permanent if "Remember Me" is not checked,
-                # overriding potential default from PRODUCTION config for this specific login.
                 session.permanent = False
-
-            # The original logic for PRODUCTION=1 seems to make all sessions permanent by default.
-            # If that's desired for non-"Remember Me" cases in production,
-            # this logic might need adjustment or clarification.
-            # "Remember Me" checkbox is now the sole driver for session permanence.
-            # The old logic for current_app.config.get("PRODUCTION") == "1" has been removed.
 
             current_app.logger.debug("username " + username)
             session["username"] = username
