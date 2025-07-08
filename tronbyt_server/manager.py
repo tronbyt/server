@@ -102,10 +102,10 @@ def uploadapp(device_id: str) -> ResponseReturnValue:
         # if user does not select file, browser also
         # submit an empty part without filename
         if file:
-            filename = secure_filename(file.filename)
-            if filename == "":
+            if not file.filename:
                 flash("No file")
                 return redirect(url_for("manager.addapp", device_id=device_id))
+            filename = secure_filename(file.filename)
 
             # create a subdirectory for the app
             app_name = Path(filename).stem
@@ -1316,7 +1316,7 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
         file = request.files["file"]
 
         # If no file is selected
-        if file.filename == "":
+        if not file.filename:
             flash("No selected file")
             return redirect(
                 url_for("manager.import_device_config", device_id=device_id)
@@ -1379,7 +1379,7 @@ def import_device() -> ResponseReturnValue:
         file = request.files["file"]
 
         # If no file is selected
-        if file.filename == "":
+        if not file.filename:
             flash("No selected file")
             return redirect(url_for("manager.import_device"))
 

@@ -107,7 +107,9 @@ def get_device(device_id: str) -> ResponseReturnValue:
     return Response(json.dumps(metadata), status=200, mimetype="application/json")
 
 
-def push_image(device_id: str, installation_id: str, image_bytes: bytes) -> None:
+def push_image(
+    device_id: str, installation_id: Optional[str], image_bytes: bytes
+) -> None:
     device_webp_path = db.get_device_webp_dir(device_id)
     device_webp_path.mkdir(parents=True, exist_ok=True)
     pushed_path = device_webp_path / "pushed"
@@ -357,7 +359,7 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
             raise FileNotFoundError("App not found")
 
         installation_id = data.get(
-            "installationID", data.get("installationId")
+            "installationID", data.get("installationId", "")
         )  # get both cases ID and Id
         current_app.logger.debug(f"installation_id: {installation_id}")
 
