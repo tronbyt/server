@@ -14,11 +14,10 @@ def get_chip_config(device_type: str) -> Tuple[str, int]:
 
 
 def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
-    buffer = io.BytesIO(data)
     chip_type, flash_offset = get_chip_config(device_type)
 
     try:
-        image = LoadFirmwareImage(chip=chip_type, image_file=buffer)
+        image = LoadFirmwareImage(chip=chip_type, image_data=data)
         # Set the correct load address for the firmware
         image.flash_offset = flash_offset
     except Exception as e:
@@ -36,14 +35,14 @@ def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
 
     new_checksum = image.calculate_checksum()
     # Update the checksum directly in the buffer
+    buffer = io.BytesIO(data)
     buffer.seek(-33, 2)  # Write the checksum at position 33 from the end
     buffer.write(struct.pack("B", new_checksum))
     print(f"Updated data with checksum {new_checksum:02x}.")
 
-    # Rewind the buffer and recalculate the SHA256
-    buffer.seek(0)
+    # Recalculate the SHA256
     try:
-        image = LoadFirmwareImage(chip=chip_type, image_file=buffer)
+        image = LoadFirmwareImage(chip=chip_type, image_data=buffer.getvalue())
         image.flash_offset = flash_offset
     except Exception as e:
         raise ValueError(f"Error loading new firmware image: {e}")

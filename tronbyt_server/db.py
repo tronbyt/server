@@ -553,7 +553,10 @@ def allowed_file(filename: str) -> bool:
 
 
 def save_user_app(file: FileStorage, path: Path) -> bool:
-    filename = secure_filename(file.filename)
+    filename = file.filename
+    if not filename:
+        return False
+    filename = secure_filename(filename)
     if file and allowed_file(filename):
         file.save(path / filename)
         return True
