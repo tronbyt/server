@@ -116,6 +116,10 @@ msgstr "Benutzername"
 msgid "Password"
 msgstr "Passwort"
 
+#: tronbyt_server/templates/auth/login.html:13
+msgid "Remember Me"
+msgstr "Angemeldet bleiben"
+
 #: tronbyt_server/templates/auth/register.html:3
 #: tronbyt_server/templates/auth/register.html:14
 msgid "Register"
