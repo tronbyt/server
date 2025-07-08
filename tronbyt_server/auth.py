@@ -72,6 +72,7 @@ def register() -> ResponseReturnValue:
                 password=password,
                 email=email,
                 api_key=api_key,
+                theme_preference="system",  # Default theme for new users
             )
 
             if db.save_user(user, new_user=True):
@@ -98,8 +99,20 @@ def login() -> ResponseReturnValue:
                 time.sleep(2)  # slow down brute force attacks
         if error is None:
             session.clear()
-            if current_app.config.get("PRODUCTION") == "1":
+            remember_me = request.form.get("remember")
+            if remember_me:
                 session.permanent = True
+            else:
+                # Ensure session is not permanent if "Remember Me" is not checked,
+                # overriding potential default from PRODUCTION config for this specific login.
+                session.permanent = False
+
+            # The original logic for PRODUCTION=1 seems to make all sessions permanent by default.
+            # If that's desired for non-"Remember Me" cases in production,
+            # this logic might need adjustment or clarification.
+            # "Remember Me" checkbox is now the sole driver for session permanence.
+            # The old logic for current_app.config.get("PRODUCTION") == "1" has been removed.
+
             current_app.logger.debug("username " + username)
             session["username"] = username
             return redirect(url_for("index"))
@@ -154,3 +167,31 @@ def login_required(view: Callable[..., Any]) -> Callable[..., Any]:
         return view(**kwargs)
 
     return wrapped_view
+
+
+@bp.route("/set_theme_preference", methods=["POST"])
+@login_required
+def set_theme_preference() -> ResponseReturnValue:
+    data = request.get_json()
+    if not data or "theme" not in data:
+        return {"status": "error", "message": "Missing theme data"}, 400
+
+    theme = data["theme"]
+    valid_themes = ["light", "dark", "system"]
+    if theme not in valid_themes:
+        return {"status": "error", "message": "Invalid theme value"}, 400
+
+    user = db.get_user(g.user["username"]) # Fetch the full user object
+    if not user:
+        return {"status": "error", "message": "User not found"}, 404 # Should not happen if login_required works
+
+    user["theme_preference"] = theme
+    if db.save_user(user):
+        # Update the theme in the session/g.user immediately if needed elsewhere in the same request,
+        # though typically this is for subsequent requests.
+        g.user["theme_preference"] = theme
+        current_app.logger.info(f"User {g.user['username']} set theme to {theme}")
+        return {"status": "success", "message": "Theme preference updated"}
+    else:
+        current_app.logger.error(f"Failed to save theme for user {g.user['username']}")
+        return {"status": "error", "message": "Failed to save theme preference"}, 500

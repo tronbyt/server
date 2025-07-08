@@ -54,6 +54,7 @@ def init_db() -> None:
         default_json = {
             "username": "admin",
             "password": generate_password_hash("password"),
+            "theme_preference": "system",  # Default theme for new admin
         }
 
         # Insert default JSON
@@ -395,6 +396,8 @@ def get_user(username: str) -> Optional[User]:
         row = cursor.fetchone()
         if row:
             user: User = json.loads(row[0])
+            if "theme_preference" not in user:
+                user["theme_preference"] = "system"  # Default for existing users
             return user
         else:
             current_app.logger.error(f"{username} not found")

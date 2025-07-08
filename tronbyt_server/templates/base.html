@@ -2,6 +2,23 @@
 
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Inline script to set initial theme and prevent FOUC
+    (function() {
+      var storedTheme = localStorage.getItem('theme_preference');
+      // Get server preference if user is logged in, otherwise default to 'system'
+      var serverProvidedTheme = "{% if g.user and g.user.theme_preference %}{{ g.user.theme_preference }}{% else %}system{% endif %}";
+      var themeToApply = storedTheme || serverProvidedTheme;
+
+      if (themeToApply === 'system') {
+        var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', systemPrefersDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', themeToApply);
+      }
+      // The full theme.js script will later synchronize the select dropdown and localStorage if needed.
+    })();
+  </script>
 </head>
 <title>{% if self.title() %}{% block title %}{% endblock %} - {% endif %}{{ _('Tronbyt Manager') }}</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -70,6 +87,18 @@
       endif %}
     <li><a href="{{ url_for('auth.edit') }}">{{ g.user['username'] }}</a></li>
     <li><a href="{{ url_for('auth.logout') }}">{{ _('Log Out') }}</a></li>
+    {% if g.user %}
+    <li class="theme-toggle-container">
+      <div class="theme-toggle">
+        <label for="theme-select">{{ _('Theme:') }}</label>
+        <select id="theme-select" name="theme">
+          <option value="light">{{ _('Light') }}</option>
+          <option value="dark">{{ _('Dark') }}</option>
+          <option value="system" selected>{{ _('System') }}</option> {# Default to system selected #}
+        </select>
+      </div>
+    </li>
+    {% endif %}
     {% else %}
     <li><a href="{{ url_for('auth.login') }}">{{ _('Log In') }}</a></li>
     {% endif %}
@@ -84,3 +113,12 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </section>
+
+<script>
+  {% if g.user and g.user.theme_preference %}
+  window.currentUserThemePreference = "{{ g.user.theme_preference }}";
+  {% else %}
+  window.currentUserThemePreference = "system"; // Default for guests or if not set
+  {% endif %}
+</script>
+<script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>

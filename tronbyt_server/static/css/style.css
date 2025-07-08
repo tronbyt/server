@@ -1,58 +1,120 @@
-html { font-family: sans-serif; background: #eee; padding: 1rem; }
-body { max-width: 960px; margin: 0 auto; background: white; }
-h1 { font-family: sans-serif; color: #377ba8; margin: 1rem 0; }
-a { color: #377ba8; }
-hr { border: none; border-top: 1px solid lightgray; }
-nav { background: lightgray; display: flex; align-items: center; padding: 0 0.5rem; }
-nav h1 { flex: auto; margin: 0; }
-nav h1 a { text-decoration: none; padding: 0.25rem 0.5rem; }
-nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
-nav ul li a, nav ul li span, header .action { display: block; padding: 0.5rem; }
-.content { padding: 0 1rem 1rem; }
-.content > header { border-bottom: 1px solid lightgray; display: flex; align-items:flex-end; }
-.content > header h1 { flex: auto; margin: 1rem 0 0.25rem 0; }
-.flash { margin: 1em 0; padding: 1em; background: #cae6f6; border: 1px solid #377ba8;}
-.post > header { display: flex; align-items: flex-end; font-size: 0.85em; }
-.post > header > div:first-of-type { flex: auto; }
-.post > header h1 { font-size: 1.5em; margin-bottom: 0; }
-.post .about { color: slategray; font-style: italic; }
-.post .body { white-space: pre-line; }
-.content:last-child { margin-bottom: 0; }
-.content form { margin: 1em 0; display: flex; flex-direction: column; }
-.content label { font-weight: bold; margin-bottom: 0.5em; }
-.content input, .content button, .content textarea { margin-bottom: 1em; }
-.content textarea { min-height: 12em; resize: vertical; }
-input.danger { color: #cc2f2e; }
-input[type=submit] { align-self: start; min-width: 10em; }
-enabled { color: #128e23}
-disabled { color: #8e1212}
-
-@media (prefers-color-scheme: dark) {
-  html { background: #333; color: #ddd; }
-  body { background: #444; color: #ddd; }
-  nav { background: #555; }
-  nav h1 a { color: #ddd; }
-  nav ul li a, nav ul li span, header .action { color: #ddd; }
-  hr { border-top-color: #666; }
-  .flash { background: #377ba8; color: #fff; }
-  .post > header { color: #ddd; }
-  .post .about { color: #aaa; }
-  .content form { color: #ddd; }
-  .content label { color: #ddd; }
-  .content input, .content button, .content textarea { background: #555; color: #ddd; }
-  input[type=submit] { background: #377ba8; color: #fff; }
+/* Define :root variables for light theme (default) */
+:root {
+  --page-bg: #eee;
+  --page-text: #000; /* Default text color */
+  --content-bg: white;
+  --primary-color: #377ba8; /* Blueish color used for links, headers */
+  --secondary-color: lightgray; /* Used for nav background, borders */
+  --flash-bg: #cae6f6;
+  --flash-border: #377ba8;
+  --flash-text: #000; /* Default flash text */
+  --link-color: #377ba8;
+  --header-text-color: #377ba8;
+  --post-about-text: slategray;
+  --input-bg: white;
+  --input-text: #000;
+  --input-border: #ccc; /* Added for inputs */
+  --button-bg: #f0f0f0; /* Generic button bg */
+  --button-text: #000;
+  --submit-bg: #377ba8; /* Specific for submit */
+  --submit-text: white;
+  --danger-text: #cc2f2e;
+  --enabled-text: #128e23;
+  --disabled-text: #8e1212;
+  --app-img-bg: #000000;
+  --app-img-border: #d8d8d8;
+  --select-bg: #fff;
+  --select-text: #333;
+  --select-border: #ccc;
 }
 
+/* Define variables for dark theme */
+[data-theme="dark"] {
+  --page-bg: #333;
+  --page-text: #ddd;
+  --content-bg: #444;
+  --primary-color: #5a9cd1; /* Lighter blue for dark mode */
+  --secondary-color: #555;
+  --flash-bg: #377ba8; /* This was already dark-mode adjusted */
+  --flash-border: #5a9cd1;
+  --flash-text: #fff;
+  --link-color: #5a9cd1;
+  --header-text-color: #5a9cd1;
+  --post-about-text: #aaa;
+  --input-bg: #555;
+  --input-text: #ddd;
+  --input-border: #777;
+  --button-bg: #666;
+  --button-text: #ddd;
+  --submit-bg: #5a9cd1;
+  --submit-text: #fff;
+  /* danger, enabled, disabled text can often remain the same, or be slightly adjusted if needed */
+  --app-img-border: #454545;
+  --select-bg: #555;
+  --select-text: #ddd;
+  --select-border: #777;
+}
+
+/* Apply variables to existing styles */
+html { font-family: sans-serif; background: var(--page-bg); color: var(--page-text); padding: 1rem; }
+body { max-width: 960px; margin: 0 auto; background: var(--content-bg); color: var(--page-text); }
+h1 { font-family: sans-serif; color: var(--header-text-color); margin: 1rem 0; }
+a { color: var(--link-color); }
+hr { border: none; border-top: 1px solid var(--secondary-color); }
+nav { background: var(--secondary-color); display: flex; align-items: center; padding: 0 0.5rem; }
+nav h1 { flex: auto; margin: 0; }
+nav h1 a { text-decoration: none; padding: 0.25rem 0.5rem; color: var(--header-text-color); } /* Ensure nav h1 link uses header text color or link color */
+nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
+nav ul li a, nav ul li span, header .action { display: block; padding: 0.5rem; color: var(--link-color); } /* Ensure nav links use link color */
+
+.content { padding: 0 1rem 1rem; }
+.content > header { border-bottom: 1px solid var(--secondary-color); display: flex; align-items:flex-end; }
+.content > header h1 { flex: auto; margin: 1rem 0 0.25rem 0; } /* Uses h1 style */
+.flash { margin: 1em 0; padding: 1em; background: var(--flash-bg); border: 1px solid var(--flash-border); color: var(--flash-text); }
+.post > header { display: flex; align-items: flex-end; font-size: 0.85em; } /* Text color will be inherited from body */
+.post > header > div:first-of-type { flex: auto; }
+.post > header h1 { font-size: 1.5em; margin-bottom: 0; } /* Uses h1 style */
+.post .about { color: var(--post-about-text); font-style: italic; }
+.post .body { white-space: pre-line; } /* Text color will be inherited */
+.content:last-child { margin-bottom: 0; }
+.content form { margin: 1em 0; display: flex; flex-direction: column; } /* Text color will be inherited */
+.content label { font-weight: bold; margin-bottom: 0.5em; color: var(--page-text); } /* Ensure labels use page text */
+.content input, .content button, .content textarea {
+  margin-bottom: 1em;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--input-border); /* Add border for consistency */
+  padding: 0.5em; /* Add some padding */
+}
+.content button { /* Style generic buttons */
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--input-border); /* Or a specific button border variable */
+}
+.content textarea { min-height: 12em; resize: vertical; }
+input.danger { color: var(--danger-text); background: transparent; border: none; } /* Make danger text inputs stand out */
+input[type=submit] {
+  align-self: start;
+  min-width: 10em;
+  background: var(--submit-bg);
+  color: var(--submit-text);
+  border: none; /* Submit buttons often don't have a border or have a matching one */
+}
+/* These are not standard HTML elements, ensure they are used like <span class="enabled"> */
+/* It's better to use classes e.g. .text-enabled, .text-disabled */
+.enabled, .text-enabled { color: var(--enabled-text); }
+.disabled, .text-disabled { color: var(--disabled-text); }
+
+
+/* app-img styles with variables */
 .app-img {
-  background: #000000;
+  background: var(--app-img-bg);
   overflow: hidden;
-  border: 1px solid #d8d8d8;
+  border: 1px solid var(--app-img-border);
   border-radius: 0.5rem;
 }
-
-/* Enhance and pixelate app image, overlay image with dot matrix */
 .app-img img {
-  background: #000000;
+  background: var(--app-img-bg); /* Match parent background */
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
@@ -65,3 +127,35 @@ disabled { color: #8e1212}
   width: 100%;
   height: 100%;
 }
+
+/* Theme Toggle Styles - now using variables */
+.theme-toggle-container {
+  display: inline-block;
+  list-style-type: none;
+}
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 0.5rem;
+}
+.theme-toggle label {
+  margin-right: 6px;
+  font-size: 0.9em;
+  color: var(--page-text); /* Ensure label color matches theme */
+}
+.theme-toggle select {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--select-border);
+  background-color: var(--select-bg);
+  font-size: 0.9em;
+  color: var(--select-text);
+}
+
+/*
+  The old @media (prefers-color-scheme: dark) block has been removed.
+  Its functionality is now handled by the [data-theme="dark"] selector
+  which will be applied to the <body> or <html> tag via JavaScript.
+  The JavaScript will detect system preference if the user selects "System" theme.
+*/

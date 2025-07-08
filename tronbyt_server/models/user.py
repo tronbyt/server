@@ -9,3 +9,4 @@ class User(TypedDict, total=False):
     email: str
     devices: Dict[str, Device]
     api_key: str
+    theme_preference: str  # "light", "dark", or "system"
