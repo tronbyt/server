@@ -153,9 +153,4 @@ input[type=submit] {
   color: var(--select-text);
 }
 
-/*
-  The old @media (prefers-color-scheme: dark) block has been removed.
-  Its functionality is now handled by the [data-theme="dark"] selector
-  which will be applied to the <body> or <html> tag via JavaScript.
-  The JavaScript will detect system preference if the user selects "System" theme.
-*/
+/* Theming is now handled by [data-theme] attribute set via JavaScript */
