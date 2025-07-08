@@ -100,10 +100,7 @@ def login() -> ResponseReturnValue:
         if error is None:
             session.clear()
             remember_me = request.form.get("remember")
-            if remember_me:
-                session.permanent = True
-            else:
-                session.permanent = False
+            session.permanent = bool(remember_me)
 
             current_app.logger.debug("username " + username)
             session["username"] = username
@@ -174,15 +171,9 @@ def set_theme_preference() -> ResponseReturnValue:
         return {"status": "error", "message": "Invalid theme value"}, 400
 
     # g.user is already the full user object from load_logged_in_user
-    # No need to call db.get_user(g.user["username"]) again.
-    if not g.user:  # Should be caught by @login_required, but as a safeguard
-        return {
-            "status": "error",
-            "message": "User not found in session",  # More accurate message
-        }, 401  # Unauthorized or 404 if prefered
-
+    # and @login_required ensures g.user is populated.
     g.user["theme_preference"] = theme
-    if db.save_user(g.user):  # Save the g.user object directly
+    if db.save_user(g.user):
         # g.user is already updated in memory for the current request.
         current_app.logger.info(f"User {g.user['username']} set theme to {theme}")
         return {"status": "success", "message": "Theme preference updated"}
