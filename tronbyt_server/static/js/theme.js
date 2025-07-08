@@ -25,7 +25,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // TODO: Include CSRF token if applicable and using Flask-WTF or similar
+                // CSRF protection for this POST request relies on the SameSite=Lax cookie policy.
             },
             body: JSON.stringify({ theme: theme })
         })

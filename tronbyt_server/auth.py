@@ -173,9 +173,12 @@ def set_theme_preference() -> ResponseReturnValue:
     if theme not in valid_themes:
         return {"status": "error", "message": "Invalid theme value"}, 400
 
-    user = db.get_user(g.user["username"]) # Fetch the full user object
+    user = db.get_user(g.user["username"])  # Fetch the full user object
     if not user:
-        return {"status": "error", "message": "User not found"}, 404 # Should not happen if login_required works
+        return {
+            "status": "error",
+            "message": "User not found",
+        }, 404  # Should not happen if login_required works
 
     user["theme_preference"] = theme
     if db.save_user(user):
