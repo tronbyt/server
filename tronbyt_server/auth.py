@@ -72,6 +72,7 @@ def register() -> ResponseReturnValue:
                 password=password,
                 email=email,
                 api_key=api_key,
+                theme_preference="system",  # Default theme for new users
             )
 
             if db.save_user(user, new_user=True):
@@ -98,8 +99,9 @@ def login() -> ResponseReturnValue:
                 time.sleep(2)  # slow down brute force attacks
         if error is None:
             session.clear()
-            if current_app.config.get("PRODUCTION") == "1":
-                session.permanent = True
+            remember_me = request.form.get("remember")
+            session.permanent = bool(remember_me)
+
             current_app.logger.debug("username " + username)
             session["username"] = username
             return redirect(url_for("index"))
@@ -154,3 +156,27 @@ def login_required(view: Callable[..., Any]) -> Callable[..., Any]:
         return view(**kwargs)
 
     return wrapped_view
+
+
+@bp.route("/set_theme_preference", methods=["POST"])
+@login_required
+def set_theme_preference() -> ResponseReturnValue:
+    data = request.get_json()
+    if not data or "theme" not in data:
+        return {"status": "error", "message": "Missing theme data"}, 400
+
+    theme = data["theme"]
+    valid_themes = ["light", "dark", "system"]
+    if theme not in valid_themes:
+        return {"status": "error", "message": "Invalid theme value"}, 400
+
+    # g.user is already the full user object from load_logged_in_user
+    # and @login_required ensures g.user is populated.
+    g.user["theme_preference"] = theme
+    if db.save_user(g.user):
+        # g.user is already updated in memory for the current request.
+        current_app.logger.info(f"User {g.user['username']} set theme to {theme}")
+        return {"status": "success", "message": "Theme preference updated"}
+    else:
+        current_app.logger.error(f"Failed to save theme for user {g.user['username']}")
+        return {"status": "error", "message": "Failed to save theme preference"}, 500

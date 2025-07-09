@@ -8,6 +8,10 @@
     <input name="username" id="username" required>
     <label for="password">{{ _('Password') }}</label>
     <input type="password" name="password" id="password" required>
+    <div>
+        <input type="checkbox" name="remember" id="remember">
+        <label for="remember">{{ _('Remember Me') }}</label>
+    </div>
     <input type="submit" class="w3-button w3-green" value="{{ _('Log In') }}">
 </form>
 {% endblock %}
