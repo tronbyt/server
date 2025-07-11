@@ -507,10 +507,13 @@ def addapp(device_id: str) -> ResponseReturnValue:
         user = g.user
         app_details = db.get_app_details_by_name(user["username"], name)
         app_path = app_details.get("path")
+        # Override form default with manifest set interval (allow 0 as valid value)
+        if "recommended_interval" in app_details:
+            uinterval = str(app_details["recommended_interval"])
         if app_path:
             app["path"] = app_path
-        if uinterval:
-            app["uinterval"] = int(uinterval)
+        if uinterval is not None and uinterval != "":
+            app["uinterval"] = int(uinterval)  # convert to int
         if display_time:
             app["display_time"] = int(display_time)
         if notes:
@@ -575,7 +578,7 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             app["iname"] = iname
             if name:
                 app["name"] = name
-            if uinterval:
+            if uinterval is not None:
                 app["uinterval"] = int(uinterval)
             app["display_time"] = int(request.form.get("display_time", 0))
             if notes:

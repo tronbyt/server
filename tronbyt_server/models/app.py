@@ -32,3 +32,4 @@ class AppMetadata(TypedDict, total=False):
     packageName: Optional[str]
     preview: Optional[str]
     supports2x: bool
+    recommended_interval: int
