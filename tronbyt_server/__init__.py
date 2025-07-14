@@ -19,7 +19,7 @@ from tronbyt_server import db, system_apps
 babel = Babel()
 sock = Sock()
 pixlet_render_app: Optional[
-    Callable[[bytes, bytes, int, int, int, int, int, int, int], Any]
+    Callable[[bytes, bytes, int, int, int, int, int, int, int, Optional[bytes]], Any]
 ] = None
 pixlet_get_schema: Optional[Callable[[bytes], Any]] = None
 pixlet_call_handler: Optional[
@@ -57,6 +57,7 @@ def load_pixlet_library() -> None:
         ctypes.c_int,
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_char_p,
     ]
 
     # Use c_void_p for the return type to avoid ctype's automatic copying into bytes() objects.
@@ -150,6 +151,7 @@ def render_app(
         timeout,
         image_format,
         1,
+        None,
     )
     error = c_char_p_to_string(ret.error)
     messagesJSON = c_char_p_to_string(ret.messages)
