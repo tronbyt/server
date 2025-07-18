@@ -1,0 +1,19 @@
+# Exported from Render on 2025-07-18T20:59:40Z
+services:
+- type: web
+  name: tronbyt-server
+  runtime: image
+  image:
+    url: ghcr.io/tronbyt/server:latest
+  plan: free
+  envVars:
+  - key: SERVER_HOSTNAME
+    fromService:
+      name: tronbyt-server
+      type: web
+      envVarKey: RENDER_EXTERNAL_HOSTNAME
+  - key: SERVER_PORT
+    value: 443
+  - key: SERVER_PROTOCOL
+    value: https
+version: "1"
