@@ -6,7 +6,6 @@ services:
   image:
     url: ghcr.io/tronbyt/server:latest
   plan: free
-  port: 8000
   envVars:
   - key: SERVER_HOSTNAME
     fromService:
