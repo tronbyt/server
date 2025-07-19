@@ -24,7 +24,7 @@ Some community projects like [TidbytAssistant](https://github.com/savdagod/Tidby
 
 ## Getting Started
 
-You can run Tronbyt-server on the free tier at Render.com.  Here is the a [video walkthough](https://www.youtube.com/watch?v=T6NPyjEu7qU).
+You can run Tronbyt-server on the free tier at Render.com.  Here is a [video walkthrough](https://www.youtube.com/watch?v=T6NPyjEu7qU).
 
 ### Prerequisites
 
