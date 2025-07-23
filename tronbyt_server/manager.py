@@ -12,7 +12,6 @@ from multiprocessing import Manager
 from operator import itemgetter
 from pathlib import Path
 from random import randint
-from threading import Lock
 from typing import Any, Dict, Optional
 from zoneinfo import available_timezones
 
@@ -1432,7 +1431,7 @@ def import_device() -> ResponseReturnValue:
 # Use a Manager to create a shared dictionary for events across processes
 manager = Manager()
 device_conditions = manager.dict()
-device_locks = Lock()
+device_lock = manager.Lock()
 
 
 # Ignore untyped decorator: https://github.com/miguelgrinberg/flask-sock/issues/55
@@ -1452,7 +1451,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
         ws.close()
         return
 
-    with device_locks:
+    with device_lock:
         if device_id in device_conditions:
             device_condition = device_conditions[device_id]
         else:
@@ -1525,7 +1524,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
 
 def push_new_image(device_id: str) -> None:
     """Wake up one WebSocket loop to push a new image."""
-    with device_locks:
+    with device_lock:
         if device_id in device_conditions:
             with device_conditions[device_id]:
                 device_conditions[device_id].notify(1)
