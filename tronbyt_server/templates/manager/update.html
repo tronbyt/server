@@ -171,16 +171,6 @@
     </div>
 
     <div class="form-group">
-      <label for="notes">{{ _('Notes') }}</label>
-      <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
-    </div>
-
-    <div class="form-group">
-      <label for="api_key">{{ _('API Key') }}</label>
-      <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}">
-    </div>
-
-    <div class="form-group">
       <label for="location_search">{{ _('Location') }}</label>
       <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
         value="{{ request.form['location_search'] or device.get('location', {}).get('name', '') }}">
@@ -188,12 +178,56 @@
       <input type="hidden" name="location" id="location"
         value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
     </div>
-
+    
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
       });
     </script>
+
+<div class="form-group">
+  <label for="api_key">{{ _('API Key') }}</label>
+  <input name="api_key" id="api_key" class="form-control" value="{{ request.form['api_key'] or device['api_key'] }}"
+    oninput="updateCurlCommand()">
+</div>
+
+<div class="form-group">
+  <label for="curl_example">{{ _('Example curl Command') }}</label>
+  <textarea id="curl_example" class="form-control" rows="5" readonly></textarea>
+</div>
+
+<script>
+  function parseImageUrl(imageUrl) {
+    try {
+      const url = new URL(imageUrl);
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      const deviceId = pathParts[0];
+      const server = `${url.protocol}//${url.host}`;
+      return { server, deviceId };
+    } catch (e) {
+      return { server: 'http://localhost:8000', deviceId: 'UNKNOWN' };
+    }
+  }
+
+  function updateCurlCommand() {
+    const apiKey = document.getElementById("api_key").value.trim();
+    const imageUrl = document.getElementById("img_url").value.trim();
+    const { server, deviceId } = parseImageUrl(imageUrl);
+
+    const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
+    document.getElementById("curl_example").value = curl;
+  }
+
+  // Update curl command on page load
+  document.addEventListener("DOMContentLoaded", updateCurlCommand);
+</script>
+
+    <div class="form-group">
+      <label for="notes">{{ _('Notes') }}</label>
+      <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}">
+    </div>
+
+
 
     <div class="form-actions">
       <button type="submit" class="w3-button w3-green">{{ _('Save') }}</button>
