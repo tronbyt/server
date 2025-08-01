@@ -1125,7 +1125,7 @@ def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
                 flash("Repo Updated")
                 return True
             else:
-                flash(f"Repo Update Failed : {result.stdout} - {result.stderr}")
+                flash("Repo Update Failed")
                 return False
     else:
         flash("No Changes to Repo")
