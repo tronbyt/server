@@ -1171,7 +1171,7 @@ def set_system_repo() -> ResponseReturnValue:
         if "app_repo_url" not in request.form:
             abort(HTTPStatus.BAD_REQUEST)
         repo_url = str(request.form.get("app_repo_url"))
-        if set_repo("system_repo_url", Path("system-apps"), repo_url):
+        if set_repo("system_repo_url", db.get_data_dir() / "system-apps", repo_url):
             # run the generate app list for custom repo
             # will just generate json file if already there.
             system_apps.update_system_repo(db.get_data_dir())
@@ -1187,7 +1187,9 @@ def refresh_system_repo() -> ResponseReturnValue:
         if g.user["username"] != "admin":
             abort(HTTPStatus.FORBIDDEN)
         if set_repo(
-            "system_repo_url", Path("system-apps"), g.user.get("system_repo_url", "")
+            "system_repo_url",
+            db.get_data_dir() / "system-apps",
+            g.user.get("system_repo_url", ""),
         ):
             # run the generate app list for custom repo
             # will just generate json file if already there.
