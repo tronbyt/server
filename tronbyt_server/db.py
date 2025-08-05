@@ -5,7 +5,7 @@ import sqlite3
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Optional, Union, Dict, Any, cast
+from typing import List, Literal, Optional, Union, Dict, Any
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -842,8 +842,7 @@ def update_playlist(device: Device, playlist_id: str, **updates: Any) -> bool:
     # Apply updates
     for key, value in updates.items():
         if key in ["name", "description", "enabled", "app_inames"]:
-            cast(dict, playlist)[key] = value  # this all just to shut mypy up
-            # playlist[key] = value
+            playlist[key] = value
 
     playlist["updated_at"] = datetime.now().isoformat()
     return True
