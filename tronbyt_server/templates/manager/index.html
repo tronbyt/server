@@ -257,6 +257,22 @@
             <header>
               <h1><a href="{{ device['img_url'] }}" target="_blank" style="text-decoration: none; color: inherit;">
                 {{ device['name'] }}</a></h1>
+              {% if device.get('active_playlist_id') %}
+                {% set active_playlist = device.get('playlists', {}).get(device.get('active_playlist_id')) %}
+                {% if active_playlist %}
+                  <div style="margin-top: 5px;">
+                    <span class="w3-tag w3-green w3-round w3-small">
+                      <i class="fas fa-play"></i> Playlist: {{ active_playlist.name }}
+                    </span>
+                  </div>
+                {% endif %}
+              {% else %}
+                <div style="margin-top: 5px;">
+                  <span class="w3-tag w3-grey w3-round w3-small">
+                    <i class="fas fa-list"></i> All Apps
+                  </span>
+                </div>
+              {% endif %}
             </header>
           </td>
           <td rowspan="4" width="40%">
@@ -300,11 +316,13 @@
           <td>
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
+            <a class="w3-button w3-purple w3-round" style="min-width: 100px;"
+              href="{{ url_for('manager.playlists', device_id=device['id']) }}">{{ _('Playlists') }}</a>
               {% if devices|length > 1 %}
               <a id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
                 onclick="toggleApps('{{ device['id'] }}')">{{ _('Hide Apps') }}</a>
               {% endif %}
-  
+
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit Device') }}</a>
             {% if device.get('type') in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide"] %}

@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% block header %}
+<h1>{% block title %}{{ _('Edit Playlist') }} - {{ playlist.name }}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<style>
+  .form-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+  
+  .form-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .form-checkbox {
+    margin-right: 8px;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 30px;
+  }
+  
+  .help-text {
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+    margin-top: 5px;
+  }
+  
+  .playlist-info {
+    background-color: var(--bg-color-light);
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+  
+  @media screen and (max-width: 768px) {
+    .form-container {
+      margin: 0 10px;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+    
+    .form-actions .w3-button {
+      width: 100%;
+      margin: 5px 0;
+    }
+  }
+</style>
+
+<div class="w3-container">
+  <div class="w3-card-4 w3-margin-bottom">
+    <div class="w3-container w3-padding">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <div>
+          <h3>Edit Playlist</h3>
+          <p class="w3-text-grey">Modify playlist settings for {{ device.name }}</p>
+        </div>
+        <div>
+          <a href="{{ url_for('manager.playlists', device_id=device.id) }}" 
+             class="w3-button w3-grey w3-round">
+            <i class="fas fa-arrow-left"></i> Back to Playlists
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="w3-card-4">
+    <div class="w3-container w3-padding">
+      <div class="form-container">
+        <!-- Playlist info -->
+        <div class="playlist-info">
+          <h4><i class="fas fa-info-circle"></i> Playlist Information</h4>
+          <p><strong>ID:</strong> {{ playlist.id }}</p>
+          <p><strong>Created:</strong> {{ playlist.created_at[:19] if playlist.created_at else 'Unknown' }}</p>
+          <p><strong>Last Updated:</strong> {{ playlist.updated_at[:19] if playlist.updated_at else 'Unknown' }}</p>
+          <p><strong>Apps in Playlist:</strong> {{ playlist.app_inames|length }}</p>
+        </div>
+
+        <form method="post">
+          <div class="form-group">
+            <label for="name" class="form-label">
+              <i class="fas fa-list"></i> Playlist Name *
+            </label>
+            <input type="text" 
+                   id="name" 
+                   name="name" 
+                   class="form-input" 
+                   required 
+                   maxlength="100"
+                   value="{{ playlist.name }}"
+                   placeholder="Enter playlist name">
+            <div class="help-text">
+              Give your playlist a descriptive name (1-100 characters)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description" class="form-label">
+              <i class="fas fa-align-left"></i> Description
+            </label>
+            <textarea id="description" 
+                      name="description" 
+                      class="form-textarea" 
+                      placeholder="Optional description of this playlist">{{ playlist.description or '' }}</textarea>
+            <div class="help-text">
+              Optional description to help you remember what this playlist is for
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <input type="checkbox" 
+                     name="enabled" 
+                     class="form-checkbox"
+                     {% if playlist.enabled %}checked{% endif %}>
+              <i class="fas fa-toggle-on"></i> Playlist Enabled
+            </label>
+            <div class="help-text">
+              Disabled playlists cannot be activated. Apps in disabled playlists will not be shown in rotation.
+            </div>
+          </div>
+
+          {% if playlist.app_inames %}
+            <div class="w3-panel w3-light-green w3-leftbar w3-border-green">
+              <h4><i class="fas fa-list"></i> Apps in This Playlist</h4>
+              <p>This playlist contains {{ playlist.app_inames|length }} app(s). 
+                 <a href="{{ url_for('manager.manage_playlist_apps', device_id=device.id, playlist_id=playlist.id) }}">
+                   Manage apps →
+                 </a>
+              </p>
+            </div>
+          {% else %}
+            <div class="w3-panel w3-light-orange w3-leftbar w3-border-orange">
+              <h4><i class="fas fa-exclamation-triangle"></i> No Apps in Playlist</h4>
+              <p>This playlist is empty. 
+                 <a href="{{ url_for('manager.manage_playlist_apps', device_id=device.id, playlist_id=playlist.id) }}">
+                   Add some apps →
+                 </a>
+              </p>
+            </div>
+          {% endif %}
+
+          <div class="form-actions">
+            <a href="{{ url_for('manager.playlists', device_id=device.id) }}" 
+               class="w3-button w3-grey w3-round">
+              <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="w3-button w3-blue w3-round">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Character counter for name field
+document.getElementById('name').addEventListener('input', function() {
+  const maxLength = 100;
+  const currentLength = this.value.length;
+  const helpText = this.nextElementSibling;
+  
+  if (currentLength > maxLength * 0.8) {
+    helpText.textContent = `${currentLength}/${maxLength} characters`;
+    if (currentLength >= maxLength) {
+      helpText.style.color = 'red';
+    } else {
+      helpText.style.color = 'orange';
+    }
+  } else {
+    helpText.textContent = 'Give your playlist a descriptive name (1-100 characters)';
+    helpText.style.color = '';
+  }
+});
+</script>
+{% endblock %}

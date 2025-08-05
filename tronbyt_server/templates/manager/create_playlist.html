@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block header %}
+<h1>{% block title %}{{ _('Create Playlist') }} - {{ device.name }}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<style>
+  .form-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+  
+  .form-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 30px;
+  }
+  
+  .help-text {
+    font-size: 0.9em;
+    color: var(--text-color-secondary);
+    margin-top: 5px;
+  }
+  
+  @media screen and (max-width: 768px) {
+    .form-container {
+      margin: 0 10px;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+    
+    .form-actions .w3-button {
+      width: 100%;
+      margin: 5px 0;
+    }
+  }
+</style>
+
+<div class="w3-container">
+  <div class="w3-card-4 w3-margin-bottom">
+    <div class="w3-container w3-padding">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <div>
+          <h3>Create New Playlist</h3>
+          <p class="w3-text-grey">Create a new playlist for {{ device.name }}</p>
+        </div>
+        <div>
+          <a href="{{ url_for('manager.playlists', device_id=device.id) }}" 
+             class="w3-button w3-grey w3-round">
+            <i class="fas fa-arrow-left"></i> Back to Playlists
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="w3-card-4">
+    <div class="w3-container w3-padding">
+      <div class="form-container">
+        <form method="post">
+          <div class="form-group">
+            <label for="name" class="form-label">
+              <i class="fas fa-list"></i> Playlist Name *
+            </label>
+            <input type="text" 
+                   id="name" 
+                   name="name" 
+                   class="form-input" 
+                   required 
+                   maxlength="100"
+                   placeholder="Enter playlist name">
+            <div class="help-text">
+              Give your playlist a descriptive name (1-100 characters)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description" class="form-label">
+              <i class="fas fa-align-left"></i> Description
+            </label>
+            <textarea id="description" 
+                      name="description" 
+                      class="form-textarea" 
+                      placeholder="Optional description of this playlist"></textarea>
+            <div class="help-text">
+              Optional description to help you remember what this playlist is for
+            </div>
+          </div>
+
+          <div class="w3-panel w3-light-blue w3-leftbar w3-border-blue">
+            <h4><i class="fas fa-info-circle"></i> Next Steps</h4>
+            <p>After creating the playlist, you'll be able to:</p>
+            <ul>
+              <li>Add apps from your device to the playlist</li>
+              <li>Reorder apps within the playlist</li>
+              <li>Activate the playlist to limit rotation to only these apps</li>
+            </ul>
+          </div>
+
+          <div class="form-actions">
+            <a href="{{ url_for('manager.playlists', device_id=device.id) }}" 
+               class="w3-button w3-grey w3-round">
+              <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="w3-button w3-green w3-round">
+              <i class="fas fa-plus"></i> Create Playlist
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Auto-focus on the name field
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('name').focus();
+});
+
+// Character counter for name field
+document.getElementById('name').addEventListener('input', function() {
+  const maxLength = 100;
+  const currentLength = this.value.length;
+  const helpText = this.nextElementSibling;
+  
+  if (currentLength > maxLength * 0.8) {
+    helpText.textContent = `${currentLength}/${maxLength} characters`;
+    if (currentLength >= maxLength) {
+      helpText.style.color = 'red';
+    } else {
+      helpText.style.color = 'orange';
+    }
+  } else {
+    helpText.textContent = 'Give your playlist a descriptive name (1-100 characters)';
+    helpText.style.color = '';
+  }
+});
+</script>
+{% endblock %}

@@ -1,8 +1,11 @@
 import re
-from typing import Dict, Optional, Required, TypedDict
+from typing import Dict, Optional, Required, TypedDict, TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from tronbyt_server.models.app import App
+
+if TYPE_CHECKING:
+    from tronbyt_server.models.playlist import Playlist
 
 DEFAULT_DEVICE_TYPE = "tidbyt_gen1"
 
@@ -35,6 +38,8 @@ class Device(TypedDict, total=False):
     location: Optional[Location]
     apps: Dict[str, App]
     last_app_index: int
+    playlists: Dict[str, "Playlist"]  # Dictionary of playlist_id -> Playlist
+    active_playlist_id: Optional[str]  # Currently active playlist ID
 
 
 def validate_timezone(tz: str) -> Optional[ZoneInfo]:

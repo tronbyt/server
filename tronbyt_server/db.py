@@ -23,6 +23,11 @@ from tronbyt_server.models.device import (
     Device,
     validate_timezone,
 )
+from tronbyt_server.models.playlist import (
+    Playlist,
+    validate_playlist_id,
+    validate_playlist_name,
+)
 from tronbyt_server.models.user import User
 
 
@@ -769,3 +774,151 @@ def save_render_messages(device: Device, app: App, messages: List[str]) -> None:
     # Save the updated app
     if not save_app(device["id"], app):
         current_app.logger.error("Error saving render messages: Failed to save app.")
+
+
+# Playlist helper functions
+def get_device_playlists(device: Device) -> Dict[str, Playlist]:
+    """Get all playlists for a device."""
+    return device.get("playlists", {})
+
+
+def get_device_playlist(device: Device, playlist_id: str) -> Optional[Playlist]:
+    """Get a specific playlist from a device."""
+    return device.get("playlists", {}).get(playlist_id)
+
+
+def create_playlist(
+    device: Device, playlist_id: str, name: str, description: str = ""
+) -> Playlist:
+    """Create a new playlist for a device."""
+    from datetime import datetime
+
+    if not validate_playlist_id(playlist_id):
+        raise ValueError("Invalid playlist ID")
+
+    if not validate_playlist_name(name):
+        raise ValueError("Invalid playlist name")
+
+    # Initialize playlists dict if it doesn't exist
+    if "playlists" not in device:
+        device["playlists"] = {}
+
+    # Check if playlist already exists
+    if playlist_id in device["playlists"]:
+        raise ValueError("Playlist already exists")
+
+    # Get the next order number
+    existing_playlists = device.get("playlists", {})
+    max_order = max(
+        (p.get("order", 0) for p in existing_playlists.values()), default=-1
+    )
+
+    now = datetime.now().isoformat()
+    playlist = Playlist(
+        id=playlist_id,
+        name=name,
+        description=description,
+        app_inames=[],
+        enabled=True,
+        created_at=now,
+        updated_at=now,
+        order=max_order + 1,
+    )
+
+    device["playlists"][playlist_id] = playlist
+    return playlist
+
+
+def update_playlist(device: Device, playlist_id: str, **updates) -> bool:
+    """Update a playlist's properties."""
+    from datetime import datetime
+
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return False
+
+    # Validate updates
+    if "name" in updates and not validate_playlist_name(updates["name"]):
+        raise ValueError("Invalid playlist name")
+
+    # Apply updates
+    for key, value in updates.items():
+        if key in ["name", "description", "enabled", "app_inames"]:
+            playlist[key] = value
+
+    playlist["updated_at"] = datetime.now().isoformat()
+    return True
+
+
+def delete_playlist(device: Device, playlist_id: str) -> bool:
+    """Delete a playlist from a device."""
+    if playlist_id not in device.get("playlists", {}):
+        return False
+
+    # If this was the active playlist, clear the active playlist
+    if device.get("active_playlist_id") == playlist_id:
+        device["active_playlist_id"] = None
+
+    del device["playlists"][playlist_id]
+    return True
+
+
+def add_app_to_playlist(device: Device, playlist_id: str, app_iname: str) -> bool:
+    """Add an app to a playlist."""
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return False
+
+    # Check if app exists in device
+    if app_iname not in device.get("apps", {}):
+        return False
+
+    # Add app if not already in playlist
+    if app_iname not in playlist["app_inames"]:
+        playlist["app_inames"].append(app_iname)
+        playlist["updated_at"] = datetime.now().isoformat()
+
+    return True
+
+
+def remove_app_from_playlist(device: Device, playlist_id: str, app_iname: str) -> bool:
+    """Remove an app from a playlist."""
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return False
+
+    if app_iname in playlist["app_inames"]:
+        playlist["app_inames"].remove(app_iname)
+        playlist["updated_at"] = datetime.now().isoformat()
+        return True
+
+    return False
+
+
+def set_active_playlist(device: Device, playlist_id: Optional[str]) -> bool:
+    """Set the active playlist for a device."""
+    if playlist_id is not None and playlist_id not in device.get("playlists", {}):
+        return False
+
+    device["active_playlist_id"] = playlist_id
+    return True
+
+
+def get_active_playlist(device: Device) -> Optional[Playlist]:
+    """Get the currently active playlist for a device."""
+    active_id = device.get("active_playlist_id")
+    if active_id:
+        return get_device_playlist(device, active_id)
+    return None
+
+
+def get_playlist_apps(device: Device, playlist_id: str) -> List[App]:
+    """Get all apps in a playlist."""
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return []
+
+    device_apps = device.get("apps", {})
+    return [
+        device_apps[iname] for iname in playlist["app_inames"] if iname in device_apps
+    ]

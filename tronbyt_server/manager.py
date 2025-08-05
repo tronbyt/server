@@ -46,6 +46,7 @@ from tronbyt_server.models.device import (
     validate_device_id,
     validate_device_type,
 )
+from tronbyt_server.models.playlist import validate_playlist_name
 from tronbyt_server.models.user import User
 
 bp = Blueprint("manager", __name__)
@@ -951,7 +952,9 @@ def next_app(
             ephemeral_file.unlink()
             return response
 
-    if recursion_depth > len(device.get("apps", {})):
+    # Get the total number of apps for recursion depth check
+    total_apps = len(device.get("apps", {}))
+    if recursion_depth > total_apps:
         current_app.logger.warning(
             "Maximum recursion depth exceeded, sending default image"
         )
@@ -962,25 +965,63 @@ def next_app(
         if last_app_index is None:
             abort(HTTPStatus.NOT_FOUND)
 
-    apps = device.get("apps", {})
-    # if no apps return default.webp
-    if not apps:
-        return send_default_image(device)
-
-    apps_list = sorted(apps.values(), key=itemgetter("order"))
-    is_night_mode_app = False
-    if (
-        db.get_night_mode_is_active(device)
-        and device.get("night_mode_app", "") in apps.keys()
-    ):
-        app = apps[device["night_mode_app"]]
-        is_night_mode_app = True
-    elif last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
-        app = apps_list[last_app_index + 1]  # add 1 to get the next app
-        last_app_index += 1
+    # Check if there's an active playlist
+    active_playlist = db.get_active_playlist(device)
+    if active_playlist and active_playlist.get("enabled", True):
+        # Use apps from the active playlist
+        playlist_apps = db.get_playlist_apps(device, active_playlist["id"])
+        if playlist_apps:
+            # Filter out disabled apps from playlist
+            apps_list = [app for app in playlist_apps if app.get("enabled", True)]
+            current_app.logger.debug(
+                f"Using playlist '{active_playlist['name']}' with {len(apps_list)} enabled apps"
+            )
+        else:
+            # Playlist is empty, fall back to all device apps
+            apps = device.get("apps", {})
+            apps_list = sorted(apps.values(), key=itemgetter("order"))
+            current_app.logger.debug("Active playlist is empty, using all device apps")
     else:
-        app = apps_list[0]  # go to the beginning
-        last_app_index = 0
+        # No active playlist or playlist is disabled, use all device apps
+        apps = device.get("apps", {})
+        apps_list = sorted(apps.values(), key=itemgetter("order"))
+        current_app.logger.debug("No active playlist, using all device apps")
+
+    # if no apps return default.webp
+    if not apps_list:
+        return send_default_image(device)
+    is_night_mode_app = False
+    if db.get_night_mode_is_active(device) and device.get("night_mode_app", ""):
+        # Check if night mode app exists in current apps list
+        night_mode_iname = device.get("night_mode_app", "")
+        night_mode_app = None
+        for app in apps_list:
+            if app.get("iname") == night_mode_iname:
+                night_mode_app = app
+                break
+
+        if night_mode_app:
+            app = night_mode_app
+            is_night_mode_app = True
+        else:
+            # Night mode app not in current rotation, proceed with normal rotation
+            current_app.logger.debug(
+                f"Night mode app {night_mode_iname} not in current rotation"
+            )
+            if last_app_index + 1 < len(apps_list):
+                app = apps_list[last_app_index + 1]
+                last_app_index += 1
+            else:
+                app = apps_list[0]
+                last_app_index = 0
+    else:
+        # Normal app rotation
+        if last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
+            app = apps_list[last_app_index + 1]  # add 1 to get the next app
+            last_app_index += 1
+        else:
+            app = apps_list[0]  # go to the beginning
+            last_app_index = 0
 
     if not is_night_mode_app and (
         not app["enabled"] or not db.get_is_app_schedule_active(app, device)
@@ -1428,6 +1469,279 @@ def import_device() -> ResponseReturnValue:
 
     # Render the import form
     return render_template("manager/import_config.html")
+
+
+# Playlist management routes
+@bp.route("/<string:device_id>/playlists", methods=["GET"])
+@login_required
+def playlists(device_id: str) -> ResponseReturnValue:
+    """List all playlists for a device."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+    playlists = db.get_device_playlists(device)
+
+    # Sort playlists by order
+    sorted_playlists = sorted(playlists.values(), key=lambda p: p.get("order", 0))
+
+    return render_template(
+        "manager/playlists.html",
+        device=device,
+        playlists=sorted_playlists,
+        active_playlist_id=device.get("active_playlist_id"),
+    )
+
+
+@bp.route("/<string:device_id>/playlists/create", methods=["GET", "POST"])
+@login_required
+def create_playlist(device_id: str) -> ResponseReturnValue:
+    """Create a new playlist."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+
+        if not name:
+            flash("Playlist name is required.")
+            return redirect(url_for("manager.create_playlist", device_id=device_id))
+
+        if not validate_playlist_name(name):
+            flash("Invalid playlist name.")
+            return redirect(url_for("manager.create_playlist", device_id=device_id))
+
+        # Generate a unique playlist ID
+        max_attempts = 10
+        for _ in range(max_attempts):
+            playlist_id = str(uuid.uuid4())[0:8]
+            if playlist_id not in device.get("playlists", {}):
+                break
+        else:
+            flash("Could not generate a unique playlist ID.")
+            return redirect(url_for("manager.create_playlist", device_id=device_id))
+
+        try:
+            db.create_playlist(device, playlist_id, name, description)
+            db.save_user(g.user)
+            flash(f"Playlist '{name}' created successfully.")
+            return redirect(url_for("manager.playlists", device_id=device_id))
+        except ValueError as e:
+            flash(str(e))
+            return redirect(url_for("manager.create_playlist", device_id=device_id))
+
+    return render_template("manager/create_playlist.html", device=device)
+
+
+@bp.route(
+    "/<string:device_id>/playlists/<string:playlist_id>/edit", methods=["GET", "POST"]
+)
+@login_required
+def edit_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    """Edit a playlist."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+    playlist = db.get_device_playlist(device, playlist_id)
+
+    if not playlist:
+        abort(HTTPStatus.NOT_FOUND, description="Playlist not found")
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        enabled = "enabled" in request.form
+
+        if not name:
+            flash("Playlist name is required.")
+            return redirect(
+                url_for(
+                    "manager.edit_playlist",
+                    device_id=device_id,
+                    playlist_id=playlist_id,
+                )
+            )
+
+        if not validate_playlist_name(name):
+            flash("Invalid playlist name.")
+            return redirect(
+                url_for(
+                    "manager.edit_playlist",
+                    device_id=device_id,
+                    playlist_id=playlist_id,
+                )
+            )
+
+        try:
+            db.update_playlist(
+                device, playlist_id, name=name, description=description, enabled=enabled
+            )
+            db.save_user(g.user)
+            flash(f"Playlist '{name}' updated successfully.")
+            return redirect(url_for("manager.playlists", device_id=device_id))
+        except ValueError as e:
+            flash(str(e))
+            return redirect(
+                url_for(
+                    "manager.edit_playlist",
+                    device_id=device_id,
+                    playlist_id=playlist_id,
+                )
+            )
+
+    return render_template(
+        "manager/edit_playlist.html", device=device, playlist=playlist
+    )
+
+
+@bp.route("/<string:device_id>/playlists/<string:playlist_id>/delete", methods=["POST"])
+@login_required
+def delete_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    """Delete a playlist."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+    playlist = db.get_device_playlist(device, playlist_id)
+
+    if not playlist:
+        abort(HTTPStatus.NOT_FOUND, description="Playlist not found")
+
+    playlist_name = playlist["name"]
+    if db.delete_playlist(device, playlist_id):
+        db.save_user(g.user)
+        flash(f"Playlist '{playlist_name}' deleted successfully.")
+    else:
+        flash("Error deleting playlist.")
+
+    return redirect(url_for("manager.playlists", device_id=device_id))
+
+
+@bp.route(
+    "/<string:device_id>/playlists/<string:playlist_id>/manage_apps",
+    methods=["GET", "POST"],
+)
+@login_required
+def manage_playlist_apps(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    """Manage apps in a playlist."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+    playlist = db.get_device_playlist(device, playlist_id)
+
+    if not playlist:
+        abort(HTTPStatus.NOT_FOUND, description="Playlist not found")
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        app_iname = request.form.get("app_iname")
+
+        if action == "add" and app_iname:
+            if db.add_app_to_playlist(device, playlist_id, app_iname):
+                db.save_user(g.user)
+                flash("App added to playlist.")
+            else:
+                flash("Error adding app to playlist.")
+        elif action == "remove" and app_iname:
+            if db.remove_app_from_playlist(device, playlist_id, app_iname):
+                db.save_user(g.user)
+                flash("App removed from playlist.")
+            else:
+                flash("Error removing app from playlist.")
+
+        return redirect(
+            url_for(
+                "manager.manage_playlist_apps",
+                device_id=device_id,
+                playlist_id=playlist_id,
+            )
+        )
+
+    # Get all device apps and playlist apps
+    device_apps = device.get("apps", {})
+    playlist_apps = db.get_playlist_apps(device, playlist_id)
+    playlist_app_inames = set(playlist["app_inames"])
+
+    # Available apps (not in playlist)
+    available_apps = {
+        iname: app
+        for iname, app in device_apps.items()
+        if iname not in playlist_app_inames
+    }
+
+    return render_template(
+        "manager/manage_playlist_apps.html",
+        device=device,
+        playlist=playlist,
+        playlist_apps=playlist_apps,
+        available_apps=available_apps,
+    )
+
+
+@bp.route(
+    "/<string:device_id>/playlists/<string:playlist_id>/activate", methods=["POST"]
+)
+@login_required
+def activate_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    """Activate a playlist."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+
+    if db.set_active_playlist(device, playlist_id):
+        db.save_user(g.user)
+        playlist = db.get_device_playlist(device, playlist_id)
+        playlist_name = playlist["name"] if playlist else "Unknown"
+        flash(f"Playlist '{playlist_name}' activated.")
+    else:
+        flash("Error activating playlist.")
+
+    return redirect(url_for("manager.playlists", device_id=device_id))
+
+
+@bp.route("/<string:device_id>/playlists/deactivate", methods=["POST"])
+@login_required
+def deactivate_playlist(device_id: str) -> ResponseReturnValue:
+    """Deactivate the current playlist."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+
+    if db.set_active_playlist(device, None):
+        db.save_user(g.user)
+        flash("Playlist deactivated. Using all device apps.")
+    else:
+        flash("Error deactivating playlist.")
+
+    return redirect(url_for("manager.playlists", device_id=device_id))
 
 
 # Use a Manager to create a shared dictionary for events across processes
