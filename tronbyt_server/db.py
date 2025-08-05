@@ -5,7 +5,7 @@ import sqlite3
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Optional, Union, Dict
+from typing import List, Literal, Optional, Union, Dict, Any
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -791,7 +791,6 @@ def create_playlist(
     device: Device, playlist_id: str, name: str, description: str = ""
 ) -> Playlist:
     """Create a new playlist for a device."""
-    from datetime import datetime
 
     if not validate_playlist_id(playlist_id):
         raise ValueError("Invalid playlist ID")
@@ -829,9 +828,8 @@ def create_playlist(
     return playlist
 
 
-def update_playlist(device: Device, playlist_id: str, **updates) -> bool:
+def update_playlist(device: Device, playlist_id: str, **updates: Any) -> bool:
     """Update a playlist's properties."""
-    from datetime import datetime
 
     playlist = get_device_playlist(device, playlist_id)
     if not playlist:
