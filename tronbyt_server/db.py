@@ -5,7 +5,7 @@ import sqlite3
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, Dict
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 

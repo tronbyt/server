@@ -1484,16 +1484,28 @@ def playlists(device_id: str) -> ResponseReturnValue:
 
     device = g.user["devices"][device_id]
     playlists = db.get_device_playlists(device)
+    print(f"playlists : {playlists}")
 
     # Sort playlists by order
     sorted_playlists = sorted(playlists.values(), key=lambda p: p.get("order", 0))
+    active_playlist_id = device.get("active_playlist_id", None)
+    active_playlist = next(
+        (p for p in playlists.values() if p.get("id") == active_playlist_id), None
+    )
 
     return render_template(
         "manager/playlists.html",
         device=device,
         playlists=sorted_playlists,
-        active_playlist_id=device.get("active_playlist_id"),
+        active_playlist_id=active_playlist_id,
+        active_playlist=active_playlist,
     )
+    # return render_template(
+    #     "manager/playlists.html",
+    #     device=device,
+    #     playlists=sorted_playlists,
+    #     active_playlist_id=device.get("active_playlist_id"),
+    # )
 
 
 @bp.route("/<string:device_id>/playlists/create", methods=["GET", "POST"])

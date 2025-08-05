@@ -112,23 +112,19 @@
   </div>
 
   <!-- Active playlist info -->
-  {% if active_playlist_id %}
-    {% for playlist in playlists %}
-      {% if playlist.id == active_playlist_id %}
-        <div class="w3-card-4 w3-green w3-margin-bottom">
-          <div class="w3-container w3-padding">
-            <h4><i class="fas fa-play"></i> Currently Active: {{ playlist.name }}</h4>
-            <p>{{ playlist.app_inames|length }} apps in rotation</p>
-            <form method="post" action="{{ url_for('manager.deactivate_playlist', device_id=device.id) }}" style="display: inline;">
-              <button type="submit" class="w3-button w3-white w3-text-green w3-round btn-small">
-                <i class="fas fa-stop"></i> Deactivate
-              </button>
-            </form>
-          </div>
-        </div>
-        {% break %}
-      {% endif %}
-    {% endfor %}
+{% if active_playlist %}
+<div class="w3-card-4 w3-green w3-margin-bottom">
+  <div class="w3-container w3-padding">
+    <h4><i class="fas fa-play"></i> Currently Active: {{ active_playlist.name }}</h4>
+    <p>{{ active_playlist.app_inames|length }} apps in rotation</p>
+    <form method="post" action="{{ url_for('manager.deactivate_playlist', device_id=device.id) }}"
+      style="display: inline;">
+      <button type="submit" class="w3-button w3-white w3-text-green w3-round btn-small">
+        <i class="fas fa-stop"></i> Deactivate
+      </button>
+    </form>
+  </div>
+</div>
   {% else %}
     <div class="w3-card-4 w3-orange w3-margin-bottom">
       <div class="w3-container w3-padding">
