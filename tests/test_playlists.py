@@ -69,6 +69,7 @@ def test_playlist_crud_operations(client: FlaskClient) -> None:
     user = utils.get_testuser()
     device = user["devices"][device_id]
     playlist = db.get_device_playlist(device, playlist_id)
+    assert playlist is not None
     assert playlist["name"] == "Updated Test Playlist"
     assert playlist["description"] == "Updated description"
     assert playlist["enabled"] is True
@@ -133,6 +134,7 @@ def test_playlist_app_management(client: FlaskClient) -> None:
     user = utils.get_testuser()
     device = user["devices"][device_id]
     playlist = db.get_device_playlist(device, playlist_id)
+    assert playlist is not None
     assert app_iname in playlist["app_inames"]
 
     # Remove app from playlist
