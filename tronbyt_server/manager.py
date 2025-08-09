@@ -714,7 +714,8 @@ def render_app(
         magnify = 2
         # ...except for the apps which support 2x natively where we use the original size
         if app and "id" in app:
-            app_details = db.get_app_details_by_id(g.user["username"], app["id"])
+            user = db.get_user_by_device_id(device["id"])
+            app_details = db.get_app_details_by_id(user["username"], app["id"])
             if app_details.get("supports2x", False):
                 magnify = 1
                 width = 128
