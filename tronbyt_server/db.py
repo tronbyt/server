@@ -760,6 +760,19 @@ def save_app(device_id: str, app: App) -> bool:
         return False
 
 
+def save_device(device: Device) -> bool:
+    try:
+        # first get the user from the device, should already be validated elsewhere
+        user = get_user_by_device_id(device["id"])
+        if not user:
+            return False
+        user["devices"][device["id"]] = device
+        save_user(user)
+        return True
+    except Exception:
+        return False
+
+
 def save_render_messages(device: Device, app: App, messages: List[str]) -> None:
     """Save render messages from pixlet to the app configuration.
 

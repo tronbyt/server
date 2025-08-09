@@ -387,3 +387,74 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND, description=str(e))
     except RuntimeError as e:
         abort(HTTPStatus.INTERNAL_SERVER_ERROR, description=str(e))
+
+
+@bp.get("/devices/<string:device_id>/playlist")
+def list_playlists(device_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    # get api_key from Authorization header
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
+        abort(HTTPStatus.NOT_FOUND)
+
+    playlists = device.get("playlists", {})
+    return Response(
+        json.dumps(playlists),
+        status=200,
+        mimetype="application/json",
+    )
+
+
+@bp.patch("/devices/<string:device_id>/activate_playlist/<string:playlist_id>")
+def activate_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    # get api_key from Authorization header
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    device = db.get_device_by_id(device_id)
+    if not device or device["api_key"] != api_key:
+        abort(HTTPStatus.NOT_FOUND)
+
+    if playlist_id in ["all", "none", "default"]:
+        # just clear it
+        device.pop("active_playlist_id")
+        db.save_device(device)
+        # Return JSON response with status and playlist name
+        return Response(
+            json.dumps({"status": "success", "name": "none"}),
+            status=200,
+            mimetype="application/json",
+        )
+
+    elif db.set_active_playlist(device, playlist_id):
+        db.save_device(device)
+        playlist = db.get_device_playlist(device, playlist_id)
+        playlist_name = playlist["name"] if playlist else "Unknown"
+
+        # Return JSON response with status and playlist name
+        return Response(
+            json.dumps({"status": "success", "name": playlist_name}),
+            status=200,
+            mimetype="application/json",
+        )
+    else:
+        # Return JSON response with error status
+        return Response(
+            json.dumps({"status": "error"}), status=200, mimetype="application/json"
+        )
