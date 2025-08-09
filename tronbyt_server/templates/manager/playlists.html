@@ -166,17 +166,21 @@
               </button>
             </form>
           {% endif %}
-          
-          <a href="{{ url_for('manager.manage_playlist_apps', device_id=device.id, playlist_id=playlist.id) }}" 
-             class="w3-button w3-blue w3-round btn-small">
-            <i class="fas fa-cogs"></i> Manage Apps
-          </a>
-          
-          <a href="{{ url_for('manager.edit_playlist', device_id=device.id, playlist_id=playlist.id) }}" 
-             class="w3-button w3-orange w3-round btn-small">
-            <i class="fas fa-edit"></i> Edit
-          </a>
-          
+
+          <form method="get" action="{{ url_for('manager.manage_playlist_apps', device_id=device.id, playlist_id=playlist.id) }}"
+            style="display: inline;">
+            <button type="submit" class="w3-button w3-blue w3-round btn-small">
+              <i class="fas fa-cog"></i> Manage Apps
+            </button>
+          </form>
+
+          <form method="get" action="{{ url_for('manager.edit_playlist', device_id=device.id, playlist_id=playlist.id) }}"
+            style="display: inline;">
+            <button type="submit" class="w3-button w3-orange w3-round btn-small">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+          </form>
+                    
           <form method="post" action="{{ url_for('manager.delete_playlist', device_id=device.id, playlist_id=playlist.id) }}" 
                 style="display: inline;" 
                 onsubmit="return confirm('Are you sure you want to delete this playlist?');">
