@@ -719,7 +719,7 @@ def render_app(
                 if app_details.get("supports2x", False):
                     magnify = 1
                     width = 128
-                height = 64
+                    height = 64
 
     data, messages = pixlet_render_app(
         path=app_path,
