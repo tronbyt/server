@@ -967,7 +967,7 @@ def next_app(
 
     # Check if there's an active playlist
     active_playlist = db.get_active_playlist(device)
-    if active_playlist and active_playlist.get("enabled", True):
+    if active_playlist:
         # Use apps from the active playlist
         playlist_apps = db.get_playlist_apps(device, active_playlist["id"])
         if playlist_apps:
@@ -1569,7 +1569,6 @@ def edit_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
-        enabled = "enabled" in request.form
 
         if not name:
             flash("Playlist name is required.")
@@ -1592,9 +1591,7 @@ def edit_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
             )
 
         try:
-            db.update_playlist(
-                device, playlist_id, name=name, description=description, enabled=enabled
-            )
+            db.update_playlist(device, playlist_id, name=name, description=description)
             db.save_user(g.user)
             flash(f"Playlist '{name}' updated successfully.")
             return redirect(url_for("manager.playlists", device_id=device_id))

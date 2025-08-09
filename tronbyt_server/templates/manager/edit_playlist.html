@@ -101,14 +101,6 @@
   <div class="w3-card-4">
     <div class="w3-container w3-padding">
       <div class="form-container">
-        <!-- Playlist info -->
-        <div class="playlist-info">
-          <h4><i class="fas fa-info-circle"></i> Playlist Information</h4>
-          <p><strong>ID:</strong> {{ playlist.id }}</p>
-          <p><strong>Created:</strong> {{ playlist.created_at[:19] if playlist.created_at else 'Unknown' }}</p>
-          <p><strong>Last Updated:</strong> {{ playlist.updated_at[:19] if playlist.updated_at else 'Unknown' }}</p>
-          <p><strong>Apps in Playlist:</strong> {{ playlist.app_inames|length }}</p>
-        </div>
 
         <form method="post">
           <div class="form-group">
@@ -138,19 +130,6 @@
                       placeholder="Optional description of this playlist">{{ playlist.description or '' }}</textarea>
             <div class="help-text">
               Optional description to help you remember what this playlist is for
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">
-              <input type="checkbox" 
-                     name="enabled" 
-                     class="form-checkbox"
-                     {% if playlist.enabled %}checked{% endif %}>
-              <i class="fas fa-toggle-on"></i> Playlist Enabled
-            </label>
-            <div class="help-text">
-              Disabled playlists cannot be activated. Apps in disabled playlists will not be shown in rotation.
             </div>
           </div>
 

@@ -831,7 +831,6 @@ def create_playlist(
         name=name,
         description=description,
         app_inames=[],
-        enabled=True,
         created_at=now,
         updated_at=now,
         order=max_order + 1,
@@ -854,7 +853,7 @@ def update_playlist(device: Device, playlist_id: str, **updates: Any) -> bool:
 
     # Apply updates
     for key, value in updates.items():
-        if key in ["name", "description", "enabled", "app_inames"]:
+        if key in ["name", "description", "app_inames"]:
             playlist[key] = value
 
     playlist["updated_at"] = datetime.now().isoformat()

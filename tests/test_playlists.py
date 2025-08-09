@@ -39,7 +39,6 @@ def test_playlist_crud_operations(client: FlaskClient) -> None:
     playlist = playlists[playlist_id]
     assert playlist["name"] == "Test Playlist"
     assert playlist["description"] == "A test playlist for unit testing"
-    assert playlist["enabled"] is True
     assert playlist["app_inames"] == []
 
     # Test playlist list page (should show the playlist now)
@@ -60,7 +59,6 @@ def test_playlist_crud_operations(client: FlaskClient) -> None:
         data={
             "name": "Updated Test Playlist",
             "description": "Updated description",
-            "enabled": "on",
         },
     )
     assert r.status_code == 302  # Redirect after update
@@ -72,7 +70,6 @@ def test_playlist_crud_operations(client: FlaskClient) -> None:
     assert playlist is not None
     assert playlist["name"] == "Updated Test Playlist"
     assert playlist["description"] == "Updated description"
-    assert playlist["enabled"] is True
 
     # Delete the playlist
     r = client.post(f"/{device_id}/playlists/{playlist_id}/delete")
@@ -237,7 +234,6 @@ def test_playlist_database_functions(client: FlaskClient) -> None:
     assert playlist["id"] == "test123"
     assert playlist["name"] == "Test Playlist"
     assert playlist["description"] == "Test description"
-    assert playlist["enabled"] is True
     assert playlist["app_inames"] == []
 
     # Test getting playlist
@@ -246,12 +242,11 @@ def test_playlist_database_functions(client: FlaskClient) -> None:
     assert retrieved_playlist["name"] == "Test Playlist"
 
     # Test updating playlist
-    success = db.update_playlist(device, "test123", name="Updated Name", enabled=False)
+    success = db.update_playlist(device, "test123", name="Updated Name")
     assert success is True
 
     updated_playlist = db.get_device_playlist(device, "test123")
     assert updated_playlist["name"] == "Updated Name"
-    assert updated_playlist["enabled"] is False
 
     # Test deleting playlist
     success = db.delete_playlist(device, "test123")

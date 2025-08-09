@@ -6,7 +6,6 @@ class Playlist(TypedDict, total=False):
     name: Required[str]
     description: str
     app_inames: List[str]  # List of app instance names in this playlist
-    enabled: bool
     created_at: str
     updated_at: str
     order: int  # Display order in the playlist list
