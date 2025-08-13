@@ -458,7 +458,7 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
     if "playlists" in device:
         for playlist in device["playlists"].values():
             playlist["app_inames"] = [x for x in playlist["app_inames"] if x != iname]
-    print(playlist)
+
     db.save_user(g.user)
     return redirect(url_for("manager.index"))
 

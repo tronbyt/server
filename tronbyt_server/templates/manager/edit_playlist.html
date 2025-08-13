@@ -138,19 +138,6 @@
           </div>
 
           <div class="form-group">
-            <label for="description" class="form-label">
-              <i class="fas fa-align-left"></i> Description
-            </label>
-            <textarea id="description" 
-                      name="description" 
-                      class="form-textarea" 
-                      placeholder="Optional description of this playlist">{{ playlist.description or '' }}</textarea>
-            <div class="help-text">
-              Optional description to help you remember what this playlist is for
-            </div>
-          </div>
-
-          <div class="form-group">
             <label for="start_time" class="form-label">
               <i class="fas fa-clock"></i> Start Time
             </label>
@@ -175,6 +162,17 @@
                    value="{{ playlist.end_time or '23:59' }}">
             <div class="help-text">
               Time when this playlist should stop being active (24-hour format)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description" class="form-label">
+              <i class="fas fa-align-left"></i> Description
+            </label>
+            <input id="description" name="description" class="form-input"
+              placeholder="Optional description of this playlist">{{ playlist.description or '' }}</input>
+            <div class="help-text">
+              Optional description to help you remember what this playlist is for
             </div>
           </div>
 
