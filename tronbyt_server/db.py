@@ -799,7 +799,9 @@ def save_device(device: Device) -> bool:
         save_user(user)
         return True
     except Exception as e:
-        current_app.logger.error(f"Error saving device {device.get('id', 'unknown')}: {e}")
+        current_app.logger.error(
+            f"Error saving device {device.get('id', 'unknown')}: {e}"
+        )
         return False
 
 
