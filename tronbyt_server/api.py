@@ -446,7 +446,7 @@ def handle_toggle_playlist(device_id: str, playlist_id: str) -> ResponseReturnVa
     )
 
 
-@bp.get("/devices/<string:device_id>/playlist")
+@bp.get("/devices/<string:device_id>/playlists")
 def list_playlists(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
