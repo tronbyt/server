@@ -1665,6 +1665,32 @@ def delete_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
     return redirect(url_for("manager.playlists", device_id=device_id))
 
 
+@bp.route("/<string:device_id>/playlists/<string:playlist_id>/toggle", methods=["POST"])
+@login_required
+def toggle_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    """Toggle playlist enabled status."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    if device_id not in g.user["devices"]:
+        abort(HTTPStatus.NOT_FOUND, description="Device not found")
+
+    device = g.user["devices"][device_id]
+    playlist = db.get_device_playlist(device, playlist_id)
+
+    if not playlist:
+        abort(HTTPStatus.NOT_FOUND, description="Playlist not found")
+
+    # Toggle the enabled state
+    playlist["enabled"] = not playlist.get("enabled", False)
+    db.save_user(g.user)
+
+    flash(
+        f"Playlist '{playlist['name']}' {'enabled' if playlist['enabled'] else 'disabled'}"
+    )
+    return redirect(url_for("manager.playlists", device_id=device_id))
+
+
 @bp.route(
     "/<string:device_id>/playlists/<string:playlist_id>/manage_apps",
     methods=["GET", "POST"],
