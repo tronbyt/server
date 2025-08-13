@@ -393,7 +393,7 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
 @bp.route(
     "/devices/<string:device_id>/playlists/<string:playlist_id>", methods=["PATCH"]
 )
-def handle_toggle_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+def handle_enable_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
     if not validate_playlist_id(playlist_id):
