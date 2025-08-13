@@ -215,3 +215,85 @@ def test_playlist_database_functions(client: FlaskClient) -> None:
 
     deleted_playlist = db.get_device_playlist(device, "test123")
     assert deleted_playlist is None
+
+
+def test_playlist_toggle_api(client: FlaskClient) -> None:
+    """Test enabling and disabling a playlist via the API."""
+    device_id = utils.load_test_data(client)
+    user = utils.get_testuser()
+    device = user["devices"][device_id]
+    api_key = device["api_key"]
+    headers = {"Authorization": f"Bearer {api_key}"}
+
+    # Create a playlist
+    playlist = db.create_playlist(device, "toggle_test", "Toggle Test Playlist")
+    db.save_user(user)
+    playlist_id = playlist["id"]
+
+    # Disable the playlist
+    r = client.patch(
+        f"/v0/devices/{device_id}/playlists/{playlist_id}",
+        json={"enabled": False},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data["status"] == "success"
+    assert data["message"] == "Playlist disabled"
+
+    # Verify it's disabled
+    user = utils.get_testuser()
+    device = user["devices"][device_id]
+    updated_playlist = db.get_device_playlist(device, playlist_id)
+    assert updated_playlist is not None
+    assert updated_playlist["enabled"] is False
+
+    # Enable the playlist
+    r = client.patch(
+        f"/v0/devices/{device_id}/playlists/{playlist_id}",
+        json={"enabled": True},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data["status"] == "success"
+    assert data["message"] == "Playlist enabled"
+
+    # Verify it's enabled
+    user = utils.get_testuser()
+    device = user["devices"][device_id]
+    updated_playlist = db.get_device_playlist(device, playlist_id)
+    assert updated_playlist is not None
+    assert updated_playlist["enabled"] is True
+
+    # Test with invalid playlist_id
+    r = client.patch(
+        f"/v0/devices/{device_id}/playlists/invalid-id",
+        json={"enabled": True},
+        headers=headers,
+    )
+    assert r.status_code == 404
+
+    # Test with non-existent playlist_id
+    r = client.patch(
+        f"/v0/devices/{device_id}/playlists/non-existent-id",
+        json={"enabled": True},
+        headers=headers,
+    )
+    assert r.status_code == 404
+
+    # Test with missing 'enabled' field
+    r = client.patch(
+        f"/v0/devices/{device_id}/playlists/{playlist_id}",
+        json={},
+        headers=headers,
+    )
+    assert r.status_code == 400
+
+    # Test with invalid API key
+    r = client.patch(
+        f"/v0/devices/{device_id}/playlists/{playlist_id}",
+        json={"enabled": True},
+        headers={"Authorization": "Bearer invalid-key"},
+    )
+    assert r.status_code == 401

@@ -20,6 +20,7 @@ import tronbyt_server.db as db
 from tronbyt_server.manager import push_new_image, render_app
 from tronbyt_server.models.app import App
 from tronbyt_server.models.device import Device, validate_device_id
+from tronbyt_server.models.playlist import validate_playlist_id
 
 bp = Blueprint("api", __name__, url_prefix="/v0")
 
@@ -387,6 +388,62 @@ def handle_app_push(device_id: str) -> ResponseReturnValue:
         abort(HTTPStatus.NOT_FOUND, description=str(e))
     except RuntimeError as e:
         abort(HTTPStatus.INTERNAL_SERVER_ERROR, description=str(e))
+
+
+@bp.route(
+    "/devices/<string:device_id>/playlists/<string:playlist_id>", methods=["PATCH"]
+)
+def handle_toggle_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+    if not validate_playlist_id(playlist_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid playlist ID")
+
+    api_key = get_api_key_from_headers(request.headers)
+    if not api_key:
+        abort(
+            HTTPStatus.BAD_REQUEST,
+            description="Missing or invalid Authorization header",
+        )
+
+    user = db.get_user_by_device_id(device_id)
+    if not user:
+        abort(HTTPStatus.NOT_FOUND)
+
+    device = user["devices"].get(device_id)
+    if not device:
+        abort(HTTPStatus.NOT_FOUND)
+
+    user_api_key_matches = user.get("api_key") and user["api_key"] == api_key
+    device_api_key_matches = device.get("api_key") and device["api_key"] == api_key
+    if not user_api_key_matches and not device_api_key_matches:
+        abort(HTTPStatus.UNAUTHORIZED, description="Invalid API key")
+
+    playlists = device.get("playlists", {})
+    if playlist_id not in playlists:
+        abort(HTTPStatus.NOT_FOUND, description="Playlist not found")
+
+    data = request.get_json()
+    if data is None or "enabled" not in data:
+        abort(HTTPStatus.BAD_REQUEST, description="Missing 'enabled' field")
+
+    enabled = data["enabled"]
+    if not isinstance(enabled, bool):
+        abort(HTTPStatus.BAD_REQUEST, description="'enabled' must be a boolean")
+
+    playlists[playlist_id]["enabled"] = enabled
+    db.save_user(user)
+
+    return Response(
+        json.dumps(
+            {
+                "status": "success",
+                "message": f"Playlist {'enabled' if enabled else 'disabled'}",
+            }
+        ),
+        status=HTTPStatus.OK,
+        mimetype="application/json",
+    )
 
 
 @bp.get("/devices/<string:device_id>/playlist")
