@@ -148,45 +148,6 @@ def test_playlist_app_management(client: FlaskClient) -> None:
     assert app_iname not in playlist["app_inames"]
 
 
-def test_playlist_activation(client: FlaskClient) -> None:
-    """Test activating and deactivating playlists."""
-    # Setup test data
-    device_id = utils.load_test_data(client)
-
-    # Create a playlist
-    r = client.post(
-        f"/{device_id}/playlists/create",
-        data={"name": "Test Playlist", "description": "Test playlist"},
-    )
-    assert r.status_code == 302
-
-    # Get the playlist ID
-    user = utils.get_testuser()
-    device = user["devices"][device_id]
-    playlist_id = list(db.get_device_playlists(device).keys())[0]
-
-    # Initially no playlist should be active
-    assert device.get("active_playlist_id") is None
-
-    # Activate the playlist
-    r = client.post(f"/{device_id}/playlists/{playlist_id}/activate")
-    assert r.status_code == 302
-
-    # Verify playlist was activated
-    user = utils.get_testuser()
-    device = user["devices"][device_id]
-    assert device.get("active_playlist_id") == playlist_id
-
-    # Deactivate the playlist
-    r = client.post(f"/{device_id}/playlists/deactivate")
-    assert r.status_code == 302
-
-    # Verify playlist was deactivated
-    user = utils.get_testuser()
-    device = user["devices"][device_id]
-    assert device.get("active_playlist_id") is None
-
-
 def test_playlist_validation(client: FlaskClient) -> None:
     """Test playlist validation and error handling."""
     # Setup test data

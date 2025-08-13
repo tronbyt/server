@@ -921,10 +921,6 @@ def delete_playlist(device: Device, playlist_id: str) -> bool:
     if playlist_id not in device.get("playlists", {}):
         return False
 
-    # If this was the active playlist, clear the active playlist
-    if device.get("active_playlist_id") == playlist_id:
-        device["active_playlist_id"] = None
-
     del device["playlists"][playlist_id]
     return True
 
@@ -959,23 +955,6 @@ def remove_app_from_playlist(device: Device, playlist_id: str, app_iname: str) -
         return True
 
     return False
-
-
-def set_active_playlist(device: Device, playlist_id: Optional[str]) -> bool:
-    """Set the active playlist for a device."""
-    if playlist_id is not None and playlist_id not in device.get("playlists", {}):
-        return False
-
-    device["active_playlist_id"] = playlist_id
-    return True
-
-
-def get_active_playlist(device: Device) -> Optional[Playlist]:
-    """Get the currently active playlist for a device."""
-    active_id = device.get("active_playlist_id")
-    if active_id:
-        return get_device_playlist(device, active_id)
-    return None
 
 
 def get_playlist_apps(device: Device, playlist_id: str) -> List[App]:

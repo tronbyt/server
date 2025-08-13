@@ -1502,10 +1502,6 @@ def playlists(device_id: str) -> ResponseReturnValue:
 
     # Sort playlists by order
     sorted_playlists = sorted(playlists.values(), key=lambda p: p.get("order", 0))
-    active_playlist_id = device.get("active_playlist_id", None)
-    active_playlist = next(
-        (p for p in playlists.values() if p.get("id") == active_playlist_id), None
-    )
 
     return render_template(
         "manager/playlists.html",
