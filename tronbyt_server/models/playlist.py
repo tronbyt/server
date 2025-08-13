@@ -9,6 +9,9 @@ class Playlist(TypedDict, total=False):
     created_at: str
     updated_at: str
     order: int  # Display order in the playlist list
+    start_time: str  # Start time for playlist activation (HH:MM format)
+    end_time: str  # End time for playlist activation (HH:MM format)
+    enabled: bool  # Whether the playlist is enabled
 
 
 def validate_playlist_id(playlist_id: str) -> bool:

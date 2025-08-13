@@ -104,6 +104,23 @@
 
         <form method="post">
           <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-toggle-on"></i> Status
+            </label>
+            <div>
+              <input type="checkbox" 
+                     id="enabled" 
+                     name="enabled" 
+                     class="form-checkbox" 
+                     {% if playlist.enabled %}checked{% endif %}>
+              <label for="enabled">Enabled</label>
+            </div>
+            <div class="help-text">
+              Enable this playlist to allow it to be active during its scheduled time
+            </div>
+          </div>
+
+          <div class="form-group">
             <label for="name" class="form-label">
               <i class="fas fa-list"></i> Playlist Name *
             </label>
@@ -130,6 +147,34 @@
                       placeholder="Optional description of this playlist">{{ playlist.description or '' }}</textarea>
             <div class="help-text">
               Optional description to help you remember what this playlist is for
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="start_time" class="form-label">
+              <i class="fas fa-clock"></i> Start Time
+            </label>
+            <input type="time" 
+                   id="start_time" 
+                   name="start_time" 
+                   class="form-input" 
+                   value="{{ playlist.start_time or '00:00' }}">
+            <div class="help-text">
+              Time when this playlist should start being active (24-hour format)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="end_time" class="form-label">
+              <i class="fas fa-clock"></i> End Time
+            </label>
+            <input type="time" 
+                   id="end_time" 
+                   name="end_time" 
+                   class="form-input" 
+                   value="{{ playlist.end_time or '23:59' }}">
+            <div class="help-text">
+              Time when this playlist should stop being active (24-hour format)
             </div>
           </div>
 

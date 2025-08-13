@@ -111,37 +111,23 @@
     </div>
   </div>
 
-  <!-- Active playlist info -->
-{% if active_playlist %}
-<div class="w3-card-4 w3-green w3-margin-bottom">
-  <div class="w3-container w3-padding">
-    <h4><i class="fas fa-play"></i> Currently Active: {{ active_playlist.name }}</h4>
-    <p>{{ active_playlist.app_inames|length }} apps in rotation</p>
-    <form method="post" action="{{ url_for('manager.deactivate_playlist', device_id=device.id) }}"
-      style="display: inline;">
-      <button type="submit" class="w3-button w3-white w3-text-green w3-round btn-small">
-        <i class="fas fa-stop"></i> Deactivate
-      </button>
-    </form>
-  </div>
-</div>
-  {% else %}
-    <div class="w3-card-4 w3-orange w3-margin-bottom">
-      <div class="w3-container w3-padding">
-        <h4><i class="fas fa-info-circle"></i> No Active Playlist</h4>
-        <p>All device apps are currently in rotation. Activate a playlist to limit rotation to specific apps.</p>
-      </div>
+
+  <!-- Playlists info -->
+  <div class="w3-card-4 w3-light-blue w3-margin-bottom">
+    <div class="w3-container w3-padding">
+      <h4><i class="fas fa-info-circle"></i> Playlist Information</h4>
+      <p>Playlists are automatically activated based on their schedule when enabled. If no playlists are currently active based on their schedules, all device apps will be displayed.</p>
     </div>
-  {% endif %}
+  </div>
 
   <!-- Playlists list -->
   {% if playlists %}
     {% for playlist in playlists %}
-      <div class="w3-card-4 playlist-card {% if playlist.id == active_playlist_id %}playlist-active{% else %}playlist-inactive{% endif %}">
+      <div class="w3-card-4 playlist-card {% if is_playlist_active(playlist, device) %}playlist-active{% else %}playlist-inactive{% endif %}">
         <div class="playlist-header">
           <h3 class="playlist-title">{{ playlist.name }}</h3>
-          <span class="playlist-status {% if playlist.id == active_playlist_id %}status-active{% else %}status-inactive{% endif %}">
-            {% if playlist.id == active_playlist_id %}ACTIVE{% else %}INACTIVE{% endif %}
+          <span class="playlist-status {% if is_playlist_active(playlist, device) %}status-active{% else %}status-inactive{% endif %}">
+            {% if is_playlist_active(playlist, device) %}ACTIVE{% else %}INACTIVE{% endif %}
           </span>
         </div>
         
@@ -153,14 +139,16 @@
           <i class="fas fa-list"></i> {{ playlist.app_inames|length }} apps
         </div>
         
-        <div class="playlist-actions">
-          {% if playlist.id != active_playlist_id %}
-            <form method="post" action="{{ url_for('manager.activate_playlist', device_id=device.id, playlist_id=playlist.id) }}" style="display: inline;">
-              <button type="submit" class="w3-button w3-green w3-round btn-small">
-                <i class="fas fa-play"></i> Activate
-              </button>
-            </form>
+        <div class="playlist-stats">
+          <i class="fas fa-clock"></i> Schedule: {{ playlist.start_time or '00:00' }} to {{ playlist.end_time or '23:59' }}
+          {% if playlist.enabled %}
+            <span class="w3-tag w3-green w3-round w3-small" style="margin-left: 10px;">Enabled</span>
+          {% else %}
+            <span class="w3-tag w3-red w3-round w3-small" style="margin-left: 10px;">Disabled</span>
           {% endif %}
+        </div>
+        
+        <div class="playlist-actions">
 
           <form method="get" action="{{ url_for('manager.manage_playlist_apps', device_id=device.id, playlist_id=playlist.id) }}"
             style="display: inline;">

@@ -442,10 +442,19 @@ def activate_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
             mimetype="application/json",
         )
 
+    # Check if playlist exists
+    playlist = db.get_device_playlist(device, playlist_id)
+    if not playlist:
+        # Return JSON response with error status
+        return Response(
+            json.dumps({"status": "error", "message": "Playlist not found"}),
+            status=404,
+            mimetype="application/json",
+        )
+
     elif db.set_active_playlist(device, playlist_id):
         db.save_device(device)
-        playlist = db.get_device_playlist(device, playlist_id)
-        playlist_name = playlist["name"] if playlist else "Unknown"
+        playlist_name = playlist["name"]
 
         # Return JSON response with status and playlist name
         return Response(

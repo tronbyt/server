@@ -39,7 +39,6 @@ class Device(TypedDict, total=False):
     apps: Dict[str, App]
     last_app_index: int
     playlists: Dict[str, "Playlist"]  # Dictionary of playlist_id -> Playlist
-    active_playlist_id: Optional[str]  # Currently active playlist ID
 
 
 def validate_timezone(tz: str) -> Optional[ZoneInfo]:

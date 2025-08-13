@@ -85,7 +85,9 @@ def index() -> str:
                 )
             devices.append(ui_device)
 
-    return render_template("manager/index.html", devices=devices)
+    return render_template(
+        "manager/index.html", devices=devices, is_playlist_active=db.is_playlist_active
+    )
 
 
 # function to handle uploading an app
@@ -965,27 +967,39 @@ def next_app(
         if last_app_index is None:
             abort(HTTPStatus.NOT_FOUND)
 
-    # Check if there's an active playlist
-    active_playlist = db.get_active_playlist(device)
-    if active_playlist:
-        # Use apps from the active playlist
-        playlist_apps = db.get_playlist_apps(device, active_playlist["id"])
-        if playlist_apps:
+    # Check for enabled playlists that are currently active based on their schedules
+    active_playlists = []
+    playlists = db.get_device_playlists(device)
+    for playlist in playlists.values():
+        if playlist.get("enabled", True) and db.is_playlist_active(playlist, device):
+            active_playlists.append(playlist)
+
+    if active_playlists:
+        # Use apps from all active playlists
+        all_playlist_apps = []
+        for playlist in active_playlists:
+            playlist_apps = db.get_playlist_apps(device, playlist["id"])
             # Filter out disabled apps from playlist
-            apps_list = [app for app in playlist_apps if app.get("enabled", True)]
+            enabled_apps = [app for app in playlist_apps if app.get("enabled", True)]
+            all_playlist_apps.extend(enabled_apps)
             current_app.logger.debug(
-                f"Using playlist '{active_playlist['name']}' with {len(apps_list)} enabled apps"
+                f"Using playlist '{playlist['name']}' with {len(enabled_apps)} enabled apps"
             )
+
+        if all_playlist_apps:
+            apps_list = all_playlist_apps
         else:
-            # Playlist is empty, fall back to all device apps
+            # All active playlists are empty, fall back to all device apps
             apps = device.get("apps", {})
             apps_list = sorted(apps.values(), key=itemgetter("order"))
-            current_app.logger.debug("Active playlist is empty, using all device apps")
+            current_app.logger.debug(
+                "All active playlists are empty, using all device apps"
+            )
     else:
-        # No active playlist or playlist is disabled, use all device apps
+        # No active playlists, use all device apps
         apps = device.get("apps", {})
         apps_list = sorted(apps.values(), key=itemgetter("order"))
-        current_app.logger.debug("No active playlist, using all device apps")
+        current_app.logger.debug("No active playlists, using all device apps")
 
     # if no apps return default.webp
     if not apps_list:
@@ -1497,8 +1511,7 @@ def playlists(device_id: str) -> ResponseReturnValue:
         "manager/playlists.html",
         device=device,
         playlists=sorted_playlists,
-        active_playlist_id=active_playlist_id,
-        active_playlist=active_playlist,
+        is_playlist_active=db.is_playlist_active,
     )
 
 
@@ -1517,6 +1530,9 @@ def create_playlist(device_id: str) -> ResponseReturnValue:
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
+        start_time = request.form.get("start_time", "00:00").strip()
+        end_time = request.form.get("end_time", "23:59").strip()
+        enabled = "enabled" in request.form
 
         if not name:
             flash("Playlist name is required.")
@@ -1537,7 +1553,9 @@ def create_playlist(device_id: str) -> ResponseReturnValue:
             return redirect(url_for("manager.create_playlist", device_id=device_id))
 
         try:
-            db.create_playlist(device, playlist_id, name, description)
+            db.create_playlist(
+                device, playlist_id, name, description, start_time, end_time, enabled
+            )
             db.save_user(g.user)
             flash(f"Playlist '{name}' created successfully.")
             return redirect(url_for("manager.playlists", device_id=device_id))
@@ -1569,6 +1587,13 @@ def edit_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
+        start_time = request.form.get(
+            "start_time", playlist.get("start_time", "00:00")
+        ).strip()
+        end_time = request.form.get(
+            "end_time", playlist.get("end_time", "23:59")
+        ).strip()
+        enabled = "enabled" in request.form
 
         if not name:
             flash("Playlist name is required.")
@@ -1591,7 +1616,15 @@ def edit_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
             )
 
         try:
-            db.update_playlist(device, playlist_id, name=name, description=description)
+            db.update_playlist(
+                device,
+                playlist_id,
+                name=name,
+                description=description,
+                start_time=start_time,
+                end_time=end_time,
+                enabled=enabled,
+            )
             db.save_user(g.user)
             flash(f"Playlist '{name}' updated successfully.")
             return redirect(url_for("manager.playlists", device_id=device_id))
@@ -1699,52 +1732,6 @@ def manage_playlist_apps(device_id: str, playlist_id: str) -> ResponseReturnValu
         playlist_apps=playlist_apps,
         available_apps=available_apps,
     )
-
-
-@bp.route(
-    "/<string:device_id>/playlists/<string:playlist_id>/activate", methods=["POST"]
-)
-@login_required
-def activate_playlist(device_id: str, playlist_id: str) -> ResponseReturnValue:
-    """Activate a playlist."""
-    if not validate_device_id(device_id):
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-
-    if device_id not in g.user["devices"]:
-        abort(HTTPStatus.NOT_FOUND, description="Device not found")
-
-    device = g.user["devices"][device_id]
-
-    if db.set_active_playlist(device, playlist_id):
-        db.save_user(g.user)
-        playlist = db.get_device_playlist(device, playlist_id)
-        playlist_name = playlist["name"] if playlist else "Unknown"
-        flash(f"Playlist '{playlist_name}' activated.")
-    else:
-        flash("Error activating playlist.")
-
-    return redirect(url_for("manager.playlists", device_id=device_id))
-
-
-@bp.route("/<string:device_id>/playlists/deactivate", methods=["POST"])
-@login_required
-def deactivate_playlist(device_id: str) -> ResponseReturnValue:
-    """Deactivate the current playlist."""
-    if not validate_device_id(device_id):
-        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
-
-    if device_id not in g.user["devices"]:
-        abort(HTTPStatus.NOT_FOUND, description="Device not found")
-
-    device = g.user["devices"][device_id]
-
-    if db.set_active_playlist(device, None):
-        db.save_user(g.user)
-        flash("Playlist deactivated. Using all device apps.")
-    else:
-        flash("Error deactivating playlist.")
-
-    return redirect(url_for("manager.playlists", device_id=device_id))
 
 
 # Use a Manager to create a shared dictionary for events across processes
