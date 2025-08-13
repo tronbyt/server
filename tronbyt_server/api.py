@@ -461,6 +461,7 @@ def list_playlists(device_id: str) -> ResponseReturnValue:
 
     device = db.get_device_by_id(device_id)
     if not device or device.get("api_key") != api_key:
+        abort(HTTPStatus.NOT_FOUND)
 
     playlists = device.get("playlists", {})
     return Response(
