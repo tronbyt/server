@@ -1295,6 +1295,28 @@ def health() -> ResponseReturnValue:
     return Response("OK", status=200)
 
 
+@bp.route("/export_user_config", methods=["GET"])
+@login_required
+def export_user_config() -> ResponseReturnValue:
+    user = g.user.copy()  # Create a copy to avoid modifying the original
+
+    # Remove sensitive data
+    user.pop("password", None)
+
+    # Convert the user dictionary to JSON
+    user_json = json.dumps(user, indent=4)
+
+    # Create a response to serve the JSON as a file download
+    response = Response(
+        user_json,
+        mimetype="application/json",
+        headers={
+            "Content-Disposition": f"attachment;filename={user['username']}_config.json"
+        },
+    )
+    return response
+
+
 @bp.route("/<string:device_id>/export_config", methods=["GET", "POST"])
 @login_required
 def export_device_config(device_id: str) -> ResponseReturnValue:
@@ -1382,6 +1404,102 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
 
     # Render the import form
     return render_template("manager/import_config.html", device_id=device_id)
+
+
+@bp.route("/import_user_config", methods=["POST"])
+@login_required
+def import_user_config() -> ResponseReturnValue:
+    # Check if the POST request has the file part
+    if "file" not in request.files:
+        flash("No file part")
+        return redirect(url_for("auth.edit"))
+
+    file = request.files["file"]
+
+    # If no file is selected
+    if not file.filename:
+        flash("No selected file")
+        return redirect(url_for("auth.edit"))
+
+    # Ensure the uploaded file is a JSON file
+    if not file.filename.endswith(".json"):
+        flash("Invalid file type. Please upload a JSON file.")
+        return redirect(url_for("auth.edit"))
+
+    # Limit file size to prevent DoS attacks (e.g., 1MB)
+    MAX_CONFIG_SIZE = 1 * 1024 * 1024
+    file.seek(0, os.SEEK_END)
+    if file.tell() > MAX_CONFIG_SIZE:
+        flash(f"File size exceeds the limit of {MAX_CONFIG_SIZE // 1024 // 1024}MB.")
+        return redirect(url_for("auth.edit"))
+    file.seek(0)  # Reset file pointer after checking size
+
+    try:
+        # Parse the JSON file
+        user_config = json.load(file)
+
+        # Validate the JSON structure (basic validation)
+        if not isinstance(user_config, dict):
+            flash("Invalid JSON structure")
+            return redirect(url_for("auth.edit"))
+
+        # Get the current user
+        current_user = g.user
+
+        # Preserve username and password
+        username = current_user["username"]
+        password = current_user["password"]
+
+        # Check for device ID conflicts and abort if found
+        if "devices" in user_config:
+            if not isinstance(user_config.get("devices"), dict):
+                flash("Invalid JSON structure: 'devices' must be a dictionary.")
+                return redirect(url_for("auth.edit"))
+
+            # Validate that device keys match their corresponding "id" entries
+            for device_key, device_data in user_config["devices"].items():
+                if "id" not in device_data or device_key != device_data["id"]:
+                    flash("Corrupted data. Import aborted.")
+                    return redirect(url_for("auth.edit"))
+
+            # Get all existing device IDs from other users
+            existing_device_ids = set()
+            all_users = db.get_all_users()
+
+            for user in all_users:
+                if user["username"] != username:  # Skip the current user
+                    for device_id in user.get("devices", {}):
+                        existing_device_ids.add(device_id)
+
+            # Check each device in the imported config
+            for device_id in user_config["devices"].keys():
+                # If the device ID already exists for another user, abort the operation
+                if device_id in existing_device_ids:
+                    flash("Conflicting data. Import aborted.")
+                    return redirect(url_for("auth.edit"))
+
+        # Update the current user with the imported data
+        current_user.clear()
+        current_user.update(user_config)
+
+        # Restore username and password
+        current_user["username"] = username
+        current_user["password"] = password
+
+        # Save the updated user
+        if db.save_user(current_user):
+            flash("User configuration imported successfully")
+        else:
+            flash("Failed to save user configuration")
+
+        return redirect(url_for("auth.edit"))
+
+    except json.JSONDecodeError as e:
+        flash(f"Error parsing JSON file: {e}")
+        return redirect(url_for("auth.edit"))
+    except Exception as e:
+        flash(f"Error importing user configuration: {e}")
+        return redirect(url_for("auth.edit"))
 
 
 @bp.route("/import_device", methods=["GET", "POST"])
