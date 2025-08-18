@@ -467,7 +467,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
         apps_list = db.get_apps_list("system")
 
         # Get the list of apps already installed on all devices for this user
-        installed_app_names = set()
+        installed_app_names: set[str] = set()
         for device in g.user.get("devices", {}).values():
             installed_app_names.update(
                 app["name"] for app in device.get("apps", {}).values()
