@@ -474,7 +474,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
             )
 
         # Sort apps_list so that installed apps appear first
-        apps_list.sort(key=lambda app: 0 if app["name"] in installed_app_names else 1)
+        apps_list.sort(key=lambda app: app["name"] not in installed_app_names)
 
         return render_template(
             "manager/addapp.html",
