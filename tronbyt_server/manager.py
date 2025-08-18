@@ -465,9 +465,17 @@ def addapp(device_id: str) -> ResponseReturnValue:
         # build the list of apps.
         custom_apps_list = db.get_apps_list(g.user["username"])
         apps_list = db.get_apps_list("system")
+
+        # Get the list of apps already installed on this device
+        device = g.user["devices"][device_id]
+        installed_app_names = {app["name"] for app in device.get("apps", {}).values()}
+
+        # Sort apps_list so that installed apps appear first
+        apps_list.sort(key=lambda app: 0 if app["name"] in installed_app_names else 1)
+
         return render_template(
             "manager/addapp.html",
-            device=g.user["devices"][device_id],
+            device=device,
             apps_list=apps_list,
             custom_apps_list=custom_apps_list,
         )
