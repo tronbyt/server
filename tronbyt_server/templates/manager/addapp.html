@@ -60,6 +60,7 @@ function searchApps(inputId, gridId) {
 
   <hr>
   {% endif %}
+  <p><em>{{ _('Note: Apps already installed on any of your devices appear at the top of the list.') }}</em></p>
   {{ render_app_list(_('System Apps'), 'system_search', 'system_app_grid', apps_list) }}
 
   <input type="hidden" name="name" id="selected_app">
