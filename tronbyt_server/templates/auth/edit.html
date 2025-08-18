@@ -41,4 +41,17 @@
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 
+<p>{{ _('Use the export and import features to backup your user account or to move your devices to a new server. The export function creates a JSON file with all your settings, devices, and apps. You can then import this file on another server to restore your configuration. Note that your password is not included in the export for security reasons, so you will need to remember your password when importing to a new server.') }}</p>
+
+<h1>{{ _('Export User Data') }}</h1>
+<p>{{ _('Export your entire user configuration as a JSON file.') }}</p>
+<a href="{{ url_for('manager.export_user_config') }}" class="w3-button w3-blue">{{ _('Export User Data') }}</a>
+
+<h1>{{ _('Import User Data') }}</h1>
+<p>{{ _('Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password.') }}</p>
+<form method="post" action="{{ url_for('manager.import_user_config') }}" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".json" required>
+    <input type="submit" value="{{ _('Import User Data') }}" class="w3-button w3-blue">
+</form>
+
 {% endblock %}
