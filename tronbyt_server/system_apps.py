@@ -31,9 +31,16 @@ def log_message(message: str) -> None:
 
 def update_system_repo(base_path: Path) -> None:
     system_apps_path = base_path / "system-apps"
-    system_apps_repo = os.getenv(
+    system_apps_url = os.getenv(
         "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
     )
+
+    # Check if the URL contains a branch specification
+    if "@" in system_apps_url and ".git@" in system_apps_url:
+        system_apps_repo, branch_name = system_apps_url.rsplit("@", 1)
+    else:
+        system_apps_repo = system_apps_url
+        branch_name = None
 
     # check for existence of .git directory
     git_dir = system_apps_path / ".git"
@@ -66,16 +73,33 @@ def update_system_repo(base_path: Path) -> None:
             f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}"
         )
 
-        result = git_command(
-            [
-                "git",
-                "clone",
-                system_apps_repo,
-                str(system_apps_path),
-                "--depth",
-                "1",
-            ]
-        )
+        if branch_name:
+            # Use specific branch clone command
+            result = git_command(
+                [
+                    "git",
+                    "clone",
+                    "--branch",
+                    branch_name,
+                    "--single-branch",
+                    "--depth",
+                    "1",
+                    system_apps_repo,
+                    str(system_apps_path),
+                ]
+            )
+        else:
+            # Use default clone command
+            result = git_command(
+                [
+                    "git",
+                    "clone",
+                    system_apps_repo,
+                    str(system_apps_path),
+                    "--depth",
+                    "1",
+                ]
+            )
         if result.returncode != 0:
             log_message("Error Cloning Repo")
         else:
