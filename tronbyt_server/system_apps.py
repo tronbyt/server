@@ -36,7 +36,7 @@ def update_system_repo(base_path: Path) -> None:
     )
 
     # Check if the URL contains a branch specification
-    if "@" in system_apps_url:
+    if "@" in system_apps_url and ".git@" in system_apps_url:
         system_apps_repo, branch_name = system_apps_url.rsplit("@", 1)
     else:
         system_apps_repo = system_apps_url
