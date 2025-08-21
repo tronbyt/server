@@ -808,7 +808,9 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
         app["empty_last_render"] = len(image) == 0 if image is not None else False
         # always update the config with the new last render time
         app["last_render"] = now
-        db.save_user(user)
+        # we save app here in case empty_last_render is set, it needs saving and next app won't have a chance to save it
+        db.save_app(device_id, app)
+
         return image is not None  # return false if error
 
     current_app.logger.debug(f"{app_basename} -- NO RENDER")
@@ -916,8 +918,8 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
             app["enabled"] = True
             # set last_rendered to seconds
             app["last_render"] = int(time.time())
-            # always save
-            db.save_user(g.user)
+            # we use save_app instead of save_user because a possibly long render just occurred and we don't want to save stale user data.
+            db.save_app(device_id, app)
         else:
             flash("Error Rendering App")
 
@@ -1006,7 +1008,6 @@ def next_app(
     if not possibly_render(user, device_id, app) or app.get("empty_last_render", False):
         # try the next app if rendering failed or produced an empty result (no screens)
         return next_app(device_id, last_app_index, recursion_depth + 1)
-    db.save_user(user)
 
     if app.get("pushed", False):
         webp_path = (
