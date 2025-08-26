@@ -140,6 +140,7 @@ def render_app(
 ) -> Tuple[Optional[bytes], List[str]]:
     initialize_pixlet_library()
     if not pixlet_render_app:
+        current_app.logger.debug("failed to init pixlet_library")
         return None, []
     ret = pixlet_render_app(
         str(path).encode("utf-8"),
