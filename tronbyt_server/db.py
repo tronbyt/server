@@ -5,7 +5,7 @@ import sqlite3
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, Dict, Any
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -22,6 +22,11 @@ from tronbyt_server.models.app import App, AppMetadata
 from tronbyt_server.models.device import (
     Device,
     validate_timezone,
+)
+from tronbyt_server.models.playlist import (
+    Playlist,
+    validate_playlist_id,
+    validate_playlist_name,
 )
 from tronbyt_server.models.user import User
 
@@ -603,10 +608,16 @@ def get_is_app_schedule_active(app: App, device: Device) -> bool:
 
 def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool:
     current_day = current_time.strftime("%A").lower()
-    start_time = datetime.strptime(
-        str(app.get("start_time") or "00:00"), "%H:%M"
-    ).time()
-    end_time = datetime.strptime(str(app.get("end_time") or "23:59"), "%H:%M").time()
+    try:
+        start_time = datetime.strptime(
+            str(app.get("start_time") or "00:00"), "%H:%M"
+        ).time()
+        end_time = datetime.strptime(
+            str(app.get("end_time") or "23:59"), "%H:%M"
+        ).time()
+    except ValueError:
+        # If time format is invalid, default to always active
+        return True
     active_days = app.get(
         "days",
         ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
@@ -658,6 +669,29 @@ def get_user_by_api_key(api_key: str) -> Optional[User]:
         if user.get("api_key") == api_key:
             return user
     return None
+
+
+def validate_time_format(time_str: str) -> bool:
+    """
+    Validate time format (HH:MM).
+
+    :param time_str: The time string to validate.
+    :return: True if valid, False otherwise.
+    """
+    if not time_str or not isinstance(time_str, str):
+        return False
+
+    # Check if the format is HH:MM
+    parts = time_str.split(":")
+    if len(parts) != 2:
+        return False
+
+    try:
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        return 0 <= hours <= 23 and 0 <= minutes <= 59
+    except ValueError:
+        return False
 
 
 # firmare bin files named after env targets in firmware project.
@@ -755,6 +789,22 @@ def save_app(device_id: str, app: App) -> bool:
         return False
 
 
+def save_device(device: Device) -> bool:
+    try:
+        # first get the user from the device, should already be validated elsewhere
+        user = get_user_by_device_id(device["id"])
+        if not user:
+            return False
+        user["devices"][device["id"]] = device
+        save_user(user)
+        return True
+    except Exception as e:
+        current_app.logger.error(
+            f"Error saving device {device.get('id', 'unknown')}: {e}"
+        )
+        return False
+
+
 def save_render_messages(device: Device, app: App, messages: List[str]) -> None:
     """Save render messages from pixlet to the app configuration.
 
@@ -769,3 +819,196 @@ def save_render_messages(device: Device, app: App, messages: List[str]) -> None:
     # Save the updated app
     if not save_app(device["id"], app):
         current_app.logger.error("Error saving render messages: Failed to save app.")
+
+
+# Playlist helper functions
+def get_device_playlists(device: Device) -> Dict[str, Playlist]:
+    """Get all playlists for a device."""
+    return device.get("playlists", {})
+
+
+def get_device_playlist(device: Device, playlist_id: str) -> Optional[Playlist]:
+    """Get a specific playlist from a device."""
+    return device.get("playlists", {}).get(playlist_id)
+
+
+def create_playlist(
+    device: Device,
+    playlist_id: str,
+    name: str,
+    description: str = "",
+    start_time: str = "00:00",
+    end_time: str = "23:59",
+    enabled: bool = True,
+) -> Playlist:
+    """Create a new playlist for a device."""
+
+    if not validate_playlist_id(playlist_id):
+        raise ValueError("Invalid playlist ID")
+
+    if not validate_playlist_name(name):
+        raise ValueError("Invalid playlist name")
+
+    # Validate time format
+    if not validate_time_format(start_time) or not validate_time_format(end_time):
+        raise ValueError("Invalid time format. Use HH:MM format.")
+
+    # Initialize playlists dict if it doesn't exist
+    if "playlists" not in device:
+        device["playlists"] = {}
+
+    # Check if playlist already exists
+    if playlist_id in device["playlists"]:
+        raise ValueError("Playlist already exists")
+
+    # Get the next order number
+    existing_playlists = device.get("playlists", {})
+    max_order = max(
+        (p.get("order", 0) for p in existing_playlists.values()), default=-1
+    )
+
+    now = datetime.now().isoformat()
+    playlist = Playlist(
+        id=playlist_id,
+        name=name,
+        description=description,
+        app_inames=[],
+        created_at=now,
+        updated_at=now,
+        order=max_order + 1,
+        start_time=start_time,
+        end_time=end_time,
+        enabled=enabled,
+    )
+
+    device["playlists"][playlist_id] = playlist
+    return playlist
+
+
+def update_playlist(device: Device, playlist_id: str, **updates: Any) -> bool:
+    """Update a playlist's properties."""
+
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return False
+
+    # Validate updates
+    if "name" in updates and not validate_playlist_name(updates["name"]):
+        raise ValueError("Invalid playlist name")
+
+    # Validate time format if updating start_time or end_time
+    if "start_time" in updates and not validate_time_format(updates["start_time"]):
+        raise ValueError("Invalid start time format. Use HH:MM format.")
+
+    if "end_time" in updates and not validate_time_format(updates["end_time"]):
+        raise ValueError("Invalid end time format. Use HH:MM format.")
+
+    # Apply updates
+    for key, value in updates.items():
+        if key in [
+            "name",
+            "description",
+            "app_inames",
+            "start_time",
+            "end_time",
+            "enabled",
+        ]:
+            playlist[key] = value
+
+    playlist["updated_at"] = datetime.now().isoformat()
+    return True
+
+
+def delete_playlist(device: Device, playlist_id: str) -> bool:
+    """Delete a playlist from a device."""
+    if playlist_id not in device.get("playlists", {}):
+        return False
+
+    del device["playlists"][playlist_id]
+    return True
+
+
+def add_app_to_playlist(device: Device, playlist_id: str, app_iname: str) -> bool:
+    """Add an app to a playlist."""
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return False
+
+    # Check if app exists in device
+    if app_iname not in device.get("apps", {}):
+        return False
+
+    # Add app if not already in playlist
+    if app_iname not in playlist["app_inames"]:
+        playlist["app_inames"].append(app_iname)
+        playlist["updated_at"] = datetime.now().isoformat()
+
+    return True
+
+
+def remove_app_from_playlist(device: Device, playlist_id: str, app_iname: str) -> bool:
+    """Remove an app from a playlist."""
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return False
+
+    if app_iname in playlist["app_inames"]:
+        playlist["app_inames"].remove(app_iname)
+        playlist["updated_at"] = datetime.now().isoformat()
+        return True
+
+    return False
+
+
+def get_playlist_apps(device: Device, playlist_id: str) -> List[App]:
+    """Get all apps in a playlist."""
+    playlist = get_device_playlist(device, playlist_id)
+    if not playlist:
+        return []
+
+    device_apps = device.get("apps", {})
+    return [
+        device_apps[iname] for iname in playlist["app_inames"] if iname in device_apps
+    ]
+
+
+def is_playlist_active_at_time(playlist: Playlist, current_time: datetime) -> bool:
+    """
+    Check if a playlist is active at the given time based on its start and end times.
+
+    :param playlist: The playlist to check
+    :param current_time: The current time to check against
+    :return: True if the playlist is active, False otherwise
+    """
+    try:
+        start_time = datetime.strptime(
+            str(playlist.get("start_time") or "00:00"), "%H:%M"
+        ).time()
+        end_time = datetime.strptime(
+            str(playlist.get("end_time") or "23:59"), "%H:%M"
+        ).time()
+    except ValueError:
+        # If time format is invalid, default to always active
+        return True
+
+    current_time_only = current_time.replace(second=0, microsecond=0).time()
+
+    # Handle overnight playlists (e.g., 22:00 to 06:00)
+    if start_time > end_time:
+        return current_time_only >= start_time or current_time_only <= end_time
+    else:
+        return start_time <= current_time_only <= end_time
+
+
+def is_playlist_active(playlist: Playlist, device: Device) -> bool:
+    """
+    Check if a playlist is currently active based on the device's timezone.
+
+    :param playlist: The playlist to check
+    :param device: The device the playlist belongs to
+    :return: True if the playlist is active, False otherwise
+    """
+    current_time = datetime.now(get_device_timezone(device))
+    return is_playlist_active_at_time(playlist, current_time) and playlist.get(
+        "enabled", True
+    )
