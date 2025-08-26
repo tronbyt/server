@@ -731,9 +731,7 @@ def render_app(
                     magnify = 1
                     width = 128
                     height = 64
-    current_app.logger.debug(
-        f"pixlet_render_app {app_path} {width}x{height}@{magnify}x"
-    )
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
