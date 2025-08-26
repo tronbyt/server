@@ -499,7 +499,7 @@ def get_apps_list(user: str) -> List[AppMetadata]:
             if preview.exists() and preview.stat().st_size > 0:
                 app_dict["preview"] = str(preview.name)
             yaml_path = file.parent / "manifest.yaml"
-            current_app.logger.debug(f"checking for manifest.yaml in {yaml_path}")
+            # current_app.logger.debug(f"checking for manifest.yaml in {yaml_path}")
             if yaml_path.exists():
                 with yaml_path.open("r") as f:
                     yaml_dict = yaml.safe_load(f)
@@ -517,9 +517,9 @@ def get_app_details(user: str, field: Literal["id", "name"], value: str) -> AppM
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
     for app in custom_apps:
-        current_app.logger.debug(app)
         if app[field] == value:
             # we found it
+            current_app.logger.debug(f"returning details for {app}")
             return app
     # if we get here then the app is not in custom apps
     # so we need to look in the system-apps directory

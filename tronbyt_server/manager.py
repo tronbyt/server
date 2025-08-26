@@ -731,7 +731,9 @@ def render_app(
                     magnify = 1
                     width = 128
                     height = 64
-
+    current_app.logger.debug(
+        f"pixlet_render_app {app_path} {width}x{height}@{magnify}x"
+    )
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
@@ -753,7 +755,8 @@ def render_app(
     if messages is not None and app is not None:
         db.save_render_messages(device, app, messages)
     if current_app.config.get("PRODUCTION") != "1":
-        current_app.logger.debug(f"{app_path}: {messages}")
+        # current_app.logger.debug(f"{app_path}: {messages}")
+        pass
 
     # leave the previous file in place if the new one is empty
     # this way, we still display the last successful render on the index page,
@@ -947,6 +950,7 @@ def next_app(
     last_app_index: Optional[int] = None,
     recursion_depth: int = 0,
 ) -> ResponseReturnValue:
+    current_app.logger.debug("\n\nStart of next_app")
     if not validate_device_id(device_id):
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
