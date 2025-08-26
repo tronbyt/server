@@ -138,9 +138,6 @@ def render_app(
     timeout: int,
     image_format: int,
 ) -> Tuple[Optional[bytes], List[str]]:
-    current_app.logger.debug(
-        f"INSIDE pixlet_render_app {path} {width}x{height}@{magnify}x"
-    )
     initialize_pixlet_library()
     if not pixlet_render_app:
         current_app.logger.debug("failed to init pixlet_library")
