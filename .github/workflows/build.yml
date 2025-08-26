@@ -26,7 +26,7 @@ jobs:
           sudo mv /usr/local/bin/libpixlet.so /usr/lib/libpixlet.so
           rm "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
         env:
-          PIXLET_VERSION: v0.43.0
+          PIXLET_VERSION: v0.44.0
       - name: Test with pytest
         run: pdm run -v pytest tests --doctest-modules --junitxml=junit/test-results.xml
       - name: Type check with mypy
@@ -65,4 +65,4 @@ jobs:
               --repo="${GITHUB_REPOSITORY}" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
               --generate-notes \
-              dist/release-artifacts/*
+              dist/*
