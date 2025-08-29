@@ -57,23 +57,7 @@
     previewImage.src = url.toString();
   }
 
-  // Helper function to add config update event listeners to form elements
-  function addConfigUpdateListeners(element) {
-    const inputs = element.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-      if (!input.hasAttribute("data-ignore-config")) {
-        // Remove existing listeners to avoid duplicates
-        input.removeEventListener("input", handleConfigUpdate);
-        input.removeEventListener("change", handleConfigUpdate);
 
-        // Add event listeners
-        input.addEventListener("input", handleConfigUpdate);
-        if (input.type === "select-one") {
-          input.addEventListener("change", handleConfigUpdate);
-        }
-      }
-    });
-  }
 
   // Centralized config update handler
   function handleConfigUpdate(event) {
@@ -512,9 +496,6 @@
         generatedInput.forEach(row => {
           row.setAttribute("data-generated-field", field.id); // Mark rows for easy identification
           formTable.appendChild(row);
-
-          // Add event listeners to newly created generated fields to update config
-          addConfigUpdateListeners(row);
         });
       } catch (error) {
         console.error("Error fetching generated fields:", error);
@@ -657,8 +638,6 @@
     const formFields = createFormFields(schema, config);
     formFields.forEach(row => {
       formTable.appendChild(row);
-      // Add config update listeners to initial form fields
-      addConfigUpdateListeners(row);
     });
 
     form.appendChild(formTable);
@@ -694,9 +673,7 @@
       });
     });
 
-    // Update the config object whenever a field changes
-    form.addEventListener("input", handleConfigUpdate);
-    form.addEventListener("change", handleConfigUpdate);
+
 
     // Reset form values to defaults
     resetButton.addEventListener("click", function () {
