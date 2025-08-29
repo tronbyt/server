@@ -184,9 +184,10 @@
 
         // Add event listeners directly to ensure they work for generated fields
         if (!inputElement.hasAttribute("data-ignore-config")) {
-          inputElement.addEventListener("input", handleConfigUpdate);
           if (inputElement.type === "select-one") {
             inputElement.addEventListener("change", handleConfigUpdate);
+          } else {
+            inputElement.addEventListener("input", handleConfigUpdate);
           }
         }
 
@@ -311,7 +312,6 @@
 
     // Add config update listeners to the dropdown
     dropdown.addEventListener("change", handleConfigUpdate);
-    dropdown.addEventListener("input", handleConfigUpdate);
 
     enableLocationSearch(searchInput, resultsList, hiddenInput, async locationQueryJson => {
       // locationQueryJson is the stringified JSON from the location search (e.g., Geoapify result)
