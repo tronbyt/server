@@ -146,7 +146,7 @@
           if (inputElement.selectedIndex >= 0 && inputElement.options[inputElement.selectedIndex]) {
             const initialValue = inputElement.options[inputElement.selectedIndex].value;
             config[field.id] = initialValue;
-            updateConfigAndPreview();
+            // Note: updateConfigAndPreview() will be called once after all fields are processed
           }
           break;
 
@@ -196,6 +196,9 @@
       row.appendChild(inputCell);
       rows.push(row);
     });
+
+    // Update config and preview once after all fields are processed
+    updateConfigAndPreview();
 
     return rows;
   }
@@ -561,13 +564,8 @@
         dropdown.selectedIndex = 0;
       }
 
-      // Explicitly update config with the selected value
-      if (dropdown.selectedIndex >= 0 && dropdown.options[dropdown.selectedIndex]) {
-        config[field.id] = dropdown.options[dropdown.selectedIndex].value;
-        updateConfigAndPreview();
-      }
-
-      dropdown.dispatchEvent(new Event("change")); // This updates config[field.id] via the main form listener
+      // The change event will handle updating the config and preview
+      dropdown.dispatchEvent(new Event("change"));
     } catch (error) {
       console.error(`Error fetching options for field ${field.id}:`, error);
       dropdown.innerHTML = ""; // Clear in case of error
@@ -578,13 +576,7 @@
       dropdown.appendChild(errOpt);
       if (dropdown.options.length > 0) dropdown.selectedIndex = 0;
 
-      // Explicitly update config with the selected value (likely empty/error state)
-      if (dropdown.selectedIndex >= 0 && dropdown.options[dropdown.selectedIndex]) {
-        config[field.id] = dropdown.options[dropdown.selectedIndex].value;
-        updateConfigAndPreview();
-      }
-
-      // Dispatch change so config might be updated to an empty/error state if needed
+      // The change event will handle updating the config and preview
       dropdown.dispatchEvent(new Event("change"));
     }
   }
