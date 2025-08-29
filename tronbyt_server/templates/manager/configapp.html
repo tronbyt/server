@@ -57,6 +57,43 @@
     previewImage.src = url.toString();
   }
 
+  // Helper function to add config update event listeners to form elements
+  function addConfigUpdateListeners(element) {
+    const inputs = element.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      if (!input.hasAttribute("data-ignore-config")) {
+        // Remove existing listeners to avoid duplicates
+        input.removeEventListener("input", handleConfigUpdate);
+        input.removeEventListener("change", handleConfigUpdate);
+
+        // Add event listeners
+        input.addEventListener("input", handleConfigUpdate);
+        if (input.type === "select-one") {
+          input.addEventListener("change", handleConfigUpdate);
+        }
+      }
+    });
+  }
+
+  // Centralized config update handler
+  function handleConfigUpdate(event) {
+    const target = event.target;
+    const fieldId = target.id;
+    if (target.hasAttribute("data-ignore-config")) {
+      return;
+    }
+    if (target.type === "checkbox") {
+      config[fieldId] = target.checked ? "true" : "false";
+    } else if (target.type === "select-one") {
+      config[fieldId] = target.value;
+    } else if (target.type === "datetime-local") {
+      config[fieldId] = new Date(target.value).toISOString();
+    } else {
+      config[fieldId] = target.value;
+    }
+    updateConfigAndPreview();
+  }
+
   // Function to create form fields dynamically
   function createFormFields(schema, config) {
     const rows = [];
@@ -111,13 +148,22 @@
 
         case "dropdown":
           inputElement = document.createElement("select");
-          field.options.forEach(option => {
-            const opt = document.createElement("option");
-            opt.value = option.value;
-            opt.textContent = option.text;
-            opt.selected = config[field.id] === option.value;
-            inputElement.appendChild(opt);
-          });
+          if (field.options) {
+            field.options.forEach(option => {
+              const opt = document.createElement("option");
+              opt.value = option.value;
+              opt.textContent = option.text;
+              opt.selected = config[field.id] === option.value;
+              inputElement.appendChild(opt);
+            });
+          }
+
+          // Set initial config value for the dropdown
+          if (inputElement.selectedIndex >= 0 && inputElement.options[inputElement.selectedIndex]) {
+            const initialValue = inputElement.options[inputElement.selectedIndex].value;
+            config[field.id] = initialValue;
+            updateConfigAndPreview();
+          }
           break;
 
         case "location":
@@ -151,6 +197,15 @@
         inputElement.name = field.id;
         inputElement.className = "form-control";
         inputElement.setAttribute("data-default", config[field.id] || field.default || "");
+
+        // Add event listeners directly to ensure they work for generated fields
+        if (!inputElement.hasAttribute("data-ignore-config")) {
+          inputElement.addEventListener("input", handleConfigUpdate);
+          if (inputElement.type === "select-one") {
+            inputElement.addEventListener("change", handleConfigUpdate);
+          }
+        }
+
         inputCell.appendChild(inputElement);
       }
 
@@ -267,11 +322,21 @@
     dropdown.className = "form-control";
     container.appendChild(dropdown);
 
+    // Add config update listeners to the dropdown
+    dropdown.addEventListener("change", handleConfigUpdate);
+    dropdown.addEventListener("input", handleConfigUpdate);
+
     enableLocationSearch(searchInput, resultsList, hiddenInput, async locationQueryJson => {
       // locationQueryJson is the stringified JSON from the location search (e.g., Geoapify result)
       const currentOptionJsonString = config[field.id]; // This is the currently saved option for the dropdown field
       await fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString);
     });
+
+    // Initial population of dropdown if device location is available
+    if (deviceLocation && deviceLocation !== "{}") {
+      const currentOptionJsonString = config[field.id];
+      fetchOptionsForLocation(field, deviceLocation, dropdown, currentOptionJsonString);
+    }
 
     return container;
   }
@@ -447,6 +512,9 @@
         generatedInput.forEach(row => {
           row.setAttribute("data-generated-field", field.id); // Mark rows for easy identification
           formTable.appendChild(row);
+
+          // Add event listeners to newly created generated fields to update config
+          addConfigUpdateListeners(row);
         });
       } catch (error) {
         console.error("Error fetching generated fields:", error);
@@ -512,6 +580,12 @@
         dropdown.selectedIndex = 0;
       }
 
+      // Explicitly update config with the selected value
+      if (dropdown.selectedIndex >= 0 && dropdown.options[dropdown.selectedIndex]) {
+        config[field.id] = dropdown.options[dropdown.selectedIndex].value;
+        updateConfigAndPreview();
+      }
+
       dropdown.dispatchEvent(new Event("change")); // This updates config[field.id] via the main form listener
     } catch (error) {
       console.error(`Error fetching options for field ${field.id}:`, error);
@@ -522,6 +596,13 @@
       errOpt.disabled = true;
       dropdown.appendChild(errOpt);
       if (dropdown.options.length > 0) dropdown.selectedIndex = 0;
+
+      // Explicitly update config with the selected value (likely empty/error state)
+      if (dropdown.selectedIndex >= 0 && dropdown.options[dropdown.selectedIndex]) {
+        config[field.id] = dropdown.options[dropdown.selectedIndex].value;
+        updateConfigAndPreview();
+      }
+
       // Dispatch change so config might be updated to an empty/error state if needed
       dropdown.dispatchEvent(new Event("change"));
     }
@@ -574,7 +655,11 @@
     formTable.style.borderSpacing = "0 15px";
 
     const formFields = createFormFields(schema, config);
-    formFields.forEach(row => formTable.appendChild(row));
+    formFields.forEach(row => {
+      formTable.appendChild(row);
+      // Add config update listeners to initial form fields
+      addConfigUpdateListeners(row);
+    });
 
     form.appendChild(formTable);
 
@@ -610,24 +695,8 @@
     });
 
     // Update the config object whenever a field changes
-    form.addEventListener("input", function (event) {
-      const target = event.target;
-      const fieldId = target.id;
-      if (target.hasAttribute("data-ignore-config")) {
-        return;
-      }
-      if (target.type === "checkbox") {
-        config[fieldId] = target.checked ? "true" : "false";
-      } else if (target.type === "select-one") {
-        config[fieldId] = target.value;
-      } else if (target.type === "datetime-local") {
-        config[fieldId] = new Date(target.value).toISOString();
-      } else {
-        config[fieldId] = target.value;
-      }
-
-      updateConfigAndPreview();
-    });
+    form.addEventListener("input", handleConfigUpdate);
+    form.addEventListener("change", handleConfigUpdate);
 
     // Reset form values to defaults
     resetButton.addEventListener("click", function () {
