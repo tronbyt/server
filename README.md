@@ -24,7 +24,7 @@ Some community projects like [TidbytAssistant](https://github.com/savdagod/Tidby
 
 ## Getting Started
 
-You can run Tronbyt-server on the free tier at Render.com.  Here is a [video walkthrough](https://www.youtube.com/watch?v=T6NPyjEu7qU).
+You can run Tronbyt-server on the free tier at Render.com.  Here is a [video walkthrough](https://youtu.be/2WfVaeX7BTk).
 MAKE SURE TO BACKUP YOUR DEVICE CONFIG JSON BEFORE REDEPLOYMENT.  Unlike normal docker Render.com will wipe everything on re-deploy.
 
 ### Prerequisites
