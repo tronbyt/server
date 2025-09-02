@@ -93,6 +93,18 @@ That said, the recommended installation method uses Docker Compose with a config
 
    You can further customize the server by editing the [Gunicorn settings](https://docs.gunicorn.org/en/latest/settings.html#settings) (listening address, TLS certificate, etc.) in `$(brew --prefix)/etc/tronbyt-server/gunicorn.conf.py`.
 
+#### Unraid
+
+1. Copy the `unraid_tronbyt-server.xml` file from the repository to `/config/plugins/dockerMan/templates-user` on your Unraid system.
+
+2. In the Unraid web UI, navigate to Docker > Add Container.
+
+3. Select the "tronbyt-server" template from the user templates.
+
+4. Configure the environment variables as needed (refer to the Docker section for details).
+
+5. Start the container.
+
 ### Running the Application
 
 1. If you installed the application using Docker, build and start the containers:
