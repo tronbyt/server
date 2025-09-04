@@ -231,7 +231,7 @@ def create() -> ResponseReturnValue:
                 name=name or device_id,
                 type=device_type,
                 img_url=img_url,
-                ws_url=ws_url
+                ws_url=ws_url,
                 api_key=api_key,
                 brightness=percent_brightness,  # Store as percentage
                 default_interval=10,
