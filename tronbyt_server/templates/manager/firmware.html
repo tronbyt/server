@@ -62,17 +62,15 @@
             if (httpRadio.checked || wsRadio.checked) {
                 input.value = httpRadio.checked ? httpVal : wsVal;
                 input.readOnly = true;
-                input.disabled = true;
             } else if (customRadio.checked) {
                 input.value = "";
                 input.readOnly = false;
-                input.disabled = false;
             }
         }
 
-        httpRadio.addEventListener('change', updateUrl);
-        wsRadio.addEventListener('change', updateUrl);
-        customRadio.addEventListener('change', updateUrl);
+        document.querySelectorAll('input[name="url_variant"]').forEach(radio => {
+            radio.addEventListener('change', updateUrl);
+        });
 
         // Initialize
         httpRadio.checked = true;
