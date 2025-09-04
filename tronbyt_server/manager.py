@@ -868,6 +868,7 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                     "Content-Disposition": f"attachment;filename=firmware_{device_type}_{device_id}.bin"
                 },
             )
+    device["ws_url"] = ws_root() + f"/{device_id}/ws"
 
     return render_template("manager/firmware.html", device=device)
 
