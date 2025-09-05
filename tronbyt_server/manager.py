@@ -210,6 +210,9 @@ def create() -> ResponseReturnValue:
                 return redirect(url_for("manager.create"))
             if not img_url:
                 img_url = f"{server_root()}/{device_id}/next"
+
+            ws_url = ws_root() + f"/{device_id}/ws"
+
             if not api_key or api_key == "":
                 api_key = "".join(
                     secrets.choice(string.ascii_letters + string.digits)
@@ -228,6 +231,7 @@ def create() -> ResponseReturnValue:
                 name=name or device_id,
                 type=device_type,
                 img_url=img_url,
+                ws_url=ws_url
                 api_key=api_key,
                 brightness=percent_brightness,  # Store as percentage
                 default_interval=10,
@@ -393,11 +397,13 @@ def update(device_id: str) -> ResponseReturnValue:
             if "apps" in user["devices"][device_id]:
                 device["apps"] = user["devices"][device_id]["apps"]
             user["devices"][device_id] = device
+            # Ensure ws_url is set for all devices (for existing devices)
+            if "ws_url" not in device:
+                device["ws_url"] = ws_root() + f"/{device_id}/ws"
             db.save_user(user)
 
             return redirect(url_for("manager.index"))
     device = g.user["devices"][device_id]
-    device["ws_url"] = ws_root() + f"/{device_id}/ws"
 
     # Convert percentage brightness values to UI scale (0-5) for display
     ui_device = device.copy()
