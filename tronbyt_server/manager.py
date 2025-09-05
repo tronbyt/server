@@ -199,6 +199,7 @@ def create() -> ResponseReturnValue:
         name = request.form.get("name")
         device_type = request.form.get("device_type")
         img_url = request.form.get("img_url")
+        ws_url = request.form.get("ws_url")
         api_key = request.form.get("api_key")
         notes = request.form.get("notes")
         brightness = request.form.get("brightness")
@@ -220,8 +221,8 @@ def create() -> ResponseReturnValue:
                 return redirect(url_for("manager.create"))
             if not img_url:
                 img_url = f"{server_root()}/{device_id}/next"
-
-            ws_url = ws_root() + f"/{device_id}/ws"
+            if not ws_url:
+                ws_url = ws_root() + f"/{device_id}/ws"
 
             if not api_key or api_key == "":
                 api_key = "".join(
@@ -338,6 +339,7 @@ def update(device_id: str) -> ResponseReturnValue:
             flash(error)
         else:
             img_url = request.form.get("img_url")
+            ws_url = request.form.get("ws_url")
             device = Device(
                 id=device_id,
                 night_mode_enabled=bool(request.form.get("night_mode_enabled")),
@@ -346,6 +348,11 @@ def update(device_id: str) -> ResponseReturnValue:
                     db.sanitize_url(img_url)
                     if img_url and len(img_url) > 0
                     else f"{server_root()}/{device_id}/next"
+                ),
+                ws_url=(
+                    db.sanitize_url(ws_url)
+                    if ws_url and len(ws_url) > 0
+                    else ws_root() + f"/{device_id}/ws"
                 ),
             )
             if name:
@@ -412,6 +419,10 @@ def update(device_id: str) -> ResponseReturnValue:
             return redirect(url_for("manager.index"))
     device = g.user["devices"][device_id]
 
+    # Set default values for img_url and ws_url for "reset to default" function
+    default_img_url = f"{server_root()}/{device_id}/next"
+    default_ws_url = ws_root() + f"/{device_id}/ws"
+
     # Convert percentage brightness values to UI scale (0-5) for display
     ui_device = device.copy()
     if "brightness" in ui_device:
@@ -425,6 +436,8 @@ def update(device_id: str) -> ResponseReturnValue:
         "manager/update.html",
         device=ui_device,
         available_timezones=available_timezones(),
+        default_img_url=default_img_url,
+        default_ws_url=default_ws_url,
     )
 
 

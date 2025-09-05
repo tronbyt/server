@@ -17,8 +17,10 @@
     <option value="raspberrypi">Raspberry Pi</option>
     <option value="other">Other</option>
   </select>
-  <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('Leave Blank unless advanced user.') }})</span>
+  <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
   <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}">
+  <span><label for="ws_url">{{ _('WebSocket URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
+  <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}">
   <span><label for="brightness">{{ _('Brightness Level ( 0 - 5 )') }}</label></span><output>3</output>
   <input type="range" name="brightness" id="brightness" min="0" max="5" value="3"
     oninput="this.previousElementSibling.value = this.value">
@@ -42,7 +44,7 @@
   </script>
   <input type="submit" class="w3-button w3-green" value="{{ _('Save') }}">
 </form>
-    <a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange">
-      {{ _('Import Configuration') }}
-    </a>
+<a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange">
+  {{ _('Import Configuration') }}
+</a>
 {% endblock %}

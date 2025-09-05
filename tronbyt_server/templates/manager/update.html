@@ -109,10 +109,31 @@
 
     <div class="form-group">
       <label for="img_url">{{ _('Image URL') }}</label>
-      <input name="img_url" id="img_url" value="{{ device['img_url'] }}">
-      <label for="ws_url">{{ _('Websocket URL') }}</label>
-      <input name="ws_url" id="ws_url" value="{{ device['ws_url'] }}" readonly>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input name="img_url" id="img_url" value="{{ device['img_url'] }}" style="flex: 1;"
+          oninput="updateCurlCommand()">
+        <button type="button" class="w3-button w3-small w3-gray" onclick="resetImgUrl()"
+          title="{{ _('Reset to default') }}">{{ _('Reset to Default') }}</button>
+      </div>
+
+      <label for="ws_url" style="margin-top: 10px;">{{ _('Websocket URL') }}</label>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input name="ws_url" id="ws_url" value="{{ device['ws_url'] }}" style="flex: 1;">
+        <button type="button" class="w3-button w3-small w3-gray" onclick="resetWsUrl()"
+          title="{{ _('Reset to default') }}">{{ _('Reset to Default') }}</button>
+      </div>
     </div>
+
+    <script>
+      function resetImgUrl() {
+        document.getElementById('img_url').value = '{{ default_img_url }}';
+        updateCurlCommand(); // Update curl command if it exists
+      }
+
+      function resetWsUrl() {
+        document.getElementById('ws_url').value = '{{ default_ws_url }}';
+      }
+    </script>
 
     <div class="form-group">
       <label for="default_interval">{{ _('App Cycle Time (Seconds)') }}</label>
@@ -123,7 +144,8 @@
 
     <div class="form-group">
       <label for="brightness">{{ _('Brightness') }}</label>
-      <span class="tooltip-icon" title="{{ _('If your device stays dark at level 1, add legacy_brightness to the Notes field') }}">ⓘ</span>
+      <span class="tooltip-icon"
+        title="{{ _('If your device stays dark at level 1, add legacy_brightness to the Notes field') }}">ⓘ</span>
       <output>{{ device['brightness'] }}</output>
       <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
         oninput="this.previousElementSibling.value = this.value">
@@ -178,49 +200,49 @@
       <input type="hidden" name="location" id="location"
         value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
     </div>
-    
+
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
       });
     </script>
 
-<div class="form-group">
-  <label for="api_key">{{ _('API Key') }}</label>
-  <input name="api_key" id="api_key" class="form-control" value="{{ request.form['api_key'] or device['api_key'] }}"
-    oninput="updateCurlCommand()">
-</div>
+    <div class="form-group">
+      <label for="api_key">{{ _('API Key') }}</label>
+      <input name="api_key" id="api_key" class="form-control" value="{{ request.form['api_key'] or device['api_key'] }}"
+        oninput="updateCurlCommand()">
+    </div>
 
-<div class="form-group">
-  <label for="curl_example">{{ _('Example curl Command') }}</label>
-  <textarea id="curl_example" class="form-control" rows="5" readonly></textarea>
-</div>
+    <div class="form-group">
+      <label for="curl_example">{{ _('Example curl Command') }}</label>
+      <textarea id="curl_example" class="form-control" rows="5" readonly></textarea>
+    </div>
 
-<script>
-  function parseImageUrl(imageUrl) {
-    try {
-      const url = new URL(imageUrl);
-      const pathParts = url.pathname.split("/").filter(Boolean);
-      const deviceId = pathParts[0];
-      const server = `${url.protocol}//${url.host}`;
-      return { server, deviceId };
-    } catch (e) {
-      return { server: 'http://localhost:8000', deviceId: 'UNKNOWN' };
-    }
-  }
+    <script>
+      function parseImageUrl(imageUrl) {
+        try {
+          const url = new URL(imageUrl);
+          const pathParts = url.pathname.split("/").filter(Boolean);
+          const deviceId = pathParts[0];
+          const server = `${url.protocol}//${url.host}`;
+          return { server, deviceId };
+        } catch (e) {
+          return { server: 'http://localhost:8000', deviceId: 'UNKNOWN' };
+        }
+      }
 
-  function updateCurlCommand() {
-    const apiKey = document.getElementById("api_key").value.trim();
-    const imageUrl = document.getElementById("img_url").value.trim();
-    const { server, deviceId } = parseImageUrl(imageUrl);
+      function updateCurlCommand() {
+        const apiKey = document.getElementById("api_key").value.trim();
+        const imageUrl = document.getElementById("img_url").value.trim();
+        const { server, deviceId } = parseImageUrl(imageUrl);
 
-    const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
-    document.getElementById("curl_example").value = curl;
-  }
+        const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
+        document.getElementById("curl_example").value = curl;
+      }
 
-  // Update curl command on page load
-  document.addEventListener("DOMContentLoaded", updateCurlCommand);
-</script>
+      // Update curl command on page load
+      document.addEventListener("DOMContentLoaded", updateCurlCommand);
+    </script>
 
     <div class="form-group">
       <label for="notes">{{ _('Notes') }}</label>
