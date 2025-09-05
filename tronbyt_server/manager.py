@@ -72,7 +72,13 @@ def index() -> str:
     if "devices" in g.user:
         # Get the devices and convert brightness values to UI scale for display
         devices = []
+        user_updated = False
         for device in reversed(list(g.user["devices"].values())):
+            # Ensure ws_url is set for all devices (migration for existing devices)
+            if "ws_url" not in device:
+                device["ws_url"] = ws_root() + f"/{device['id']}/ws"
+                user_updated = True
+            
             ui_device = device.copy()
             if "brightness" in ui_device:
                 ui_device["brightness"] = db.percent_to_ui_scale(
@@ -83,6 +89,10 @@ def index() -> str:
                     ui_device["night_brightness"]
                 )
             devices.append(ui_device)
+        
+        # Save user data if any device was updated
+        if user_updated:
+            db.save_user(g.user)
 
     return render_template("manager/index.html", devices=devices)
 
@@ -231,7 +241,7 @@ def create() -> ResponseReturnValue:
                 name=name or device_id,
                 type=device_type,
                 img_url=img_url,
-                ws_url=ws_url
+                ws_url=ws_url,
                 api_key=api_key,
                 brightness=percent_brightness,  # Store as percentage
                 default_interval=10,
@@ -397,9 +407,6 @@ def update(device_id: str) -> ResponseReturnValue:
             if "apps" in user["devices"][device_id]:
                 device["apps"] = user["devices"][device_id]["apps"]
             user["devices"][device_id] = device
-            # Ensure ws_url is set for all devices (for existing devices)
-            if "ws_url" not in device:
-                device["ws_url"] = ws_root() + f"/{device_id}/ws"
             db.save_user(user)
 
             return redirect(url_for("manager.index"))
@@ -874,7 +881,6 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                     "Content-Disposition": f"attachment;filename=firmware_{device_type}_{device_id}.bin"
                 },
             )
-    device["ws_url"] = ws_root() + f"/{device_id}/ws"
 
     return render_template("manager/firmware.html", device=device)
 
