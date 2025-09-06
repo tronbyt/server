@@ -78,7 +78,7 @@ def index() -> str:
             if "ws_url" not in device:
                 device["ws_url"] = ws_root() + f"/{device['id']}/ws"
                 user_updated = True
-            
+
             ui_device = device.copy()
             if "brightness" in ui_device:
                 ui_device["brightness"] = db.percent_to_ui_scale(
@@ -89,7 +89,7 @@ def index() -> str:
                     ui_device["night_brightness"]
                 )
             devices.append(ui_device)
-        
+
         # Save user data if any device was updated
         if user_updated:
             db.save_user(g.user)
