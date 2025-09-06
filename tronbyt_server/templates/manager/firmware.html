@@ -14,7 +14,17 @@
         <a href="https://github.com/WCHSoftGroup/ch34xser_macos">CH34x Drivers</a>
     </i>
     <br>
-    <input type="hidden" name="id" id="id" value="device['id']">
+    <input type="hidden" name="id" id="id" value="{{ device['id'] }}">
+
+    <div class="left-align" style="margin: 6px 0 8px;">
+        <label style="margin-right:8px;">{{ _('Connection Type') }}:</label>
+        <label style="margin-right:12px;"><input type="radio" name="url_variant" id="variant_http" value="http">
+            HTTP</label>
+        <label style="margin-right:12px;"><input type="radio" name="url_variant" id="variant_ws" value="ws">
+            WebSocket</label>
+        <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
+    </div>
+
     <span><label for="img_url">{{ _('Image URL') }}</label></span>
     <input name="img_url" id="img_url" value="{{ device['img_url'] }}"></p>
 
@@ -38,5 +48,34 @@
     <input class="w3-button w3-blue" type="submit" value="{{ _('Generate Firmware File') }}">
 </form>
 <hr>
+
+<script>
+    (function () {
+        const input = document.getElementById('img_url');
+        const httpRadio = document.getElementById('variant_http');
+        const wsRadio = document.getElementById('variant_ws');
+        const customRadio = document.getElementById('variant_custom');
+        const httpVal = "{{ device['img_url'] }}";
+        const wsVal = "{{ device['ws_url'] }}";
+
+        function updateUrl() {
+            if (httpRadio.checked || wsRadio.checked) {
+                input.value = httpRadio.checked ? httpVal : wsVal;
+                input.readOnly = true;
+            } else if (customRadio.checked) {
+                input.value = "";
+                input.readOnly = false;
+            }
+        }
+
+        document.querySelectorAll('input[name="url_variant"]').forEach(radio => {
+            radio.addEventListener('change', updateUrl);
+        });
+
+        // Initialize
+        httpRadio.checked = true;
+        updateUrl();
+    })();
+</script>
 
 {% endblock %}

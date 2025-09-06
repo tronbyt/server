@@ -72,7 +72,13 @@ def index() -> str:
     if "devices" in g.user:
         # Get the devices and convert brightness values to UI scale for display
         devices = []
+        user_updated = False
         for device in reversed(list(g.user["devices"].values())):
+            # Ensure ws_url is set for all devices (migration for existing devices)
+            if "ws_url" not in device:
+                device["ws_url"] = ws_root() + f"/{device['id']}/ws"
+                user_updated = True
+
             ui_device = device.copy()
             if "brightness" in ui_device:
                 ui_device["brightness"] = db.percent_to_ui_scale(
@@ -83,6 +89,10 @@ def index() -> str:
                     ui_device["night_brightness"]
                 )
             devices.append(ui_device)
+
+        # Save user data if any device was updated
+        if user_updated:
+            db.save_user(g.user)
 
     return render_template("manager/index.html", devices=devices)
 
@@ -189,6 +199,7 @@ def create() -> ResponseReturnValue:
         name = request.form.get("name")
         device_type = request.form.get("device_type")
         img_url = request.form.get("img_url")
+        ws_url = request.form.get("ws_url")
         api_key = request.form.get("api_key")
         notes = request.form.get("notes")
         brightness = request.form.get("brightness")
@@ -210,6 +221,9 @@ def create() -> ResponseReturnValue:
                 return redirect(url_for("manager.create"))
             if not img_url:
                 img_url = f"{server_root()}/{device_id}/next"
+            if not ws_url:
+                ws_url = ws_root() + f"/{device_id}/ws"
+
             if not api_key or api_key == "":
                 api_key = "".join(
                     secrets.choice(string.ascii_letters + string.digits)
@@ -228,6 +242,7 @@ def create() -> ResponseReturnValue:
                 name=name or device_id,
                 type=device_type,
                 img_url=img_url,
+                ws_url=ws_url,
                 api_key=api_key,
                 brightness=percent_brightness,  # Store as percentage
                 default_interval=10,
@@ -324,6 +339,7 @@ def update(device_id: str) -> ResponseReturnValue:
             flash(error)
         else:
             img_url = request.form.get("img_url")
+            ws_url = request.form.get("ws_url")
             device = Device(
                 id=device_id,
                 night_mode_enabled=bool(request.form.get("night_mode_enabled")),
@@ -332,6 +348,11 @@ def update(device_id: str) -> ResponseReturnValue:
                     db.sanitize_url(img_url)
                     if img_url and len(img_url) > 0
                     else f"{server_root()}/{device_id}/next"
+                ),
+                ws_url=(
+                    db.sanitize_url(ws_url)
+                    if ws_url and len(ws_url) > 0
+                    else ws_root() + f"/{device_id}/ws"
                 ),
             )
             if name:
@@ -397,7 +418,10 @@ def update(device_id: str) -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     device = g.user["devices"][device_id]
-    device["ws_url"] = ws_root() + f"/{device_id}/ws"
+
+    # Set default values for img_url and ws_url for "reset to default" function
+    default_img_url = f"{server_root()}/{device_id}/next"
+    default_ws_url = ws_root() + f"/{device_id}/ws"
 
     # Convert percentage brightness values to UI scale (0-5) for display
     ui_device = device.copy()
@@ -412,6 +436,8 @@ def update(device_id: str) -> ResponseReturnValue:
         "manager/update.html",
         device=ui_device,
         available_timezones=available_timezones(),
+        default_img_url=default_img_url,
+        default_ws_url=default_ws_url,
     )
 
 
