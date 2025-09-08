@@ -34,16 +34,21 @@ def _generate_api_key() -> str:
 
 @bp.route("/register", methods=("GET", "POST"))
 def register() -> ResponseReturnValue:
+    # Check if user registration is enabled for non-authenticated users
+    if current_app.config.get("ENABLE_USER_REGISTRATION") != "1":
+        # Only allow admin to register new users if open registration is disabled
+        if not g.user or g.user.get("username") != "admin":
+            flash("User registration is not enabled.")
+            return redirect(url_for("auth.login"))
+
     # Check if max users limit is reached
-    max_users = current_app.config.get("MAX_USERS", 100)  # Default to 0 (unlimited)
+    max_users = current_app.config.get("MAX_USERS", 100)  # Default to 100
     if max_users > 0:
         users_count = len(db.get_all_users())
         if users_count >= max_users:
             flash("Maximum number of users reached. Registration is disabled.")
             return redirect(url_for("auth.login"))
 
-    if not current_app.config["TESTING"]:
-        time.sleep(2)
     # # only allow admin to register new users
     # if session['username'] != "admin":
     #     return redirect(url_for('manager.index'))
@@ -107,7 +112,7 @@ def login() -> ResponseReturnValue:
             return redirect(url_for("index"))
         flash(error)
 
-    return render_template("auth/login.html")
+    return render_template("auth/login.html", config=current_app.config, user=g.user)
 
 
 # edit user info, namely password

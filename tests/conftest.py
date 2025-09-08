@@ -11,7 +11,12 @@ from tronbyt_server import create_app
 
 @pytest.fixture()
 def app() -> Iterator[Flask]:
-    app = create_app({"test_config": True})
+    # Use test config with ENABLE_USER_REGISTRATION enabled by default for legacy compatibility
+    test_config = {
+        "ENABLE_USER_REGISTRATION": "1",  # Enable by default for tests
+    }
+
+    app = create_app(test_config)
 
     with app.app_context():
         yield app
