@@ -49,9 +49,6 @@ def register() -> ResponseReturnValue:
             flash("Maximum number of users reached. Registration is disabled.")
             return redirect(url_for("auth.login"))
 
-    # # only allow admin to register new users
-    # if session['username'] != "admin":
-    #     return redirect(url_for('manager.index'))
     if request.method == "POST":
         error: Optional[str] = None
 
@@ -82,8 +79,13 @@ def register() -> ResponseReturnValue:
 
             if db.save_user(user, new_user=True):
                 db.create_user_dir(username)
-                flash(f"Registered as {username}.")
-                return redirect(url_for("auth.login"))
+                # Only redirect to login if not admin registering another user
+                if not g.user or g.user.get("username") != "admin":
+                    flash(f"Registered as {username}.")
+                    return redirect(url_for("auth.login"))
+                else:  # Admin registered a new user, stay on the registration page
+                    flash(f"User {username} registered successfully.")
+                    return redirect(url_for("auth.register"))
             else:
                 error = "Couldn't Save User"
         flash(error)
