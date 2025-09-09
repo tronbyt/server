@@ -42,6 +42,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
     """
     import urllib.request
     import json
+    from urllib.parse import urlparse
 
     firmware_path = base_path / "firmware"
     firmware_repo = os.getenv(
@@ -57,8 +58,10 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
 
     # Parse GitHub URL to get owner/repo
     try:
-        if "github.com/" in firmware_repo:
-            parts = firmware_repo.split("github.com/")[1].split("/")
+        parsed_url = urlparse(firmware_repo)
+        if parsed_url.netloc == "github.com":
+            # Remove leading/trailing '/' and split the path
+            parts = [seg for seg in parsed_url.path.strip("/").split("/") if seg]
             if len(parts) >= 2:
                 owner, repo = parts[0], parts[1]
             else:
