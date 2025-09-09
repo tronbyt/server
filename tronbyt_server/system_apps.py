@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 from flask import current_app
@@ -29,7 +29,7 @@ def log_message(message: str) -> None:
         print(message)
 
 
-def update_firmware_binaries(base_path: Path) -> dict:
+def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
     """Download the latest firmware bin files from GitHub releases.
 
     Returns:
@@ -66,8 +66,15 @@ def update_firmware_binaries(base_path: Path) -> dict:
         else:
             raise ValueError("Not a GitHub URL")
     except Exception as e:
-        log_message(f"Error parsing firmware repository URL {firmware_repo}: {e}")
-        return
+        error_msg = f"Error parsing firmware repository URL {firmware_repo}: {e}"
+        log_message(error_msg)
+        return {
+            "success": False,
+            "action": "error",
+            "message": error_msg,
+            "version": "unknown",
+            "files_downloaded": 0,
+        }
 
     # GitHub API URL for latest release
     api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
