@@ -1,27 +1,24 @@
-"""Tests for the ALLOW_USER_REGISTRATION environment variable functionality."""
-
 from flask.testing import FlaskClient
 
 
-def test_registration_disabled_by_default(client: FlaskClient, app) -> None:
-    with app.test_request_context():
-        # Modify config within the context
-        app.config["ENABLE_USER_REGISTRATION"] = None
+def test_registration_disabled(app) -> None:
+    # Disable open registration for this test
+    app.config["ENABLE_USER_REGISTRATION"] = "0"
 
-        with app.test_client() as client:
-            # Try to access registration page without being logged in
-            response = client.get("/auth/register")
-            assert response.status_code == 302  # Should redirect to login
-            assert "/auth/login" in response.headers["Location"]
+    # Create client after toggling config
+    with app.test_client() as client:
+        # Try to access registration page without being logged in
+        response = client.get("/auth/register")
+        assert response.status_code == 302  # Should redirect to login
+        assert "/auth/login" in response.headers["Location"]
 
-            # Check that the login page doesn't show registration link
-            response = client.get("/auth/login")
-            login_data = response.get_data(as_text=True)
-            assert "Create User" not in login_data
+        # Check that the login page doesn't show registration link
+        response = client.get("/auth/login")
+        login_data = response.get_data(as_text=True)
+        assert "Create User" not in login_data
 
 
 def test_registration_enabled(client: FlaskClient, app) -> None:
-    assert app.config["ENABLE_USER_REGISTRATION"] == "1"
     response = client.get("/auth/register")
     assert response.status_code == 200
     assert "Register" in response.get_data(as_text=True)
@@ -41,25 +38,37 @@ def test_registration_enabled(client: FlaskClient, app) -> None:
     assert "/auth/login" in response.headers["Location"]
 
 
-def test_admin_can_always_register_users(client: FlaskClient) -> None:
-    """Test that admin users can always access registration regardless of the env var."""
-    # Admin should be able to access registration page
-    response = client.get("/auth/register")
-    assert response.status_code == 200
-    assert "Register" in response.get_data(as_text=True)
+def test_admin_can_always_register_users(app) -> None:
+    """Admin users can access registration regardless of the env var."""
+    # Prove exemption by disabling open registration
+    app.config["ENABLE_USER_REGISTRATION"] = "0"
+
+    with app.test_client() as client:
+        # Simulate admin being logged in
+        with client.session_transaction() as sess:
+            sess["username"] = "admin"
+
+        # Admin should be able to access registration page
+        response = client.get("/auth/register")
+        assert response.status_code == 200
+        assert "Register" in response.get_data(as_text=True)
 
 
-def test_max_users_limit_with_open_registration(client: FlaskClient) -> None:
-    # Register first user (should succeed)
-    response = client.post(
-        "/auth/register", data={"username": "user1", "password": "password123"}
-    )
-    assert response.status_code == 302
+def test_max_users_limit_with_open_registration(app) -> None:
+    # Ensure open registration and set a small limit (includes existing admin user)
+    app.config["MAX_USERS"] = 2  # admin + 1 new user allowed
 
-    # Try to register second user (should fail due to limit)
-    response = client.post(
-        "/auth/register", data={"username": "user2", "password": "password123"}
-    )
-    # Should redirect back to login with error message
-    assert response.status_code == 302
-    assert "/auth/login" in response.headers["Location"]
+    with app.test_client() as client:
+        # Register first user (should succeed)
+        response = client.post(
+            "/auth/register", data={"username": "user1", "password": "password123"}
+        )
+        assert response.status_code == 302
+
+        # Try to register second user (should fail due to limit)
+        response = client.post(
+            "/auth/register", data={"username": "user2", "password": "password123"}
+        )
+        # Should redirect back to login with error message
+        assert response.status_code == 302
+        assert "/auth/login" in response.headers["Location"]

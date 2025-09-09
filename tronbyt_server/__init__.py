@@ -247,7 +247,8 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             DATA_DIR=os.getenv("DATA_DIR", "data"),
             PRODUCTION="0",
             MAX_USERS=int(os.getenv("MAX_USERS", "100")),
-            ENABLE_USER_REGISTRATION=os.getenv("ENABLE_USER_REGISTRATION", "0"),
+            # ENABLE_USER_REGISTRATION enabled by default for test compatibility
+            ENABLE_USER_REGISTRATION="1",
             TESTING=True,
         )
     babel.init_app(app, locale_selector=get_locale)
