@@ -81,8 +81,8 @@
 <nav>
   <h1 class="w3-sans-serif">{{ _('Tronbyt Manager') }}</h1>
   <ul>
-    {% if (config.get("ENABLE_USER_REGISTRATION") == "1" and not g.user['username']) or g.user['username'] ==
-    'admin' %}
+    {% if (config.get("ENABLE_USER_REGISTRATION") == "1" and not g.user) or (g.user and g.user['username'] == 'admin')
+    %}
     <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
     {% endif %}
     {% if g.user %}

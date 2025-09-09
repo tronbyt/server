@@ -1,7 +1,8 @@
 from flask.testing import FlaskClient
+from flask import Flask
 
 
-def test_registration_disabled(app) -> None:
+def test_registration_disabled(app: Flask) -> None:
     # Disable open registration for this test
     app.config["ENABLE_USER_REGISTRATION"] = "0"
 
@@ -18,7 +19,7 @@ def test_registration_disabled(app) -> None:
         assert "Create User" not in login_data
 
 
-def test_registration_enabled(client: FlaskClient, app) -> None:
+def test_registration_enabled(client: FlaskClient) -> None:
     response = client.get("/auth/register")
     assert response.status_code == 200
     assert "Register" in response.get_data(as_text=True)
@@ -38,7 +39,7 @@ def test_registration_enabled(client: FlaskClient, app) -> None:
     assert "/auth/login" in response.headers["Location"]
 
 
-def test_admin_can_always_register_users(app) -> None:
+def test_admin_can_always_register_users(app: Flask) -> None:
     """Admin users can access registration regardless of the env var."""
     # Prove exemption by disabling open registration
     app.config["ENABLE_USER_REGISTRATION"] = "0"
@@ -54,7 +55,7 @@ def test_admin_can_always_register_users(app) -> None:
         assert "Register" in response.get_data(as_text=True)
 
 
-def test_max_users_limit_with_open_registration(app) -> None:
+def test_max_users_limit_with_open_registration(app: Flask) -> None:
     # Ensure open registration and set a small limit (includes existing admin user)
     app.config["MAX_USERS"] = 2  # admin + 1 new user allowed
 
