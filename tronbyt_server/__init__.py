@@ -264,7 +264,10 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         # This is a workaround to avoid running the update functions twice.
         if not is_running_from_reloader():
             # Update firmware before updating apps
-            system_apps.update_firmware_binaries(db.get_data_dir())
+            try:
+                system_apps.update_firmware_binaries(db.get_data_dir())
+            except Exception as e:
+                app.logger.error(f"Failed to update firmware during startup: {e}")
             system_apps.update_system_repo(db.get_data_dir())
 
     from . import auth

@@ -29,8 +29,17 @@ def log_message(message: str) -> None:
         print(message)
 
 
-def update_firmware_binaries(base_path: Path) -> None:
-    """Download the latest firmware bin files from GitHub releases."""
+def update_firmware_binaries(base_path: Path) -> dict:
+    """Download the latest firmware bin files from GitHub releases.
+
+    Returns:
+        dict: Status information with keys:
+            - 'success': bool - Whether the operation completed successfully
+            - 'action': str - What action was taken ('updated', 'skipped', 'error')
+            - 'message': str - Human readable message
+            - 'version': str - Version that was processed
+            - 'files_downloaded': int - Number of files downloaded (0 if skipped)
+    """
     import urllib.request
     import json
 
@@ -73,6 +82,27 @@ def update_firmware_binaries(base_path: Path) -> None:
         release_tag = release_data.get("tag_name", "unknown")
         log_message(f"Found latest release: {release_tag}")
 
+        # Check if we already have this version
+        version_file = firmware_path / "firmware_version.txt"
+        current_version = None
+        if version_file.exists():
+            try:
+                with version_file.open("r") as f:
+                    current_version = f.read().strip()
+                log_message(f"Current firmware version: {current_version}")
+            except Exception as e:
+                log_message(f"Error reading current version file: {e}")
+
+        if current_version == release_tag:
+            log_message(f"Firmware is already up to date (version {release_tag})")
+            return {
+                "success": True,
+                "action": "skipped",
+                "message": f"Firmware is already up to date (version {release_tag})",
+                "version": release_tag,
+                "files_downloaded": 0,
+            }
+
         # Mapping from GitHub release names to expected local names
         firmware_name_mapping = {
             "tidbyt-gen1_firmware.bin": "tidbyt-gen1.bin",
@@ -111,17 +141,80 @@ def update_firmware_binaries(base_path: Path) -> None:
             log_message(
                 f"Downloaded {bin_files_downloaded} firmware files to {firmware_path}"
             )
+
+            # Write version information to file
+            version_file = firmware_path / "firmware_version.txt"
+            try:
+                with version_file.open("w") as f:
+                    f.write(f"{release_tag}\n")
+                log_message(f"Saved firmware version {release_tag} to {version_file}")
+
+                return {
+                    "success": True,
+                    "action": "updated",
+                    "message": f"Successfully updated firmware to version {release_tag} ({bin_files_downloaded} files downloaded)",
+                    "version": release_tag,
+                    "files_downloaded": bin_files_downloaded,
+                }
+            except Exception as e:
+                log_message(f"Error writing version file: {e}")
+                return {
+                    "success": False,
+                    "action": "error",
+                    "message": f"Downloaded firmware but failed to save version file: {e}",
+                    "version": release_tag,
+                    "files_downloaded": bin_files_downloaded,
+                }
         else:
             log_message("No .bin files found in the latest release")
+            return {
+                "success": False,
+                "action": "error",
+                "message": "No firmware files found in the latest release",
+                "version": release_tag,
+                "files_downloaded": 0,
+            }
 
     except urllib.error.HTTPError as e:
-        log_message(f"HTTP error fetching release info: {e.code} {e.reason}")
+        error_msg = f"HTTP error fetching release info: {e.code} {e.reason}"
+        log_message(error_msg)
+        return {
+            "success": False,
+            "action": "error",
+            "message": error_msg,
+            "version": "unknown",
+            "files_downloaded": 0,
+        }
     except urllib.error.URLError as e:
-        log_message(f"URL error fetching release info: {e.reason}")
+        error_msg = f"URL error fetching release info: {e.reason}"
+        log_message(error_msg)
+        return {
+            "success": False,
+            "action": "error",
+            "message": error_msg,
+            "version": "unknown",
+            "files_downloaded": 0,
+        }
     except json.JSONDecodeError as e:
-        log_message(f"Error parsing release JSON: {e}")
+        error_msg = f"Error parsing release JSON: {e}"
+        log_message(error_msg)
+        return {
+            "success": False,
+            "action": "error",
+            "message": error_msg,
+            "version": "unknown",
+            "files_downloaded": 0,
+        }
     except Exception as e:
-        log_message(f"Error updating firmware: {e}")
+        error_msg = f"Error updating firmware: {e}"
+        log_message(error_msg)
+        return {
+            "success": False,
+            "action": "error",
+            "message": error_msg,
+            "version": "unknown",
+            "files_downloaded": 0,
+        }
 
 
 def update_system_repo(base_path: Path) -> None:

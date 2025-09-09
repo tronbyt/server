@@ -653,6 +653,18 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     return None
 
 
+def get_firmware_version() -> Optional[str]:
+    """Get the current firmware version from the downloaded firmware."""
+    version_file = get_data_dir() / "firmware" / "firmware_version.txt"
+    try:
+        if version_file.exists():
+            with version_file.open("r") as f:
+                return f.read().strip()
+    except Exception as e:
+        current_app.logger.error(f"Error reading firmware version: {e}")
+    return None
+
+
 def get_user_by_api_key(api_key: str) -> Optional[User]:
     for user in get_all_users():
         if user.get("api_key") == api_key:
