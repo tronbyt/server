@@ -80,12 +80,13 @@ def register() -> ResponseReturnValue:
             if db.save_user(user, new_user=True):
                 db.create_user_dir(username)
                 # Only redirect to login if not admin registering another user
-                if not g.user or g.user.get("username") != "admin":
-                    flash(f"Registered as {username}.")
-                    return redirect(url_for("auth.login"))
-                else:  # Admin registered a new user, stay on the registration page
+                is_admin = g.user and g.user.get("username") == "admin"
+                if is_admin:  # Admin registered a new user, stay on the registration page
                     flash(f"User {username} registered successfully.")
                     return redirect(url_for("auth.register"))
+                else:  # Non-admin user registered, redirect to login
+                    flash(f"Registered as {username}.")
+                    return redirect(url_for("auth.login"))
             else:
                 error = "Couldn't Save User"
         flash(error)
