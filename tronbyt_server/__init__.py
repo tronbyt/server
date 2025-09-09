@@ -261,8 +261,10 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         db.init_db()
 
         # The reloader will run this code twice, once in the main process and once in the child process.
-        # This is a workaround to avoid running the update_system_repo() function twice.
+        # This is a workaround to avoid running the update functions twice.
         if not is_running_from_reloader():
+            # Update firmware before updating apps
+            system_apps.update_firmware_binaries(db.get_data_dir())
             system_apps.update_system_repo(db.get_data_dir())
 
     from . import auth

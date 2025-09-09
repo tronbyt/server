@@ -29,6 +29,101 @@ def log_message(message: str) -> None:
         print(message)
 
 
+def update_firmware_binaries(base_path: Path) -> None:
+    """Download the latest firmware bin files from GitHub releases."""
+    import urllib.request
+    import json
+
+    firmware_path = base_path / "firmware"
+    firmware_repo = os.getenv(
+        "FIRMWARE_REPO", "https://github.com/tronbyt/firmware-esp32"
+    )
+
+    # Ensure firmware directory exists
+    firmware_path.mkdir(parents=True, exist_ok=True)
+
+    # Extract owner and repo from URL
+    if firmware_repo.endswith(".git"):
+        firmware_repo = firmware_repo[:-4]  # Remove .git suffix
+
+    # Parse GitHub URL to get owner/repo
+    try:
+        if "github.com/" in firmware_repo:
+            parts = firmware_repo.split("github.com/")[1].split("/")
+            if len(parts) >= 2:
+                owner, repo = parts[0], parts[1]
+            else:
+                raise ValueError("Invalid GitHub URL format")
+        else:
+            raise ValueError("Not a GitHub URL")
+    except Exception as e:
+        log_message(f"Error parsing firmware repository URL {firmware_repo}: {e}")
+        return
+
+    # GitHub API URL for latest release
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+
+    try:
+        log_message(f"Fetching latest release info from {api_url}")
+
+        # Fetch release information
+        with urllib.request.urlopen(api_url) as response:
+            release_data = json.loads(response.read().decode())
+
+        release_tag = release_data.get("tag_name", "unknown")
+        log_message(f"Found latest release: {release_tag}")
+
+        # Mapping from GitHub release names to expected local names
+        firmware_name_mapping = {
+            "tidbyt-gen1_firmware.bin": "tidbyt-gen1.bin",
+            "tidbyt-gen1_swap_firmware.bin": "tidbyt-gen1_swap.bin",
+            "tidbyt-gen2_firmware.bin": "tidbyt-gen2.bin",
+            "pixoticker_firmware.bin": "pixoticker.bin",
+            "tronbyt-s3_firmware.bin": "tronbyt-S3.bin",
+            "tronbyt-s3-wide_firmware.bin": "tronbyt-s3-wide.bin",
+            "matrixportal-s3_firmware.bin": "matrixportal-s3.bin",
+        }
+
+        # Download all .bin files from the release assets
+        assets = release_data.get("assets", [])
+        bin_files_downloaded = 0
+
+        for asset in assets:
+            asset_name = asset.get("name", "")
+            if asset_name.endswith(".bin"):
+                download_url = asset.get("browser_download_url")
+                if download_url and asset_name in firmware_name_mapping:
+                    # Use mapped name if available, otherwise use original name
+                    local_name = firmware_name_mapping.get(asset_name, asset_name)
+                    dest_file = firmware_path / local_name
+                    log_message(
+                        f"Downloading firmware file: {asset_name} -> {local_name}"
+                    )
+
+                    try:
+                        urllib.request.urlretrieve(download_url, dest_file)
+                        bin_files_downloaded += 1
+                        log_message(f"Successfully downloaded: {local_name}")
+                    except Exception as e:
+                        log_message(f"Error downloading {asset_name}: {e}")
+
+        if bin_files_downloaded > 0:
+            log_message(
+                f"Downloaded {bin_files_downloaded} firmware files to {firmware_path}"
+            )
+        else:
+            log_message("No .bin files found in the latest release")
+
+    except urllib.error.HTTPError as e:
+        log_message(f"HTTP error fetching release info: {e.code} {e.reason}")
+    except urllib.error.URLError as e:
+        log_message(f"URL error fetching release info: {e.reason}")
+    except json.JSONDecodeError as e:
+        log_message(f"Error parsing release JSON: {e}")
+    except Exception as e:
+        log_message(f"Error updating firmware: {e}")
+
+
 def update_system_repo(base_path: Path) -> None:
     system_apps_path = base_path / "system-apps"
     system_apps_url = os.getenv(
