@@ -895,7 +895,10 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
                 },
             )
 
-    return render_template("manager/firmware.html", device=device)
+    firmware_version = db.get_firmware_version()
+    return render_template(
+        "manager/firmware.html", device=device, firmware_version=firmware_version
+    )
 
 
 @bp.route(
@@ -1239,6 +1242,38 @@ def refresh_system_repo() -> ResponseReturnValue:
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
+
+
+@bp.route("/update_firmware", methods=["POST"])
+@login_required
+def update_firmware() -> ResponseReturnValue:
+    current_app.logger.info(f"Firmware update requested by user: {g.user['username']}")
+
+    if g.user["username"] != "admin":
+        current_app.logger.warning(
+            f"Non-admin user {g.user['username']} attempted firmware update"
+        )
+        abort(HTTPStatus.FORBIDDEN)
+
+    try:
+        current_app.logger.info("Starting firmware update...")
+        result = system_apps.update_firmware_binaries(db.get_data_dir())
+        current_app.logger.info(f"Firmware update result: {result}")
+
+        if result["success"]:
+            if result["action"] == "updated":
+                flash(f"✅ {result['message']}", "success")
+            elif result["action"] == "skipped":
+                flash(f"ℹ️ {result['message']}", "info")
+        else:
+            flash(f"❌ {result['message']}", "error")
+
+    except Exception as e:
+        current_app.logger.error(f"Error updating firmware: {e}")
+        flash(f"❌ Firmware update failed: {str(e)}", "error")
+
+    # Redirect back to the edit page with firmware management anchor
+    return redirect(url_for("auth.edit") + "#firmware-management")
 
 
 @bp.route("/refresh_user_repo", methods=["GET", "POST"])

@@ -3,6 +3,21 @@
 <h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
+{% if firmware_version %}
+<div style="background-color: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <strong>{{ _('Firmware Image Version') }}:</strong> {{ firmware_version }}
+    </div>
+    {% if g.user.username == 'admin' %}
+    <div>
+        <a href="{{ url_for('auth.edit') }}#firmware-management" class="w3-button w3-small w3-gray">
+            {{ _('Manage Firmware') }}
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
 <form method="post">
     <h2>{{ _('Download ESP Flasher here') }} <a href="https://github.com/Jason2866/ESP_Flasher/releases">ESP Flasher</a></h2>
     {{ _('Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your
@@ -25,13 +40,19 @@
         <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
     </div>
 
-    <span><label for="img_url">{{ _('Image URL') }}</label></span>
-    <input name="img_url" id="img_url" value="{{ device['img_url'] }}"></p>
+    <div style="margin-bottom: 15px;">
+        <label for="img_url" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('Image URL') }}</label>
+        <input name="img_url" id="img_url" value="{{ device['img_url'] }}" style="display: block; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    </div>
 
-    <label for="wifi_ap">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
-    <input name="wifi_ap" id="wifi_ap" required>
-    <label for="wifi_password">{{ _('WiFi Password') }}</label>
-    <input name="wifi_password" id="wifi_password" required>
+    <div style="margin-bottom: 15px;">
+        <label for="wifi_ap" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
+        <input name="wifi_ap" id="wifi_ap" required style="display: block; width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label for="wifi_password" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('WiFi Password') }}</label>
+        <input name="wifi_password" id="wifi_password" required style="display: block; width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    </div>
     <style>
         .left-align {
             text-align: left;
