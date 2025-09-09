@@ -138,7 +138,12 @@ def edit() -> ResponseReturnValue:
             return redirect(url_for("index"))
         flash(error)
 
-    return render_template("auth/edit.html", user=g.user)
+    firmware_version = None
+    if g.user and g.user.get("username") == "admin":
+        firmware_version = db.get_firmware_version()
+    return render_template(
+        "auth/edit.html", user=g.user, firmware_version=firmware_version
+    )
 
 
 @bp.before_app_request

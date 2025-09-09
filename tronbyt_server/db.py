@@ -653,6 +653,18 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     return None
 
 
+def get_firmware_version() -> Optional[str]:
+    """Get the current firmware version from the downloaded firmware."""
+    version_file = get_data_dir() / "firmware" / "firmware_version.txt"
+    try:
+        if version_file.exists():
+            with version_file.open("r") as f:
+                return f.read().strip()
+    except Exception as e:
+        current_app.logger.error(f"Error reading firmware version: {e}")
+    return None
+
+
 def get_user_by_api_key(api_key: str) -> Optional[User]:
     for user in get_all_users():
         if user.get("api_key") == api_key:
@@ -664,22 +676,32 @@ def get_user_by_api_key(api_key: str) -> Optional[User]:
 def generate_firmware(
     url: str, ap: str, pw: str, device_type: str, swap_colors: bool
 ) -> bytes:
-    firmware_path = Path(__file__).parent / "firmware"
+    # Determine the firmware filename based on device type
     if device_type == "tidbyt_gen2":
-        file_path = firmware_path / "tidbyt-gen2.bin"
+        firmware_filename = "tidbyt-gen2.bin"
     elif device_type == "pixoticker":
-        file_path = firmware_path / "pixoticker.bin"
+        firmware_filename = "pixoticker.bin"
     elif device_type == "tronbyt_s3":
-        file_path = firmware_path / "tronbyt-S3.bin"
+        firmware_filename = "tronbyt-S3.bin"
     elif device_type == "tronbyt_s3_wide":
-        file_path = firmware_path / "tronbyt-s3-wide.bin"
+        firmware_filename = "tronbyt-s3-wide.bin"
     elif swap_colors:
-        file_path = firmware_path / "tidbyt-gen1_swap.bin"
+        firmware_filename = "tidbyt-gen1_swap.bin"
     else:
-        file_path = firmware_path / "tidbyt-gen1.bin"
+        firmware_filename = "tidbyt-gen1.bin"
 
-    if not file_path.exists():
-        raise ValueError(f"Firmware file {file_path} not found.")
+    # Check data directory first (for downloaded firmware), then fallback to bundled firmware
+    data_firmware_path = get_data_dir() / "firmware" / firmware_filename
+    bundled_firmware_path = Path(__file__).parent / "firmware" / firmware_filename
+
+    if data_firmware_path.exists():
+        file_path = data_firmware_path
+    elif bundled_firmware_path.exists():
+        file_path = bundled_firmware_path
+    else:
+        raise ValueError(
+            f"Firmware file {firmware_filename} not found in {data_firmware_path} or {bundled_firmware_path}."
+        )
 
     dict = {
         "XplaceholderWIFISSID____________": ap,
