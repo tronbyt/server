@@ -46,8 +46,18 @@
   const deviceLocation = null;
   {% endif %}
 
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        func.apply(this, args);
+      }, wait);
+    };
+  }
+
   // Function to update the config text and preview image
-  function updateConfigAndPreview() {
+  const updateConfigAndPreview = debounce(() => {
     const configContent = document.getElementById("configContent").querySelector("pre");
     const previewImage = document.getElementById("previewImage");
     configContent.textContent = JSON.stringify(config, null, 2);
@@ -55,9 +65,7 @@
     const url = new URL(previewImage.src);
     url.searchParams.set("config", JSON.stringify(config));
     previewImage.src = url.toString();
-  }
-
-
+  }, 100);
 
   // Centralized config update handler
   function handleConfigUpdate(event) {
