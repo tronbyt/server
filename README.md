@@ -142,6 +142,16 @@ For a more detailed walkthrough click here : [Walkthrough in google docs by Jeff
 - Username: `admin`
 - Password: `password`
 
+### User Registration
+
+By default, only the admin user can create new user accounts. If you want to allow open user registration (where anyone can create an account), set the `ENABLE_USER_REGISTRATION` environment variable to `1` in your `.env` file:
+
+```
+ENABLE_USER_REGISTRATION=1
+```
+
+When enabled, a "Create User" link will appear on the login page and in the navigation for unauthenticated users. The `MAX_USERS` setting still applies even with open registration enabled.
+
 ### Notes
 
 - Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.

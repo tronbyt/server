@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>
     // Inline script to set initial theme and prevent FOUC
-    (function() {
+    (function () {
       var storedTheme = localStorage.getItem('theme_preference');
       // Get server preference if user is logged in, otherwise default to 'system'
       var serverProvidedTheme = "{% if g.user and g.user.theme_preference %}{{ g.user.theme_preference }}{% else %}system{% endif %}";
@@ -83,8 +83,9 @@
   <ul>
     {% if g.user %}
     <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
-    {% if g.user['username'] == 'admin' %}<li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a>{%
-      endif %}
+    {% if g.user['username'] == 'admin' %}
+    <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
+    {% endif %}
     <li><a href="{{ url_for('auth.edit') }}">{{ g.user['username'] }}</a></li>
     <li><a href="{{ url_for('auth.logout') }}">{{ _('Log Out') }}</a></li>
     {% if g.user %}
@@ -101,6 +102,9 @@
     {% endif %}
     {% else %}
     <li><a href="{{ url_for('auth.login') }}">{{ _('Log In') }}</a></li>
+    {% if config.get('ENABLE_USER_REGISTRATION') == '1' %}
+    <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
+    {% endif %}
     {% endif %}
   </ul>
 </nav>
