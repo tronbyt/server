@@ -5,7 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Optional
-
+import urllib.request
+from urllib.parse import urlparse
 import yaml
 from flask import current_app
 
@@ -40,9 +41,6 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
             - 'version': str - Version that was processed
             - 'files_downloaded': int - Number of files downloaded (0 if skipped)
     """
-    import urllib.request
-    import json
-    from urllib.parse import urlparse
 
     firmware_path = base_path / "firmware"
     firmware_repo = os.getenv(
