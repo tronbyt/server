@@ -13,7 +13,7 @@
   <WebUI>http://[IP]:[PORT:8000]</WebUI>
   <TemplateURL/>
   <Icon/>
-  <ExtraParams>--init --restart unless-stopped --user=tronbyt:tronbyt</ExtraParams>
+  <ExtraParams>--init --restart unless-stopped</ExtraParams>
   
   <Environment>
     <Variable>
