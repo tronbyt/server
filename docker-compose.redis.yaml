@@ -35,5 +35,6 @@ services:
       timeout: 3s
       retries: 3
 volumes:
+  users:
   data:
   redis:
