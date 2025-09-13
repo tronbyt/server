@@ -19,3 +19,4 @@ services:
       - PRODUCTION=0
       - LOG_LEVEL=DEBUG
       - ENABLE_USER_REGISTRATION
+      - ADMIN_PASSWORD

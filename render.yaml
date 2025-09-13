@@ -16,4 +16,6 @@ services:
     value: 443
   - key: SERVER_PROTOCOL
     value: https
+  - key: ADMIN_PASSWORD
+    value: pezzward
 version: "1"
