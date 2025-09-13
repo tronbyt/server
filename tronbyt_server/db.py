@@ -52,8 +52,8 @@ def init_db() -> None:
         new_install = True
 
         # Load the default JSON data
-        # Use environment variable for admin password, fallback to "pezzward"
-        admin_password = os.getenv("ADMIN_PASSWORD", "pezzward")
+        # Use environment variable for admin password, fallback to "password"
+        admin_password = os.getenv("ADMIN_PASSWORD", "password")
         if os.getenv("ADMIN_PASSWORD"):
             current_app.logger.info("Using ADMIN_PASSWORD from environment variable")
         else:
