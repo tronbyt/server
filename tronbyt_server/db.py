@@ -1,4 +1,5 @@
 import json
+import os
 import secrets
 import shutil
 import sqlite3
@@ -51,9 +52,15 @@ def init_db() -> None:
         new_install = True
 
         # Load the default JSON data
+        # Use environment variable for admin password, fallback to "password"
+        admin_password = os.getenv("ADMIN_PASSWORD", "password")
+        if os.getenv("ADMIN_PASSWORD"):
+            current_app.logger.info("Using ADMIN_PASSWORD from environment variable")
+        else:
+            current_app.logger.info("Using default admin password")
         default_json = {
             "username": "admin",
-            "password": generate_password_hash("password"),
+            "password": generate_password_hash(admin_password),
             "theme_preference": "system",  # Default theme for new admin
         }
 
