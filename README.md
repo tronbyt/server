@@ -24,7 +24,7 @@ Some community projects like [TidbytAssistant](https://github.com/savdagod/Tidby
 
 ## Getting Started
 
-You can run Tronbyt-server on the free tier at Render.com.  Here is a [video walkthrough](https://youtu.be/2WfVaeX7BTk).
+You can run Tronbyt-server on the free tier at Render.com.  Here is a [video walkthrough](https://youtu.be/2WfVaeX7BTk). Default admin password for render.com deploys is "pezzward"
 MAKE SURE TO BACKUP YOUR DEVICE CONFIG JSON BEFORE REDEPLOYMENT.  Unlike normal docker Render.com will wipe everything on re-deploy. To help keep your instance from spinning down due to inactivity you can setup a free cron-job at cron-job.org with your currentapp url (eg. https://tronbyt-server.onrender.com/316a24fb/currentapp).  Set it to run once every 1 - 15 minutes and it should keep the server from being terminated.
 
 ### Prerequisites
