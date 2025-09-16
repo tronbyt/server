@@ -1,5 +1,4 @@
 import json
-import os
 import secrets
 import shutil
 import sqlite3
@@ -14,7 +13,7 @@ import yaml
 from flask import current_app, g
 from tzlocal import get_localzone, get_localzone_name
 from werkzeug.datastructures import FileStorage
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
