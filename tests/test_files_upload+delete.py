@@ -5,8 +5,6 @@ from flask.testing import FlaskClient
 from . import utils
 
 
-
-
 def test_upload_and_delete(auth_client: FlaskClient) -> None:
     data = dict(
         file=(BytesIO(b"my file contents"), "report.star"),
@@ -24,7 +22,9 @@ def test_upload_and_delete(auth_client: FlaskClient) -> None:
         },
     )
     dev_id = utils.get_test_device_id()
-    auth_client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
+    auth_client.post(
+        f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data
+    )
 
     assert "report/report.star" in utils.get_user_uploads_list()
 
@@ -37,5 +37,7 @@ def test_upload_and_delete(auth_client: FlaskClient) -> None:
         file=(BytesIO(b"my file contents"), "report.exe"),
     )
 
-    auth_client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
+    auth_client.post(
+        f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data
+    )
     assert "report.exe" not in utils.get_user_uploads_list()

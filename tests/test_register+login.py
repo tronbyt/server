@@ -32,7 +32,9 @@ def test_login_with_wrong_password(clean_app: Flask) -> None:
         client.post("/auth/register_owner", data={"password": "adminpassword"})
         with client.session_transaction() as sess:
             sess["username"] = "admin"
-        client.post("/auth/register", data={"username": "testuser", "password": "password"})
+        client.post(
+            "/auth/register", data={"username": "testuser", "password": "password"}
+        )
         response = client.post(
             "/auth/login", data={"username": "testuser", "password": "BADDPASSWORD"}
         )

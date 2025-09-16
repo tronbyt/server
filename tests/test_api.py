@@ -159,8 +159,12 @@ class TestMoveApp:
 
         # --- Scenario for previous bug potential: Multiple moves ---
         # Move app1 down twice
-        auth_client.get(f"/{device_id}/app1/moveapp?direction=down")  # app1 -> 1, app2 -> 0
-        auth_client.get(f"/{device_id}/app1/moveapp?direction=down")  # app1 -> 2, app3 -> 1
+        auth_client.get(
+            f"/{device_id}/app1/moveapp?direction=down"
+        )  # app1 -> 1, app2 -> 0
+        auth_client.get(
+            f"/{device_id}/app1/moveapp?direction=down"
+        )  # app1 -> 2, app3 -> 1
         # State: app2(0), app3(1), app1(2), app4(3)
         apps = self._get_sorted_apps(device_id)
         expected_order = {"app2": 0, "app3": 1, "app1": 2, "app4": 3}
