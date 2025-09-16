@@ -31,7 +31,9 @@ class TestDevicesEndpoint:
         assert "brightness" in device_data
         assert "autoDim" in device_data
 
-    def test_list_devices_with_direct_auth_header(self, auth_client: FlaskClient) -> None:
+    def test_list_devices_with_direct_auth_header(
+        self, auth_client: FlaskClient
+    ) -> None:
         """Test listing devices with direct Authorization header (no Bearer prefix)"""
         utils.load_test_data(auth_client)
         user = utils.get_testuser()
@@ -186,7 +188,9 @@ class TestDeviceEndpoint:
         """Test device update without authorization"""
         device_id = utils.load_test_data(auth_client)
 
-        response = auth_client.patch(f"/v0/devices/{device_id}", json={"brightness": 128})
+        response = auth_client.patch(
+            f"/v0/devices/{device_id}", json={"brightness": 128}
+        )
 
         assert response.status_code == 400
         assert "Missing or invalid Authorization header" in response.data.decode()
