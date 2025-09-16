@@ -5,9 +5,6 @@ from tronbyt_server import db
 from . import utils
 
 
-import pytest
-
-
 
 
 def test_app_create_edit_config_delete(auth_client: FlaskClient) -> None:
