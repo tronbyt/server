@@ -32,8 +32,40 @@ def _generate_api_key() -> str:
     )
 
 
+@bp.route("/register_owner", methods=("GET", "POST"))
+def register_owner() -> ResponseReturnValue:
+    if db.has_users():
+        # If users already exist, redirect to the login page
+        return redirect(url_for("auth.login"))
+
+    if request.method == "POST":
+        password = request.form["password"]
+        if not password:
+            flash("Password is required.")
+        else:
+            username = "admin"
+            api_key = _generate_api_key()
+            user = User(
+                username=username,
+                password=generate_password_hash(password),
+                email="none",
+                api_key=api_key,
+                theme_preference="system",
+            )
+            if db.save_user(user, new_user=True):
+                db.create_user_dir(username)
+                flash("Admin user created. Please log in.")
+                return redirect(url_for("auth.login"))
+            else:
+                flash("Could not create admin user.")
+
+    return render_template("auth/register_owner.html")
+
+
 @bp.route("/register", methods=("GET", "POST"))
 def register() -> ResponseReturnValue:
+    if not db.has_users():
+        return redirect(url_for("auth.register_owner"))
     # Check if user registration is enabled for non-authenticated users
     if current_app.config.get("ENABLE_USER_REGISTRATION") != "1":
         # Only allow admin to register new users if open registration is disabled
@@ -96,6 +128,8 @@ def register() -> ResponseReturnValue:
 
 @bp.route("/login", methods=("GET", "POST"))
 def login() -> ResponseReturnValue:
+    if not db.has_users():
+        return redirect(url_for("auth.register_owner"))
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]

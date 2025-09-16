@@ -3,14 +3,11 @@ from flask.testing import FlaskClient
 from . import utils
 
 
-def test_device_operations(client: FlaskClient) -> None:
-    client.post("/auth/register", data={"username": "testuser", "password": "password"})
-    client.post("/auth/login", data={"username": "testuser", "password": "password"})
-
-    r = client.get("/create")
+def test_device_operations(auth_client: FlaskClient) -> None:
+    r = auth_client.get("/create")
     assert r.status_code == 200
 
-    r = client.post(
+    r = auth_client.post(
         "/create",
         data={
             "name": "TESTDEVICE",
@@ -24,7 +21,7 @@ def test_device_operations(client: FlaskClient) -> None:
 
     device_id = utils.get_test_device_id()
     # Test firmware generation page
-    r = client.get(f"{device_id}/firmware")
+    r = auth_client.get(f"{device_id}/firmware")
     assert r.status_code == 200
 
     # id: device['id']
@@ -37,10 +34,10 @@ def test_device_operations(client: FlaskClient) -> None:
         "wifi_ap": "Blah",
         "wifi_password": "Blah",
     }
-    r = client.post(f"/{device_id}/firmware", data=data)
+    r = auth_client.post(f"/{device_id}/firmware", data=data)
     assert r.status_code == 200
 
-    r = client.post(f"/{device_id}/firmware", data=data)
+    r = auth_client.post(f"/{device_id}/firmware", data=data)
     assert r.status_code == 200
     assert r.mimetype == "application/octet-stream"
     assert (
@@ -50,9 +47,9 @@ def test_device_operations(client: FlaskClient) -> None:
     assert len(r.data) > 0
 
     # test /device_id/next works even when no app configured
-    assert client.get(f"{device_id}/next").status_code == 200
+    assert auth_client.get(f"{device_id}/next").status_code == 200
 
     # Delete the device.
-    r = client.post(f"{device_id}/delete")
+    r = auth_client.post(f"{device_id}/delete")
     testuser = utils.get_testuser()
     assert not testuser.get("devices", {})

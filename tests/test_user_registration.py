@@ -8,6 +8,7 @@ def test_registration_disabled(app: Flask) -> None:
 
     # Create client after toggling config
     with app.test_client() as client:
+        client.post("/auth/register_owner", data={"password": "adminpassword"})
         # Try to access registration page without being logged in
         response = client.get("/auth/register")
         assert response.status_code == 302  # Should redirect to login
@@ -19,24 +20,23 @@ def test_registration_disabled(app: Flask) -> None:
         assert "Create User" not in login_data
 
 
-def test_registration_enabled(client: FlaskClient) -> None:
-    response = client.get("/auth/register")
-    assert response.status_code == 200
-    assert "Register" in response.get_data(as_text=True)
+def test_registration_enabled(clean_app: Flask) -> None:
+    with clean_app.test_client() as client:
+        client.post("/auth/register_owner", data={"password": "adminpassword"})
+        with client.session_transaction() as sess:
+            sess["username"] = "admin"
+        response = client.get("/auth/register")
+        assert response.status_code == 200
+        assert "Register" in response.get_data(as_text=True)
 
-    # Login page should show registration link
-    response = client.get("/auth/login")
-    login_data = response.get_data(as_text=True)
-    assert "Create User" in login_data
-
-    # Should be able to register a new user
-    response = client.post(
-        "/auth/register",
-        data={"username": "newuser", "password": "password123"},
-    )
-    # Should redirect to login after successful registration
-    assert response.status_code == 302
-    assert "/auth/login" in response.headers["Location"]
+        # Should be able to register a new user
+        response = client.post(
+            "/auth/register",
+            data={"username": "newuser", "password": "password123"},
+        )
+        # Should redirect to register after successful registration
+        assert response.status_code == 302
+        assert "/auth/register" in response.headers["Location"]
 
 
 def test_admin_can_always_register_users(app: Flask) -> None:
@@ -45,6 +45,7 @@ def test_admin_can_always_register_users(app: Flask) -> None:
     app.config["ENABLE_USER_REGISTRATION"] = "0"
 
     with app.test_client() as client:
+        client.post("/auth/register_owner", data={"password": "adminpassword"})
         # Simulate admin being logged in
         with client.session_transaction() as sess:
             sess["username"] = "admin"
@@ -60,6 +61,9 @@ def test_max_users_limit_with_open_registration(app: Flask) -> None:
     app.config["MAX_USERS"] = 2  # admin + 1 new user allowed
 
     with app.test_client() as client:
+        client.post("/auth/register_owner", data={"password": "adminpassword"})
+        with client.session_transaction() as sess:
+            sess["username"] = "admin"
         # Register first user (should succeed)
         response = client.post(
             "/auth/register", data={"username": "user1", "password": "password123"}

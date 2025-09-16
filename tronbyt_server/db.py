@@ -44,33 +44,10 @@ def init_db() -> None:
         )
     """)
     conn.commit()
-    cursor.execute("SELECT * FROM json_data WHERE username='admin'")
+    cursor.execute("SELECT * FROM json_data")
     row = cursor.fetchone()
 
-    new_install = False
-    if not row:  # If no row is found
-        new_install = True
-
-        # Load the default JSON data
-        # Use environment variable for admin password, fallback to "password"
-        admin_password = os.getenv("ADMIN_PASSWORD", "password")
-        if os.getenv("ADMIN_PASSWORD"):
-            current_app.logger.info("Using ADMIN_PASSWORD from environment variable")
-        else:
-            current_app.logger.info("Using default admin password")
-        default_json = {
-            "username": "admin",
-            "password": generate_password_hash(admin_password),
-            "theme_preference": "system",  # Default theme for new admin
-        }
-
-        # Insert default JSON
-        cursor.execute(
-            "INSERT INTO json_data (data, username) VALUES (?, 'admin')",
-            (json.dumps(default_json),),
-        )
-        conn.commit()
-        current_app.logger.debug("Default JSON inserted for admin user")
+    new_install = not row
 
     cursor.execute("SELECT * FROM meta")
     row = cursor.fetchone()
@@ -601,6 +578,14 @@ def get_all_users() -> List[User]:
     cursor = conn.cursor()
     cursor.execute("SELECT data FROM json_data")
     return [json.loads(row[0]) for row in cursor.fetchall()]
+
+
+def has_users() -> bool:
+    """Checks if any users exist in the database."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM json_data LIMIT 1")
+    return cursor.fetchone() is not None
 
 
 def get_is_app_schedule_active(app: App, device: Device) -> bool:
