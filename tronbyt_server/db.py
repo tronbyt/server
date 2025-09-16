@@ -417,6 +417,9 @@ def get_user(username: str) -> Optional[User]:
 def auth_user(username: str, password: str) -> Optional[Union[User, bool]]:
     user = get_user(username)
     if user:
+        if current_app.config.get("PASSWORDLESS_LOGIN_ENABLED") == "1":
+            current_app.logger.debug(f"returning {user} WITHOUT PASSWORD")
+            return user
         password_hash = user.get("password")
         if password_hash and check_password_hash(password_hash, password):
             current_app.logger.debug(f"returning {user}")
