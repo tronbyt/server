@@ -48,7 +48,7 @@ def register_owner() -> ResponseReturnValue:
             user = User(
                 username=username,
                 password=generate_password_hash(password),
-                email="none",
+                email="",
                 api_key=api_key,
                 theme_preference="system",
             )
