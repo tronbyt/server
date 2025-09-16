@@ -53,13 +53,15 @@ def app_context(app: Flask) -> Iterator[AppContext]:
         yield ctx
 
 
+import shutil
 @pytest.fixture()
 def clean_app() -> Iterator[Flask]:
-    test_db_path = Path("tests/users/testdb.sqlite")
-    if test_db_path.exists():
-        test_db_path.unlink()
+    users_dir = Path("tests/users")
+    if users_dir.exists():
+        shutil.rmtree(users_dir)
+    users_dir.mkdir()
     app = create_app({"test_config": True})
     with app.app_context():
         yield app
-    if test_db_path.exists():
-        test_db_path.unlink()
+    if users_dir.exists():
+        shutil.rmtree(users_dir)

@@ -6,14 +6,10 @@ from . import utils
 
 
 import pytest
-from flask.testing import FlaskClient
-
-from tronbyt_server import db
-
-from . import utils
 
 
-@pytest.mark.skip(reason="requires libpixlet.so")
+
+
 def test_app_create_edit_config_delete(auth_client: FlaskClient) -> None:
     auth_client.post(
         "/create",
