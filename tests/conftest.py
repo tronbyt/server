@@ -4,6 +4,7 @@ from typing import Iterator
 import pytest
 from flask import Flask
 from flask.ctx import AppContext
+import shutil
 from flask.testing import FlaskClient, FlaskCliRunner
 
 from tronbyt_server import create_app
@@ -53,7 +54,6 @@ def app_context(app: Flask) -> Iterator[AppContext]:
         yield ctx
 
 
-import shutil
 @pytest.fixture()
 def clean_app() -> Iterator[Flask]:
     users_dir = Path("tests/users")

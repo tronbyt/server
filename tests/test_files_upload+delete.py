@@ -5,9 +5,6 @@ from flask.testing import FlaskClient
 from . import utils
 
 
-import pytest
-
-
 
 
 def test_upload_and_delete(auth_client: FlaskClient) -> None:
