@@ -5,16 +5,22 @@ from flask.testing import FlaskClient
 from . import utils
 
 
-def test_upload_and_delete(client: FlaskClient) -> None:
-    client.post("/auth/register", data={"username": "testuser", "password": "password"})
-    client.post("/auth/login", data={"username": "testuser", "password": "password"})
+import pytest
+from io import BytesIO
 
+from flask.testing import FlaskClient
+
+from . import utils
+
+
+@pytest.mark.skip(reason="requires libpixlet.so")
+def test_upload_and_delete(auth_client: FlaskClient) -> None:
     data = dict(
         file=(BytesIO(b"my file contents"), "report.star"),
     )
     # device is required to upload a file now.
-    client.get("/create")
-    client.post(
+    auth_client.get("/create")
+    auth_client.post(
         "/create",
         data={
             "name": "TESTDEVICE",
@@ -25,11 +31,11 @@ def test_upload_and_delete(client: FlaskClient) -> None:
         },
     )
     dev_id = utils.get_test_device_id()
-    client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
+    auth_client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
 
     assert "report/report.star" in utils.get_user_uploads_list()
 
-    client.get(f"/{dev_id}/deleteupload/report.star")
+    auth_client.get(f"/{dev_id}/deleteupload/report.star")
 
     assert "report/report.star" not in utils.get_user_uploads_list()
 
@@ -38,5 +44,5 @@ def test_upload_and_delete(client: FlaskClient) -> None:
         file=(BytesIO(b"my file contents"), "report.exe"),
     )
 
-    client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
+    auth_client.post(f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data)
     assert "report.exe" not in utils.get_user_uploads_list()

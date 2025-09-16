@@ -11,13 +11,10 @@ class TestApiKeyGeneration:
     """Test cases for API key generation functionality"""
 
     def test_migrate_user_api_keys_generates_key_for_user_without_key(
-        self, client: FlaskClient
+        self, auth_client: FlaskClient
     ) -> None:
         """Test that migrate_user_api_keys generates API key for users without one"""
         # Create a user without API key by directly manipulating the user data
-        client.post(
-            "/auth/register", data={"username": "testuser", "password": "password"}
-        )
         user = db.get_user("testuser")
         assert user is not None
 
@@ -48,13 +45,10 @@ class TestApiKeyGeneration:
         assert all(c in string.ascii_letters + string.digits for c in api_key)
 
     def test_migrate_user_api_keys_preserves_existing_key(
-        self, client: FlaskClient
+        self, auth_client: FlaskClient
     ) -> None:
         """Test that migrate_user_api_keys doesn't overwrite existing API keys"""
         # Create a user (will automatically have API key)
-        client.post(
-            "/auth/register", data={"username": "testuser", "password": "password"}
-        )
         user = db.get_user("testuser")
         assert user is not None
 
@@ -70,14 +64,16 @@ class TestApiKeyGeneration:
         assert user_after_migration["api_key"] == original_api_key
 
     def test_migrate_user_api_keys_handles_multiple_users(
-        self, client: FlaskClient
+        self, auth_client: FlaskClient
     ) -> None:
         """Test that migrate_user_api_keys handles multiple users correctly"""
         # Create multiple users
-        client.post(
+        with auth_client.session_transaction() as sess:
+            sess["username"] = "admin"
+        auth_client.post(
             "/auth/register", data={"username": "user1", "password": "password"}
         )
-        client.post(
+        auth_client.post(
             "/auth/register", data={"username": "user2", "password": "password"}
         )
 
@@ -109,13 +105,10 @@ class TestApiKeyGeneration:
         assert user2_after["api_key"] == original_key_user2
 
     def test_migrate_user_api_keys_generates_valid_key(
-        self, client: FlaskClient
+        self, auth_client: FlaskClient
     ) -> None:
         """Test that migrate_user_api_keys generates a valid API key"""
         # Create a user and remove their API key to simulate old user
-        client.post(
-            "/auth/register", data={"username": "testuser", "password": "password"}
-        )
         user = db.get_user("testuser")
         assert user is not None
 
@@ -142,9 +135,9 @@ class TestApiKeyGeneration:
 class TestApiKeyRetrieval:
     """Test cases for API key retrieval functionality"""
 
-    def test_get_user_by_api_key_success(self, client: FlaskClient) -> None:
+    def test_get_user_by_api_key_success(self, auth_client: FlaskClient) -> None:
         """Test successful user retrieval by API key"""
-        utils.load_test_data(client)
+        utils.load_test_data(auth_client)
         user = utils.get_testuser()
         api_key = user["api_key"]
 
@@ -155,31 +148,33 @@ class TestApiKeyRetrieval:
         assert retrieved_user["username"] == "testuser"
         assert retrieved_user["api_key"] == api_key
 
-    def test_get_user_by_api_key_not_found(self, client: FlaskClient) -> None:
+    def test_get_user_by_api_key_not_found(self, auth_client: FlaskClient) -> None:
         """Test user retrieval with non-existent API key"""
-        utils.load_test_data(client)
+        utils.load_test_data(auth_client)
 
         # Try to retrieve user with invalid API key
         retrieved_user = db.get_user_by_api_key("nonexistent_key")
 
         assert retrieved_user is None
 
-    def test_get_user_by_api_key_empty_string(self, client: FlaskClient) -> None:
+    def test_get_user_by_api_key_empty_string(self, auth_client: FlaskClient) -> None:
         """Test user retrieval with empty API key"""
-        utils.load_test_data(client)
+        utils.load_test_data(auth_client)
 
         # Try to retrieve user with empty API key
         retrieved_user = db.get_user_by_api_key("")
 
         assert retrieved_user is None
 
-    def test_get_user_by_api_key_multiple_users(self, client: FlaskClient) -> None:
+    def test_get_user_by_api_key_multiple_users(self, auth_client: FlaskClient) -> None:
         """Test user retrieval when multiple users exist"""
         # Create multiple users
-        client.post(
+        with auth_client.session_transaction() as sess:
+            sess["username"] = "admin"
+        auth_client.post(
             "/auth/register", data={"username": "user1", "password": "password"}
         )
-        client.post(
+        auth_client.post(
             "/auth/register", data={"username": "user2", "password": "password"}
         )
 
@@ -203,9 +198,9 @@ class TestApiKeyRetrieval:
         assert retrieved_user2 is not None
         assert retrieved_user2["username"] == "user2"
 
-    def test_get_user_by_api_key_case_sensitive(self, client: FlaskClient) -> None:
+    def test_get_user_by_api_key_case_sensitive(self, auth_client: FlaskClient) -> None:
         """Test that API key lookup is case sensitive"""
-        utils.load_test_data(client)
+        utils.load_test_data(auth_client)
         user = utils.get_testuser()
         api_key = user["api_key"]
 
@@ -229,6 +224,11 @@ class TestApiKeyIntegration:
 
     def test_user_registration_creates_api_key(self, client: FlaskClient) -> None:
         """Test that user registration automatically creates an API key"""
+        # Register owner
+        client.post("/auth/register_owner", data={"password": "adminpassword"})
+        with client.session_transaction() as sess:
+            sess["username"] = "admin"
+
         # Register a new user
         response = client.post(
             "/auth/register", data={"username": "newuser", "password": "password"}
@@ -242,15 +242,15 @@ class TestApiKeyIntegration:
         assert user["api_key"] is not None
         assert len(user["api_key"]) == 32
 
-    def test_api_key_authentication_flow(self, client: FlaskClient) -> None:
+    def test_api_key_authentication_flow(self, auth_client: FlaskClient) -> None:
         """Test complete API key authentication flow"""
         # Create user and device
-        device_id = utils.load_test_data(client)
+        device_id = utils.load_test_data(auth_client)
         user = utils.get_testuser()
         api_key = user["api_key"]
 
         # Use API key to authenticate API request
-        response = client.get(
+        response = auth_client.get(
             "/v0/devices", headers={"Authorization": f"Bearer {api_key}"}
         )
 
@@ -266,6 +266,10 @@ class TestApiKeyIntegration:
 
     def test_api_key_uniqueness(self, client: FlaskClient) -> None:
         """Test that generated API keys are unique across users"""
+        # Register owner
+        client.post("/auth/register_owner", data={"password": "adminpassword"})
+        with client.session_transaction() as sess:
+            sess["username"] = "admin"
         # Create multiple users
         api_keys = []
         for i in range(5):

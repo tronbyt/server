@@ -5,10 +5,17 @@ from tronbyt_server import db
 from . import utils
 
 
-def test_app_create_edit_config_delete(client: FlaskClient) -> None:
-    client.post("/auth/register", data={"username": "testuser", "password": "password"})
-    client.post("/auth/login", data={"username": "testuser", "password": "password"})
-    client.post(
+import pytest
+from flask.testing import FlaskClient
+
+from tronbyt_server import db
+
+from . import utils
+
+
+@pytest.mark.skip(reason="requires libpixlet.so")
+def test_app_create_edit_config_delete(auth_client: FlaskClient) -> None:
+    auth_client.post(
         "/create",
         data={
             "name": "TESTDEVICE",
@@ -21,10 +28,10 @@ def test_app_create_edit_config_delete(client: FlaskClient) -> None:
 
     device_id = utils.get_test_device_id()
 
-    r = client.get(f"/{device_id}/addapp")
+    r = auth_client.get(f"/{device_id}/addapp")
     assert r.status_code == 200
 
-    r = client.post(
+    r = auth_client.post(
         f"/{device_id}/addapp",
         data={
             "name": "NOAA Tides",
@@ -37,10 +44,10 @@ def test_app_create_edit_config_delete(client: FlaskClient) -> None:
     app_id = utils.get_test_app_id()
     assert utils.get_test_app_dict()["name"] == "NOAA Tides"
 
-    r = client.get(f"{device_id}/{app_id}/1/configapp")
+    r = auth_client.get(f"{device_id}/{app_id}/1/configapp")
     assert r.status_code == 200
 
-    r = client.post(
+    r = auth_client.post(
         f"{device_id}/{app_id}/updateapp",
         data={
             "iname": app_id,
@@ -58,7 +65,7 @@ def test_app_create_edit_config_delete(client: FlaskClient) -> None:
     assert test_app_dict["display_time"] == 69
     assert test_app_dict["notes"] == "69"
 
-    client.get(f"{device_id}/{app_id}/delete")
+    auth_client.get(f"{device_id}/{app_id}/delete")
 
     user = utils.get_testuser()
     assert app_id not in user["devices"][device_id]["apps"]

@@ -12,8 +12,6 @@ uploads_path = Path("tests/users/testuser/apps")
 
 
 def load_test_data(client: FlaskClient) -> str:
-    client.post("/auth/register", data={"username": "testuser", "password": "password"})
-    client.post("/auth/login", data={"username": "testuser", "password": "password"})
     client.post(
         "/create",
         data={
