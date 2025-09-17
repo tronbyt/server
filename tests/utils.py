@@ -3,20 +3,13 @@ from typing import List
 
 from fastapi.testclient import TestClient
 
-from tronbyt_server import db_fastapi as db
-from tronbyt_server.main import logger
-from tronbyt_server.models_fastapi import App, Device, User
+from tronbyt_server import db
+from tronbyt_server.models import App, Device, User
+
+uploads_path = Path("tests/users/testuser/apps")
 
 
-uploads_path = Path("users/testuser/apps")
-
-
-def load_test_data(client: TestClient, follow_redirects: bool = True) -> str:
-    client.post(
-        "/auth/login",
-        data={"username": "testuser", "password": "password"},
-        follow_redirects=follow_redirects,
-    )
+def load_test_data(client: TestClient) -> str:
     client.post(
         "/create",
         data={
@@ -26,16 +19,15 @@ def load_test_data(client: TestClient, follow_redirects: bool = True) -> str:
             "notes": "TESTNOTES",
             "brightness": "3",
         },
-        follow_redirects=follow_redirects,
     )
     return get_test_device_id()
 
 
 def get_testuser() -> User:
-    user = db.get_user(logger, "testuser")
-    if not user:
+    user_data = db.get_user(db.logger, "testuser")
+    if not user_data:
         raise Exception("testuser not found")
-    return User(**user)
+    return User(**user_data)
 
 
 def get_test_device_id() -> str:

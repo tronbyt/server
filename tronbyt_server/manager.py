@@ -1,3 +1,8 @@
+"""
+This module provides the main application logic for the Tronbyt server.
+
+It includes endpoints for managing devices, apps, and the WebSocket connection.
+"""
 import asyncio
 import json
 import os
@@ -21,22 +26,22 @@ from fastapi.responses import (
 )
 from werkzeug.utils import secure_filename
 
-from tronbyt_server import db_fastapi as db
+from tronbyt_server import db
 from tronbyt_server.connection_manager import manager
 from tronbyt_server.templating import templates
+from tronbyt_server.flash import flash
 from tronbyt_server.main import (
     logger,
-    pixlet_render_app,
 )
-from tronbyt_server.pixlet_utils import call_handler, get_schema
+from tronbyt_server.pixlet_utils import call_handler, get_schema, render_app
 from tronbyt_server.models.device import (
     DEFAULT_DEVICE_TYPE,
     device_supports_2x,
     validate_device_id,
     validate_device_type,
 )
-from tronbyt_server.models_fastapi import App, Device, Location, User
-from tronbyt_server.auth_fastapi import login_required
+from tronbyt_server.models import App, Device, Location, User
+from tronbyt_server.auth import login_required
 
 router = APIRouter()
 
@@ -56,7 +61,7 @@ async def index(request: Request, current_user: User = Depends(login_required)):
             devices.append(ui_device)
 
     return templates.TemplateResponse(
-        request, "manager/index.html", {"request": request, "devices": devices}
+        request, "manager/index.html", {"request": request, "devices": devices, "user": current_user}
     )
 
 
@@ -133,7 +138,7 @@ async def websocket_endpoint(websocket: WebSocket, device_id: str):
             # Wait for the next event or timeout
             try:
                 await asyncio.wait_for(
-                    manager.active_connections[device_id].receive_text(),
+                    manager.get_message(device_id),
                     timeout=dwell_time,
                 )
             except asyncio.TimeoutError:
@@ -148,7 +153,7 @@ async def websocket_endpoint(websocket: WebSocket, device_id: str):
 
 async def push_new_image(device_id: str):
     """Wake up one WebSocket loop to push a new image."""
-    await manager.send_personal_message("new_image", device_id)
+    await manager.broadcast(json.dumps({"type": "new_image", "device_id": device_id}))
 
 
 async def next_app(
@@ -267,86 +272,6 @@ def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]
     return config
 
 
-def render_app(
-    logger,
-    app_path: Path,
-    config: Dict[str, Any],
-    webp_path: Optional[Path],
-    device: Device,
-    app: Optional[App],
-) -> Optional[bytes]:
-    """Renders a pixlet app to a webp image.
-
-    Args:
-        app_path: Path to the pixlet app.
-        config: The app's configuration settings.
-        webp_path: Path to save the rendered webp image.
-        device: Device configuration.
-        app: The application configuration.
-
-    Returns: The rendered image as bytes or None if rendering fails.
-    """
-    if not pixlet_render_app:
-        logger.warning("pixlet_render_app not available, skipping render")
-        return None
-
-    config_data = config.copy()  # Create a copy to avoid modifying the original config
-    add_default_config(config_data, device)
-
-    if not app_path.is_absolute():
-        app_path = db.get_data_dir() / app_path
-
-    # default: render at 1x
-    magnify = 1
-    width = 64
-    height = 32
-
-    if device_supports_2x(device.model_dump()):
-        # if the device supports 2x rendering, we scale up the app image
-        magnify = 2
-        # ...except for the apps which support 2x natively where we use the original size
-        if app and "id" in app:
-            user = db.get_user_by_device_id(logger, device["id"])
-            if user:
-                app_details = db.get_app_details_by_id(
-                    logger, user["username"], app["id"]
-                )
-                if app_details.get("supports2x", False):
-                    magnify = 1
-                    width = 128
-                    height = 64
-
-    data, messages = pixlet_render_app(
-        path=app_path,
-        config=config_data,
-        width=width,
-        height=height,
-        magnify=magnify,
-        maxDuration=15000,
-        timeout=30000,
-        image_format=0,  # 0 == WebP
-    )
-    # Ensure messages is always a list
-    messages = (
-        messages if isinstance(messages, list) else [messages] if messages else []
-    )
-
-    if data is None:
-        print("Error running pixlet render")
-        return None
-    if messages is not None and app is not None:
-        db.save_render_messages(
-            logger, device.model_dump(), app.model_dump(), messages
-        )
-
-    # leave the previous file in place if the new one is empty
-    # this way, we still display the last successful render on the index page,
-    # even if the app returns no screens
-    if len(data) > 0 and webp_path:
-        webp_path.write_bytes(data)
-    return data
-
-
 def possibly_render(logger, user: User, device_id: str, app: App) -> bool:
     if app.pushed:
         return True
@@ -396,12 +321,12 @@ async def uploadapp(
         app_subdir = user_apps_path / app_name
         app_subdir.mkdir(parents=True, exist_ok=True)
         if not db.save_user_app(file, app_subdir):
-            # flash("Save Failed")
+            flash(request, "Save Failed")
             return RedirectResponse(
                 url=request.url_for("uploadapp", device_id=device_id),
                 status_code=HTTPStatus.SEE_OTHER,
             )
-        # flash("Upload Successful")
+        flash(request, "Upload Successful")
         preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
         render_app(logger, app_subdir, {}, preview, Device(id=""), None)
         return RedirectResponse(
@@ -414,7 +339,7 @@ async def uploadapp(
     return templates.TemplateResponse(
         request,
         "manager/uploadapp.html",
-        {"request": request, "files": star_files, "device_id": device_id},
+        {"request": request, "files": star_files, "device_id": device_id, "user": current_user},
     )
 
 
@@ -431,7 +356,7 @@ async def deleteupload(
         for device in current_user.devices.values()
         for app in device.apps.values()
     ):
-        # flash(f"Cannot delete {filename} because it is installed on a device. To replace an app just re-upload the file.")
+        flash(request, f"Cannot delete {filename} because it is installed on a device. To replace an app just re-upload the file.")
         return RedirectResponse(
             url=request.url_for("addapp", device_id=device_id),
             status_code=HTTPStatus.SEE_OTHER,
@@ -458,7 +383,7 @@ async def adminindex(
         if user:
             userlist.append(user)
     return templates.TemplateResponse(
-        request, "manager/adminindex.html", {"request": request, "users": userlist}
+        request, "manager/adminindex.html", {"request": request, "users": userlist, "user": current_user}
     )
 
 
@@ -507,7 +432,7 @@ async def create_post(request: Request, current_user: User = Depends(login_requi
     ):
         error = "Unique name is required."
     if error is not None:
-        # flash(error)
+        flash(request, error)
         pass
     else:
         max_attempts = 10
@@ -516,7 +441,7 @@ async def create_post(request: Request, current_user: User = Depends(login_requi
             if device_id not in current_user.devices:
                 break
         else:
-            # flash("Could not generate a unique device ID.")
+            flash(request, "Could not generate a unique device ID.")
             return RedirectResponse(
                 url=request.url_for("create_get"), status_code=HTTPStatus.SEE_OTHER
             )
@@ -532,7 +457,7 @@ async def create_post(request: Request, current_user: User = Depends(login_requi
             )
         device_type = device_type or DEFAULT_DEVICE_TYPE
         if not validate_device_type(device_type):
-            # flash("Invalid device type")
+            flash(request, "Invalid device type")
             return RedirectResponse(
                 url=request.url_for("create_get"), status_code=HTTPStatus.SEE_OTHER
             )
@@ -565,10 +490,10 @@ async def create_post(request: Request, current_user: User = Depends(login_requi
                         location.timezone = loc["timezone"]
                     device.location = location
                 else:
-                    # flash("Invalid location")
+                    flash(request, "Invalid location")
                     pass
             except json.JSONDecodeError as e:
-                # flash(f"Location JSON error {e}")
+                flash(request, f"Location JSON error {e}")
                 pass
         if notes:
             device.notes = notes
@@ -632,7 +557,7 @@ async def update(
         if not name or not device_id:
             error = "Id and Name is required."
         if error is not None:
-            # flash(error)
+            flash(request, error)
             pass
         else:
             img_url = form.get("img_url")
@@ -707,11 +632,11 @@ async def update(
                             location.timezone = loc["timezone"]
                         device.location = location
                     else:
-                        # flash("Invalid location")
+                        flash(request, "Invalid location")
                         pass
 
                 except json.JSONDecodeError as e:
-                    # flash(f"Location JSON error {e}")
+                    flash(request, f"Location JSON error {e}")
                     pass
             user = current_user.model_dump()
             if "apps" in user["devices"][device_id]:
@@ -744,6 +669,7 @@ async def update(
             "available_timezones": available_timezones(),
             "default_img_url": default_img_url,
             "default_ws_url": default_ws_url,
+            "user": current_user,
         },
     )
 
@@ -763,7 +689,7 @@ async def toggle_enabled(
     app = user["devices"][device_id]["apps"][iname]
     app["enabled"] = not app["enabled"]
     db.save_user(logger, user)
-    # flash("Changes saved.")
+    flash(request, "Changes saved.")
     return RedirectResponse(
         url=request.url_for("index"), status_code=HTTPStatus.SEE_OTHER
     )
@@ -787,7 +713,7 @@ async def updateapp(
         if not name or not iname:
             error = "Name and installation_id is required."
         if error is not None:
-            # flash(error)
+            flash(request, error)
             pass
         else:
             uinterval = form.get("uinterval")
@@ -826,6 +752,7 @@ async def updateapp(
             "app": app,
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
+            "user": current_user,
         },
     )
 
@@ -948,7 +875,7 @@ async def configapp(
         )
     app = device.apps.get(iname)
     if app is None:
-        # flash("Error saving app, please try again.")
+        flash(request, "Error saving app, please try again.")
         return RedirectResponse(
             url=request.url_for("addapp", device_id=device_id),
             status_code=HTTPStatus.SEE_OTHER,
@@ -972,6 +899,7 @@ async def configapp(
                 "delete_on_cancel": delete_on_cancel,
                 "config": app.config,
                 "schema": schema,
+                "user": current_user,
             },
         )
 
@@ -998,7 +926,7 @@ async def configapp(
             app.last_render = int(time.time())
             db.save_app(logger, device_id, app.model_dump())
         else:
-            # flash("Error Rendering App")
+            flash(request, "Error Rendering App")
             pass
 
         return RedirectResponse(
@@ -1053,7 +981,7 @@ async def addapp(
         notes = form.get("notes")
 
         if not name:
-            # flash("App name required.")
+            flash(request, "App name required.")
             return RedirectResponse(
                 url=request.url_for("addapp", device_id=device_id),
                 status_code=HTTPStatus.SEE_OTHER,
@@ -1065,7 +993,7 @@ async def addapp(
             if iname not in current_user.devices[device_id].apps:
                 break
         else:
-            # flash("Could not generate a unique installation ID.")
+            flash(request, "Could not generate a unique installation ID.")
             return RedirectResponse(
                 url=request.url_for("addapp", device_id=device_id),
                 status_code=HTTPStatus.SEE_OTHER,
@@ -1126,6 +1054,7 @@ async def addapp(
             "device": current_user.devices[device_id],
             "apps_list": apps_list,
             "custom_apps_list": custom_apps_list,
+            "user": current_user,
         },
     )
 
@@ -1252,9 +1181,9 @@ async def generate_firmware(
         swap_colors = "swap_colors" in form
 
         if not all([img_url, wifi_ap, wifi_password]):
-            # flash("All fields are required.")
+            flash(request, "All fields are required.")
             return templates.TemplateResponse(
-                request, "manager/firmware.html", {"request": request, "device": device}
+                request, "manager/firmware.html", {"request": request, "device": device, "user": current_user}
             )
 
         try:
@@ -1269,13 +1198,13 @@ async def generate_firmware(
                 },
             )
         except ValueError as e:
-            # flash(str(e))
+            flash(request, str(e))
             return templates.TemplateResponse(
-                request, "manager/firmware.html", {"request": request, "device": device}
+                request, "manager/firmware.html", {"request": request, "device": device, "user": current_user}
             )
 
     return templates.TemplateResponse(
-        request, "manager/firmware.html", {"request": request, "device": device}
+        request, "manager/firmware.html", {"request": request, "device": device, "user": current_user}
     )
 
 

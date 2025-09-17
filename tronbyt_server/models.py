@@ -1,14 +1,11 @@
-from typing import Dict, List, Optional
-
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
+from typing import Optional, List, Dict
 
 class Location(BaseModel):
     name: Optional[str] = None
     timezone: Optional[str] = None
     lat: float
     lng: float
-
 
 class App(BaseModel):
     name: str
@@ -20,14 +17,13 @@ class App(BaseModel):
     display_time: Optional[int] = None
     notes: Optional[str] = None
     id: Optional[str] = None
-    config: Dict = Field(default_factory=dict)
+    config: Dict = {}
     order: Optional[int] = None
     pushed: Optional[bool] = False
     empty_last_render: Optional[bool] = False
     start_time: Optional[str] = None
     end_time: Optional[str] = None
-    days: List[str] = Field(default_factory=list)
-
+    days: List[str] = []
 
 class Device(BaseModel):
     id: str
@@ -46,14 +42,13 @@ class Device(BaseModel):
     default_interval: Optional[int] = None
     timezone: Optional[str] = None
     location: Optional[Location] = None
-    apps: Dict[str, App] = Field(default_factory=dict)
+    apps: Dict[str, App] = {}
     last_app_index: Optional[int] = None
-
 
 class User(BaseModel):
     username: str
     password: str
     email: Optional[str] = None
-    devices: Dict[str, Device] = Field(default_factory=dict)
+    devices: Dict[str, Device] = {}
     api_key: Optional[str] = None
     theme_preference: Optional[str] = "system"

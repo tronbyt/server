@@ -1,20 +1,17 @@
 from io import BytesIO
 
-from fastapi.testclient import TestClient
+from flask.testing import FlaskClient
 
 from . import utils
 
 
-def test_upload_and_delete(registered_client: TestClient) -> None:
-    registered_client.post(
-        "/auth/login",
-        data={"username": "testuser", "password": "password"},
-        follow_redirects=True,
+def test_upload_and_delete(auth_client: FlaskClient) -> None:
+    data = dict(
+        file=(BytesIO(b"my file contents"), "report.star"),
     )
-    data = {"file": ("report.star", BytesIO(b"my file contents"), "text/plain")}
     # device is required to upload a file now.
-    registered_client.get("/create")
-    registered_client.post(
+    auth_client.get("/create")
+    auth_client.post(
         "/create",
         data={
             "name": "TESTDEVICE",
@@ -25,22 +22,22 @@ def test_upload_and_delete(registered_client: TestClient) -> None:
         },
     )
     dev_id = utils.get_test_device_id()
-    registered_client.post(
-        f"/{dev_id}/uploadapp", files=data
+    auth_client.post(
+        f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data
     )
 
     assert "report/report.star" in utils.get_user_uploads_list()
 
-    registered_client.get(
-        f"/{dev_id}/deleteupload/report.star"
-    )
+    auth_client.get(f"/{dev_id}/deleteupload/report.star")
 
     assert "report/report.star" not in utils.get_user_uploads_list()
 
     # test rejected bad extension
-    data = {"file": ("report.exe", BytesIO(b"my file contents"), "text/plain")}
+    data = dict(
+        file=(BytesIO(b"my file contents"), "report.exe"),
+    )
 
-    registered_client.post(
-        f"/{dev_id}/uploadapp", files=data
+    auth_client.post(
+        f"/{dev_id}/uploadapp", content_type="multipart/form-data", data=data
     )
     assert "report.exe" not in utils.get_user_uploads_list()

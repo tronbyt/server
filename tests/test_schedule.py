@@ -1,9 +1,8 @@
 import datetime
 from zoneinfo import ZoneInfo
 
-from tronbyt_server import db_fastapi as db
-from tronbyt_server.models_fastapi import App
-from tronbyt_server.main import logger
+from tronbyt_server import db
+from tronbyt_server.models.app import App
 
 
 def test_get_is_app_schedule_active() -> None:
@@ -11,8 +10,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="18:00",
             end_time="22:00",
         ),
@@ -31,8 +28,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="18:00",
             end_time="22:00",
         ),
@@ -49,8 +44,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="18:00",
             end_time="22:00",
         ),
@@ -66,8 +59,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="22:00",
             end_time="06:00",
         ),
@@ -83,8 +74,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="22:00",
             end_time="06:00",
         ),
@@ -100,8 +89,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="22:00",
             end_time="06:00",
         ),
@@ -116,15 +103,13 @@ def test_get_is_app_schedule_active() -> None:
         ),
     )
     assert db.get_is_app_schedule_active_at_time(
-        App(name="testing", iname="testing", enabled=True, last_render=0),
+        App(name="testing", iname="testing"),
         datetime.datetime(year=2025, month=1, day=1, hour=10, minute=0, second=10),
     )
     assert db.get_is_app_schedule_active_at_time(
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="18:00",
             end_time="22:00",
             days=["wednesday"],
@@ -142,8 +127,6 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            enabled=True,
-            last_render=0,
             start_time="18:00",
             end_time="22:00",
             days=["monday", "tuesday"],

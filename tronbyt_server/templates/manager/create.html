@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<script src="{{ url_for('static', path='js/location.js') }}"></script>
+<script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
@@ -44,4 +44,7 @@
   </script>
   <input type="submit" class="w3-button w3-green" value="{{ _('Save') }}">
 </form>
+<a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange">
+  {{ _('Import Configuration') }}
+</a>
 {% endblock %}
