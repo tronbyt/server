@@ -226,6 +226,7 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
             LANGUAGES=["en", "de"],
             MAX_USERS=int(os.getenv("MAX_USERS", "100")),
             ENABLE_USER_REGISTRATION=os.getenv("ENABLE_USER_REGISTRATION", "0"),
+            PASSWORDLESS_LOGIN_ENABLED=os.getenv("PASSWORDLESS_LOGIN_ENABLED", "0"),
         )
         if app.config.get("PRODUCTION") == "1":
             if app.config["SERVER_PROTOCOL"] == "https":
