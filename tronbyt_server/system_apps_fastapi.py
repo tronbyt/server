@@ -8,7 +8,6 @@ from typing import Any, Optional
 import urllib.request
 from urllib.parse import urlparse
 import yaml
-from flask import current_app
 
 from tronbyt_server.models.app import AppMetadata
 
@@ -22,15 +21,15 @@ def git_command(
     return subprocess.run(command, cwd=cwd, env=env, check=check)
 
 
-def log_message(message: str) -> None:
-    """Log a message using Flask's logger if in app context, otherwise use print."""
-    if current_app:
-        current_app.logger.info(message)
+def log_message(logger, message: str) -> None:
+    """Log a message using the provided logger."""
+    if logger:
+        logger.info(message)
     else:
         print(message)
 
 
-def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
+def update_firmware_binaries(logger, base_path: Path) -> dict[str, Any]:
     """Download the latest firmware bin files from GitHub releases.
 
     Returns:
@@ -68,7 +67,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
             raise ValueError("Not a GitHub URL")
     except Exception as e:
         error_msg = f"Error parsing firmware repository URL {firmware_repo}: {e}"
-        log_message(error_msg)
+        log_message(logger, error_msg)
         return {
             "success": False,
             "action": "error",
@@ -81,14 +80,14 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
     api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
 
     try:
-        log_message(f"Fetching latest release info from {api_url}")
+        log_message(logger, f"Fetching latest release info from {api_url}")
 
         # Fetch release information
         with urllib.request.urlopen(api_url) as response:
             release_data = json.loads(response.read().decode())
 
         release_tag = release_data.get("tag_name", "unknown")
-        log_message(f"Found latest release: {release_tag}")
+        log_message(logger, f"Found latest release: {release_tag}")
 
         # Check if we already have this version
         version_file = firmware_path / "firmware_version.txt"
@@ -97,12 +96,12 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
             try:
                 with version_file.open("r") as f:
                     current_version = f.read().strip()
-                log_message(f"Current firmware version: {current_version}")
+                log_message(logger, f"Current firmware version: {current_version}")
             except Exception as e:
-                log_message(f"Error reading current version file: {e}")
+                log_message(logger, f"Error reading current version file: {e}")
 
         if current_version == release_tag:
-            log_message(f"Firmware is already up to date (version {release_tag})")
+            log_message(logger, f"Firmware is already up to date (version {release_tag})")
             return {
                 "success": True,
                 "action": "skipped",
@@ -135,19 +134,20 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
                     local_name = firmware_name_mapping.get(asset_name, asset_name)
                     dest_file = firmware_path / local_name
                     log_message(
-                        f"Downloading firmware file: {asset_name} -> {local_name}"
+                        logger, f"Downloading firmware file: {asset_name} -> {local_name}"
                     )
 
                     try:
                         urllib.request.urlretrieve(download_url, dest_file)
                         bin_files_downloaded += 1
-                        log_message(f"Successfully downloaded: {local_name}")
+                        log_message(logger, f"Successfully downloaded: {local_name}")
                     except Exception as e:
-                        log_message(f"Error downloading {asset_name}: {e}")
+                        log_message(logger, f"Error downloading {asset_name}: {e}")
 
         if bin_files_downloaded > 0:
             log_message(
-                f"Downloaded {bin_files_downloaded} firmware files to {firmware_path}"
+                logger,
+                f"Downloaded {bin_files_downloaded} firmware files to {firmware_path}",
             )
 
             # Write version information to file
@@ -155,7 +155,9 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
             try:
                 with version_file.open("w") as f:
                     f.write(f"{release_tag}\n")
-                log_message(f"Saved firmware version {release_tag} to {version_file}")
+                log_message(
+                    logger, f"Saved firmware version {release_tag} to {version_file}"
+                )
 
                 return {
                     "success": True,
@@ -165,7 +167,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
                     "files_downloaded": bin_files_downloaded,
                 }
             except Exception as e:
-                log_message(f"Error writing version file: {e}")
+                log_message(logger, f"Error writing version file: {e}")
                 return {
                     "success": False,
                     "action": "error",
@@ -174,7 +176,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
                     "files_downloaded": bin_files_downloaded,
                 }
         else:
-            log_message("No .bin files found in the latest release")
+            log_message(logger, "No .bin files found in the latest release")
             return {
                 "success": False,
                 "action": "error",
@@ -185,7 +187,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
 
     except urllib.error.HTTPError as e:
         error_msg = f"HTTP error fetching release info: {e.code} {e.reason}"
-        log_message(error_msg)
+        log_message(logger, error_msg)
         return {
             "success": False,
             "action": "error",
@@ -195,7 +197,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
         }
     except urllib.error.URLError as e:
         error_msg = f"URL error fetching release info: {e.reason}"
-        log_message(error_msg)
+        log_message(logger, error_msg)
         return {
             "success": False,
             "action": "error",
@@ -205,7 +207,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
         }
     except json.JSONDecodeError as e:
         error_msg = f"Error parsing release JSON: {e}"
-        log_message(error_msg)
+        log_message(logger, error_msg)
         return {
             "success": False,
             "action": "error",
@@ -215,7 +217,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
         }
     except Exception as e:
         error_msg = f"Error updating firmware: {e}"
-        log_message(error_msg)
+        log_message(logger, error_msg)
         return {
             "success": False,
             "action": "error",
@@ -225,7 +227,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
         }
 
 
-def update_system_repo(base_path: Path) -> None:
+def update_system_repo(logger, base_path: Path) -> None:
     system_apps_path = base_path / "system-apps"
     system_apps_url = os.getenv(
         "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
@@ -240,7 +242,7 @@ def update_system_repo(base_path: Path) -> None:
 
     # check for existence of .git directory
     git_dir = system_apps_path / ".git"
-    log_message(f"Checking for git directory at: {git_dir}")
+    log_message(logger, f"Checking for git directory at: {git_dir}")
 
     # If running as root, add the system-apps directory to the safe.directory list
     if os.geteuid() == 0:  # Check if the script is running as root
@@ -257,16 +259,21 @@ def update_system_repo(base_path: Path) -> None:
         )
 
     if git_dir.is_dir():  # Check if it's actually a directory
-        log_message(f"{system_apps_path} git repo found, updating {system_apps_repo}")
+        log_message(
+            logger, f"{system_apps_path} git repo found, updating {system_apps_repo}"
+        )
 
         result = git_command(["git", "pull", "--rebase=true"], cwd=system_apps_path)
         if result.returncode != 0:
-            log_message(f"Error updating repository. Return code: {result.returncode}")
+            log_message(
+                logger, f"Error updating repository. Return code: {result.returncode}"
+            )
         else:
-            log_message("Repo updated")
+            log_message(logger, "Repo updated")
     else:
         log_message(
-            f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}"
+            logger,
+            f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}",
         )
 
         if branch_name:
@@ -297,9 +304,9 @@ def update_system_repo(base_path: Path) -> None:
                 ]
             )
         if result.returncode != 0:
-            log_message("Error Cloning Repo")
+            log_message(logger, "Error Cloning Repo")
         else:
-            log_message("Repo Cloned")
+            log_message(logger, "Repo Cloned")
 
     # find all the .star files in the apps_path directory
     apps_array = []
@@ -308,12 +315,12 @@ def update_system_repo(base_path: Path) -> None:
 
     broken_apps_path = system_apps_path / "broken_apps.txt"
     if broken_apps_path.exists():
-        log_message(f"processing broken_apps file {broken_apps_path}")
+        log_message(logger, f"processing broken_apps file {broken_apps_path}")
         try:
             broken_apps = broken_apps_path.read_text().splitlines()
-            log_message(str(broken_apps))
+            log_message(logger, str(broken_apps))
         except Exception as e:
-            log_message(f"problem reading broken_apps_txt {e}")
+            log_message(logger, f"problem reading broken_apps_txt {e}")
 
     apps.sort()
     count = 0
@@ -332,7 +339,7 @@ def update_system_repo(base_path: Path) -> None:
 
             # skip any broken apps
             if broken_apps and app.name in broken_apps:
-                log_message(f"skipping broken app {app.name}")
+                log_message(logger, f"skipping broken app {app.name}")
                 skip_count += 1
                 continue
 
@@ -375,7 +382,8 @@ def update_system_repo(base_path: Path) -> None:
                 if image_path.exists() and image_path.stat().st_size < 1 * 1024 * 1024:
                     if not static_image_path.exists():
                         log_message(
-                            f"copying preview to static dir {static_image_path}"
+                            logger,
+                            f"copying preview to static dir {static_image_path}",
                         )
                         new_previews += 1
                         shutil.copy(image_path, static_image_path)
@@ -388,16 +396,12 @@ def update_system_repo(base_path: Path) -> None:
             count += 1
             apps_array.append(app_dict)
         except Exception as e:
-            log_message(f"skipped {app} due to error: {repr(e)}")
+            log_message(logger, f"skipped {app} due to error: {repr(e)}")
 
     # writeout apps_array as a json file
-    log_message(f"got {count} useable apps")
-    log_message(f"skipped {skip_count} secrets.star using apps")
-    log_message(f"copied {new_previews} new previews into static")
-    log_message(f"total previews found {num_previews}")
+    log_message(logger, f"got {count} useable apps")
+    log_message(logger, f"skipped {skip_count} secrets.star using apps")
+    log_message(logger, f"copied {new_previews} new previews into static")
+    log_message(logger, f"total previews found {num_previews}")
     with (base_path / "system-apps.json").open("w") as f:
         json.dump(apps_array, f, indent=4)
-
-
-if __name__ == "__main__":
-    update_system_repo(Path(os.getcwd()))

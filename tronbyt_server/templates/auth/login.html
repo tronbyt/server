@@ -13,5 +13,8 @@
         <label for="remember">{{ _('Remember Me') }}</label>
     </div>
     <input type="submit" class="w3-button w3-green" value="{{ _('Log In') }}">
+    {% if error %}
+      <p class="error"><strong>{{ _('Error:') }}</strong> {{ error }}</p>
+    {% endif %}
 </form>
 {% endblock %}

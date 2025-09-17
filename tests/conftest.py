@@ -1,67 +1,39 @@
 from pathlib import Path
 from typing import Iterator
+import shutil
 
 import pytest
-from flask import Flask
-from flask.ctx import AppContext
-import shutil
-from flask.testing import FlaskClient, FlaskCliRunner
+from fastapi.testclient import TestClient
 
-from tronbyt_server import create_app
+from tronbyt_server.main import app
 
 
 @pytest.fixture()
-def app() -> Iterator[Flask]:
-    app = create_app({"test_config": True})
-
-    with app.app_context():
-        yield app
-
+def client() -> Iterator[TestClient]:
     # clean up / reset resources here
-    print("delete testdb")
-    test_db_path = Path("tests/users/testdb.sqlite")
+    test_db_path = Path("users/usersdb.sqlite")
     if test_db_path.exists():
         test_db_path.unlink()
 
-
-@pytest.fixture()
-def client(app: Flask) -> FlaskClient:
-    return app.test_client()
-
-
-@pytest.fixture()
-def auth_client(client: FlaskClient) -> FlaskClient:
-    # Create admin user
-    client.post("/auth/register_owner", data={"password": "adminpassword"})
-
-    # Register and login testuser
-    with client.session_transaction() as sess:
-        sess["username"] = "admin"
-    client.post("/auth/register", data={"username": "testuser", "password": "password"})
-    client.post("/auth/login", data={"username": "testuser", "password": "password"})
-
-    return client
-
-
-@pytest.fixture()
-def runner(app: Flask) -> FlaskCliRunner:
-    return app.test_cli_runner()
-
-
-@pytest.fixture()
-def app_context(app: Flask) -> Iterator[AppContext]:
-    with app.app_context() as ctx:
-        yield ctx
-
-
-@pytest.fixture()
-def clean_app() -> Iterator[Flask]:
-    users_dir = Path("tests/users")
+    users_dir = Path("users")
     if users_dir.exists():
         shutil.rmtree(users_dir)
     users_dir.mkdir()
-    app = create_app({"test_config": True})
-    with app.app_context():
-        yield app
-    if users_dir.exists():
-        shutil.rmtree(users_dir)
+
+    with TestClient(app) as client:
+        yield client
+
+
+@pytest.fixture()
+def registered_client(client: TestClient) -> TestClient:
+    # Create admin user
+    client.post("/auth/register_owner", data={"password": "adminpassword"})
+
+    # Register testuser
+    client.post(
+        "/auth/register",
+        data={"username": "testuser", "password": "password"},
+        cookies=client.cookies,
+    )
+
+    return client

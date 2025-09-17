@@ -1,13 +1,18 @@
-from flask.testing import FlaskClient
+from fastapi.testclient import TestClient
 
 from . import utils
 
 
-def test_device_operations(auth_client: FlaskClient) -> None:
-    r = auth_client.get("/create")
+def test_device_operations(registered_client: TestClient) -> None:
+    registered_client.post(
+        "/auth/login",
+        data={"username": "testuser", "password": "password"},
+        follow_redirects=True,
+    )
+    r = registered_client.get("/create", follow_redirects=False)
     assert r.status_code == 200
 
-    r = auth_client.post(
+    r = registered_client.post(
         "/create",
         data={
             "name": "TESTDEVICE",
@@ -17,11 +22,11 @@ def test_device_operations(auth_client: FlaskClient) -> None:
             "brightness": "3",
         },
     )
-    assert utils.get_test_device()["name"] == "TESTDEVICE"
+    assert utils.get_test_device().name == "TESTDEVICE"
 
     device_id = utils.get_test_device_id()
     # Test firmware generation page
-    r = auth_client.get(f"{device_id}/firmware")
+    r = registered_client.get(f"/{device_id}/firmware", cookies=registered_client.cookies)
     assert r.status_code == 200
 
     # id: device['id']
@@ -34,22 +39,26 @@ def test_device_operations(auth_client: FlaskClient) -> None:
         "wifi_ap": "Blah",
         "wifi_password": "Blah",
     }
-    r = auth_client.post(f"/{device_id}/firmware", data=data)
+    r = registered_client.post(
+        f"/{device_id}/firmware", data=data, cookies=registered_client.cookies
+    )
     assert r.status_code == 200
 
-    r = auth_client.post(f"/{device_id}/firmware", data=data)
+    r = registered_client.post(
+        f"/{device_id}/firmware", data=data, cookies=registered_client.cookies
+    )
     assert r.status_code == 200
-    assert r.mimetype == "application/octet-stream"
+    assert r.headers["content-type"] == "application/octet-stream"
     assert (
-        r.headers["Content-Disposition"]
+        r.headers["content-disposition"]
         == f"attachment;filename=firmware_tidbyt_gen1_{device_id}.bin"
     )
-    assert len(r.data) > 0
+    assert len(r.content) > 0
 
     # test /device_id/next works even when no app configured
-    assert auth_client.get(f"{device_id}/next").status_code == 200
+    assert registered_client.get(f"/{device_id}/next").status_code == 200
 
     # Delete the device.
-    r = auth_client.post(f"{device_id}/delete")
+    r = registered_client.post(f"/{device_id}/delete", cookies=registered_client.cookies)
     testuser = utils.get_testuser()
-    assert not testuser.get("devices", {})
+    assert not testuser.devices

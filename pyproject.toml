@@ -8,13 +8,16 @@ authors = [
 ]
 dependencies = [
     "esptool",
-    "flask",
-    "flask-babel",
-    "flask-sock",
+    "fastapi",
     "gunicorn",
     "python-dotenv",
     "requests",
     "tzlocal",
+    "uvicorn",
+    "babel",
+    "werkzeug",
+    "jinja2",
+    "python-multipart",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
@@ -58,4 +61,7 @@ dev = [
     "mypy>=1.15.0",
     "ruff>=0.11.8",
     "pip>=25.1",
+    "fastapi",
+    "uvicorn",
+    "httpx",
 ]
