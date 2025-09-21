@@ -1,3 +1,5 @@
+"""Data models for Tronbyt Server applications."""
+
 from typing import Any, Dict, List, Optional, Required, TypedDict
 
 

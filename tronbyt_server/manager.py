@@ -1,3 +1,5 @@
+"""Manager blueprint for handling device and app management routes."""
+
 import json
 import os
 import secrets
@@ -34,8 +36,7 @@ from flask_sock import Server as WebSocketServer
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
-from tronbyt_server import call_handler, get_schema, sock, system_apps
-from tronbyt_server import render_app as pixlet_render_app
+from tronbyt_server import firmware_utils, sock, system_apps
 from tronbyt_server.auth import login_required
 from tronbyt_server.models.app import App
 from tronbyt_server.models.device import (
@@ -47,6 +48,8 @@ from tronbyt_server.models.device import (
     validate_device_type,
 )
 from tronbyt_server.models.user import User
+from tronbyt_server.pixlet import call_handler, get_schema
+from tronbyt_server.pixlet import render_app as pixlet_render_app
 
 bp = Blueprint("manager", __name__)
 
@@ -707,7 +710,9 @@ def schema_handler(device_id: str, iname: str, handler: str) -> ResponseReturnVa
             abort(HTTPStatus.BAD_REQUEST, description="Invalid request body")
 
         # Call the handler with the provided parameter
-        result = call_handler(Path(app["path"]), handler, data["param"])
+        result = call_handler(
+            Path(app["path"]), handler, data["param"], current_app.logger
+        )
 
         # Return the result as JSON
         return Response(result, mimetype="application/json")
@@ -767,6 +772,7 @@ def render_app(
         maxDuration=15000,
         timeout=30000,
         image_format=0,  # 0 == WebP
+        logger=current_app.logger,
     )
     # Ensure messages is always a list
     messages = (
@@ -873,12 +879,13 @@ def generate_firmware(device_id: str) -> ResponseReturnValue:
 
             # Pass the device type to the firmware generation function
             try:
-                firmware_data = db.generate_firmware(
+                firmware_data = firmware_utils.generate_firmware(
                     url=image_url,
                     ap=ap,
                     pw=password,
                     device_type=device_type,
                     swap_colors=swap_colors,
+                    logger=current_app.logger,
                 )
             except Exception as e:
                 current_app.logger.error(f"Error generating firmware: {e}")
@@ -922,7 +929,7 @@ def configapp(device_id: str, iname: str, delete_on_cancel: int) -> ResponseRetu
     app_path = Path(app["path"])
 
     if request.method == "GET":
-        schema_json = get_schema(app_path)
+        schema_json = get_schema(app_path, current_app.logger)
         schema = json.loads(schema_json) if schema_json else None
         return render_template(
             "manager/configapp.html",
@@ -1219,7 +1226,7 @@ def set_system_repo() -> ResponseReturnValue:
         if set_repo("system_repo_url", db.get_data_dir() / "system-apps", repo_url):
             # run the generate app list for custom repo
             # will just generate json file if already there.
-            system_apps.update_system_repo(db.get_data_dir())
+            system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
@@ -1238,7 +1245,7 @@ def refresh_system_repo() -> ResponseReturnValue:
         ):
             # run the generate app list for custom repo
             # will just generate json file if already there.
-            system_apps.update_system_repo(db.get_data_dir())
+            system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
             return redirect(url_for("manager.index"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)

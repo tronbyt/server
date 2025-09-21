@@ -1,4 +1,6 @@
-from typing import Dict, Required, TypedDict, Literal
+"""Data models for Tronbyt Server users."""
+
+from typing import Dict, Literal, Required, TypedDict
 
 from tronbyt_server.models.device import Device
 

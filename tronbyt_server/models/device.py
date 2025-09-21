@@ -1,3 +1,5 @@
+"""Data models and validation functions for devices in Tronbyt Server."""
+
 import re
 from typing import Dict, Optional, Required, TypedDict
 from zoneinfo import ZoneInfo

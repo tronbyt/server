@@ -1,3 +1,5 @@
+"""Database utility functions for Tronbyt Server."""
+
 import json
 import secrets
 import shutil
@@ -17,7 +19,6 @@ from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
-from tronbyt_server.firmware import correct_firmware_esptool
 from tronbyt_server.models.app import App, AppMetadata
 from tronbyt_server.models.device import (
     Device,
@@ -462,7 +463,7 @@ def get_apps_list(user: str) -> List[AppMetadata]:
         list_file = get_data_dir() / "system-apps.json"
         if not list_file.exists():
             current_app.logger.info("Generating apps.json file...")
-            system_apps.update_system_repo(get_data_dir())
+            system_apps.update_system_repo(get_data_dir(), current_app.logger)
             current_app.logger.debug("apps.json file generated.")
 
         with list_file.open("r") as f:
@@ -661,64 +662,6 @@ def get_user_by_api_key(api_key: str) -> Optional[User]:
         if user.get("api_key") == api_key:
             return user
     return None
-
-
-# firmare bin files named after env targets in firmware project.
-def generate_firmware(
-    url: str, ap: str, pw: str, device_type: str, swap_colors: bool
-) -> bytes:
-    # Determine the firmware filename based on device type
-    if device_type == "tidbyt_gen2":
-        firmware_filename = "tidbyt-gen2.bin"
-    elif device_type == "pixoticker":
-        firmware_filename = "pixoticker.bin"
-    elif device_type == "tronbyt_s3":
-        firmware_filename = "tronbyt-S3.bin"
-    elif device_type == "tronbyt_s3_wide":
-        firmware_filename = "tronbyt-s3-wide.bin"
-    elif swap_colors:
-        firmware_filename = "tidbyt-gen1_swap.bin"
-    else:
-        firmware_filename = "tidbyt-gen1.bin"
-
-    # Check data directory first (for downloaded firmware), then fallback to bundled firmware
-    data_firmware_path = get_data_dir() / "firmware" / firmware_filename
-    bundled_firmware_path = Path(__file__).parent / "firmware" / firmware_filename
-
-    if data_firmware_path.exists():
-        file_path = data_firmware_path
-    elif bundled_firmware_path.exists():
-        file_path = bundled_firmware_path
-    else:
-        raise ValueError(
-            f"Firmware file {firmware_filename} not found in {data_firmware_path} or {bundled_firmware_path}."
-        )
-
-    dict = {
-        "XplaceholderWIFISSID____________": ap,
-        "XplaceholderWIFIPASSWORD________________________________________": pw,
-        "XplaceholderREMOTEURL___________________________________________________________________________________________________________": url,
-    }
-    with file_path.open("rb") as f:
-        content = f.read()
-
-    for old_string, new_string in dict.items():
-        if len(new_string) > len(old_string):
-            raise ValueError(
-                "Replacement string cannot be longer than the original string."
-            )
-        position = content.find(old_string.encode("ascii") + b"\x00")
-        if position == -1:
-            raise ValueError(f"String '{old_string}' not found in the binary.")
-        padded_new_string = new_string + "\x00"
-        padded_new_string = padded_new_string.ljust(len(old_string) + 1, "\x00")
-        content = (
-            content[:position]
-            + padded_new_string.encode("ascii")
-            + content[position + len(old_string) + 1 :]
-        )
-
-    return correct_firmware_esptool.update_firmware_data(content, device_type)
 
 
 def get_pushed_app(user: User, device_id: str, installation_id: str) -> App:

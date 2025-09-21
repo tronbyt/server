@@ -1,3 +1,5 @@
+"""API blueprint for handling device and app interactions."""
+
 import base64
 import json
 import time

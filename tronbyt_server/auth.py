@@ -1,3 +1,5 @@
+"""Authentication blueprint for handling user registration, login, and management."""
+
 import functools
 import secrets
 import string
