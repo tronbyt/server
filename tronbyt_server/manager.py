@@ -10,7 +10,6 @@ import time
 import uuid
 from http import HTTPStatus
 from io import BytesIO
-from multiprocessing import Manager
 from operator import itemgetter
 from pathlib import Path
 from random import randint
@@ -50,6 +49,7 @@ from tronbyt_server.models.device import (
 from tronbyt_server.models.user import User
 from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.pixlet import render_app as pixlet_render_app
+from tronbyt_server.sync import get_sync_manager
 
 bp = Blueprint("manager", __name__)
 
@@ -1634,12 +1634,6 @@ def import_device() -> ResponseReturnValue:
     return render_template("manager/import_config.html")
 
 
-# Use a Manager to create a shared dictionary for events across processes
-manager = Manager()
-device_conditions = manager.dict()
-device_lock = manager.Lock()
-
-
 # Ignore untyped decorator: https://github.com/miguelgrinberg/flask-sock/issues/55
 @sock.route("/<string:device_id>/ws")  # type: ignore
 def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
@@ -1657,16 +1651,10 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
         ws.close()
         return
 
-    with device_lock:
-        if device_id in device_conditions:
-            device_condition = device_conditions[device_id]
-        else:
-            device_condition = manager.Condition()
-            device_conditions[device_id] = device_condition
-
     dwell_time = device.get("default_interval", 5)
     last_brightness = None
 
+    waiter = get_sync_manager().get_waiter(device_id)
     try:
         while ws.connected:
             try:
@@ -1721,16 +1709,14 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                 )
 
             # Wait for the next event or timeout
-            with device_condition:
-                device_condition.wait(timeout=dwell_time)
+            waiter.wait(timeout=dwell_time)
     except Exception as e:
         current_app.logger.error(f"WebSocket error: {e}")
         ws.close()
+    finally:
+        waiter.close()
 
 
 def push_new_image(device_id: str) -> None:
-    """Wake up one WebSocket loop to push a new image."""
-    with device_lock:
-        if device_id in device_conditions:
-            with device_conditions[device_id]:
-                device_conditions[device_id].notify(1)
+    """Wake up WebSocket loops to push a new image to a given device."""
+    get_sync_manager().notify(device_id)

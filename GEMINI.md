@@ -17,6 +17,7 @@ The application is structured into several modules:
 *   `tronbyt_server/firmware_utils.py`: Provides utilities for generating, modifying, and downloading firmware binaries.
 *   `tronbyt_server/manager.py`: The web application.
 *   `tronbyt_server/pixlet.py`: Provides an interface to the `libpixlet.so` shared library.
+*   `tronbyt_server/sync.py`: Synchronization primitives.
 *   `tronbyt_server/system_apps.py`: Utilities for managing the system apps repository.
 
 ## Building and Running
