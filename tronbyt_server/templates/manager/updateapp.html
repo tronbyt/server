@@ -47,7 +47,6 @@
   <!-- Legacy Schedule (Default) -->
   <div id="legacy_schedule">
     <label for="days">{{ _('Active Days') }}</label> {{ _('(none selected is ALL selected)') }}
-  <div id="legacy_schedule">
     <div>
       <input type="checkbox" name="days" value="monday" {% if 'monday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Monday') }}
       <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Tuesday') }}
