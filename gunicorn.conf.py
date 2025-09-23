@@ -9,7 +9,11 @@ accesslog = "-"
 access_log_format = "%(h)s %(l)s %(u)s %(t)s %(r)s %(s)s %(b)s %(f)s %(a)s"
 errorlog = "-"
 workers = 1
-threads = int(os.getenv("GUNICORN_THREADS", "2"))
+worker_class = "gthread"
+try:
+    threads = int(os.getenv("GUNICORN_THREADS", "2"))
+except ValueError:
+    threads = 2
 timeout = 120
 reload = False
 preload_app = True
