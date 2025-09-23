@@ -640,7 +640,10 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
                     recurrence_interval = request.form.get("recurrence_interval")
                     if recurrence_interval:
-                        app["recurrence_interval"] = int(recurrence_interval)
+                        try:
+                            app["recurrence_interval"] = int(recurrence_interval)
+                        except ValueError:
+                            pass  # Or flash an error to the user
 
                     recurrence_start_date = request.form.get("recurrence_start_date")
                     if recurrence_start_date:
