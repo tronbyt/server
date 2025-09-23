@@ -665,10 +665,10 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
             return False
         
         # Check if current weekday is in the pattern
-        if isinstance(recurrence_pattern, list):
-            weekdays = recurrence_pattern
-        elif isinstance(recurrence_pattern, dict) and "weekdays" in recurrence_pattern:
+        if isinstance(recurrence_pattern, dict) and recurrence_pattern.get("weekdays"):
             weekdays = recurrence_pattern["weekdays"]
+        elif isinstance(recurrence_pattern, list) and recurrence_pattern:
+            weekdays = recurrence_pattern
         else:
             weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         
