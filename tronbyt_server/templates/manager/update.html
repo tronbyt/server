@@ -214,8 +214,8 @@
     </div>
 
     <div class="form-group">
-      <label for="curl_example">{{ _('Example curl Command') }}</label>
-      <textarea id="curl_example" class="form-control" rows="5" readonly></textarea>
+      <label for="curl_example">{{ _('Example curl Commands') }}</label>
+      <textarea id="curl_example" class="form-control" rows="8" readonly></textarea>
     </div>
 
     <script>
@@ -236,8 +236,12 @@
         const imageUrl = document.getElementById("img_url").value.trim();
         const { server, deviceId } = parseImageUrl(imageUrl);
 
-        const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
-        document.getElementById("curl_example").value = curl;
+        const curl1 = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
+
+        const curl2 = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'", "installationId": "your-installation-id"}'`;
+
+        const combinedCurl = `${curl1}\n\n# With installationId:\n${curl2}`;
+        document.getElementById("curl_example").value = combinedCurl;
       }
 
       // Update curl command on page load
