@@ -669,7 +669,10 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
                         if monthly_pattern == "day_of_month":
                             day_of_month = request.form.get("day_of_month")
                             if day_of_month:
-                                app["recurrence_pattern"] = {"day_of_month": int(day_of_month)}
+                                try:
+                                    app["recurrence_pattern"] = {"day_of_month": int(day_of_month)}
+                                except ValueError:
+                                    pass # Or flash an error to the user
                         elif monthly_pattern == "day_of_week":
                             day_of_week_pattern = request.form.get("day_of_week_pattern")
                             if day_of_week_pattern:
