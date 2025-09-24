@@ -5,7 +5,7 @@ import secrets
 import shutil
 import sqlite3
 import string
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 from urllib.parse import quote, unquote
@@ -727,12 +727,12 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
     return False
 
 
-def _months_between_dates(start_date, end_date):
+def _months_between_dates(start_date: date, end_date: date) -> int:
     """Calculate number of months between two dates."""
     return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
 
 
-def _matches_monthly_weekday_pattern(date, pattern):
+def _matches_monthly_weekday_pattern(target_date: date, pattern: str) -> bool:
     """Check if date matches a monthly weekday pattern like 'first_monday' or 'last_friday'."""
     try:
         parts = pattern.split("_")
@@ -757,7 +757,7 @@ def _matches_monthly_weekday_pattern(date, pattern):
             return False
 
         target_weekday_index = weekday_map[target_weekday]
-        current_weekday_index = date.weekday()
+        current_weekday_index = target_date.weekday()
 
         if current_weekday_index != target_weekday_index:
             return False
@@ -765,13 +765,13 @@ def _matches_monthly_weekday_pattern(date, pattern):
         # Find which occurrence of this weekday this date represents
         if occurrence == "last":
             # Check if this is the last occurrence of this weekday in the month
-            next_week = date + timedelta(days=7)
-            return next_week.month != date.month
+            next_week = target_date + timedelta(days=7)
+            return next_week.month != target_date.month
         else:
             # Find the Nth occurrence of this weekday in the month
             occurrence_count = 0
-            for day in range(1, date.day + 1):
-                test_date = date.replace(day=day)
+            for day in range(1, target_date.day + 1):
+                test_date = target_date.replace(day=day)
                 if test_date.weekday() == target_weekday_index:
                     occurrence_count += 1
 
@@ -781,11 +781,11 @@ def _matches_monthly_weekday_pattern(date, pattern):
 
     except (AttributeError, ValueError, TypeError) as e:
         # AttributeError: if pattern doesn't have split() method or date operations fail
-        # ValueError: if date.replace() gets invalid day values
+        # ValueError: if target_date.replace() gets invalid day values
         # TypeError: if pattern is None or wrong type
         try:
             current_app.logger.warning(
-                f"Invalid monthly weekday pattern '{pattern}' for date {date}: {e}"
+                f"Invalid monthly weekday pattern '{pattern}' for date {target_date}: {e}"
             )
         except RuntimeError:
             # Outside application context, skip logging
