@@ -5,7 +5,7 @@ import secrets
 import shutil
 import sqlite3
 import string
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Literal, Optional, Union
 from urllib.parse import quote, unquote
@@ -594,15 +594,12 @@ def get_is_app_schedule_active(app: App, device: Device) -> bool:
 
 
 def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool:
-    current_day = current_time.strftime("%A").lower()
+    """Check if app should be active at the given time using either legacy or new recurrence system."""
+    # Check time range first
     start_time = datetime.strptime(
         str(app.get("start_time") or "00:00"), "%H:%M"
     ).time()
     end_time = datetime.strptime(str(app.get("end_time") or "23:59"), "%H:%M").time()
-    active_days = app.get(
-        "days",
-        ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-    )
 
     current_time_only = current_time.replace(second=0, microsecond=0).time()
     if start_time > end_time:
@@ -610,9 +607,190 @@ def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool
     else:
         in_time_range = start_time <= current_time_only <= end_time
 
-    return (
-        in_time_range and isinstance(active_days, list) and current_day in active_days
-    )
+    if not in_time_range:
+        return False
+
+    # Use custom recurrence system only if explicitly enabled
+    if app.get("use_custom_recurrence", False) and app.get("recurrence_type"):
+        return _is_recurrence_active_at_time(app, current_time)
+    else:
+        # Default to legacy daily schedule system
+        current_day = current_time.strftime("%A").lower()
+        active_days = app.get(
+            "days",
+            [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            ],
+        )
+        return isinstance(active_days, list) and current_day in active_days
+
+
+def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
+    """Check if app recurrence pattern matches the current time."""
+    recurrence_type = app.get("recurrence_type", "daily")
+    recurrence_interval = app.get("recurrence_interval", 1)
+    recurrence_pattern = app.get("recurrence_pattern", [])
+    recurrence_start_date_str = app.get("recurrence_start_date")
+    recurrence_end_date_str = app.get("recurrence_end_date")
+
+    # Parse start date
+    if not recurrence_start_date_str:
+        # Default to a reasonable start date if not specified
+        recurrence_start_date = datetime(2025, 1, 1).date()
+    else:
+        try:
+            recurrence_start_date = datetime.strptime(
+                recurrence_start_date_str, "%Y-%m-%d"
+            ).date()
+        except ValueError:
+            return False
+
+    # Check end date
+    if recurrence_end_date_str:
+        try:
+            recurrence_end_date = datetime.strptime(
+                recurrence_end_date_str, "%Y-%m-%d"
+            ).date()
+            if current_time.date() > recurrence_end_date:
+                return False
+        except ValueError:
+            pass
+
+    current_date = current_time.date()
+
+    if recurrence_type == "daily":
+        # Every X days
+        days_since_start = (current_date - recurrence_start_date).days
+        return days_since_start >= 0 and days_since_start % recurrence_interval == 0
+
+    elif recurrence_type == "weekly":
+        # Every X weeks on specified weekdays
+        weeks_since_start = (current_date - recurrence_start_date).days // 7
+        if weeks_since_start < 0 or weeks_since_start % recurrence_interval != 0:
+            return False
+
+        # Check if current weekday is in the pattern
+        if isinstance(recurrence_pattern, dict) and recurrence_pattern.get("weekdays"):
+            weekdays = recurrence_pattern["weekdays"]
+        elif isinstance(recurrence_pattern, list) and recurrence_pattern:
+            weekdays = recurrence_pattern
+        else:
+            weekdays = [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            ]
+
+        current_weekday = current_time.strftime("%A").lower()
+        return current_weekday in weekdays
+
+    elif recurrence_type == "monthly":
+        # Every X months on specified day or weekday pattern
+        months_since_start = _months_between_dates(recurrence_start_date, current_date)
+        if months_since_start < 0 or months_since_start % recurrence_interval != 0:
+            return False
+
+        if isinstance(recurrence_pattern, dict):
+            if "day_of_month" in recurrence_pattern:
+                # Specific day of month (e.g., 1st, 15th)
+                return current_date.day == recurrence_pattern["day_of_month"]
+            elif "day_of_week" in recurrence_pattern:
+                # Specific weekday pattern (e.g., "first_monday", "last_friday")
+                return _matches_monthly_weekday_pattern(
+                    current_date, recurrence_pattern["day_of_week"]
+                )
+
+        return True  # If no specific pattern, match any day in the month
+
+    elif recurrence_type == "yearly":
+        # Every X years - matches same month and day as start date
+        years_since_start = current_date.year - recurrence_start_date.year
+        if years_since_start < 0 or years_since_start % recurrence_interval != 0:
+            return False
+
+        # Match same month and day as start date
+        return (
+            current_date.month == recurrence_start_date.month
+            and current_date.day == recurrence_start_date.day
+        )
+
+    return False
+
+
+def _months_between_dates(start_date: date, end_date: date) -> int:
+    """Calculate number of months between two dates."""
+    return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+
+
+def _matches_monthly_weekday_pattern(target_date: date, pattern: str) -> bool:
+    """Check if date matches a monthly weekday pattern like 'first_monday' or 'last_friday'."""
+    try:
+        parts = pattern.split("_")
+        if len(parts) != 2:
+            return False
+
+        occurrence, weekday = parts
+        target_weekday = weekday.lower()
+
+        # Get weekday index (0=Monday, 6=Sunday)
+        weekday_map = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        }
+
+        if target_weekday not in weekday_map:
+            return False
+
+        target_weekday_index = weekday_map[target_weekday]
+        current_weekday_index = target_date.weekday()
+
+        if current_weekday_index != target_weekday_index:
+            return False
+
+        # Find which occurrence of this weekday this date represents
+        if occurrence == "last":
+            # Check if this is the last occurrence of this weekday in the month
+            next_week = target_date + timedelta(days=7)
+            return next_week.month != target_date.month
+        else:
+            # Find the Nth occurrence of this weekday in the month
+            occurrence_count = 0
+            for day in range(1, target_date.day + 1):
+                test_date = target_date.replace(day=day)
+                if test_date.weekday() == target_weekday_index:
+                    occurrence_count += 1
+
+            occurrence_map = {"first": 1, "second": 2, "third": 3, "fourth": 4}
+
+            return occurrence_map.get(occurrence, 0) == occurrence_count
+
+    except (AttributeError, ValueError, TypeError) as e:
+        # AttributeError: if pattern doesn't have split() method or date operations fail
+        # ValueError: if target_date.replace() gets invalid day values
+        # TypeError: if pattern is None or wrong type
+        try:
+            current_app.logger.warning(
+                f"Invalid monthly weekday pattern '{pattern}' for date {target_date}: {e}"
+            )
+        except RuntimeError:
+            # Outside application context, skip logging
+            pass
+        return False
 
 
 def get_device_by_name(user: User, name: str) -> Optional[Device]:
