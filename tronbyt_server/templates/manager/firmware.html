@@ -9,7 +9,7 @@
   'other': 'Other'
 } %}
 {% block header %}
-<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
+<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device.name }} - {{ device_type_names.get(device.type, device.type) }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 {% if firmware_version %}
@@ -17,9 +17,9 @@
     <div>
         <strong>{{ _('Firmware Image Version') }}:</strong> {{ firmware_version }}
     </div>
-    {% if g.user.username == 'admin' %}
+    {% if user.username == 'admin' %}
     <div>
-        <a href="{{ url_for('auth.edit') }}#firmware-management" class="w3-button w3-small w3-gray">
+        <a href="{{ url_for('get_edit') }}#firmware-management" class="w3-button w3-small w3-gray">
             {{ _('Manage Firmware') }}
         </a>
     </div>
@@ -38,7 +38,7 @@
         <a href="https://github.com/WCHSoftGroup/ch34xser_macos">CH34x Drivers</a>
     </i>
     <br>
-    <input type="hidden" name="id" id="id" value="{{ device['id'] }}">
+    <input type="hidden" name="id" id="id" value="{{ device.id }}">
 
     <div class="left-align" style="margin: 6px 0 8px;">
         <label style="margin-right:8px;">{{ _('Connection Type') }}:</label>
@@ -51,7 +51,7 @@
 
     <div style="margin-bottom: 15px;">
         <label for="img_url" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('Image URL') }}</label>
-        <input name="img_url" id="img_url" value="{{ device['img_url'] }}" style="display: block; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <input name="img_url" id="img_url" value="{{ device.img_url }}" style="display: block; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
     </div>
 
     <div style="margin-bottom: 15px;">
@@ -68,11 +68,10 @@
         }
     </style>
 
-    {% if device.get('type') == 'tidbyt_gen1' %}
+    {% if device.type == 'tidbyt_gen1' %}
     <div class="left-align">
         <label for="swap_colors">{{ _('Swap Colors?') }}</label>
-        <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {%
-            endif %}>
+        <input type="checkbox" name="swap_colors" id="swap_colors">
     </div>
     {% endif %}
     <input class="w3-button w3-blue" type="submit" value="{{ _('Generate Firmware File') }}">
@@ -85,8 +84,8 @@
         const httpRadio = document.getElementById('variant_http');
         const wsRadio = document.getElementById('variant_ws');
         const customRadio = document.getElementById('variant_custom');
-        const httpVal = "{{ device['img_url'] }}";
-        const wsVal = "{{ device['ws_url'] }}";
+        const httpVal = "{{ device.img_url }}";
+        const wsVal = "{{ device.ws_url }}";
 
         function updateUrl() {
             if (httpRadio.checked || wsRadio.checked) {

@@ -324,8 +324,8 @@
 <!-- <h1>{{ _('Tronbyt Manager') }}</h1> -->
 {% endblock %}
 {% block content %}
-{% if g.user %}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a>
+{% if user %}
+<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('create') }}">{{ _('New Tronbyt') }}</a>
 <hr>
 {% endif %}
 {% for device in devices %}
@@ -336,24 +336,24 @@
         <tr>
           <td colspan="2">
             <header>
-              <h1><a href="{{ device['img_url'] }}" target="_blank" style="text-decoration: none; color: inherit;">
-                {{ device['name'] }}</a></h1>
+              <h1><a href="{{ device.img_url }}" target="_blank" style="text-decoration: none; color: inherit;">
+                {{ device.name }}</a></h1>
             </header>
           </td>
           <td rowspan="4" width="40%">
-            <div class="app-img"><img id="currentWebp-{{ device['id'] }}"
-                data-src="{{url_for('manager.currentwebp', device_id=device['id']) }}"
-                src="{{url_for('manager.currentwebp', device_id=device['id']) }}"
+            <div class="app-img"><img id="currentWebp-{{ device.id }}"
+                data-src="{{url_for('currentwebp', device_id=device.id) }}"
+                src="{{url_for('currentwebp', device_id=device.id) }}"
                 alt="{{ _('Preview') }}">
             </div>
             <br>{{ _('Currently Displaying App') }}
             <div style="display: inline-block; margin-left: 10px;">
               <label class="switch">
-                <input type="checkbox" id="autoUpdate-{{ device['id'] }}"
-                       onchange="toggleAutoUpdate('{{ device['id'] }}')" >
+                <input type="checkbox" id="autoUpdate-{{ device.id }}"
+                       onchange="toggleAutoUpdate('{{ device.id }}')" >
                 <span class="slider"></span>
               </label>
-              <label for="autoUpdate-{{ device['id'] }}"
+              <label for="autoUpdate-{{ device.id }}"
                      style="vertical-align: middle; margin-left: 5px;">{{ _('Auto Refresh') }}</label>
             </div>
           </td>
@@ -361,52 +361,52 @@
         <tr>
           <td>
             <label>{{ _('Brightness') }}</label> =
-            <span id="brightnessValue-{{ device['id'] }}">{{device['brightness'] }}</span>
-            <div class="brightness-panel" id="brightness-panel-{{ device['id'] }}">
-              <button type="button" class="brightness-btn {% if device['brightness'] == 0 %}active{% endif %}"
-                      data-brightness="0" onclick="setBrightness('{{ device['id'] }}', 0)">0</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 1 %}active{% endif %}"
-                      data-brightness="1" onclick="setBrightness('{{ device['id'] }}', 1)">1</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 2 %}active{% endif %}"
-                      data-brightness="2" onclick="setBrightness('{{ device['id'] }}', 2)">2</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 3 %}active{% endif %}"
-                      data-brightness="3" onclick="setBrightness('{{ device['id'] }}', 3)">3</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 4 %}active{% endif %}"
-                      data-brightness="4" onclick="setBrightness('{{ device['id'] }}', 4)">4</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 5 %}active{% endif %}"
-                      data-brightness="5" onclick="setBrightness('{{ device['id'] }}', 5)">5</button>
+            <span id="brightnessValue-{{ device.id }}">{{device.brightness }}</span>
+            <div class="brightness-panel" id="brightness-panel-{{ device.id }}">
+              <button type="button" class="brightness-btn {% if device.brightness == 0 %}active{% endif %}"
+                      data-brightness="0" onclick="setBrightness('{{ device.id }}', 0)">0</button>
+              <button type="button" class="brightness-btn {% if device.brightness == 1 %}active{% endif %}"
+                      data-brightness="1" onclick="setBrightness('{{ device.id }}', 1)">1</button>
+              <button type="button" class="brightness-btn {% if device.brightness == 2 %}active{% endif %}"
+                      data-brightness="2" onclick="setBrightness('{{ device.id }}', 2)">2</button>
+              <button type="button" class="brightness-btn {% if device.brightness == 3 %}active{% endif %}"
+                      data-brightness="3" onclick="setBrightness('{{ device.id }}', 3)">3</button>
+              <button type="button" class="brightness-btn {% if device.brightness == 4 %}active{% endif %}"
+                      data-brightness="4" onclick="setBrightness('{{ device.id }}', 4)">4</button>
+              <button type="button" class="brightness-btn {% if device.brightness == 5 %}active{% endif %}"
+                      data-brightness="5" onclick="setBrightness('{{ device.id }}', 5)">5</button>
             </div>
           </td>
         </tr>
         <tr>
           <td>
-            <label for="default_interval-{{ device['id'] }}">{{ _('App Cycle Time (Seconds)') }}</label> = <span
-              id="intervalValue-{{ device['id'] }}">{{
-              device['default_interval'] }} </span> s<br>
-            <input type="range" name="default_interval" id="default_interval-{{ device['id'] }}" min="1" max="30"
-              value="{{ device['default_interval'] }}" oninput="updateIntervalValue('{{ device['id'] }}', this.value)"
-              onmouseup="updateInterval('{{ device['id'] }}', this.value)">
+            <label for="default_interval-{{ device.id }}">{{ _('App Cycle Time (Seconds)') }}</label> = <span
+              id="intervalValue-{{ device.id }}">{{
+              device.default_interval }} </span> s<br>
+            <input type="range" name="default_interval" id="default_interval-{{ device.id }}" min="1" max="30"
+              value="{{ device.default_interval }}" oninput="updateIntervalValue('{{ device.id }}', this.value)"
+              onmouseup="updateInterval('{{ device.id }}', this.value)">
           </td>
         </tr>
         <tr>
           <td>
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-              href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
+              href="{{ url_for('addapp', device_id=device.id) }}">{{ _('Add App') }}</a>
               {% if devices|length > 1 %}
-              <a id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
-                onclick="toggleApps('{{ device['id'] }}')">{{ _('Hide Apps') }}</a>
+              <a id="toggleAppsBtn-{{ device.id }}" class="w3-button w3-teal w3-round"
+                onclick="toggleApps('{{ device.id }}')">{{ _('Hide Apps') }}</a>
               {% endif %}
   
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-              href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit Device') }}</a>
-            {% if device.get('type') in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide"] %}
+              href="{{ url_for('update', device_id=device.id) }}">{{ _('Edit Device') }}</a>
+            {% if device.type in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide"] %}
                   <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                    href="{{ url_for('manager.generate_firmware', device_id=device['id']) }}">{{ _('Firmware') }}</a>
+                    href="{{ url_for('generate_firmware', device_id=device.id) }}">{{ _('Firmware') }}</a>
             {% endif %}
         </tr>
       </table>
-      <div id="appsList-{{ device['id'] }}" class="visible">
-        {% for app in device.get('apps', {}).values()|sort(attribute='order') %}
+      <div id="appsList-{{ device.id }}" class="visible">
+        {% for app in device.apps.values()|sort(attribute='order') %}
         <div class="w3-card-4 w3-padding">
           <table width="100%">
             <tr width="100%">
@@ -415,74 +415,64 @@
                   <li>
                     <div class="post">
                       <header>
-                        <h1>{{ app['name'] }}-{{ app['iname'] }}</h1>
+                        <h1>{{ app.name }}-{{ app.iname }}</h1>
                       </header>
-                      <div style="margin-bottom: 10px;">
-                        {% if device.get('pinned_app') == app['iname'] %}
-                        <span style="color: #ff9800; font-size: 1.1em; font-weight: bold;">&#128204; {{ _('PINNED') }}</span>
-                        {% else %}
-                          {% if app['enabled'] %}
-                          <span style="color: #4CAF50; font-size: 1.1em; font-weight: bold;">&#10003; {{ _('ENABLED') }}</span>
-                          {% else %}
-                          <span style="color: #9e9e9e; font-size: 1.1em; font-weight: bold;">&#10005; {{ _('DISABLED') }}</span>
-                          {% endif %}
-                        {% endif %}
-                      </div>
-                      <p class="body">{{ _('Render Interval (minutes):') }} {{ app['uinterval'] }}</p>
-                      {% if app['display_time'] != 0 %}<p class="body">{{ _('Display Time (secs):') }} {{
-                        app['display_time'] }}</p>
+                      <p class="body">{{ _('App:') }} {{ app.name }}</p>
+                      <p class="body">{{ _('Render Interval (minutes):') }} {{ app.uinterval }}</p>
+                      {% if app.display_time != 0 %}<p class="body">{{ _('Display Time (secs):') }} {{
+                        app.display_time }}</p>
                       {% endif %}
-                      {% if app.get('notes', '') != '' %}
-                      <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
+                      {% if app.notes != '' %}
+                      <p class="body">{{ _('Notes:') }} {{ app.notes }}</p>
                       {% endif %}
                   </li>
                 </ul>
               </td>
               <td width="33%"><br>
                 <div class="app-img"><img
-                    src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}"
+                    src="{{url_for('appwebp', device_id=device.id,iname=app.iname) }}"
                     alt="{{ _('Preview') }}"></div>
                 <br>
-                {% if app.get('empty_last_render') %}{{_('No output for ') }}{% endif %}
-                {{ _('Last Render:') }} {{ app.get('last_render',0)|timeago }}
+                {% if app.empty_last_render %}{{_('No output for ') }}{% endif %}
+                {{ _('Last Render:') }} {{ app.last_render|timeago }}
               </td>
             </tr>
             <tr>
               <td><a class="action w3-button w3-blue w3-round"
-                  href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}">{{ _('Edit')
+                  href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}">{{ _('Edit')
                   }}</a>
                 <a class="action w3-button w3-blue w3-round"
-                  href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{
+                  href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}">{{
                   _('Configure') }}</a>
-                {% if device.get('pinned_app') == app['iname'] %}
+                {% if device.pinned_app == app.iname %}
                 <a class="action w3-button w3-orange w3-round"
-                  href="{{ url_for('manager.toggle_pin', device_id=device['id'], iname=app['iname']) }}">{{ _('Unpin')
+                  href="{{ url_for('toggle_pin', device_id=device.id, iname=app.iname) }}">{{ _('Unpin')
                   }}</a>
                 {% else %}
-                  {% if app['enabled'] %}
+                  {% if app.enabled %}
                   <a class="action w3-button w3-orange w3-round"
-                    href="{{ url_for('manager.toggle_enabled', device_id=device['id'], iname=app['iname']) }}">{{ _('Disable')
+                    href="{{ url_for('toggle_enabled', device_id=device.id, iname=app.iname) }}">{{ _('Disable')
                     }}</a>
                   {% else %}
                   <a class="action w3-button w3-green w3-round"
-                    href="{{ url_for('manager.toggle_enabled', device_id=device['id'], iname=app['iname']) }}">{{ _('Enable')
+                    href="{{ url_for('toggle_enabled', device_id=device.id, iname=app.iname) }}">{{ _('Enable')
                     }}</a>
                   {% endif %}
                   <a class="action w3-button w3-green w3-round"
-                    href="{{ url_for('manager.toggle_pin', device_id=device['id'], iname=app['iname']) }}">{{ _('Pin')
+                    href="{{ url_for('toggle_pin', device_id=device.id, iname=app.iname) }}">{{ _('Pin')
                     }}</a>
                 {% endif %}
                 <a class="action w3-button w3-red w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
-                  href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete')
+                  href="{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}">{{ _('Delete')
                   }}</a>
                 {% if not loop.first %}
                 <a class="action w3-button w3-blue w3-round"
-                  href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=up"
+                  href="{{ url_for('moveapp', device_id=device.id, iname=app.iname) }}?direction=up"
                   aria-label="{{ _('Move Up') }}">&#9650;</a>
                 {% endif %}
                 {% if not loop.last %}
                 <a class="action w3-button w3-blue w3-round"
-                  href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=down"
+                  href="{{ url_for('moveapp', device_id=device.id, iname=app.iname) }}?direction=down"
                   aria-label="{{ _('Move Down') }}">&#9660;</a>
                 {% endif %}
               </td>
