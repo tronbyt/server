@@ -3,8 +3,8 @@ set -euo pipefail
 
 if [ "${PRODUCTION:-1}" = "1" ]; then
     # PRODUCTION
-    exec python3 -m gunicorn --config gunicorn.conf.py "tronbyt_server:create_app()"
+    exec python3 -m gunicorn --config gunicorn.conf.py tronbyt_server.main:app
 else
     # DEVELOPMENT
-    FLASK_APP=tronbyt_server FLASK_DEBUG=1 exec flask run --host=0.0.0.0 --port=8000
+    exec uvicorn --host=0.0.0.0 --port=8000 --reload tronbyt_server.main:app
 fi

@@ -3,7 +3,7 @@
 <h1>{% block title %}{{ _('Upload App (.star files only)') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
-{% if g.user['username'] == "admin" %}
+{% if user.username == "admin" %}
 {% endif %}
 <form method="POST" enctype="multipart/form-data">
     <input type="file" name=file>
@@ -11,6 +11,6 @@
 </form>
 <h3>{{ _('Current files:') }}</h3>
 {% for filename in files %}
-<p>{{ filename }} - <a href="{{ url_for('manager.deleteupload', filename=filename, device_id=device_id) }}">{{ _('Delete') }}</a></p>
+<p>{{ filename }} - <a href="{{ url_for('deleteupload', filename=filename, device_id=device_id) }}">{{ _('Delete') }}</a></p>
 {% endfor %}
 {% endblock %}

@@ -1,12 +1,12 @@
 """Synchronization primitives for Tronbyt Server."""
 
+import logging
 import os
 from abc import ABC, abstractmethod
 from multiprocessing import Manager
 from typing import Any, cast, Dict, Optional
 
 import redis
-from flask import current_app
 from threading import Lock
 
 # Type alias for multiprocessing.Condition, which is not a class
@@ -157,7 +157,7 @@ _sync_manager: Optional[SyncManager] = None
 _sync_manager_lock = Lock()
 
 
-def get_sync_manager() -> SyncManager:
+def get_sync_manager(logger: logging.Logger) -> SyncManager:
     """Get the synchronization manager for the application."""
     global _sync_manager
     if _sync_manager is None:
@@ -165,10 +165,10 @@ def get_sync_manager() -> SyncManager:
             if _sync_manager is None:  # Double-checked locking
                 redis_url = os.getenv("REDIS_URL")
                 if redis_url:
-                    current_app.logger.info("Using Redis for synchronization")
+                    logger.info("Using Redis for synchronization")
                     _sync_manager = RedisSyncManager(redis_url)
                 else:
-                    current_app.logger.info("Using multiprocessing for synchronization")
+                    logger.info("Using multiprocessing for synchronization")
                     _sync_manager = MultiprocessingSyncManager()
     assert _sync_manager is not None
     return _sync_manager
