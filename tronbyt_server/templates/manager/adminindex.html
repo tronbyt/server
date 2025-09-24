@@ -4,45 +4,45 @@
 
 {% endblock %}
 {% block content %}
-{% if g.user %}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a>
+{% if user %}
+<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('create') }}">{{ _('New Tronbyt') }}</a>
 <hr>
 {% endif %}
 
-{% for user in users %}
+{% for u in users %}
 <div class="w3-card-4 w3-padding">
   <header>
-    <h1>{{ user['username'] }}</h1>
-    {% if user['username'] != 'admin' %}
-    <form method="POST" action="{{ url_for('manager.deleteuser', username=user['username']) }}" onsubmit="return confirm('{{ _('Delete User?') }}');">
+    <h1>{{ u.username }}</h1>
+    {% if u.username != 'admin' %}
+    <form method="POST" action="{{ url_for('deleteuser', username=u.username) }}" onsubmit="return confirm('{{ _('Delete User?') }}');">
       <input class="danger" type="submit" value="{{ _('Delete') }}">
     </form>
     {% endif %}
-    {% if 'devices' in user %}
-    {% for device in user['devices'].values() %}
+    {% if u.devices %}
+    {% for device in u.devices.values() %}
     <div class="w3-card-4 w3-padding">
       <article>
         <div>
           <header>
-            <h1>{{ device['name'] }}</h1>
+            <h1>{{ device.name }}</h1>
             <table>
               <tr>
                 <td>
                     <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                    href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit') }}</a>
+                    href="{{ url_for('update', device_id=device.id) }}">{{ _('Edit') }}</a>
                     <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                    href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
+                    href="{{ url_for('addapp', device_id=device.id) }}">{{ _('Add App') }}</a>
                   </td>
               </tr>
             </table>
           </header>
-          <p class="body">{{ _('API ID:') }} {{ device['img_url'] }}</p>
-          <!-- <p class="body">API KEY: {{ device['api_key'] }}</p> -->
-          {% if device.get('notes', '') != '' %}
-          <p class="body">{{ _('Notes:') }} {{ device['notes'] }}</p>
+          <p class="body">{{ _('API ID:') }} {{ device.img_url }}</p>
+          <!-- <p class="body">API KEY: {{ device.api_key }}</p> -->
+          {% if device.notes %}
+          <p class="body">{{ _('Notes:') }} {{ device.notes }}</p>
           {% endif %}
-          {% if 'apps' in device %}
-          {% for app in device['apps'].values() %}
+          {% if device.apps %}
+          {% for app in device.apps.values() %}
           <div class="w3-card-4 w3-padding">
             <table width="100%">
               <tr width="100%">
@@ -51,21 +51,21 @@
                     <li>
                       <div class="post">
                         <header>
-                          <h1>{{ app['iname'] }} &nbsp({{ _('installation id') }}) </h1>
-                          <h1>{% if app['enabled'] %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled>{% else %}
+                          <h1>{{ app.iname }} &nbsp({{ _('installation id') }}) </h1>
+                          <h1>{% if app.enabled %}<enabled>&nbsp -- {{ _('Enabled') }} --</enabled>{% else %}
                             <disabled>&nbsp -- {{ _('Disabled') }} --{% endif %}</disabled>
                           </h1>
                         </header>
-                        <p class="body">{{ _('App:') }} {{ app['name'] }}</p>
-                        <p class="body">{{ _('Render Interval (minutes):') }} {{ app['uinterval'] }}</p>
-                        <p class="body">{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
-                        {% if app.get('notes', '') != '' %}
-                        <p class="body">{{ _('Notes:') }} {{ app['notes'] }}</p>
+                        <p class="body">{{ _('App:') }} {{ app.name }}</p>
+                        <p class="body">{{ _('Render Interval (minutes):') }} {{ app.uinterval }}</p>
+                        <p class="body">{{ _('Display Time (secs):') }} {{ app.display_time }}</p>
+                        {% if app.notes %}
+                        <p class="body">{{ _('Notes:') }} {{ app.notes }}</p>
                         {% endif %}
                 </td>
-                <td><br><div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}" alt="{{ _('Preview') }}" ></div>
+                <td><br><div class="app-img"><img width="400" src="{{url_for('appwebp', device_id=device.id,iname=app.iname) }}" alt="{{ _('Preview') }}" ></div>
                   <br>
-                  {{ _('Last Rendered:') }} {{ app['last_render']|timeago }}
+                  {{ _('Last Rendered:') }} {{ app.last_render|timeago }}
           </div>
           </li>
           </td>
