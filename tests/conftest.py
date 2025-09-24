@@ -1,67 +1,75 @@
 from pathlib import Path
 from typing import Iterator
+import sqlite3
 
 import pytest
-from flask import Flask
-from flask.ctx import AppContext
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 import shutil
-from flask.testing import FlaskClient, FlaskCliRunner
 
-from tronbyt_server import create_app
+from tronbyt_server.main import app as fastapi_app
+from tronbyt_server.db import init_db
+from tronbyt_server.config import settings
 
 
 @pytest.fixture()
-def app() -> Iterator[Flask]:
-    app = create_app({"test_config": True})
-
-    with app.app_context():
-        yield app
-
+def app(tmp_path: Path) -> Iterator[FastAPI]:
     # clean up / reset resources here
-    print("delete testdb")
-    test_db_path = Path("tests/users/testdb.sqlite")
-    if test_db_path.exists():
-        test_db_path.unlink()
+    db_path = tmp_path / "testdb.sqlite"
+    db_path.unlink(missing_ok=True)
+
+    settings.DB_FILE = str(db_path)
+    settings.DATA_DIR = str(tmp_path / "data")
+    settings.USERS_DIR = str(tmp_path / "users")
+    settings.ENABLE_USER_REGISTRATION = "1"
+
+    # Initialize the database
+    conn = sqlite3.connect(settings.DB_FILE)
+    with conn:
+        init_db(conn)
+
+    yield fastapi_app
 
 
 @pytest.fixture()
-def client(app: Flask) -> FlaskClient:
-    return app.test_client()
+def client(app: FastAPI) -> TestClient:
+    return TestClient(app)
 
 
 @pytest.fixture()
-def auth_client(client: FlaskClient) -> FlaskClient:
-    # Create admin user
-    client.post("/auth/register_owner", data={"password": "adminpassword"})
+def auth_client(app: FastAPI) -> Iterator[TestClient]:
+    with TestClient(app) as client:
+        # Create owner
+        response = client.post(
+            "/auth/register_owner",
+            data={"password": "password"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        # Register testuser
+        response = client.post(
+            "/auth/register",
+            data={"username": "testuser", "password": "password"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302 or response.status_code == 409
 
-    # Register and login testuser
-    with client.session_transaction() as sess:
-        sess["username"] = "admin"
-    client.post("/auth/register", data={"username": "testuser", "password": "password"})
-    client.post("/auth/login", data={"username": "testuser", "password": "password"})
-
-    return client
+        # Login as testuser
+        response = client.post(
+            "/auth/login",
+            data={"username": "testuser", "password": "password"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        yield client
 
 
 @pytest.fixture()
-def runner(app: Flask) -> FlaskCliRunner:
-    return app.test_cli_runner()
-
-
-@pytest.fixture()
-def app_context(app: Flask) -> Iterator[AppContext]:
-    with app.app_context() as ctx:
-        yield ctx
-
-
-@pytest.fixture()
-def clean_app() -> Iterator[Flask]:
+def clean_app() -> Iterator[TestClient]:
     users_dir = Path("tests/users")
     if users_dir.exists():
         shutil.rmtree(users_dir)
     users_dir.mkdir()
-    app = create_app({"test_config": True})
-    with app.app_context():
-        yield app
+    yield TestClient(fastapi_app)
     if users_dir.exists():
         shutil.rmtree(users_dir)

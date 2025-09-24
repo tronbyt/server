@@ -111,7 +111,7 @@
     });
   }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp', device_id=device['id']) }}">{{
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}">{{
   _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
@@ -155,38 +155,39 @@
 
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
-        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}" data-broken="{{ app.get('broken', false) | lower }}">
+      <div class="app-item {% if app.broken %}broken-app{% endif %}" data-value="{{ app.name }}" data-installed="{{ app.is_installed | default(false) | lower }}"
+        data-date="{{ app.date or '' }}" data-name="{{ app.name }}" data-broken="{{ app.broken | default(false) | lower }}">
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
         {% if 'preview' in app %}
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}" alt="{{ app['name'] }}" {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+          <img loading="lazy" width="400px" src="{{ url_for('app_preview', filename=app.preview) }}" alt="{{ app.name }}" {% if app.broken %}style="opacity: 0.4;"{% endif %}>
         </div>
         {% else %}
         <div>
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}" alt="{{ app['name'] }}" {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+          <img loading="lazy" width="400px" src="{{ url_for('static', path='images/not_found.jpg') }}"
+            alt="{{ app.name }}">
         </div>
         {% endif %}
-        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ app['name'] }} - {{ app['summary'] }}</p>
+        <p {% if app.broken %}style="opacity: 0.5;"{% endif %}>{{ app.name }} - {{ app.summary }}</p>
         {% if 'author' in app %}
-        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app['author'] }}</p>
+        <p {% if app.broken %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app.author }}</p>
         {% endif %}
-        {% if app.get('broken') %}
+        {% if app.broken %}
         <div style="background-color: #f44336; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 12px; text-align: center; line-height: 1.3; margin-top: 5px;">
           ❌ {{ _('BROKEN') }}<br>
-          <span style="font-size: 10px; font-weight: normal;">{{ app.get('brokenReason', 'Unknown') }}</span>
+          <span style="font-size: 10px; font-weight: normal;">{{ app.brokenReason or 'Unknown' }}</span>
         </div>
         {% endif %}
         {% if app.get('path', '').startswith("users/") %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        <a href="{{ url_for('deleteupload', filename=app.path.split('/')[-1], device_id=device.id) }}">{{ _('Delete') }}</a>
         {% endif %}
-        {% if config['PRODUCTION'] == '0' and not app.get('path', '').startswith("users/") %}
-          {% if app.get('broken') %}
-          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
+        {% if settings.PRODUCTION == '0' and not app.path.startswith("users/") %}
+          {% if app.broken %}
+          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
           {% else %}
-          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
+          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
           {% endif %}
         {% endif %}
       </div>
@@ -206,13 +207,12 @@
   <input type="hidden" name="name" id="selected_app">
   <br>
   <label for="uinterval">{{ _('Render Interval (minutes)') }}</label>
-  <input name="uinterval" type="number" id="uinterval" min="0" value="{{ request.form['uinterval'] or 10 }}" required>
+  <input name="uinterval" type="number" id="uinterval" min="0" value="10" required>
   <label for="display_time">{{ _('Display Time (seconds)') }}</label>
-  <input name="display_time" type="number" id="display_time" min="0" value="{{ request.form['display_time'] or 0 }}"
-    required>
+  <input name="display_time" type="number" id="display_time" min="0" value="0" required>
 
   <label for="notes">{{ _('Notes') }}</label>
-  <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
+  <textarea name="notes" id="notes"></textarea>
 
   <input type="submit" value="{{ _('Configure') }}" class="w3-button w3-green" onclick="move()"></input>
 </form>
@@ -367,7 +367,7 @@
       return;
     }
 
-    fetch("{{ url_for('manager.mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+    fetch("{{ url_for('mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
       method: 'POST'
     })
     .then(response => response.json())
@@ -395,7 +395,7 @@
       return;
     }
 
-    fetch("{{ url_for('manager.unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+    fetch("{{ url_for('unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
       method: 'POST'
     })
     .then(response => response.json())

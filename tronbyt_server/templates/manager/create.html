@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<script src="{{ url_for('static', filename='js/location.js') }}"></script>
+<script src="{{ url_for('static', path='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
 <style>
   /* Brightness button panel styles */
@@ -79,7 +79,7 @@
 {% block content %}
 <form method="post">
   <span><label for="name">{{ _('Name') }}</label> ({{ _('Descriptive name for this Tronbyt device') }})</span>
-  <input name="name" id="name" value="{{ request.form['name'] }}" required>
+  <input name="name" id="name" required>
   <span><label for="device_type">{{ _('Device Type') }}</label></span>
   <select name="device_type" id="device_type">
     <option value="tidbyt_gen1" selected>Tidbyt Gen1</option>
@@ -91,7 +91,7 @@
     <option value="other">Other</option>
   </select>
   <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
-  <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}">
+  <input name="img_url" id="img_url">
   <span><label for="ws_url">{{ _('WebSocket URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
   <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}">
   <span><label>{{ _('Brightness Level ( 0 - 5 )') }}</label></span>
@@ -110,14 +110,13 @@
   <!-- <textarea name="api_key" id="api_key" rows="5"></textarea>  -->
   <input type="hidden" name="api_key" id="api_key">
   <label for="notes">{{ _('Notes') }}</label>
-  <input name="notes" id="notes" value="{{ request.form['notes'] }}">
+  <input name="notes" id="notes">
   <div>
     <label for="location_search">{{ _('Location') }}</label>
-    <input type="text" id="location_search" style="width: 100%" placeholder="{{ _('Enter a location') }}"
-      value="{{ request.form['location_search'] }}">
+    <input type="text" id="location_search" style="width: 100%" placeholder="{{ _('Enter a location') }}">
     <ul id="location_results"></ul>
   </div>
-  <input type="hidden" name="location" id="location" value='{{ (request.form["location"] or {}) | tojson }}'>
+  <input type="hidden" name="location" id="location" value='{}'>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
@@ -125,7 +124,7 @@
   </script>
   <input type="submit" class="w3-button w3-green" value="{{ _('Save') }}">
 </form>
-<a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange">
+<a href="{{ url_for('import_device') }}" class="w3-button w3-orange">
   {{ _('Import Configuration') }}
 </a>
 {% endblock %}

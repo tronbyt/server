@@ -7,7 +7,7 @@
     (function () {
       var storedTheme = localStorage.getItem('theme_preference');
       // Get server preference if user is logged in, otherwise default to 'system'
-      var serverProvidedTheme = "{% if g.user and g.user.theme_preference %}{{ g.user.theme_preference }}{% else %}system{% endif %}";
+      var serverProvidedTheme = "{% if user and user.theme_preference %}{{ user.theme_preference }}{% else %}system{% endif %}";
       var themeToApply = storedTheme || serverProvidedTheme;
 
       if (themeToApply === 'system') {
@@ -21,12 +21,12 @@
   </script>
 </head>
 <title>{% if self.title() %}{% block title %}{% endblock %} - {% endif %}{{ _('Tronbyt Manager') }}</title>
-<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/w3.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/brands.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/solid.min.css') }}">
+<link rel="icon" href="{{ url_for('static', path='favicon.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/w3.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/fontawesome.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/brands.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/solid.min.css') }}">
 <style>
   /* Global responsive styles */
   .w3-card-4 {
@@ -81,14 +81,14 @@
 <nav>
   <h1 class="w3-sans-serif">{{ _('Tronbyt Manager') }}</h1>
   <ul>
-    {% if g.user %}
-    <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
-    {% if g.user['username'] == 'admin' %}
-    <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
+    {% if user %}
+    <li><a href="{{ url_for('index') }}">{{ _('Home') }}</a></li>
+    {% if user.username == 'admin' %}
+    <li><a href="{{ url_for('get_register') }}">{{ _('Create User') }}</a></li>
     {% endif %}
-    <li><a href="{{ url_for('auth.edit') }}">{{ g.user['username'] }}</a></li>
-    <li><a href="{{ url_for('auth.logout') }}">{{ _('Log Out') }}</a></li>
-    {% if g.user %}
+    <li><a href="{{ url_for('get_edit') }}">{{ user.username }}</a></li>
+    <li><a href="{{ url_for('logout') }}">{{ _('Log Out') }}</a></li>
+    {% if user %}
     <li class="theme-toggle-container">
       <div class="theme-toggle">
         <label for="theme-select">{{ _('Theme:') }}</label>
@@ -101,9 +101,9 @@
     </li>
     {% endif %}
     {% else %}
-    <li><a href="{{ url_for('auth.login') }}">{{ _('Log In') }}</a></li>
-    {% if config.get('ENABLE_USER_REGISTRATION') == '1' %}
-    <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
+    <li><a href="{{ url_for('get_login') }}">{{ _('Log In') }}</a></li>
+    {% if config.ENABLE_USER_REGISTRATION == '1' %}
+    <li><a href="{{ url_for('get_register') }}">{{ _('Create User') }}</a></li>
     {% endif %}
     {% endif %}
   </ul>
@@ -112,17 +112,23 @@
   <header>
     {% block header %}{% endblock %}
   </header>
-  {% for message in get_flashed_messages() %}
-  <div class="flash">{{ message }}</div>
-  {% endfor %}
+  {% with messages = get_flashed_messages(request) %}
+  {% if messages %}
+    <div class="flash">
+      {% for message in messages %}
+        <div>{{ message.message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% endwith %}
   {% block content %}{% endblock %}
 </section>
 
 <script>
-  {% if g.user and g.user.theme_preference %}
-  window.currentUserThemePreference = "{{ g.user.theme_preference }}";
+  {% if user and user.theme_preference %}
+  window.currentUserThemePreference = "{{ user.theme_preference }}";
   {% else %}
   window.currentUserThemePreference = "system"; // Default for guests or if not set
   {% endif %}
 </script>
-<script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/theme.js') }}" defer></script>

@@ -3,7 +3,7 @@
 <h1>{% block title %}{{ _('Edit Settings') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
-{% if g.user['username'] == "admin" %}
+{% if user.username == "admin" %}
 <h1>{{ _('System Apps Repository') }}</h1>
 {% if system_repo_info and system_repo_info.commit_hash %}
 <div style="background-color: #2a2a2a; padding: 15px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50;">
@@ -24,14 +24,14 @@
     </div>
 </div>
 {% endif %}
-<form method="post" action="{{ url_for('manager.refresh_system_repo') }}" style="margin-bottom: 20px;">
+<form method="post" action="{{ url_for('refresh_system_repo') }}" style="margin-bottom: 20px;">
     <button type="submit" class="w3-button w3-blue" style="font-size: 16px; padding: 12px 24px;">
         🔄 {{ _('Refresh System Apps') }}
     </button>
 </form>
-<form method="post" action="{{ url_for('manager.set_system_repo') }}">
+<form method="post" action="{{ url_for('set_system_repo') }}">
     <label for="app_repo_url">{{ _('System Apps Repo URL (Public Github Only!)') }}</label>
-    <input name="app_repo_url" id="app_repo_url" required value="{{ user['system_repo_url'] }}">
+    <input name="app_repo_url" id="app_repo_url" required value="{{ user.system_repo_url }}">
     {{ _('Replacing the existing system repo will delete the previous repo and break any apps using that repo.') }}
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
@@ -45,7 +45,7 @@
     <p style="margin-bottom: 15px; color: #b0b0b0; font-size: 0.9em;">
         {{ _('Firmware is automatically updated when the server starts. You can manually check for and download firmware updates using the button below.') }}
     </p>
-    <form method="post" action="{{ url_for('manager.update_firmware') }}" onsubmit="this.querySelector('button').innerHTML='{{ _('Updating...') }}'; this.querySelector('button').disabled=true;">
+    <form method="post" action="{{ url_for('update_firmware') }}" onsubmit="this.querySelector('button').innerHTML='{{ _('Updating...') }}'; this.querySelector('button').disabled=true;">
         <button type="submit" class="w3-button w3-blue" onclick="return confirm('{{ _('Check for firmware updates and download if available?') }}');">
             {{ _('Update Firmware') }}
         </button>
@@ -59,7 +59,7 @@
     <p style="margin-bottom: 15px; color: #b0b0b0; font-size: 0.9em;">
         {{ _('Click the button below to download the latest firmware files.') }}
     </p>
-    <form method="post" action="{{ url_for('manager.update_firmware') }}" onsubmit="this.querySelector('button').innerHTML='{{ _('Downloading...') }}'; this.querySelector('button').disabled=true;">
+    <form method="post" action="{{ url_for('update_firmware') }}" onsubmit="this.querySelector('button').innerHTML='{{ _('Downloading...') }}'; this.querySelector('button').disabled=true;">
         <button type="submit" class="w3-button w3-blue" onclick="return confirm('{{ _('Download the latest firmware files?') }}');">
             {{ _('Download Firmware') }}
         </button>
@@ -67,14 +67,14 @@
 </div>
 {% endif %}
 {% endif %}
-<form method="post" action="{{ url_for('manager.set_user_repo') }}" >
+<form method="post" action="{{ url_for('set_user_repo') }}" >
     <label for="app_repo_url">{{ _('Custom Apps Repo URL (Public Github Only!)') }}</label>
-    <input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}">
+    <input name="app_repo_url" id="app_repo_url" required value="{{ user.app_repo_url }}">
     {{ _('Replacing an existing custom repo will delete the previous repo and break any apps using that repo.') }}
 
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
-<form method="post" action="{{ url_for('manager.refresh_user_repo') }}">
+<form method="post" action="{{ url_for('refresh_user_repo') }}">
     <input type="submit" value="{{ _('Refresh') }}" class="w3-button w3-green"></input>
 </form>
 
@@ -88,9 +88,9 @@
 </form>
 
 <h1>{{ _('Edit API Key') }}</h1>
-<form method="post" action="{{ url_for('manager.set_api_key') }}">
+<form method="post" action="{{ url_for('set_api_key') }}">
     <label for="api_key">{{ _('API Key') }}</label>
-    <input type="text" name="api_key" id="api_key" required value="{{ user.get('api_key', '') }}">
+    <input type="text" name="api_key" id="api_key" required value="{{ user.api_key or '' }}">
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
 </form>
 
@@ -98,11 +98,11 @@
 
 <h1>{{ _('Export User Data') }}</h1>
 <p>{{ _('Export your entire user configuration as a JSON file.') }}</p>
-<a href="{{ url_for('manager.export_user_config') }}" class="w3-button w3-blue">{{ _('Export User Data') }}</a>
+<a href="{{ url_for('export_user_config') }}" class="w3-button w3-blue">{{ _('Export User Data') }}</a>
 
 <h1>{{ _('Import User Data') }}</h1>
 <p>{{ _('Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password.') }}</p>
-<form method="post" action="{{ url_for('manager.import_user_config') }}" enctype="multipart/form-data">
+<form method="post" action="{{ url_for('import_user_config') }}" enctype="multipart/form-data">
     <input type="file" name="file" accept=".json" required>
     <input type="submit" value="{{ _('Import User Data') }}" class="w3-button w3-blue">
 </form>
