@@ -662,7 +662,17 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
                             app["recurrence_pattern"] = {"weekdays": weekdays}
                         else:
                             # Default to all days if none selected
-                            app["recurrence_pattern"] = {"weekdays": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]}
+                            app["recurrence_pattern"] = {
+                                "weekdays": [
+                                    "monday",
+                                    "tuesday",
+                                    "wednesday",
+                                    "thursday",
+                                    "friday",
+                                    "saturday",
+                                    "sunday",
+                                ]
+                            }
 
                     elif recurrence_type == "monthly":
                         monthly_pattern = request.form.get("monthly_pattern")
@@ -670,13 +680,19 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
                             day_of_month = request.form.get("day_of_month")
                             if day_of_month:
                                 try:
-                                    app["recurrence_pattern"] = {"day_of_month": int(day_of_month)}
+                                    app["recurrence_pattern"] = {
+                                        "day_of_month": int(day_of_month)
+                                    }
                                 except ValueError:
-                                    pass # Or flash an error to the user
+                                    pass  # Or flash an error to the user
                         elif monthly_pattern == "day_of_week":
-                            day_of_week_pattern = request.form.get("day_of_week_pattern")
+                            day_of_week_pattern = request.form.get(
+                                "day_of_week_pattern"
+                            )
                             if day_of_week_pattern:
-                                app["recurrence_pattern"] = {"day_of_week": day_of_week_pattern}
+                                app["recurrence_pattern"] = {
+                                    "day_of_week": day_of_week_pattern
+                                }
 
                     elif recurrence_type == "daily":
                         # Daily doesn't need a specific pattern

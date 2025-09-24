@@ -1,6 +1,5 @@
 """Database utility functions for Tronbyt Server."""
 
-import calendar
 import json
 import secrets
 import shutil
@@ -619,7 +618,15 @@ def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool
         current_day = current_time.strftime("%A").lower()
         active_days = app.get(
             "days",
-            ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+            [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            ],
         )
         return isinstance(active_days, list) and current_day in active_days
 
@@ -638,14 +645,18 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
         recurrence_start_date = datetime(2025, 1, 1).date()
     else:
         try:
-            recurrence_start_date = datetime.strptime(recurrence_start_date_str, "%Y-%m-%d").date()
+            recurrence_start_date = datetime.strptime(
+                recurrence_start_date_str, "%Y-%m-%d"
+            ).date()
         except ValueError:
             return False
 
     # Check end date
     if recurrence_end_date_str:
         try:
-            recurrence_end_date = datetime.strptime(recurrence_end_date_str, "%Y-%m-%d").date()
+            recurrence_end_date = datetime.strptime(
+                recurrence_end_date_str, "%Y-%m-%d"
+            ).date()
             if current_time.date() > recurrence_end_date:
                 return False
         except ValueError:
@@ -670,7 +681,15 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
         elif isinstance(recurrence_pattern, list) and recurrence_pattern:
             weekdays = recurrence_pattern
         else:
-            weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+            weekdays = [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            ]
 
         current_weekday = current_time.strftime("%A").lower()
         return current_weekday in weekdays
@@ -687,7 +706,9 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
                 return current_date.day == recurrence_pattern["day_of_month"]
             elif "day_of_week" in recurrence_pattern:
                 # Specific weekday pattern (e.g., "first_monday", "last_friday")
-                return _matches_monthly_weekday_pattern(current_date, recurrence_pattern["day_of_week"])
+                return _matches_monthly_weekday_pattern(
+                    current_date, recurrence_pattern["day_of_week"]
+                )
 
         return True  # If no specific pattern, match any day in the month
 
@@ -698,8 +719,10 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
             return False
 
         # Match same month and day as start date
-        return (current_date.month == recurrence_start_date.month and
-               current_date.day == recurrence_start_date.day)
+        return (
+            current_date.month == recurrence_start_date.month
+            and current_date.day == recurrence_start_date.day
+        )
 
     return False
 
@@ -721,8 +744,13 @@ def _matches_monthly_weekday_pattern(date, pattern):
 
         # Get weekday index (0=Monday, 6=Sunday)
         weekday_map = {
-            "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
-            "friday": 4, "saturday": 5, "sunday": 6
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
         }
 
         if target_weekday not in weekday_map:
@@ -746,11 +774,9 @@ def _matches_monthly_weekday_pattern(date, pattern):
                 test_date = date.replace(day=day)
                 if test_date.weekday() == target_weekday_index:
                     occurrence_count += 1
-            
-            occurrence_map = {
-                "first": 1, "second": 2, "third": 3, "fourth": 4
-            }
-            
+
+            occurrence_map = {"first": 1, "second": 2, "third": 3, "fourth": 4}
+
             return occurrence_map.get(occurrence, 0) == occurrence_count
 
     except (AttributeError, ValueError, TypeError) as e:
@@ -758,7 +784,9 @@ def _matches_monthly_weekday_pattern(date, pattern):
         # ValueError: if date.replace() gets invalid day values
         # TypeError: if pattern is None or wrong type
         try:
-            current_app.logger.warning(f"Invalid monthly weekday pattern '{pattern}' for date {date}: {e}")
+            current_app.logger.warning(
+                f"Invalid monthly weekday pattern '{pattern}' for date {date}: {e}"
+            )
         except RuntimeError:
             # Outside application context, skip logging
             pass
