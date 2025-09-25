@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}{{ _('Edit') }} "{{ app['name'] }}-{{ app['iname'] }}"{% endblock %}</h1><br>
+<h1>{% block title %}{{ _('Edit') }} "{{ app.name }}-{{ app.iname }}"{% endblock %}</h1><br>
 {% endblock %}
 {% block content %}
 <!-- Container for flexbox alignment -->
 <div class="flex-container">
   <!-- Show Config Toggle Button -->
   <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Show App Config') }}</button>
-  <a href="{{ url_for('manager.configapp', device_id=device_id, iname=app['iname'], delete_on_cancel=0) }}" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Configure') }}</a>
+  <a href="{{ url_for('configapp', device_id=device_id, iname=app.iname) }}" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Configure') }}</a>
   <!-- Show Debug Toggle Button -->
   <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Show Render Debug') }}</button>
 
@@ -18,46 +18,45 @@
 
   <!-- Debug Content -->
   <div id="debugContent" class="hidden">
-    <pre class="flash">{{ app.get('render_messages', []) | tojson(indent=2) }}</pre>
+    <pre class="flash">{{ app.render_messages | join('\n') }}</pre>
   </div>
 </div>
 <form method="post">
-  <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
-  <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
-  <div><b>{{ _('Enabled: ') }}</b><input name="enabled" type="checkbox" {% if app['enabled'] %} checked {% endif %}></input></div>
-  <div class="app-img"><img width="400" src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
+  <input type="hidden" name="iname" id="iname" value="{{ app.iname }}" readonly>
+  <input type="hidden" name="name" id="name" value="{{ app.name }}" readonly>
+  <div><b>{{ _('Enabled: ') }}</b><input name="enabled" type="checkbox" {% if app.enabled %} checked {% endif %}></input></div>
+  <div class="app-img"><img width="400" src="{{url_for('appwebp', device_id=device_id,iname=app.iname) }}"
     alt="{{ _('Preview') }}"></div>
   <label for="uinterval">{{ _('Render Interval Minutes (Update every X minutes)') }}</label>
-  <div><input type="number" name="uinterval" id="uinterval" min="0" value="{{ request.form['uinterval'] or app['uinterval'] }}" required></div>
+  <div><input type="number" name="uinterval" id="uinterval" min="0" value="{{ app.uinterval }}" required></div>
 
   <label for="display_time">{{ _('Display Time Seconds (0 for device default)') }}</label>
-  <div><input type="number" name="display_time" id="display_time" min="0" value="{{ request.form['display_time'] or app['display_time'] or 0 }}"></div>
+  <div><input type="number" name="display_time" id="display_time" min="0" value="{{ app.display_time or 0 }}"></div>
 
   <label for="notes">{{ _('Notes: ') }}</label>
-  <input name="notes" id="notes" value="{{request.form['notes'] or app['notes'] }}" >
+  <input name="notes" id="notes" value="{{ app.notes or '' }}" >
 
   <!-- Schedule Section -->
   <h2>{{ _('Schedule') }}</h2>
   <label for="start_time">{{ _('Start Time') }}</label>
-  <div><input type="time" name="start_time" id="start_time" value="{{ request.form['start_time'] or app['start_time'] }}"></div>
+  <div><input type="time" name="start_time" id="start_time" value="{{ app.start_time }}"></div>
 
   <label for="end_time">{{ _('End Time') }}</label>
-  <div><input type="time" name="end_time" id="end_time" value="{{ request.form['end_time'] or app['end_time'] }}"></div>
+  <div><input type="time" name="end_time" id="end_time" value="{{ app.end_time }}"></div>
 
   <!-- Legacy Schedule (Default) -->
   <div id="legacy_schedule">
     <label for="days">{{ _('Active Days') }}</label> {{ _('(none selected is ALL selected)') }}
     <div>
-      <input type="checkbox" name="days" value="monday" {% if 'monday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Monday') }}
-      <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Tuesday') }}
-      <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Wednesday') }}
-      <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Thursday') }}
-      <input type="checkbox" name="days" value="friday" {% if 'friday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Friday') }}
-      <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Saturday') }}
-      <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.get('days', []) or not app.get('days', []) %} checked {% endif %}> {{ _('Sunday') }}
+      <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {% endif %}> {{ _('Monday') }}
+      <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {% endif %}> {{ _('Tuesday') }}
+      <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked {% endif %}> {{ _('Wednesday') }}
+      <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {% endif %}> {{ _('Thursday') }}
+      <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {% endif %}> {{ _('Friday') }}
+      <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {% endif %}> {{ _('Saturday') }}
+      <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {% endif %}> {{ _('Sunday') }}
     </div>
   </div>
-
   <!-- Custom Recurrence Toggle -->
   <div style="margin-top: 15px; margin-bottom: 15px;">
     <label for="use_custom_recurrence">
@@ -166,8 +165,8 @@
 
   <div style="display: flex; gap: 10px; margin-top: 20px;">
     <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
-    <input type="submit" class="w3-button w3-red w3-round"
-           formaction="{{ url_for('manager.deleteapp', device_id=device_id,iname=app['iname']) }}"
+    <input type="submit" class="w3-button w3-red w3-round" 
+           formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" 
            formmethod="post"
            onclick="return confirm('{{ _('Delete App?') }}');"
            value="{{ _('Delete') }}">

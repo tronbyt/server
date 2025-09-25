@@ -22,7 +22,7 @@ function searchApps(inputId, gridId) {
   }
 }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp', device_id=device['id']) }}">{{ _('Upload .star file') }}</a>
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}">{{ _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
@@ -32,22 +32,22 @@ function searchApps(inputId, gridId) {
     <input type="search" id="{{ search_id }}" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" />
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item" data-value="{{ app['name'] }}">
-        {% if 'preview' in app %}
+      <div class="app-item" data-value="{{ app.name }}">
+        {% if app.preview %}
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('app_preview', filename=app.preview) }}" alt="{{ app.name }}">
         </div>
         {% else %}
         <div>
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('static', path='images/not_found.jpg') }}" alt="{{ app.name }}">
         </div>
         {% endif %}
-        <p>{{ app['name'] }} - {{ app['summary'] }}</p>
-        {% if 'author' in app %}
-        <p>{{ _('From') }} {{ app['author'] }}</p>
+        <p>{{ app.name }} - {{ app.summary }}</p>
+        {% if app.author %}
+        <p>{{ _('From') }} {{ app.author }}</p>
         {% endif %}
-        {% if app['path'].startswith("users/") %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        {% if app.path.startswith("users/") %}
+        <a href="{{ url_for('deleteupload', filename=app.path.split('/')[-1], device_id=device.id) }}">{{ _('Delete') }}</a>
         {% endif %}
       </div>
       {% endfor %}
@@ -66,12 +66,12 @@ function searchApps(inputId, gridId) {
   <input type="hidden" name="name" id="selected_app">
   <br>
   <label for="uinterval">{{ _('Render Interval (minutes)') }}</label>
-  <input name="uinterval" type="number" id="uinterval" min="0" value="{{ request.form['uinterval'] or 10 }}" required>
+  <input name="uinterval" type="number" id="uinterval" min="0" value="10" required>
   <label for="display_time">{{ _('Display Time (seconds)') }}</label>
-  <input name="display_time" type="number" id="display_time" min="0" value="{{ request.form['display_time'] or 0 }}" required>
+  <input name="display_time" type="number" id="display_time" min="0" value="0" required>
 
   <label for="notes">{{ _('Notes') }}</label>
-  <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
+  <textarea name="notes" id="notes"></textarea>
 
   <input type="submit" value="{{ _('Configure') }}" class="w3-button w3-green" onclick="move()"></input>
 </form>
