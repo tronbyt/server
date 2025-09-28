@@ -627,6 +627,88 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             if end_time:
                 app["end_time"] = end_time
             app["days"] = request.form.getlist("days")
+
+            # Handle custom recurrence toggle
+            use_custom_recurrence = "use_custom_recurrence" in request.form
+            app["use_custom_recurrence"] = use_custom_recurrence
+
+            if use_custom_recurrence:
+                # Handle new recurrence fields only if custom recurrence is enabled
+                recurrence_type = request.form.get("recurrence_type")
+                if recurrence_type:
+                    app["recurrence_type"] = recurrence_type
+
+                    recurrence_interval = request.form.get("recurrence_interval")
+                    if recurrence_interval:
+                        try:
+                            app["recurrence_interval"] = int(recurrence_interval)
+                        except ValueError:
+                            pass  # Or flash an error to the user
+
+                    recurrence_start_date = request.form.get("recurrence_start_date")
+                    if recurrence_start_date:
+                        app["recurrence_start_date"] = recurrence_start_date
+
+                    recurrence_end_date = request.form.get("recurrence_end_date")
+                    if recurrence_end_date:
+                        app["recurrence_end_date"] = recurrence_end_date
+                    else:
+                        app.pop("recurrence_end_date", None)  # Remove if empty
+
+                    # Handle recurrence pattern based on type
+                    if recurrence_type == "weekly":
+                        weekdays = request.form.getlist("weekdays")
+                        if weekdays:
+                            app["recurrence_pattern"] = {"weekdays": weekdays}
+                        else:
+                            # Default to all days if none selected
+                            app["recurrence_pattern"] = {
+                                "weekdays": [
+                                    "monday",
+                                    "tuesday",
+                                    "wednesday",
+                                    "thursday",
+                                    "friday",
+                                    "saturday",
+                                    "sunday",
+                                ]
+                            }
+
+                    elif recurrence_type == "monthly":
+                        monthly_pattern = request.form.get("monthly_pattern")
+                        if monthly_pattern == "day_of_month":
+                            day_of_month = request.form.get("day_of_month")
+                            if day_of_month:
+                                try:
+                                    app["recurrence_pattern"] = {
+                                        "day_of_month": int(day_of_month)
+                                    }
+                                except ValueError:
+                                    pass  # Or flash an error to the user
+                        elif monthly_pattern == "day_of_week":
+                            day_of_week_pattern = request.form.get(
+                                "day_of_week_pattern"
+                            )
+                            if day_of_week_pattern:
+                                app["recurrence_pattern"] = {
+                                    "day_of_week": day_of_week_pattern
+                                }
+
+                    elif recurrence_type == "daily":
+                        # Daily doesn't need a specific pattern
+                        app.pop("recurrence_pattern", None)
+
+                    elif recurrence_type == "yearly":
+                        # For yearly, we can use the start date pattern by default
+                        app.pop("recurrence_pattern", None)
+            else:
+                # Clear custom recurrence fields if not using custom recurrence
+                app.pop("recurrence_type", None)
+                app.pop("recurrence_interval", None)
+                app.pop("recurrence_pattern", None)
+                app.pop("recurrence_start_date", None)
+                app.pop("recurrence_end_date", None)
+
             app["enabled"] = enabled
             db.save_user(user)
 

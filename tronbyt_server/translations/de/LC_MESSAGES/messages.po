@@ -780,3 +780,78 @@ msgstr "Hochladen"
 msgid "Current files:"
 msgstr "Aktuelle Dateien:"
 
+# Recurrence/Schedule translations
+msgid "Use Custom Recurrence"
+msgstr "Benutzerdefinierte Wiederholung verwenden"
+
+msgid "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)"
+msgstr "Erweiterte Planungsoptionen aktivieren (zweiwöchentlich, monatlich, jährlich, etc.)"
+
+msgid "Custom Recurrence"
+msgstr "Benutzerdefinierte Wiederholung"
+
+msgid "Recurrence"
+msgstr "Wiederholung"
+
+msgid "First"
+msgstr "Erste"
+
+msgid "Second"
+msgstr "Zweite"
+
+msgid "Third"
+msgstr "Dritte"
+
+msgid "Fourth"
+msgstr "Vierte"
+
+msgid "Last"
+msgstr "Letzte"
+
+msgid "Frequency"
+msgstr "Häufigkeit"
+
+msgid "Daily"
+msgstr "Täglich"
+
+msgid "Weekly"
+msgstr "Wöchentlich"
+
+msgid "Monthly"
+msgstr "Monatlich"
+
+msgid "Yearly"
+msgstr "Jährlich"
+
+msgid "Repeat every"
+msgstr "Wiederhole alle"
+
+msgid "days"
+msgstr "Tage"
+
+msgid "weeks"
+msgstr "Wochen"
+
+msgid "months"
+msgstr "Monate"
+
+msgid "years"
+msgstr "Jahre"
+
+msgid "Start Date"
+msgstr "Startdatum"
+
+msgid "End Date (optional)"
+msgstr "Enddatum (optional)"
+
+msgid "Monthly Pattern"
+msgstr "Monatliches Muster"
+
+msgid "Day of Month"
+msgstr "Tag des Monats"
+
+msgid "Day of Week"
+msgstr "Wochentag"
+
+msgid "Day of Week Pattern"
+msgstr "Wochentag-Muster"
