@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
+{% set device_type_names = {
+  'tidbyt_gen1': 'Tidbyt Gen1',
+  'tidbyt_gen2': 'Tidbyt Gen2',
+  'pixoticker': 'Pixoticker',
+  'tronbyt_s3': 'Tronbyt S3',
+  'tronbyt_s3_wide': 'Tronbyt S3 Wide',
+  'raspberrypi': 'Raspberry Pi',
+  'other': 'Other'
+} %}
 {% block header %}
-<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }}{% endblock %}</h1>
+<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 {% if firmware_version %}
