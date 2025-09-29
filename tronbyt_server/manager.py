@@ -604,6 +604,9 @@ def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
     user = g.user
     device = user["devices"][device_id]
 
+    if iname not in device.get("apps", {}):
+        abort(HTTPStatus.NOT_FOUND, description="App not found")
+
     # Check if this app is currently pinned
     if device.get("pinned_app") == iname:
         # Unpin it
