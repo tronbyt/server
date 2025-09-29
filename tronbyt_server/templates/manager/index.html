@@ -170,6 +170,14 @@
     border-width: 3px;
     box-shadow: 0 0 8px rgba(90, 156, 209, 0.5);
   }
+
+  /* Make ordering buttons narrower */
+  .w3-button[aria-label="Move Up"],
+  .w3-button[aria-label="Move Down"] {
+    min-width: 35px !important;
+    padding: 8px 10px !important;
+    font-size: 16px;
+  }
 </style>
 
 <!-- ...existing script code... -->
@@ -460,6 +468,9 @@
                     href="{{ url_for('manager.toggle_pin', device_id=device['id'], iname=app['iname']) }}">{{ _('Pin')
                     }}</a>
                 {% endif %}
+                <a class="action w3-button w3-red w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
+                  href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete')
+                  }}</a>
                 {% if not loop.first %}
                 <a class="action w3-button w3-blue w3-round"
                   href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=up"
@@ -470,9 +481,6 @@
                   href="{{ url_for('manager.moveapp', device_id=device['id'], iname=app['iname']) }}?direction=down"
                   aria-label="{{ _('Move Down') }}">&#9660;</a>
                 {% endif %}
-                <a class="action w3-button w3-red w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
-                  href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete')
-                  }}</a>
               </td>
             </tr>
           </table>
