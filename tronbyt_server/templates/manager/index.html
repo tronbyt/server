@@ -121,7 +121,7 @@
     display: flex;
     gap: 6px;
     margin-top: 8px;
-    max-width: 250px;
+    max-width: 300px;
   }
 
   .brightness-btn {
@@ -136,6 +136,7 @@
   }
 
   /* Light theme - progressively brighter backgrounds */
+  .brightness-btn[data-brightness="0"] { background-color: #333; color: white; border-color: #222; }
   .brightness-btn[data-brightness="1"] { background-color: #666; color: white; border-color: #555; }
   .brightness-btn[data-brightness="2"] { background-color: #888; color: white; border-color: #777; }
   .brightness-btn[data-brightness="3"] { background-color: #aaa; color: white; border-color: #999; }
@@ -154,6 +155,7 @@
   }
 
   /* Dark theme - progressively brighter backgrounds */
+  [data-theme="dark"] .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
   [data-theme="dark"] .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
   [data-theme="dark"] .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
   [data-theme="dark"] .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
@@ -361,6 +363,8 @@
             <label>{{ _('Brightness') }}</label> =
             <span id="brightnessValue-{{ device['id'] }}">{{device['brightness'] }}</span>
             <div class="brightness-panel" id="brightness-panel-{{ device['id'] }}">
+              <button type="button" class="brightness-btn {% if device['brightness'] == 0 %}active{% endif %}"
+                      data-brightness="0" onclick="setBrightness('{{ device['id'] }}', 0)">0</button>
               <button type="button" class="brightness-btn {% if device['brightness'] == 1 %}active{% endif %}"
                       data-brightness="1" onclick="setBrightness('{{ device['id'] }}', 1)">1</button>
               <button type="button" class="brightness-btn {% if device['brightness'] == 2 %}active{% endif %}"

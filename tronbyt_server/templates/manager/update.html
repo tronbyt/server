@@ -93,7 +93,7 @@
     display: flex;
     gap: 6px;
     margin-top: 8px;
-    max-width: 250px;
+    max-width: 300px;
   }
 
   .brightness-btn {
@@ -108,6 +108,7 @@
   }
 
   /* Progressively brighter backgrounds for dark theme (update page default) */
+  .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
   .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
   .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
   .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
@@ -242,6 +243,8 @@
       <output id="brightness-output">{{ device['brightness'] }}</output>
       <input type="hidden" name="brightness" id="brightness" value="{{ device['brightness'] }}">
       <div class="brightness-panel" id="brightness-panel">
+        <button type="button" class="brightness-btn {% if device['brightness'] == 0 %}active{% endif %}"
+                data-brightness="0" onclick="setBrightnessUpdate(0)">0</button>
         <button type="button" class="brightness-btn {% if device['brightness'] == 1 %}active{% endif %}"
                 data-brightness="1" onclick="setBrightnessUpdate(1)">1</button>
         <button type="button" class="brightness-btn {% if device['brightness'] == 2 %}active{% endif %}"
@@ -266,6 +269,8 @@
       <output id="night-brightness-output">{{ device.get('night_brightness', 1) }}</output>
       <input type="hidden" name="night_brightness" id="night_brightness" value="{{ device.get('night_brightness', 1) }}">
       <div class="brightness-panel" id="night-brightness-panel">
+        <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 0 %}active{% endif %}"
+                data-brightness="0" onclick="setNightBrightnessUpdate(0)">0</button>
         <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 1 %}active{% endif %}"
                 data-brightness="1" onclick="setNightBrightnessUpdate(1)">1</button>
         <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 2 %}active{% endif %}"

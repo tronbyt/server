@@ -9,7 +9,7 @@
     gap: 6px;
     margin-top: 8px;
     margin-bottom: 15px;
-    max-width: 250px;
+    max-width: 300px;
   }
 
   .brightness-btn {
@@ -24,6 +24,7 @@
   }
 
   /* Light theme - progressively brighter backgrounds */
+  .brightness-btn[data-brightness="0"] { background-color: #333; color: white; border-color: #222; }
   .brightness-btn[data-brightness="1"] { background-color: #666; color: white; border-color: #555; }
   .brightness-btn[data-brightness="2"] { background-color: #888; color: white; border-color: #777; }
   .brightness-btn[data-brightness="3"] { background-color: #aaa; color: white; border-color: #999; }
@@ -42,6 +43,7 @@
   }
 
   /* Dark theme - progressively brighter backgrounds */
+  [data-theme="dark"] .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
   [data-theme="dark"] .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
   [data-theme="dark"] .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
   [data-theme="dark"] .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
@@ -92,10 +94,11 @@
   <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}">
   <span><label for="ws_url">{{ _('WebSocket URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
   <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}">
-  <span><label>{{ _('Brightness Level ( 1 - 5 )') }}</label></span>
+  <span><label>{{ _('Brightness Level ( 0 - 5 )') }}</label></span>
   <output id="brightness-output">3</output>
   <input type="hidden" name="brightness" id="brightness" value="3">
   <div class="brightness-panel" id="brightness-panel">
+    <button type="button" class="brightness-btn" data-brightness="0" onclick="setBrightnessCreate(0)">0</button>
     <button type="button" class="brightness-btn" data-brightness="1" onclick="setBrightnessCreate(1)">1</button>
     <button type="button" class="brightness-btn" data-brightness="2" onclick="setBrightnessCreate(2)">2</button>
     <button type="button" class="brightness-btn active" data-brightness="3" onclick="setBrightnessCreate(3)">3</button>
