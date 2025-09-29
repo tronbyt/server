@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 {% block header %}
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
-<h1 class="page-title">{% block title %}{{ _('Edit Device') }}: "{{ device['name'] }}"{% endblock %}</h1>
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+  <h1 class="page-title" style="margin: 0;">{% block title %}{{ _('Edit Device') }}: "{{ device['name'] }}"{% endblock %}</h1>
+  <div id="header-buttons"></div>
+</div>
 <style>
   .form-container {
     max-width: 800px;
@@ -84,11 +87,101 @@
   small {
     color: #888;
   }
+
+  /* Brightness button panel styles */
+  .brightness-panel {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    max-width: 250px;
+  }
+
+  .brightness-btn {
+    flex: 0 0 40px;
+    padding: 8px 4px;
+    border: 2px solid #444;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: all 0.2s;
+    font-size: 14px;
+  }
+
+  /* Progressively brighter backgrounds for dark theme (update page default) */
+  .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
+  .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
+  .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
+  .brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
+  .brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
+
+  .brightness-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(255,255,255,0.2);
+  }
+
+  .brightness-btn.active {
+    border-color: #377ba8;
+    border-width: 3px;
+    box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
+  }
 </style>
+<script>
+  function setBrightnessUpdate(brightness) {
+    document.getElementById('brightness').value = brightness;
+    document.getElementById('brightness-output').innerText = brightness;
+    const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
+    buttons.forEach(btn => {
+      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  function setNightBrightnessUpdate(brightness) {
+    document.getElementById('night_brightness').value = brightness;
+    document.getElementById('night-brightness-output').innerText = brightness;
+    const buttons = document.querySelectorAll('#night-brightness-panel .brightness-btn');
+    buttons.forEach(btn => {
+      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  // Move buttons to header on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    const headerButtons = document.getElementById('header-buttons');
+    const form = document.getElementById('device-form');
+
+    // Create Save button
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'submit';
+    saveBtn.className = 'w3-button w3-green';
+    saveBtn.textContent = '{{ _('Save') }}';
+    saveBtn.form = 'device-form';
+
+    // Create Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'submit';
+    deleteBtn.className = 'w3-button w3-red';
+    deleteBtn.textContent = '{{ _('Delete') }}';
+    deleteBtn.form = 'device-form';
+    deleteBtn.formAction = "{{ url_for('manager.delete', device_id=device['id']) }}";
+    deleteBtn.formMethod = 'post';
+    deleteBtn.onclick = function() { return confirm('{{ _('Delete device and ALL apps?') }}'); };
+
+    headerButtons.appendChild(saveBtn);
+    headerButtons.appendChild(deleteBtn);
+  });
+</script>
 {% endblock %}
 {% block content %}
 <div class="form-container">
-  <form method="post">
+  <form method="post" id="device-form">
     <div class="form-group">
       <label for="name">{{ _('Name') }}</label>
       <input name="name" id="name" value="{{ request.form['name'] or device['name'] }}" required>
@@ -146,9 +239,20 @@
       <label for="brightness">{{ _('Brightness') }}</label>
       <span class="tooltip-icon"
         title="{{ _('If your device stays dark at level 1, add legacy_brightness to the Notes field') }}">ⓘ</span>
-      <output>{{ device['brightness'] }}</output>
-      <input type="range" name="brightness" id="brightness" min="0" max="5" value="{{ device['brightness'] }}"
-        oninput="this.previousElementSibling.value = this.value">
+      <output id="brightness-output">{{ device['brightness'] }}</output>
+      <input type="hidden" name="brightness" id="brightness" value="{{ device['brightness'] }}">
+      <div class="brightness-panel" id="brightness-panel">
+        <button type="button" class="brightness-btn {% if device['brightness'] == 1 %}active{% endif %}"
+                data-brightness="1" onclick="setBrightnessUpdate(1)">1</button>
+        <button type="button" class="brightness-btn {% if device['brightness'] == 2 %}active{% endif %}"
+                data-brightness="2" onclick="setBrightnessUpdate(2)">2</button>
+        <button type="button" class="brightness-btn {% if device['brightness'] == 3 %}active{% endif %}"
+                data-brightness="3" onclick="setBrightnessUpdate(3)">3</button>
+        <button type="button" class="brightness-btn {% if device['brightness'] == 4 %}active{% endif %}"
+                data-brightness="4" onclick="setBrightnessUpdate(4)">4</button>
+        <button type="button" class="brightness-btn {% if device['brightness'] == 5 %}active{% endif %}"
+                data-brightness="5" onclick="setBrightnessUpdate(5)">5</button>
+      </div>
     </div>
 
     <div class="form-group">
@@ -159,9 +263,20 @@
 
     <div class="form-group">
       <label for="night_brightness">{{ _('Night Brightness') }}</label>
-      <output>{{ device.get('night_brightness', 1) }}</output>
-      <input type="range" name="night_brightness" id="night_brightness" min="0" max="5"
-        value="{{ device.get('night_brightness', 1) }}" oninput="this.previousElementSibling.value = this.value">
+      <output id="night-brightness-output">{{ device.get('night_brightness', 1) }}</output>
+      <input type="hidden" name="night_brightness" id="night_brightness" value="{{ device.get('night_brightness', 1) }}">
+      <div class="brightness-panel" id="night-brightness-panel">
+        <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 1 %}active{% endif %}"
+                data-brightness="1" onclick="setNightBrightnessUpdate(1)">1</button>
+        <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 2 %}active{% endif %}"
+                data-brightness="2" onclick="setNightBrightnessUpdate(2)">2</button>
+        <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 3 %}active{% endif %}"
+                data-brightness="3" onclick="setNightBrightnessUpdate(3)">3</button>
+        <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 4 %}active{% endif %}"
+                data-brightness="4" onclick="setNightBrightnessUpdate(4)">4</button>
+        <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 5 %}active{% endif %}"
+                data-brightness="5" onclick="setNightBrightnessUpdate(5)">5</button>
+      </div>
     </div>
 
     <div class="form-group">

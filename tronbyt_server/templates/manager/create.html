@@ -2,6 +2,77 @@
 {% block header %}
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
+<style>
+  /* Brightness button panel styles */
+  .brightness-panel {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 15px;
+    max-width: 250px;
+  }
+
+  .brightness-btn {
+    flex: 0 0 40px;
+    padding: 8px 4px;
+    border: 2px solid #ccc;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: all 0.2s;
+    font-size: 14px;
+  }
+
+  /* Light theme - progressively brighter backgrounds */
+  .brightness-btn[data-brightness="1"] { background-color: #666; color: white; border-color: #555; }
+  .brightness-btn[data-brightness="2"] { background-color: #888; color: white; border-color: #777; }
+  .brightness-btn[data-brightness="3"] { background-color: #aaa; color: white; border-color: #999; }
+  .brightness-btn[data-brightness="4"] { background-color: #ccc; color: #333; border-color: #bbb; }
+  .brightness-btn[data-brightness="5"] { background-color: #eee; color: #333; border-color: #ddd; }
+
+  .brightness-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .brightness-btn.active {
+    border-color: #377ba8;
+    border-width: 3px;
+    box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
+  }
+
+  /* Dark theme - progressively brighter backgrounds */
+  [data-theme="dark"] .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
+  [data-theme="dark"] .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
+  [data-theme="dark"] .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
+  [data-theme="dark"] .brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
+  [data-theme="dark"] .brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
+
+  [data-theme="dark"] .brightness-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(255,255,255,0.2);
+  }
+
+  [data-theme="dark"] .brightness-btn.active {
+    border-color: #5a9cd1;
+    border-width: 3px;
+    box-shadow: 0 0 8px rgba(90, 156, 209, 0.5);
+  }
+</style>
+<script>
+  function setBrightnessCreate(brightness) {
+    document.getElementById('brightness').value = brightness;
+    document.getElementById('brightness-output').innerText = brightness;
+    const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
+    buttons.forEach(btn => {
+      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+</script>
 {% endblock %}
 {% block content %}
 <form method="post">
@@ -21,9 +92,16 @@
   <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}">
   <span><label for="ws_url">{{ _('WebSocket URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
   <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}">
-  <span><label for="brightness">{{ _('Brightness Level ( 0 - 5 )') }}</label></span><output>3</output>
-  <input type="range" name="brightness" id="brightness" min="0" max="5" value="3"
-    oninput="this.previousElementSibling.value = this.value">
+  <span><label>{{ _('Brightness Level ( 1 - 5 )') }}</label></span>
+  <output id="brightness-output">3</output>
+  <input type="hidden" name="brightness" id="brightness" value="3">
+  <div class="brightness-panel" id="brightness-panel">
+    <button type="button" class="brightness-btn" data-brightness="1" onclick="setBrightnessCreate(1)">1</button>
+    <button type="button" class="brightness-btn" data-brightness="2" onclick="setBrightnessCreate(2)">2</button>
+    <button type="button" class="brightness-btn active" data-brightness="3" onclick="setBrightnessCreate(3)">3</button>
+    <button type="button" class="brightness-btn" data-brightness="4" onclick="setBrightnessCreate(4)">4</button>
+    <button type="button" class="brightness-btn" data-brightness="5" onclick="setBrightnessCreate(5)">5</button>
+  </div>
 
   <!-- <span><label for="api_key">Device API KEY</label> (leave blank)</span> -->
   <!-- <textarea name="api_key" id="api_key" rows="5"></textarea>  -->
