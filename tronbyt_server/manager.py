@@ -303,11 +303,11 @@ def update_brightness(device_id: str) -> ResponseReturnValue:
     user = g.user
     device = user["devices"][device_id]
 
-    # Convert UI scale (1-5) to percentage (0-100) and store only the percentage
+    # Convert UI scale (0-5) to percentage (0-100) and store only the percentage
     ui_brightness = int(brightness)
-    # Validate brightness is in range 1-5
-    if ui_brightness < 1 or ui_brightness > 5:
-        abort(HTTPStatus.BAD_REQUEST, description="Brightness must be between 1 and 5")
+    # Validate brightness is in range 0-5
+    if ui_brightness < 0 or ui_brightness > 5:
+        abort(HTTPStatus.BAD_REQUEST, description="Brightness must be between 0 and 5")
     device["brightness"] = db.ui_scale_to_percent(ui_brightness)
 
     db.save_user(user)
@@ -1100,6 +1100,12 @@ def next_app(
 
     user = db.get_user_by_device_id(device_id) or abort(HTTPStatus.NOT_FOUND)
     device = user["devices"][device_id] or abort(HTTPStatus.NOT_FOUND)
+
+    # If brightness is 0, short-circuit and return default image to save processing
+    brightness = device.get("brightness", 50)
+    if brightness == 0:
+        current_app.logger.debug("Brightness is 0, returning default image")
+        return send_default_image(device)
 
     # first check for a pushed file starting with __ and just return that and then delete it.
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"

@@ -325,10 +325,11 @@ def get_device_brightness_8bit(device: Device) -> int:
         return device.get("brightness", 50)
 
 
-# Convert percentage brightness (0-100) to UI scale (1-5)
-# Note: 0 is no longer supported in the UI, so we map it to 1
+# Convert percentage brightness (0-100) to UI scale (0-5)
 def percent_to_ui_scale(percent: int) -> int:
-    if percent <= 3:  # 0-3% maps to level 1
+    if percent == 0:
+        return 0
+    elif percent <= 3:
         return 1
     elif percent <= 12:
         return 2
@@ -340,11 +341,10 @@ def percent_to_ui_scale(percent: int) -> int:
         return 5
 
 
-# Convert UI scale (1-5) to percentage (0-100)
-# Note: 0 is no longer supported in the UI
+# Convert UI scale (0-5) to percentage (0-100)
 def ui_scale_to_percent(scale_value: int) -> int:
     lookup = {
-        0: 3,  # Legacy 0 maps to 3% (same as level 1)
+        0: 0,
         1: 3,
         2: 12,
         3: 20,
