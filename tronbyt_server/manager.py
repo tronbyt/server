@@ -303,8 +303,11 @@ def update_brightness(device_id: str) -> ResponseReturnValue:
     user = g.user
     device = user["devices"][device_id]
 
-    # Convert UI scale (0-5) to percentage (0-100) and store only the percentage
+    # Convert UI scale (1-5) to percentage (0-100) and store only the percentage
     ui_brightness = int(brightness)
+    # Validate brightness is in range 1-5
+    if ui_brightness < 1 or ui_brightness > 5:
+        abort(HTTPStatus.BAD_REQUEST, description="Brightness must be between 1 and 5")
     device["brightness"] = db.ui_scale_to_percent(ui_brightness)
 
     db.save_user(user)
@@ -590,6 +593,28 @@ def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
 
     db.save_user(user)
     flash("Changes saved.")
+    return redirect(url_for("manager.index"))
+
+
+@bp.get("/<string:device_id>/<string:iname>/toggle_pin")
+@login_required
+def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+    user = g.user
+    device = user["devices"][device_id]
+
+    # Check if this app is currently pinned
+    if device.get("pinned_app") == iname:
+        # Unpin it
+        device.pop("pinned_app", None)
+        flash("App unpinned.")
+    else:
+        # Pin it
+        device["pinned_app"] = iname
+        flash("App pinned.")
+
+    db.save_user(user)
     return redirect(url_for("manager.index"))
 
 
@@ -1102,23 +1127,37 @@ def next_app(
     if not apps:
         return send_default_image(device)
 
-    apps_list = sorted(apps.values(), key=itemgetter("order"))
-    is_night_mode_app = False
-    if (
-        db.get_night_mode_is_active(device)
-        and device.get("night_mode_app", "") in apps.keys()
-    ):
-        app = apps[device["night_mode_app"]]
-        is_night_mode_app = True
-    elif last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
-        app = apps_list[last_app_index + 1]  # add 1 to get the next app
-        last_app_index += 1
+    # Check for pinned app first - this short-circuits all other app selection logic
+    pinned_app_iname = device.get("pinned_app")
+    is_pinned_app = False
+    if pinned_app_iname and pinned_app_iname in apps:
+        current_app.logger.debug(f"Using pinned app: {pinned_app_iname}")
+        app = apps[pinned_app_iname]
+        is_pinned_app = True
+        # For pinned apps, we don't update last_app_index since we're not cycling
     else:
-        app = apps_list[0]  # go to the beginning
-        last_app_index = 0
+        # Normal app selection logic
+        apps_list = sorted(apps.values(), key=itemgetter("order"))
+        is_night_mode_app = False
+        if (
+            db.get_night_mode_is_active(device)
+            and device.get("night_mode_app", "") in apps.keys()
+        ):
+            app = apps[device["night_mode_app"]]
+            is_night_mode_app = True
+        elif last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
+            app = apps_list[last_app_index + 1]  # add 1 to get the next app
+            last_app_index += 1
+        else:
+            app = apps_list[0]  # go to the beginning
+            last_app_index = 0
 
-    if not is_night_mode_app and (
-        not app["enabled"] or not db.get_is_app_schedule_active(app, device)
+    # For pinned apps, always display them regardless of enabled/schedule status
+    # For other apps, check if they should be displayed
+    if (
+        not is_pinned_app
+        and not is_night_mode_app
+        and (not app["enabled"] or not db.get_is_app_schedule_active(app, device))
     ):
         # recurse until we find one that's enabled
         current_app.logger.debug(f"{app['name']}-{app['iname']} is disabled")

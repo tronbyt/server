@@ -37,6 +37,7 @@ class Device(TypedDict, total=False):
     location: Optional[Location]
     apps: Dict[str, App]
     last_app_index: int
+    pinned_app: str  # iname of the pinned app, if any
 
 
 def validate_timezone(tz: str) -> Optional[ZoneInfo]:
