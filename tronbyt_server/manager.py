@@ -8,6 +8,7 @@ import string
 import subprocess
 import time
 import uuid
+from datetime import date, timedelta
 from http import HTTPStatus
 from io import BytesIO
 from operator import itemgetter
@@ -742,6 +743,13 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     app = g.user["devices"][device_id]["apps"][iname]
+
+    # Set default dates if not already set
+    today = date.today()
+    if not app.get("recurrence_start_date"):
+        app["recurrence_start_date"] = today.strftime("%Y-%m-%d")
+    if not app.get("recurrence_end_date"):
+        app["recurrence_end_date"] = (today + timedelta(days=7)).strftime("%Y-%m-%d")
 
     return render_template(
         "manager/updateapp.html",
