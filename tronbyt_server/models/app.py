@@ -53,3 +53,8 @@ class AppMetadata(TypedDict, total=False):
     supports2x: bool
     recommended_interval: int
     date: str  # ISO date string for file modification date
+    is_installed: bool  # Used to mark if app is installed on any device
+    uinterval: int  # Update interval for the app
+    display_time: int  # Display time for the app
+    notes: str  # User notes for the app
+    order: int  # Order in the app list

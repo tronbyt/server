@@ -507,15 +507,15 @@ def addapp(device_id: str) -> ResponseReturnValue:
             )
 
         # Mark installed apps and sort so that installed apps appear first
-        for app in apps_list:
-            app["is_installed"] = app["name"] in installed_app_names
+        for app_metadata in apps_list:
+            app_metadata["is_installed"] = app_metadata["name"] in installed_app_names
 
         # Also mark installed status for custom apps
-        for app in custom_apps_list:
-            app["is_installed"] = app["name"] in installed_app_names
+        for app_metadata in custom_apps_list:
+            app_metadata["is_installed"] = app_metadata["name"] in installed_app_names
 
         # Sort apps_list so that installed apps appear first
-        apps_list.sort(key=lambda app: not app["is_installed"])
+        apps_list.sort(key=lambda app_metadata: not app_metadata["is_installed"])
 
         return render_template(
             "manager/addapp.html",
@@ -549,7 +549,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 )
             )
 
-        app = App(
+        app: App = App(
             name=name,
             iname=iname,
             enabled=False,  # start out false, only set to true after configure is finished
