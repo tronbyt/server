@@ -5,6 +5,25 @@
 {% block content %}
 {% if g.user['username'] == "admin" %}
 <h1>{{ _('System App Repository') }}</h1>
+{% if system_repo_info and system_repo_info.commit_hash %}
+<div style="background-color: #2a2a2a; padding: 15px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50;">
+    <div style="margin-bottom: 10px;">
+        <strong>{{ _('Current Commit') }}:</strong>
+        <a href="{{ system_repo_info.commit_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
+            {{ system_repo_info.commit_hash }}
+        </a>
+    </div>
+    <div style="margin-bottom: 10px;">
+        <strong>{{ _('Repository') }}:</strong>
+        <a href="{{ system_repo_info.repo_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
+            {{ system_repo_info.repo_url }}
+        </a>
+    </div>
+    <div>
+        <strong>{{ _('Branch') }}:</strong> {{ system_repo_info.branch }}
+    </div>
+</div>
+{% endif %}
 <form method="post" action="{{ url_for('manager.set_system_repo') }}">
     <label for="app_repo_url">{{ _('System App Repo URL (Public Github Only!)') }}</label>
     <input name="app_repo_url" id="app_repo_url" required value="{{ user['system_repo_url'] }}">

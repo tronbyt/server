@@ -16,12 +16,17 @@ from tronbyt_server.models.app import AppMetadata
 
 
 def git_command(
-    command: list[str], cwd: Optional[Path] = None, check: bool = False
+    command: list[str],
+    cwd: Optional[Path] = None,
+    check: bool = False,
+    capture_output: bool = False,
 ) -> subprocess.CompletedProcess[bytes]:
     """Run a git command in the specified path."""
     env = os.environ.copy()
     env.setdefault("HOME", os.getcwd())
-    return subprocess.run(command, cwd=cwd, env=env, check=check)
+    return subprocess.run(
+        command, cwd=cwd, env=env, check=check, capture_output=capture_output
+    )
 
 
 def log_message(message: str) -> None:
@@ -30,6 +35,51 @@ def log_message(message: str) -> None:
         current_app.logger.info(message)
     else:
         print(message)
+
+
+def get_system_repo_info(base_path: Path) -> dict[str, str]:
+    """Get information about the current system repo commit.
+
+    Returns:
+        dict with keys: 'commit_hash', 'commit_url', 'repo_url', 'branch'
+    """
+    system_apps_path = base_path / "system-apps"
+    system_apps_url = os.getenv(
+        "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
+    )
+
+    # Parse the repo URL and branch
+    if "@" in system_apps_url and ".git@" in system_apps_url:
+        system_apps_repo, branch_name = system_apps_url.rsplit("@", 1)
+    else:
+        system_apps_repo = system_apps_url
+        branch_name = "main"
+
+    # Remove .git suffix for web URL
+    repo_web_url = system_apps_repo.replace(".git", "")
+
+    info = {
+        "commit_hash": None,
+        "commit_url": None,
+        "repo_url": repo_web_url,
+        "branch": branch_name,
+    }
+
+    # Get the current commit hash
+    git_dir = system_apps_path / ".git"
+    if git_dir.is_dir():
+        try:
+            result = git_command(
+                ["git", "rev-parse", "HEAD"], cwd=system_apps_path, capture_output=True
+            )
+            if result.returncode == 0:
+                commit_hash = result.stdout.decode().strip()
+                info["commit_hash"] = commit_hash[:7]  # Short hash
+                info["commit_url"] = f"{repo_web_url}/commit/{commit_hash}"
+        except Exception:
+            pass
+
+    return info
 
 
 def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
