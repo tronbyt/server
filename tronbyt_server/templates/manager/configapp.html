@@ -617,12 +617,13 @@
     cancelButton.id = "cancelButton";
     cancelButton.className = "w3-button w3-red";
     cancelButton.type = "submit";
-    cancelButton.formMethod = "get";
 
     {% if delete_on_cancel == 1 %}
     cancelButton.formAction = "{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname']) }}";
+    cancelButton.formMethod = "post";
     {% else %}
     cancelButton.formAction = "{{ url_for('manager.index') }}";
+    cancelButton.formMethod = "get";
     {% endif %}
     cancelButton.value = "{{ _('Cancel') }}";
 
@@ -646,15 +647,16 @@
     createGeneratedFormFields(schema, config);
 
     form.addEventListener("submit", function (event) {
-      event.preventDefault(); // Prevent the default form submission
-
       // Check if the form was submitted using the cancel button
       if (event.submitter && event.submitter.id === "cancelButton") {
-        window.location.href = event.submitter.formAction;
-        return; // Navigate to the form action URL
+        // Let the cancel button submit normally (don't prevent default)
+        return;
       }
 
-      // Submit the form data
+      // Prevent the default form submission for save operations
+      event.preventDefault();
+
+      // Submit the form data via fetch for save operations
       fetch(form.action, {
         method: form.method,
         headers: {

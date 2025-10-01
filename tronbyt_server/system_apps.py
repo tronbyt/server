@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -132,9 +133,12 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
     for app in apps:
         try:
             app_basename = app.stem
+            # Get file modification time
+            mod_time = datetime.fromtimestamp(app.stat().st_mtime)
             app_dict = AppMetadata(
                 name=app_basename,
                 path=str(app),
+                date=mod_time.strftime("%Y-%m-%d %H:%M"),
             )
 
             # skip any broken apps

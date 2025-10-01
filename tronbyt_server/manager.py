@@ -506,8 +506,16 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 app["name"] for app in device.get("apps", {}).values()
             )
 
+        # Mark installed apps and sort so that installed apps appear first
+        for app in apps_list:
+            app["is_installed"] = app["name"] in installed_app_names
+
+        # Also mark installed status for custom apps
+        for app in custom_apps_list:
+            app["is_installed"] = app["name"] in installed_app_names
+
         # Sort apps_list so that installed apps appear first
-        apps_list.sort(key=lambda app: app["name"] not in installed_app_names)
+        apps_list.sort(key=lambda app: not app["is_installed"])
 
         return render_template(
             "manager/addapp.html",

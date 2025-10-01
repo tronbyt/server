@@ -474,10 +474,13 @@ def get_apps_list(user: str) -> List[AppMetadata]:
     if dir.exists():
         for file in dir.rglob("*.star"):
             app_name = file.stem
+            # Get file modification time
+            mod_time = datetime.fromtimestamp(file.stat().st_mtime)
             app_dict = AppMetadata(
                 path=str(file),
                 id=app_name,
                 name=app_name,
+                date=mod_time.strftime("%Y-%m-%d %H:%M"),
             )
             preview = get_data_dir() / "apps" / f"{app_name}.webp"
             if preview.exists() and preview.stat().st_size > 0:

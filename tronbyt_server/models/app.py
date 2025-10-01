@@ -52,3 +52,4 @@ class AppMetadata(TypedDict, total=False):
     preview: Optional[str]
     supports2x: bool
     recommended_interval: int
+    date: str  # ISO date string for file modification date
