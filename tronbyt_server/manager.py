@@ -1368,16 +1368,10 @@ def refresh_system_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if g.user["username"] != "admin":
             abort(HTTPStatus.FORBIDDEN)
-        if set_repo(
-            "system_repo_url",
-            db.get_data_dir() / "system-apps",
-            g.user.get("system_repo_url", ""),
-        ):
-            # run the generate app list for custom repo
-            # will just generate json file if already there.
-            system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
-            return redirect(url_for("manager.index"))
-        return redirect(url_for("auth.edit"))
+        # Directly update the system repo - it handles git pull internally
+        system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
+        flash("System repo updated successfully")
+        return redirect(url_for("manager.index"))
     abort(HTTPStatus.NOT_FOUND)
 
 
