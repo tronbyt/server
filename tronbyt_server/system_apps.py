@@ -37,7 +37,7 @@ def log_message(message: str) -> None:
         print(message)
 
 
-def get_system_repo_info(base_path: Path) -> dict[str, str]:
+def get_system_repo_info(base_path: Path) -> dict[str, Optional[str]]:
     """Get information about the current system repo commit.
 
     Returns:
