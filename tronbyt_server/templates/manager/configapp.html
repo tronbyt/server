@@ -48,7 +48,7 @@
 
   function debounce(func, wait) {
     let timeout;
-    return function(...args) {
+    return function (...args) {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
         func.apply(this, args);
@@ -250,20 +250,20 @@
     let initialLocationJsonString = config[field.id] || (deviceLocation !== null ? deviceLocation : undefined) || field.default || "{}";
     // Ensure initialLocationJsonString is a string, as expected by JSON.parse and hiddenInput.value
     if (typeof initialLocationJsonString !== 'string') {
-        initialLocationJsonString = "{}"; // Default to empty object string if not a string
+      initialLocationJsonString = "{}"; // Default to empty object string if not a string
     }
 
     try {
-        const parsedLoc = JSON.parse(initialLocationJsonString);
-        if (parsedLoc && parsedLoc.name) {
-            searchInput.value = parsedLoc.name;
-        } else {
-            // If parsing works but no name, or if it's an empty object, ensure searchInput is empty
-            searchInput.value = "";
-        }
+      const parsedLoc = JSON.parse(initialLocationJsonString);
+      if (parsedLoc && parsedLoc.name) {
+        searchInput.value = parsedLoc.name;
+      } else {
+        // If parsing works but no name, or if it's an empty object, ensure searchInput is empty
+        searchInput.value = "";
+      }
     } catch (e) {
-        console.warn("Could not parse initial location for search input in createLocationField:", initialLocationJsonString, e);
-        searchInput.value = ""; // Default to empty if parsing fails
+      console.warn("Could not parse initial location for search input in createLocationField:", initialLocationJsonString, e);
+      searchInput.value = ""; // Default to empty if parsing fails
     }
 
     const hiddenInput = document.createElement("input");
@@ -288,19 +288,19 @@
 
     // For locationbased fields, the search input text is always based on deviceLocation
     if (deviceLocation && typeof deviceLocation === 'string') {
-        try {
-            const parsedDevLoc = JSON.parse(deviceLocation);
-            if (parsedDevLoc && parsedDevLoc.name) {
-                searchInput.value = parsedDevLoc.name;
-            } else {
-                searchInput.value = ""; // Parsed but no name
-            }
-        } catch (e) {
-            console.warn("Could not parse deviceLocation for search input in createLocationBasedField:", deviceLocation, e);
-            searchInput.value = ""; // Default to empty if parsing fails
+      try {
+        const parsedDevLoc = JSON.parse(deviceLocation);
+        if (parsedDevLoc && parsedDevLoc.name) {
+          searchInput.value = parsedDevLoc.name;
+        } else {
+          searchInput.value = ""; // Parsed but no name
         }
+      } catch (e) {
+        console.warn("Could not parse deviceLocation for search input in createLocationBasedField:", deviceLocation, e);
+        searchInput.value = ""; // Default to empty if parsing fails
+      }
     } else {
-        searchInput.value = ""; // No deviceLocation string
+      searchInput.value = ""; // No deviceLocation string
     }
 
     const hiddenInput = document.createElement("input");
@@ -540,9 +540,9 @@
 
       if (typeof currentOptionJsonString === 'string' && currentOptionJsonString !== 'undefined' && currentOptionJsonString !== 'null') {
         try {
-            currentOptionFromConfig = JSON.parse(currentOptionJsonString);
+          currentOptionFromConfig = JSON.parse(currentOptionJsonString);
         } catch (e) {
-            console.warn(`Could not parse currentOptionJsonString for field ${field.id}:`, currentOptionJsonString, e);
+          console.warn(`Could not parse currentOptionJsonString for field ${field.id}:`, currentOptionJsonString, e);
         }
       }
 
