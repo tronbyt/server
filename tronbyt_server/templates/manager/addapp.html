@@ -104,10 +104,11 @@
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
-  {% macro render_app_list(title, search_id, grid_id, app_list) %}
+  {% macro render_app_list(title, search_id, grid_id, app_list, show_controls=true) %}
   <div class="app-group">
     <h3>{{ title }}</h3>
 
+    {% if show_controls %}
     <!-- Filter and Sort Controls -->
     <div class="filter-sort-controls">
       <div class="filter-sort-controls-inner">
@@ -132,7 +133,7 @@
         </label>
       </div>
     </div>
-
+    {% endif %}
 
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
@@ -167,7 +168,7 @@
   {% endmacro %}
 
   {% if custom_apps_list %}
-  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list) }}
+  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list, show_controls=false) }}
 
   <hr>
   {% endif %}
