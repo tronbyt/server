@@ -4,7 +4,7 @@
 {% endblock %}
 {% block content %}
 {% if g.user['username'] == "admin" %}
-<h1>{{ _('System App Repository') }}</h1>
+<h1>{{ _('System Apps Repository') }}</h1>
 {% if system_repo_info and system_repo_info.commit_hash %}
 <div style="background-color: #2a2a2a; padding: 15px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50;">
     <div style="margin-bottom: 10px;">
@@ -24,14 +24,16 @@
     </div>
 </div>
 {% endif %}
+<form method="post" action="{{ url_for('manager.refresh_system_repo') }}" style="margin-bottom: 20px;">
+    <button type="submit" class="w3-button w3-blue" style="font-size: 16px; padding: 12px 24px;">
+        🔄 {{ _('Refresh System Apps') }}
+    </button>
+</form>
 <form method="post" action="{{ url_for('manager.set_system_repo') }}">
-    <label for="app_repo_url">{{ _('System App Repo URL (Public Github Only!)') }}</label>
+    <label for="app_repo_url">{{ _('System Apps Repo URL (Public Github Only!)') }}</label>
     <input name="app_repo_url" id="app_repo_url" required value="{{ user['system_repo_url'] }}">
     {{ _('Replacing the existing system repo will delete the previous repo and break any apps using that repo.') }}
     <input type="submit" value="{{ _('Save') }}" class="w3-button w3-green"></input>
-</form>
-<form method="post" action="{{ url_for('manager.refresh_system_repo') }}">
-    <input type="submit" value="{{ _('Refresh') }}" class="w3-button w3-green"></input>
 </form>
 
 <h1 id="firmware-management">{{ _('Firmware Management') }}</h1>
@@ -66,7 +68,7 @@
 {% endif %}
 {% endif %}
 <form method="post" action="{{ url_for('manager.set_user_repo') }}" >
-    <label for="app_repo_url">{{ _('Custom App Repo URL (Public Github Only!)') }}</label>
+    <label for="app_repo_url">{{ _('Custom Apps Repo URL (Public Github Only!)') }}</label>
     <input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}">
     {{ _('Replacing an existing custom repo will delete the previous repo and break any apps using that repo.') }}
 
