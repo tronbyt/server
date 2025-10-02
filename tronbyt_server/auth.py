@@ -22,6 +22,7 @@ from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 import tronbyt_server.db as db
+from tronbyt_server import system_apps
 from tronbyt_server.models.user import User
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -175,10 +176,15 @@ def edit() -> ResponseReturnValue:
         flash(error)
 
     firmware_version = None
+    system_repo_info = None
     if g.user and g.user.get("username") == "admin":
         firmware_version = db.get_firmware_version()
+        system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
     return render_template(
-        "auth/edit.html", user=g.user, firmware_version=firmware_version
+        "auth/edit.html",
+        user=g.user,
+        firmware_version=firmware_version,
+        system_repo_info=system_repo_info,
     )
 
 
