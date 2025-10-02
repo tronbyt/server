@@ -201,6 +201,13 @@ If you are upgrading from an earlier version of Tronbyt Server (earlier than ver
     docker compose -f docker-compose.dev.yaml up -d --build
     ```
 
+    or run the application natively:
+
+    ```sh
+    pdm install
+    pdm run ./run
+    ```
+
 ### HTTPS (TLS)
 
 If you'd like to serve Tronbyt Server over HTTPS, you can do so by configuring Gunicorn or by fronting the service with a reverse proxy. The reverse proxy approach is more flexible and allows for automatic certificate provisioning and renewal. If you already have a certificate, you can also use that directly and avoid the sidecar container.
