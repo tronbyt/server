@@ -21,6 +21,12 @@ pixlet_init_redis_cache: Optional[Callable[[bytes], None]] = None
 pixlet_free_bytes: Optional[Callable[[Any], None]] = None
 
 
+# Constants for default libpixlet paths
+_LIBPIXLET_PATH_LINUX = Path("/usr/lib/libpixlet.so")
+_LIBPIXLET_PATH_MACOS_ARM = Path("/opt/homebrew/lib/libpixlet.dylib")
+_LIBPIXLET_PATH_MACOS_INTEL = Path("/usr/local/lib/libpixlet.dylib")
+
+
 def load_pixlet_library(logger: Logger) -> None:
     libpixlet_path_str = os.getenv("LIBPIXLET_PATH")
     if libpixlet_path_str:
@@ -28,15 +34,13 @@ def load_pixlet_library(logger: Logger) -> None:
     else:
         system = platform.system()
         if system == "Darwin":
-            # Common Homebrew path for Apple Silicon
-            path1 = Path("/opt/homebrew/lib/libpixlet.dylib")
-            if path1.exists():
-                libpixlet_path = path1
-            else:
-                # Fallback for Intel Macs, which is also a common default
-                libpixlet_path = Path("/usr/local/lib/libpixlet.dylib")
+            # Start with the Apple Silicon path
+            libpixlet_path = _LIBPIXLET_PATH_MACOS_ARM
+            if not libpixlet_path.exists():
+                # Fallback to the Intel path if the ARM path doesn't exist
+                libpixlet_path = _LIBPIXLET_PATH_MACOS_INTEL
         else:  # Linux and others
-            libpixlet_path = Path("/usr/lib/libpixlet.so")
+            libpixlet_path = _LIBPIXLET_PATH_LINUX
 
     logger.info(f"Loading {libpixlet_path}")
     try:
