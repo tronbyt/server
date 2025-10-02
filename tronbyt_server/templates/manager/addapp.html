@@ -13,6 +13,10 @@
     applyFilters();
   }
 
+  function toggleBrokenApps(searchId) {
+    applyFilters();
+  }
+
   function sortApps(searchId) {
     const sortType = document.getElementById('sort_' + searchId).value;
     const gridId = searchId.replace('_search', '_app_grid');
@@ -60,6 +64,7 @@
 
     items.forEach(item => {
       const isInstalled = item.getAttribute('data-installed') === 'true';
+      const isBroken = item.getAttribute('data-broken') === 'true';
       const name = item.getAttribute('data-value');
       const grid = item.closest('.app-grid');
 
@@ -85,8 +90,15 @@
         shouldHideByInstalled = true;
       }
 
+      // Check if item should be hidden by broken filter
+      let shouldHideByBroken = false;
+      const hideBrokenCheckbox = document.getElementById('hide_broken_' + searchId);
+      if (hideBrokenCheckbox && hideBrokenCheckbox.checked && isBroken) {
+        shouldHideByBroken = true;
+      }
+
       // Apply visibility logic
-      if (shouldHideBySearch || shouldHideByInstalled) {
+      if (shouldHideBySearch || shouldHideByInstalled || shouldHideByBroken) {
         item.style.display = 'none';
       } else {
         item.style.display = '';
@@ -122,11 +134,17 @@
           {{ _('Hide installed apps') }}
         </label>
 
+        <label class="control-label">
+          <input type="checkbox" id="hide_broken_{{ search_id }}" onchange="toggleBrokenApps('{{ search_id }}')"
+            class="control-checkbox" checked>
+          {{ _('Hide broken apps') }}
+        </label>
+
         <label for="sort_{{ search_id }}" class="control-label">
           {{ _('Sort by:') }}
           <select id="sort_{{ search_id }}" onchange="sortApps('{{ search_id }}')">
-            <option value="newest" selected>{{ _('Newest') }}</option>
-            <option value="system">{{ _('System') }}</option>
+            <option value="system" selected>{{ _('Default') }}</option>
+            <option value="newest">{{ _('Newest') }}</option>
             <option value="alphabetical">{{ _('Alphabetical (A-Z)') }}</option>
             <option value="rev-alphabetical">{{ _('Alphabetical (Z-A)') }}</option>
           </select>
@@ -138,7 +156,7 @@
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
       <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app.get('fileName', app['name']) }}" data-installed="{{ app.get('is_installed', false) | lower }}"
-        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}">
+        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}" data-broken="{{ app.get('broken', false) | lower }}">
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
