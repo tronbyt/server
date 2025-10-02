@@ -3,6 +3,7 @@
 import ctypes
 import json
 import os
+import platform
 from logging import Logger
 from pathlib import Path
 from threading import Lock
@@ -21,7 +22,22 @@ pixlet_free_bytes: Optional[Callable[[Any], None]] = None
 
 
 def load_pixlet_library(logger: Logger) -> None:
-    libpixlet_path = Path(os.getenv("LIBPIXLET_PATH", "/usr/lib/libpixlet.so"))
+    libpixlet_path_str = os.getenv("LIBPIXLET_PATH")
+    if libpixlet_path_str:
+        libpixlet_path = Path(libpixlet_path_str)
+    else:
+        system = platform.system()
+        if system == "Darwin":
+            # Common Homebrew path for Apple Silicon
+            path1 = Path("/opt/homebrew/lib/libpixlet.dylib")
+            if path1.exists():
+                libpixlet_path = path1
+            else:
+                # Fallback for Intel Macs, which is also a common default
+                libpixlet_path = Path("/usr/local/lib/libpixlet.dylib")
+        else:  # Linux and others
+            libpixlet_path = Path("/usr/lib/libpixlet.so")
+
     logger.info(f"Loading {libpixlet_path}")
     try:
         pixlet_library = ctypes.cdll.LoadLibrary(str(libpixlet_path))
