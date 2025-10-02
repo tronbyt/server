@@ -155,7 +155,7 @@
 
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app.get('fileName', app['name']) }}" data-installed="{{ app.get('is_installed', false) | lower }}"
+      <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
         data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}" data-broken="{{ app.get('broken', false) | lower }}">
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
