@@ -2,8 +2,7 @@
 
 import json
 import os
-import urllib.error
-import urllib.request
+import requests
 from logging import Logger
 from pathlib import Path
 from typing import Any
@@ -125,8 +124,9 @@ def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
         logger.info(f"Fetching latest release info from {api_url}")
 
         # Fetch release information
-        with urllib.request.urlopen(api_url) as response:
-            release_data = json.loads(response.read().decode())
+        response = requests.get(api_url, timeout=10)
+        response.raise_for_status()
+        release_data = response.json()
 
         release_tag = release_data.get("tag_name", "unknown")
         logger.info(f"Found latest release: {release_tag}")
@@ -174,13 +174,15 @@ def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
                 if download_url and asset_name in firmware_name_mapping:
                     # Use mapped name if available, otherwise use original name
                     local_name = firmware_name_mapping.get(asset_name, asset_name)
-                    dest_file = firmware_path / local_name
+                    dest_file = firmware_path / str(local_name)
                     logger.info(
                         f"Downloading firmware file: {asset_name} -> {local_name}"
                     )
 
                     try:
-                        urllib.request.urlretrieve(download_url, dest_file)
+                        r = requests.get(download_url, timeout=300)
+                        r.raise_for_status()
+                        dest_file.write_bytes(r.content)
                         bin_files_downloaded += 1
                         logger.info(f"Successfully downloaded: {local_name}")
                     except Exception as e:
@@ -224,18 +226,8 @@ def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
                 "files_downloaded": 0,
             }
 
-    except urllib.error.HTTPError as e:
-        error_msg = f"HTTP error fetching release info: {e.code} {e.reason}"
-        logger.info(error_msg)
-        return {
-            "success": False,
-            "action": "error",
-            "message": error_msg,
-            "version": "unknown",
-            "files_downloaded": 0,
-        }
-    except urllib.error.URLError as e:
-        error_msg = f"URL error fetching release info: {e.reason}"
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Error fetching release info: {e}"
         logger.info(error_msg)
         return {
             "success": False,
