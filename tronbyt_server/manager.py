@@ -1410,7 +1410,7 @@ def update_firmware() -> ResponseReturnValue:
 
     try:
         current_app.logger.info("Starting firmware update...")
-        result = firmware_utils.update_firmware_binaries(
+        result = firmware_utils.update_firmware_binaries_subprocess(
             db.get_data_dir(), current_app.logger
         )
         current_app.logger.info(f"Firmware update result: {result}")
