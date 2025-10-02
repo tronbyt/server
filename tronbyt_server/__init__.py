@@ -86,9 +86,12 @@ def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
         if not is_running_from_reloader():
             # Update firmware before updating apps
             try:
-                firmware_utils.update_firmware_binaries(db.get_data_dir(), app.logger)
+                firmware_utils.update_firmware_binaries_subprocess(
+                    db.get_data_dir(), app.logger
+                )
             except Exception as e:
                 app.logger.error(f"Failed to update firmware during startup: {e}")
+
             system_apps.update_system_repo(db.get_data_dir(), app.logger)
 
     from . import auth

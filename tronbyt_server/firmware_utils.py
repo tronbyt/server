@@ -3,6 +3,8 @@
 import json
 import os
 import requests
+import subprocess
+import sys
 from logging import Logger
 from pathlib import Path
 from typing import Any
@@ -256,3 +258,39 @@ def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
             "version": "unknown",
             "files_downloaded": 0,
         }
+
+
+def update_firmware_binaries_subprocess(
+    base_path: Path, logger: Logger
+) -> dict[str, Any]:
+    # Run the update_firmware_binaries function in a subprocess.
+    # This is a workaround for a conflict between Python's and Go's TLS implementations.
+    # Only one TLS stack can be used per process, and libpixlet (used for rendering apps)
+    # uses Go's TLS stack, which conflicts with Python's requests library that uses
+    # Python's TLS stack.
+    # See: https://github.com/tronbyt/server/issues/344.
+    # Run the update in a subprocess and capture stdout for result transfer
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from tronbyt_server import firmware_utils; "
+                "import logging, sys, json; "
+                "from pathlib import Path;"
+                "logger = logging.getLogger('firmware_update'); "
+                "result = firmware_utils.update_firmware_binaries(Path(sys.argv[1]), logger); "
+                "print(json.dumps(result))"
+            ),
+            str(base_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.stderr:
+        logger.info(f"Firmware update subprocess logs:\n{result.stderr.strip()}")
+
+    # Parse and return the result from stdout
+    return dict(json.loads(result.stdout))
