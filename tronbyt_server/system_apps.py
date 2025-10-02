@@ -119,7 +119,7 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
             mod_time = datetime.fromtimestamp(app.stat().st_mtime)
             app_dict = AppMetadata(
                 name=app_basename,
-                fileName=app_basename,  # Store the actual filename
+                fileName=app.name,  # Store the actual filename with .star extension
                 path=str(app),
                 date=mod_time.strftime("%Y-%m-%d %H:%M"),
             )
@@ -154,8 +154,8 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
             else:
                 app_dict["summary"] = "System App"
 
-            # Always set fileName to the actual file basename (after all updates)
-            app_dict["fileName"] = app_basename
+            # Always set fileName to the actual filename with extension (after all updates)
+            app_dict["fileName"] = app.name
             package_name = app_dict.get("packageName", app_base_path.name)
 
             # Check for a preview in the repo and copy it over to static previews directory
