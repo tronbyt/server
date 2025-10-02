@@ -510,7 +510,7 @@ def get_app_details(user: str, field: Literal["id", "name"], value: str) -> AppM
             return app
         # Also check fileName if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.get("fileName", "")
+            file_name = app.get("fileName") or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
@@ -526,7 +526,7 @@ def get_app_details(user: str, field: Literal["id", "name"], value: str) -> AppM
             return app
         # Also check fileName if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.get("fileName", "")
+            file_name = app.get("fileName") or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
