@@ -8,6 +8,7 @@ import string
 import subprocess
 import time
 import uuid
+from datetime import date, timedelta
 from http import HTTPStatus
 from io import BytesIO
 from operator import itemgetter
@@ -505,8 +506,16 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 app["name"] for app in device.get("apps", {}).values()
             )
 
+        # Mark installed apps and sort so that installed apps appear first
+        for app_metadata in apps_list:
+            app_metadata["is_installed"] = app_metadata["name"] in installed_app_names
+
+        # Also mark installed status for custom apps
+        for app_metadata in custom_apps_list:
+            app_metadata["is_installed"] = app_metadata["name"] in installed_app_names
+
         # Sort apps_list so that installed apps appear first
-        apps_list.sort(key=lambda app: app["name"] not in installed_app_names)
+        apps_list.sort(key=lambda app_metadata: not app_metadata["is_installed"])
 
         return render_template(
             "manager/addapp.html",
@@ -540,7 +549,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
                 )
             )
 
-        app = App(
+        app: App = App(
             name=name,
             iname=iname,
             enabled=False,  # start out false, only set to true after configure is finished
@@ -742,6 +751,13 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
             return redirect(url_for("manager.index"))
     app = g.user["devices"][device_id]["apps"][iname]
+
+    # Set default dates if not already set
+    today = date.today()
+    if not app.get("recurrence_start_date"):
+        app["recurrence_start_date"] = today.strftime("%Y-%m-%d")
+    if not app.get("recurrence_end_date"):
+        app["recurrence_end_date"] = (today + timedelta(days=7)).strftime("%Y-%m-%d")
 
     return render_template(
         "manager/updateapp.html",

@@ -4,42 +4,153 @@
 {% endblock %}
 {% block content %}
 <script>
-function searchApps(inputId, gridId) {
-  var input = document.getElementById(inputId);
-  var filter = input.value.toUpperCase();
-  var l = document.getElementById(gridId);
-  var li = l.getElementsByClassName('app-item');
-
-  // Loop through all list items, and hide those which don't match the search query
-  for (let i = 0; i < li.length; i++) {
-    var item = li[i]
-    var name = item.getAttribute('data-value');
-    if (name.toUpperCase().indexOf(filter) > -1) {
-      item.style.display = "";
-    } else {
-      item.style.display = "none";
-    }
+  function searchApps(searchId) {
+    // Simply call applyFilters which now handles both search and installed filtering
+    applyFilters();
   }
-}
+
+  function toggleInstalledApps(searchId) {
+    applyFilters();
+  }
+
+  function sortApps(searchId) {
+    const sortType = document.getElementById('sort_' + searchId).value;
+    const gridId = searchId.replace('_search', '_app_grid');
+    const grid = document.getElementById(gridId);
+
+    if (grid) {
+      const items = Array.from(grid.getElementsByClassName('app-item'));
+
+      items.sort((a, b) => {
+        switch (sortType) {
+          case 'alphabetical':
+            return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+          case 'rev-alphabetical':
+            return b.getAttribute('data-name').localeCompare(a.getAttribute('data-name'));
+          case 'newest':
+            const dateA = a.getAttribute('data-date') || '';
+            const dateB = b.getAttribute('data-date') || '';
+            const dateComparison = dateB.localeCompare(dateA); // Newest first
+            if (dateComparison === 0) {
+              // If dates are the same, sort alphabetically
+              return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+            }
+            return dateComparison;
+          case 'system':
+          default:
+            // System sort: Installed apps first, then alphabetical A-Z
+            const installedA = a.getAttribute('data-installed') === 'true';
+            const installedB = b.getAttribute('data-installed') === 'true';
+            if (installedA && !installedB) return -1;
+            if (!installedA && installedB) return 1;
+            // If both have same installed status, sort alphabetically
+            return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
+        }
+      });
+
+      // Re-append items in sorted order
+      items.forEach(item => grid.appendChild(item));
+    }
+
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const items = document.querySelectorAll('.app-item');
+
+    items.forEach(item => {
+      const isInstalled = item.getAttribute('data-installed') === 'true';
+      const name = item.getAttribute('data-value');
+      const grid = item.closest('.app-grid');
+
+      if (!grid) return;
+
+      const gridId = grid.id;
+      const searchId = gridId.replace('_app_grid', '_search');
+
+      // Check if item should be hidden by search
+      let shouldHideBySearch = false;
+      const searchInput = document.getElementById(searchId);
+      if (searchInput && searchInput.value) {
+        const filter = searchInput.value.toUpperCase();
+        if (name.toUpperCase().indexOf(filter) === -1) {
+          shouldHideBySearch = true;
+        }
+      }
+
+      // Check if item should be hidden by installed filter
+      let shouldHideByInstalled = false;
+      const hideInstalledCheckbox = document.getElementById('hide_installed_' + searchId);
+      if (hideInstalledCheckbox && hideInstalledCheckbox.checked && isInstalled) {
+        shouldHideByInstalled = true;
+      }
+
+      // Apply visibility logic
+      if (shouldHideBySearch || shouldHideByInstalled) {
+        item.style.display = 'none';
+      } else {
+        item.style.display = '';
+      }
+
+      // Add visual indicator for installed apps
+      if (isInstalled) {
+        item.classList.add('installed');
+      }
+    });
+  }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp', device_id=device['id']) }}">{{ _('Upload .star file') }}</a>
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp', device_id=device['id']) }}">{{
+  _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
-  {% macro render_app_list(title, search_id, grid_id, app_list) %}
+  {% macro render_app_list(title, search_id, grid_id, app_list, show_controls=true) %}
   <div class="app-group">
     <h3>{{ title }}</h3>
-    <input type="search" id="{{ search_id }}" placeholder="{{ _('Search apps') }}" onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" />
+
+    {% if show_controls %}
+    <!-- Filter and Sort Controls -->
+    <div class="filter-sort-controls">
+      <div class="filter-sort-controls-inner">
+
+        <input type="search" id="{{ search_id }}" placeholder="{{ _('Search apps') }}"
+          onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" />
+
+        <label class="control-label">
+          <input type="checkbox" id="hide_installed_{{ search_id }}" onchange="toggleInstalledApps('{{ search_id }}')"
+            class="control-checkbox">
+          {{ _('Hide installed apps') }}
+        </label>
+
+        <label for="sort_{{ search_id }}" class="control-label">
+          {{ _('Sort by:') }}
+          <select id="sort_{{ search_id }}" onchange="sortApps('{{ search_id }}')">
+            <option value="newest" selected>{{ _('Newest') }}</option>
+            <option value="system">{{ _('System') }}</option>
+            <option value="alphabetical">{{ _('Alphabetical (A-Z)') }}</option>
+            <option value="rev-alphabetical">{{ _('Alphabetical (Z-A)') }}</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    {% endif %}
+
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item" data-value="{{ app['name'] }}">
+      <div class="app-item" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
+        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}">
+        {% if app.get('is_installed', false) %}
+        <div class="installed-badge">{{ _('Installed') }}</div>
+        {% endif %}
         {% if 'preview' in app %}
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}"
+            alt="{{ app['name'] }}">
         </div>
         {% else %}
         <div>
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}" alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}"
+            alt="{{ app['name'] }}">
         </div>
         {% endif %}
         <p>{{ app['name'] }} - {{ app['summary'] }}</p>
@@ -47,7 +158,8 @@ function searchApps(inputId, gridId) {
         <p>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
         {% if app['path'].startswith("users/") %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{
+          _('Delete') }}</a>
         {% endif %}
       </div>
       {% endfor %}
@@ -56,11 +168,11 @@ function searchApps(inputId, gridId) {
   {% endmacro %}
 
   {% if custom_apps_list %}
-  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list) }}
+  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list, show_controls=false) }}
 
   <hr>
   {% endif %}
-  <p><em>{{ _('Note: Apps already installed on any of your devices appear at the top of the list.') }}</em></p>
+
   {{ render_app_list(_('System Apps'), 'system_search', 'system_app_grid', apps_list) }}
 
   <input type="hidden" name="name" id="selected_app">
@@ -68,7 +180,8 @@ function searchApps(inputId, gridId) {
   <label for="uinterval">{{ _('Render Interval (minutes)') }}</label>
   <input name="uinterval" type="number" id="uinterval" min="0" value="{{ request.form['uinterval'] or 10 }}" required>
   <label for="display_time">{{ _('Display Time (seconds)') }}</label>
-  <input name="display_time" type="number" id="display_time" min="0" value="{{ request.form['display_time'] or 0 }}" required>
+  <input name="display_time" type="number" id="display_time" min="0" value="{{ request.form['display_time'] or 0 }}"
+    required>
 
   <label for="notes">{{ _('Notes') }}</label>
   <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
@@ -88,6 +201,7 @@ function searchApps(inputId, gridId) {
     padding: 10px;
     text-align: center;
     cursor: pointer;
+    position: relative;
   }
 
   .app-item img {
@@ -98,17 +212,104 @@ function searchApps(inputId, gridId) {
   .app-item.selected {
     border-color: #4CAF50;
   }
+
+  .app-item.installed {
+    border-color: #ffa500;
+  }
+
+  .installed-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: #ff9800;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 10;
+  }
+
+  .filter-sort-controls select {
+    padding: 2px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+  }
+
+  .filter-sort-container {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+
+  .filter-sort-wrapper {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .filter-checkbox {
+    margin: 0 !important;
+  }
+
+
+  .filter-sort-controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+
+  .filter-sort-controls-inner {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .control-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .filter-sort-controls input[type="search"] {
+    margin-bottom: 0;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+  }
+
+  .filter-sort-controls .control-checkbox {
+    margin: 0;
+  }
 </style>
 
 <script>
-  document.querySelectorAll('.app-item').forEach(item => {
-    item.addEventListener('click', function () {
-      document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
-      this.classList.add('selected');
-      document.getElementById('selected_app').value = this.getAttribute('data-value');
-      // Submit the form
-      document.getElementById('main_form').submit();
-      // window.scrollTo(0, document.body.scrollHeight);
+  document.addEventListener('DOMContentLoaded', function () {
+    // Initialize filters and sorting for each list
+    const searchIds = ['system_search', 'custom_search'];
+    searchIds.forEach(searchId => {
+      if (document.getElementById(searchId)) {
+        sortApps(searchId);
+      }
+    });
+
+    document.querySelectorAll('.app-item').forEach(item => {
+      item.addEventListener('click', function () {
+        document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
+        this.classList.add('selected');
+        document.getElementById('selected_app').value = this.getAttribute('data-value');
+        // Submit the form
+        document.getElementById('main_form').submit();
+        // window.scrollTo(0, document.body.scrollHeight);
+      });
     });
   });
 </script>
