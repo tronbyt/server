@@ -208,8 +208,6 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
             else:
                 app_dict["summary"] = "System App"
 
-            # Always set fileName to the actual filename with extension (after all updates)
-            app_dict["fileName"] = app.name
             package_name = app_dict.get("packageName", app_base_path.name)
 
             # Check for a preview in the repo and copy it over to static previews directory
