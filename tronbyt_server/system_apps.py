@@ -112,11 +112,65 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
     num_previews = 0
     static_images_path = base_path / "apps"
     os.makedirs(static_images_path, exist_ok=True)
+
+    # Get all git commit dates in a single efficient command
+    git_dates = {}
+    try:
+        # Use git log with --name-only and --diff-filter to get last modification date for each file
+        # This processes all files in one command which is much faster
+        result = subprocess.run(
+            [
+                "git",
+                "log",
+                "--name-only",
+                "--pretty=format:%ci",
+                "--diff-filter=ACMR",
+                "--",
+                "*.star",
+            ],
+            cwd=system_apps_path,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0 and result.stdout:
+            lines = result.stdout.strip().split("\n")
+            current_date = None
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                # Check if this is a date line (contains timezone offset pattern)
+                if len(line) > 20 and line[0:4].isdigit() and line[4] == "-":
+                    try:
+                        # Parse git date format: "2024-03-15 14:30:45 -0700"
+                        git_date_str = line.split()[0:2]
+                        current_date = datetime.strptime(
+                            " ".join(git_date_str), "%Y-%m-%d %H:%M:%S"
+                        )
+                    except (ValueError, IndexError):
+                        pass
+                elif line.endswith(".star") and current_date:
+                    # This is a filename - get just the basename
+                    filename = Path(line).name
+                    # Only store the first (most recent) date we see for each file
+                    if filename not in git_dates:
+                        git_dates[filename] = current_date
+        logger.info(f"Retrieved git commit dates for {len(git_dates)} apps")
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
+        logger.warning(
+            f"Failed to get git dates in bulk, will use file modification times: {e}"
+        )
+
     for app in apps:
         try:
             app_basename = app.stem
-            # Get file modification time
-            mod_time = datetime.fromtimestamp(app.stat().st_mtime)
+            # Use git date if available, otherwise fall back to file modification time
+            if app.name in git_dates:
+                mod_time = git_dates[app.name]
+            else:
+                mod_time = datetime.fromtimestamp(app.stat().st_mtime)
+
             app_dict = AppMetadata(
                 name=app_basename,
                 fileName=app.name,  # Store the actual filename with .star extension
