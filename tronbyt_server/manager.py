@@ -11,6 +11,7 @@ import uuid
 from datetime import date, timedelta
 from http import HTTPStatus
 from io import BytesIO
+from html import escape
 from operator import itemgetter
 from pathlib import Path
 from random import randint
@@ -1431,7 +1432,7 @@ def mark_app_broken(app_name: str) -> ResponseReturnValue:
         current_app.logger.info(f"Marked {app_filename} as broken")
         return {
             "success": True,
-            "message": f"Added {app_filename} to broken_apps.txt",
+            "message": f"Added {escape(app_filename)} to broken_apps.txt",
         }, 200
 
     except Exception as e:
