@@ -1485,7 +1485,7 @@ def unmark_app_broken(app_name: str) -> ResponseReturnValue:
         current_app.logger.info(f"Unmarked {app_filename} as broken")
         return {
             "success": True,
-            "message": f"Removed {app_filename} from broken_apps.txt",
+            "message": f"Removed {escape(app_filename)} from broken_apps.txt",
         }, 200
 
     except Exception as e:
