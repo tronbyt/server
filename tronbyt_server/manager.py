@@ -56,6 +56,58 @@ from tronbyt_server.sync import get_sync_manager
 bp = Blueprint("manager", __name__)
 
 
+def parse_time_input(time_str: str) -> str:
+    """
+    Parse time input in various formats and return as HH:MM string.
+
+    Accepts:
+    - HH:MM format (e.g., "22:00", "6:30")
+    - HHMM format (e.g., "2200", "0630")
+    - H:MM format (e.g., "6:30")
+    - HMM format (e.g., "630")
+
+    Returns:
+    - Time string in HH:MM format
+
+    Raises:
+    - ValueError if the input is invalid
+    """
+    time_str = time_str.strip()
+
+    # Try to parse as HH:MM or H:MM format
+    if ":" in time_str:
+        parts = time_str.split(":")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid time format: {time_str}")
+        hour_str, minute_str = parts
+        hour = int(hour_str)
+        minute = int(minute_str)
+    else:
+        # Parse as HHMM or HMM format
+        if len(time_str) == 4:
+            hour = int(time_str[:2])
+            minute = int(time_str[2:])
+        elif len(time_str) == 3:
+            hour = int(time_str[0])
+            minute = int(time_str[1:])
+        elif len(time_str) == 2:
+            hour = int(time_str)
+            minute = 0
+        elif len(time_str) == 1:
+            hour = int(time_str)
+            minute = 0
+        else:
+            raise ValueError(f"Invalid time format: {time_str}")
+
+    # Validate hour and minute
+    if hour < 0 or hour > 23:
+        raise ValueError(f"Hour must be between 0 and 23: {hour}")
+    if minute < 0 or minute > 59:
+        raise ValueError(f"Minute must be between 0 and 59: {minute}")
+
+    return f"{hour:02d}:{minute:02d}"
+
+
 def git_command(
     command: list[str], cwd: Optional[Path] = None, check: bool = False
 ) -> subprocess.CompletedProcess[bytes]:
@@ -389,10 +441,10 @@ def update(device_id: str) -> ResponseReturnValue:
                 device["night_brightness"] = db.ui_scale_to_percent(ui_night_brightness)
             night_start = request.form.get("night_start")
             if night_start:
-                device["night_start"] = int(night_start)
+                device["night_start"] = parse_time_input(night_start)
             night_end = request.form.get("night_end")
             if night_end:
-                device["night_end"] = int(night_end)
+                device["night_end"] = parse_time_input(night_end)
             night_mode_app = request.form.get("night_mode_app")
             if night_mode_app:
                 device["night_mode_app"] = night_mode_app
@@ -439,6 +491,12 @@ def update(device_id: str) -> ResponseReturnValue:
         ui_device["night_brightness"] = db.percent_to_ui_scale(
             ui_device["night_brightness"]
         )
+
+    # Convert legacy integer time format to HH:MM for display
+    if "night_start" in ui_device and isinstance(ui_device["night_start"], int):
+        ui_device["night_start"] = f"{ui_device['night_start']:02d}:00"
+    if "night_end" in ui_device and isinstance(ui_device["night_end"], int):
+        ui_device["night_end"] = f"{ui_device['night_end']:02d}:00"
 
     return render_template(
         "manager/update.html",

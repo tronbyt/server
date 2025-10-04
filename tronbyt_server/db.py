@@ -298,20 +298,48 @@ def get_night_mode_is_active(device: Device) -> bool:
         return False
 
     # get_device_timezone will always return a valid tz string
-    current_hour = datetime.now(get_device_timezone(device)).hour
+    now = datetime.now(get_device_timezone(device))
+    current_time_minutes = now.hour * 60 + now.minute
+
+    # Parse start and end times
+    start_time = device.get("night_start")
+    end_time = device.get("night_end")
+
+    # Handle legacy integer format (hours only) and convert to HH:MM
+    if isinstance(start_time, int):
+        if start_time < 0:
+            return False
+        start_time = f"{start_time:02d}:00"
+    elif not start_time:
+        return False
+
+    if isinstance(end_time, int):
+        end_time = f"{end_time:02d}:00"
+    elif not end_time:
+        end_time = "06:00"  # default to 6 am if not set
+
+    # Parse time strings to minutes since midnight
+    try:
+        start_parts = start_time.split(":")
+        start_minutes = int(start_parts[0]) * 60 + int(start_parts[1])
+
+        end_parts = end_time.split(":")
+        end_minutes = int(end_parts[0]) * 60 + int(end_parts[1])
+    except (ValueError, IndexError, AttributeError):
+        current_app.logger.warning(
+            f"Invalid night mode time format: start={start_time}, end={end_time}"
+        )
+        return False
 
     # Determine if night mode is active
-    start_hour = device.get("night_start", -1)
-    if start_hour > -1:
-        end_hour = device.get("night_end", 6)  # default to 6 am if not set
-        if start_hour <= end_hour:  # Normal case (e.g., 9 to 17)
-            if start_hour <= current_hour < end_hour:
-                current_app.logger.debug("Night mode active")
-                return True
-        else:  # Wrapped case (e.g., 22 to 7 - overnight)
-            if current_hour >= start_hour or current_hour < end_hour:
-                current_app.logger.debug("Night mode active")
-                return True
+    if start_minutes <= end_minutes:  # Normal case (e.g., 9:00 to 17:00)
+        if start_minutes <= current_time_minutes < end_minutes:
+            current_app.logger.debug("Night mode active")
+            return True
+    else:  # Wrapped case (e.g., 22:00 to 7:00 - overnight)
+        if current_time_minutes >= start_minutes or current_time_minutes < end_minutes:
+            current_app.logger.debug("Night mode active")
+            return True
 
     return False
 

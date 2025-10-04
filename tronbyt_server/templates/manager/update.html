@@ -290,14 +290,17 @@
     </div>
 
     <div class="form-group">
-      <label for="night_start">{{ _('Night Start Hour (24hr)') }}</label>
-      <input type="number" name="night_start" id="night_start" min="0" max="24"
-        value="{{ device.get('night_start', 22) }}">
+      <label for="night_start">{{ _('Night Start Time (24hr)') }}</label>
+      <input type="text" name="night_start" id="night_start" placeholder="22:00 or 2200"
+        value="{{ device.get('night_start', '22:00') }}" pattern="^([0-1]?[0-9]|2[0-3]):?[0-5][0-9]$">
+      <small>{{ _('Enter time as HH:MM or HHMM (e.g., 22:00 or 2200)') }}</small>
     </div>
 
     <div class="form-group">
-      <label for="night_end">{{ _('Night End Hour (24hr)') }}</label>
-      <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device.get('night_end', 6) }}">
+      <label for="night_end">{{ _('Night End Time (24hr)') }}</label>
+      <input type="text" name="night_end" id="night_end" placeholder="06:00 or 0600"
+        value="{{ device.get('night_end', '06:00') }}" pattern="^([0-1]?[0-9]|2[0-3]):?[0-5][0-9]$">
+      <small>{{ _('Enter time as HH:MM or HHMM (e.g., 06:00 or 0600)') }}</small>
     </div>
 
     <div class="form-group">
