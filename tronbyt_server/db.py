@@ -504,16 +504,36 @@ def get_app_details(user: str, field: Literal["id", "name"], value: str) -> AppM
     # first look for the app name in the custom apps
     custom_apps = get_apps_list(user)
     for app in custom_apps:
-        if app[field] == value:
+        if app.get(field) == value:
             # we found it
             current_app.logger.debug(f"returning details for {app}")
             return app
+        # Also check fileName if looking up by name (with or without .star extension)
+        if field == "name":
+            file_name = app.get("fileName") or ""
+            # Check both with and without .star extension
+            file_name_base = file_name.removesuffix(".star")
+            if file_name == value or file_name_base == value:
+                current_app.logger.debug(
+                    f"returning details for {app} (matched by fileName)"
+                )
+                return app
     # if we get here then the app is not in custom apps
     # so we need to look in the system-apps directory
     apps = get_apps_list("system")
     for app in apps:
-        if app[field] == value:
+        if app.get(field) == value:
             return app
+        # Also check fileName if looking up by name (with or without .star extension)
+        if field == "name":
+            file_name = app.get("fileName") or ""
+            # Check both with and without .star extension
+            file_name_base = file_name.removesuffix(".star")
+            if file_name == value or file_name_base == value:
+                current_app.logger.debug(
+                    f"returning details for {app} (matched by fileName)"
+                )
+                return app
     return {}
 
 

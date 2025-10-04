@@ -13,6 +13,10 @@
     applyFilters();
   }
 
+  function toggleBrokenApps(searchId) {
+    applyFilters();
+  }
+
   function sortApps(searchId) {
     const sortType = document.getElementById('sort_' + searchId).value;
     const gridId = searchId.replace('_search', '_app_grid');
@@ -60,6 +64,7 @@
 
     items.forEach(item => {
       const isInstalled = item.getAttribute('data-installed') === 'true';
+      const isBroken = item.getAttribute('data-broken') === 'true';
       const name = item.getAttribute('data-value');
       const grid = item.closest('.app-grid');
 
@@ -85,8 +90,15 @@
         shouldHideByInstalled = true;
       }
 
+      // Check if item should be hidden by broken filter
+      let shouldHideByBroken = false;
+      const hideBrokenCheckbox = document.getElementById('hide_broken_' + searchId);
+      if (hideBrokenCheckbox && hideBrokenCheckbox.checked && isBroken) {
+        shouldHideByBroken = true;
+      }
+
       // Apply visibility logic
-      if (shouldHideBySearch || shouldHideByInstalled) {
+      if (shouldHideBySearch || shouldHideByInstalled || shouldHideByBroken) {
         item.style.display = 'none';
       } else {
         item.style.display = '';
@@ -122,11 +134,17 @@
           {{ _('Hide installed apps') }}
         </label>
 
+        <label class="control-label">
+          <input type="checkbox" id="hide_broken_{{ search_id }}" onchange="toggleBrokenApps('{{ search_id }}')"
+            class="control-checkbox" checked>
+          {{ _('Hide broken apps') }}
+        </label>
+
         <label for="sort_{{ search_id }}" class="control-label">
           {{ _('Sort by:') }}
           <select id="sort_{{ search_id }}" onchange="sortApps('{{ search_id }}')">
-            <option value="newest" selected>{{ _('Newest') }}</option>
-            <option value="system">{{ _('System') }}</option>
+            <option value="system" selected>{{ _('Default') }}</option>
+            <option value="newest">{{ _('Newest') }}</option>
             <option value="alphabetical">{{ _('Alphabetical (A-Z)') }}</option>
             <option value="rev-alphabetical">{{ _('Alphabetical (Z-A)') }}</option>
           </select>
@@ -137,29 +155,39 @@
 
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
-        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}">
+      <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
+        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}" data-broken="{{ app.get('broken', false) | lower }}">
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
         {% if 'preview' in app %}
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}"
-            alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}" alt="{{ app['name'] }}" {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
         </div>
         {% else %}
         <div>
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}"
-            alt="{{ app['name'] }}">
+          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}" alt="{{ app['name'] }}" {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
         </div>
         {% endif %}
-        <p>{{ app['name'] }} - {{ app['summary'] }}</p>
+        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
-        <p>{{ _('From') }} {{ app['author'] }}</p>
+        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
-        {% if app['path'].startswith("users/") %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{
-          _('Delete') }}</a>
+        {% if app.get('broken') %}
+        <div style="background-color: #f44336; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 12px; text-align: center; line-height: 1.3; margin-top: 5px;">
+          ❌ {{ _('BROKEN') }}<br>
+          <span style="font-size: 10px; font-weight: normal;">{{ app.get('brokenReason', 'Unknown') }}</span>
+        </div>
+        {% endif %}
+        {% if app.get('path', '').startswith("users/") %}
+        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        {% endif %}
+        {% if config['PRODUCTION'] == '0' and not app.get('path', '').startswith("users/") %}
+          {% if app.get('broken') %}
+          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
+          {% else %}
+          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
+          {% endif %}
         {% endif %}
       </div>
       {% endfor %}
@@ -230,6 +258,16 @@
     z-index: 10;
   }
 
+  .app-item.broken-app {
+    border: 2px solid #f44336;
+    background-color: rgba(244, 67, 54, 0.05);
+    cursor: not-allowed;
+  }
+
+  .app-item.broken-app:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+
   .filter-sort-controls select {
     padding: 2px;
     border: 1px solid #ddd;
@@ -258,7 +296,6 @@
   .filter-checkbox {
     margin: 0 !important;
   }
-
 
   .filter-sort-controls {
     margin-bottom: 20px;
@@ -303,14 +340,77 @@
 
     document.querySelectorAll('.app-item').forEach(item => {
       item.addEventListener('click', function () {
+        // Don't allow clicking on broken apps
+        if (this.classList.contains('broken-app')) {
+          return;
+        }
         document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
         this.classList.add('selected');
         document.getElementById('selected_app').value = this.getAttribute('data-value');
-        // Submit the form
-        document.getElementById('main_form').submit();
-        // window.scrollTo(0, document.body.scrollHeight);
+        // Open the form submission in a new tab
+        const form = document.getElementById('main_form');
+        form.target = '_blank';
+        form.submit();
+        // Reset target so future submissions work normally
+        form.target = '';
       });
     });
   });
+
+  // Function to mark app as broken (development mode only)
+  function markAppAsBroken(appName, event) {
+    // Stop the event from bubbling up to the parent div
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (!confirm("Mark '" + appName + "' as broken? This will add it to broken_apps.txt and prevent it from being installed.")) {
+      return;
+    }
+
+    fetch("{{ url_for('manager.mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+      method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert("App marked as broken successfully!");
+        location.reload();
+      } else {
+        alert("Error: " + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Failed to mark app as broken");
+    });
+  }
+
+  // Function to unmark app as broken (development mode only)
+  function unmarkAppAsBroken(appName, event) {
+    // Stop the event from bubbling up to the parent div
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (!confirm("Unmark '" + appName + "' as broken? This will remove it from broken_apps.txt and allow it to be installed.")) {
+      return;
+    }
+
+    fetch("{{ url_for('manager.unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+      method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert("App unmarked successfully!");
+        location.reload();
+      } else {
+        alert("Error: " + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Failed to unmark app");
+    });
+  }
 </script>
 {% endblock %}

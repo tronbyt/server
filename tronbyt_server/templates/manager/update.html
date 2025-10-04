@@ -160,20 +160,25 @@
 
     // Create Save button
     const saveBtn = document.createElement('button');
-    saveBtn.type = 'submit';
+    saveBtn.type = 'button';
     saveBtn.className = 'w3-button w3-green';
     saveBtn.textContent = '{{ _('Save') }}';
-    saveBtn.form = 'device-form';
+    saveBtn.onclick = function() {
+      form.submit();
+    };
 
     // Create Delete button
     const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'submit';
+    deleteBtn.type = 'button';
     deleteBtn.className = 'w3-button w3-red';
     deleteBtn.textContent = '{{ _('Delete') }}';
-    deleteBtn.form = 'device-form';
-    deleteBtn.formAction = "{{ url_for('manager.delete', device_id=device['id']) }}";
-    deleteBtn.formMethod = 'post';
-    deleteBtn.onclick = function() { return confirm('{{ _('Delete device and ALL apps?') }}'); };
+    deleteBtn.onclick = function() {
+      if (confirm('{{ _('Delete device and ALL apps?') }}')) {
+        form.action = "{{ url_for('manager.delete', device_id=device['id']) }}";
+        form.method = 'post';
+        form.submit();
+      }
+    };
 
     headerButtons.appendChild(saveBtn);
     headerButtons.appendChild(deleteBtn);

@@ -613,19 +613,32 @@
     resetButton.style.minWidth = "10em";
     buttonContainer.appendChild(resetButton);
 
-    const cancelButton = document.createElement("input");
+    const cancelButton = document.createElement("button");
     cancelButton.id = "cancelButton";
     cancelButton.className = "w3-button w3-red";
-    cancelButton.type = "submit";
+    cancelButton.type = "button";
+    cancelButton.textContent = "{{ _('Cancel') }}";
 
-    {% if delete_on_cancel == 1 %}
-    cancelButton.formAction = "{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname']) }}";
-    cancelButton.formMethod = "post";
-    {% else %}
-    cancelButton.formAction = "{{ url_for('manager.index') }}";
-    cancelButton.formMethod = "get";
-    {% endif %}
-    cancelButton.value = "{{ _('Cancel') }}";
+    cancelButton.addEventListener('click', function() {
+      {% if delete_on_cancel == 1 %}
+      // Delete the app via fetch, then close the tab
+      fetch("{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname']) }}", {
+        method: 'GET'
+      }).then(() => {
+        window.close();
+      }).catch(() => {
+        // If fetch fails or window.close() doesn't work, redirect
+        window.location.href = "{{ url_for('manager.addapp', device_id=device['id']) }}";
+      });
+      {% else %}
+      // Just close the tab or go back to index
+      if (window.opener) {
+        window.close();
+      } else {
+        window.location.href = "{{ url_for('manager.index') }}";
+      }
+      {% endif %}
+    });
 
     buttonContainer.appendChild(cancelButton);
 
@@ -666,7 +679,18 @@
       }).then(response => {
         if (response.ok) {
           console.log("Form submitted successfully");
+          {% if delete_on_cancel == 1 %}
+          // If opened from add app screen (new tab), close the tab
+          if (window.opener) {
+            window.close();
+          } else {
+            // Fallback if window.close() doesn't work
+            window.location.href = "{{ url_for('manager.index') }}";
+          }
+          {% else %}
+          // Normal redirect for existing apps
           window.location.href = response.url;
+          {% endif %}
         } else {
           console.error("Form submission failed");
         }

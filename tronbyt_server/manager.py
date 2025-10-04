@@ -11,6 +11,7 @@ import uuid
 from datetime import date, timedelta
 from http import HTTPStatus
 from io import BytesIO
+from html import escape
 from operator import itemgetter
 from pathlib import Path
 from random import randint
@@ -1384,17 +1385,112 @@ def refresh_system_repo() -> ResponseReturnValue:
     if request.method == "POST":
         if g.user["username"] != "admin":
             abort(HTTPStatus.FORBIDDEN)
-        if set_repo(
-            "system_repo_url",
-            db.get_data_dir() / "system-apps",
-            g.user.get("system_repo_url", ""),
-        ):
-            # run the generate app list for custom repo
-            # will just generate json file if already there.
-            system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
-            return redirect(url_for("manager.index"))
-        return redirect(url_for("auth.edit"))
+        # Directly update the system repo - it handles git pull internally
+        system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
+        flash("System repo updated successfully")
+        return redirect(url_for("manager.index"))
     abort(HTTPStatus.NOT_FOUND)
+
+
+@bp.route("/mark_app_broken/<string:app_name>", methods=["POST"])
+@login_required
+def mark_app_broken(app_name: str) -> ResponseReturnValue:
+    """Mark an app as broken by adding it to broken_apps.txt (development mode only)."""
+    # Only allow in development mode
+    if current_app.config.get("PRODUCTION") != "0":
+        return {"success": False, "message": "Only available in development mode"}, 403
+
+    # Only allow admin users
+    if g.user["username"] != "admin":
+        return {"success": False, "message": "Admin access required"}, 403
+
+    try:
+        # Get the broken_apps.txt path
+        broken_apps_path = db.get_data_dir() / "system-apps" / "broken_apps.txt"
+
+        # Read existing broken apps
+        broken_apps = []
+        if broken_apps_path.exists():
+            broken_apps = broken_apps_path.read_text().splitlines()
+
+        # Add .star extension if not present
+        app_filename = app_name if app_name.endswith(".star") else f"{app_name}.star"
+
+        # Check if already in the list
+        if app_filename in broken_apps:
+            return {"success": False, "message": "App is already marked as broken"}, 400
+
+        # Add to the list
+        broken_apps.append(app_filename)
+
+        # Write back to file
+        broken_apps_path.write_text("\n".join(sorted(broken_apps)) + "\n")
+
+        # Regenerate the apps.json to include the broken flag (without doing git pull)
+        system_apps.generate_apps_json(db.get_data_dir(), current_app.logger)
+
+        current_app.logger.info(f"Marked {app_filename} as broken")
+        return {
+            "success": True,
+            "message": f"Added {escape(app_filename)} to broken_apps.txt",
+        }, 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error marking app as broken: {e}")
+        return {"success": False, "message": str(e)}, 500
+
+
+@bp.route("/unmark_app_broken/<string:app_name>", methods=["POST"])
+@login_required
+def unmark_app_broken(app_name: str) -> ResponseReturnValue:
+    """Remove an app from broken_apps.txt (development mode only)."""
+    # Only allow in development mode
+    if current_app.config.get("PRODUCTION") != "0":
+        return {"success": False, "message": "Only available in development mode"}, 403
+
+    # Only allow admin users
+    if g.user["username"] != "admin":
+        return {"success": False, "message": "Admin access required"}, 403
+
+    try:
+        # Get the broken_apps.txt path
+        broken_apps_path = db.get_data_dir() / "system-apps" / "broken_apps.txt"
+
+        # Read existing broken apps
+        if not broken_apps_path.exists():
+            return {"success": False, "message": "No broken apps file found"}, 404
+
+        broken_apps = broken_apps_path.read_text().splitlines()
+
+        # Add .star extension if not present
+        app_filename = app_name if app_name.endswith(".star") else f"{app_name}.star"
+
+        # Check if in the list
+        if app_filename not in broken_apps:
+            return {"success": False, "message": "App is not marked as broken"}, 400
+
+        # Remove from the list
+        broken_apps.remove(app_filename)
+
+        # Write back to file
+        if broken_apps:
+            broken_apps_path.write_text("\n".join(sorted(broken_apps)) + "\n")
+        else:
+            # If no broken apps left, write empty file
+            broken_apps_path.write_text("")
+
+        # Regenerate the apps.json to remove the broken flag (without doing git pull)
+        system_apps.generate_apps_json(db.get_data_dir(), current_app.logger)
+
+        current_app.logger.info(f"Unmarked {app_filename} as broken")
+        return {
+            "success": True,
+            "message": f"Removed {escape(app_filename)} from broken_apps.txt",
+        }, 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error unmarking app: {e}")
+        return {"success": False, "message": str(e)}, 500
 
 
 @bp.route("/update_firmware", methods=["POST"])

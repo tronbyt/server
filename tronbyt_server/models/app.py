@@ -58,3 +58,5 @@ class AppMetadata(TypedDict, total=False):
     display_time: int  # Display time for the app
     notes: str  # User notes for the app
     order: int  # Order in the app list
+    broken: bool
+    brokenReason: Optional[str]
