@@ -5,7 +5,7 @@ on:
     # Publish `main` branch as `latest` tag and track the 'development' branch with its own tag
     branches:
       - main
-      - devel
+      - dev
 
     # Publish `v1.2.3` tags as releases.
     tags:
