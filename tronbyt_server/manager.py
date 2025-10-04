@@ -74,30 +74,39 @@ def parse_time_input(time_str: str) -> str:
     """
     time_str = time_str.strip()
 
-    # Try to parse as HH:MM or H:MM format
-    if ":" in time_str:
-        parts = time_str.split(":")
-        if len(parts) != 2:
-            raise ValueError(f"Invalid time format: {time_str}")
-        hour_str, minute_str = parts
-        hour = int(hour_str)
-        minute = int(minute_str)
-    else:
-        # Parse as HHMM or HMM format
-        if len(time_str) == 4:
-            hour = int(time_str[:2])
-            minute = int(time_str[2:])
-        elif len(time_str) == 3:
-            hour = int(time_str[0])
-            minute = int(time_str[1:])
-        elif len(time_str) == 2:
-            hour = int(time_str)
-            minute = 0
-        elif len(time_str) == 1:
-            hour = int(time_str)
-            minute = 0
+    if not time_str:
+        raise ValueError("Time cannot be empty")
+
+    try:
+        # Try to parse as HH:MM or H:MM format
+        if ":" in time_str:
+            parts = time_str.split(":")
+            if len(parts) != 2:
+                raise ValueError(f"Invalid time format: {time_str}")
+            hour_str, minute_str = parts
+            hour = int(hour_str)
+            minute = int(minute_str)
         else:
-            raise ValueError(f"Invalid time format: {time_str}")
+            # Parse as HHMM or HMM format
+            if len(time_str) == 4:
+                hour = int(time_str[:2])
+                minute = int(time_str[2:])
+            elif len(time_str) == 3:
+                hour = int(time_str[0])
+                minute = int(time_str[1:])
+            elif len(time_str) == 2:
+                hour = int(time_str)
+                minute = 0
+            elif len(time_str) == 1:
+                hour = int(time_str)
+                minute = 0
+            else:
+                raise ValueError(f"Invalid time format: {time_str}")
+    except ValueError as e:
+        # Re-raise with more context if it's a conversion error
+        if "invalid literal" in str(e):
+            raise ValueError(f"Time must contain only numbers: {time_str}")
+        raise
 
     # Validate hour and minute
     if hour < 0 or hour > 23:
@@ -441,10 +450,16 @@ def update(device_id: str) -> ResponseReturnValue:
                 device["night_brightness"] = db.ui_scale_to_percent(ui_night_brightness)
             night_start = request.form.get("night_start")
             if night_start:
-                device["night_start"] = parse_time_input(night_start)
+                try:
+                    device["night_start"] = parse_time_input(night_start)
+                except ValueError as e:
+                    flash(f"Invalid Night Start Time: {e}")
             night_end = request.form.get("night_end")
             if night_end:
-                device["night_end"] = parse_time_input(night_end)
+                try:
+                    device["night_end"] = parse_time_input(night_end)
+                except ValueError as e:
+                    flash(f"Invalid Night End Time: {e}")
             night_mode_app = request.form.get("night_mode_app")
             if night_mode_app:
                 device["night_mode_app"] = night_mode_app
@@ -453,7 +468,10 @@ def update(device_id: str) -> ResponseReturnValue:
             # Note: Dim mode ends at night_end time (if set) or 6:00 AM by default
             dim_time = request.form.get("dim_time")
             if dim_time and dim_time.strip():
-                device["dim_time"] = parse_time_input(dim_time)
+                try:
+                    device["dim_time"] = parse_time_input(dim_time)
+                except ValueError as e:
+                    flash(f"Invalid Dim Time: {e}")
             elif "dim_time" in device:
                 # Remove dim_time if the field is empty
                 del device["dim_time"]
