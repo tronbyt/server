@@ -200,6 +200,8 @@
 
   <div style="display: flex; gap: 10px; margin-top: 20px;">
     <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
+    <input type="submit" class="w3-button w3-blue w3-round" name="force_render" value="{{ _('Force Render') }}"
+      onclick="this.value='{{ _('Rendering...') }}'">
     <input type="submit" class="w3-button w3-red w3-round"
       formaction="{{ url_for('manager.deleteapp', device_id=device_id,iname=app['iname']) }}" formmethod="post"
       onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}">

@@ -148,6 +148,7 @@ def render_app(
     timeout: int,
     image_format: int,
     logger: Logger,
+    use_cache: int = 1,
 ) -> Tuple[Optional[bytes], List[str]]:
     initialize_pixlet_library(logger)
     if not pixlet_render_app:
@@ -162,7 +163,7 @@ def render_app(
         maxDuration,
         timeout,
         image_format,
-        1,
+        use_cache,
         None,
     )
     error = c_char_p_to_string(ret.error)

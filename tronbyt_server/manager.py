@@ -749,7 +749,38 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             app["enabled"] = enabled
             db.save_user(user)
 
-            return redirect(url_for("manager.index"))
+            # Check if force render was requested
+            force_render = "force_render" in request.form
+            if force_render:
+                # Force render with fresh HTTP data (bypass cache)
+                now = int(time.time())
+                app_basename = "{}-{}".format(app["name"], app["iname"])
+                webp_device_path = db.get_device_webp_dir(device_id)
+                webp_device_path.mkdir(parents=True, exist_ok=True)
+                webp_path = webp_device_path / f"{app_basename}.webp"
+                app_path = Path(app["path"])
+                device = user["devices"][device_id]
+                config = app.get("config", {}).copy()
+                add_default_config(config, device)
+
+                try:
+                    image = render_app(app_path, config, webp_path, device, app, use_cache=False)
+                    if image is not None:
+                        app["empty_last_render"] = len(image) == 0
+                        app["last_render"] = now
+                        db.save_app(device_id, app)
+                        flash("App rendered successfully!")
+                    else:
+                        flash("Error rendering app")
+                except Exception as e:
+                    current_app.logger.error(f"Exception during force render: {str(e)}")
+                    flash("Error rendering app")
+
+                # Stay on same page to see results
+                return redirect(url_for("manager.updateapp", device_id=device_id, iname=iname))
+            else:
+                # Regular save - go back to main page
+                return redirect(url_for("manager.index"))
     app = g.user["devices"][device_id]["apps"][iname]
 
     # Set default dates if not already set
@@ -853,6 +884,7 @@ def render_app(
     webp_path: Optional[Path],
     device: Device,
     app: Optional[App],
+    use_cache: bool = True,
 ) -> Optional[bytes]:
     """Renders a pixlet app to a webp image.
 
@@ -899,6 +931,7 @@ def render_app(
         timeout=30000,
         image_format=0,  # 0 == WebP
         logger=current_app.logger,
+        use_cache=1 if use_cache else 0,
     )
     # Ensure messages is always a list
     messages = (
