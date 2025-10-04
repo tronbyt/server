@@ -344,11 +344,74 @@ def get_night_mode_is_active(device: Device) -> bool:
     return False
 
 
+def get_dim_mode_is_active(device: Device) -> bool:
+    """Check if dim mode is active (dimming without full night mode)."""
+    dim_time = device.get("dim_time")
+    if not dim_time:
+        return False
+
+    # get_device_timezone will always return a valid tz string
+    now = datetime.now(get_device_timezone(device))
+    current_time_minutes = now.hour * 60 + now.minute
+
+    # Parse dim start time string to minutes since midnight
+    try:
+        dim_parts = dim_time.split(":")
+        dim_start_minutes = int(dim_parts[0]) * 60 + int(dim_parts[1])
+    except (ValueError, IndexError, AttributeError):
+        current_app.logger.warning(f"Invalid dim time format: {dim_time}")
+        return False
+
+    # Determine dim end time using night_end (if set) or default to 6am
+    dim_end_minutes = None
+
+    # Check if night_end is set (regardless of whether night mode is enabled)
+    night_end = device.get("night_end")
+    if night_end:
+        # Handle legacy integer format
+        if isinstance(night_end, int):
+            if night_end >= 0:
+                dim_end_minutes = night_end * 60
+        else:
+            try:
+                night_end_parts = night_end.split(":")
+                dim_end_minutes = int(night_end_parts[0]) * 60 + int(night_end_parts[1])
+            except (ValueError, IndexError, AttributeError):
+                pass
+
+    # If no night_end, default to 6am (360 minutes)
+    if dim_end_minutes is None:
+        dim_end_minutes = 6 * 60
+
+    # Check if current time is within dim period
+    if dim_start_minutes <= dim_end_minutes:  # Normal case (e.g., 20:00 to 22:00)
+        if dim_start_minutes <= current_time_minutes < dim_end_minutes:
+            current_app.logger.debug(
+                f"Dim mode active (normal case): {dim_start_minutes} <= {current_time_minutes} < {dim_end_minutes}"
+            )
+            return True
+    else:  # Wrapped case (e.g., 22:00 to 06:00 - overnight)
+        if (
+            current_time_minutes >= dim_start_minutes
+            or current_time_minutes < dim_end_minutes
+        ):
+            current_app.logger.debug(
+                f"Dim mode active (wrapped case): {current_time_minutes} >= {dim_start_minutes} or < {dim_end_minutes}"
+            )
+            return True
+
+    return False
+
+
 # Get the brightness percentage value to send to firmware
 def get_device_brightness_8bit(device: Device) -> int:
+    # Priority: night mode > dim mode > normal brightness
     # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
         return device.get("night_brightness", 1)
+    # If we're in dim mode (but not night mode), use dim_brightness
+    elif get_dim_mode_is_active(device):
+        return device.get("dim_brightness", device.get("brightness", 50))
     else:
         return device.get("brightness", 50)
 

@@ -448,6 +448,21 @@ def update(device_id: str) -> ResponseReturnValue:
             night_mode_app = request.form.get("night_mode_app")
             if night_mode_app:
                 device["night_mode_app"] = night_mode_app
+
+            # Handle dim time and dim brightness
+            # Note: Dim mode ends at night_end time (if set) or 6:00 AM by default
+            dim_time = request.form.get("dim_time")
+            if dim_time and dim_time.strip():
+                device["dim_time"] = parse_time_input(dim_time)
+            elif "dim_time" in device:
+                # Remove dim_time if the field is empty
+                del device["dim_time"]
+
+            dim_brightness = request.form.get("dim_brightness")
+            if dim_brightness:
+                ui_dim_brightness = int(dim_brightness)
+                device["dim_brightness"] = db.ui_scale_to_percent(ui_dim_brightness)
+
             locationJSON = request.form.get("location")
             if locationJSON and locationJSON != "{}":
                 try:
@@ -490,6 +505,10 @@ def update(device_id: str) -> ResponseReturnValue:
     if "night_brightness" in ui_device:
         ui_device["night_brightness"] = db.percent_to_ui_scale(
             ui_device["night_brightness"]
+        )
+    if "dim_brightness" in ui_device:
+        ui_device["dim_brightness"] = db.percent_to_ui_scale(
+            ui_device["dim_brightness"]
         )
 
     # Convert legacy integer time format to HH:MM for display

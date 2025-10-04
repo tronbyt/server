@@ -32,6 +32,8 @@ class Device(TypedDict, total=False):
     night_start: Union[int, str]  # Time in HH:MM format or legacy int (hour only)
     night_end: Union[int, str]  # Time in HH:MM format or legacy int (hour only)
     night_brightness: int  # Percentage-based night brightness (0-100)
+    dim_time: str  # Time in HH:MM format when dimming should start
+    dim_brightness: int  # Percentage-based dim brightness (0-100)
     default_interval: int
     timezone: str
     location: Optional[Location]
