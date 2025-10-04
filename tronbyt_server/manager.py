@@ -753,29 +753,10 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             force_render = "force_render" in request.form
             if force_render:
                 # Force render with fresh HTTP data (bypass cache)
-                now = int(time.time())
-                app_basename = "{}-{}".format(app["name"], app["iname"])
-                webp_device_path = db.get_device_webp_dir(device_id)
-                webp_device_path.mkdir(parents=True, exist_ok=True)
-                webp_path = webp_device_path / f"{app_basename}.webp"
-                app_path = Path(app["path"])
-                device = user["devices"][device_id]
-                config = app.get("config", {}).copy()
-                add_default_config(config, device)
-
-                try:
-                    image = render_app(app_path, config, webp_path, device, app, use_cache=False)
-                    if image is not None:
-                        app["empty_last_render"] = len(image) == 0
-                        app["last_render"] = now
-                        db.save_app(device_id, app)
-                        flash("App rendered successfully!")
-                    else:
-                        flash("Error rendering app")
-                except Exception as e:
-                    current_app.logger.error(f"Exception during force render: {str(e)}")
+                if force_render_app(user, device_id, app):
+                    flash("App rendered successfully!")
+                else:
                     flash("Error rendering app")
-
                 # Stay on same page to see results
                 return redirect(url_for("manager.updateapp", device_id=device_id, iname=iname))
             else:
@@ -976,11 +957,8 @@ def ws_root() -> str:
     return url
 
 
-# render if necessary, returns false on failure, true for all else
-def possibly_render(user: User, device_id: str, app: App) -> bool:
-    if app.get("pushed", False):
-        current_app.logger.debug("Pushed App -- NO RENDER")
-        return True
+def _render_app_core(user: User, device_id: str, app: App, use_cache: bool = True) -> bool:
+    """Core rendering logic shared between force render and scheduled render."""
     now = int(time.time())
     app_basename = "{}-{}".format(app["name"], app["iname"])
     webp_device_path = db.get_device_webp_dir(device_id)
@@ -988,25 +966,45 @@ def possibly_render(user: User, device_id: str, app: App) -> bool:
     webp_path = webp_device_path / f"{app_basename}.webp"
     app_path = Path(app["path"])
 
-    if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
-        current_app.logger.debug(f"RENDERING -- {app_basename}")
-        device = user["devices"][device_id]
-        config = app.get("config", {}).copy()
-        add_default_config(config, device)
-        image = render_app(app_path, config, webp_path, device, app)
+    current_app.logger.debug(f"RENDERING -- {app_basename}")
+    device = user["devices"][device_id]
+    config = app.get("config", {}).copy()
+    add_default_config(config, device)
+
+    try:
+        image = render_app(app_path, config, webp_path, device, app, use_cache=use_cache)
         if image is None:
             current_app.logger.error(f"Error rendering {app_basename}")
-        # set the empty flag in the app whilst keeping last render image
-        app["empty_last_render"] = len(image) == 0 if image is not None else False
-        # always update the config with the new last render time
+            return False
+
+        # Update render info
+        app["empty_last_render"] = len(image) == 0
         app["last_render"] = now
-        # we save app here in case empty_last_render is set, it needs saving and next app won't have a chance to save it
         db.save_app(device_id, app)
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Exception during render: {str(e)}")
+        return False
 
-        return image is not None  # return false if error
 
-    current_app.logger.debug(f"{app_basename} -- NO RENDER")
+# render if necessary, returns false on failure, true for all else
+def possibly_render(user: User, device_id: str, app: App) -> bool:
+    if app.get("pushed", False):
+        current_app.logger.debug("Pushed App -- NO RENDER")
+        return True
+
+    now = int(time.time())
+    if now - app.get("last_render", 0) > int(app["uinterval"]) * 60:
+        return _render_app_core(user, device_id, app, use_cache=True)
+
+    current_app.logger.debug(f"{app['name']}-{app['iname']} -- NO RENDER")
     return True
+
+
+def force_render_app(user: User, device_id: str, app: App) -> bool:
+    """Force render an app immediately, bypassing time checks and cache."""
+    current_app.logger.debug(f"FORCE RENDERING -- {app['name']}-{app['iname']}")
+    return _render_app_core(user, device_id, app, use_cache=False)
 
 
 @bp.route("/<string:device_id>/firmware", methods=["POST", "GET"])
