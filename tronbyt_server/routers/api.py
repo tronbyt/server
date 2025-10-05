@@ -76,29 +76,29 @@ def get_device(
 
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
-
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     api_key = (
         authorization.split(" ")[1]
         if authorization.startswith("Bearer ")
         else authorization
     )
-    user_api_key_matches = user.api_key and user.api_key == api_key
-    device_api_key_matches = device.api_key and device.api_key == api_key
-    if not user_api_key_matches and not device_api_key_matches:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    return get_device_payload(device)
+    user = db.get_user_by_api_key(db_conn, api_key)
+    if user:
+        device = user.devices.get(device_id)
+        if device:
+            return get_device_payload(device)
+
+    device = db.get_device_by_id(db_conn, device_id)
+    if device and device.api_key == api_key:
+        return get_device_payload(device)
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+    )
 
 
 @router.patch("/devices/{device_id}")

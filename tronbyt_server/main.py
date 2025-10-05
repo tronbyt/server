@@ -39,7 +39,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     system_apps.update_system_repo(db.get_data_dir(), logger)
     yield
     # Shutdown
-    pass
+    from tronbyt_server.sync import get_sync_manager
+
+    get_sync_manager(logger).shutdown()
 
 
 app = FastAPI(lifespan=lifespan)

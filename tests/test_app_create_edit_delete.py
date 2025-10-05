@@ -1,9 +1,12 @@
+import sqlite3
 from fastapi.testclient import TestClient
 from tests import utils
 from tronbyt_server import db
 
 
-def test_app_create_edit_config_delete(auth_client: TestClient) -> None:
+def test_app_create_edit_config_delete(
+    auth_client: TestClient, db_connection: sqlite3.Connection
+) -> None:
     response = auth_client.post(
         "/create",
         data={
@@ -16,7 +19,7 @@ def test_app_create_edit_config_delete(auth_client: TestClient) -> None:
         follow_redirects=False,
     )
     assert response.status_code == 302
-    user = utils.get_testuser()
+    user = utils.get_testuser(db_connection)
     device_id = list(user.devices.keys())[0]
 
     r = auth_client.get(f"/{device_id}/addapp")
@@ -34,7 +37,7 @@ def test_app_create_edit_config_delete(auth_client: TestClient) -> None:
     )
     assert r.status_code == 302
 
-    user = utils.get_testuser()
+    user = utils.get_testuser(db_connection)
     assert len(user.devices[device_id].apps) == 1
 
     device_id = list(user.devices.keys())[0]
@@ -53,7 +56,7 @@ def test_app_create_edit_config_delete(auth_client: TestClient) -> None:
     )
     assert r.status_code == 200
 
-    user = utils.get_testuser()
+    user = utils.get_testuser(db_connection)
     app_id = list(user.devices[device_id].apps.keys())[0]
     test_app = user.devices[device_id].apps[app_id]
     assert test_app.name == "NOAA Tides"
@@ -77,7 +80,7 @@ def test_app_create_edit_config_delete(auth_client: TestClient) -> None:
     )
     assert r.status_code == 302
 
-    user = utils.get_testuser()
+    user = utils.get_testuser(db_connection)
     test_app = user.devices[device_id].apps[app_id]
 
     assert test_app.uinterval == 69
@@ -86,7 +89,7 @@ def test_app_create_edit_config_delete(auth_client: TestClient) -> None:
 
     auth_client.get(f"/{device_id}/{app_id}/delete")
 
-    user = utils.get_testuser()
+    user = utils.get_testuser(db_connection)
     assert app_id not in user.devices[device_id].apps
 
     db.delete_device_dirs(device_id)
