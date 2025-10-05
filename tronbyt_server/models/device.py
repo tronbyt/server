@@ -1,7 +1,7 @@
 """Data models and validation functions for devices in Tronbyt Server."""
 
 import re
-from typing import Dict, Optional, Required, TypedDict
+from typing import Dict, Optional, Required, TypedDict, Union
 from zoneinfo import ZoneInfo
 
 from tronbyt_server.models.app import App
@@ -29,9 +29,11 @@ class Device(TypedDict, total=False):
     brightness: int  # Percentage-based brightness (0-100)
     night_mode_enabled: bool
     night_mode_app: str
-    night_start: int
-    night_end: int
+    night_start: Union[int, str]  # Time in HH:MM format or legacy int (hour only)
+    night_end: Union[int, str]  # Time in HH:MM format or legacy int (hour only)
     night_brightness: int  # Percentage-based night brightness (0-100)
+    dim_time: str  # Time in HH:MM format when dimming should start
+    dim_brightness: int  # Percentage-based dim brightness (0-100)
     default_interval: int
     timezone: str
     location: Optional[Location]
