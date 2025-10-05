@@ -582,9 +582,12 @@ async def uploadapp_post(
     app_subdir.mkdir(parents=True, exist_ok=True)
 
     if not await db.save_user_app(file, app_subdir):
-        flash(request, "Save Failed")
-        return RedirectResponse(
-            url=f"/{device_id}/uploadapp", status_code=status.HTTP_302_FOUND
+        flash(request, "File type not allowed")
+        return templates.TemplateResponse(
+            request,
+            "manager/uploadapp.html",
+            {"device_id": device_id, "user": user},
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     flash(request, "Upload Successful")

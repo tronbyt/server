@@ -1,8 +1,11 @@
+import sqlite3
 from fastapi.testclient import TestClient
 from tests import utils
 
 
-def test_device_operations(auth_client: TestClient) -> None:
+def test_device_operations(
+    auth_client: TestClient, db_connection: sqlite3.Connection
+) -> None:
     r = auth_client.get("/create")
     assert r.status_code == 200
 
@@ -18,7 +21,7 @@ def test_device_operations(auth_client: TestClient) -> None:
         follow_redirects=False,
     )
     assert r.status_code == 302
-    user = utils.get_testuser()
+    user = utils.get_testuser(db_connection)
     device_id = list(user.devices.keys())[0]
     assert user.devices[device_id].name == "TESTDEVICE"
 

@@ -1,3 +1,4 @@
+import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 
@@ -6,7 +7,7 @@ from tests import utils
 
 
 @pytest.fixture
-def device_user(auth_client: TestClient) -> User:
+def device_user(auth_client: TestClient, db_connection: sqlite3.Connection) -> User:
     """Fixture to create a user with a device."""
     response = auth_client.post(
         "/create",
@@ -19,7 +20,7 @@ def device_user(auth_client: TestClient) -> User:
         },
     )
     assert response.status_code == 200
-    return utils.get_testuser()
+    return utils.get_testuser(db_connection)
 
 
 class TestDevicesEndpoint:
@@ -64,9 +65,11 @@ class TestDevicesEndpoint:
         assert response.status_code == 401
         assert "Invalid credentials" in response.text
 
-    def test_list_devices_empty_devices(self, auth_client: TestClient) -> None:
+    def test_list_devices_empty_devices(
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
+    ) -> None:
         """Test listing devices when user has no devices"""
-        user = utils.get_testuser()
+        user = utils.get_testuser(db_connection)
         api_key = user.api_key
         response = auth_client.get(
             "/v0/devices", headers={"Authorization": f"Bearer {api_key}"}
@@ -111,15 +114,28 @@ class TestDeviceEndpoint:
         assert data["id"] == device_id
 
     def test_get_device_not_found(
-        self, auth_client: TestClient, device_user: User
+        self,
+        auth_client: TestClient,
+        device_user: User,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Test device retrieval for non-existent device"""
-        api_key = device_user.api_key
-        response = auth_client.get(
-            "/v0/devices/nonexistent",
-            headers={"Authorization": f"Bearer {api_key}"},
+        # Create a second user to get a different API key
+        response = auth_client.post(
+            "/auth/register",
+            data={"username": "testuser2", "password": "password"},
+            follow_redirects=False,
         )
-        assert response.status_code == 400
+        assert response.status_code == 302
+        user2 = utils.get_user_by_username(db_connection, "testuser2")
+        assert user2 is not None
+
+        device_id = list(device_user.devices.keys())[0]
+        response = auth_client.get(
+            f"/v0/devices/{device_id}",
+            headers={"Authorization": f"Bearer {user2.api_key}"},
+        )
+        assert response.status_code == 404
 
     def test_get_device_invalid_id_format(
         self, auth_client: TestClient, device_user: User

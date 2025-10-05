@@ -8,13 +8,15 @@ from fastapi.testclient import TestClient
 import shutil
 
 from tronbyt_server.main import app as fastapi_app
-from tronbyt_server.db import init_db
+from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import settings
 
 
-@pytest.fixture()
-def app(tmp_path: Path) -> Iterator[FastAPI]:
-    # clean up / reset resources here
+@pytest.fixture(scope="session")
+def db_connection(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Iterator[sqlite3.Connection]:
+    tmp_path = tmp_path_factory.mktemp("data")
     db_path = tmp_path / "testdb.sqlite"
     db_path.unlink(missing_ok=True)
 
@@ -23,12 +25,41 @@ def app(tmp_path: Path) -> Iterator[FastAPI]:
     settings.USERS_DIR = str(tmp_path / "users")
     settings.ENABLE_USER_REGISTRATION = "1"
 
-    # Initialize the database
-    conn = sqlite3.connect(settings.DB_FILE)
-    with conn:
-        init_db(conn)
+    with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
+        yield conn
+
+
+@pytest.fixture(scope="session")
+def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
+    def get_db_override() -> sqlite3.Connection:
+        return db_connection
+
+    fastapi_app.dependency_overrides[get_db] = get_db_override
 
     yield fastapi_app
+
+    fastapi_app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
+    yield
+    cursor = db_connection.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = [row[0] for row in cursor.fetchall()]
+    for table in tables:
+        if table != "sqlite_sequence":
+            cursor.execute(f'DELETE FROM "{table}"')
+    db_connection.commit()
+
+
+@pytest.fixture(autouse=True)
+def settings_cleanup() -> Iterator[None]:
+    original_enable_user_registration = settings.ENABLE_USER_REGISTRATION
+    original_max_users = settings.MAX_USERS
+    yield
+    settings.ENABLE_USER_REGISTRATION = original_enable_user_registration
+    settings.MAX_USERS = original_max_users
 
 
 @pytest.fixture()
