@@ -843,6 +843,48 @@ def updateapp(
     )
 
 
+class AppUpdateFormData:
+    """Represents the form data for updating an app."""
+
+    def __init__(
+        self,
+        name: str = Form(...),
+        uinterval: int | None = Form(None),
+        display_time: int = Form(0),
+        notes: str | None = Form(None),
+        enabled: bool = Form(False),
+        start_time: str | None = Form(None),
+        end_time: str | None = Form(None),
+        days: list[str] = Form([]),
+        use_custom_recurrence: bool = Form(False),
+        recurrence_type: str | None = Form(None),
+        recurrence_interval: int | None = Form(None),
+        recurrence_start_date: str | None = Form(None),
+        recurrence_end_date: str | None = Form(None),
+        weekdays: list[str] = Form([]),
+        monthly_pattern: str | None = Form(None),
+        day_of_month: int | None = Form(None),
+        day_of_week_pattern: str | None = Form(None),
+    ):
+        self.name = name
+        self.uinterval = uinterval
+        self.display_time = display_time
+        self.notes = notes
+        self.enabled = enabled
+        self.start_time = start_time
+        self.end_time = end_time
+        self.days = days
+        self.use_custom_recurrence = use_custom_recurrence
+        self.recurrence_type = recurrence_type
+        self.recurrence_interval = recurrence_interval
+        self.recurrence_start_date = recurrence_start_date
+        self.recurrence_end_date = recurrence_end_date
+        self.weekdays = weekdays
+        self.monthly_pattern = monthly_pattern
+        self.day_of_month = day_of_month
+        self.day_of_week_pattern = day_of_week_pattern
+
+
 @router.post("/{device_id}/{iname}/updateapp")
 def updateapp_post(
     request: Request,
@@ -850,23 +892,7 @@ def updateapp_post(
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
-    name: str = Form(...),
-    uinterval: int | None = Form(None),
-    display_time: int = Form(0),
-    notes: str | None = Form(None),
-    enabled: bool = Form(False),
-    start_time: str | None = Form(None),
-    end_time: str | None = Form(None),
-    days: list[str] = Form([]),
-    use_custom_recurrence: bool = Form(False),
-    recurrence_type: str | None = Form(None),
-    recurrence_interval: int | None = Form(None),
-    recurrence_start_date: str | None = Form(None),
-    recurrence_end_date: str | None = Form(None),
-    weekdays: list[str] = Form([]),
-    monthly_pattern: str | None = Form(None),
-    day_of_month: int | None = Form(None),
-    day_of_week_pattern: str | None = Form(None),
+    form_data: AppUpdateFormData = Depends(),
 ) -> Response:
     """Handle app update."""
 
@@ -877,34 +903,38 @@ def updateapp_post(
     if not app:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
-    temp_app = app.model_copy(deep=True)
-    temp_app.name = name
-    temp_app.uinterval = uinterval or 0
-    temp_app.display_time = display_time
-    temp_app.notes = notes or ""
-    temp_app.enabled = enabled
-    temp_app.start_time = start_time
-    temp_app.end_time = end_time
-    temp_app.days = days
-    temp_app.use_custom_recurrence = use_custom_recurrence
-    temp_app.recurrence_type = cast(RecurrenceType, recurrence_type or "daily")
-    temp_app.recurrence_interval = recurrence_interval or 1
-    temp_app.recurrence_start_date = recurrence_start_date or ""
-    temp_app.recurrence_end_date = recurrence_end_date
-
     recurrence_pattern = RecurrencePattern()
-    if use_custom_recurrence:
-        if recurrence_type == "weekly":
-            recurrence_pattern.weekdays = [cast(Weekday, day) for day in weekdays]
-        elif recurrence_type == "monthly":
-            if monthly_pattern == "day_of_month":
-                recurrence_pattern.day_of_month = day_of_month
-            elif monthly_pattern == "day_of_week":
-                recurrence_pattern.day_of_week = day_of_week_pattern
-    temp_app.recurrence_pattern = recurrence_pattern
+    if form_data.use_custom_recurrence:
+        if form_data.recurrence_type == "weekly":
+            recurrence_pattern.weekdays = [
+                cast(Weekday, day) for day in form_data.weekdays
+            ]
+        elif form_data.recurrence_type == "monthly":
+            if form_data.monthly_pattern == "day_of_month":
+                recurrence_pattern.day_of_month = form_data.day_of_month
+            elif form_data.monthly_pattern == "day_of_week":
+                recurrence_pattern.day_of_week = form_data.day_of_week_pattern
 
-    if not name:
+    update_data = {
+        "name": form_data.name,
+        "uinterval": form_data.uinterval or 0,
+        "display_time": form_data.display_time,
+        "notes": form_data.notes or "",
+        "enabled": form_data.enabled,
+        "start_time": form_data.start_time,
+        "end_time": form_data.end_time,
+        "days": form_data.days,
+        "use_custom_recurrence": form_data.use_custom_recurrence,
+        "recurrence_type": cast(RecurrenceType, form_data.recurrence_type or "daily"),
+        "recurrence_interval": form_data.recurrence_interval or 1,
+        "recurrence_start_date": form_data.recurrence_start_date or "",
+        "recurrence_end_date": form_data.recurrence_end_date,
+        "recurrence_pattern": recurrence_pattern,
+    }
+
+    if not form_data.name:
         flash(request, "Name is required.")
+        temp_app = app.model_copy(update=update_data)
         return templates.TemplateResponse(
             request,
             "manager/updateapp.html",
@@ -917,20 +947,9 @@ def updateapp_post(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    app.name = name
-    app.uinterval = uinterval or 0
-    app.display_time = display_time
-    app.notes = notes or ""
-    app.enabled = enabled
-    app.start_time = start_time
-    app.end_time = end_time
-    app.days = days
-    app.use_custom_recurrence = use_custom_recurrence
-    app.recurrence_type = cast(RecurrenceType, recurrence_type or "daily")
-    app.recurrence_interval = recurrence_interval or 1
-    app.recurrence_start_date = recurrence_start_date or ""
-    app.recurrence_end_date = recurrence_end_date
-    app.recurrence_pattern = recurrence_pattern
+    for key, value in update_data.items():
+        setattr(app, key, value)
+
     db.save_user(db_conn, user)
 
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
