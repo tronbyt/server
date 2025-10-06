@@ -43,7 +43,7 @@ def test_api(auth_client: TestClient, db_connection: sqlite3.Connection) -> None
         headers={"Authorization": "badkey", "Content-Type": "application/json"},
         json=push_data,
     )
-    assert response.status_code == 404
+    assert response.status_code == 401
     push_path = Path(db.get_device_webp_dir(device_id)) / "pushed"
     assert not push_path.exists()
 

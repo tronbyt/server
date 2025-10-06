@@ -255,7 +255,7 @@ class TestApiKeyIntegration:
             f"/v0/devices/{device_id}",
             headers={"Authorization": "Bearer invalid_key"},
         )
-        assert response.status_code == 404
+        assert response.status_code == 401
 
         response = auth_client.get(f"/v0/devices/{device_id}")
         assert response.status_code == 401

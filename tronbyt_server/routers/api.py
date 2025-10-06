@@ -7,13 +7,13 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
-from tronbyt_server.dependencies import get_db, get_user_from_api_key
+from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
 from tronbyt_server.utils import push_new_image, render_app
 from tronbyt_server.models.app import App
 from tronbyt_server.models.device import Device, DeviceID
@@ -56,8 +56,13 @@ def get_device_payload(device: Device) -> dict[str, Any]:
 
 @router.get("/devices", response_model=dict[str, list[dict[str, Any]]])
 def list_devices(
-    user: User = Depends(get_user_from_api_key),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> dict[str, list[dict[str, Any]]]:
+    user, _ = auth
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
     devices = user.devices
     metadata = [get_device_payload(device) for device in devices.values()]
     return {"devices": metadata}
@@ -66,34 +71,14 @@ def list_devices(
 @router.get("/devices/{device_id}")
 def get_device(
     device_id: DeviceID,
-    db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> dict[str, Any]:
-    if not authorization:
+    _, device = auth
+    if not device or device.id != device_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
         )
-
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-
-    user = db.get_user_by_api_key(db_conn, api_key)
-    if user:
-        device = user.devices.get(device_id)
-        if device:
-            return get_device_payload(device)
-
-    device = db.get_device_by_id(db_conn, device_id)
-    if device and device.api_key == api_key:
-        return get_device_payload(device)
-
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
-    )
+    return get_device_payload(device)
 
 
 @router.patch("/devices/{device_id}")
@@ -101,31 +86,13 @@ def update_device(
     device_id: DeviceID,
     data: DeviceUpdate,
     db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> dict[str, Any]:
-    if not authorization:
+    user, device = auth
+    if not user or not device or device.id != device_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
         )
-
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-    user_api_key_matches = user.api_key and user.api_key == api_key
-    device_api_key_matches = device.api_key and device.api_key == api_key
-    if not user_api_key_matches and not device_api_key_matches:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     if data.brightness is not None:
         if not 0 <= data.brightness <= 255:
@@ -170,22 +137,10 @@ def _push_image(
 def handle_push(
     device_id: DeviceID,
     data: PushData,
-    db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    device = db.get_device_by_id(db_conn, device_id)
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-    if not device or device.api_key != api_key:
+    _, device = auth
+    if not device or device.id != device_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Device not found or invalid API key",
@@ -206,22 +161,10 @@ def handle_push(
 @router.get("/devices/{device_id}/installations")
 def list_installations(
     device_id: DeviceID,
-    db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    device = db.get_device_by_id(db_conn, device_id)
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-    if not device or device.api_key != api_key:
+    _, device = auth
+    if not device or device.id != device_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     apps = device.apps
@@ -238,21 +181,10 @@ def handle_patch_device_app(
     installation_id: str,
     data: SetEnabledData,
     db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    device = db.get_device_by_id(db_conn, device_id)
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-    if not device or device.api_key != api_key:
+    _, device = auth
+    if not device or device.id != device_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     installation_id = secure_filename(installation_id)
@@ -286,22 +218,10 @@ def handle_patch_device_app(
 def handle_delete(
     device_id: DeviceID,
     installation_id: str,
-    db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    device = db.get_device_by_id(db_conn, device_id)
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-    if not device or device.api_key != api_key:
+    _, device = auth
+    if not device or device.id != device_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     pushed_webp_path = db.get_device_webp_dir(device.id) / "pushed"
@@ -320,29 +240,14 @@ def handle_app_push(
     device_id: DeviceID,
     data: PushAppData,
     db_conn: sqlite3.Connection = Depends(get_db),
-    authorization: str | None = Header(None),
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    device = db.get_device_by_id(db_conn, device_id)
-    api_key = (
-        authorization.split(" ")[1]
-        if authorization.startswith("Bearer ")
-        else authorization
-    )
-    if not device or device.api_key != api_key:
+    user, device = auth
+    if not user or not device or device.id != device_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Device not found or invalid API key",
         )
-
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     app_details = db.get_app_details_by_id(db_conn, user.username, data.app_id)
     app_path_name = app_details.get("path")

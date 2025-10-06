@@ -8,7 +8,6 @@ from pydantic import (
     Field,
     AfterValidator,
     BeforeValidator,
-    computed_field,
 )
 
 from tronbyt_server.models.app import App
@@ -109,8 +108,6 @@ class Device(BaseModel):
     last_app_index: int = 0
     pinned_app: str = ""  # iname of the pinned app, if any
 
-    @property
-    @computed_field
     def supports_2x(self) -> bool:
         """
         Check if the device supports 2x apps.

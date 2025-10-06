@@ -157,7 +157,7 @@ class TestDeviceEndpoint:
             f"/v0/devices/{device_id}",
             headers={"Authorization": "Bearer wrong_key"},
         )
-        assert response.status_code == 404
+        assert response.status_code == 401
 
     def test_patch_device_with_user_api_key(
         self, auth_client: TestClient, device_user: User

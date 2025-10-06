@@ -10,6 +10,7 @@ from fastapi_login.exceptions import InvalidCredentialsException
 
 from tronbyt_server import db
 from tronbyt_server.config import settings
+from tronbyt_server.models.device import Device
 from tronbyt_server.models.user import User
 
 
@@ -43,23 +44,32 @@ def check_for_users(
             raise NotAuthenticatedException
 
 
-def get_user_from_api_key(
+def get_user_and_device_from_api_key(
+    device_id: str | None = None,
     authorization: str | None = Header(None, alias="Authorization"),
     db_conn: sqlite3.Connection = Depends(get_db),
-) -> User:
-    """Get a user from an API key."""
+) -> tuple[User | None, Device | None]:
+    """Get a user and/or device from an API key."""
     if not authorization:
         raise InvalidCredentialsException
 
-    if authorization.startswith("Bearer "):
-        api_key = authorization.split(" ")[1]
-    else:
-        api_key = authorization
+    api_key = (
+        authorization.split(" ")[1]
+        if authorization.startswith("Bearer ")
+        else authorization
+    )
 
     user = db.get_user_by_api_key(db_conn, api_key)
-    if not user:
-        raise InvalidCredentialsException
-    return user
+    if user:
+        device = user.devices.get(device_id) if device_id else None
+        return user, device
+
+    device = db.get_device_by_id(db_conn, device_id) if device_id else None
+    if device and device.api_key == api_key:
+        user = db.get_user_by_device_id(db_conn, device.id)
+        return user, device
+
+    raise InvalidCredentialsException
 
 
 @manager.user_loader()  # type: ignore

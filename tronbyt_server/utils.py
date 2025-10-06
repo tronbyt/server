@@ -80,7 +80,7 @@ def render_app(
     width = 64
     height = 32
 
-    if device.supports_2x:
+    if device.supports_2x():
         magnify = 2
         if app:
             user = db.get_user_by_device_id(db_conn, device.id)
