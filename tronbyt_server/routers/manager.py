@@ -673,6 +673,18 @@ async def uploadapp_post(
     app_subdir = user_apps_path / app_name
     app_subdir.mkdir(parents=True, exist_ok=True)
 
+    try:
+        app_subdir.relative_to(db.get_users_dir())
+    except ValueError:
+        logger.warning("Security warning: Attempted path traversal in apps_path")
+        flash(request, "Invalid file path")
+        return templates.TemplateResponse(
+            request,
+            "manager/uploadapp.html",
+            {"device_id": device_id, "user": user},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
     if not await db.save_user_app(file, app_subdir):
         flash(request, "File type not allowed")
         return templates.TemplateResponse(
@@ -1212,6 +1224,16 @@ def set_user_repo(
 ) -> Response:
     """Set the user's custom app repository."""
     apps_path = db.get_users_dir() / user.username / "apps"
+
+    # Ensure apps_path is within the expected users directory to prevent path traversal
+    try:
+        apps_path.relative_to(db.get_users_dir())
+    except ValueError:
+        logger.warning("Security warning: Attempted path traversal in apps_path")
+        return Response(
+            status_code=status.HTTP_400_BAD_REQUEST, content="Invalid repository path"
+        )
+
     if set_repo(db_conn, request, user, "app_repo_url", apps_path, app_repo_url):
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
