@@ -16,7 +16,7 @@ from tronbyt_server import db
 from tronbyt_server.config import settings
 from tronbyt_server.flash import flash
 from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device, device_supports_2x
+from tronbyt_server.models.device import Device
 from tronbyt_server.models.user import User
 from tronbyt_server.pixlet import render_app as pixlet_render_app
 from tronbyt_server.sync import get_sync_manager
@@ -80,7 +80,7 @@ def render_app(
     width = 64
     height = 32
 
-    if device_supports_2x(device):
+    if device.supports_2x:
         magnify = 2
         if app:
             user = db.get_user_by_device_id(db_conn, device.id)

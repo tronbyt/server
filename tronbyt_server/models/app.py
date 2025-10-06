@@ -1,13 +1,31 @@
 """Data models for Tronbyt Server applications."""
 
-from typing import Any
-from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Any, Literal
+from pydantic import BaseModel, Field, BeforeValidator
+from datetime import time, date
+from typing import Annotated
 
 
 Weekday = Literal[
     "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
 ]
+
+
+def parse_time(v: Any) -> Any:
+    """Parse time from string."""
+    if isinstance(v, str):
+        try:
+            return time.fromisoformat(v)
+        except ValueError:
+            return None
+    return v
+
+
+def parse_date_optional(v: Any) -> Any:
+    """Parse date from string, allowing empty string as None."""
+    if v == "":
+        return None
+    return v
 
 
 class RecurrencePattern(BaseModel):
@@ -39,8 +57,12 @@ class App(BaseModel):
     order: int = 0  # Order in the app list
     last_render: int = 0
     path: str | None = None  # Path to the app file
-    start_time: str | None = None  # Optional start time (HH:MM)
-    end_time: str | None = None  # Optional end time (HH:MM)
+    start_time: Annotated[time | None, BeforeValidator(parse_time)] = (
+        None  # Optional start time (HH:MM)
+    )
+    end_time: Annotated[time | None, BeforeValidator(parse_time)] = (
+        None  # Optional end time (HH:MM)
+    )
     days: list[str] = []
     # Custom recurrence system (opt-in)
     use_custom_recurrence: bool = (
@@ -52,12 +74,12 @@ class App(BaseModel):
     )
     recurrence_interval: int = 1  # Every X weeks/months/years
     recurrence_pattern: RecurrencePattern = Field(default_factory=RecurrencePattern)
-    recurrence_start_date: str = (
-        ""  # ISO date string for calculating cycles (YYYY-MM-DD)
-    )
-    recurrence_end_date: str | None = (
-        None  # Optional end date for recurrence (YYYY-MM-DD)
-    )
+    recurrence_start_date: Annotated[
+        date | None, BeforeValidator(parse_date_optional)
+    ] = None  # ISO date string for calculating cycles (YYYY-MM-DD)
+    recurrence_end_date: Annotated[
+        date | None, BeforeValidator(parse_date_optional)
+    ] = None  # Optional end date for recurrence (YYYY-MM-DD)
     config: dict[str, Any] = {}
     empty_last_render: bool = False
     render_messages: list[str] = []  # Changed from str to List[str]

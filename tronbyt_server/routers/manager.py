@@ -827,9 +827,9 @@ def updateapp(
     # Set default dates if not already set
     today = date.today()
     if not app.recurrence_start_date:
-        app.recurrence_start_date = today.strftime("%Y-%m-%d")
+        app.recurrence_start_date = today
     if not app.recurrence_end_date:
-        app.recurrence_end_date = (today + timedelta(days=7)).strftime("%Y-%m-%d")
+        app.recurrence_end_date = today + timedelta(days=7)
 
     return templates.TemplateResponse(
         request,
@@ -915,7 +915,7 @@ def updateapp_post(
             elif form_data.monthly_pattern == "day_of_week":
                 recurrence_pattern.day_of_week = form_data.day_of_week_pattern
 
-    update_data = {
+    update_data: dict[str, Any] = {
         "name": form_data.name,
         "uinterval": form_data.uinterval or 0,
         "display_time": form_data.display_time,
@@ -927,10 +927,12 @@ def updateapp_post(
         "use_custom_recurrence": form_data.use_custom_recurrence,
         "recurrence_type": cast(RecurrenceType, form_data.recurrence_type or "daily"),
         "recurrence_interval": form_data.recurrence_interval or 1,
-        "recurrence_start_date": form_data.recurrence_start_date or "",
-        "recurrence_end_date": form_data.recurrence_end_date,
         "recurrence_pattern": recurrence_pattern,
     }
+    if form_data.recurrence_start_date:
+        update_data["recurrence_start_date"] = form_data.recurrence_start_date
+    if form_data.recurrence_end_date:
+        update_data["recurrence_end_date"] = form_data.recurrence_end_date
 
     if not form_data.name:
         flash(request, "Name is required.")

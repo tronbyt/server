@@ -23,7 +23,6 @@ from tronbyt_server.config import settings
 from tronbyt_server.models.app import App
 from tronbyt_server.models.device import (
     Device,
-    validate_timezone,
 )
 from tronbyt_server.models.user import User
 
@@ -282,11 +281,15 @@ def save_last_app_index(db: sqlite3.Connection, device_id: str, index: int) -> N
 def get_device_timezone(device: Device) -> ZoneInfo:
     """Get timezone for a device."""
     if device.location and device.location.timezone:
-        if zi := validate_timezone(device.location.timezone):
-            return zi
+        try:
+            return ZoneInfo(device.location.timezone)
+        except Exception:
+            pass
     if device.timezone:
-        if zi := validate_timezone(device.timezone):
-            return zi
+        try:
+            return ZoneInfo(device.timezone)
+        except Exception:
+            pass
     return get_localzone()
 
 
@@ -738,10 +741,8 @@ def get_is_app_schedule_active(app: App, device: Device) -> bool:
 def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool:
     """Check if app should be active at the given time using either legacy or new recurrence system."""
     # Check time range first
-    start_time_str = app.start_time or "00:00"
-    end_time_str = app.end_time or "23:59"
-    start_time = datetime.strptime(start_time_str, "%H:%M").time()
-    end_time = datetime.strptime(end_time_str, "%H:%M").time()
+    start_time = app.start_time or datetime.strptime("00:00", "%H:%M").time()
+    end_time = app.end_time or datetime.strptime("23:59", "%H:%M").time()
 
     current_time_only = current_time.replace(second=0, microsecond=0).time()
     if start_time > end_time:
@@ -775,31 +776,18 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
     recurrence_type = app.recurrence_type
     recurrence_interval = app.recurrence_interval
     recurrence_pattern = app.recurrence_pattern
-    recurrence_start_date_str = app.recurrence_start_date
-    recurrence_end_date_str = app.recurrence_end_date
+    recurrence_start_date = app.recurrence_start_date
+    recurrence_end_date = app.recurrence_end_date
 
     # Parse start date
-    if not recurrence_start_date_str:
+    if not recurrence_start_date:
         # Default to a reasonable start date if not specified
         recurrence_start_date = datetime(2025, 1, 1).date()
-    else:
-        try:
-            recurrence_start_date = datetime.strptime(
-                recurrence_start_date_str, "%Y-%m-%d"
-            ).date()
-        except ValueError:
-            return False
 
     # Check end date
-    if recurrence_end_date_str:
-        try:
-            recurrence_end_date = datetime.strptime(
-                recurrence_end_date_str, "%Y-%m-%d"
-            ).date()
-            if current_time.date() > recurrence_end_date:
-                return False
-        except ValueError:
-            pass
+    if recurrence_end_date:
+        if current_time.date() > recurrence_end_date:
+            return False
 
     current_date = current_time.date()
 
