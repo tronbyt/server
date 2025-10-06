@@ -10,7 +10,7 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from random import randint
-from typing import Any
+from typing import Any, cast
 
 from fastapi import (
     APIRouter,
@@ -32,10 +32,12 @@ from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
-from tronbyt_server.models.app import App, RecurrencePattern
+from tronbyt_server.models.app import App, RecurrencePattern, RecurrenceType, Weekday
 from tronbyt_server.models.device import (
     DEFAULT_DEVICE_TYPE,
     Device,
+    DeviceID,
+    DeviceType,
     Location,
 )
 from tronbyt_server.models.user import User
@@ -55,9 +57,70 @@ router = APIRouter(tags=["manager"])
 logger = logging.getLogger(__name__)
 
 
+def parse_time_input(time_str: str) -> str:
+    """
+    Parse time input in various formats and return as HH:MM string.
+
+    Accepts:
+    - HH:MM format (e.g., "22:00", "6:30")
+    - HHMM format (e.g., "2200", "0630")
+    - H:MM format (e.g., "6:30")
+    - HMM format (e.g., "630")
+
+    Returns:
+    - Time string in HH:MM format
+
+    Raises:
+    - ValueError if the input is invalid
+    """
+    time_str = time_str.strip()
+
+    if not time_str:
+        raise ValueError("Time cannot be empty")
+
+    try:
+        # Try to parse as HH:MM or H:MM format
+        if ":" in time_str:
+            parts = time_str.split(":")
+            if len(parts) != 2:
+                raise ValueError(f"Invalid time format: {time_str}")
+            hour_str, minute_str = parts
+            hour = int(hour_str)
+            minute = int(minute_str)
+        else:
+            # Parse as HHMM or HMM format
+            if len(time_str) == 4:
+                hour = int(time_str[:2])
+                minute = int(time_str[2:])
+            elif len(time_str) == 3:
+                hour = int(time_str[0])
+                minute = int(time_str[1:])
+            elif len(time_str) == 2:
+                hour = int(time_str)
+                minute = 0
+            elif len(time_str) == 1:
+                hour = int(time_str)
+                minute = 0
+            else:
+                raise ValueError(f"Invalid time format: {time_str}")
+    except ValueError as e:
+        # Re-raise with more context if it's a conversion error
+        if "invalid literal" in str(e):
+            raise ValueError(f"Time must contain only numbers: {time_str}")
+        raise
+
+    # Validate hour and minute
+    if hour < 0 or hour > 23:
+        raise ValueError(f"Hour must be between 0 and 23: {hour}")
+    if minute < 0 or minute > 59:
+        raise ValueError(f"Minute must be between 0 and 59: {minute}")
+
+    return f"{hour:02d}:{minute:02d}"
+
+
 def _next_app_logic(
     db_conn: sqlite3.Connection,
-    device_id: str,
+    device_id: DeviceID,
     last_app_index: int | None = None,
     recursion_depth: int = 0,
 ) -> Response:
@@ -242,11 +305,13 @@ def create_post(
     device = Device(
         id=device_id,
         name=name or device_id,
-        type=device_type,
+        type=cast(DeviceType, device_type),
         img_url=img_url,
         ws_url=ws_url,
         api_key=api_key,
         brightness=percent_brightness,
+        night_brightness=0,
+        dim_brightness=None,
         default_interval=10,
         notes=notes or "",
     )
@@ -276,8 +341,9 @@ def create_post(
 
 
 @router.get("/{device_id}/update")
-def update(request: Request, device_id: str, user: User = Depends(manager)) -> Response:
-    """Render the device update page."""
+def update(
+    request: Request, device_id: DeviceID, user: User = Depends(manager)
+) -> Response:
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -290,6 +356,12 @@ def update(request: Request, device_id: str, user: User = Depends(manager)) -> R
         ui_device.brightness = db.percent_to_ui_scale(ui_device.brightness)
     if ui_device.night_brightness:
         ui_device.night_brightness = db.percent_to_ui_scale(ui_device.night_brightness)
+
+    # Convert legacy integer time format to HH:MM for display
+    if ui_device.night_start and isinstance(ui_device.night_start, int):
+        ui_device.night_start = f"{ui_device.night_start:02d}:00"
+    if ui_device.night_end and isinstance(ui_device.night_end, int):
+        ui_device.night_end = f"{ui_device.night_end:02d}:00"
 
     return templates.TemplateResponse(
         request,
@@ -306,12 +378,11 @@ def update(request: Request, device_id: str, user: User = Depends(manager)) -> R
 
 @router.post("/{device_id}/update_brightness")
 def update_brightness(
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     brightness: int = Form(...),
 ) -> Response:
-    """Update the brightness for a device."""
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -331,12 +402,11 @@ def update_brightness(
 
 @router.post("/{device_id}/update_interval")
 def update_interval(
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     interval: int = Form(...),
 ) -> Response:
-    """Update the interval for a device."""
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -349,7 +419,7 @@ def update_interval(
 @router.post("/{device_id}/update")
 def update_post(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     name: str = Form(...),
@@ -362,13 +432,16 @@ def update_post(
     night_brightness: int = Form(...),
     default_interval: int = Form(...),
     night_mode_enabled: bool = Form(False),
-    night_start: int = Form(...),
-    night_end: int = Form(...),
+    night_start: str = Form(...),
+    night_end: str = Form(...),
     night_mode_app: str | None = Form(None),
+    dim_time: str | None = Form(None),
+    dim_brightness: int | None = Form(None),
     timezone: str = Form(...),
     location: str | None = Form(None),
 ) -> Response:
     """Handle device update."""
+
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -383,7 +456,7 @@ def update_post(
         )
 
     device.name = name
-    device.type = device_type
+    device.type = cast(DeviceType, device_type)
     device.img_url = (
         db.sanitize_url(img_url) if img_url else f"{server_root()}/{device_id}/next"
     )
@@ -396,10 +469,34 @@ def update_post(
     device.night_brightness = db.ui_scale_to_percent(night_brightness)
     device.default_interval = default_interval
     device.night_mode_enabled = night_mode_enabled
-    device.night_start = night_start
-    device.night_end = night_end
     device.night_mode_app = night_mode_app or ""
     device.timezone = timezone
+
+    if night_start:
+        try:
+            device.night_start = parse_time_input(night_start)
+        except ValueError as e:
+            flash(request, f"Invalid night start time: {e}")
+
+    if night_end:
+        try:
+            device.night_end = parse_time_input(night_end)
+        except ValueError as e:
+            flash(request, f"Invalid night end time: {e}")
+
+    # Handle dim time and dim brightness
+    # Note: Dim mode ends at night_end time (if set) or 6:00 AM by default
+    if dim_time and dim_time.strip():
+        try:
+            device.dim_time = parse_time_input(dim_time)
+        except ValueError as e:
+            flash(request, f"Invalid dim time: {e}")
+    elif device.dim_time:
+        # Remove dim_time if the field is empty
+        device.dim_time = None
+
+    if dim_brightness:
+        device.dim_brightness = db.ui_scale_to_percent(dim_brightness)
 
     if location and location != "{}":
         try:
@@ -425,11 +522,10 @@ def update_post(
 
 @router.post("/{device_id}/delete")
 def delete(
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Handle device deletion."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -443,11 +539,10 @@ def delete(
 @router.get("/{device_id}/addapp")
 def addapp(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Render the add app page."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -487,7 +582,7 @@ def addapp(
 @router.post("/{device_id}/addapp")
 def addapp_post(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     name: str = Form(...),
@@ -495,7 +590,6 @@ def addapp_post(
     display_time: int | None = Form(None),
     notes: str | None = Form(None),
 ) -> Response:
-    """Handle adding an app to a device."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -547,9 +641,8 @@ def addapp_post(
 
 @router.get("/{device_id}/uploadapp")
 def uploadapp(
-    request: Request, device_id: str, user: User = Depends(manager)
+    request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
-    """Render the upload app page."""
     user_apps_path = db.get_users_dir() / user.username / "apps"
     user_apps_path.mkdir(parents=True, exist_ok=True)
     star_files = [file.name for file in user_apps_path.rglob("*.star")]
@@ -563,12 +656,11 @@ def uploadapp(
 @router.post("/{device_id}/uploadapp")
 async def uploadapp_post(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     file: UploadFile = File(...),
 ) -> Response:
-    """Handle app upload."""
     user_apps_path = db.get_users_dir() / user.username / "apps"
     if not file.filename:
         flash(request, "No file")
@@ -592,7 +684,21 @@ async def uploadapp_post(
 
     flash(request, "Upload Successful")
     preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
-    render_app(db_conn, app_subdir, {}, preview, Device(id="aaaaaaaa"), None, logger)
+    render_app(
+        db_conn,
+        app_subdir,
+        {},
+        preview,
+        Device(
+            id="aaaaaaaa",
+            brightness=100,
+            night_brightness=0,
+            dim_brightness=None,
+            default_interval=15,
+        ),
+        None,
+        logger,
+    )
 
     return RedirectResponse(
         url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
@@ -611,14 +717,17 @@ def app_preview(filename: str) -> FileResponse:
 @router.get("/{device_id}/deleteupload/{filename}")
 def deleteupload(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     filename: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Handle deletion of an uploaded app."""
+    if not db.get_device_by_id(db_conn, device_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
     if any(
-        Path(app.path).name == filename
+        app.path and Path(app.path).name == filename
         for device in user.devices.values()
         for app in device.apps.values()
     ):
@@ -637,12 +746,11 @@ def deleteupload(
 @router.get("/{device_id}/{iname}/delete")
 @router.post("/{device_id}/{iname}/delete")
 def deleteapp(
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Handle deletion of an app from a device."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -667,12 +775,11 @@ def deleteapp(
 @router.get("/{device_id}/{iname}/toggle_pin")
 def toggle_pin(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Toggle pin/unpin for an app on a device."""
     device = user.devices.get(device_id)
     if not device:
         return Response(
@@ -696,9 +803,8 @@ def toggle_pin(
 
 @router.get("/{device_id}/{iname}/updateapp")
 def updateapp(
-    request: Request, device_id: str, iname: str, user: User = Depends(manager)
+    request: Request, device_id: DeviceID, iname: str, user: User = Depends(manager)
 ) -> Response:
-    """Render the app update page."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -728,7 +834,7 @@ def updateapp(
 @router.post("/{device_id}/{iname}/updateapp")
 def updateapp_post(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
@@ -751,6 +857,7 @@ def updateapp_post(
     day_of_week_pattern: str | None = Form(None),
 ) -> Response:
     """Handle app update."""
+
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -768,7 +875,7 @@ def updateapp_post(
     temp_app.end_time = end_time
     temp_app.days = days
     temp_app.use_custom_recurrence = use_custom_recurrence
-    temp_app.recurrence_type = recurrence_type or "daily"
+    temp_app.recurrence_type = cast(RecurrenceType, recurrence_type or "daily")
     temp_app.recurrence_interval = recurrence_interval or 1
     temp_app.recurrence_start_date = recurrence_start_date or ""
     temp_app.recurrence_end_date = recurrence_end_date
@@ -776,7 +883,7 @@ def updateapp_post(
     recurrence_pattern = RecurrencePattern()
     if use_custom_recurrence:
         if recurrence_type == "weekly":
-            recurrence_pattern.weekdays = weekdays
+            recurrence_pattern.weekdays = [cast(Weekday, day) for day in weekdays]
         elif recurrence_type == "monthly":
             if monthly_pattern == "day_of_month":
                 recurrence_pattern.day_of_month = day_of_month
@@ -807,7 +914,7 @@ def updateapp_post(
     app.end_time = end_time
     app.days = days
     app.use_custom_recurrence = use_custom_recurrence
-    app.recurrence_type = recurrence_type or "daily"
+    app.recurrence_type = cast(RecurrenceType, recurrence_type or "daily")
     app.recurrence_interval = recurrence_interval or 1
     app.recurrence_start_date = recurrence_start_date or ""
     app.recurrence_end_date = recurrence_end_date
@@ -820,12 +927,11 @@ def updateapp_post(
 @router.get("/{device_id}/{iname}/toggle_enabled")
 def toggle_enabled(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Toggle the enabled state of an app."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
@@ -842,13 +948,12 @@ def toggle_enabled(
 @router.get("/{device_id}/{iname}/moveapp")
 def moveapp(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     direction: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Move an app up or down in the order."""
     if direction not in ["up", "down"]:
         flash(request, "Invalid direction.")
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -892,17 +997,16 @@ def moveapp(
 @router.get("/{device_id}/{iname}/configapp")
 def configapp(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     delete_on_cancel: bool = False,
     user: User = Depends(manager),
 ) -> Response:
-    """Render the app configuration page."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
     app = device.apps.get(iname)
-    if not app:
+    if not app or not app.path:
         flash(request, "Error saving app, please try again.")
         return RedirectResponse(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
@@ -927,18 +1031,17 @@ def configapp(
 @router.post("/{device_id}/{iname}/configapp")
 async def configapp_post(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     config: Any = Body(...),
 ) -> Response:
-    """Handle app configuration."""
     device = user.devices.get(device_id)
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
     app = device.apps.get(iname)
-    if not app:
+    if not app or not app.path:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
     app.config = config
@@ -969,19 +1072,18 @@ async def configapp_post(
 @router.get("/{device_id}/{iname}/preview")
 def preview(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     config: str = "{}",
 ) -> Response:
-    """Generate a preview of an app."""
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
 
     app = device.apps.get(iname)
-    if not app:
+    if not app or not app.path:
         raise HTTPException(status_code=404, detail="App not found")
 
     try:
@@ -1004,12 +1106,18 @@ def preview(
             logger=logger,
         )
         if data is None:
-            raise HTTPException(status_code=500, detail="Error running pixlet render")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error running pixlet render",
+            )
 
         return Response(content=data, media_type="image/webp")
     except Exception as e:
         logger.error(f"Error in preview: {e}")
-        raise HTTPException(status_code=500, detail="Error generating preview")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating preview",
+        )
 
 
 @router.get("/adminindex")
@@ -1043,9 +1151,8 @@ def deleteuser(
 
 @router.get("/{device_id}/firmware")
 def generate_firmware(
-    request: Request, device_id: str, user: User = Depends(manager)
+    request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
-    """Render the firmware generation page."""
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -1060,14 +1167,13 @@ def generate_firmware(
 
 @router.post("/{device_id}/firmware")
 def generate_firmware_post(
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     wifi_ap: str = Form(...),
     wifi_password: str = Form(...),
     img_url: str = Form(...),
     swap_colors: bool = Form(False),
 ) -> Response:
-    """Handle firmware generation."""
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -1083,7 +1189,10 @@ def generate_firmware_post(
         )
     except Exception as e:
         logger.error(f"Error generating firmware: {e}")
-        raise HTTPException(status_code=500, detail="Firmware generation failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Firmware generation failed",
+        )
 
     return Response(
         content=firmware_data,
@@ -1170,14 +1279,14 @@ def mark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
     if settings.PRODUCTION != "0":
         return JSONResponse(
             content={"success": False, "message": "Only available in development mode"},
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     # Only allow admin users
     if user.username != "admin":
         return JSONResponse(
             content={"success": False, "message": "Admin access required"},
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     try:
@@ -1199,7 +1308,7 @@ def mark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
                     "success": False,
                     "message": "App is already marked as broken",
                 },
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         # Add to the list
@@ -1217,13 +1326,14 @@ def mark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
                 "success": True,
                 "message": f"Added {escape(app_filename)} to broken_apps.txt",
             },
-            status_code=200,
+            status_code=status.HTTP_200_OK,
         )
 
     except Exception as e:
         logger.error(f"Error marking app as broken: {e}")
         return JSONResponse(
-            content={"success": False, "message": str(e)}, status_code=500
+            content={"success": False, "message": str(e)},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
@@ -1234,14 +1344,14 @@ def unmark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
     if settings.PRODUCTION != "0":
         return JSONResponse(
             content={"success": False, "message": "Only available in development mode"},
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     # Only allow admin users
     if user.username != "admin":
         return JSONResponse(
             content={"success": False, "message": "Admin access required"},
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
         )
 
     try:
@@ -1252,7 +1362,7 @@ def unmark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
         if not broken_apps_path.exists():
             return JSONResponse(
                 content={"success": False, "message": "No broken apps file found"},
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
         broken_apps = broken_apps_path.read_text().splitlines()
@@ -1264,7 +1374,7 @@ def unmark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
         if app_filename not in broken_apps:
             return JSONResponse(
                 content={"success": False, "message": "App is not marked as broken"},
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         # Remove from the list
@@ -1286,13 +1396,14 @@ def unmark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
                 "success": True,
                 "message": f"Removed {escape(app_filename)} from broken_apps.txt",
             },
-            status_code=200,
+            status_code=status.HTTP_200_OK,
         )
 
     except Exception as e:
         logger.error(f"Error unmarking app: {e}")
         return JSONResponse(
-            content={"success": False, "message": str(e)}, status_code=500
+            content={"success": False, "message": str(e)},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
@@ -1348,8 +1459,9 @@ def export_user_config(user: User = Depends(manager)) -> Response:
 
 
 @router.get("/{device_id}/export_config")
-def export_device_config(device_id: str, user: User = Depends(manager)) -> Response:
-    """Export device configuration as a JSON file."""
+def export_device_config(
+    device_id: DeviceID, user: User = Depends(manager)
+) -> Response:
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -1363,9 +1475,8 @@ def export_device_config(device_id: str, user: User = Depends(manager)) -> Respo
 
 @router.get("/{device_id}/import_config")
 def import_device_config(
-    request: Request, device_id: str, user: User = Depends(manager)
+    request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
-    """Render the import device configuration page."""
     return templates.TemplateResponse(
         request,
         "manager/import_config.html",
@@ -1376,12 +1487,11 @@ def import_device_config(
 @router.post("/{device_id}/import_config")
 async def import_device_config_post(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     file: UploadFile = File(...),
 ) -> Response:
-    """Handle import of device configuration."""
     if not file.filename:
         flash(request, "No selected file")
         return RedirectResponse(
@@ -1508,16 +1618,16 @@ async def import_device_post(
 
 
 @router.get("/{device_id}/next")
-def next_app(device_id: str, db_conn: sqlite3.Connection = Depends(get_db)) -> Response:
-    """Get the next app for a device."""
+def next_app(
+    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
+) -> Response:
     return _next_app_logic(db_conn, device_id)
 
 
 @router.get("/{device_id}/brightness")
 def get_brightness(
-    device_id: str, db_conn: sqlite3.Connection = Depends(get_db)
+    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
-    """Get the brightness for a device."""
     user = db.get_user_by_device_id(db_conn, device_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -1530,9 +1640,8 @@ def get_brightness(
 
 @router.get("/{device_id}/currentapp")
 def currentwebp(
-    device_id: str, db_conn: sqlite3.Connection = Depends(get_db)
+    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
-    """Get the current app's image for a device."""
     user = db.get_user_by_device_id(db_conn, device_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -1555,9 +1664,8 @@ def currentwebp(
 
 @router.get("/{device_id}/{iname}/appwebp")
 def appwebp(
-    device_id: str, iname: str, db_conn: sqlite3.Connection = Depends(get_db)
+    device_id: DeviceID, iname: str, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
-    """Get a specific app's image for a device."""
     user = db.get_user_by_device_id(db_conn, device_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -1581,12 +1689,11 @@ def appwebp(
 @router.post("/{device_id}/{iname}/schema_handler/{handler}")
 async def schema_handler(
     request: Request,
-    device_id: str,
+    device_id: DeviceID,
     iname: str,
     handler: str,
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    """Handle schema-defined callbacks."""
     user = db.get_user_by_device_id(db_conn, device_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -1594,7 +1701,7 @@ async def schema_handler(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     app = device.apps.get(iname)
-    if not app:
+    if not app or not app.path:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     try:

@@ -146,7 +146,7 @@ class TestDeviceEndpoint:
             "/v0/devices/invalid-id",
             headers={"Authorization": f"Bearer {api_key}"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_get_device_unauthorized_api_key(
         self, auth_client: TestClient, device_user: User
@@ -211,4 +211,4 @@ class TestDeviceEndpoint:
         response = auth_client.patch(
             f"/v0/devices/{device_id}", json={"brightness": 100}
         )
-        assert response.status_code == 400
+        assert response.status_code == 401

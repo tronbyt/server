@@ -153,6 +153,19 @@
     });
   }
 
+  function setDimBrightnessUpdate(brightness) {
+    document.getElementById('dim_brightness').value = brightness;
+    document.getElementById('dim-brightness-output').innerText = brightness;
+    const buttons = document.querySelectorAll('#dim-brightness-panel .brightness-btn');
+    buttons.forEach(btn => {
+      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
   // Move buttons to header on page load
   document.addEventListener('DOMContentLoaded', function() {
     const headerButtons = document.getElementById('header-buttons');
@@ -290,14 +303,17 @@
     </div>
 
     <div class="form-group">
-      <label for="night_start">{{ _('Night Start Hour (24hr)') }}</label>
-      <input type="number" name="night_start" id="night_start" min="0" max="24"
-        value="{{ device.night_start or 22 }}">
+      <label for="night_start">{{ _('Night Start Time (24hr)') }}</label>
+      <input type="text" name="night_start" id="night_start" placeholder="22:00 or 2200"
+        value="{{ device.night_start or '22:00' }}" pattern="^([0-1]?[0-9]|2[0-3]):?[0-5][0-9]$">
+      <small>{{ _('Enter time as HH:MM or HHMM (e.g., 22:00 or 2200)') }}</small>
     </div>
 
     <div class="form-group">
-      <label for="night_end">{{ _('Night End Hour (24hr)') }}</label>
-      <input type="number" name="night_end" id="night_end" min="0" max="24" value="{{ device.night_end or 6 }}">
+      <label for="night_end">{{ _('Night End Time (24hr)') }}</label>
+      <input type="text" name="night_end" id="night_end" placeholder="06:00 or 0600"
+        value="{{ device.night_end or '06:00' }}" pattern="^([0-1]?[0-9]|2[0-3]):?[0-5][0-9]$">
+      <small>{{ _('Enter time as HH:MM or HHMM (e.g., 06:00 or 0600)') }}</small>
     </div>
 
     <div class="form-group">
@@ -315,6 +331,33 @@
       </select>
       <small>{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit
         page.') }}</small>
+    </div>
+
+    <div class="form-group">
+      <label for="dim_time">{{ _('Dim Start Time (24hr)') }}</label>
+      <input type="text" name="dim_time" id="dim_time" placeholder="20:00 or 2000"
+        value="{{ device.dim_time or '' }}" pattern="^([0-1]?[0-9]|2[0-3]):?[0-5][0-9]$">
+      <small>{{ _('Time to start dimming (e.g., 20:00 or 2000). Dim mode ends at Night End Time (if set) or 6:00 AM by default. Leave empty to disable.') }}</small>
+    </div>
+
+    <div class="form-group">
+      <label for="dim_brightness">{{ _('Dim Brightness') }}</label>
+      <output id="dim-brightness-output">{{ device.dim_brightness or 2 }}</output>
+      <input type="hidden" name="dim_brightness" id="dim_brightness" value="{{ device.dim_brightness or 2 }}">
+      <div class="brightness-panel" id="dim-brightness-panel">
+        <button type="button" class="brightness-btn {% if device.dim_brightness or 2 == 0 %}active{% endif %}"
+                data-brightness="0" onclick="setDimBrightnessUpdate(0)">0</button>
+        <button type="button" class="brightness-btn {% if device.dim_brightness or 2 == 1 %}active{% endif %}"
+                data-brightness="1" onclick="setDimBrightnessUpdate(1)">1</button>
+        <button type="button" class="brightness-btn {% if device.dim_brightness or 2 == 2 %}active{% endif %}"
+                data-brightness="2" onclick="setDimBrightnessUpdate(2)">2</button>
+        <button type="button" class="brightness-btn {% if device.dim_brightness or 2 == 3 %}active{% endif %}"
+                data-brightness="3" onclick="setDimBrightnessUpdate(3)">3</button>
+        <button type="button" class="brightness-btn {% if device.dim_brightness or 2 == 4 %}active{% endif %}"
+                data-brightness="4" onclick="setDimBrightnessUpdate(4)">4</button>
+        <button type="button" class="brightness-btn {% if device.dim_brightness or 2 == 5 %}active{% endif %}"
+                data-brightness="5" onclick="setDimBrightnessUpdate(5)">5</button>
+      </div>
     </div>
 
     <div class="form-group">

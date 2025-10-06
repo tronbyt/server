@@ -290,7 +290,7 @@ def set_theme_preference(
     if preference.theme not in ["light", "dark", "system"]:
         return JSONResponse(
             content={"status": "error", "message": "Invalid theme value"},
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     user.theme_preference = cast(Literal["light", "dark", "system"], preference.theme)
@@ -304,5 +304,5 @@ def set_theme_preference(
                 "status": "error",
                 "message": "Failed to save theme preference",
             },
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

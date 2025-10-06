@@ -16,7 +16,7 @@ from tronbyt_server import db
 from tronbyt_server.dependencies import get_db, get_user_from_api_key
 from tronbyt_server.utils import push_new_image, render_app
 from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device, validate_device_id
+from tronbyt_server.models.device import Device, DeviceID
 from tronbyt_server.models.user import User
 
 router = APIRouter(prefix="/v0", tags=["api"])
@@ -65,15 +65,10 @@ def list_devices(
 
 @router.get("/devices/{device_id}")
 def get_device(
-    device_id: str,
+    device_id: DeviceID,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> dict[str, Any]:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -103,19 +98,14 @@ def get_device(
 
 @router.patch("/devices/{device_id}")
 def update_device(
-    device_id: str,
+    device_id: DeviceID,
     data: DeviceUpdate,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> dict[str, Any]:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
 
@@ -178,19 +168,14 @@ def _push_image(
 
 @router.post("/devices/{device_id}/push")
 def handle_push(
-    device_id: str,
+    device_id: DeviceID,
     data: PushData,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> Response:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
 
@@ -220,18 +205,13 @@ def handle_push(
 
 @router.get("/devices/{device_id}/installations")
 def list_installations(
-    device_id: str,
+    device_id: DeviceID,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> Response:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
 
@@ -254,20 +234,15 @@ def list_installations(
 
 @router.patch("/devices/{device_id}/installations/{installation_id}")
 def handle_patch_device_app(
-    device_id: str,
+    device_id: DeviceID,
     installation_id: str,
     data: SetEnabledData,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> Response:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
 
@@ -309,19 +284,14 @@ def handle_patch_device_app(
 
 @router.delete("/devices/{device_id}/installations/{installation_id}")
 def handle_delete(
-    device_id: str,
+    device_id: DeviceID,
     installation_id: str,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> Response:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
 
@@ -347,19 +317,14 @@ def handle_delete(
 
 @router.post("/devices/{device_id}/push_app")
 def handle_app_push(
-    device_id: str,
+    device_id: DeviceID,
     data: PushAppData,
     db_conn: sqlite3.Connection = Depends(get_db),
     authorization: str | None = Header(None),
 ) -> Response:
-    if not validate_device_id(device_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID"
-        )
-
     if not authorization:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
         )
 

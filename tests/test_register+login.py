@@ -43,7 +43,7 @@ def test_login_with_wrong_password(client: TestClient) -> None:
         data={"username": "testuser", "password": "password"},
         follow_redirects=False,
     )
-    assert response.status_code == 302 or response.status_code == 409
+    assert response.status_code in [302, 409]
 
     # Login as testuser with bad password
     response = client.post(
@@ -57,8 +57,9 @@ def test_login_with_wrong_password(client: TestClient) -> None:
 
 def test_unauth_index_with_users(client: TestClient) -> None:
     client.post("/auth/register_owner", data={"password": "adminpassword"})
-    response = client.get("/")
-    assert response.status_code == 200
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code in [302, 307]
+    assert response.headers["location"].endswith("/auth/login")
 
 
 def test_unauth_index_no_users(client: TestClient) -> None:

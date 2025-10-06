@@ -84,7 +84,7 @@ def render_app(
         magnify = 2
         if app:
             user = db.get_user_by_device_id(db_conn, device.id)
-            if user:
+            if user and app.id:
                 app_details = db.get_app_details_by_id(db_conn, user.username, app.id)
                 if app_details.get("supports2x", False):
                     magnify = 1
@@ -184,6 +184,8 @@ def possibly_render(
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
     webp_path = webp_device_path / f"{app_basename}.webp"
+    if not app.path:
+        return False
     app_path = Path(app.path)
 
     if now - app.last_render > app.uinterval * 60:

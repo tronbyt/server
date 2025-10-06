@@ -241,7 +241,15 @@ def close_db(db: sqlite3.Connection) -> None:
 
 def delete_device_dirs(device_id: str) -> None:
     """Delete the directories associated with a device."""
-    dir_to_delete = get_data_dir() / "webp" / device_id
+    webp_dir = get_data_dir() / "webp"
+    dir_to_delete = webp_dir / secure_filename(device_id)
+    # Ensure dir_to_delete is within the expected webp directory to prevent path traversal
+    try:
+        dir_to_delete.relative_to(webp_dir)
+    except ValueError:
+        logger.warning("Security warning: Attempted path traversal in device_id")
+        return
+
     try:
         shutil.rmtree(dir_to_delete)
         logger.debug(f"Successfully deleted directory: {dir_to_delete}")
@@ -293,21 +301,124 @@ def get_night_mode_is_active(device: Device) -> bool:
     if not device.night_mode_enabled:
         return False
 
-    current_hour = datetime.now(get_device_timezone(device)).hour
-    start_hour = device.night_start
-    end_hour = device.night_end
-    if start_hour <= end_hour:
-        return start_hour <= current_hour < end_hour
-    else:
-        return current_hour >= start_hour or current_hour < end_hour
+    # get_device_timezone will always return a valid tz string
+    now = datetime.now(get_device_timezone(device))
+    current_time_minutes = now.hour * 60 + now.minute
+
+    # Parse start and end times
+    start_time = device.night_start
+    end_time = device.night_end
+
+    # Handle legacy integer format (hours only) and convert to HH:MM
+    if isinstance(start_time, int):
+        if start_time < 0:
+            return False
+        start_time = f"{start_time:02d}:00"
+    elif not start_time:
+        return False
+
+    if isinstance(end_time, int):
+        end_time = f"{end_time:02d}:00"
+    elif not end_time:
+        end_time = "06:00"  # default to 6 am if not set
+
+    # Parse time strings to minutes since midnight
+    try:
+        start_parts = start_time.split(":")
+        start_minutes = int(start_parts[0]) * 60 + int(start_parts[1])
+
+        end_parts = end_time.split(":")
+        end_minutes = int(end_parts[0]) * 60 + int(end_parts[1])
+    except (ValueError, IndexError, AttributeError):
+        logger.warning(
+            f"Invalid night mode time format: start={start_time}, end={end_time}"
+        )
+        return False
+
+    # Determine if night mode is active
+    if start_minutes <= end_minutes:  # Normal case (e.g., 9:00 to 17:00)
+        if start_minutes <= current_time_minutes < end_minutes:
+            logger.debug("Night mode active")
+            return True
+    else:  # Wrapped case (e.g., 22:00 to 7:00 - overnight)
+        if current_time_minutes >= start_minutes or current_time_minutes < end_minutes:
+            logger.debug("Night mode active")
+            return True
+
+    return False
 
 
+def get_dim_mode_is_active(device: Device) -> bool:
+    """Check if dim mode is active (dimming without full night mode)."""
+    dim_time = device.dim_time
+    if not dim_time:
+        return False
+
+    # get_device_timezone will always return a valid tz string
+    now = datetime.now(get_device_timezone(device))
+    current_time_minutes = now.hour * 60 + now.minute
+
+    # Parse dim start time string to minutes since midnight
+    try:
+        dim_parts = dim_time.split(":")
+        dim_start_minutes = int(dim_parts[0]) * 60 + int(dim_parts[1])
+    except (ValueError, IndexError, AttributeError):
+        logger.warning(f"Invalid dim time format: {dim_time}")
+        return False
+
+    # Determine dim end time using night_end (if set) or default to 6am
+    dim_end_minutes = None
+
+    # Check if night_end is set (regardless of whether night mode is enabled)
+    night_end = device.night_end
+    if night_end:
+        # Handle legacy integer format
+        if isinstance(night_end, int):
+            if night_end >= 0:
+                dim_end_minutes = night_end * 60
+        else:
+            try:
+                night_end_parts = night_end.split(":")
+                dim_end_minutes = int(night_end_parts[0]) * 60 + int(night_end_parts[1])
+            except (ValueError, IndexError, AttributeError):
+                pass
+
+    # If no night_end, default to 6am (360 minutes)
+    if dim_end_minutes is None:
+        dim_end_minutes = 6 * 60
+
+    # Check if current time is within dim period
+    if dim_start_minutes <= dim_end_minutes:  # Normal case (e.g., 20:00 to 22:00)
+        if dim_start_minutes <= current_time_minutes < dim_end_minutes:
+            logger.debug(
+                f"Dim mode active (normal case): {dim_start_minutes} <= {current_time_minutes} < {dim_end_minutes}"
+            )
+            return True
+    else:  # Wrapped case (e.g., 22:00 to 06:00 - overnight)
+        if (
+            current_time_minutes >= dim_start_minutes
+            or current_time_minutes < dim_end_minutes
+        ):
+            logger.debug(
+                f"Dim mode active (wrapped case): {current_time_minutes} >= {dim_start_minutes} or < {dim_end_minutes}"
+            )
+            return True
+
+    return False
+
+
+# Get the brightness percentage value to send to firmware
 def get_device_brightness_8bit(device: Device) -> int:
     """Get the device brightness on an 8-bit scale."""
+    # Priority: night mode > dim mode > normal brightness
+    # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
-        return device.night_brightness
+        return device.night_brightness or 1
+    # If we're in dim mode (but not night mode), use dim_brightness
+    elif get_dim_mode_is_active(device):
+        return device.dim_brightness or device.brightness or 50
     else:
-        return device.brightness
+        return device.brightness or 50
 
 
 def percent_to_ui_scale(percent: int) -> int:
@@ -422,7 +533,13 @@ def delete_user(db: sqlite3.Connection, username: str) -> bool:
     try:
         db.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
         db.commit()
-        user_dir = get_users_dir() / username
+        # Securely delete the user's directory, preventing path traversal
+        user_dir = get_users_dir() / secure_filename(username)
+        try:
+            user_dir.relative_to(get_users_dir())
+        except ValueError:
+            logger.warning("Security warning: Attempted path traversal in username")
+            return False
         if user_dir.exists():
             shutil.rmtree(user_dir)
         logger.info(f"User {username} deleted successfully")
@@ -452,31 +569,38 @@ def get_apps_list(user: str) -> list[dict[str, Any]]:
             app_list = json.load(f)
             return app_list
 
-    dir = get_users_dir() / user / "apps"
-    if dir.exists():
-        for file in dir.rglob("*.star"):
-            app_name = file.stem
-            # Get file modification time
-            mod_time = datetime.fromtimestamp(file.stat().st_mtime)
-            app_dict: dict[str, Any] = {
-                "path": str(file),
-                "id": app_name,
-                "date": mod_time.strftime("%Y-%m-%d %H:%M"),
-            }
-            preview = get_data_dir() / "apps" / f"{app_name}.webp"
-            if preview.exists() and preview.stat().st_size > 0:
-                app_dict["preview"] = str(preview.name)
-            yaml_path = file.parent / "manifest.yaml"
-            if yaml_path.exists():
-                with yaml_path.open("r") as f:
-                    yaml_dict = yaml.safe_load(f)
-                    app_dict.update(yaml_dict)
-            else:
-                app_dict["summary"] = "Custom App"
-            app_list.append(app_dict)
-        return app_list
-    else:
+    dir = get_users_dir() / secure_filename(user) / "apps"
+    # Ensure dir is within get_users_dir to prevent path traversal
+    try:
+        dir.relative_to(get_users_dir())
+    except ValueError:
+        logger.warning("Security warning: Attempted path traversal in user")
         return []
+
+    if not dir.exists():
+        return []
+
+    for file in dir.rglob("*.star"):
+        app_name = file.stem
+        # Get file modification time
+        mod_time = datetime.fromtimestamp(file.stat().st_mtime)
+        app_dict: dict[str, Any] = {
+            "path": str(file),
+            "id": app_name,
+            "date": mod_time.strftime("%Y-%m-%d %H:%M"),
+        }
+        preview = get_data_dir() / "apps" / f"{app_name}.webp"
+        if preview.exists() and preview.stat().st_size > 0:
+            app_dict["preview"] = str(preview.name)
+        yaml_path = file.parent / "manifest.yaml"
+        if yaml_path.exists():
+            with yaml_path.open("r") as f:
+                yaml_dict = yaml.safe_load(f)
+                app_dict.update(yaml_dict)
+        else:
+            app_dict["summary"] = "Custom App"
+        app_list.append(app_dict)
+    return app_list
 
 
 def get_app_details(
@@ -546,9 +670,18 @@ async def save_user_app(file: UploadFile, path: Path) -> bool:
     if not filename:
         return False
     filename = secure_filename(filename)
+    # Ensure the path is within the user's apps directory to prevent path traversal
+    user_apps_dir = path.resolve()
+    file_path = (user_apps_dir / filename).resolve()
+    try:
+        file_path.relative_to(user_apps_dir)
+    except ValueError:
+        logger.warning("Security warning: Attempted path traversal in filename")
+        return False
+
     if file and allowed_file(filename):
         contents = await file.read()
-        with open(path / filename, "wb") as f:
+        with open(file_path, "wb") as f:
             f.write(contents)
         return True
     else:
@@ -561,12 +694,20 @@ def delete_user_upload(user: User, filename: str) -> bool:
     try:
         filename = secure_filename(filename)
         folder_name = Path(filename).stem
-        file_path = user_apps_path / folder_name / filename
         folder_path = user_apps_path / folder_name
-        if not str(file_path).startswith(str(user_apps_path)):
+        file_path = folder_path / filename
+
+        # Ensure paths are within get_users_dir to prevent path traversal
+        try:
+            user_apps_path.relative_to(get_users_dir())
+            file_path.relative_to(user_apps_path)
+            folder_path.relative_to(user_apps_path)
+        except ValueError:
             logger.warning("Security warning: Attempted path traversal")
             return False
-        if folder_path.exists():
+
+        # Only delete if folder_path exists and is a directory
+        if folder_path.exists() and folder_path.is_dir():
             shutil.rmtree(folder_path)
         return True
     except OSError as e:
