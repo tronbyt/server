@@ -96,12 +96,18 @@ def get_register(
     return templates.TemplateResponse(request, "auth/register.html", {"user": user})
 
 
+class RegisterFormData(BaseModel):
+    """Represents the form data for user registration."""
+
+    username: str
+    password: str
+    email: str = ""
+
+
 @router.post("/register")
 def post_register(
     request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    email: str = Form(""),
+    form_data: Annotated[RegisterFormData, Form()],
     user: User | None = Depends(manager.optional),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
@@ -127,33 +133,33 @@ def post_register(
 
     error = None
     status_code = status.HTTP_200_OK
-    if not username:
+    if not form_data.username:
         error = "Username is required."
         status_code = status.HTTP_400_BAD_REQUEST
-    elif not password:
+    elif not form_data.password:
         error = "Password is required."
         status_code = status.HTTP_400_BAD_REQUEST
-    elif db.get_user(db_conn, username):
+    elif db.get_user(db_conn, form_data.username):
         error = "User is already registered."
         status_code = status.HTTP_409_CONFLICT
 
     if error is None:
         api_key = _generate_api_key()
         new_user = User(
-            username=username,
-            password=generate_password_hash(password),
-            email=email,
+            username=form_data.username,
+            password=generate_password_hash(form_data.password),
+            email=form_data.email,
             api_key=api_key,
         )
         if db.save_user(db_conn, new_user, new_user=True):
-            db.create_user_dir(username)
+            db.create_user_dir(form_data.username)
             if user and user.username == "admin":
-                flash(request, f"User {username} registered successfully.")
+                flash(request, f"User {form_data.username} registered successfully.")
                 return RedirectResponse(
                     url="/auth/register", status_code=status.HTTP_302_FOUND
                 )
             else:
-                flash(request, f"Registered as {username}.")
+                flash(request, f"Registered as {form_data.username}.")
                 return RedirectResponse(
                     url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
                 )
@@ -179,12 +185,18 @@ def get_login(
     return templates.TemplateResponse(request, "auth/login.html", {"config": settings})
 
 
+class LoginFormData(BaseModel):
+    """Represents the form data for user login."""
+
+    username: str
+    password: str
+    remember: str | None = None
+
+
 @router.post("/login")
 def post_login(
     request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    remember: str | None = Form(None),
+    form_data: Annotated[LoginFormData, Form()],
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Handle user login."""
@@ -193,7 +205,7 @@ def post_login(
             url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
         )
 
-    user_data = db.auth_user(db_conn, username, password)
+    user_data = db.auth_user(db_conn, form_data.username, form_data.password)
     if not isinstance(user_data, User):
         flash(request, "Incorrect username/password.")
         if not settings.PRODUCTION == "0":
@@ -209,21 +221,22 @@ def post_login(
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     # Set token expiration
-    token_expires = timedelta(days=30) if remember else timedelta(minutes=60)
+    token_expires = timedelta(days=30) if form_data.remember else timedelta(minutes=60)
     access_token = manager.create_access_token(
         data={"sub": user.username}, expires=token_expires
     )
 
     # Set cookie expiration on the browser
-    cookie_max_age = 30 * 24 * 60 * 60 if remember else None  # 30 days or session
+    cookie_max_age = (
+        30 * 24 * 60 * 60 if form_data.remember else None
+    )  # 30 days or session
     response.set_cookie(
         key=manager.cookie_name,
         value=access_token,
         max_age=cookie_max_age,
-        secure=settings.SERVER_PROTOCOL
-        == "https",  # Only send cookie over HTTPS if applicable
+        secure=settings.SERVER_PROTOCOL == "https",  # Set secure flag in production
         httponly=True,  # Standard security practice
-        samesite="lax",  # Mitigate CSRF while allowing some cross-site usage
+        samesite="lax",  # Can be "strict" or "lax"
     )
 
     return response

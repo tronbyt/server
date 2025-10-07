@@ -10,7 +10,7 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 from random import randint
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from fastapi import (
     APIRouter,
@@ -24,6 +24,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
+from pydantic import BaseModel
 from werkzeug.utils import secure_filename
 from zoneinfo import available_timezones
 from markupsafe import escape
@@ -249,23 +250,29 @@ def create(request: Request, user: User = Depends(manager)) -> Response:
     return templates.TemplateResponse(request, "manager/create.html", {"user": user})
 
 
+class DeviceCreateFormData(BaseModel):
+    """Represents the form data for creating a device."""
+
+    name: str | None = None
+    device_type: str = DEFAULT_DEVICE_TYPE
+    img_url: str | None = None
+    ws_url: str | None = None
+    api_key: str | None = None
+    notes: str | None = None
+    brightness: int = 3
+    location: str | None = None
+
+
 @router.post("/create")
 def create_post(
     request: Request,
+    form_data: Annotated[DeviceCreateFormData, Form()],
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
-    name: str | None = Form(None),
-    device_type: str = Form(DEFAULT_DEVICE_TYPE),
-    img_url: str | None = Form(None),
-    ws_url: str | None = Form(None),
-    api_key: str | None = Form(None),
-    notes: str | None = Form(None),
-    brightness: int = Form(3),
-    location: str | None = Form(None),
 ) -> Response:
     """Handle device creation."""
     error = None
-    if not name or db.get_device_by_name(user, name):
+    if not form_data.name or db.get_device_by_name(user, form_data.name):
         error = "Unique name is required."
     if error is not None:
         flash(request, error)
@@ -290,22 +297,18 @@ def create_post(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-    if not img_url:
-        img_url = f"{server_root()}/{device_id}/next"
-    if not ws_url:
-        ws_url = ws_root() + f"/{device_id}/ws"
+    img_url = form_data.img_url or f"{server_root()}/{device_id}/next"
+    ws_url = form_data.ws_url or ws_root() + f"/{device_id}/ws"
+    api_key = form_data.api_key or "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
+    )
 
-    if not api_key:
-        api_key = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
-        )
-
-    percent_brightness = db.ui_scale_to_percent(brightness)
+    percent_brightness = db.ui_scale_to_percent(form_data.brightness)
 
     device = Device(
         id=device_id,
-        name=name or device_id,
-        type=cast(DeviceType, device_type),
+        name=form_data.name or device_id,
+        type=cast(DeviceType, form_data.device_type),
         img_url=img_url,
         ws_url=ws_url,
         api_key=api_key,
@@ -313,12 +316,12 @@ def create_post(
         night_brightness=0,
         dim_brightness=None,
         default_interval=10,
-        notes=notes or "",
+        notes=form_data.notes or "",
     )
 
-    if location and location != "{}":
+    if form_data.location and form_data.location != "{}":
         try:
-            loc = json.loads(location)
+            loc = json.loads(form_data.location)
             lat = loc.get("lat")
             lng = loc.get("lng")
             if lat and lng:
@@ -416,29 +419,35 @@ def update_interval(
     return Response(status_code=status.HTTP_200_OK)
 
 
+class DeviceUpdateFormData(BaseModel):
+    """Represents the form data for updating a device."""
+
+    name: str
+    device_type: str
+    img_url: str | None = None
+    ws_url: str | None = None
+    api_key: str | None = None
+    notes: str | None = None
+    brightness: int
+    night_brightness: int
+    default_interval: int
+    night_mode_enabled: bool = False
+    night_start: str
+    night_end: str
+    night_mode_app: str | None = None
+    dim_time: str | None = None
+    dim_brightness: int | None = None
+    timezone: str
+    location: str | None = None
+
+
 @router.post("/{device_id}/update")
 def update_post(
     request: Request,
     device_id: DeviceID,
+    form_data: Annotated[DeviceUpdateFormData, Form()],
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
-    name: str = Form(...),
-    device_type: str = Form(...),
-    img_url: str | None = Form(None),
-    ws_url: str | None = Form(None),
-    api_key: str | None = Form(None),
-    notes: str | None = Form(None),
-    brightness: int = Form(...),
-    night_brightness: int = Form(...),
-    default_interval: int = Form(...),
-    night_mode_enabled: bool = Form(False),
-    night_start: str = Form(...),
-    night_end: str = Form(...),
-    night_mode_app: str | None = Form(None),
-    dim_time: str | None = Form(None),
-    dim_brightness: int | None = Form(None),
-    timezone: str = Form(...),
-    location: str | None = Form(None),
 ) -> Response:
     """Handle device update."""
 
@@ -447,7 +456,7 @@ def update_post(
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
     error = None
-    if not name or not device_id:
+    if not form_data.name or not device_id:
         error = "Id and Name is required."
     if error is not None:
         flash(request, error)
@@ -455,52 +464,56 @@ def update_post(
             url=f"/{device_id}/update", status_code=status.HTTP_302_FOUND
         )
 
-    device.name = name
-    device.type = cast(DeviceType, device_type)
+    device.name = form_data.name
+    device.type = cast(DeviceType, form_data.device_type)
     device.img_url = (
-        db.sanitize_url(img_url) if img_url else f"{server_root()}/{device_id}/next"
+        db.sanitize_url(form_data.img_url)
+        if form_data.img_url
+        else f"{server_root()}/{device_id}/next"
     )
     device.ws_url = (
-        db.sanitize_url(ws_url) if ws_url else ws_root() + f"/{device_id}/ws"
+        db.sanitize_url(form_data.ws_url)
+        if form_data.ws_url
+        else ws_root() + f"/{device_id}/ws"
     )
-    device.api_key = api_key or ""
-    device.notes = notes or ""
-    device.brightness = db.ui_scale_to_percent(brightness)
-    device.night_brightness = db.ui_scale_to_percent(night_brightness)
-    device.default_interval = default_interval
-    device.night_mode_enabled = night_mode_enabled
-    device.night_mode_app = night_mode_app or ""
-    device.timezone = timezone
+    device.api_key = form_data.api_key or ""
+    device.notes = form_data.notes or ""
+    device.brightness = db.ui_scale_to_percent(form_data.brightness)
+    device.night_brightness = db.ui_scale_to_percent(form_data.night_brightness)
+    device.default_interval = form_data.default_interval
+    device.night_mode_enabled = form_data.night_mode_enabled
+    device.night_mode_app = form_data.night_mode_app or ""
+    device.timezone = form_data.timezone
 
-    if night_start:
+    if form_data.night_start:
         try:
-            device.night_start = parse_time_input(night_start)
+            device.night_start = parse_time_input(form_data.night_start)
         except ValueError as e:
             flash(request, f"Invalid night start time: {e}")
 
-    if night_end:
+    if form_data.night_end:
         try:
-            device.night_end = parse_time_input(night_end)
+            device.night_end = parse_time_input(form_data.night_end)
         except ValueError as e:
             flash(request, f"Invalid night end time: {e}")
 
     # Handle dim time and dim brightness
     # Note: Dim mode ends at night_end time (if set) or 6:00 AM by default
-    if dim_time and dim_time.strip():
+    if form_data.dim_time and form_data.dim_time.strip():
         try:
-            device.dim_time = parse_time_input(dim_time)
+            device.dim_time = parse_time_input(form_data.dim_time)
         except ValueError as e:
             flash(request, f"Invalid dim time: {e}")
     elif device.dim_time:
         # Remove dim_time if the field is empty
         device.dim_time = None
 
-    if dim_brightness:
-        device.dim_brightness = db.ui_scale_to_percent(dim_brightness)
+    if form_data.dim_brightness:
+        device.dim_brightness = db.ui_scale_to_percent(form_data.dim_brightness)
 
-    if location and location != "{}":
+    if form_data.location and form_data.location != "{}":
         try:
-            loc = json.loads(location)
+            loc = json.loads(form_data.location)
             lat = loc.get("lat")
             lng = loc.get("lng")
             if lat and lng:
@@ -541,7 +554,6 @@ def addapp(
     request: Request,
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
@@ -843,46 +855,26 @@ def updateapp(
     )
 
 
-class AppUpdateFormData:
+class AppUpdateFormData(BaseModel):
     """Represents the form data for updating an app."""
 
-    def __init__(
-        self,
-        name: str = Form(...),
-        uinterval: int | None = Form(None),
-        display_time: int = Form(0),
-        notes: str | None = Form(None),
-        enabled: bool = Form(False),
-        start_time: str | None = Form(None),
-        end_time: str | None = Form(None),
-        days: list[str] = Form([]),
-        use_custom_recurrence: bool = Form(False),
-        recurrence_type: str | None = Form(None),
-        recurrence_interval: int | None = Form(None),
-        recurrence_start_date: str | None = Form(None),
-        recurrence_end_date: str | None = Form(None),
-        weekdays: list[str] = Form([]),
-        monthly_pattern: str | None = Form(None),
-        day_of_month: int | None = Form(None),
-        day_of_week_pattern: str | None = Form(None),
-    ):
-        self.name = name
-        self.uinterval = uinterval
-        self.display_time = display_time
-        self.notes = notes
-        self.enabled = enabled
-        self.start_time = start_time
-        self.end_time = end_time
-        self.days = days
-        self.use_custom_recurrence = use_custom_recurrence
-        self.recurrence_type = recurrence_type
-        self.recurrence_interval = recurrence_interval
-        self.recurrence_start_date = recurrence_start_date
-        self.recurrence_end_date = recurrence_end_date
-        self.weekdays = weekdays
-        self.monthly_pattern = monthly_pattern
-        self.day_of_month = day_of_month
-        self.day_of_week_pattern = day_of_week_pattern
+    name: str
+    uinterval: int | None = None
+    display_time: int = 0
+    notes: str | None = None
+    enabled: bool = False
+    start_time: str | None = None
+    end_time: str | None = None
+    days: list[str] = []
+    use_custom_recurrence: bool = False
+    recurrence_type: str | None = None
+    recurrence_interval: int | None = None
+    recurrence_start_date: str | None = None
+    recurrence_end_date: str | None = None
+    weekdays: list[str] = []
+    monthly_pattern: str | None = None
+    day_of_month: int | None = None
+    day_of_week_pattern: str | None = None
 
 
 @router.post("/{device_id}/{iname}/updateapp")
@@ -890,9 +882,9 @@ def updateapp_post(
     request: Request,
     device_id: DeviceID,
     iname: str,
+    form_data: Annotated[AppUpdateFormData, Form()],
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
-    form_data: AppUpdateFormData = Depends(),
 ) -> Response:
     """Handle app update."""
 
