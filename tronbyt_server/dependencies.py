@@ -10,8 +10,7 @@ from fastapi_login.exceptions import InvalidCredentialsException
 
 from tronbyt_server import db
 from tronbyt_server.config import settings
-from tronbyt_server.models.device import Device
-from tronbyt_server.models.user import User
+from tronbyt_server.models import Device, User
 
 
 class NotAuthenticatedException(Exception):

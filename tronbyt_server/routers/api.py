@@ -15,9 +15,7 @@ from werkzeug.utils import secure_filename
 from tronbyt_server import db
 from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
 from tronbyt_server.utils import push_new_image, render_app
-from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device, DeviceID
-from tronbyt_server.models.user import User
+from tronbyt_server.models import App, Device, DeviceID, User
 
 router = APIRouter(prefix="/v0", tags=["api"])
 logger = logging.getLogger(__name__)

@@ -33,15 +33,18 @@ from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
-from tronbyt_server.models.app import App, RecurrencePattern, RecurrenceType, Weekday
-from tronbyt_server.models.device import (
+from tronbyt_server.models import (
+    App,
+    RecurrencePattern,
+    RecurrenceType,
+    Weekday,
     DEFAULT_DEVICE_TYPE,
     Device,
     DeviceID,
     DeviceType,
     Location,
+    User,
 )
-from tronbyt_server.models.user import User
 from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (

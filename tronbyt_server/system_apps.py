@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from tronbyt_server.models.app import AppMetadata
+from tronbyt_server.models import AppMetadata
 
 
 def git_command(

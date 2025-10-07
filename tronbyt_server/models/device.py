@@ -10,7 +10,7 @@ from pydantic import (
     BeforeValidator,
 )
 
-from tronbyt_server.models.app import App
+from .app import App
 
 DeviceType = Literal[
     "tidbyt_gen1",

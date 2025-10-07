@@ -15,9 +15,7 @@ from werkzeug.utils import secure_filename
 from tronbyt_server import db
 from tronbyt_server.config import settings
 from tronbyt_server.flash import flash
-from tronbyt_server.models.app import App
-from tronbyt_server.models.device import Device
-from tronbyt_server.models.user import User
+from tronbyt_server.models import App, Device, User
 from tronbyt_server.pixlet import render_app as pixlet_render_app
 from tronbyt_server.sync import get_sync_manager
 

@@ -17,7 +17,7 @@ from tronbyt_server import system_apps
 from tronbyt_server.config import settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
-from tronbyt_server.models.user import User
+from tronbyt_server.models import User
 from tronbyt_server.templates import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])

@@ -20,11 +20,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import settings
-from tronbyt_server.models.app import App
-from tronbyt_server.models.device import (
-    Device,
-)
-from tronbyt_server.models.user import User
+from tronbyt_server.models import App, Device, User
 
 logger = logging.getLogger(__name__)
 

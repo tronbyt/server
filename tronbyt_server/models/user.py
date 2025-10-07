@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from tronbyt_server.models.device import Device
+from .device import Device
 
 
 class User(BaseModel):
