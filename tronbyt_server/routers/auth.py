@@ -207,11 +207,25 @@ def post_login(
 
     user = user_data
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    expires = timedelta(days=30) if remember else None
+
+    # Set token expiration
+    token_expires = timedelta(days=30) if remember else timedelta(minutes=60)
     access_token = manager.create_access_token(
-        data={"sub": user.username}, expires=expires
+        data={"sub": user.username}, expires=token_expires
     )
-    manager.set_cookie(response, access_token)
+
+    # Set cookie expiration on the browser
+    cookie_max_age = 30 * 24 * 60 * 60 if remember else None  # 30 days or session
+    response.set_cookie(
+        key=manager.cookie_name,
+        value=access_token,
+        max_age=cookie_max_age,
+        secure=settings.SERVER_PROTOCOL
+        == "https",  # Only send cookie over HTTPS if applicable
+        httponly=True,  # Standard security practice
+        samesite="lax",  # Mitigate CSRF while allowing some cross-site usage
+    )
+
     return response
 
 
@@ -270,7 +284,7 @@ def logout(request: Request) -> Response:
     response = RedirectResponse(
         url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
     )
-    response.delete_cookie("session")
+    response.delete_cookie(manager.cookie_name)
     return response
 
 
