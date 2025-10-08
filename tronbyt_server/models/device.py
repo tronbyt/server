@@ -32,18 +32,18 @@ Brightness = Annotated[
 ]
 
 
-def validate_timezone(tz: str) -> str:
+def validate_timezone(tz: str | None) -> str | None:
     """
     Validate if a timezone string is valid.
 
     Args:
-        tz (str): The timezone string to validate.
+        tz (str | None): The timezone string to validate.
 
     Returns:
-        str: The timezone string if it is valid.
+        str | None: The timezone string if it is valid.
     """
     if not tz:
-        return ""
+        return tz
     try:
         ZoneInfo(tz)
         return tz
@@ -72,7 +72,7 @@ class Location(BaseModel):
     """Pydantic model for a location."""
 
     name: str = ""
-    timezone: Annotated[str, AfterValidator(validate_timezone)] = ""
+    timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
     lat: float
     lng: float
 
@@ -102,7 +102,7 @@ class Device(BaseModel):
     default_interval: int = Field(
         15, ge=0, description="Default interval in minutes (>= 0)"
     )
-    timezone: Annotated[str, AfterValidator(validate_timezone)] = ""
+    timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
     location: Location | None = None
     apps: dict[str, App] = {}
     last_app_index: int = 0

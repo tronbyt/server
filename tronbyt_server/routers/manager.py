@@ -440,7 +440,7 @@ class DeviceUpdateFormData(BaseModel):
     night_mode_app: str | None = None
     dim_time: str | None = None
     dim_brightness: int | None = None
-    timezone: str
+    timezone: str | None = None
     location: str | None = None
 
 
