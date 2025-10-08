@@ -14,7 +14,7 @@ from werkzeug.security import generate_password_hash
 
 import tronbyt_server.db as db
 from tronbyt_server import system_apps
-from tronbyt_server.config import settings
+from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
 from tronbyt_server.models import User
@@ -81,6 +81,7 @@ def get_register(
     request: Request,
     user: User | None = Depends(manager.optional),
     db_conn: sqlite3.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Render the user registration page."""
     if not db.has_users(db_conn):
@@ -110,6 +111,7 @@ def post_register(
     form_data: Annotated[RegisterFormData, Form()],
     user: User | None = Depends(manager.optional),
     db_conn: sqlite3.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle user registration."""
     if not db.has_users(db_conn):
@@ -175,7 +177,9 @@ def post_register(
 
 @router.get("/login")
 def get_login(
-    request: Request, db_conn: sqlite3.Connection = Depends(get_db)
+    request: Request,
+    db_conn: sqlite3.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Render the login page."""
     if not db.has_users(db_conn):
@@ -198,6 +202,7 @@ def post_login(
     request: Request,
     form_data: Annotated[LoginFormData, Form()],
     db_conn: sqlite3.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle user login."""
     if not db.has_users(db_conn):

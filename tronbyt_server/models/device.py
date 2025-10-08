@@ -47,8 +47,8 @@ def validate_timezone(tz: str | None) -> str | None:
     try:
         ZoneInfo(tz)
         return tz
-    except Exception as e:
-        raise ValueError(f"Invalid timezone: {tz}") from e
+    except Exception:
+        return None
 
 
 def format_time(v: Any) -> str | None:

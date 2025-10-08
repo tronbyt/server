@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
 from tronbyt_server.flash import flash
 from tronbyt_server.models import App, Device, User
 from tronbyt_server.pixlet import render_app as pixlet_render_app
@@ -31,6 +31,7 @@ def git_command(
 
 def server_root() -> str:
     """Get the root URL of the server."""
+    settings = get_settings()
     protocol = settings.SERVER_PROTOCOL
     hostname = settings.SERVER_HOSTNAME_OR_IP
     port = settings.SERVER_PORT
@@ -42,6 +43,7 @@ def server_root() -> str:
 
 def ws_root() -> str:
     """Get the root URL for websockets."""
+    settings = get_settings()
     server_protocol = settings.SERVER_PROTOCOL
     protocol = "wss" if server_protocol == "https" else "ws"
     hostname = settings.SERVER_HOSTNAME_OR_IP

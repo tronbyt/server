@@ -7,7 +7,7 @@ from babel.dates import format_timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi_babel import _
 
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
 from tronbyt_server.flash import get_flashed_messages
 
 
@@ -25,5 +25,5 @@ def timeago(seconds: int) -> str:
 templates = Jinja2Templates(directory="tronbyt_server/templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 templates.env.globals["_"] = _
-templates.env.globals["config"] = settings
+templates.env.globals["config"] = get_settings()
 templates.env.filters["timeago"] = timeago

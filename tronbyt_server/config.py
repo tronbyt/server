@@ -3,6 +3,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+from functools import lru_cache
+
+
 class Settings(BaseSettings):
     """Application settings."""
 
@@ -26,4 +29,7 @@ class Settings(BaseSettings):
     SYSTEM_APPS_REPO: str = "https://github.com/tronbyt/apps.git"
 
 
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    """Return the settings object."""
+    return Settings()

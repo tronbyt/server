@@ -9,7 +9,9 @@ import shutil
 
 from tronbyt_server.main import app as fastapi_app
 from tronbyt_server.dependencies import get_db
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
+
+settings = get_settings()
 
 
 @pytest.fixture(scope="session")

@@ -9,7 +9,7 @@ from fastapi_login import LoginManager
 from fastapi_login.exceptions import InvalidCredentialsException
 
 from tronbyt_server import db
-from tronbyt_server.config import settings
+from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.models import Device, User
 
 
@@ -20,14 +20,16 @@ class NotAuthenticatedException(Exception):
 
 
 manager = LoginManager(
-    settings.SECRET_KEY,
+    get_settings().SECRET_KEY,
     "/auth/login",
     use_cookie=True,
     not_authenticated_exception=NotAuthenticatedException,
 )
 
 
-def get_db() -> Generator[sqlite3.Connection, None, None]:
+def get_db(
+    settings: Settings = Depends(get_settings),
+) -> Generator[sqlite3.Connection, None, None]:
     """Get a database connection."""
     db_conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
     with db_conn:
@@ -74,7 +76,7 @@ def get_user_and_device_from_api_key(
 @manager.user_loader()  # type: ignore
 def load_user(username: str) -> User | None:
     """Load a user from the database."""
-    with next(get_db()) as db_conn:
+    with next(get_db(settings=get_settings())) as db_conn:
         user = db.get_user(db_conn, username)
         if user:
             return user
@@ -87,7 +89,7 @@ def auth_exception_handler(
     """
     Redirect the user to the login page if not logged in.
     """
-    with next(get_db()) as db_conn:
+    with next(get_db(settings=get_settings())) as db_conn:
         if not db.has_users(db_conn):
             return RedirectResponse(request.url_for("get_register_owner"))
     return RedirectResponse(request.url_for("get_login"))

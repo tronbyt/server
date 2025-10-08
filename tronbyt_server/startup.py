@@ -3,12 +3,12 @@
 import logging
 
 from tronbyt_server import db, firmware_utils, system_apps
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
 
 
 def run_once() -> None:
     """Run tasks that should only be executed once at application startup."""
-    logging.basicConfig(level=settings.LOG_LEVEL)
+    logging.basicConfig(level=get_settings().LOG_LEVEL)
     logger = logging.getLogger(__name__)
     logger.info("Running one-time startup tasks...")
     try:

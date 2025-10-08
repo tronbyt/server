@@ -19,7 +19,7 @@ from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
 from tronbyt_server.models import App, Device, User
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def get_db() -> sqlite3.Connection:
     """Get a database connection."""
-    return sqlite3.connect(settings.DB_FILE, check_same_thread=False)
+    return sqlite3.connect(get_settings().DB_FILE, check_same_thread=False)
 
 
 def init_db(db: sqlite3.Connection) -> None:
@@ -458,12 +458,12 @@ def brightness_map_8bit_to_levels(brightness: int) -> int:
 
 def get_data_dir() -> Path:
     """Get the data directory."""
-    return Path(settings.DATA_DIR).absolute()
+    return Path(get_settings().DATA_DIR).absolute()
 
 
 def get_users_dir() -> Path:
     """Get the users directory."""
-    return Path(settings.USERS_DIR).absolute()
+    return Path(get_settings().USERS_DIR).absolute()
 
 
 def get_user(db: sqlite3.Connection, username: str) -> User | None:

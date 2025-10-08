@@ -5,7 +5,9 @@ import sqlite3
 from fastapi.testclient import TestClient
 
 from tronbyt_server import db
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
+
+settings = get_settings()
 
 
 def test_upload_and_delete(auth_client: TestClient) -> None:

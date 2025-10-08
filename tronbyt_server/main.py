@@ -10,7 +10,7 @@ from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from tronbyt_server import db
-from tronbyt_server.config import settings
+from tronbyt_server.config import get_settings
 from tronbyt_server.dependencies import (
     NotAuthenticatedException,
     auth_exception_handler,
@@ -27,9 +27,9 @@ from typing import AsyncGenerator
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Run startup and shutdown events."""
     # Startup
-    logging.basicConfig(level=settings.LOG_LEVEL)
+    logging.basicConfig(level=get_settings().LOG_LEVEL)
     logger = logging.getLogger(__name__)
-    db_connection = next(get_db())
+    db_connection = next(get_db(settings=get_settings()))
     with db_connection:
         db.init_db(db_connection)
     yield
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)
 
 # Babel configuration
 babel_configs = BabelConfigs(

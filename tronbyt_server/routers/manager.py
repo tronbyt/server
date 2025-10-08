@@ -30,7 +30,7 @@ from zoneinfo import available_timezones
 from markupsafe import escape
 
 from tronbyt_server import db, firmware_utils, system_apps
-from tronbyt_server.config import settings
+from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
 from tronbyt_server.models import (
@@ -557,6 +557,7 @@ def addapp(
     request: Request,
     device_id: DeviceID,
     user: User = Depends(manager),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
@@ -1311,7 +1312,11 @@ def refresh_system_repo(
 
 
 @router.post("/mark_app_broken/{app_name}")
-def mark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
+def mark_app_broken(
+    app_name: str,
+    user: User = Depends(manager),
+    settings: Settings = Depends(get_settings),
+) -> Response:
     """Mark an app as broken by adding it to broken_apps.txt (development mode only)."""
     # Only allow in development mode
     if settings.PRODUCTION != "0":
@@ -1376,7 +1381,11 @@ def mark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
 
 
 @router.post("/unmark_app_broken/{app_name}")
-def unmark_app_broken(app_name: str, user: User = Depends(manager)) -> Response:
+def unmark_app_broken(
+    app_name: str,
+    user: User = Depends(manager),
+    settings: Settings = Depends(get_settings),
+) -> Response:
     """Remove an app from broken_apps.txt (development mode only)."""
     # Only allow in development mode
     if settings.PRODUCTION != "0":
