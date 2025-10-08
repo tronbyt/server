@@ -336,29 +336,40 @@
     margin: 0;
   }
 
-  .delete-upload-btn {
-    display: inline-block !important;
-    background-color: #f44336 !important;
-    color: white !important;
-    padding: 5px 10px !important;
-    border-radius: 3px !important;
-    text-decoration: none !important;
-    font-size: 12px !important;
-    font-weight: bold !important;
-    margin-top: 8px !important;
-    transition: background-color 0.2s !important;
-    position: relative !important;
-    z-index: 5 !important;
+  /* Use higher specificity to override global link styles without !important */
+  .app-item a.delete-upload-btn {
+    display: inline-block;
+    background-color: #f44336;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 3px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 8px;
+    transition: background-color 0.2s;
+    position: relative;
+    z-index: 5;
   }
 
-  .delete-upload-btn:hover {
-    background-color: #d32f2f !important;
-    text-decoration: none !important;
-    color: white !important;
+  .app-item a.delete-upload-btn:hover {
+    background-color: #d32f2f;
+    text-decoration: none;
+    color: white;
   }
 
-  .delete-upload-btn:visited {
-    color: white !important;
+  .app-item a.delete-upload-btn:visited {
+    color: white;
+  }
+
+  .app-item a.delete-upload-btn:active {
+    color: white;
+  }
+
+  .app-item a.delete-upload-btn:focus {
+    color: white;
+    outline: 2px solid #d32f2f;
+    outline-offset: 2px;
   }
 </style>
 
