@@ -986,9 +986,7 @@ def render_app(
                     height = 64
 
     device_interval = device.get("default_interval", 15)
-    app_interval = app.get("display_time", device_interval) if app else device_interval
-    if app_interval == 0:
-        app_interval = device_interval
+    app_interval = (app and app.get("display_time")) or device_interval
 
     data, messages = pixlet_render_app(
         path=app_path,
