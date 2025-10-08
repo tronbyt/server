@@ -296,19 +296,24 @@ def handle_patch_device_app(
         if not user:
             abort(HTTPStatus.NOT_FOUND, description="User not found")
 
-        apps = device.get("apps", {})
+        # Get device from user's devices (not the standalone device variable)
+        user_device = user["devices"].get(device_id)
+        if not user_device:
+            abort(HTTPStatus.NOT_FOUND, description="Device not found in user data")
+
+        apps = user_device.get("apps", {})
         if installation_id not in apps:
             abort(HTTPStatus.NOT_FOUND, description="App not found")
 
         if set_pinned:
             # Pin the app
-            device["pinned_app"] = installation_id
+            user_device["pinned_app"] = installation_id
             db.save_user(user)
             return Response("App pinned.", status=200)
         else:
             # Unpin the app (only if it's currently pinned)
-            if device.get("pinned_app") == installation_id:
-                device.pop("pinned_app", None)
+            if user_device.get("pinned_app") == installation_id:
+                user_device.pop("pinned_app", None)
                 db.save_user(user)
                 return Response("App unpinned.", status=200)
             else:

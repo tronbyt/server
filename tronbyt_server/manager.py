@@ -858,9 +858,12 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
     if not app.get("recurrence_end_date"):
         app["recurrence_end_date"] = (today + timedelta(days=7)).strftime("%Y-%m-%d")
 
+    device = g.user["devices"][device_id]
+
     return render_template(
         "manager/updateapp.html",
         app=app,
+        device=device,
         device_id=device_id,
         config=json.dumps(app.get("config", {}), indent=4),
     )
