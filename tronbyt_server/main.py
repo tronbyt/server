@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from tronbyt_server import db, firmware_utils, system_apps
+from tronbyt_server import db
 from tronbyt_server.config import settings
 from tronbyt_server.dependencies import (
     NotAuthenticatedException,
@@ -32,11 +32,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     db_connection = next(get_db())
     with db_connection:
         db.init_db(db_connection)
-    try:
-        firmware_utils.update_firmware_binaries_subprocess(db.get_data_dir(), logger)
-    except Exception as e:
-        logger.error(f"Failed to update firmware during startup: {e}")
-    system_apps.update_system_repo(db.get_data_dir(), logger)
     yield
     # Shutdown
     from tronbyt_server.sync import get_sync_manager

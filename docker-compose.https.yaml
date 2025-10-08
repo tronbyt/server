@@ -15,7 +15,7 @@ services:
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
-      - GUNICORN_THREADS
+      - WEB_CONCURRENCY
 
     healthcheck:
       test: ["CMD", "python3", "/app/healthcheck.py", "http://localhost:8000/health"]
