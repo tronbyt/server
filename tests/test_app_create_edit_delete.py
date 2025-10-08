@@ -1,12 +1,13 @@
-from flask.testing import FlaskClient
-
+import sqlite3
+from fastapi.testclient import TestClient
+from tests import utils
 from tronbyt_server import db
 
-from . import utils
 
-
-def test_app_create_edit_config_delete(auth_client: FlaskClient) -> None:
-    auth_client.post(
+def test_app_create_edit_config_delete(
+    auth_client: TestClient, db_connection: sqlite3.Connection
+) -> None:
+    response = auth_client.post(
         "/create",
         data={
             "name": "TESTDEVICE",
@@ -15,9 +16,31 @@ def test_app_create_edit_config_delete(auth_client: FlaskClient) -> None:
             "notes": "TESTNOTES",
             "brightness": "3",
         },
+        follow_redirects=False,
     )
+    assert response.status_code == 302
+    user = utils.get_testuser(db_connection)
+    device_id = list(user.devices.keys())[0]
 
-    device_id = utils.get_test_device_id()
+    r = auth_client.get(f"/{device_id}/addapp")
+    assert r.status_code == 200
+
+    r = auth_client.post(
+        f"/{device_id}/addapp",
+        data={
+            "name": "NOAA Tides",
+            "uinterval": "69",
+            "display_time": "10",
+            "notes": "",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code == 302
+
+    user = utils.get_testuser(db_connection)
+    assert len(user.devices[device_id].apps) == 1
+
+    device_id = list(user.devices.keys())[0]
 
     r = auth_client.get(f"/{device_id}/addapp")
     assert r.status_code == 200
@@ -31,35 +54,42 @@ def test_app_create_edit_config_delete(auth_client: FlaskClient) -> None:
             "notes": "",
         },
     )
+    assert r.status_code == 200
 
-    app_id = utils.get_test_app_id()
-    assert utils.get_test_app_dict()["name"] == "NOAA Tides"
+    user = utils.get_testuser(db_connection)
+    app_id = list(user.devices[device_id].apps.keys())[0]
+    test_app = user.devices[device_id].apps[app_id]
+    assert test_app.name == "NOAA Tides"
 
-    r = auth_client.get(f"{device_id}/{app_id}/1/configapp")
+    r = auth_client.get(f"/{device_id}/{app_id}/configapp?delete_on_cancel=true")
     assert r.status_code == 200
 
     r = auth_client.post(
-        f"{device_id}/{app_id}/updateapp",
+        f"/{device_id}/{app_id}/updateapp",
         data={
             "iname": app_id,
             "name": "NOAA Tides",
             "uinterval": "69",
             "display_time": "69",
             "notes": "69",
+            "enabled": "true",
+            "starttime": "",
+            "endtime": "",
         },
+        follow_redirects=False,
     )
-    print(r.data.decode())
-    test_app_dict = utils.get_test_app_dict()
-    print(str(test_app_dict))
+    assert r.status_code == 302
 
-    assert test_app_dict["uinterval"] == 69
-    assert test_app_dict["display_time"] == 69
-    assert test_app_dict["notes"] == "69"
+    user = utils.get_testuser(db_connection)
+    test_app = user.devices[device_id].apps[app_id]
 
-    auth_client.get(f"{device_id}/{app_id}/delete")
+    assert test_app.uinterval == 69
+    assert test_app.display_time == 69
+    assert test_app.notes == "69"
 
-    user = utils.get_testuser()
-    assert app_id not in user["devices"][device_id]["apps"]
+    auth_client.get(f"/{device_id}/{app_id}/delete")
 
-    # delete the test device webp dir
+    user = utils.get_testuser(db_connection)
+    assert app_id not in user.devices[device_id].apps
+
     db.delete_device_dirs(device_id)

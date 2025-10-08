@@ -1,6 +1,6 @@
 # Tronbyt Server
 
-This is a Flask app for managing your apps on your Tronbyt (flashed Tidbyt). This project is designed to run your Tronbyt/Tidbyt completely locally without relying on the backend servers operated by Tidbyt.
+This is a FastAPI app for managing your apps on your Tronbyt (flashed Tidbyt). This project is designed to run your Tronbyt/Tidbyt completely locally without relying on the backend servers operated by Tidbyt.
 
 ## Why use this?
 
@@ -91,7 +91,7 @@ That said, the recommended installation method uses Docker Compose with a config
    curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > $(brew --prefix)/var/tronbyt-server/.env
    ```
 
-   You can further customize the server by editing the [Gunicorn settings](https://docs.gunicorn.org/en/latest/settings.html#settings) (listening address, TLS certificate, etc.) in `$(brew --prefix)/etc/tronbyt-server/gunicorn.conf.py`.
+   You can further customize the server by editing the [Uvicorn settings](https://uvicorn.dev/settings/) (listening address, TLS certificate, etc.) in `$(brew --prefix)/var/tronbyt-server/.env`.
 
 #### Unraid
 
@@ -123,7 +123,7 @@ That said, the recommended installation method uses Docker Compose with a config
    - Username: `admin`
    - Password: `password`
 
-### Quick Start Guide 
+### Quick Start Guide
 For a more detailed walkthrough click here : [Walkthrough in google docs by JeffLac](https://docs.google.com/document/d/e/2PACX-1vS-TRGPnYvjnwR37GXy6GFsvGdhBeDC6iypncZ5jFNaT9mxcczneGqmRtdM98UVUi7Cl-KDl4XYedkZ/pub)
 1. Access the web app at [http://localhost:8000](http://localhost:8000) (or your configured domain) with the default login credentials: `admin/password`.
 2. Add your Tronbyt as a device in the manager.
@@ -210,7 +210,7 @@ If you are upgrading from an earlier version of Tronbyt Server (earlier than ver
 
 ### HTTPS (TLS)
 
-If you'd like to serve Tronbyt Server over HTTPS, you can do so by configuring Gunicorn or by fronting the service with a reverse proxy. The reverse proxy approach is more flexible and allows for automatic certificate provisioning and renewal. If you already have a certificate, you can also use that directly and avoid the sidecar container.
+If you'd like to serve Tronbyt Server over HTTPS, you can do so by configuring Uvicorn or by fronting the service with a reverse proxy. The reverse proxy approach is more flexible and allows for automatic certificate provisioning and renewal. If you already have a certificate, you can also use that directly and avoid the sidecar container.
 
 #### Reverse Proxy
 
@@ -218,39 +218,22 @@ The `docker-compose.https.yaml` file contains an example using [Caddy](https://c
 
 If you want to make Tronbyt Server accessible using a public DNS name, adjust `Caddyfile` to match your domain name and use one of the supporte [ACME challenges](https://caddyserver.com/docs/automatic-https#acme-challenges) (HTTP, TLS-ALPN, or DNS).
 
-#### Gunicorn
+#### Uvicorn
 
 The following example assumes that your private key and certificate are located next to your Compose file.
 
-1. Create a file named `gunicorn.conf.py` in the same directory which looks like this:
+1. Configure the certificate and private key in the compose file:
 
-```python
-bind = "0.0.0.0:8000"
-loglevel = "info"
-accesslog = "-"
-access_log_format = "%(h)s %(l)s %(u)s %(t)s %(r)s %(s)s %(b)s %(f)s %(a)s"
-errorlog = "-"
-workers = 4
-threads = 4
-timeout = 120
-worker_tmp_dir = "/dev/shm"
-preload_app = True
-reload = False
-keyfile = "/ssl/privkey.pem"
-certfile = "/ssl/fullchain.pem"
-
-def ssl_context(conf, default_ssl_context_factory):
-    import ssl
-    context = default_ssl_context_factory()
-    context.minimum_version = ssl.TLSVersion.TLSv1_2
-    return context
+```
+    environment:
+      - UVICORN_SSL_KEYFILE=/ssl/privkey.pem
+      - UVICORN_SSL_CERTFILE=/ssl/fullchain.pem
 ```
 
 2. Make the files in PEM format and the configuration file available to the container:
 
 ```
     volumes:
-      - ./gunicorn.conf.py:/app/gunicorn.conf.py
       - ./fullchain.cer:/ssl/fullchain.pem
       - ./privkey.pem:/ssl/privkey.pem
 ```
@@ -259,7 +242,7 @@ def ssl_context(conf, default_ssl_context_factory):
 
 Your Tronbyt server is now serving HTTPS.
 
-See https://docs.gunicorn.org/en/latest/settings.html#settings for an exhaustive list of settings for Gunicorn.
+See https://uvicorn.dev/settings for an exhaustive list of settings for Uvicorn.
 
 ### Cache
 

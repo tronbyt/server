@@ -6,14 +6,12 @@ import logging
 import os
 import shutil
 import subprocess
+import yaml
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import yaml
-from flask import current_app
-
-from tronbyt_server.models.app import AppMetadata
+from tronbyt_server.models import AppMetadata
 
 
 def git_command(
@@ -28,14 +26,6 @@ def git_command(
     return subprocess.run(
         command, cwd=cwd, env=env, check=check, capture_output=capture_output
     )
-
-
-def log_message(message: str) -> None:
-    """Log a message using Flask's logger if in app context, otherwise use print."""
-    if current_app:
-        current_app.logger.info(message)
-    else:
-        print(message)
 
 
 def get_system_repo_info(base_path: Path) -> dict[str, Optional[str]]:
@@ -182,16 +172,16 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
             is_broken = broken_apps and app.name in broken_apps
             if is_broken:
                 logger.info(f"marking broken app {app.name}")
-                app_dict["broken"] = True
-                app_dict["brokenReason"] = "Marked Broken"
+                app_dict.broken = True
+                app_dict.brokenReason = "Marked Broken"
                 skip_count += 1
 
             # Check if app uses secret.star module
             app_str = app.read_text()
             if "secret.star" in app_str:
                 logger.info(f"marking app {app.name} as broken (uses secret.star)")
-                app_dict["broken"] = True
-                app_dict["brokenReason"] = "Requires Secrets"
+                app_dict.broken = True
+                app_dict.brokenReason = "Requires Secrets"
                 skip_count += 1
 
             app_base_path = app.parent
@@ -201,14 +191,16 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
             if yaml_path.exists():
                 with yaml_path.open("r") as f:
                     yaml_dict = yaml.safe_load(f)
-                    # Remove fileName from yaml_dict if it exists to prevent overwriting
-                    yaml_dict.pop("fileName", None)
-                    # Update with yaml data
-                    app_dict.update(yaml_dict)
+                    # Merge YAML dict into Pydantic model
+                    app_dict = app_dict.model_copy(
+                        update={
+                            k: v for k, v in yaml_dict.items() if hasattr(app_dict, k)
+                        }
+                    )
             else:
-                app_dict["summary"] = "System App"
+                app_dict.summary = "System App"
 
-            package_name = app_dict.get("packageName", app_base_path.name)
+            package_name = app_dict.packageName or app_base_path.name
 
             # Check for a preview in the repo and copy it over to static previews directory
             for image_name in [
@@ -239,7 +231,7 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
                 # set the preview for the app to the static preview location
                 if static_image_path.exists():
                     num_previews += 1
-                    app_dict["preview"] = static_image_path.name
+                    app_dict.preview = static_image_path.name
                     break
             count += 1
             apps_array.append(app_dict)
@@ -252,7 +244,7 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
     logger.info(f"copied {new_previews} new previews into static")
     logger.info(f"total previews found {num_previews}")
     with (base_path / "system-apps.json").open("w") as f:
-        json.dump(apps_array, f, indent=4)
+        json.dump([a.model_dump() for a in apps_array], f, indent=4)
 
 
 def update_system_repo(base_path: Path, logger: logging.Logger) -> None:

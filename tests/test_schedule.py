@@ -2,7 +2,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from tronbyt_server import db
-from tronbyt_server.models.app import App
+from tronbyt_server.models.app import App, RecurrencePattern
 
 
 def test_get_is_app_schedule_active() -> None:
@@ -10,8 +10,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="18:00",
-            end_time="22:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(18, 0),
+            end_time=datetime.time(22, 0),
         ),
         datetime.datetime(
             year=2025,
@@ -28,8 +30,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="18:00",
-            end_time="22:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(18, 0),
+            end_time=datetime.time(22, 0),
         ),
         datetime.datetime(
             year=2025,
@@ -44,8 +48,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="18:00",
-            end_time="22:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(18, 0),
+            end_time=datetime.time(22, 0),
         ),
         datetime.datetime(
             year=2025,
@@ -59,8 +65,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="22:00",
-            end_time="06:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(22, 0),
+            end_time=datetime.time(6, 0),
         ),
         datetime.datetime(
             year=2025,
@@ -74,8 +82,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="22:00",
-            end_time="06:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(22, 0),
+            end_time=datetime.time(6, 0),
         ),
         datetime.datetime(
             year=2025,
@@ -89,8 +99,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="22:00",
-            end_time="06:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(22, 0),
+            end_time=datetime.time(6, 0),
         ),
         datetime.datetime(
             year=2025,
@@ -103,15 +115,17 @@ def test_get_is_app_schedule_active() -> None:
         ),
     )
     assert db.get_is_app_schedule_active_at_time(
-        App(name="testing", iname="testing"),
+        App(name="testing", iname="testing", id="testing", path="/testing"),
         datetime.datetime(year=2025, month=1, day=1, hour=10, minute=0, second=10),
     )
     assert db.get_is_app_schedule_active_at_time(
         App(
             name="testing",
             iname="testing",
-            start_time="18:00",
-            end_time="22:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(18, 0),
+            end_time=datetime.time(22, 0),
             days=["wednesday"],
         ),
         datetime.datetime(
@@ -127,8 +141,10 @@ def test_get_is_app_schedule_active() -> None:
         App(
             name="testing",
             iname="testing",
-            start_time="18:00",
-            end_time="22:00",
+            id="testing",
+            path="/testing",
+            start_time=datetime.time(18, 0),
+            end_time=datetime.time(22, 0),
             days=["monday", "tuesday"],
         ),
         datetime.datetime(
@@ -148,10 +164,12 @@ def test_daily_recurrence() -> None:
     app = App(
         name="daily_test",
         iname="daily_test",
+        id="daily_test",
+        path="/daily_test",
         use_custom_recurrence=True,
         recurrence_type="daily",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-01",
+        recurrence_start_date=datetime.date(2025, 1, 1),
     )
 
     # Should be active every day
@@ -166,7 +184,7 @@ def test_daily_recurrence() -> None:
     )
 
     # Every 3 days
-    app["recurrence_interval"] = 3
+    app.recurrence_interval = 3
     assert db.get_is_app_schedule_active_at_time(
         app, datetime.datetime(2025, 1, 1, 12, 0)
     )  # Start date
@@ -190,11 +208,13 @@ def test_weekly_recurrence() -> None:
     app = App(
         name="weekly_test",
         iname="weekly_test",
+        id="weekly_test",
+        path="/weekly_test",
         use_custom_recurrence=True,
         recurrence_type="weekly",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-06",  # Monday, Jan 6, 2025
-        recurrence_pattern={"weekdays": ["monday", "wednesday"]},
+        recurrence_start_date=datetime.date(2025, 1, 6),  # Monday, Jan 6, 2025
+        recurrence_pattern=RecurrencePattern(weekdays=["monday", "wednesday"]),
     )
 
     # Test first week
@@ -220,8 +240,8 @@ def test_weekly_recurrence() -> None:
     )  # Wednesday
 
     # Every 2 weeks (bi-weekly) on Monday
-    app["recurrence_interval"] = 2
-    app["recurrence_pattern"] = {"weekdays": ["monday"]}
+    app.recurrence_interval = 2
+    app.recurrence_pattern = RecurrencePattern(weekdays=["monday"])
 
     # Week 1: Should be active
     assert db.get_is_app_schedule_active_at_time(
@@ -245,11 +265,13 @@ def test_monthly_recurrence_day_of_month() -> None:
     app = App(
         name="monthly_test",
         iname="monthly_test",
+        id="monthly_test",
+        path="/monthly_test",
         use_custom_recurrence=True,
         recurrence_type="monthly",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-01",
-        recurrence_pattern={"day_of_month": 1},
+        recurrence_start_date=datetime.date(2025, 1, 1),
+        recurrence_pattern=RecurrencePattern(day_of_month=1),
     )
 
     # Should be active on 1st of each month
@@ -272,9 +294,9 @@ def test_monthly_recurrence_day_of_month() -> None:
     )
 
     # 15th of every 2 months
-    app["recurrence_interval"] = 2
-    app["recurrence_pattern"] = {"day_of_month": 15}
-    app["recurrence_start_date"] = "2025-01-15"
+    app.recurrence_interval = 2
+    app.recurrence_pattern = RecurrencePattern(day_of_month=15)
+    app.recurrence_start_date = datetime.date(2025, 1, 15)
 
     # Should be active on 15th of Jan, Mar, May, etc.
     assert db.get_is_app_schedule_active_at_time(
@@ -294,11 +316,13 @@ def test_monthly_recurrence_day_of_week() -> None:
     app = App(
         name="monthly_dow_test",
         iname="monthly_dow_test",
+        id="monthly_dow_test",
+        path="/monthly_dow_test",
         use_custom_recurrence=True,
         recurrence_type="monthly",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-01",
-        recurrence_pattern={"day_of_week": "first_monday"},
+        recurrence_start_date=datetime.date(2025, 1, 1),
+        recurrence_pattern=RecurrencePattern(day_of_week="first_monday"),
     )
 
     # January 2025: First Monday is Jan 6
@@ -315,7 +339,7 @@ def test_monthly_recurrence_day_of_week() -> None:
     )
 
     # Last Friday of every month
-    app["recurrence_pattern"] = {"day_of_week": "last_friday"}
+    app.recurrence_pattern = RecurrencePattern(day_of_week="last_friday")
 
     # January 2025: Last Friday is Jan 31
     assert db.get_is_app_schedule_active_at_time(
@@ -332,10 +356,12 @@ def test_yearly_recurrence() -> None:
     app = App(
         name="yearly_test",
         iname="yearly_test",
+        id="yearly_test",
+        path="/yearly_test",
         use_custom_recurrence=True,
         recurrence_type="yearly",
         recurrence_interval=1,
-        recurrence_start_date="2025-09-22",  # Today's date
+        recurrence_start_date=datetime.date(2025, 9, 22),  # Today's date
     )
 
     # Should be active on Sep 22 of each year
@@ -361,7 +387,7 @@ def test_yearly_recurrence() -> None:
     )
 
     # Every 2 years
-    app["recurrence_interval"] = 2
+    app.recurrence_interval = 2
 
     assert db.get_is_app_schedule_active_at_time(
         app, datetime.datetime(2025, 9, 22, 12, 0)
@@ -379,11 +405,13 @@ def test_recurrence_with_end_date() -> None:
     app = App(
         name="end_date_test",
         iname="end_date_test",
+        id="end_date_test",
+        path="/end_date_test",
         use_custom_recurrence=True,
         recurrence_type="daily",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-01",
-        recurrence_end_date="2025-01-05",
+        recurrence_start_date=datetime.date(2025, 1, 1),
+        recurrence_end_date=datetime.date(2025, 1, 5),
     )
 
     # Should be active within the date range
@@ -411,13 +439,17 @@ def test_recurrence_with_time_range() -> None:
     app = App(
         name="time_range_test",
         iname="time_range_test",
+        id="time_range_test",
+        path="/time_range_test",
         use_custom_recurrence=True,
-        start_time="09:00",
-        end_time="17:00",
+        start_time=datetime.time(9, 0),
+        end_time=datetime.time(17, 0),
         recurrence_type="weekly",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-06",  # Monday
-        recurrence_pattern={"weekdays": ["monday", "wednesday", "friday"]},
+        recurrence_start_date=datetime.date(2025, 1, 6),  # Monday
+        recurrence_pattern=RecurrencePattern(
+            weekdays=["monday", "wednesday", "friday"]
+        ),
     )
 
     # Should be active on weekdays within time range
@@ -447,8 +479,10 @@ def test_legacy_days_compatibility() -> None:
     app = App(
         name="legacy_test",
         iname="legacy_test",
-        start_time="10:00",
-        end_time="16:00",
+        id="legacy_test",
+        path="/legacy_test",
+        start_time=datetime.time(10, 0),
+        end_time=datetime.time(16, 0),
         days=["monday", "wednesday", "friday"],
         # No recurrence_type field - should fall back to legacy behavior
     )
@@ -464,29 +498,16 @@ def test_legacy_days_compatibility() -> None:
 
 def test_edge_cases() -> None:
     """Test edge cases and error conditions."""
-    # Invalid start date should not crash
-    app = App(
-        name="invalid_test",
-        iname="invalid_test",
-        use_custom_recurrence=True,
-        recurrence_type="daily",
-        recurrence_interval=1,
-        recurrence_start_date="invalid-date",
-    )
-
-    # Should return False gracefully
-    assert not db.get_is_app_schedule_active_at_time(
-        app, datetime.datetime(2025, 1, 1, 12, 0)
-    )
-
     # Test before start date
     app = App(
         name="before_start_test",
         iname="before_start_test",
+        id="before_start_test",
+        path="/before_start_test",
         use_custom_recurrence=True,
         recurrence_type="daily",
         recurrence_interval=1,
-        recurrence_start_date="2025-01-10",
+        recurrence_start_date=datetime.date(2025, 1, 10),
     )
 
     # Should not be active before start date

@@ -7,18 +7,19 @@ import platform
 from logging import Logger
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
-pixlet_render_app: Optional[
-    Callable[[bytes, bytes, int, int, int, int, int, int, int, Optional[bytes]], Any]
-] = None
-pixlet_get_schema: Optional[Callable[[bytes], Any]] = None
-pixlet_call_handler: Optional[
-    Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any]
-] = None
-pixlet_init_cache: Optional[Callable[[], None]] = None
-pixlet_init_redis_cache: Optional[Callable[[bytes], None]] = None
-pixlet_free_bytes: Optional[Callable[[Any], None]] = None
+pixlet_render_app: (
+    Callable[[bytes, bytes, int, int, int, int, int, int, int, bytes | None], Any]
+    | None
+) = None
+pixlet_get_schema: Callable[[bytes], Any] | None = None
+pixlet_call_handler: (
+    Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any] | None
+) = None
+pixlet_init_cache: Callable[[], None] | None = None
+pixlet_init_redis_cache: Callable[[bytes], None] | None = None
+pixlet_free_bytes: Callable[[Any], None] | None = None
 
 
 # Constants for default libpixlet paths
@@ -128,7 +129,7 @@ def initialize_pixlet_library(logger: Logger) -> None:
         _pixlet_initialized = True
 
 
-def c_char_p_to_string(c_pointer: ctypes.c_char_p) -> Optional[str]:
+def c_char_p_to_string(c_pointer: ctypes.c_char_p) -> str | None:
     if not c_pointer:
         return None
     data = ctypes.string_at(c_pointer)  # Extract the NUL-terminated C-String
@@ -140,7 +141,7 @@ def c_char_p_to_string(c_pointer: ctypes.c_char_p) -> Optional[str]:
 
 def render_app(
     path: Path,
-    config: Dict[str, Any],
+    config: dict[str, Any],
     width: int,
     height: int,
     magnify: int,
@@ -148,7 +149,7 @@ def render_app(
     timeout: int,
     image_format: int,
     logger: Logger,
-) -> Tuple[Optional[bytes], List[str]]:
+) -> tuple[bytes | None, list[str]]:
     initialize_pixlet_library(logger)
     if not pixlet_render_app:
         logger.debug("failed to init pixlet_library")
@@ -176,7 +177,7 @@ def render_app(
         buf = bytes(data)
         if pixlet_free_bytes and ret.data:
             pixlet_free_bytes(ret.data)
-        messages: List[str] = []
+        messages: list[str] = []
         if messagesJSON:
             try:
                 messages = json.loads(messagesJSON)
@@ -186,7 +187,7 @@ def render_app(
     return None, []
 
 
-def get_schema(path: Path, logger: Logger) -> Optional[str]:
+def get_schema(path: Path, logger: Logger) -> str | None:
     initialize_pixlet_library(logger)
     if not pixlet_get_schema:
         return None
@@ -199,7 +200,7 @@ def get_schema(path: Path, logger: Logger) -> Optional[str]:
 
 def call_handler(
     path: Path, handler: str, parameter: str, logger: Logger
-) -> Optional[str]:
+) -> str | None:
     initialize_pixlet_library(logger)
     if not pixlet_call_handler:
         return None
