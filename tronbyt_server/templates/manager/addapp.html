@@ -116,9 +116,14 @@
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
-  {% macro render_app_list(title, search_id, grid_id, app_list, show_controls=true) %}
+  {% macro render_app_list(title, search_id, grid_id, app_list, show_controls=true, show_version=false, is_custom_apps=false) %}
   <div class="app-group">
-    <h3>{{ title }}</h3>
+    <h3 style="display: inline-block; margin-right: 10px;">{{ title }}</h3>
+    {% if show_version and system_repo_info and system_repo_info.commit_hash %}
+    <span style="font-size: 14px; color: #888;">
+      (version: <a href="{{ system_repo_info.commit_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">{{ system_repo_info.commit_hash }}</a>)
+    </span>
+    {% endif %}
 
     {% if show_controls %}
     <!-- Filter and Sort Controls -->
@@ -179,8 +184,12 @@
           <span style="font-size: 10px; font-weight: normal;">{{ app.get('brokenReason', 'Unknown') }}</span>
         </div>
         {% endif %}
-        {% if app.get('path', '').startswith("users/") %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}">{{ _('Delete') }}</a>
+        {% if is_custom_apps %}
+        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}"
+           class="delete-upload-btn"
+           onclick="event.stopPropagation(); return confirm('{{ _('Delete this uploaded app?') }}');">
+          🗑️ {{ _('Delete') }}
+        </a>
         {% endif %}
         {% if config['PRODUCTION'] == '0' and not app.get('path', '').startswith("users/") %}
           {% if app.get('broken') %}
@@ -196,12 +205,12 @@
   {% endmacro %}
 
   {% if custom_apps_list %}
-  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list, show_controls=false) }}
+  {{ render_app_list(_('Custom Apps'), 'custom_search', 'custom_app_grid', custom_apps_list, show_controls=false, is_custom_apps=true) }}
 
   <hr>
   {% endif %}
 
-  {{ render_app_list(_('System Apps'), 'system_search', 'system_app_grid', apps_list) }}
+  {{ render_app_list(_('System Apps'), 'system_search', 'system_app_grid', apps_list, show_version=true, is_custom_apps=false) }}
 
   <input type="hidden" name="name" id="selected_app">
   <br>
@@ -325,6 +334,31 @@
 
   .filter-sort-controls .control-checkbox {
     margin: 0;
+  }
+
+  .delete-upload-btn {
+    display: inline-block !important;
+    background-color: #f44336 !important;
+    color: white !important;
+    padding: 5px 10px !important;
+    border-radius: 3px !important;
+    text-decoration: none !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    margin-top: 8px !important;
+    transition: background-color 0.2s !important;
+    position: relative !important;
+    z-index: 5 !important;
+  }
+
+  .delete-upload-btn:hover {
+    background-color: #d32f2f !important;
+    text-decoration: none !important;
+    color: white !important;
+  }
+
+  .delete-upload-btn:visited {
+    color: white !important;
   }
 </style>
 

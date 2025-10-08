@@ -613,11 +613,14 @@ def addapp(device_id: str) -> ResponseReturnValue:
         # Sort apps_list so that installed apps appear first
         apps_list.sort(key=lambda app_metadata: not app_metadata["is_installed"])
 
+        system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
+
         return render_template(
             "manager/addapp.html",
             device=g.user["devices"][device_id],
             apps_list=apps_list,
             custom_apps_list=custom_apps_list,
+            system_repo_info=system_repo_info,
         )
 
     elif request.method == "POST":
