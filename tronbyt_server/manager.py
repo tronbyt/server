@@ -324,8 +324,12 @@ def create() -> ResponseReturnValue:
                             lat=lat,
                             lng=lng,
                         )
-                        if "name" in loc:
-                            location["name"] = loc["name"]
+                        if "locality" in loc:
+                            location["locality"] = loc["locality"]
+                        if "description" in loc:
+                            location["description"] = loc["description"]
+                        if "place_id" in loc:
+                            location["place_id"] = loc["place_id"]
                         if "timezone" in loc:
                             location["timezone"] = loc["timezone"]
                         device["location"] = location
@@ -492,8 +496,12 @@ def update(device_id: str) -> ResponseReturnValue:
                             lat=lat,
                             lng=lng,
                         )
-                        if "name" in loc:
-                            location["name"] = loc["name"]
+                        if "locality" in loc:
+                            location["locality"] = loc["locality"]
+                        if "description" in loc:
+                            location["description"] = loc["description"]
+                        if "place_id" in loc:
+                            location["place_id"] = loc["place_id"]
                         if "timezone" in loc:
                             location["timezone"] = loc["timezone"]
                         device["location"] = location
