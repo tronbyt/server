@@ -2144,15 +2144,17 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                         print(f"[{device_id}] Received message from device: {message}")
                         try:
                             msg_data = json.loads(message)
-                            if msg_data.get("status") == "displaying":
+                            if (
+                                "displaying" in msg_data
+                                or msg_data.get("status") == "displaying"
+                            ):
                                 # Device has started displaying the image
                                 message_received = True
-                                display_start_time = int(time.time())
-                                print(
-                                    f"[{device_id}] Device started displaying at server time: {display_start_time}"
-                                )
+                                display_seq = msg_data.get(
+                                    "displaying"
+                                ) or msg_data.get("counter")
                                 current_app.logger.debug(
-                                    f"Device started displaying (device timestamp: {msg_data.get('timestamp')})"
+                                    f"Device started displaying seq {display_seq}"
                                 )
 
                                 # Now render and send the next app immediately
