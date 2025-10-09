@@ -1334,7 +1334,11 @@ def send_image(
         s = device_interval
     response.headers["Tronbyt-Brightness"] = b
     response.headers["Tronbyt-Dwell-Secs"] = s
-    current_app.logger.debug(f"brightness {b} -- dwell seconds {s}")
+    if immediate:
+        response.headers["Tronbyt-Immediate"] = "1"
+    current_app.logger.debug(
+        f"brightness {b} -- dwell seconds {s} -- immediate {immediate}"
+    )
     return response
 
 
@@ -1999,16 +2003,35 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
 
     waiter = get_sync_manager().get_waiter(device_id)
     try:
-        while ws.connected:
-            try:
-                response = next_app(device_id)
-            except Exception as e:
-                current_app.logger.error(f"Error in next_app: {e}")
-                continue
+        # Send the first image immediately
+        try:
+            response = next_app(device_id)
+        except Exception as e:
+            current_app.logger.error(f"Error in next_app: {e}")
+            return
 
+        while ws.connected:
             if isinstance(response, Response):
                 if response.status_code == 200:
                     response.direct_passthrough = False  # Disable passthrough mode
+
+                    # Check if this should be displayed immediately (interrupting current display)
+                    immediate = response.headers.get("Tronbyt-Immediate")
+
+                    # Get the dwell time from the response header
+                    dwell_secs = response.headers.get("Tronbyt-Dwell-Secs")
+                    if dwell_secs:
+                        dwell_time = int(dwell_secs)
+
+                    # Send dwell_secs as a message to the firmware
+                    print(f"[{device_id}] Sending dwell_secs to device: {dwell_time}s")
+                    ws.send(
+                        json.dumps(
+                            {
+                                "dwell_secs": dwell_time,
+                            }
+                        )
+                    )
 
                     # Send brightness as a text message, if it has changed
                     # This must be done before sending the image so that the new value is applied to the next image
@@ -2025,13 +2048,24 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                                 )
                             )
 
-                    # Send the image as a binary message
-                    ws.send(bytes(response.get_data()))
+                    # Send metadata message before the image if we need immediate display
+                    if immediate:
+                        print(f"[{device_id}] Sending immediate display flag to device")
+                        ws.send(
+                            json.dumps(
+                                {
+                                    "immediate": True,
+                                }
+                            )
+                        )
 
-                    # Update the dwell time based on the response header
-                    dwell_secs = response.headers.get("Tronbyt-Dwell-Secs")
-                    if dwell_secs:
-                        dwell_time = int(dwell_secs)
+                    # Send the image as a binary message
+                    image_data = bytes(response.get_data())
+                    image_sent_time = int(time.time())
+                    print(
+                        f"[{device_id}] Sending image data to device ({len(image_data)} bytes) at time {image_sent_time}"
+                    )
+                    ws.send(image_data)
                 else:
                     ws.send(
                         json.dumps(
@@ -2051,8 +2085,108 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                     )
                 )
 
-            # Wait for the next event or timeout
-            waiter.wait(timeout=dwell_time)
+            # Wait for the device to confirm it's displaying the image
+            # The device will buffer the image and send this when it starts displaying
+            # We check periodically for ephemeral pushes that need immediate sending
+            # For old firmware compatibility, we use dwell_time as the timeout
+            confirmation_timeout = dwell_time
+            print(
+                f"[{device_id}] Waiting for device to start displaying (timeout: {confirmation_timeout}s)..."
+            )
+
+            # Poll for messages with shorter timeout to allow checking for ephemeral pushes
+            poll_interval = 1  # Check every second
+            time_waited = 0
+            message_received = False
+
+            while time_waited < confirmation_timeout and not message_received:
+                # First check if there's an ephemeral push waiting
+                pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+                if pushed_dir.is_dir() and any(pushed_dir.glob("__*")):
+                    print(
+                        f"[{device_id}] Ephemeral push detected, interrupting wait to send immediately"
+                    )
+                    # Render the next app (which will pick up the ephemeral push)
+                    try:
+                        response = next_app(device_id)
+                        print(
+                            f"[{device_id}] Ephemeral push rendered, will send immediately"
+                        )
+                        break  # Exit the wait loop to send the ephemeral push
+                    except Exception as e:
+                        current_app.logger.error(f"Error rendering ephemeral push: {e}")
+                        continue
+
+                # Wait for a message from the device with short timeout
+                try:
+                    message = ws.receive(timeout=poll_interval)
+                    if message:
+                        message_received = True
+                        print(f"[{device_id}] Received message from device: {message}")
+                        try:
+                            msg_data = json.loads(message)
+                            if msg_data.get("status") == "displaying":
+                                # Device has started displaying the image
+                                display_start_time = int(time.time())
+                                print(
+                                    f"[{device_id}] Device started displaying at server time: {display_start_time}"
+                                )
+                                current_app.logger.debug(
+                                    f"Device started displaying (device timestamp: {msg_data.get('timestamp')})"
+                                )
+
+                                # Now render and send the next app immediately
+                                print(f"[{device_id}] Rendering next app...")
+                                try:
+                                    response = next_app(device_id)
+                                    render_complete_time = int(time.time())
+                                    print(
+                                        f"[{device_id}] Next app rendered at time {render_complete_time}"
+                                    )
+                                except Exception as e:
+                                    current_app.logger.error(
+                                        f"Error rendering next app: {e}"
+                                    )
+                                    continue
+                            else:
+                                # Unknown message, wait with default timeout
+                                print(
+                                    f"[{device_id}] Unknown message status, using default timeout"
+                                )
+                                waiter.wait(timeout=dwell_time)
+                                try:
+                                    response = next_app(device_id)
+                                except Exception as e:
+                                    current_app.logger.error(f"Error in next_app: {e}")
+                                    continue
+                        except (json.JSONDecodeError, ValueError) as e:
+                            current_app.logger.warning(
+                                f"Failed to parse device message: {e}"
+                            )
+                            waiter.wait(timeout=dwell_time)
+                            try:
+                                response = next_app(device_id)
+                            except Exception as e:
+                                current_app.logger.error(f"Error in next_app: {e}")
+                                continue
+                except Exception:
+                    # Timeout on this poll interval, continue waiting
+                    time_waited += poll_interval
+
+            # If we exited the loop without receiving a message, assume old firmware
+            # Old firmware doesn't send "displaying" messages, so just render next app
+            if not message_received and time_waited >= confirmation_timeout:
+                print(
+                    f"[{device_id}] No display confirmation received (old firmware?), rendering next app"
+                )
+                current_app.logger.debug(
+                    f"No display confirmation received after {confirmation_timeout}s, assuming old firmware"
+                )
+                try:
+                    response = next_app(device_id)
+                except Exception as e:
+                    current_app.logger.error(f"Error in next_app: {e}")
+                    continue
     except Exception as e:
         current_app.logger.error(f"WebSocket error: {e}")
         ws.close()
