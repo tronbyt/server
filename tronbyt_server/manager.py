@@ -991,13 +991,16 @@ def render_app(
                     width = 128
                     height = 64
 
+    device_interval = device.get("default_interval", 15)
+    app_interval = (app and app.get("display_time")) or device_interval
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
         width=width,
         height=height,
         magnify=magnify,
-        maxDuration=15000,
+        maxDuration=app_interval * 1000,
         timeout=30000,
         image_format=0,  # 0 == WebP
         logger=current_app.logger,
