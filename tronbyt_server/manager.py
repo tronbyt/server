@@ -2004,6 +2004,9 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
     dwell_time = device.get("default_interval", 5)
     last_brightness = None
 
+    # Track if we've detected old firmware (no "displaying" messages)
+    old_firmware_detected = False
+
     waiter = get_sync_manager().get_waiter(device_id)
     try:
         # Send the first image immediately
@@ -2102,7 +2105,21 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
             time_waited = 0
             message_received = False
 
-            while time_waited < confirmation_timeout and not message_received:
+            # Use different timeouts based on whether we've detected old firmware
+            if old_firmware_detected:
+                # After first timeout, use shorter timeout for old firmware
+                extended_timeout = int(confirmation_timeout * 1.5)
+                print(
+                    f"[{device_id}] Using old firmware timeout of {extended_timeout}s (1.5x dwell_time)"
+                )
+            else:
+                # First attempt: generous 30 second timeout
+                extended_timeout = 30
+                print(
+                    f"[{device_id}] Using initial timeout of {extended_timeout}s for 'displaying' message"
+                )
+
+            while time_waited < extended_timeout and not message_received:
                 # First check if there's an ephemeral push waiting
                 pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
                 if pushed_dir.is_dir() and any(pushed_dir.glob("__*")):
@@ -2168,11 +2185,15 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                     # Timeout on this poll interval, continue waiting
                     time_waited += poll_interval
 
-            # If we exited the loop without receiving a message, assume old firmware
-            # Old firmware doesn't send "displaying" messages, so just render next app
-            if not message_received and time_waited >= confirmation_timeout:
+            # Handle timeout with extended timeout period
+            if not message_received and time_waited >= extended_timeout:
+                if not old_firmware_detected:
+                    print(
+                        f"[{device_id}] No 'displaying' message after {extended_timeout}s - marking as old firmware"
+                    )
+                    old_firmware_detected = True
                 current_app.logger.debug(
-                    f"No display confirmation received after {confirmation_timeout}s, assuming old firmware"
+                    f"No display confirmation received after {extended_timeout}s, assuming old firmware"
                 )
                 try:
                     response = next_app(device_id)
@@ -2183,6 +2204,10 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
         current_app.logger.error(f"WebSocket error: {e}")
         ws.close()
     finally:
+        print(f"[{device_id}] WebSocket connection closed (PID: {os.getpid()})")
+        current_app.logger.debug(
+            f"WebSocket connection closed for device {device_id} (PID: {os.getpid()})"
+        )
         waiter.close()
 
 
