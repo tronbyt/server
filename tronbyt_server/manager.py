@@ -2124,12 +2124,12 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                 try:
                     message = ws.receive(timeout=poll_interval)
                     if message:
-                        message_received = True
                         print(f"[{device_id}] Received message from device: {message}")
                         try:
                             msg_data = json.loads(message)
                             if msg_data.get("status") == "displaying":
                                 # Device has started displaying the image
+                                message_received = True
                                 display_start_time = int(time.time())
                                 print(
                                     f"[{device_id}] Device started displaying at server time: {display_start_time}"
@@ -2152,26 +2152,18 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                                     )
                                     continue
                             else:
-                                # Unknown message, wait with default timeout
+                                # Unknown message from device, ignore it and keep waiting
                                 print(
-                                    f"[{device_id}] Unknown message status, using default timeout"
+                                    f"[{device_id}] Unknown message status: {msg_data.get('status')}, ignoring"
                                 )
-                                waiter.wait(timeout=dwell_time)
-                                try:
-                                    response = next_app(device_id)
-                                except Exception as e:
-                                    current_app.logger.error(f"Error in next_app: {e}")
-                                    continue
                         except (json.JSONDecodeError, ValueError) as e:
+                            # Invalid JSON from device, ignore it and keep waiting
                             current_app.logger.warning(
                                 f"Failed to parse device message: {e}"
                             )
-                            waiter.wait(timeout=dwell_time)
-                            try:
-                                response = next_app(device_id)
-                            except Exception as e:
-                                current_app.logger.error(f"Error in next_app: {e}")
-                                continue
+
+                    # Always increment time_waited after each poll, regardless of whether we got a message
+                    time_waited += poll_interval
                 except Exception:
                     # Timeout on this poll interval, continue waiting
                     time_waited += poll_interval
@@ -2179,9 +2171,6 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
             # If we exited the loop without receiving a message, assume old firmware
             # Old firmware doesn't send "displaying" messages, so just render next app
             if not message_received and time_waited >= confirmation_timeout:
-                print(
-                    f"[{device_id}] No display confirmation received (old firmware?), rendering next app"
-                )
                 current_app.logger.debug(
                     f"No display confirmation received after {confirmation_timeout}s, assuming old firmware"
                 )
