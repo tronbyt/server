@@ -282,6 +282,43 @@ def handle_patch_device_app(
             if db.save_app(device_id, app):
                 return Response("App disabled.", status=200)
         return Response("Couldn't complete the operation", status=500)
+
+    # Handle the set_pinned json command
+    elif request.json is not None and "set_pinned" in request.json:
+        set_pinned = request.json["set_pinned"]
+        if not isinstance(set_pinned, bool):
+            return Response(
+                "Invalid value for set_pinned. Must be a boolean.", status=400
+            )
+
+        # Get user for saving changes
+        user = db.get_user_by_device_id(device_id)
+        if not user:
+            abort(HTTPStatus.NOT_FOUND, description="User not found")
+
+        # Get device from user's devices (not the standalone device variable)
+        user_device = user["devices"].get(device_id)
+        if not user_device:
+            abort(HTTPStatus.NOT_FOUND, description="Device not found in user data")
+
+        apps = user_device.get("apps", {})
+        if installation_id not in apps:
+            abort(HTTPStatus.NOT_FOUND, description="App not found")
+
+        if set_pinned:
+            # Pin the app
+            user_device["pinned_app"] = installation_id
+            db.save_user(user)
+            return Response("App pinned.", status=200)
+        else:
+            # Unpin the app (only if it's currently pinned)
+            if user_device.get("pinned_app") == installation_id:
+                user_device.pop("pinned_app", None)
+                db.save_user(user)
+                return Response("App unpinned.", status=200)
+            else:
+                return Response("App is not pinned.", status=200)
+
     else:
         return Response("Unknown Operation", status=500)
 

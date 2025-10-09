@@ -613,11 +613,14 @@ def addapp(device_id: str) -> ResponseReturnValue:
         # Sort apps_list so that installed apps appear first
         apps_list.sort(key=lambda app_metadata: not app_metadata["is_installed"])
 
+        system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
+
         return render_template(
             "manager/addapp.html",
             device=g.user["devices"][device_id],
             apps_list=apps_list,
             custom_apps_list=custom_apps_list,
+            system_repo_info=system_repo_info,
         )
 
     elif request.method == "POST":
@@ -855,9 +858,12 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
     if not app.get("recurrence_end_date"):
         app["recurrence_end_date"] = (today + timedelta(days=7)).strftime("%Y-%m-%d")
 
+    device = g.user["devices"][device_id]
+
     return render_template(
         "manager/updateapp.html",
         app=app,
+        device=device,
         device_id=device_id,
         config=json.dumps(app.get("config", {}), indent=4),
     )
