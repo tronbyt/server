@@ -223,11 +223,14 @@ def migrate_location_name_to_locality() -> None:
             location = device.get("location")
             if location and isinstance(location, dict) and "name" in location:
                 # Convert old 'name' format to new 'locality' format
-                old_name = location.pop("name")  # Remove 'name' key
+                # Use dict access to avoid TypedDict type checking issues during migration
+                location_dict = dict(location)  # Convert to regular dict for migration
+                old_name = location_dict.pop("name")  # Remove 'name' key
                 if (
-                    "locality" not in location
+                    "locality" not in location_dict
                 ):  # Only set if locality doesn't already exist
-                    location["locality"] = old_name
+                    location_dict["locality"] = old_name
+                device["location"] = location_dict  # Update with migrated data
                 need_save = True
                 current_app.logger.debug(
                     f"Converted location name '{old_name}' to locality for device {device.get('id', 'unknown')}"
