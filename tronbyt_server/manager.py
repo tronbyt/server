@@ -2217,7 +2217,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
                                     continue
                             else:
                                 # Unknown message from device, ignore it and keep waiting
-                                print(
+                                current_app.logger.warning(
                                     f"[{device_id}] Unknown message format: {message}, ignoring"
                                 )
                         except (json.JSONDecodeError, ValueError) as e:
