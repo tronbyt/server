@@ -12,7 +12,9 @@ TWO_X_CAPABLE_DEVICE_TYPES = ["tronbyt_s3_wide"]
 
 
 class Location(TypedDict, total=False):
-    name: str
+    locality: str
+    description: str
+    place_id: str
     timezone: str
     lat: Required[float]
     lng: Required[float]
