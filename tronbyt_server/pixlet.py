@@ -42,7 +42,6 @@ def load_pixlet_library(logger: Logger) -> None:
         else:  # Linux and others
             libpixlet_path = _LIBPIXLET_PATH_LINUX
 
-    logger.info(f"Loading {libpixlet_path}")
     try:
         pixlet_library = ctypes.cdll.LoadLibrary(str(libpixlet_path))
     except OSError as e:
