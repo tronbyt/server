@@ -1348,7 +1348,7 @@ def send_image(
     immediate: bool = False,
     brightness: Optional[int] = None,
     dwell_secs: Optional[int] = None,
-) -> ResponseReturnValue:
+) -> Response:
     if immediate:
         with webp_path.open("rb") as f:
             response = send_file(BytesIO(f.read()), mimetype="image/webp")
