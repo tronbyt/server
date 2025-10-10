@@ -2235,7 +2235,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
             # Handle timeout with extended timeout period
             if not displaying_received and time_waited >= extended_timeout:
                 if not old_firmware_detected:
-                    print(
+                    current_app.logger.info(
                         f"[{device_id}] No 'displaying' message after {extended_timeout}s - marking as old firmware"
                     )
                     old_firmware_detected = True
