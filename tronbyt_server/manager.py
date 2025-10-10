@@ -1317,13 +1317,13 @@ def next_app(
     current_app.logger.debug(str(webp_path))
 
     if webp_path.exists() and webp_path.stat().st_size > 0:
-        response = send_image(webp_path, device, app)
-        # Get brightness info to combine with app index log
+        # Get brightness info to combine with app index log and pass to send_image
         b = db.get_device_brightness_8bit(device)
         device_interval = device.get("default_interval", 5)
         s = app.get("display_time", device_interval) if app else device_interval
         if s == 0:
             s = device_interval
+        response = send_image(webp_path, device, app, brightness=b, dwell_secs=s)
         immediate = response.headers.get("Tronbyt-Immediate") == "1"
         immediate_text = " -- immediate" if immediate else ""
         current_app.logger.debug(
@@ -1342,18 +1342,31 @@ def send_default_image(device: Device) -> ResponseReturnValue:
 
 
 def send_image(
-    webp_path: Path, device: Device, app: Optional[App], immediate: bool = False
+    webp_path: Path,
+    device: Device,
+    app: Optional[App],
+    immediate: bool = False,
+    brightness: Optional[int] = None,
+    dwell_secs: Optional[int] = None,
 ) -> ResponseReturnValue:
     if immediate:
         with webp_path.open("rb") as f:
             response = send_file(BytesIO(f.read()), mimetype="image/webp")
     else:
         response = send_file(webp_path, mimetype="image/webp")
-    b = db.get_device_brightness_8bit(device)
-    device_interval = device.get("default_interval", 5)
-    s = app.get("display_time", device_interval) if app else device_interval
-    if s == 0:
-        s = device_interval
+
+    # Use provided brightness or calculate it
+    b = brightness if brightness is not None else db.get_device_brightness_8bit(device)
+
+    # Use provided dwell_secs or calculate it
+    if dwell_secs is not None:
+        s = dwell_secs
+    else:
+        device_interval = device.get("default_interval", 5)
+        s = app.get("display_time", device_interval) if app else device_interval
+        if s == 0:
+            s = device_interval
+
     response.headers["Tronbyt-Brightness"] = b
     response.headers["Tronbyt-Dwell-Secs"] = s
     if immediate:
@@ -2122,7 +2135,6 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
             # Poll for messages with shorter timeout to allow checking for ephemeral pushes
             poll_interval = 1  # Check every second
             time_waited = 0
-            queued_received = False
             displaying_received = False
 
             # Use different timeouts based on whether we've detected old firmware
