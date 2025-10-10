@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+      - name: Generate version file
+        run: ./scripts/generate_version.sh
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
