@@ -72,6 +72,8 @@ def init_db() -> None:
             migrate_brightness_to_percent()
         if schema_version < 2:
             migrate_user_api_keys()
+        if schema_version < 3:
+            migrate_location_name_to_locality()
 
         cursor.execute(
             "UPDATE meta SET schema_version = ? WHERE schema_version = ?",
@@ -90,7 +92,7 @@ def get_current_schema_version() -> int:
         int: The current schema version as an integer.
     """
 
-    return 2
+    return 3
 
 
 def migrate_app_configs() -> None:
@@ -196,6 +198,42 @@ def migrate_brightness_to_percent() -> None:
             current_app.logger.info(
                 f"Migrating brightness for user: {user['username']}"
             )
+            save_user(user)
+
+
+def migrate_location_name_to_locality() -> None:
+    """
+    Migrates location data from old 'name' format to new 'locality' format.
+    This function iterates through all users and their devices, converting
+    location data that uses the old 'name' key to use the new 'locality' key.
+
+    Steps:
+    1. Retrieve all users.
+    2. Iterate through each user's devices.
+    3. Check if location data exists and uses the old 'name' format.
+    4. Convert 'name' to 'locality' in the location data.
+    5. Save the user data if any changes were made.
+    """
+    users = get_all_users()
+    current_app.logger.info("Migrating location data from 'name' to 'locality' format")
+
+    for user in users:
+        need_save = False
+        for device in user.get("devices", {}).values():
+            location = device.get("location")
+            if location and isinstance(location, dict) and "name" in location:
+                # Convert old 'name' format to new 'locality' format
+                old_name = location.pop("name")  # Remove 'name' key
+                if (
+                    "locality" not in location
+                ):  # Only set if locality doesn't already exist
+                    location["locality"] = old_name
+                need_save = True
+                current_app.logger.debug(
+                    f"Converted location name '{old_name}' to locality for device {device.get('id', 'unknown')}"
+                )
+
+        if need_save:
             save_user(user)
 
 
