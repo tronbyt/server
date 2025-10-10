@@ -7,7 +7,7 @@ import sqlite3
 import string
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, cast
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -22,6 +22,7 @@ from tronbyt_server import system_apps
 from tronbyt_server.models.app import App, AppMetadata
 from tronbyt_server.models.device import (
     Device,
+    Location,
     validate_timezone,
 )
 from tronbyt_server.models.user import User
@@ -230,7 +231,8 @@ def migrate_location_name_to_locality() -> None:
                     "locality" not in location_dict
                 ):  # Only set if locality doesn't already exist
                     location_dict["locality"] = old_name
-                device["location"] = location_dict  # Update with migrated data
+                # Cast to Location type after migration
+                device["location"] = cast(Location, location_dict)
                 need_save = True
                 current_app.logger.debug(
                     f"Converted location name '{old_name}' to locality for device {device.get('id', 'unknown')}"
