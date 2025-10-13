@@ -378,6 +378,15 @@ def update_brightness(device_id: str) -> ResponseReturnValue:
     device["brightness"] = db.ui_scale_to_percent(ui_brightness)
 
     db.save_user(user)
+
+    # Push an ephemeral brightness test image to the device (but not when brightness is 0)
+    if ui_brightness > 0:
+        try:
+            push_brightness_test_image(device_id)
+        except Exception as e:
+            current_app.logger.error(f"Failed to push brightness test image: {e}")
+            # Don't fail the brightness update if the test image fails
+
     return ""
 
 
@@ -1230,13 +1239,8 @@ def next_app(
     user = db.get_user_by_device_id(device_id) or abort(HTTPStatus.NOT_FOUND)
     device = user["devices"][device_id] or abort(HTTPStatus.NOT_FOUND)
 
-    # If brightness is 0, short-circuit and return default image to save processing
-    brightness = device.get("brightness", 50)
-    if brightness == 0:
-        current_app.logger.debug("Brightness is 0, returning default image")
-        return send_default_image(device)
-
     # first check for a pushed file starting with __ and just return that and then delete it.
+    # This needs to happen before brightness check to clear any ephemeral images
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
         for ephemeral_file in sorted(pushed_dir.glob("__*")):
@@ -1248,6 +1252,12 @@ def next_app(
             current_app.logger.debug("removing ephemeral webp")
             ephemeral_file.unlink()
             return response
+
+    # If brightness is 0, short-circuit and return default image to save processing
+    brightness = device.get("brightness", 50)
+    if brightness == 0:
+        current_app.logger.debug("Brightness is 0, returning default image")
+        return send_default_image(device)
 
     if recursion_depth > len(device.get("apps", {})):
         current_app.logger.warning(
@@ -2253,6 +2263,45 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
     finally:
         current_app.logger.debug(f"WebSocket connection closed (PID: {os.getpid()})")
         waiter.close()
+
+
+def push_brightness_test_image(device_id: str) -> None:
+    """Push an ephemeral brightness test image to the device using default.webp."""
+    try:
+        # Use the default.webp from static directory as the test image
+        static_dir = Path(current_app.root_path) / "static" / "images"
+        default_webp_path = static_dir / "test_pattern.webp"
+
+        if not default_webp_path.exists():
+            current_app.logger.warning(
+                f"Default test image not found at {default_webp_path}"
+            )
+            return
+
+        # Read the default image
+        webp_bytes = default_webp_path.read_bytes()
+
+        # Save as ephemeral file (starts with __)
+        device_webp_path = db.get_device_webp_dir(device_id)
+        device_webp_path.mkdir(parents=True, exist_ok=True)
+        pushed_path = device_webp_path / "pushed"
+        pushed_path.mkdir(exist_ok=True)
+
+        # Use timestamp for unique filename
+        filename = f"__brightness_test_{time.monotonic_ns()}.webp"
+        file_path = pushed_path / filename
+
+        # Save the image
+        file_path.write_bytes(webp_bytes)
+
+        # Notify the device to pick up the new image
+        push_new_image(device_id)
+
+        current_app.logger.debug(f"Pushed brightness test image to {device_id}")
+
+    except Exception as e:
+        current_app.logger.error(f"Failed to push brightness test image: {e}")
+        raise
 
 
 def push_new_image(device_id: str) -> None:
