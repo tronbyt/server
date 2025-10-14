@@ -2266,7 +2266,7 @@ def websocket_endpoint(ws: WebSocketServer, device_id: str) -> None:
 
 
 def push_brightness_test_image(device_id: str) -> None:
-    """Push an ephemeral brightness test image to the device using default.webp."""
+    """Push an ephemeral brightness test image to the device using test_pattern.webp."""
     try:
         # Use the default.webp from static directory as the test image
         static_dir = Path(current_app.root_path) / "static" / "images"
