@@ -77,8 +77,10 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
     });
 
     // Perform initial search if there's a value in the input field on load
+    // BUT only if there's no existing location data in the hidden field
     const initialQuery = inputElement.value.trim();
-    if (initialQuery.length > 0) {
+    const existingLocationData = hiddenInputElement.value.trim();
+    if (initialQuery.length > 0 && (!existingLocationData || existingLocationData === '{}')) {
         performSearch(initialQuery, true);
     }
 }
