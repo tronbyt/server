@@ -888,6 +888,7 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
 
 def add_default_config(config: Dict[str, Any], device: Device) -> Dict[str, Any]:
     config["$tz"] = db.get_device_timezone_str(device)
+    config["$2x"] = str(device_supports_2x(device))
     return config
 
 
