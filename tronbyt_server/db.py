@@ -5,6 +5,7 @@ import secrets
 import shutil
 import sqlite3
 import string
+import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Literal, Optional, Union, cast
@@ -26,6 +27,48 @@ from tronbyt_server.models.device import (
     validate_timezone,
 )
 from tronbyt_server.models.user import User
+
+
+def retry_db_operation(max_retries: int = 3, delay: float = 0.1):
+    """Decorator to retry database operations that fail due to locking."""
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    last_exception = e
+                    if (
+                        "database is locked" in str(e).lower()
+                        and attempt < max_retries - 1
+                    ):
+                        current_app.logger.warning(
+                            f"Database locked in {func.__name__} on attempt {attempt + 1}/{max_retries}, retrying in {delay * (2 ** attempt)}s: {e}"
+                        )
+                        time.sleep(delay * (2**attempt))  # Exponential backoff
+                        continue
+                    else:
+                        current_app.logger.error(
+                            f"Database operation {func.__name__} failed after {attempt + 1} attempts: {e}"
+                        )
+                        raise
+                except Exception as e:
+                    # For non-locking errors, don't retry
+                    current_app.logger.error(
+                        f"Non-retryable error in {func.__name__}: {e}"
+                    )
+                    raise
+            # If we get here, all retries failed
+            current_app.logger.error(
+                f"Database operation {func.__name__} failed after {max_retries} retries"
+            )
+            raise last_exception
+
+        return wrapper
+
+    return decorator
 
 
 def init_db() -> None:
@@ -270,8 +313,17 @@ def get_db() -> sqlite3.Connection:
     db = getattr(g, "_database", None)
     if db is None:
         db = g._database = sqlite3.connect(
-            current_app.config["DB_FILE"], autocommit=True
+            current_app.config["DB_FILE"],
+            timeout=30.0,  # 30 second timeout for database locks
+            check_same_thread=False,  # Allow connection to be used across threads
         )
+        # Enable WAL mode for better concurrency
+        db.execute("PRAGMA journal_mode=WAL")
+        # Set busy timeout for additional protection
+        db.execute("PRAGMA busy_timeout=30000")  # 30 seconds in milliseconds
+        # Enable foreign key constraints
+        db.execute("PRAGMA foreign_keys=ON")
+        db.commit()
     return db
 
 
@@ -504,6 +556,7 @@ def get_users_dir() -> Path:
     return Path(current_app.config["USERS_DIR"]).absolute()
 
 
+@retry_db_operation(max_retries=3, delay=0.1)
 def get_user(username: str) -> Optional[User]:
     try:
         conn = get_db()
@@ -538,6 +591,7 @@ def auth_user(username: str, password: str) -> Optional[Union[User, bool]]:
     return None
 
 
+@retry_db_operation(max_retries=3, delay=0.1)
 def save_user(user: User, new_user: bool = False) -> bool:
     if "username" not in user:
         current_app.logger.warning("no username in user")
@@ -568,6 +622,7 @@ def save_user(user: User, new_user: bool = False) -> bool:
         return False
 
 
+@retry_db_operation(max_retries=3, delay=0.1)
 def delete_user(username: str) -> bool:
     try:
         conn = get_db()
@@ -730,6 +785,7 @@ def delete_user_upload(user: User, filename: str) -> bool:
         return False
 
 
+@retry_db_operation(max_retries=3, delay=0.1)
 def get_all_users() -> List[User]:
     conn = get_db()
     cursor = conn.cursor()
@@ -737,6 +793,7 @@ def get_all_users() -> List[User]:
     return [json.loads(row[0]) for row in cursor.fetchall()]
 
 
+@retry_db_operation(max_retries=3, delay=0.1)
 def has_users() -> bool:
     """Checks if any users exist in the database."""
     conn = get_db()
