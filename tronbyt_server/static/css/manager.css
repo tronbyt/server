@@ -261,13 +261,25 @@ button.action.w3-button.w3-red {
   color: white !important;
 }
 
-/* Remove hover states for specific app card buttons */
+/* App card buttons with no hover effects */
 .app-btn-no-hover:hover {
-  background-color: inherit;
-  color: inherit;
-  transform: none;
-  box-shadow: inherit;
-  opacity: inherit;
+  background-color: #2196F3;
+  color: white;
+}
+
+.app-btn-no-hover.w3-blue:hover {
+  background-color: #2196F3;
+  color: white;
+}
+
+.app-btn-no-hover.w3-green:hover {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.app-btn-no-hover.w3-orange:hover {
+  background-color: #ff9800;
+  color: white;
 }
 
 /* App Card Layout Styles */

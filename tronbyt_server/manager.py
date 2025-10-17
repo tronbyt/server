@@ -1579,7 +1579,16 @@ def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
                 flash("Repo Update Failed")
                 return False
     else:
-        flash("No Changes to Repo")
+        # Clear the repository if empty URL is provided
+        if repo_name in g.user and g.user[repo_name] != "":
+            g.user[repo_name] = ""
+            db.save_user(g.user)
+            # Remove the apps directory if it exists
+            if apps_path.exists():
+                shutil.rmtree(apps_path)
+            flash("Repository removed")
+        else:
+            flash("No Changes to Repo")
         return True
 
 
@@ -1592,7 +1601,7 @@ def set_user_repo() -> ResponseReturnValue:
         repo_url = str(request.form.get("app_repo_url"))
         apps_path = db.get_users_dir() / g.user["username"] / "apps"
         if set_repo("app_repo_url", apps_path, repo_url):
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("auth.edit"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
@@ -1609,8 +1618,27 @@ def set_api_key() -> ResponseReturnValue:
             return redirect(url_for("auth.edit"))
         g.user["api_key"] = api_key
         db.save_user(g.user)
-        return redirect(url_for("manager.index"))
+        flash("API Key Updated")
+        return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
+
+
+@bp.route("/generate_api_key", methods=["POST"])
+@login_required
+def generate_api_key() -> ResponseReturnValue:
+    """Generate a new API key for the current user."""
+    import secrets
+    import string
+    
+    # Generate a new 32-character API key
+    api_key = "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
+    )
+    
+    g.user["api_key"] = api_key
+    db.save_user(g.user)
+    flash("New API Key Generated")
+    return redirect(url_for("auth.edit"))
 
 
 @bp.route("/set_system_repo", methods=["GET", "POST"])
@@ -1626,7 +1654,7 @@ def set_system_repo() -> ResponseReturnValue:
             # run the generate app list for custom repo
             # will just generate json file if already there.
             system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("auth.edit"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
@@ -1640,7 +1668,7 @@ def refresh_system_repo() -> ResponseReturnValue:
         # Directly update the system repo - it handles git pull internally
         system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
         flash("System repo updated successfully")
-        return redirect(url_for("manager.index"))
+        return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
 
@@ -1785,7 +1813,7 @@ def refresh_user_repo() -> ResponseReturnValue:
     if request.method == "POST":
         apps_path = db.get_users_dir() / g.user["username"] / "apps"
         if set_repo("app_repo_url", apps_path, g.user.get("app_repo_url", "")):
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("auth.edit"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
