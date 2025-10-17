@@ -3,111 +3,276 @@
 <h1>{% block title %}{{ _('Add App') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
+<!-- Loading indicator -->
+<div id="loading-indicator" class="loading-container">
+  <div class="loading-spinner"></div>
+  <p>{{ _('Loading apps...') }}</p>
+</div>
+
 <script>
-  function searchApps(searchId) {
-    // Simply call applyFilters which now handles both search and installed filtering
+  // Performance optimizations
+  let isInitialLoad = true;
+  let appItems = [];
+  let filteredItems = [];
+  let sortType = 'system';
+  let searchFilter = '';
+  let hideInstalled = false;
+  let hideBroken = false;
+
+  // Debounce function to limit function calls
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Optimized search with debouncing
+  const debouncedSearch = debounce((searchId) => {
+    searchFilter = document.getElementById(searchId).value.toLowerCase();
     applyFilters();
+  }, 150);
+
+  function searchApps(searchId) {
+    debouncedSearch(searchId);
   }
 
   function toggleInstalledApps(searchId) {
+    hideInstalled = document.getElementById('hide_installed_' + searchId).checked;
     applyFilters();
   }
 
   function toggleBrokenApps(searchId) {
+    hideBroken = document.getElementById('hide_broken_' + searchId).checked;
     applyFilters();
   }
 
   function sortApps(searchId) {
-    const sortType = document.getElementById('sort_' + searchId).value;
-    const gridId = searchId.replace('_search', '_app_grid');
-    const grid = document.getElementById(gridId);
-
-    if (grid) {
-      const items = Array.from(grid.getElementsByClassName('app-item'));
-
-      items.sort((a, b) => {
-        switch (sortType) {
-          case 'alphabetical':
-            return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
-          case 'rev-alphabetical':
-            return b.getAttribute('data-name').localeCompare(a.getAttribute('data-name'));
-          case 'newest':
-            const dateA = a.getAttribute('data-date') || '';
-            const dateB = b.getAttribute('data-date') || '';
-            const dateComparison = dateB.localeCompare(dateA); // Newest first
-            if (dateComparison === 0) {
-              // If dates are the same, sort alphabetically
-              return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
-            }
-            return dateComparison;
-          case 'system':
-          default:
-            // System sort: Installed apps first, then alphabetical A-Z
-            const installedA = a.getAttribute('data-installed') === 'true';
-            const installedB = b.getAttribute('data-installed') === 'true';
-            if (installedA && !installedB) return -1;
-            if (!installedA && installedB) return 1;
-            // If both have same installed status, sort alphabetically
-            return a.getAttribute('data-name').localeCompare(b.getAttribute('data-name'));
-        }
-      });
-
-      // Re-append items in sorted order
-      items.forEach(item => grid.appendChild(item));
-    }
-
+    sortType = document.getElementById('sort_' + searchId).value;
     applyFilters();
   }
 
+  // Optimized sorting function
+  function sortItems(items) {
+    return items.sort((a, b) => {
+      const nameA = a.getAttribute('data-name');
+      const nameB = b.getAttribute('data-name');
+      const installedA = a.getAttribute('data-installed') === 'true';
+      const installedB = b.getAttribute('data-installed') === 'true';
+      const dateA = a.getAttribute('data-date') || '';
+      const dateB = b.getAttribute('data-date') || '';
+
+      switch (sortType) {
+        case 'alphabetical':
+          return nameA.localeCompare(nameB);
+        case 'rev-alphabetical':
+          return nameB.localeCompare(nameA);
+        case 'newest':
+          const dateComparison = dateB.localeCompare(dateA);
+          return dateComparison === 0 ? nameA.localeCompare(nameB) : dateComparison;
+        case 'system':
+        default:
+          if (installedA && !installedB) return -1;
+          if (!installedA && installedB) return 1;
+          return nameA.localeCompare(nameB);
+      }
+    });
+  }
+
+  // Optimized filtering with virtual scrolling
   function applyFilters() {
-    const items = document.querySelectorAll('.app-item');
+    if (isInitialLoad) return;
 
-    items.forEach(item => {
-      const isInstalled = item.getAttribute('data-installed') === 'true';
-      const isBroken = item.getAttribute('data-broken') === 'true';
-      const name = item.getAttribute('data-value');
-      const grid = item.closest('.app-grid');
+    // Use requestAnimationFrame to batch DOM updates
+    requestAnimationFrame(() => {
+      const grids = document.querySelectorAll('.app-grid');
+      
+      grids.forEach(grid => {
+        const items = Array.from(grid.getElementsByClassName('app-item'));
+        const searchId = grid.id.replace('_app_grid', '_search');
+        
+        // Get current filter values
+        const searchInput = document.getElementById(searchId);
+        const currentSearchFilter = searchInput ? searchInput.value.toLowerCase() : '';
+        const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
+        const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
 
-      if (!grid) return;
+        // Filter and sort items
+        const visibleItems = items.filter(item => {
+          const isInstalled = item.getAttribute('data-installed') === 'true';
+          const isBroken = item.getAttribute('data-broken') === 'true';
+          const name = item.getAttribute('data-name').toLowerCase();
 
-      const gridId = grid.id;
-      const searchId = gridId.replace('_app_grid', '_search');
+          // Apply filters
+          if (currentSearchFilter && !name.includes(currentSearchFilter)) return false;
+          if (currentHideInstalled && isInstalled) return false;
+          if (currentHideBroken && isBroken) return false;
 
-      // Check if item should be hidden by search
-      let shouldHideBySearch = false;
-      const searchInput = document.getElementById(searchId);
-      if (searchInput && searchInput.value) {
-        const filter = searchInput.value.toUpperCase();
-        if (name.toUpperCase().indexOf(filter) === -1) {
-          shouldHideBySearch = true;
+          return true;
+        });
+
+        // Sort visible items
+        const sortedItems = sortItems(visibleItems);
+
+        // Batch DOM updates
+        const fragment = document.createDocumentFragment();
+        sortedItems.forEach(item => {
+          fragment.appendChild(item);
+        });
+
+        // Clear and repopulate grid
+        grid.innerHTML = '';
+        grid.appendChild(fragment);
+
+        // Update visibility and classes
+        items.forEach(item => {
+          const isInstalled = item.getAttribute('data-installed') === 'true';
+          if (isInstalled) {
+            item.classList.add('installed');
+          } else {
+            item.classList.remove('installed');
+          }
+        });
+      });
+    });
+  }
+
+  // Intersection Observer for lazy loading images
+  function setupLazyLoading() {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+            observer.unobserve(img);
+          }
+        }
+      });
+    }, {
+      rootMargin: '50px 0px',
+      threshold: 0.1
+    });
+
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      imageObserver.observe(img);
+    });
+  }
+
+  // Virtual scrolling for large lists (optional optimization)
+  function setupVirtualScrolling() {
+    const grids = document.querySelectorAll('.app-grid');
+    const ITEMS_PER_PAGE = 50; // Load 50 items at a time
+    
+    grids.forEach(grid => {
+      const items = Array.from(grid.getElementsByClassName('app-item'));
+      if (items.length <= ITEMS_PER_PAGE) return; // Skip if list is small
+      
+      let visibleStart = 0;
+      let visibleEnd = ITEMS_PER_PAGE;
+      let isLoading = false;
+      
+      // Initially hide items beyond the first page
+      items.forEach((item, index) => {
+        if (index >= ITEMS_PER_PAGE) {
+          item.style.display = 'none';
+        }
+      });
+      
+      // Function to load more items
+      function loadMoreItems() {
+        if (isLoading || visibleEnd >= items.length) return;
+        
+        isLoading = true;
+        const nextStart = visibleEnd;
+        const nextEnd = Math.min(visibleEnd + ITEMS_PER_PAGE, items.length);
+        
+        // Use requestAnimationFrame to batch DOM updates
+        requestAnimationFrame(() => {
+          for (let i = nextStart; i < nextEnd; i++) {
+            if (items[i]) {
+              items[i].style.display = '';
+            }
+          }
+          visibleEnd = nextEnd;
+          isLoading = false;
+          
+          // Re-observe the new last item
+          updateObserver();
+        });
+      }
+      
+      // Function to update the observer
+      function updateObserver() {
+        if (visibleEnd >= items.length) {
+          paginationObserver.disconnect();
+          return;
+        }
+        
+        // Observe the last few visible items to ensure we catch scroll events
+        const observeStart = Math.max(0, visibleEnd - 3);
+        const observeEnd = Math.min(visibleEnd, items.length);
+        
+        for (let i = observeStart; i < observeEnd; i++) {
+          if (items[i] && items[i].style.display !== 'none') {
+            paginationObserver.observe(items[i]);
+          }
         }
       }
-
-      // Check if item should be hidden by installed filter
-      let shouldHideByInstalled = false;
-      const hideInstalledCheckbox = document.getElementById('hide_installed_' + searchId);
-      if (hideInstalledCheckbox && hideInstalledCheckbox.checked && isInstalled) {
-        shouldHideByInstalled = true;
-      }
-
-      // Check if item should be hidden by broken filter
-      let shouldHideByBroken = false;
-      const hideBrokenCheckbox = document.getElementById('hide_broken_' + searchId);
-      if (hideBrokenCheckbox && hideBrokenCheckbox.checked && isBroken) {
-        shouldHideByBroken = true;
-      }
-
-      // Apply visibility logic
-      if (shouldHideBySearch || shouldHideByInstalled || shouldHideByBroken) {
-        item.style.display = 'none';
-      } else {
-        item.style.display = '';
-      }
-
-      // Add visual indicator for installed apps
-      if (isInstalled) {
-        item.classList.add('installed');
-      }
+      
+      // Set up intersection observer for pagination
+      const paginationObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            loadMoreItems();
+          }
+        });
+      }, {
+        rootMargin: '200px 0px' // Increased margin to trigger earlier
+      });
+      
+      // Also observe the grid container for scroll events
+      const gridObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            // Check if we're near the bottom and need to load more
+            const rect = entry.boundingClientRect;
+            const viewportHeight = window.innerHeight;
+            
+            // If the grid is visible and we're near the bottom, load more
+            if (rect.bottom < viewportHeight + 300) {
+              loadMoreItems();
+            }
+          }
+        });
+      }, {
+        rootMargin: '300px 0px'
+      });
+      
+      // Initial setup
+      updateObserver();
+      gridObserver.observe(grid);
+      
+      // Also listen for scroll events as a fallback
+      let scrollTimeout;
+      window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          const rect = grid.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          
+          // If grid is visible and we're near the bottom, load more
+          if (rect.top < viewportHeight && rect.bottom > 0 && rect.bottom < viewportHeight + 500) {
+            loadMoreItems();
+          }
+        }, 100);
+      });
     });
   }
 </script>
@@ -165,15 +330,23 @@
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
-        {% if 'preview' in app %}
+        
+        <!-- Skeleton loader for images -->
         <div class="app-img">
-          <img loading="lazy" width="400px" src="{{ url_for('manager.app_preview', filename=app['preview']) }}" alt="{{ app['name'] }}" {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+          <div class="skeleton-loader"></div>
+          {% if 'preview' in app %}
+          <img data-src="{{ url_for('manager.app_preview', filename=app['preview']) }}" 
+               alt="{{ app['name'] }}" 
+               class="lazy-image"
+               {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+          {% else %}
+          <img data-src="{{ url_for('static', filename='images/not_found.jpg') }}" 
+               alt="{{ app['name'] }}" 
+               class="lazy-image"
+               {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+          {% endif %}
         </div>
-        {% else %}
-        <div>
-          <img loading="lazy" width="400px" src="{{ url_for('static', filename='images/not_found.jpg') }}" alt="{{ app['name'] }}" {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
-        </div>
-        {% endif %}
+        
         <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
         <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app['author'] }}</p>
@@ -227,10 +400,63 @@
 </form>
 
 <style>
+  /* Loading indicator */
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Hide loading indicator when content is loaded */
+  .content-loaded .loading-container {
+    display: none;
+  }
+
+  /* Skeleton loader */
+  .skeleton-loader {
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  @keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Hide skeleton when image loads */
+  .app-img img.loaded + .skeleton-loader {
+    display: none;
+  }
+
+  /* Optimized grid layout */
   .app-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
+    contain: layout style paint;
   }
 
   .app-item {
@@ -239,15 +465,42 @@
     text-align: center;
     cursor: pointer;
     position: relative;
+    contain: layout style paint;
+    will-change: transform;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
-  .app-item img {
-    max-width: 100%;
-    height: auto;
+  .app-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+
+  .app-img {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  .lazy-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .lazy-image.loaded {
+    opacity: 1;
   }
 
   .app-item.selected {
     border-color: #4CAF50;
+    box-shadow: 0 0 0 2px #4CAF50;
   }
 
   .app-item.installed {
@@ -275,6 +528,7 @@
 
   .app-item.broken-app:hover {
     background-color: rgba(244, 67, 54, 0.1);
+    transform: none;
   }
 
   .filter-sort-controls select {
@@ -336,6 +590,30 @@
     margin: 0;
   }
 
+  /* Performance optimizations */
+  .app-grid {
+    transform: translateZ(0); /* Force hardware acceleration */
+    backface-visibility: hidden;
+  }
+
+  .app-item {
+    transform: translateZ(0); /* Force hardware acceleration */
+    backface-visibility: hidden;
+  }
+
+  /* Reduce paint operations during scrolling */
+  .app-item img {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* Optimize text rendering */
+  .app-item p {
+    text-rendering: optimizeSpeed;
+    font-smooth: never;
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+
   /* Use higher specificity to override global link styles without !important */
   .app-item a.delete-upload-btn {
     display: inline-block;
@@ -375,6 +653,18 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    // Hide loading indicator and show content
+    setTimeout(() => {
+      document.body.classList.add('content-loaded');
+      isInitialLoad = false;
+    }, 100);
+
+    // Initialize lazy loading
+    setupLazyLoading();
+
+    // Initialize virtual scrolling for large lists
+    setupVirtualScrolling();
+
     // Initialize filters and sorting for each list
     const searchIds = ['system_search', 'custom_search'];
     searchIds.forEach(searchId => {
@@ -383,23 +673,52 @@
       }
     });
 
-    document.querySelectorAll('.app-item').forEach(item => {
-      item.addEventListener('click', function () {
-        // Don't allow clicking on broken apps
-        if (this.classList.contains('broken-app')) {
-          return;
-        }
-        document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
-        this.classList.add('selected');
-        document.getElementById('selected_app').value = this.getAttribute('data-value');
-        // Open the form submission in a new tab
-        const form = document.getElementById('main_form');
-        form.target = '_blank';
-        form.submit();
-        // Reset target so future submissions work normally
-        form.target = '';
-      });
+    // Optimized click handlers with event delegation
+    document.addEventListener('click', function(e) {
+      const appItem = e.target.closest('.app-item');
+      if (!appItem) return;
+
+      // Don't allow clicking on broken apps
+      if (appItem.classList.contains('broken-app')) {
+        return;
+      }
+
+      // Remove selection from all items
+      document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
+      
+      // Add selection to clicked item
+      appItem.classList.add('selected');
+      document.getElementById('selected_app').value = appItem.getAttribute('data-value');
+      
+      // Open the form submission in a new tab
+      const form = document.getElementById('main_form');
+      form.target = '_blank';
+      form.submit();
+      // Reset target so future submissions work normally
+      form.target = '';
     });
+
+    // Enhanced image loading with error handling
+    document.addEventListener('load', function(e) {
+      if (e.target.classList.contains('lazy-image')) {
+        e.target.classList.add('loaded');
+        const skeleton = e.target.parentElement.querySelector('.skeleton-loader');
+        if (skeleton) {
+          skeleton.style.display = 'none';
+        }
+      }
+    }, true);
+
+    document.addEventListener('error', function(e) {
+      if (e.target.classList.contains('lazy-image')) {
+        // Hide skeleton and show placeholder
+        const skeleton = e.target.parentElement.querySelector('.skeleton-loader');
+        if (skeleton) {
+          skeleton.style.display = 'none';
+        }
+        e.target.style.display = 'none';
+      }
+    }, true);
   });
 
   // Function to mark app as broken (development mode only)

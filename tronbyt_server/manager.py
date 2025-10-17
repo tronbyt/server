@@ -706,7 +706,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
     return Response("Method not allowed", 405)
 
 
-@bp.get("/<string:device_id>/<string:iname>/toggle_enabled")
+@bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=["GET", "POST"])
 @login_required
 def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -717,11 +717,16 @@ def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
     # if enabled, we should probably re-render and push but that's a pain so not doing it right now.
 
     db.save_user(user)
-    flash("Changes saved.")
-    return redirect(url_for("manager.index"))
+    
+    # Check if this is an AJAX request
+    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+        return Response("OK", status=200)
+    else:
+        flash("Changes saved.")
+        return redirect(url_for("manager.index"))
 
 
-@bp.get("/<string:device_id>/<string:iname>/toggle_pin")
+@bp.route("/<string:device_id>/<string:iname>/toggle_pin", methods=["GET", "POST"])
 @login_required
 def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -743,7 +748,12 @@ def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
         flash("App pinned.")
 
     db.save_user(user)
-    return redirect(url_for("manager.index"))
+    
+    # Check if this is an AJAX request
+    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+        return Response("OK", status=200)
+    else:
+        return redirect(url_for("manager.index"))
 
 
 @bp.route("/<string:device_id>/<string:iname>/updateapp", methods=["GET", "POST"])
@@ -1694,7 +1704,7 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
     direction = request.args.get("direction")
-    if not direction or direction not in ["up", "down"]:
+    if not direction or direction not in ["up", "down", "top", "bottom"]:
         flash("Invalid direction.")
         return redirect(url_for("manager.index"))
 
@@ -1733,11 +1743,21 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
             # Already at the top
             return redirect(url_for("manager.index"))
         target_idx = current_idx - 1
-    else:  # direction == "down"
+    elif direction == "down":
         if current_idx == len(apps_list) - 1:
             # Already at the bottom
             return redirect(url_for("manager.index"))
         target_idx = current_idx + 1
+    elif direction == "top":
+        if current_idx == 0:
+            # Already at the top
+            return redirect(url_for("manager.index"))
+        target_idx = 0
+    else:  # direction == "bottom"
+        if current_idx == len(apps_list) - 1:
+            # Already at the bottom
+            return redirect(url_for("manager.index"))
+        target_idx = len(apps_list) - 1
 
     # Move the app
     moved_app = apps_list.pop(current_idx)
@@ -1751,7 +1771,86 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
     user["devices"][device_id]["apps"] = apps_dict
     db.save_user(user)
 
-    return redirect(url_for("manager.index"))
+    # Check if this is an AJAX request
+    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+        return Response("OK", status=200)
+    else:
+        return redirect(url_for("manager.index"))
+
+
+@bp.route("/<device_id>/reorder_apps", methods=["POST"])
+@login_required
+def reorder_apps(device_id: str) -> ResponseReturnValue:
+    """Reorder apps by dragging and dropping."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    dragged_iname = request.form.get("dragged_iname")
+    target_iname = request.form.get("target_iname")
+    insert_after = request.form.get("insert_after", "false").lower() == "true"
+
+    if not dragged_iname or not target_iname:
+        return Response("Missing required parameters", status=400)
+
+    user = g.user
+    apps_dict = user["devices"][device_id].get("apps")
+
+    if not apps_dict:
+        return Response("No apps found", status=400)
+
+    if dragged_iname not in apps_dict or target_iname not in apps_dict:
+        return Response("App not found", status=400)
+
+    # Convert apps_dict to a list of app dictionaries, including iname
+    apps_list = []
+    for app_iname, app_data in apps_dict.items():
+        app_item = app_data.copy()
+        app_item["iname"] = app_iname
+        apps_list.append(app_item)
+
+    # Sort the list by 'order', then by 'iname' for stability if orders are not unique
+    apps_list.sort(key=lambda x: (x.get("order", 0), x.get("iname", "")))
+
+    # Find the indices of the dragged and target apps
+    dragged_idx = -1
+    target_idx = -1
+    
+    for i, app_item in enumerate(apps_list):
+        if app_item["iname"] == dragged_iname:
+            dragged_idx = i
+        if app_item["iname"] == target_iname:
+            target_idx = i
+
+    if dragged_idx == -1 or target_idx == -1:
+        return Response("App not found in list", status=400)
+
+    # Don't allow moving to the same position
+    if dragged_idx == target_idx:
+        return Response("OK", status=200)
+
+    # Calculate the new position
+    if insert_after:
+        new_idx = target_idx + 1
+    else:
+        new_idx = target_idx
+
+    # Adjust for the fact that we're removing the dragged item first
+    if dragged_idx < new_idx:
+        new_idx -= 1
+
+    # Move the app
+    moved_app = apps_list.pop(dragged_idx)
+    apps_list.insert(new_idx, moved_app)
+
+    # Update 'order' attribute for all apps in the list and in the original apps_dict
+    for i, app_item in enumerate(apps_list):
+        app_item["order"] = i  # Update order in the list item
+        apps_dict[app_item["iname"]]["order"] = i  # Update order in the original dict
+
+    user["devices"][device_id]["apps"] = apps_dict
+    db.save_user(user)
+
+    return Response("OK", status=200)
 
 
 @bp.get("/health")
