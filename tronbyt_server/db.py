@@ -30,10 +30,16 @@ from tronbyt_server.models.user import User
 
 
 def retry_db_operation(max_retries: int = 3, delay: float = 0.1):
-    """Decorator to retry database operations that fail due to locking."""
+    """Decorator to retry database operations that fail due to locking.
+    Only applies in production mode - tests run without retry to avoid interference.
+    """
 
     def decorator(func):
         def wrapper(*args, **kwargs):
+            # Skip retry mechanism during testing
+            if current_app.testing:
+                return func(*args, **kwargs)
+
             last_exception = None
             for attempt in range(max_retries):
                 try:
