@@ -74,10 +74,6 @@
           <td>
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.addapp', device_id=device['id']) }}">{{ _('Add App') }}</a>
-              {% if devices|length > 1 %}
-              <a id="toggleAppsBtn-{{ device['id'] }}" class="w3-button w3-teal w3-round"
-                onclick="toggleApps('{{ device['id'] }}')">{{ _('Hide Apps') }}</a>
-              {% endif %}
   
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('manager.update', device_id=device['id']) }}">{{ _('Edit Device') }}</a>
@@ -116,6 +112,14 @@
           <hr class="list-view-separator">
           {% endif %}
         {% endfor %}
+      </div>
+      
+      <!-- Collapse/Expand Button -->
+      <div style="text-align: center; margin-top: 15px;">
+        <button id="collapseBtn-{{ device['id'] }}" class="w3-button w3-gray w3-round" 
+                onclick="toggleAppsCollapse('{{ device['id'] }}')" title="{{ _('Collapse Apps') }}">
+          <i class="fas fa-chevron-up"></i> {{ _('Collapse Apps') }}
+        </button>
       </div>
     </div>
   </article>

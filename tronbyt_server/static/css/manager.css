@@ -50,6 +50,16 @@
   transition: opacity 0.5s ease-in-out;
 }
 
+/* Styles for collapsed apps list */
+.collapsed {
+  transition: max-height 0.3s ease-in-out, overflow 0.3s ease-in-out, padding 0.3s ease-in-out;
+}
+
+/* Smooth transition for collapse button */
+#collapseBtn-* {
+  transition: all 0.2s ease-in-out;
+}
+
 .visible {
   display: block;
   opacity: 1;

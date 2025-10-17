@@ -122,17 +122,37 @@ function reloadImage(deviceId) {
   currentWebpImg.src = `${currentWebpImg.dataset.src}?t=${timestamp}`;
 }
 
-function toggleApps(deviceId) {
+
+function toggleAppsCollapse(deviceId) {
   const appsList = document.getElementById(`appsList-${deviceId}`);
-  const toggleBtn = document.getElementById(`toggleAppsBtn-${deviceId}`);
-  if (appsList.classList.contains("hidden")) {
-    appsList.classList.remove("hidden");
-    appsList.classList.add("visible");
-    toggleBtn.textContent = "Hide Apps";
+  const collapseBtn = document.getElementById(`collapseBtn-${deviceId}`);
+  
+  if (appsList.classList.contains("collapsed")) {
+    // Expand the apps list
+    appsList.classList.remove("collapsed");
+    appsList.style.maxHeight = "none";
+    appsList.style.overflow = "visible";
+    appsList.style.padding = ""; // Reset padding to default
+    collapseBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Collapse Apps';
+    collapseBtn.title = 'Collapse Apps';
+    
+    // Save preferences
+    const prefs = loadDevicePreferences(deviceId);
+    prefs.collapsed = false;
+    saveDevicePreferences(deviceId, prefs);
   } else {
-    appsList.classList.remove("visible");
-    appsList.classList.add("hidden");
-    toggleBtn.textContent = "Show Apps";
+    // Collapse the apps list completely
+    appsList.classList.add("collapsed");
+    appsList.style.maxHeight = "0px";
+    appsList.style.overflow = "hidden";
+    appsList.style.padding = "0";
+    collapseBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Expand Apps';
+    collapseBtn.title = 'Expand Apps';
+    
+    // Save preferences
+    const prefs = loadDevicePreferences(deviceId);
+    prefs.collapsed = true;
+    saveDevicePreferences(deviceId, prefs);
   }
 }
 
@@ -295,6 +315,55 @@ function duplicateApp(deviceId, iname) {
     });
 }
 
+// Cookie utility functions
+function setCookie(name, value, days = 365) {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/`;
+}
+
+function getCookie(name) {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+  }
+  return null;
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+}
+
+// User preferences functions
+function saveDevicePreferences(deviceId, preferences) {
+  const key = `device_prefs_${deviceId}`;
+  setCookie(key, JSON.stringify(preferences));
+}
+
+function loadDevicePreferences(deviceId) {
+  const key = `device_prefs_${deviceId}`;
+  const prefs = getCookie(key);
+  return prefs ? JSON.parse(prefs) : { collapsed: false, viewMode: 'list' };
+}
+
+function saveAllDevicePreferences() {
+  const appListContainers = document.querySelectorAll('[id^="appsList-"]');
+  appListContainers.forEach(container => {
+    const deviceId = container.id.replace('appsList-', '');
+    const isCollapsed = container.classList.contains('collapsed');
+    const isGridView = container.classList.contains('apps-grid-view');
+    const viewMode = isGridView ? 'grid' : 'list';
+    
+    saveDevicePreferences(deviceId, {
+      collapsed: isCollapsed,
+      viewMode: viewMode
+    });
+  });
+}
+
 // Drag and Drop functionality
 let draggedElement = null;
 let draggedDeviceId = null;
@@ -308,13 +377,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // View Toggle Functions
 function initializeViewToggles() {
-  // Set default view state for all devices
+  // Restore saved preferences for all devices
   const appLists = document.querySelectorAll('[id^="appsList-"]');
   appLists.forEach(list => {
     const deviceId = list.id.replace('appsList-', '');
-    // Set default to list view
-    switchToListView(deviceId);
+    restoreDevicePreferences(deviceId);
   });
+}
+
+function restoreDevicePreferences(deviceId) {
+  const prefs = loadDevicePreferences(deviceId);
+  const appsList = document.getElementById(`appsList-${deviceId}`);
+  const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
+  const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
+  const collapseBtn = document.getElementById(`collapseBtn-${deviceId}`);
+  
+  // Restore view mode
+  if (prefs.viewMode === 'grid') {
+    // Update button states
+    gridBtn.classList.add('active');
+    listBtn.classList.remove('active');
+    
+    // Update container classes
+    appsList.classList.remove('apps-list-view');
+    appsList.classList.add('apps-grid-view');
+  } else {
+    // Default to list view
+    listBtn.classList.add('active');
+    gridBtn.classList.remove('active');
+    
+    appsList.classList.remove('apps-grid-view');
+    appsList.classList.add('apps-list-view');
+  }
+  
+  // Restore collapse state
+  if (prefs.collapsed) {
+    appsList.classList.add('collapsed');
+    appsList.style.maxHeight = '0px';
+    appsList.style.overflow = 'hidden';
+    appsList.style.padding = '0';
+    collapseBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Expand Apps';
+    collapseBtn.title = 'Expand Apps';
+  } else {
+    appsList.classList.remove('collapsed');
+    appsList.style.maxHeight = 'none';
+    appsList.style.overflow = 'visible';
+    appsList.style.padding = '';
+    collapseBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Collapse Apps';
+    collapseBtn.title = 'Collapse Apps';
+  }
 }
 
 function switchToListView(deviceId) {
@@ -332,6 +443,11 @@ function switchToListView(deviceId) {
   
   // Reinitialize drag and drop for the new layout
   initializeDragAndDrop();
+  
+  // Save preferences
+  const prefs = loadDevicePreferences(deviceId);
+  prefs.viewMode = 'list';
+  saveDevicePreferences(deviceId, prefs);
 }
 
 function switchToGridView(deviceId) {
@@ -349,6 +465,11 @@ function switchToGridView(deviceId) {
   
   // Reinitialize drag and drop for the new layout
   initializeDragAndDrop();
+  
+  // Save preferences
+  const prefs = loadDevicePreferences(deviceId);
+  prefs.viewMode = 'grid';
+  saveDevicePreferences(deviceId, prefs);
 }
 
 function initializeDragAndDrop() {
@@ -463,9 +584,17 @@ function handleDragEnd(e) {
 
 function handleDragOver(e) {
   e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
   
   const card = e.currentTarget;
+  const targetDeviceId = extractDeviceIdFromCard(card);
+  
+  // Only allow visual feedback for cards from the same device
+  if (!draggedDeviceId || targetDeviceId !== draggedDeviceId) {
+    e.dataTransfer.dropEffect = 'none';
+    return;
+  }
+  
+  e.dataTransfer.dropEffect = 'move';
   const container = card.closest('[id^="appsList-"]');
   const isGridView = container && container.classList.contains('apps-grid-view');
   
@@ -501,10 +630,14 @@ function handleDragOver(e) {
 function handleDragEnter(e) {
   e.preventDefault();
   const card = e.currentTarget;
+  const targetDeviceId = extractDeviceIdFromCard(card);
   
   // Only allow dropping on cards from the same device
-  if (draggedDeviceId && extractDeviceIdFromCard(card) === draggedDeviceId) {
+  if (draggedDeviceId && targetDeviceId === draggedDeviceId) {
     card.classList.add('drag-over');
+  } else {
+    // Remove any existing visual feedback from invalid targets
+    card.classList.remove('drag-over', 'drag-over-bottom');
   }
 }
 
@@ -605,6 +738,16 @@ function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
 // Drop zone event handlers
 function handleDropZoneDragOver(e) {
   e.preventDefault();
+  
+  const zone = e.currentTarget;
+  const deviceId = zone.getAttribute('data-device-id');
+  
+  // Only allow visual feedback for zones from the same device
+  if (!draggedDeviceId || deviceId !== draggedDeviceId) {
+    e.dataTransfer.dropEffect = 'none';
+    return;
+  }
+  
   e.dataTransfer.dropEffect = 'move';
 }
 
@@ -616,6 +759,9 @@ function handleDropZoneDragEnter(e) {
   // Only allow dropping on zones from the same device
   if (draggedDeviceId && deviceId === draggedDeviceId) {
     zone.classList.add('active');
+  } else {
+    // Remove any existing visual feedback from invalid targets
+    zone.classList.remove('active');
   }
 }
 
