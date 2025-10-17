@@ -793,14 +793,48 @@ def duplicate_app(device_id: str, iname: str) -> ResponseReturnValue:
         config=original_app.get("config", {}).copy(),  # Deep copy the config
         path=original_app.get("path"),
         id=original_app.get("id"),
-        order=len(device["apps"])  # Add at the end
+        empty_last_render=original_app.get("empty_last_render", False),
+        render_messages=original_app.get("render_messages", []).copy(),  # Copy render messages
+        start_time=original_app.get("start_time"),
+        end_time=original_app.get("end_time"),
+        days=original_app.get("days", []).copy() if original_app.get("days") else [],
+        use_custom_recurrence=original_app.get("use_custom_recurrence", False),
+        recurrence_type=original_app.get("recurrence_type"),
+        recurrence_interval=original_app.get("recurrence_interval"),
+        recurrence_pattern=original_app.get("recurrence_pattern"),
+        recurrence_start_date=original_app.get("recurrence_start_date"),
+        recurrence_end_date=original_app.get("recurrence_end_date"),
+        pushed=original_app.get("pushed", False)
     )
+    
+    # Get all apps and sort by order to find the original app's position
+    apps_list = list(device["apps"].values())
+    apps_list.sort(key=lambda x: x.get("order", 0))
+    
+    # Find the original app's position
+    original_order = original_app.get("order", 0)
+    
+    # Update order for all apps that come after the original app
+    for app_item in apps_list:
+        if app_item.get("order", 0) > original_order:
+            app_item["order"] = app_item.get("order", 0) + 1
+            device["apps"][app_item["iname"]]["order"] = app_item["order"]
+    
+    # Set the duplicate app's order to be right after the original
+    duplicated_app["order"] = original_order + 1
     
     # Add the duplicated app to the device
     device["apps"][new_iname] = duplicated_app
     
-    # Save the user data
+    # Save the user data first
     db.save_user(user)
+    
+    # Render the duplicated app to generate its preview
+    try:
+        possibly_render(user, device_id, duplicated_app)
+    except Exception as e:
+        current_app.logger.error(f"Error rendering duplicated app {new_iname}: {e}")
+        # Don't fail the duplication if rendering fails, just log it
     
     # Check if this is an AJAX request
     if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':

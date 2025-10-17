@@ -180,6 +180,11 @@ input:checked + .slider:before {
   text-align: center !important;
   overflow: hidden !important;
   white-space: nowrap !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
 }
 
 /* Make all action buttons consistent - both links and buttons */
@@ -376,7 +381,15 @@ button.action.w3-button.w3-red {
   opacity: 0.8;
 }
 
-.app-actions .w3-button {
+/* Standardized button sizes for all app actions - both buttons and anchor tags */
+.app-actions .w3-button,
+.app-actions .action.w3-button,
+.app-actions-primary .w3-button,
+.app-actions-primary .action.w3-button,
+.app-actions-secondary .w3-button,
+.app-actions-secondary .action.w3-button,
+a.action.w3-button,
+button.action.w3-button {
   font-size: 0.85em;
   padding: 6px 12px;
   min-width: auto;
@@ -384,18 +397,12 @@ button.action.w3-button.w3-red {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 /* Primary actions are more prominent */
 .app-actions-primary .w3-button {
   font-weight: 500;
-}
-
-/* Secondary actions match primary button height */
-.app-actions-secondary .w3-button {
-  font-size: 0.85em;
-  padding: 6px 12px;
-  height: 32px;
 }
 
 /* Disabled state for ordering buttons */
@@ -729,13 +736,20 @@ button.action.w3-button.w3-red {
   opacity: 0.9;
 }
 
-.apps-grid-view .app-actions .w3-button {
+.apps-grid-view .app-actions .w3-button,
+.apps-grid-view .app-actions .action.w3-button,
+.apps-grid-view a.action.w3-button,
+.apps-grid-view button.action.w3-button {
   font-size: 0.75em;
   padding: 4px 8px;
   min-width: auto;
   height: 28px;
   flex: 1;
   min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 /* Compact grid for smaller screens */
@@ -758,11 +772,18 @@ button.action.w3-button.w3-red {
     font-size: 0.9em;
   }
   
-  .apps-grid-view .app-actions .w3-button {
+  .apps-grid-view .app-actions .w3-button,
+  .apps-grid-view .app-actions .action.w3-button,
+  .apps-grid-view a.action.w3-button,
+  .apps-grid-view button.action.w3-button {
     font-size: 0.7em;
     padding: 3px 6px;
     height: 26px;
     min-width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
 }
 
@@ -837,13 +858,21 @@ button.action.w3-button.w3-red {
     flex-wrap: wrap;
   }
 
-  .app-actions .w3-button {
+  .app-actions .w3-button,
+  .app-actions .action.w3-button,
+  .app-actions-primary .w3-button,
+  .app-actions-primary .action.w3-button,
+  .app-actions-secondary .w3-button,
+  .app-actions-secondary .action.w3-button,
+  a.action.w3-button,
+  button.action.w3-button {
     flex: 1;
     min-width: 70px;
     margin: 2px;
-  }
-
-  .app-actions-secondary .w3-button {
-    min-width: 70px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
 }
