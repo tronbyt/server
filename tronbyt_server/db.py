@@ -45,7 +45,7 @@ def retry_db_operation(max_retries: int = 3, delay: float = 0.1):
                         and attempt < max_retries - 1
                     ):
                         current_app.logger.warning(
-                            f"Database locked in {func.__name__} on attempt {attempt + 1}/{max_retries}, retrying in {delay * (2 ** attempt)}s: {e}"
+                            f"Database locked in {func.__name__} on attempt {attempt + 1}/{max_retries}, retrying in {delay * (2**attempt)}s: {e}"
                         )
                         time.sleep(delay * (2**attempt))  # Exponential backoff
                         continue
