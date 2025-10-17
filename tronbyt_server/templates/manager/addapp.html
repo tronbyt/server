@@ -34,7 +34,7 @@
 
   // Optimized search with debouncing
   const debouncedSearch = debounce((searchId) => {
-    const searchFilter = document.getElementById(searchId).value.toLowerCase();
+    searchFilter = document.getElementById(searchId).value.toLowerCase();
     applyFilters();
   }, 150);
 
@@ -84,6 +84,14 @@
     });
   }
 
+  // Function to show all items in a grid
+  function showAllItems(grid) {
+    const allItems = Array.from(grid.getElementsByClassName('app-item'));
+    allItems.forEach(item => {
+      item.style.display = 'block';
+    });
+  }
+
   // Optimized filtering with virtual scrolling
   function applyFilters() {
     if (isInitialLoad) return;
@@ -94,7 +102,6 @@
       
       grids.forEach(grid => {
         if (!grid) return;
-        const items = Array.from(grid.getElementsByClassName('app-item'));
         const searchId = grid.id.replace('_app_grid', '_search');
         
         // Get current filter values
@@ -103,14 +110,28 @@
         const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
         const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
 
-        // Filter and sort items
-        const visibleItems = items.filter(item => {
+        // Get all app items from the grid (including hidden ones)
+        const allItems = Array.from(grid.getElementsByClassName('app-item'));
+        
+        // If no search filter and no other filters, show all items
+        if (!currentSearchFilter && !currentHideInstalled && !currentHideBroken) {
+          showAllItems(grid);
+          return;
+        }
+        
+        // Filter items based on search and other criteria
+        const visibleItems = allItems.filter(item => {
           const isInstalled = item.getAttribute('data-installed') === 'true';
           const isBroken = item.getAttribute('data-broken') === 'true';
           const name = item.getAttribute('data-name').toLowerCase();
+          const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
 
-          // Apply filters
-          if (currentSearchFilter && !name.includes(currentSearchFilter)) return false;
+          // Apply search filter (search both name and summary)
+          if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
+            return false;
+          }
+          
+          // Apply other filters
           if (currentHideInstalled && isInstalled) return false;
           if (currentHideBroken && isBroken) return false;
 
@@ -120,34 +141,26 @@
         // Sort visible items
         const sortedItems = sortItems(visibleItems);
 
-        // Batch DOM updates
-        const fragment = document.createDocumentFragment();
-        if (sortedItems && sortedItems.length) {
-          sortedItems.forEach(item => {
-            if (item) {
-              fragment.appendChild(item);
-            }
-          });
-        }
+        // Hide all items first
+        allItems.forEach(item => {
+          item.style.display = 'none';
+        });
 
-        // Clear and repopulate grid
-        if (grid) {
-          grid.innerHTML = '';
-          grid.appendChild(fragment);
-        }
+        // Show only filtered and sorted items
+        sortedItems.forEach(item => {
+          item.style.display = 'block';
+        });
 
         // Update visibility and classes
-        if (items && items.length) {
-          items.forEach(item => {
-            if (!item) return;
-            const isInstalled = item.getAttribute('data-installed') === 'true';
-            if (isInstalled) {
-              item.classList.add('installed');
-            } else {
-              item.classList.remove('installed');
-            }
-          });
-        }
+        allItems.forEach(item => {
+          if (!item) return;
+          const isInstalled = item.getAttribute('data-installed') === 'true';
+          if (isInstalled) {
+            item.classList.add('installed');
+          } else {
+            item.classList.remove('installed');
+          }
+        });
       });
     });
   }
@@ -673,6 +686,12 @@
     setTimeout(() => {
       document.body.classList.add('content-loaded');
       isInitialLoad = false;
+      
+      // Ensure all app items are visible when page loads
+      const grids = document.querySelectorAll('.app-grid');
+      grids.forEach(grid => {
+        showAllItems(grid);
+      });
     }, 100);
 
     // Initialize lazy loading
