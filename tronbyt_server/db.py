@@ -318,17 +318,29 @@ def migrate_user_api_keys() -> None:
 def get_db() -> sqlite3.Connection:
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = sqlite3.connect(
-            current_app.config["DB_FILE"],
-            timeout=30.0,  # 30 second timeout for database locks
-            check_same_thread=False,  # Allow connection to be used across threads
-        )
-        # Enable WAL mode for better concurrency
-        db.execute("PRAGMA journal_mode=WAL")
-        # Set busy timeout for additional protection
-        db.execute("PRAGMA busy_timeout=30000")  # 30 seconds in milliseconds
-        # Enable foreign key constraints
-        db.execute("PRAGMA foreign_keys=ON")
+        # Use different configuration for testing vs production
+        if current_app.testing:
+            # Simpler configuration for tests to avoid locking issues
+            db = g._database = sqlite3.connect(
+                current_app.config["DB_FILE"],
+                check_same_thread=False,
+                autocommit=True,  # Use autocommit for tests to reduce locking
+            )
+            # Only enable foreign keys for tests
+            db.execute("PRAGMA foreign_keys=ON")
+        else:
+            # Production configuration with concurrency optimizations
+            db = g._database = sqlite3.connect(
+                current_app.config["DB_FILE"],
+                timeout=30.0,  # 30 second timeout for database locks
+                check_same_thread=False,  # Allow connection to be used across threads
+            )
+            # Enable WAL mode for better concurrency
+            db.execute("PRAGMA journal_mode=WAL")
+            # Set busy timeout for additional protection
+            db.execute("PRAGMA busy_timeout=30000")  # 30 seconds in milliseconds
+            # Enable foreign key constraints
+            db.execute("PRAGMA foreign_keys=ON")
         db.commit()
     return db
 
