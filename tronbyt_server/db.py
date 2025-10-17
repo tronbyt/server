@@ -1,5 +1,6 @@
 """Database utility functions for Tronbyt Server."""
 
+import functools
 import json
 import secrets
 import shutil
@@ -8,7 +9,7 @@ import string
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import List, Literal, Optional, Union, cast
+from typing import Any, Callable, List, Literal, Optional, TypeVar, Union, cast
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -28,14 +29,19 @@ from tronbyt_server.models.device import (
 )
 from tronbyt_server.models.user import User
 
+T = TypeVar("T")
 
-def retry_db_operation(max_retries: int = 3, delay: float = 0.1):
+
+def retry_db_operation(
+    max_retries: int = 3, delay: float = 0.1
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator to retry database operations that fail due to locking.
     Only applies in production mode - tests run without retry to avoid interference.
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             # Skip retry mechanism during testing
             if current_app.testing:
                 return func(*args, **kwargs)
@@ -70,7 +76,11 @@ def retry_db_operation(max_retries: int = 3, delay: float = 0.1):
             current_app.logger.error(
                 f"Database operation {func.__name__} failed after {max_retries} retries"
             )
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError(
+                f"Database operation {func.__name__} failed after {max_retries} retries"
+            )
 
         return wrapper
 
@@ -596,13 +606,13 @@ def get_user(username: str) -> Optional[User]:
         return None
 
 
-def auth_user(username: str, password: str) -> Optional[Union[User, bool]]:
+def auth_user(username: str, password: str) -> Union[User, bool, None]:
     user = get_user(username)
     if user:
         password_hash = user.get("password")
         if password_hash and check_password_hash(password_hash, password):
             current_app.logger.debug(f"returning {user}")
-            return user
+            return cast(User, user)
         else:
             current_app.logger.info("bad password")
             return False
@@ -1043,7 +1053,7 @@ def get_device_by_id(device_id: str) -> Optional[Device]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
-            return device
+            return cast(Device, device)
     return None
 
 
@@ -1051,7 +1061,7 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
-            return user
+            return cast(User, user)
     return None
 
 
@@ -1070,7 +1080,7 @@ def get_firmware_version() -> Optional[str]:
 def get_user_by_api_key(api_key: str) -> Optional[User]:
     for user in get_all_users():
         if user.get("api_key") == api_key:
-            return user
+            return cast(User, user)
     return None
 
 
