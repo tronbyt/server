@@ -2077,6 +2077,16 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
             user["devices"][device_config["id"]] = device_config
             db.save_user(user)
 
+            # Trigger rendering for all imported apps to ensure they start displaying
+            for app_iname, app in device_config.get("apps", {}).items():
+                try:
+                    # Reset last_render to 0 to force immediate rendering
+                    app["last_render"] = 0
+                    possibly_render(user, device_config["id"], app)
+                except Exception as e:
+                    current_app.logger.error(f"Error rendering imported app {app_iname} on device {device_config['id']}: {e}")
+                    # Continue with other apps even if one fails
+
             flash("Device configuration imported successfully")
             return redirect(url_for("manager.index"))
 
@@ -2172,6 +2182,16 @@ def import_user_config() -> ResponseReturnValue:
 
         # Save the updated user
         if db.save_user(current_user):
+            # Trigger rendering for all imported apps to ensure they start displaying
+            for device_id, device in current_user.get("devices", {}).items():
+                for app_iname, app in device.get("apps", {}).items():
+                    try:
+                        # Reset last_render to 0 to force immediate rendering
+                        app["last_render"] = 0
+                        possibly_render(current_user, device_id, app)
+                    except Exception as e:
+                        current_app.logger.error(f"Error rendering imported app {app_iname} on device {device_id}: {e}")
+                        # Continue with other apps even if one fails
             flash("User configuration imported successfully")
         else:
             flash("Failed to save user configuration")
