@@ -776,11 +776,8 @@
       document.body.classList.add('content-loaded');
       isInitialLoad = false;
       
-      // Ensure all app items are visible when page loads
-      const grids = document.querySelectorAll('.app-grid');
-      grids.forEach(grid => {
-        showAllItems(grid);
-      });
+      // Apply initial filters (including the default "hide broken apps" filter)
+      applyFilters();
     }, 100);
 
     // Initialize lazy loading
