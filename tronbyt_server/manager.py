@@ -597,7 +597,12 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
 
     device["apps"].pop(iname)
     db.save_user(g.user)
-    return redirect(url_for("manager.index"))
+    
+    # Check if this is an AJAX request
+    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+        return Response("OK", status=200)
+    else:
+        return redirect(url_for("manager.index"))
 
 
 @bp.route("/<string:device_id>/addapp", methods=["GET", "POST"])
@@ -801,21 +806,11 @@ def duplicate_app(device_id: str, iname: str) -> ResponseReturnValue:
         use_custom_recurrence=original_app.get("use_custom_recurrence", False),
         recurrence_type=original_app.get("recurrence_type"),
         recurrence_interval=original_app.get("recurrence_interval"),
-        recurrence_pattern=original_app.get("recurrence_pattern"),
+        recurrence_pattern=original_app.get("recurrence_pattern") or {},
         recurrence_start_date=original_app.get("recurrence_start_date"),
         recurrence_end_date=original_app.get("recurrence_end_date"),
         pushed=original_app.get("pushed", False)
     )
-    
-    # Ensure that fields that could be None are properly initialized
-    if duplicated_app.get("recurrence_pattern") is None:
-        duplicated_app["recurrence_pattern"] = {}
-    if duplicated_app.get("days") is None:
-        duplicated_app["days"] = []
-    if duplicated_app.get("config") is None:
-        duplicated_app["config"] = {}
-    if duplicated_app.get("render_messages") is None:
-        duplicated_app["render_messages"] = []
     
     # Get all apps and sort by order to find the original app's position
     apps_list = list(device["apps"].values())
@@ -974,18 +969,7 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
             db.save_user(user)
 
             return redirect(url_for("manager.index"))
-    # Check if the app exists
-    device = g.user.get("devices", {}).get(device_id)
-    if not device:
-        current_app.logger.error(f"Device {device_id} not found for user {g.user.get('username', 'unknown')}")
-        abort(HTTPStatus.NOT_FOUND, description="Device not found")
-    
-    app = device.get("apps", {}).get(iname)
-    if app is None:
-        current_app.logger.error(f"App with iname {iname} not found in device {device_id}. Available apps: {list(device.get('apps', {}).keys())}")
-        abort(HTTPStatus.NOT_FOUND, description="App not found")
-    
-    current_app.logger.debug(f"Found app {iname} for device {device_id}: {app.get('name', 'unnamed')}")
+    app = g.user["devices"][device_id]["apps"][iname]
 
     # Set default dates if not already set
     today = date.today()
@@ -993,6 +977,8 @@ def updateapp(device_id: str, iname: str) -> ResponseReturnValue:
         app["recurrence_start_date"] = today.strftime("%Y-%m-%d")
     if not app.get("recurrence_end_date"):
         app["recurrence_end_date"] = (today + timedelta(days=7)).strftime("%Y-%m-%d")
+
+    device = g.user["devices"][device_id]
 
     return render_template(
         "manager/updateapp.html",

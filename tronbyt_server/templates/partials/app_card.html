@@ -49,8 +49,8 @@
              href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{ _('Configure') }}</a>
           <button class="action w3-button w3-green w3-round"
                   onclick="duplicateApp('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Duplicate') }}</button>
-          <a class="action w3-button w3-red w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
-             href="{{ url_for('manager.deleteapp', device_id=device['id'],iname=app['iname']) }}">{{ _('Delete') }}</a>
+          <button class="action w3-button w3-red w3-round"
+                  onclick="deleteApp('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Delete') }}</button>
         </div>
         
         <!-- Secondary Actions Row -->

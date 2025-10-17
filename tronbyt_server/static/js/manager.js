@@ -315,6 +315,34 @@ function duplicateApp(deviceId, iname) {
     });
 }
 
+// AJAX function to delete an app
+function deleteApp(deviceId, iname) {
+  if (!confirm('Delete App?')) {
+    return;
+  }
+  
+  fetch(`/${deviceId}/${iname}/delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to delete app');
+        alert('Failed to delete app. Please try again.');
+      } else {
+        console.log('App deleted successfully');
+        // Refresh the apps list for this device
+        refreshAppsList(deviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while deleting the app. Please try again.');
+    });
+}
+
 // Cookie utility functions
 function setCookie(name, value, days = 365) {
   const expires = new Date();
