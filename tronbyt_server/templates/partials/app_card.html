@@ -55,23 +55,23 @@
         
         <!-- Secondary Actions Row -->
         <div class="app-actions-secondary">
-          <button class="action w3-button w3-blue w3-round {% if loop.first %}w3-disabled{% endif %}"
+          <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.first %}w3-disabled{% endif %}"
                   {% if loop.first %}disabled{% endif %}
                   onclick="{% if not loop.first %}moveApp('{{ device['id'] }}', '{{ app['iname'] }}', 'top'){% endif %}">{{ _('Top') }}</button>
-          <button class="action w3-button w3-blue w3-round {% if loop.last %}w3-disabled{% endif %}"
+          <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.last %}w3-disabled{% endif %}"
                   {% if loop.last %}disabled{% endif %}
                   onclick="{% if not loop.last %}moveApp('{{ device['id'] }}', '{{ app['iname'] }}', 'bottom'){% endif %}">{{ _('Bottom') }}</button>
           {% if device.get('pinned_app') == app['iname'] %}
-          <button class="action w3-button w3-orange w3-round"
+          <button class="action w3-button w3-orange w3-round app-btn-no-hover"
              onclick="togglePin('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Unpin') }}</button>
           {% else %}
-            <button class="action w3-button w3-green w3-round"
+            <button class="action w3-button w3-green w3-round app-btn-no-hover"
                onclick="togglePin('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Pin') }}</button>
             {% if app['enabled'] %}
-            <button class="action w3-button w3-orange w3-round"
+            <button class="action w3-button w3-orange w3-round app-btn-no-hover"
                onclick="toggleEnabled('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Disable') }}</button>
             {% else %}
-            <button class="action w3-button w3-green w3-round"
+            <button class="action w3-button w3-green w3-round app-btn-no-hover"
                onclick="toggleEnabled('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Enable') }}</button>
             {% endif %}
           {% endif %}

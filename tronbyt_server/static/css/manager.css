@@ -223,10 +223,8 @@ button.action.w3-button {
 /* Override any height constraints and ensure consistent text color for all action buttons */
 .action.w3-button,
 .action.w3-button:focus,
-.action.w3-button:hover,
 button.action.w3-button,
-button.action.w3-button:focus,
-button.action.w3-button:hover {
+button.action.w3-button:focus {
   height: auto;
   min-height: auto;
   line-height: 1.2;
@@ -261,6 +259,15 @@ button.action.w3-button.w3-orange {
 button.action.w3-button.w3-red {
   background-color: #f44336 !important;
   color: white !important;
+}
+
+/* Remove hover states for specific app card buttons */
+.app-btn-no-hover:hover {
+  background-color: inherit;
+  color: inherit;
+  transform: none;
+  box-shadow: inherit;
+  opacity: inherit;
 }
 
 /* App Card Layout Styles */
@@ -424,11 +431,6 @@ button.action.w3-button {
   border-color: #ddd !important;
 }
 
-.app-actions-secondary .w3-button.w3-disabled:hover {
-  background-color: #f5f5f5 !important;
-  color: #999 !important;
-  transform: none;
-}
 
 
 /* Move feedback animation styles */
