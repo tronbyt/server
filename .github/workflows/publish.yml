@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - dev
+      - db_locking_fix
 
     # Publish `v1.2.3` tags as releases.
     tags:
