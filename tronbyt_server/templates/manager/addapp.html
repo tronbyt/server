@@ -120,6 +120,11 @@
         if (!currentSearchFilter && !currentHideInstalled && !currentHideBroken) {
           console.log('Showing all items - no filters active');
           showAllItems(grid);
+          // Reset virtual scrolling state if it exists
+          if (grid._virtualScrolling) {
+            grid._virtualScrolling.visibleEnd = Math.min(grid._virtualScrolling.ITEMS_PER_PAGE, allItems.length);
+            grid._virtualScrolling.isLoading = false;
+          }
           return;
         }
         
@@ -154,6 +159,25 @@
         sortedItems.forEach(item => {
           item.style.display = 'block';
         });
+
+        // Update virtual scrolling state to work with filtered results
+        if (grid._virtualScrolling) {
+          // Reset virtual scrolling to work with filtered items
+          const filteredItems = sortedItems;
+          const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
+          
+          // Hide items beyond the first page of filtered results
+          filteredItems.forEach((item, index) => {
+            if (index >= ITEMS_PER_PAGE) {
+              item.style.display = 'none';
+            }
+          });
+          
+          // Update virtual scrolling state
+          grid._virtualScrolling.visibleEnd = Math.min(ITEMS_PER_PAGE, filteredItems.length);
+          grid._virtualScrolling.isLoading = false;
+          grid._virtualScrolling.items = filteredItems;
+        }
 
         // Update visibility and classes
         allItems.forEach(item => {
@@ -208,6 +232,15 @@
       let visibleEnd = ITEMS_PER_PAGE;
       let isLoading = false;
       
+      // Store reference to this grid's virtual scrolling state
+      grid._virtualScrolling = {
+        visibleStart,
+        visibleEnd,
+        isLoading,
+        items,
+        ITEMS_PER_PAGE
+      };
+      
       // Initially hide items beyond the first page
       if (items && items.length) {
         items.forEach((item, index) => {
@@ -236,6 +269,39 @@
           visibleEnd = nextEnd;
           isLoading = false;
           
+          // Update the stored state
+          grid._virtualScrolling.visibleEnd = visibleEnd;
+          grid._virtualScrolling.isLoading = isLoading;
+          
+          // Re-observe the new last item
+          updateObserver();
+        });
+      }
+      
+      // Function to load more items from filtered results
+      function loadMoreFilteredItems() {
+        if (!grid._virtualScrolling || grid._virtualScrolling.isLoading) return;
+        
+        const filteredItems = grid._virtualScrolling.items;
+        const currentVisibleEnd = grid._virtualScrolling.visibleEnd;
+        const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
+        
+        if (currentVisibleEnd >= filteredItems.length) return;
+        
+        grid._virtualScrolling.isLoading = true;
+        const nextStart = currentVisibleEnd;
+        const nextEnd = Math.min(currentVisibleEnd + ITEMS_PER_PAGE, filteredItems.length);
+        
+        // Use requestAnimationFrame to batch DOM updates
+        requestAnimationFrame(() => {
+          for (let i = nextStart; i < nextEnd; i++) {
+            if (filteredItems[i]) {
+              filteredItems[i].style.display = '';
+            }
+          }
+          grid._virtualScrolling.visibleEnd = nextEnd;
+          grid._virtualScrolling.isLoading = false;
+          
           // Re-observe the new last item
           updateObserver();
         });
@@ -263,7 +329,12 @@
       const paginationObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            loadMoreItems();
+            // Check if we have filtered items (filters are active)
+            if (grid._virtualScrolling && grid._virtualScrolling.items && grid._virtualScrolling.items.length > 0) {
+              loadMoreFilteredItems();
+            } else {
+              loadMoreItems();
+            }
           }
         });
       }, {
@@ -280,7 +351,12 @@
             
             // If the grid is visible and we're near the bottom, load more
             if (rect.bottom < viewportHeight + 300) {
-              loadMoreItems();
+              // Check if we have filtered items (filters are active)
+              if (grid._virtualScrolling && grid._virtualScrolling.items && grid._virtualScrolling.items.length > 0) {
+                loadMoreFilteredItems();
+              } else {
+                loadMoreItems();
+              }
             }
           }
         });
@@ -302,7 +378,12 @@
           
           // If grid is visible and we're near the bottom, load more
           if (rect.top < viewportHeight && rect.bottom > 0 && rect.bottom < viewportHeight + 500) {
-            loadMoreItems();
+            // Check if we have filtered items (filters are active)
+            if (grid._virtualScrolling && grid._virtualScrolling.items && grid._virtualScrolling.items.length > 0) {
+              loadMoreFilteredItems();
+            } else {
+              loadMoreItems();
+            }
           }
         }, 100);
       });
@@ -467,7 +548,7 @@
   /* Skeleton loader */
   .skeleton-loader {
     width: 100%;
-    height: 120px;
+    aspect-ratio: 2 / 1;
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
     background-size: 200% 100%;
     animation: loading 1.5s infinite;
@@ -512,7 +593,7 @@
   .app-img {
     position: relative;
     width: 100%;
-    height: 120px;
+    aspect-ratio: 2 / 1;
     overflow: hidden;
     border-radius: 4px;
   }
