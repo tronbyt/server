@@ -182,19 +182,19 @@ input:checked + .slider:before {
 .w3-button[aria-label="Move Down"],
 .w3-button[aria-label="Move to Top"],
 .w3-button[aria-label="Move to Bottom"] {
-  min-width: 35px !important;
-  max-width: 45px !important;
-  padding: 6px 8px !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  text-align: center !important;
-  overflow: hidden !important;
-  white-space: nowrap !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
+  min-width: 35px;
+  max-width: 45px;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 /* Make all action buttons consistent - both links and buttons */
@@ -227,15 +227,15 @@ button.action.w3-button {
 button.action.w3-button,
 button.action.w3-button:focus,
 button.action.w3-button:hover {
-  height: auto !important;
-  min-height: auto !important;
-  line-height: 1.2 !important;
-  color: inherit !important;
-  font-size: 14px !important;
-  text-align: center !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  height: auto;
+  min-height: auto;
+  line-height: 1.2;
+  color: inherit;
+  font-size: 14px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Ensure specific button colors work correctly */

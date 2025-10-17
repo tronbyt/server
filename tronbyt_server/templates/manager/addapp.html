@@ -34,7 +34,7 @@
 
   // Optimized search with debouncing
   const debouncedSearch = debounce((searchId) => {
-    searchFilter = document.getElementById(searchId).value.toLowerCase();
+    const searchFilter = document.getElementById(searchId).value.toLowerCase();
     applyFilters();
   }, 150);
 
@@ -93,6 +93,7 @@
       const grids = document.querySelectorAll('.app-grid');
       
       grids.forEach(grid => {
+        if (!grid) return;
         const items = Array.from(grid.getElementsByClassName('app-item'));
         const searchId = grid.id.replace('_app_grid', '_search');
         
@@ -121,23 +122,32 @@
 
         // Batch DOM updates
         const fragment = document.createDocumentFragment();
-        sortedItems.forEach(item => {
-          fragment.appendChild(item);
-        });
+        if (sortedItems && sortedItems.length) {
+          sortedItems.forEach(item => {
+            if (item) {
+              fragment.appendChild(item);
+            }
+          });
+        }
 
         // Clear and repopulate grid
-        grid.innerHTML = '';
-        grid.appendChild(fragment);
+        if (grid) {
+          grid.innerHTML = '';
+          grid.appendChild(fragment);
+        }
 
         // Update visibility and classes
-        items.forEach(item => {
-          const isInstalled = item.getAttribute('data-installed') === 'true';
-          if (isInstalled) {
-            item.classList.add('installed');
-          } else {
-            item.classList.remove('installed');
-          }
-        });
+        if (items && items.length) {
+          items.forEach(item => {
+            if (!item) return;
+            const isInstalled = item.getAttribute('data-installed') === 'true';
+            if (isInstalled) {
+              item.classList.add('installed');
+            } else {
+              item.classList.remove('installed');
+            }
+          });
+        }
       });
     });
   }
@@ -152,6 +162,8 @@
             img.src = img.dataset.src;
             img.removeAttribute('data-src');
             observer.unobserve(img);
+          } else {
+            console.warn('Image source is empty or undefined.');
           }
         }
       });
@@ -171,19 +183,23 @@
     const ITEMS_PER_PAGE = 50; // Load 50 items at a time
     
     grids.forEach(grid => {
+      if (!grid) return;
       const items = Array.from(grid.getElementsByClassName('app-item'));
-      if (items.length <= ITEMS_PER_PAGE) return; // Skip if list is small
+      if (!items || items.length <= ITEMS_PER_PAGE) return; // Skip if list is small
       
       let visibleStart = 0;
       let visibleEnd = ITEMS_PER_PAGE;
       let isLoading = false;
       
       // Initially hide items beyond the first page
-      items.forEach((item, index) => {
-        if (index >= ITEMS_PER_PAGE) {
-          item.style.display = 'none';
-        }
-      });
+      if (items && items.length) {
+        items.forEach((item, index) => {
+          if (!item) return;
+          if (index >= ITEMS_PER_PAGE) {
+            item.style.display = 'none';
+          }
+        });
+      }
       
       // Function to load more items
       function loadMoreItems() {
