@@ -26,12 +26,10 @@ def load_test_data(client: FlaskClient) -> str:
 
 
 def get_testuser() -> User:
-    from typing import cast
-
     user = db.get_user("testuser")
     if not user:
         raise Exception("testuser not found")
-    return cast(User, user)
+    return user
 
 
 def get_test_device_id() -> str:

@@ -612,7 +612,7 @@ def auth_user(username: str, password: str) -> Union[User, bool, None]:
         password_hash = user.get("password")
         if password_hash and check_password_hash(password_hash, password):
             current_app.logger.debug(f"returning {user}")
-            return cast(User, user)
+            return user
         else:
             current_app.logger.info("bad password")
             return False
@@ -1053,7 +1053,7 @@ def get_device_by_id(device_id: str) -> Optional[Device]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
-            return cast(Device, device)
+            return device
     return None
 
 
@@ -1061,7 +1061,7 @@ def get_user_by_device_id(device_id: str) -> Optional[User]:
     for user in get_all_users():
         device = user.get("devices", {}).get(device_id)
         if device:
-            return cast(User, user)
+            return user
     return None
 
 
@@ -1080,7 +1080,7 @@ def get_firmware_version() -> Optional[str]:
 def get_user_by_api_key(api_key: str) -> Optional[User]:
     for user in get_all_users():
         if user.get("api_key") == api_key:
-            return cast(User, user)
+            return user
     return None
 
 
