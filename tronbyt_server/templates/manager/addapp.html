@@ -34,11 +34,10 @@
 
   // Optimized search with debouncing
   const debouncedSearch = debounce((searchId) => {
-    searchFilter = document.getElementById(searchId).value.toLowerCase();
     applyFilters();
   }, 150);
 
-  function searchApps(searchId) {
+  function searchApps(searchId, gridId) {
     debouncedSearch(searchId);
   }
 
@@ -87,6 +86,7 @@
   // Function to show all items in a grid
   function showAllItems(grid) {
     const allItems = Array.from(grid.getElementsByClassName('app-item'));
+    console.log(`Showing all ${allItems.length} items in grid ${grid.id}`);
     allItems.forEach(item => {
       item.style.display = 'block';
     });
@@ -106,15 +106,19 @@
         
         // Get current filter values
         const searchInput = document.getElementById(searchId);
-        const currentSearchFilter = searchInput ? searchInput.value.toLowerCase() : '';
+        const currentSearchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
         const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
 
         // Get all app items from the grid (including hidden ones)
         const allItems = Array.from(grid.getElementsByClassName('app-item'));
         
+        // Debug logging
+        console.log(`Grid: ${grid.id}, Search: "${currentSearchFilter}", HideInstalled: ${currentHideInstalled}, HideBroken: ${currentHideBroken}`);
+        
         // If no search filter and no other filters, show all items
         if (!currentSearchFilter && !currentHideInstalled && !currentHideBroken) {
+          console.log('Showing all items - no filters active');
           showAllItems(grid);
           return;
         }
@@ -325,7 +329,8 @@
       <div class="filter-sort-controls-inner">
 
         <input type="search" id="{{ search_id }}" placeholder="{{ _('Search apps') }}"
-          onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" />
+          onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" 
+          oninput="searchApps('{{ search_id }}', '{{ grid_id }}')" />
 
         <label class="control-label">
           <input type="checkbox" id="hide_installed_{{ search_id }}" onchange="toggleInstalledApps('{{ search_id }}')"
