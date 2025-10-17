@@ -756,6 +756,60 @@ def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
         return redirect(url_for("manager.index"))
 
 
+@bp.route("/<string:device_id>/<string:iname>/duplicate", methods=["POST"])
+@login_required
+def duplicate_app(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+    
+    user = g.user
+    device = user["devices"][device_id]
+    
+    if iname not in device.get("apps", {}):
+        abort(HTTPStatus.NOT_FOUND, description="App not found")
+    
+    # Get the original app
+    original_app = device["apps"][iname]
+    
+    # Generate a unique iname for the duplicate
+    max_attempts = 10
+    for _ in range(max_attempts):
+        new_iname = str(randint(100, 999))
+        if new_iname not in device.get("apps", {}):
+            break
+    else:
+        flash("Could not generate a unique installation ID.")
+        return Response("Error generating unique ID", status=500)
+    
+    # Create a copy of the original app with the new iname
+    duplicated_app = App(
+        name=original_app["name"],
+        iname=new_iname,
+        enabled=original_app.get("enabled", False),
+        last_render=0,  # Reset render time for new app
+        uinterval=original_app.get("uinterval", 15),
+        display_time=original_app.get("display_time", 0),
+        notes=original_app.get("notes", ""),
+        config=original_app.get("config", {}).copy(),  # Deep copy the config
+        path=original_app.get("path"),
+        id=original_app.get("id"),
+        order=len(device["apps"])  # Add at the end
+    )
+    
+    # Add the duplicated app to the device
+    device["apps"][new_iname] = duplicated_app
+    
+    # Save the user data
+    db.save_user(user)
+    
+    # Check if this is an AJAX request
+    if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
+        return Response("OK", status=200)
+    else:
+        flash("App duplicated successfully.")
+        return redirect(url_for("manager.index"))
+
+
 @bp.route("/<string:device_id>/<string:iname>/updateapp", methods=["GET", "POST"])
 @login_required
 def updateapp(device_id: str, iname: str) -> ResponseReturnValue:

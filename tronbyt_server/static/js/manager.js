@@ -271,6 +271,30 @@ function toggleEnabled(deviceId, iname) {
     });
 }
 
+// AJAX function to duplicate an app
+function duplicateApp(deviceId, iname) {
+  fetch(`/${deviceId}/${iname}/duplicate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to duplicate app');
+        alert('Failed to duplicate app. Please try again.');
+      } else {
+        console.log('App duplicated successfully');
+        // Refresh the apps list for this device
+        refreshAppsList(deviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while duplicating the app. Please try again.');
+    });
+}
+
 // Drag and Drop functionality
 let draggedElement = null;
 let draggedDeviceId = null;
