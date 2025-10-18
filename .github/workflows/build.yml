@@ -18,9 +18,9 @@ jobs:
       - name: Install dependencies
         run: pdm sync -d
       - name: Lint code with Ruff
-        run: pdm run ruff check --output-format=github --target-version=py312
+        run: pdm run ruff check --output-format=github
       - name: Check code formatting with Ruff
-        run: pdm run ruff format --diff --target-version=py312 --check
+        run: pdm run ruff format --diff --check
       - name: Install pixlet
         run: |
           curl -LO "https://github.com/tronbyt/pixlet/releases/download/${PIXLET_VERSION}/pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
