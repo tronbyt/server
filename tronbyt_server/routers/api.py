@@ -32,8 +32,9 @@ class PushData(BaseModel):
     image: str
 
 
-class SetEnabledData(BaseModel):
-    set_enabled: bool
+class PatchDeviceData(BaseModel):
+    set_enabled: bool | None = None
+    set_pinned: bool | None = None
 
 
 class PushAppData(BaseModel):
@@ -177,7 +178,7 @@ def list_installations(
 def handle_patch_device_app(
     device_id: DeviceID,
     installation_id: str,
-    data: SetEnabledData,
+    data: PatchDeviceData,
     db_conn: sqlite3.Connection = Depends(get_db),
     auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
@@ -190,21 +191,40 @@ def handle_patch_device_app(
     app = apps.get(installation_id)
 
     if not app:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
+        )
 
-    if data.set_enabled:
-        app.enabled = True
-        app.last_render = 0
-        if db.save_app(db_conn, device_id, app):
-            return Response("App Enabled.", status_code=status.HTTP_200_OK)
-    else:
-        app.enabled = False
-        webp_path = db.get_device_webp_dir(device.id)
-        file_path = webp_path / f"{app.name}-{installation_id}.webp"
-        if file_path.is_file():
-            file_path.unlink()
-        if db.save_app(db_conn, device_id, app):
-            return Response("App disabled.", status_code=status.HTTP_200_OK)
+    # Handle the set_enabled command
+    if data.set_enabled is not None:
+        if data.set_enabled:
+            app.enabled = True
+            app.last_render = 0
+            if db.save_app(db_conn, device_id, app):
+                return Response("App Enabled.", status_code=status.HTTP_200_OK)
+        else:
+            app.enabled = False
+            webp_path = db.get_device_webp_dir(device.id)
+            file_path = webp_path / f"{app.name}-{installation_id}.webp"
+            if file_path.is_file():
+                file_path.unlink()
+            if db.save_app(db_conn, device_id, app):
+                return Response("App disabled.", status_code=status.HTTP_200_OK)
+
+    if data.set_pinned is not None:
+        if data.set_pinned:
+            # Pin the app
+            device.pinned_app = installation_id
+            db.save_app(db_conn, device_id, app)
+            return Response("App pinned.", status_code=status.HTTP_200_OK)
+        else:
+            # Unpin the app (only if it's currently pinned)
+            if device.pinned_app == installation_id:
+                device.pinned_app = None
+                db.save_app(db_conn, device_id, app)
+                return Response("App unpinned.", status_code=status.HTTP_200_OK)
+            else:
+                return Response("App is not pinned.", status_code=status.HTTP_200_OK)
 
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -8,7 +8,7 @@
 {% if system_repo_info and system_repo_info.commit_hash %}
 <div style="background-color: #2a2a2a; padding: 15px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50;">
     <div style="margin-bottom: 10px;">
-        <strong>{{ _('Current Commit') }}:</strong>
+        <strong>{{ _('Installed Commit') }}:</strong>
         <a href="{{ system_repo_info.commit_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
             {{ system_repo_info.commit_hash }}
         </a>
@@ -50,6 +50,9 @@
             {{ _('Update Firmware') }}
         </button>
     </form>
+    <p style="margin-top: 10px; color: #888; font-size: 0.85em; font-style: italic;">
+        ℹ️ {{ _('Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.') }}
+    </p>
 </div>
 {% else %}
 <div style="background-color: #2a2a2a; padding: 15px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #ff9800;">
@@ -64,6 +67,9 @@
             {{ _('Download Firmware') }}
         </button>
     </form>
+    <p style="margin-top: 10px; color: #888; font-size: 0.85em; font-style: italic;">
+        ℹ️ {{ _('Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.') }}
+    </p>
 </div>
 {% endif %}
 {% endif %}
@@ -106,5 +112,10 @@
     <input type="file" name="file" accept=".json" required>
     <input type="submit" value="{{ _('Import User Data') }}" class="w3-button w3-blue">
 </form>
+
+<hr style="margin-top: 40px; border: none; border-top: 1px solid #333;">
+<div style="font-size: 12px; color: #888; text-align: center; margin-top: 20px;">
+    {{ _('Server') }} {{ server_version_info.version }}{% if server_version_info.commit_hash %} (<a href="https://github.com/tronbyt/tronbyt-server/tree/{{ server_version_info.commit_hash }}" target="_blank" style="color: #4CAF50; text-decoration: none; font-family: monospace;">{{ server_version_info.commit_hash[:7] }}</a>){% endif %}
+</div>
 
 {% endblock %}

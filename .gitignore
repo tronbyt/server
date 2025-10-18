@@ -17,4 +17,7 @@ users
 # Translations
 messages.pot
 
+# Version file (generated during build)
+tronbyt_server/version.json
+
 .vscode/*

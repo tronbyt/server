@@ -48,6 +48,7 @@ from tronbyt_server.models import (
 from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (
+    push_brightness_test_image,
     possibly_render,
     render_app,
     send_default_image,
@@ -135,12 +136,8 @@ def _next_app_logic(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    # If brightness is 0, short-circuit and return default image to save processing
-    brightness = device.brightness or 50
-    if brightness == 0:
-        logger.debug("Brightness is 0, returning default image")
-        return send_default_image(device)
-
+    # first check for a pushed file starting with __ and just return that and then delete it.
+    # This needs to happen before brightness check to clear any ephemeral images
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
         for ephemeral_file in sorted(pushed_dir.glob("__*")):
@@ -148,6 +145,12 @@ def _next_app_logic(
             response = send_image(ephemeral_file, device, None, True)
             ephemeral_file.unlink()
             return response
+
+    # If brightness is 0, short-circuit and return default image to save processing
+    brightness = device.brightness or 50
+    if brightness == 0:
+        logger.debug("Brightness is 0, returning default image")
+        return send_default_image(device)
 
     if recursion_depth > len(device.apps):
         logger.warning("Maximum recursion depth exceeded, sending default image")
@@ -329,9 +332,11 @@ def create_post(
             lng = loc.get("lng")
             if lat and lng:
                 device.location = Location(
+                    locality=loc.get("locality", ""),
+                    description=loc.get("description", ""),
+                    place_id=loc.get("place_id", ""),
                     lat=lat,
                     lng=lng,
-                    name=loc.get("name", ""),
                     timezone=loc.get("timezone", ""),
                 )
             else:
@@ -403,6 +408,15 @@ def update_brightness(
 
     device.brightness = db.ui_scale_to_percent(brightness)
     db.save_user(db_conn, user)
+
+    # Push an ephemeral brightness test image to the device (but not when brightness is 0)
+    if brightness > 0:
+        try:
+            push_brightness_test_image(device_id, logger)
+        except Exception as e:
+            logger.error(f"Failed to push brightness test image: {e}")
+            # Don't fail the brightness update if the test image fails
+
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -521,9 +535,11 @@ def update_post(
             lng = loc.get("lng")
             if lat and lng:
                 device.location = Location(
+                    locality=loc.get("locality", ""),
+                    description=loc.get("description", ""),
+                    place_id=loc.get("place_id", ""),
                     lat=lat,
                     lng=lng,
-                    name=loc.get("name", ""),
                     timezone=loc.get("timezone", ""),
                 )
             else:
@@ -582,6 +598,8 @@ def addapp(
     # Sort apps_list so that installed apps appear first
     apps_list.sort(key=lambda app_metadata: not app_metadata["is_installed"])
 
+    system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
+
     return templates.TemplateResponse(
         request,
         "manager/addapp.html",
@@ -589,6 +607,7 @@ def addapp(
             "device": device,
             "apps_list": apps_list,
             "custom_apps_list": custom_apps_list,
+            "system_repo_info": system_repo_info,
             "user": user,
             "settings": settings,
         },
@@ -852,6 +871,7 @@ def updateapp(
         "manager/updateapp.html",
         {
             "app": app,
+            "device": device,
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
             "user": user,

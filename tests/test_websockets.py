@@ -48,7 +48,10 @@ def test_websocket_success_connection_and_data(
     device_id = list(device_user_ws.devices.keys())[0]
 
     with auth_client.websocket_connect(f"/{device_id}/ws") as websocket:
-        # It should send brightness first
+        # It should send dwell time and brightness first
+        data = websocket.receive_json()
+        assert "dwell_secs" in data
+        assert isinstance(data["dwell_secs"], int)
         data = websocket.receive_json()
         assert "brightness" in data
         assert isinstance(data["brightness"], int)

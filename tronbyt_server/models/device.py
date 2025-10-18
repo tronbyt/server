@@ -71,7 +71,15 @@ def format_time(v: Any) -> str | None:
 class Location(BaseModel):
     """Pydantic model for a location."""
 
-    name: str = ""
+    name: Annotated[
+        str | None,
+        Field(
+            description="Deprecated: kept for backward compatibility", deprecated=True
+        ),
+    ] = None
+    locality: str = ""
+    description: str = ""
+    place_id: str = ""
     timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
     lat: float
     lng: float
@@ -106,7 +114,7 @@ class Device(BaseModel):
     location: Location | None = None
     apps: dict[str, App] = {}
     last_app_index: int = 0
-    pinned_app: str = ""  # iname of the pinned app, if any
+    pinned_app: str | None = None  # iname of the pinned app, if any
 
     def supports_2x(self) -> bool:
         """

@@ -79,6 +79,8 @@ def init_db(db: sqlite3.Connection) -> None:
         if schema_version < 2:
             migrate_user_api_keys(db)
         if schema_version < 3:
+            migrate_location_name_to_locality(db)
+        if schema_version < 4:
             migrate_recurrence_pattern(db)
 
         cursor.execute(
@@ -93,8 +95,12 @@ def init_db(db: sqlite3.Connection) -> None:
 def get_current_schema_version() -> int:
     """
     Retrieves the current schema version of the database.
+    Increment this version when making changes to the database schema.
+    Returns:
+        int: The current schema version as an integer.
     """
-    return 3
+
+    return 4
 
 
 def migrate_recurrence_pattern(db: sqlite3.Connection) -> None:
@@ -194,6 +200,7 @@ def migrate_brightness_to_percent(db: sqlite3.Connection) -> None:
     for user in users:
         need_save = False
         for device in user.devices.values():
+            # Check if brightness is in the old 0-5 scale
             if device.brightness <= 5:
                 old_value = device.brightness
                 device.brightness = ui_scale_to_percent(old_value)
@@ -212,6 +219,39 @@ def migrate_brightness_to_percent(db: sqlite3.Connection) -> None:
 
         if need_save:
             logger.info(f"Migrating brightness for user: {user.username}")
+            save_user(db, user)
+
+
+def migrate_location_name_to_locality(db: sqlite3.Connection) -> None:
+    """
+    Migrates location data from old 'name' format to new 'locality' format.
+    This function iterates through all users and their devices, converting
+    location data that uses the old 'name' key to use the new 'locality' key.
+
+    Steps:
+    1. Retrieve all users.
+    2. Iterate through each user's devices.
+    3. Check if location data exists and uses the old 'name' format.
+    4. Convert 'name' to 'locality' in the location data.
+    5. Save the user data if any changes were made.
+    """
+    users = get_all_users(db)
+    logger.info("Migrating location data from 'name' to 'locality' format")
+
+    for user in users:
+        need_save = False
+        for device in user.devices.values():
+            location = device.location
+            if location and location.name:
+                # Convert old 'name' format to new 'locality' format
+                location.locality = location.name
+                location.name = None
+                need_save = True
+                logger.debug(
+                    f"Converted location name '{location.name}' to locality for device {device.id}"
+                )
+
+        if need_save:
             save_user(db, user)
 
 

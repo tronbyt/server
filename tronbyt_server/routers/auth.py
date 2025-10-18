@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from werkzeug.security import generate_password_hash
 
 import tronbyt_server.db as db
-from tronbyt_server import system_apps
+from tronbyt_server import system_apps, version
 from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
@@ -255,6 +255,10 @@ def get_edit(request: Request, user: User = Depends(manager)) -> Response:
     if user and user.username == "admin":
         firmware_version = db.get_firmware_version()
         system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
+
+    # Get server version info for all users
+    server_version_info = version.get_version_info()
+
     return templates.TemplateResponse(
         request,
         "auth/edit.html",
@@ -262,6 +266,7 @@ def get_edit(request: Request, user: User = Depends(manager)) -> Response:
             "user": user,
             "firmware_version": firmware_version,
             "system_repo_info": system_repo_info,
+            "server_version_info": server_version_info,
         },
     )
 

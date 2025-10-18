@@ -23,17 +23,25 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                         li.dataset.lat = feature.properties.lat;
                         li.dataset.lon = feature.properties.lon;
                         li.dataset.timezone = feature.properties.timezone?.name;
-                        li.dataset.name = feature.properties.formatted;
+                        li.dataset.formatted = feature.properties.formatted;
+                        // Use city first, fallback to locality, then county, then state, then country
+                        li.dataset.locality = feature.properties.city || feature.properties.locality || feature.properties.county || feature.properties.state || feature.properties.country || feature.properties.formatted;
+                        li.dataset.placeId = feature.properties.place_id;
 
                         li.addEventListener('click', function () {
-                            inputElement.value = this.dataset.name;
+                            inputElement.value = this.dataset.formatted;
                             resultsElement.innerHTML = ''; // Clear results after click
-                            const hiddenValue = JSON.stringify({
-                                name: this.dataset.name,
+                            const locationData = {
+                                locality: this.dataset.locality,
+                                description: this.dataset.formatted,
                                 timezone: this.dataset.timezone,
                                 lat: this.dataset.lat,
                                 lng: this.dataset.lon
-                            });
+                            };
+                            if (this.dataset.placeId) {
+                                locationData.place_id = this.dataset.placeId;
+                            }
+                            const hiddenValue = JSON.stringify(locationData);
                             hiddenInputElement.value = hiddenValue;
 
                             if (onChangeCallback) {
@@ -46,7 +54,7 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                     });
 
                     if (isInitialSearch) {
-                        const exactMatchLi = listItems.find(li => li.dataset.name === query);
+                        const exactMatchLi = listItems.find(li => li.dataset.formatted === query);
                         if (exactMatchLi) {
                             exactMatchLi.click();
                         } else if (listItems.length > 0) {
@@ -69,8 +77,10 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
     });
 
     // Perform initial search if there's a value in the input field on load
+    // BUT only if there's no existing location data in the hidden field
     const initialQuery = inputElement.value.trim();
-    if (initialQuery.length > 0) {
+    const existingLocationData = hiddenInputElement.value.trim();
+    if (initialQuery.length > 0 && (!existingLocationData || existingLocationData === '{}')) {
         performSearch(initialQuery, true);
     }
 }

@@ -255,10 +255,10 @@
 
     try {
       const parsedLoc = JSON.parse(initialLocationJsonString);
-      if (parsedLoc && parsedLoc.name) {
-        searchInput.value = parsedLoc.name;
+      if (parsedLoc && parsedLoc.description) {
+        searchInput.value = parsedLoc.description;
       } else {
-        // If parsing works but no name, or if it's an empty object, ensure searchInput is empty
+        // If parsing works but no description, or if it's an empty object, ensure searchInput is empty
         searchInput.value = "";
       }
     } catch (e) {
@@ -290,10 +290,10 @@
     if (deviceLocation && typeof deviceLocation === 'string') {
       try {
         const parsedDevLoc = JSON.parse(deviceLocation);
-        if (parsedDevLoc && parsedDevLoc.name) {
-          searchInput.value = parsedDevLoc.name;
+        if (parsedDevLoc && parsedDevLoc.description) {
+          searchInput.value = parsedDevLoc.description;
         } else {
-          searchInput.value = ""; // Parsed but no name
+          searchInput.value = ""; // Parsed but no description
         }
       } catch (e) {
         console.warn("Could not parse deviceLocation for search input in createLocationBasedField:", deviceLocation, e);

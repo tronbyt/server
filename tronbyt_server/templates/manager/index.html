@@ -336,8 +336,20 @@
         <tr>
           <td colspan="2">
             <header>
-              <h1><a href="{{ device.img_url }}" target="_blank" style="text-decoration: none; color: inherit;">
-                {{ device.name }}</a></h1>
+              <h1>
+                <a href="{{ device.img_url }}" target="_blank" style="text-decoration: none; color: inherit;">
+                  {{ device.name }}
+                </a>
+                {% if device.pinned_app %}
+                  {% set pinned_app_iname = device.pinned_app %}
+                  {% set pinned_app = device.apps.get(pinned_app_iname) %}
+                  {% if pinned_app %}
+                    <span style="display: inline-block; margin-left: 10px; padding: 4px 10px; background-color: #ff9800; color: white; border-radius: 4px; font-size: 0.7em; font-weight: bold; vertical-align: middle;">
+                      &#128204; {{ _('Pinned:') }} {{ pinned_app.name }}
+                    </span>
+                  {% endif %}
+                {% endif %}
+              </h1>
             </header>
           </td>
           <td rowspan="4" width="40%">
@@ -396,7 +408,7 @@
               <a id="toggleAppsBtn-{{ device.id }}" class="w3-button w3-teal w3-round"
                 onclick="toggleApps('{{ device.id }}')">{{ _('Hide Apps') }}</a>
               {% endif %}
-  
+
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('update', device_id=device.id) }}">{{ _('Edit Device') }}</a>
             {% if device.type in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide"] %}
@@ -449,6 +461,9 @@
                   href="{{ url_for('toggle_pin', device_id=device.id, iname=app.iname) }}">{{ _('Unpin')
                   }}</a>
                 {% else %}
+                  <a class="action w3-button w3-green w3-round"
+                    href="{{ url_for('toggle_pin', device_id=device.id, iname=app.iname) }}">{{ _('Pin')
+                    }}</a>
                   {% if app.enabled %}
                   <a class="action w3-button w3-orange w3-round"
                     href="{{ url_for('toggle_enabled', device_id=device.id, iname=app.iname) }}">{{ _('Disable')
@@ -458,9 +473,6 @@
                     href="{{ url_for('toggle_enabled', device_id=device.id, iname=app.iname) }}">{{ _('Enable')
                     }}</a>
                   {% endif %}
-                  <a class="action w3-button w3-green w3-round"
-                    href="{{ url_for('toggle_pin', device_id=device.id, iname=app.iname) }}">{{ _('Pin')
-                    }}</a>
                 {% endif %}
                 <a class="action w3-button w3-red w3-round" onclick="return confirm('{{ _('Delete App?') }}');"
                   href="{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}">{{ _('Delete')

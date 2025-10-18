@@ -57,6 +57,7 @@ def ws_root() -> str:
 def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:
     """Add default configuration values to an app's config."""
     config["$tz"] = db.get_device_timezone_str(device)
+    config["$2x"] = str(device.supports_2x).lower()
     return config
 
 
@@ -91,13 +92,16 @@ def render_app(
                     width = 128
                     height = 64
 
+    device_interval = device.default_interval or 15
+    app_interval = (app and app.display_time) or device_interval
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
         width=width,
         height=height,
         magnify=magnify,
-        maxDuration=15000,
+        maxDuration=app_interval * 1000,
         timeout=30000,
         image_format=0,
         logger=logger,
@@ -189,7 +193,7 @@ def possibly_render(
     app_path = Path(app.path)
 
     if now - app.last_render > app.uinterval * 60:
-        logger.debug(f"RENDERING -- {app_basename}")
+        logger.info(f"{app_basename} -- RENDERING")
         device = user.devices[device_id]
         config = app.config.copy()
         add_default_config(config, device)
@@ -202,7 +206,7 @@ def possibly_render(
 
         return image is not None
 
-    logger.debug(f"{app_basename} -- NO RENDER")
+    logger.info(f"{app_basename} -- NO RENDER")
     return True
 
 
@@ -212,7 +216,12 @@ def send_default_image(device: Device) -> Response:
 
 
 def send_image(
-    webp_path: Path, device: Device, app: App | None, immediate: bool = False
+    webp_path: Path,
+    device: Device,
+    app: App | None,
+    immediate: bool = False,
+    brightness: int | None = None,
+    dwell_secs: int | None = None,
 ) -> Response:
     """Send an image as a response."""
     if immediate:
@@ -220,12 +229,57 @@ def send_image(
             response = Response(content=f.read(), media_type="image/webp")
     else:
         response = FileResponse(webp_path, media_type="image/webp")
-    b = db.get_device_brightness_8bit(device)
-    device_interval = device.default_interval
-    s = app.display_time if app and app.display_time > 0 else device_interval
+    # Use provided brightness or calculate it
+    b = brightness or db.get_device_brightness_8bit(device)
+
+    # Use provided dwell_secs or calculate it
+    if dwell_secs is not None:
+        s = dwell_secs
+    else:
+        device_interval = device.default_interval or 5
+        s = app.display_time if app and app.display_time > 0 else device_interval
     response.headers["Tronbyt-Brightness"] = str(b)
     response.headers["Tronbyt-Dwell-Secs"] = str(s)
+    if immediate:
+        response.headers["Tronbyt-Immediate"] = "1"
     return response
+
+
+def push_brightness_test_image(device_id: str, logger: logging.Logger) -> None:
+    """Push an ephemeral brightness test image to the device using test_pattern.webp."""
+    try:
+        # Use the default.webp from static directory as the test image
+        static_dir = Path("tronbyt_server/static/images")
+        default_webp_path = static_dir / "test_pattern.webp"
+
+        if not default_webp_path.exists():
+            logger.warning(f"Default test image not found at {default_webp_path}")
+            return
+
+        # Read the default image
+        webp_bytes = default_webp_path.read_bytes()
+
+        # Save as ephemeral file (starts with __)
+        device_webp_path = db.get_device_webp_dir(device_id)
+        device_webp_path.mkdir(parents=True, exist_ok=True)
+        pushed_path = device_webp_path / "pushed"
+        pushed_path.mkdir(exist_ok=True)
+
+        # Use timestamp for unique filename
+        filename = f"__brightness_test_{time.monotonic_ns()}.webp"
+        file_path = pushed_path / filename
+
+        # Save the image
+        file_path.write_bytes(webp_bytes)
+
+        # Notify the device to pick up the new image
+        push_new_image(device_id, logger)
+
+        logger.debug(f"Pushed brightness test image to {device_id}")
+
+    except Exception as e:
+        logger.error(f"Failed to push brightness test image: {e}")
+        raise
 
 
 def push_new_image(device_id: str, logger: logging.Logger) -> None:

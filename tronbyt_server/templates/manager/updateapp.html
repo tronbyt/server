@@ -167,13 +167,63 @@
 
   <div style="display: flex; gap: 10px; margin-top: 20px;">
     <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
-    <input type="submit" class="w3-button w3-red w3-round" 
-           formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" 
+    <input type="submit" class="w3-button w3-red w3-round"
+           formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}"
            formmethod="post"
            onclick="return confirm('{{ _('Delete App?') }}');"
            value="{{ _('Delete') }}">
   </div>
 </form>
+
+<!-- API Examples Section -->
+<div style="margin-top: 30px; padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
+  <h2 style="margin-top: 0; color: #4CAF50;">{{ _('API Usage') }}</h2>
+  <p style="color: #b0b0b0; margin-bottom: 20px;">{{ _('Use these curl commands to control this app via the API:') }}</p>
+
+  <!-- Enable App -->
+  <div style="margin-bottom: 20px;">
+    <h3 style="color: #4CAF50; font-size: 1.1em; margin-bottom: 10px;">{{ _('Enable App') }}</h3>
+    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_enabled": true}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  </div>
+
+  <!-- Disable App -->
+  <div style="margin-bottom: 20px;">
+    <h3 style="color: #ff9800; font-size: 1.1em; margin-bottom: 10px;">{{ _('Disable App') }}</h3>
+    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_enabled": false}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  </div>
+
+  <!-- Pin App -->
+  <div style="margin-bottom: 20px;">
+    <h3 style="color: #4CAF50; font-size: 1.1em; margin-bottom: 10px;">{{ _('Pin App') }}</h3>
+    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_pinned": true}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  </div>
+
+  <!-- Unpin App -->
+  <div style="margin-bottom: 20px;">
+    <h3 style="color: #ff9800; font-size: 1.1em; margin-bottom: 10px;">{{ _('Unpin App') }}</h3>
+    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_pinned": false}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  </div>
+
+  <p style="color: #888; font-size: 0.9em; margin-top: 20px;">
+    <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
+  </p>
+</div>
 
 <!-- style and javascript to show and hide the config -->
 <style>

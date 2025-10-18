@@ -27,6 +27,28 @@ async def _send_response(
     """Send a response to the websocket."""
     dwell_time = 5
     if response.status_code == 200:
+        # Check if this should be displayed immediately (interrupting current display)
+        immediate = response.headers.get("Tronbyt-Immediate")
+
+        # Get the dwell time from the response header
+        dwell_secs = response.headers.get("Tronbyt-Dwell-Secs")
+        if dwell_secs:
+            dwell_time = int(dwell_secs)
+
+        logger.debug(f"Sending dwell_secs to device: {dwell_time}s")
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "dwell_secs": dwell_time,
+                }
+            )
+        )
+
+        # Update confirmation timeout now that we have the actual dwell time
+        # confirmation_timeout = dwell_time
+
+        # Send brightness as a text message, if it has changed
+        # This must be done before sending the image so that the new value is applied to the next image
         brightness_str = response.headers.get("Tronbyt-Brightness")
         if brightness_str:
             brightness = int(brightness_str)
@@ -34,6 +56,18 @@ async def _send_response(
                 await websocket.send_text(json.dumps({"brightness": brightness}))
                 last_brightness = brightness
 
+        # Send metadata message before the image if we need immediate display
+        if immediate:
+            logger.debug("Sending immediate display flag to device")
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "immediate": True,
+                    }
+                )
+            )
+
+        # Send the image as a binary message
         if isinstance(response, FileResponse):
             content = await asyncio.get_running_loop().run_in_executor(
                 None, Path(response.path).read_bytes
