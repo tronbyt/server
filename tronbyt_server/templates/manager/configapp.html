@@ -15,25 +15,59 @@
     opacity: 1;
     transition: opacity 0.5s ease-in-out;
   }
+
+  .flex-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .button-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .button-separator {
+    color: #666;
+    font-weight: bold;
+    margin: 0 5px;
+  }
+
+  .toggle-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 </style>
 {% endblock %}
 {% block content %}
-<!-- Container for flexbox alignment -->
+<!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
-  <!-- Show Config Toggle Button -->
-  <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
-  <!-- Show Debug Toggle Button -->
-  <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
-
-  <!-- Config Content -->
-  <div id="configContent" class="hidden">
-    <pre class="flash">{{ config | tojson(indent=2) }}</pre>
+  <!-- Navigation Button -->
+  <div class="button-group">
+    <a href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}"
+      class="w3-button" style="background-color: #2196F3;">{{ _('Edit App') }}</a>
   </div>
-
-  <!-- Debug Content -->
-  <div id="debugContent" class="hidden">
-    <pre class="flash">{{ app.get('render_messages', []) | join('\n') }}</pre>
+  
+  <!-- Toggle Buttons -->
+  <div class="toggle-buttons">
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
   </div>
+</div>
+
+<!-- Config Content -->
+<div id="configContent" class="hidden">
+  <pre class="flash">{{ config | tojson(indent=2) }}</pre>
+</div>
+
+<!-- Debug Content -->
+<div id="debugContent" class="hidden">
+  <pre class="flash">{{ app.get('render_messages', []) | join('\n') }}</pre>
 </div>
 
 <script>
@@ -45,6 +79,41 @@
   {% else %}
   const deviceLocation = null;
   {% endif %}
+
+  // Initialize toggle buttons for config and debug content
+  function initializeToggleButtons() {
+    const toggleConfigBtn = document.getElementById("toggleConfigBtn");
+    const configContent = document.getElementById("configContent");
+    const toggleDebugBtn = document.getElementById("toggleDebugBtn");
+    const debugContent = document.getElementById("debugContent");
+
+    if (toggleConfigBtn && configContent) {
+      toggleConfigBtn.addEventListener("click", function () {
+        toggleContent(configContent, toggleConfigBtn, 
+          "{{ _('Hide App Config') }}", "{{ _('Show App Config') }}");
+      });
+    }
+
+    if (toggleDebugBtn && debugContent) {
+      toggleDebugBtn.addEventListener("click", function () {
+        toggleContent(debugContent, toggleDebugBtn, 
+          "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}");
+      });
+    }
+  }
+
+  // Generic function to toggle content visibility
+  function toggleContent(content, button, hideText, showText) {
+    if (content.classList.contains("hidden")) {
+      content.classList.remove("hidden");
+      content.classList.add("visible");
+      button.textContent = hideText;
+    } else {
+      content.classList.remove("visible");
+      content.classList.add("hidden");
+      button.textContent = showText;
+    }
+  }
 
   function debounce(func, wait) {
     let timeout;
@@ -593,20 +662,30 @@
   document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById("dynamicForm");
 
-    // Create and add button container first
+    // Create and add the form table first
+    const formTable = document.createElement("table");
+    formTable.className = "form-table";
+    formTable.style.borderSpacing = "0 15px";
+
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => {
+      formTable.appendChild(row);
+    });
+
+    form.appendChild(formTable);
+
+    // Create and add button container after the form table
     const buttonContainer = document.createElement("div");
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.gap = "10px";
-    buttonContainer.style.marginBottom = "15px"; // Changed from marginTop to marginBottom
+    buttonContainer.className = "button-container";
 
     const submitButton = document.createElement("input");
-    submitButton.className = "w3-button w3-green";
+    submitButton.className = "w3-button w3-green w3-round";
     submitButton.type = "submit";
     submitButton.value = "{{ _('Save') }}";
     buttonContainer.appendChild(submitButton);
 
     const resetButton = document.createElement("button");
-    resetButton.className = "w3-button w3-blue";
+    resetButton.className = "w3-button w3-blue w3-round";
     resetButton.type = "button";
     resetButton.id = "resetButton";
     resetButton.textContent = "{{ _('Reset') }}";
@@ -615,7 +694,7 @@
 
     const cancelButton = document.createElement("button");
     cancelButton.id = "cancelButton";
-    cancelButton.className = "w3-button w3-red";
+    cancelButton.className = "w3-button w3-red w3-round";
     cancelButton.type = "button";
     cancelButton.textContent = "{{ _('Cancel') }}";
 
@@ -643,18 +722,6 @@
     buttonContainer.appendChild(cancelButton);
 
     form.appendChild(buttonContainer);
-
-    // Then create and add the form table
-    const formTable = document.createElement("table");
-    formTable.className = "form-table";
-    formTable.style.borderSpacing = "0 15px";
-
-    const formFields = createFormFields(schema, config);
-    formFields.forEach(row => {
-      formTable.appendChild(row);
-    });
-
-    form.appendChild(formTable);
 
     // Create generated fields after adding the base fields to the DOM
     createGeneratedFormFields(schema, config);
@@ -725,38 +792,16 @@
       updateConfigAndPreview();
     });
 
-    const configContent = document.getElementById("configContent");
-    const toggleBtn = document.getElementById("toggleConfigBtn");
-    toggleBtn.addEventListener("click", function () {
-      if (configContent.classList.contains("hidden")) {
-        configContent.classList.remove("hidden");
-        configContent.classList.add("visible");
-        toggleBtn.textContent = "{{ _('Hide App Config') }}";
-      } else {
-        configContent.classList.remove("visible");
-        configContent.classList.add("hidden");
-        toggleBtn.textContent = "{{ _('Show App Config') }}";
-      }
-    });
-
-    const debugContent = document.getElementById("debugContent");
-    const toggleDebugBtn = document.getElementById("toggleDebugBtn");
-    toggleDebugBtn.addEventListener("click", function () {
-      if (debugContent.classList.contains("hidden")) {
-        debugContent.classList.remove("hidden");
-        debugContent.classList.add("visible");
-        toggleDebugBtn.textContent = "{{ _('Hide Render Debug') }}";
-      } else {
-        debugContent.classList.remove("visible");
-        debugContent.classList.add("hidden");
-        toggleDebugBtn.textContent = "{{ _('Show Render Debug') }}";
-      }
-    });
+    // Initialize toggle buttons
+    initializeToggleButtons();
   });
 </script>
 
-<div class="app-img" style="width: 400px;"><img id="previewImage"
+<!-- App Preview -->
+<div class="app-img" style="width: 400px;">
+  <img id="previewImage" width="400" 
     src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}" width="400" style="width: 400px; height: auto;"></div>
+    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+</div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}
