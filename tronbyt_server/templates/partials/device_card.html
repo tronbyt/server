@@ -96,6 +96,10 @@
                   onclick="switchToGridView('{{ device['id'] }}')" title="{{ _('Grid View') }}">
             <i class="fas fa-th"></i> {{ _('Grid') }}
           </button>
+          <button id="collapsedViewBtn-{{ device['id'] }}" class="w3-button w3-blue w3-round view-toggle-btn" 
+                  onclick="switchToCollapsedView('{{ device['id'] }}')" title="{{ _('Collapsed View') }}">
+            <i class="fas fa-chevron-up"></i> {{ _('Collapsed') }}
+          </button>
         </div>
         <div class="instruction-text" style="color: #666; font-style: italic;">
           {{ _('Drag apps to reorder') }}
@@ -117,13 +121,6 @@
         {% endfor %}
       </div>
       
-      <!-- Collapse/Expand Button -->
-      <div style="text-align: center; margin-top: 15px;">
-        <button id="collapseBtn-{{ device['id'] }}" class="w3-button w3-gray w3-round" 
-                onclick="toggleAppsCollapse('{{ device['id'] }}')" title="{{ _('Collapse Apps') }}">
-          <i class="fas fa-chevron-up"></i> {{ _('Collapse Apps') }}
-        </button>
-      </div>
     </div>
   </article>
 </div>

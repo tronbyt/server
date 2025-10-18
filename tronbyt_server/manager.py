@@ -808,7 +808,7 @@ def duplicate_app(device_id: str, iname: str) -> ResponseReturnValue:
         use_custom_recurrence=original_app.get("use_custom_recurrence", False),
         recurrence_type=original_app.get("recurrence_type"),
         recurrence_interval=original_app.get("recurrence_interval"),
-        recurrence_pattern=original_app.get("recurrence_pattern") or {},
+        recurrence_pattern=original_app.get("recurrence_pattern", []),
         recurrence_start_date=original_app.get("recurrence_start_date"),
         recurrence_end_date=original_app.get("recurrence_end_date"),
         pushed=original_app.get("pushed", False),

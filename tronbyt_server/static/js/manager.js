@@ -123,38 +123,6 @@ function reloadImage(deviceId) {
 }
 
 
-function toggleAppsCollapse(deviceId) {
-  const appsList = document.getElementById(`appsList-${deviceId}`);
-  const collapseBtn = document.getElementById(`collapseBtn-${deviceId}`);
-  
-  if (appsList.classList.contains("collapsed")) {
-    // Expand the apps list
-    appsList.classList.remove("collapsed");
-    appsList.style.maxHeight = "none";
-    appsList.style.overflow = "visible";
-    appsList.style.padding = ""; // Reset padding to default
-    collapseBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Collapse Apps';
-    collapseBtn.title = 'Collapse Apps';
-    
-    // Save preferences
-    const prefs = loadDevicePreferences(deviceId);
-    prefs.collapsed = false;
-    saveDevicePreferences(deviceId, prefs);
-  } else {
-    // Collapse the apps list completely
-    appsList.classList.add("collapsed");
-    appsList.style.maxHeight = "0px";
-    appsList.style.overflow = "hidden";
-    appsList.style.padding = "0";
-    collapseBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Expand Apps';
-    collapseBtn.title = 'Expand Apps';
-    
-    // Save preferences
-    const prefs = loadDevicePreferences(deviceId);
-    prefs.collapsed = true;
-    saveDevicePreferences(deviceId, prefs);
-  }
-}
 
 // AJAX function to move apps without page reload
 function moveApp(deviceId, iname, direction) {
@@ -383,7 +351,13 @@ function saveAllDevicePreferences() {
     const deviceId = container.id.replace('appsList-', '');
     const isCollapsed = container.classList.contains('collapsed');
     const isGridView = container.classList.contains('apps-grid-view');
-    const viewMode = isGridView ? 'grid' : 'list';
+    
+    let viewMode = 'list';
+    if (isGridView) {
+      viewMode = 'grid';
+    } else if (isCollapsed) {
+      viewMode = 'collapsed';
+    }
     
     saveDevicePreferences(deviceId, {
       collapsed: isCollapsed,
@@ -418,41 +392,44 @@ function restoreDevicePreferences(deviceId) {
   const appsList = document.getElementById(`appsList-${deviceId}`);
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
-  const collapseBtn = document.getElementById(`collapseBtn-${deviceId}`);
+  const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
   
   // Restore view mode
   if (prefs.viewMode === 'grid') {
     // Update button states
     gridBtn.classList.add('active');
     listBtn.classList.remove('active');
+    collapsedBtn.classList.remove('active');
     
     // Update container classes
-    appsList.classList.remove('apps-list-view');
+    appsList.classList.remove('apps-list-view', 'collapsed');
     appsList.classList.add('apps-grid-view');
+    appsList.style.maxHeight = "none";
+    appsList.style.overflow = "visible";
+    appsList.style.padding = "";
+  } else if (prefs.viewMode === 'collapsed') {
+    // Update button states
+    collapsedBtn.classList.add('active');
+    listBtn.classList.remove('active');
+    gridBtn.classList.remove('active');
+    
+    // Update container classes - collapse the apps list
+    appsList.classList.remove('apps-grid-view');
+    appsList.classList.add('apps-list-view', 'collapsed');
+    appsList.style.maxHeight = "0";
+    appsList.style.overflow = "hidden";
+    appsList.style.padding = "0";
   } else {
     // Default to list view
     listBtn.classList.add('active');
     gridBtn.classList.remove('active');
+    collapsedBtn.classList.remove('active');
     
-    appsList.classList.remove('apps-grid-view');
+    appsList.classList.remove('apps-grid-view', 'collapsed');
     appsList.classList.add('apps-list-view');
-  }
-  
-  // Restore collapse state
-  if (prefs.collapsed) {
-    appsList.classList.add('collapsed');
-    appsList.style.maxHeight = '0px';
-    appsList.style.overflow = 'hidden';
-    appsList.style.padding = '0';
-    collapseBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Expand Apps';
-    collapseBtn.title = 'Expand Apps';
-  } else {
-    appsList.classList.remove('collapsed');
-    appsList.style.maxHeight = 'none';
-    appsList.style.overflow = 'visible';
-    appsList.style.padding = '';
-    collapseBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Collapse Apps';
-    collapseBtn.title = 'Collapse Apps';
+    appsList.style.maxHeight = "none";
+    appsList.style.overflow = "visible";
+    appsList.style.padding = "";
   }
 }
 
@@ -460,14 +437,19 @@ function switchToListView(deviceId) {
   const appsList = document.getElementById(`appsList-${deviceId}`);
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
+  const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
   
   // Update button states
   listBtn.classList.add('active');
   gridBtn.classList.remove('active');
+  collapsedBtn.classList.remove('active');
   
   // Update container classes
-  appsList.classList.remove('apps-grid-view');
+  appsList.classList.remove('apps-grid-view', 'collapsed');
   appsList.classList.add('apps-list-view');
+  appsList.style.maxHeight = "none";
+  appsList.style.overflow = "visible";
+  appsList.style.padding = "";
   
   // Reinitialize drag and drop for the new layout
   initializeDragAndDrop();
@@ -475,6 +457,7 @@ function switchToListView(deviceId) {
   // Save preferences
   const prefs = loadDevicePreferences(deviceId);
   prefs.viewMode = 'list';
+  prefs.collapsed = false;
   saveDevicePreferences(deviceId, prefs);
 }
 
@@ -482,14 +465,19 @@ function switchToGridView(deviceId) {
   const appsList = document.getElementById(`appsList-${deviceId}`);
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
+  const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
   
   // Update button states
   gridBtn.classList.add('active');
   listBtn.classList.remove('active');
+  collapsedBtn.classList.remove('active');
   
   // Update container classes
-  appsList.classList.remove('apps-list-view');
+  appsList.classList.remove('apps-list-view', 'collapsed');
   appsList.classList.add('apps-grid-view');
+  appsList.style.maxHeight = "none";
+  appsList.style.overflow = "visible";
+  appsList.style.padding = "";
   
   // Reinitialize drag and drop for the new layout
   initializeDragAndDrop();
@@ -497,6 +485,32 @@ function switchToGridView(deviceId) {
   // Save preferences
   const prefs = loadDevicePreferences(deviceId);
   prefs.viewMode = 'grid';
+  prefs.collapsed = false;
+  saveDevicePreferences(deviceId, prefs);
+}
+
+function switchToCollapsedView(deviceId) {
+  const appsList = document.getElementById(`appsList-${deviceId}`);
+  const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
+  const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
+  const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
+  
+  // Update button states
+  collapsedBtn.classList.add('active');
+  listBtn.classList.remove('active');
+  gridBtn.classList.remove('active');
+  
+  // Update container classes - collapse the apps list
+  appsList.classList.remove('apps-grid-view');
+  appsList.classList.add('apps-list-view', 'collapsed');
+  appsList.style.maxHeight = "0";
+  appsList.style.overflow = "hidden";
+  appsList.style.padding = "0";
+  
+  // Save preferences
+  const prefs = loadDevicePreferences(deviceId);
+  prefs.viewMode = 'collapsed';
+  prefs.collapsed = true;
   saveDevicePreferences(deviceId, prefs);
 }
 
