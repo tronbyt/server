@@ -32,7 +32,7 @@
   }
 
   .form-table small {
-    color: #666;
+    color: var(--post-about-text);
     display: block;
     margin-top: 5px;
   }
@@ -40,9 +40,11 @@
   .form-control {
     width: 100%;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
   }
 
   .button-container {
@@ -68,7 +70,7 @@
   }
 
   .button-separator {
-    color: #666;
+    color: var(--post-about-text);
     font-weight: bold;
     margin: 0 5px;
   }
@@ -85,56 +87,58 @@
   }
 
   .schedule-section {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     padding: 15px;
     margin: 15px 0;
-    background-color: #f9f9f9;
+    background-color: var(--secondary-color);
   }
 
   .custom-recurrence-section {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     padding: 15px;
     margin: 15px 0;
-    background-color: #f0f8ff;
+    background-color: var(--flash-bg);
   }
 
   .api-section {
     margin-top: 30px;
     padding: 20px;
-    background-color: #2a2a2a;
+    background-color: var(--content-bg);
     border-radius: 8px;
-    border-left: 4px solid #4CAF50;
+    border-left: 4px solid var(--enabled-text);
+    border: 1px solid var(--border-color);
   }
 
   .api-section h2 {
     margin-top: 0;
-    color: #4CAF50;
+    color: var(--enabled-text);
   }
 
   .api-section h3 {
-    color: #4CAF50;
+    color: var(--enabled-text);
     font-size: 1.1em;
     margin-bottom: 10px;
   }
 
   .api-section pre {
-    background-color: #1e1e1e;
+    background-color: var(--page-bg);
     padding: 15px;
     border-radius: 4px;
     overflow-x: auto;
-    color: #e0e0e0;
+    color: var(--page-text);
     font-size: 0.9em;
+    border: 1px solid var(--border-color);
   }
 
   .api-section p {
-    color: #b0b0b0;
+    color: var(--page-text);
     margin-bottom: 20px;
   }
 
   .api-section small {
-    color: #888;
+    color: var(--post-about-text);
     font-size: 0.9em;
     margin-top: 20px;
     display: block;
@@ -147,13 +151,13 @@
   <!-- Navigation Button -->
     <div class="button-group">
       <a href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=0) }}"
-        class="w3-button" style="background-color: #4CAF50;">{{ _('Configure App') }}</a>
+        class="w3-button" style="background-color: var(--enabled-text); color: white;">{{ _('Configure App') }}</a>
     </div>
   
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
-    <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
-    <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show App Config') }}</button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show Render Debug') }}</button>
   </div>
 </div>
 
@@ -303,7 +307,7 @@
         onchange="toggleCustomRecurrence()">
       <div>
         <strong>{{ _('Use Custom Recurrence') }}</strong>
-        <small style="display: block; color: #666; margin-top: 5px;">
+        <small style="display: block; color: var(--post-about-text); margin-top: 5px;">
           {{ _('Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)') }}
         </small>
       </div>
@@ -522,7 +526,7 @@
 
   <!-- Disable App -->
   <div style="margin-bottom: 20px;">
-    <h3 style="color: #ff9800;">{{ _('Disable App') }}</h3>
+    <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
     <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
   -H "Content-Type: application/json" \
@@ -542,7 +546,7 @@
 
   <!-- Unpin App -->
   <div style="margin-bottom: 20px;">
-    <h3 style="color: #ff9800;">{{ _('Unpin App') }}</h3>
+    <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
     <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
   -H "Content-Type: application/json" \
