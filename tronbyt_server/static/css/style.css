@@ -1,58 +1,65 @@
 /* Define :root variables for light theme (default) */
 :root {
-  --page-bg: #eee;
-  --page-text: #000; /* Default text color */
-  --content-bg: white;
-  --primary-color: #377ba8; /* Blueish color used for links, headers */
-  --secondary-color: lightgray; /* Used for nav background, borders */
-  --flash-bg: #cae6f6;
-  --flash-border: #377ba8;
-  --flash-text: #000; /* Default flash text */
-  --link-color: #377ba8;
-  --header-text-color: #377ba8;
-  --post-about-text: slategray;
-  --input-bg: white;
-  --input-text: #000;
-  --input-border: #ccc; /* Added for inputs */
-  --button-bg: #f0f0f0; /* Generic button bg */
-  --button-text: #000;
-  --submit-bg: #377ba8; /* Specific for submit */
-  --submit-text: white;
-  --danger-text: #cc2f2e;
-  --enabled-text: #128e23;
-  --disabled-text: #8e1212;
+  --page-bg: #f5f5f5; /* Slightly darker for better contrast */
+  --page-text: #1a1a1a; /* Darker text for better contrast */
+  --content-bg: #ffffff;
+  --primary-color: #2563eb; /* Improved blue with better contrast */
+  --secondary-color: #e5e7eb; /* Better contrast than lightgray */
+  --flash-bg: #dbeafe; /* Light blue with better contrast */
+  --flash-border: #2563eb;
+  --flash-text: #1e40af; /* Darker blue text for better contrast */
+  --link-color: #2563eb;
+  --header-text-color: #2563eb;
+  --post-about-text: #6b7280; /* Better contrast than slategray */
+  --input-bg: #ffffff;
+  --input-text: #1a1a1a;
+  --input-border: #d1d5db; /* Better contrast than #ccc */
+  --button-bg: #f3f4f6; /* Slightly darker for better contrast */
+  --button-text: #1a1a1a;
+  --submit-bg: #2563eb;
+  --submit-text: #ffffff;
+  --danger-text: #dc2626; /* Better contrast red */
+  --enabled-text: #059669; /* Better contrast green */
+  --disabled-text: #dc2626; /* Consistent with danger */
   --app-img-bg: #000000;
-  --app-img-border: #d8d8d8;
-  --select-bg: #fff;
-  --select-text: #333;
-  --select-border: #ccc;
+  --app-img-border: #d1d5db; /* Better contrast */
+  --select-bg: #ffffff;
+  --select-text: #1a1a1a; /* Better contrast */
+  --select-border: #d1d5db;
+  --border-color: #e5e7eb; /* New variable for consistent borders */
+  --shadow-color: rgba(0, 0, 0, 0.1); /* New variable for shadows */
 }
 
 /* Define variables for dark theme */
 [data-theme="dark"] {
-  --page-bg: #333;
-  --page-text: #ddd;
-  --content-bg: #444;
-  --primary-color: #5a9cd1; /* Lighter blue for dark mode */
-  --secondary-color: #555;
-  --flash-bg: #377ba8; /* This was already dark-mode adjusted */
-  --flash-border: #5a9cd1;
-  --flash-text: #fff;
-  --link-color: #5a9cd1;
-  --header-text-color: #5a9cd1;
-  --post-about-text: #aaa;
-  --input-bg: #555;
-  --input-text: #ddd;
-  --input-border: #777;
-  --button-bg: #666;
-  --button-text: #ddd;
-  --submit-bg: #5a9cd1;
-  --submit-text: #fff;
-  /* danger, enabled, disabled text can often remain the same, or be slightly adjusted if needed */
-  --app-img-border: #454545;
-  --select-bg: #555;
-  --select-text: #ddd;
-  --select-border: #777;
+  --page-bg: #0f172a; /* Darker background for better contrast */
+  --page-text: #f8fafc; /* High contrast white text */
+  --content-bg: #1e293b; /* Darker content background */
+  --primary-color: #60a5fa; /* Brighter blue for dark mode */
+  --secondary-color: #475569; /* Better contrast secondary */
+  --flash-bg: #1e3a8a; /* Dark blue background for flash messages */
+  --flash-border: #60a5fa;
+  --flash-text: #dbeafe; /* Light blue text for flash messages */
+  --link-color: #60a5fa;
+  --header-text-color: #60a5fa;
+  --post-about-text: #94a3b8; /* Better contrast gray */
+  --input-bg: #334155; /* Darker input background */
+  --input-text: #f8fafc;
+  --input-border: #64748b; /* Better contrast border */
+  --button-bg: #475569; /* Darker button background */
+  --button-text: #f8fafc;
+  --submit-bg: #2563eb; /* Keep same blue for consistency */
+  --submit-text: #ffffff;
+  --danger-text: #f87171; /* Brighter red for dark mode */
+  --enabled-text: #34d399; /* Brighter green for dark mode */
+  --disabled-text: #f87171; /* Consistent with danger */
+  --app-img-bg: #000000;
+  --app-img-border: #64748b; /* Better contrast */
+  --select-bg: #334155;
+  --select-text: #f8fafc;
+  --select-border: #64748b;
+  --border-color: #475569; /* Dark mode border color */
+  --shadow-color: rgba(0, 0, 0, 0.3); /* Darker shadows for dark mode */
 }
 
 /* Apply variables to existing styles */

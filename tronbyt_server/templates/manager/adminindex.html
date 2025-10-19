@@ -42,7 +42,12 @@
           <p class="body">{{ _('Notes:') }} {{ device.notes }}</p>
           {% endif %}
           {% if device.apps %}
-          {% for app in device.apps.values() %}
+          {% set apps_list = device.apps.values()|sort(attribute='order')|list %}
+          {% set pinned_app_iname = device.pinned_app %}
+          {% set pinned_apps = apps_list|selectattr('iname', 'equalto', pinned_app_iname) if pinned_app_iname else [] %}
+          {% set unpinned_apps = apps_list|rejectattr('iname', 'equalto', pinned_app_iname) %}
+          {% set all_apps_ordered = pinned_apps|list + unpinned_apps|list %}
+          {% for app in all_apps_ordered %}
           <div class="w3-card-4 w3-padding">
             <table width="100%">
               <tr width="100%">

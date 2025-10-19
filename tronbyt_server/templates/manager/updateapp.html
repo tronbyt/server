@@ -1,230 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}{{ _('Edit') }} "{{ app.name }}-{{ app.iname }}"{% endblock %}</h1><br>
-{% endblock %}
-{% block content %}
-<!-- Container for flexbox alignment -->
-<div class="flex-container">
-  <!-- Show Config Toggle Button -->
-  <button id="toggleConfigBtn" class="w3-button"
-    style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Show App Config') }}</button>
-  <a href="{{ url_for('configapp', device_id=device_id, iname=app.iname) }}"
-    class="w3-button" style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Configure') }}</a>
-  <!-- Show Debug Toggle Button -->
-  <button id="toggleDebugBtn" class="w3-button"
-    style="background-color: #608ff3; margin-bottom: 5px; margin-top: 10px;">{{ _('Show Render Debug') }}</button>
-
-  <!-- Config Content -->
-  <div id="configContent" class="hidden">
-    <pre class="flash">{{ config }}</pre>
-  </div>
-
-  <!-- Debug Content -->
-  <div id="debugContent" class="hidden">
-    <pre class="flash">{{ app.render_messages | join('\n') }}</pre>
-  </div>
-</div>
-<form method="post">
-  <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
-  <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
-  <div><b>{{ _('Enabled: ') }}</b><input name="enabled" type="checkbox" {% if app.enabled %} checked {% endif %}></div>
-  <div class="app-img"><img width="400" src="{{url_for('appwebp', device_id=device_id, iname=app.iname) }}"
-      alt="{{ _('Preview') }}"></div>
-  <label for="uinterval">{{ _('Render Interval Minutes (Update every X minutes)') }}</label>
-  <div><input type="number" name="uinterval" id="uinterval" min="0"
-      value="{{ app.uinterval }}" required></div>
-
-  <label for="display_time">{{ _('Display Time Seconds (0 for device default)') }}</label>
-  <div><input type="number" name="display_time" id="display_time" min="0"
-      value="{{ app.display_time or 0 }}"></div>
-
-  <label for="notes">{{ _('Notes: ') }}</label>
-  <input name="notes" id="notes" value="{{ app.notes }}">
-
-  <!-- Schedule Section -->
-  <h2>{{ _('Schedule') }}</h2>
-  <label for="start_time">{{ _('Start Time') }}</label>
-  <div><input type="time" name="start_time" id="start_time"
-      value="{{ app.start_time }}"></div>
-
-  <label for="end_time">{{ _('End Time') }}</label>
-  <div><input type="time" name="end_time" id="end_time" value="{{ app.end_time }}"></div>
-
-  <!-- Legacy Schedule (Default) -->
-  <div id="legacy_schedule">
-    <label for="days">{{ _('Active Days') }}</label> {{ _('(none selected is ALL selected)') }}
-    <div>
-      <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {% endif %}> {{ _('Monday') }}
-      <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {% endif %}> {{ _('Tuesday') }}
-      <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked {% endif %}> {{ _('Wednesday') }}
-      <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {% endif %}> {{ _('Thursday') }}
-      <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {% endif %}> {{ _('Friday') }}
-      <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {% endif %}> {{ _('Saturday') }}
-      <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {% endif %}> {{ _('Sunday') }}
-    </div>
-  </div>
-  <!-- Custom Recurrence Toggle -->
-  <div style="margin-top: 15px; margin-bottom: 15px;">
-    <label for="use_custom_recurrence">
-      <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {% if app.use_custom_recurrence %} checked {% endif %}
-        onchange="toggleCustomRecurrence()">
-      {{ _('Use Custom Recurrence') }}
-    </label>
-    <small style="display: block; color: #666; margin-top: 5px;">
-      {{ _('Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)') }}
-    </small>
-  </div>
-
-  <!-- Custom Recurrence Section -->
-  <div id="custom_recurrence" style="display: none; border: 1px solid #ddd; padding: 15px; border-radius: 5px;">
-    <h3>{{ _('Custom Recurrence') }}</h3>
-    <label for="recurrence_type">{{ _('Frequency') }}</label>
-    <div>
-      <select name="recurrence_type" id="recurrence_type" onchange="toggleRecurrenceOptions()">
-        <option value="daily" {% if (app.recurrence_type or 'daily')=='daily' %} selected {% endif %}>{{ _('Daily') }}</option>
-        <option value="weekly" {% if (app.recurrence_type or 'daily')=='weekly' %} selected {% endif %}>{{ _('Weekly') }}</option>
-        <option value="monthly" {% if (app.recurrence_type or 'daily')=='monthly' %} selected {% endif %}>{{ _('Monthly') }}</option>
-        <option value="yearly" {% if (app.recurrence_type or 'daily')=='yearly' %} selected {% endif %}>{{ _('Yearly') }}</option>
-      </select>
-    </div>
-
-    <label for="recurrence_interval">{{ _('Repeat every') }}</label>
-    <div>
-      <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" value="{{ app.recurrence_interval or 1 }}" required>
-      <span id="interval_unit">{{ _('days') }}</span>
-    </div>
-
-    <label for="recurrence_start_date">{{ _('Start Date') }}</label>
-    <div>
-      <input type="date" name="recurrence_start_date" id="recurrence_start_date" value="{{ app.recurrence_start_date or '2025-01-01' }}">
-    </div>
-
-    <label for="recurrence_end_date">{{ _('End Date (optional)') }}</label>
-    <div>
-      <input type="date" name="recurrence_end_date" id="recurrence_end_date" value="{{ app.recurrence_end_date or '' }}">
-    </div>
-
-    <!-- Weekly Options -->
-    <div id="weekly_options" style="display: none;">
-      <label for="weekdays">{{ _('Active Days') }}</label> {{ _('(none selected is ALL selected)') }}
-      <div>
-        {% set selected_weekdays = app.recurrence_pattern.weekdays or app.days or [] %}
-        <input type="checkbox" name="weekdays" value="monday" {% if 'monday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Monday') }}
-        <input type="checkbox" name="weekdays" value="tuesday" {% if 'tuesday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Tuesday') }}
-        <input type="checkbox" name="weekdays" value="wednesday" {% if 'wednesday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Wednesday') }}
-        <input type="checkbox" name="weekdays" value="thursday" {% if 'thursday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Thursday') }}
-        <input type="checkbox" name="weekdays" value="friday" {% if 'friday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Friday') }}
-        <input type="checkbox" name="weekdays" value="saturday" {% if 'saturday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Saturday') }}
-        <input type="checkbox" name="weekdays" value="sunday" {% if 'sunday' in selected_weekdays or not selected_weekdays %} checked {% endif %}> {{ _('Sunday') }}
-      </div>
-    </div>
-
-    <!-- Monthly Options -->
-    <div id="monthly_options" style="display: none;">
-      <label for="monthly_pattern">{{ _('Monthly Pattern') }}</label>
-      <div>
-        <select name="monthly_pattern" id="monthly_pattern">
-          {% set current_pattern = 'day_of_month' if app.recurrence_pattern.day_of_month else 'day_of_week' if app.recurrence_pattern.day_of_week else 'day_of_month' %}
-          <option value="day_of_month" {% if current_pattern == 'day_of_month' %} selected {% endif %}>{{ _('Day of Month') }}</option>
-          <option value="day_of_week" {% if current_pattern == 'day_of_week' %} selected {% endif %}>{{ _('Day of Week') }}</option>
-        </select>
-      </div>
-
-      <div id="day_of_month_option">
-        <label for="day_of_month">{{ _('Day of Month') }}</label>
-        <div>
-          <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" value="{{ app.recurrence_pattern.day_of_month or 1 }}">
-        </div>
-      </div>
-
-      <div id="day_of_week_option" style="display: none;">
-        <label for="day_of_week_pattern">{{ _('Day of Week Pattern') }}</label>
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <select name="week_occurrence" id="week_occurrence">
-            {% set current_occurrence = (app.recurrence_pattern.day_of_week or 'first_monday').split('_')[0] %}
-            <option value="first" {% if current_occurrence == 'first' %} selected {% endif %}>{{ _('First') }}</option>
-            <option value="second" {% if current_occurrence == 'second' %} selected {% endif %}>{{ _('Second') }}</option>
-            <option value="third" {% if current_occurrence == 'third' %} selected {% endif %}>{{ _('Third') }}</option>
-            <option value="fourth" {% if current_occurrence == 'fourth' %} selected {% endif %}>{{ _('Fourth') }}</option>
-            <option value="last" {% if current_occurrence == 'last' %} selected {% endif %}>{{ _('Last') }}</option>
-          </select>
-          <select name="week_day" id="week_day">
-            {% set current_day = (app.recurrence_pattern.day_of_week or 'first_monday').split('_')[1] %}
-            <option value="monday" {% if current_day == 'monday' %} selected {% endif %}>{{ _('Monday') }}</option>
-            <option value="tuesday" {% if current_day == 'tuesday' %} selected {% endif %}>{{ _('Tuesday') }}</option>
-            <option value="wednesday" {% if current_day == 'wednesday' %} selected {% endif %}>{{ _('Wednesday') }}</option>
-            <option value="thursday" {% if current_day == 'thursday' %} selected {% endif %}>{{ _('Thursday') }}</option>
-            <option value="friday" {% if current_day == 'friday' %} selected {% endif %}>{{ _('Friday') }}</option>
-            <option value="saturday" {% if current_day == 'saturday' %} selected {% endif %}>{{ _('Saturday') }}</option>
-            <option value="sunday" {% if current_day == 'sunday' %} selected {% endif %}>{{ _('Sunday') }}</option>
-          </select>
-          <!-- Hidden input to combine the values for form submission -->
-          <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="">
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div style="display: flex; gap: 10px; margin-top: 20px;">
-    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
-    <input type="submit" class="w3-button w3-red w3-round"
-           formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}"
-           formmethod="post"
-           onclick="return confirm('{{ _('Delete App?') }}');"
-           value="{{ _('Delete') }}">
-  </div>
-</form>
-
-<!-- API Examples Section -->
-<div style="margin-top: 30px; padding: 20px; background-color: #2a2a2a; border-radius: 8px; border-left: 4px solid #4CAF50;">
-  <h2 style="margin-top: 0; color: #4CAF50;">{{ _('API Usage') }}</h2>
-  <p style="color: #b0b0b0; margin-bottom: 20px;">{{ _('Use these curl commands to control this app via the API:') }}</p>
-
-  <!-- Enable App -->
-  <div style="margin-bottom: 20px;">
-    <h3 style="color: #4CAF50; font-size: 1.1em; margin-bottom: 10px;">{{ _('Enable App') }}</h3>
-    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
-  -H "Content-Type: application/json" \
-  -d '{"set_enabled": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
-  </div>
-
-  <!-- Disable App -->
-  <div style="margin-bottom: 20px;">
-    <h3 style="color: #ff9800; font-size: 1.1em; margin-bottom: 10px;">{{ _('Disable App') }}</h3>
-    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
-  -H "Content-Type: application/json" \
-  -d '{"set_enabled": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
-  </div>
-
-  <!-- Pin App -->
-  <div style="margin-bottom: 20px;">
-    <h3 style="color: #4CAF50; font-size: 1.1em; margin-bottom: 10px;">{{ _('Pin App') }}</h3>
-    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
-  -H "Content-Type: application/json" \
-  -d '{"set_pinned": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
-  </div>
-
-  <!-- Unpin App -->
-  <div style="margin-bottom: 20px;">
-    <h3 style="color: #ff9800; font-size: 1.1em; margin-bottom: 10px;">{{ _('Unpin App') }}</h3>
-    <pre style="background-color: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; color: #e0e0e0; font-size: 0.9em;">curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
-  -H "Content-Type: application/json" \
-  -d '{"set_pinned": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
-  </div>
-
-  <p style="color: #888; font-size: 0.9em; margin-top: 20px;">
-    <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
-  </p>
-</div>
-
+<h1>{% block title %}{{ _('Edit') }} "{{ app.name }}-{{ app.iname }}"{% endblock %}</h1>
 <!-- style and javascript to show and hide the config -->
 <style>
   .hidden {
@@ -238,40 +14,596 @@
     opacity: 1;
     transition: opacity 0.5s ease-in-out;
   }
+
+  .form-table {
+    border-spacing: 0 15px;
+    width: 100%;
+  }
+
+  .form-table td {
+    vertical-align: top;
+    padding: 5px;
+  }
+
+  .form-table label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .form-table small {
+    color: var(--post-about-text);
+    display: block;
+    margin-top: 5px;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--input-border);
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+  }
+
+  .button-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .flex-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .button-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .button-separator {
+    color: var(--post-about-text);
+    font-weight: bold;
+    margin: 0 5px;
+  }
+
+  .toggle-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .app-preview {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .schedule-section {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 15px;
+    margin: 15px 0;
+    background-color: var(--secondary-color);
+  }
+
+  .custom-recurrence-section {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 15px;
+    margin: 15px 0;
+    background-color: var(--flash-bg);
+  }
+
+  .api-section {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: var(--content-bg);
+    border-radius: 8px;
+    border-left: 4px solid var(--enabled-text);
+    border: 1px solid var(--border-color);
+  }
+
+  .api-section h2 {
+    margin-top: 0;
+    color: var(--enabled-text);
+  }
+
+  .api-section h3 {
+    color: var(--enabled-text);
+    font-size: 1.1em;
+    margin-bottom: 10px;
+  }
+
+  .api-section pre {
+    background-color: var(--page-bg);
+    padding: 15px;
+    border-radius: 4px;
+    overflow-x: auto;
+    color: var(--page-text);
+    font-size: 0.9em;
+    border: 1px solid var(--border-color);
+  }
+
+  .api-section p {
+    color: var(--page-text);
+    margin-bottom: 20px;
+  }
+
+  .api-section small {
+    color: var(--post-about-text);
+    font-size: 0.9em;
+    margin-top: 20px;
+    display: block;
+  }
 </style>
+{% endblock %}
+{% block content %}
+<!-- Navigation and Toggle Buttons -->
+<div class="flex-container">
+  <!-- Navigation Button -->
+    <div class="button-group">
+      <a href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}"
+        class="w3-button" style="background-color: var(--enabled-text); color: white;">{{ _('Configure App') }}</a>
+    </div>
+
+  <!-- Toggle Buttons -->
+  <div class="toggle-buttons">
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show App Config') }}</button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show Render Debug') }}</button>
+  </div>
+</div>
+
+<!-- Config Content -->
+<div id="configContent" class="hidden">
+  <pre class="flash">{{ config }}</pre>
+</div>
+
+<!-- Debug Content -->
+<div id="debugContent" class="hidden">
+  <pre class="flash">{{ app.get('render_messages', []) | tojson(indent=2) }}</pre>
+</div>
+
+<!-- App Preview -->
+<div class="app-img" style="width: 400px;">
+  <img id="previewImage" width="400"
+    src="{{url_for('appwebp', device_id=device.id, iname=app.iname) }}"
+    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+</div>
+
+<form method="post" id="updateForm">
+  <input type="hidden" name="iname" id="iname" value="{{ app.iname }}" readonly>
+  <input type="hidden" name="name" id="name" value="{{ app.name }}" readonly>
+
+  <table class="form-table">
+    <!-- Enabled Status -->
+    <tr>
+      <td>
+        <label for="enabled">{{ _('Enabled') }}</label>
+        <small>{{ _('Enable or disable this app') }}</small>
+      </td>
+      <td>
+        <input name="enabled" type="checkbox" id="enabled" class="form-control"
+               {% if app.enabled %} checked {% endif %}>
+      </td>
+    </tr>
+
+    <!-- Render Interval -->
+    <tr>
+      <td>
+        <label for="uinterval">{{ _('Render Interval Minutes') }}</label>
+        <small>{{ _('Update every X minutes') }}</small>
+      </td>
+      <td>
+        <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
+               value="{{ app.uinterval }}" required>
+      </td>
+    </tr>
+
+    <!-- Display Time -->
+    <tr>
+      <td>
+        <label for="display_time">{{ _('Display Time Seconds') }}</label>
+        <small>{{ _('0 for device default') }}</small>
+      </td>
+      <td>
+        <input type="number" name="display_time" id="display_time" min="0" class="form-control"
+               value="{{ app.display_time or 0 }}">
+      </td>
+    </tr>
+
+    <!-- Notes -->
+    <tr>
+      <td>
+        <label for="notes">{{ _('Notes') }}</label>
+        <small>{{ _('Optional notes about this app') }}</small>
+      </td>
+      <td>
+        <input name="notes" id="notes" class="form-control"
+               value="{{ app.notes }}">
+      </td>
+    </tr>
+  </table>
+
+  <!-- Schedule Section -->
+  <div class="schedule-section">
+    <h2>{{ _('Schedule') }}</h2>
+
+    <table class="form-table">
+      <!-- Start Time -->
+      <tr>
+        <td>
+          <label for="start_time">{{ _('Start Time') }}</label>
+          <small>{{ _('When the app should start displaying') }}</small>
+        </td>
+        <td>
+          <input type="time" name="start_time" id="start_time" class="form-control"
+                 value="{{ app.start_time }}">
+        </td>
+      </tr>
+
+      <!-- End Time -->
+      <tr>
+        <td>
+          <label for="end_time">{{ _('End Time') }}</label>
+          <small>{{ _('When the app should stop displaying') }}</small>
+        </td>
+        <td>
+          <input type="time" name="end_time" id="end_time" class="form-control"
+                 value="{{ app.end_time }}">
+        </td>
+      </tr>
+    </table>
+
+    <!-- Legacy Schedule (Default) -->
+    <div id="legacy_schedule">
+      <h3>{{ _('Active Days') }}</h3>
+      <small>{{ _('(none selected is ALL selected)') }}</small>
+      <div style="margin-top: 10px;">
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="monday" {% if 'monday' in app.get('days', []) or not app.get('days', [])
+            %} checked {% endif %}> {{ _('Monday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.get('days', []) or not app.get('days',
+            []) %} checked {% endif %}> {{ _('Tuesday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.get('days', []) or not
+            app.get('days', []) %} checked {% endif %}> {{ _('Wednesday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.get('days', []) or not app.get('days',
+            []) %} checked {% endif %}> {{ _('Thursday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="friday" {% if 'friday' in app.get('days', []) or not app.get('days', [])
+            %} checked {% endif %}> {{ _('Friday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.get('days', []) or not app.get('days',
+            []) %} checked {% endif %}> {{ _('Saturday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.get('days', []) or not app.get('days', [])
+            %} checked {% endif %}> {{ _('Sunday') }}
+        </label>
+      </div>
+    </div>
+  </div>
+  <!-- Custom Recurrence Toggle -->
+  <div style="margin: 20px 0;">
+    <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
+      <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {% if
+        request.form.get('use_custom_recurrence') or app.get('use_custom_recurrence', False) %} checked {% endif %}
+        onchange="toggleCustomRecurrence()">
+      <div>
+        <strong>{{ _('Use Custom Recurrence') }}</strong>
+        <small style="display: block; color: var(--post-about-text); margin-top: 5px;">
+          {{ _('Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)') }}
+        </small>
+      </div>
+    </label>
+  </div>
+
+  <!-- Custom Recurrence Section -->
+  <div id="custom_recurrence" class="custom-recurrence-section" style="display: none;">
+    <h3>{{ _('Custom Recurrence') }}</h3>
+
+    <table class="form-table">
+      <!-- Frequency -->
+      <tr>
+        <td>
+          <label for="recurrence_type">{{ _('Frequency') }}</label>
+          <small>{{ _('How often the app should run') }}</small>
+        </td>
+        <td>
+          <select name="recurrence_type" id="recurrence_type" class="form-control" onchange="toggleRecurrenceOptions()">
+            <option value="daily" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='daily'
+              %} selected {% endif %}>{{ _('Daily') }}</option>
+            <option value="weekly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='weekly'
+              %} selected {% endif %}>{{ _('Weekly') }}</option>
+            <option value="monthly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily'
+              ))=='monthly' %} selected {% endif %}>{{ _('Monthly') }}</option>
+            <option value="yearly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='yearly'
+              %} selected {% endif %}>{{ _('Yearly') }}</option>
+          </select>
+        </td>
+      </tr>
+
+      <!-- Repeat Interval -->
+      <tr>
+        <td>
+          <label for="recurrence_interval">{{ _('Repeat Every') }}</label>
+          <small>{{ _('Interval between occurrences') }}</small>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" class="form-control"
+              value="{{ request.form['recurrence_interval'] or app.get('recurrence_interval', 1) }}" style="width: 100px;">
+            <span id="interval_unit">{{ _('days') }}</span>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Start Date -->
+      <tr>
+        <td>
+          <label for="recurrence_start_date">{{ _('Start Date') }}</label>
+          <small>{{ _('When the recurrence should begin') }}</small>
+        </td>
+        <td>
+          <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="form-control"
+            value="{{ request.form['recurrence_start_date'] or app.get('recurrence_start_date') or '' }}">
+        </td>
+      </tr>
+
+      <!-- End Date -->
+      <tr>
+        <td>
+          <label for="recurrence_end_date">{{ _('End Date (optional)') }}</label>
+          <small>{{ _('When the recurrence should stop') }}</small>
+        </td>
+        <td>
+          <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="form-control"
+            value="{{ request.form['recurrence_end_date'] or app.get('recurrence_end_date') or '' }}">
+        </td>
+      </tr>
+    </table>
+
+    <!-- Weekly Options -->
+    <div id="weekly_options" style="display: none; margin-top: 20px;">
+      <h4>{{ _('Weekly Options') }}</h4>
+      <label for="weekdays">{{ _('Active Days') }}</label>
+      <small>{{ _('(none selected is ALL selected)') }}</small>
+      <div style="margin-top: 10px;">
+        {% set selected_weekdays = request.form.getlist('weekdays') or app.get('recurrence_pattern', {}).get('weekdays',
+        app.get('days', [])) %}
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="monday" {% if 'monday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Monday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="tuesday" {% if 'tuesday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Tuesday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="wednesday" {% if 'wednesday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Wednesday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="thursday" {% if 'thursday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Thursday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="friday" {% if 'friday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Friday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="saturday" {% if 'saturday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Saturday') }}
+        </label>
+        <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+          <input type="checkbox" name="weekdays" value="sunday" {% if 'sunday' in selected_weekdays or not
+            selected_weekdays %} checked {% endif %}> {{ _('Sunday') }}
+        </label>
+      </div>
+    </div>
+
+    <!-- Monthly Options -->
+    <div id="monthly_options" style="display: none; margin-top: 20px;">
+      <h4>{{ _('Monthly Options') }}</h4>
+
+      <table class="form-table">
+        <!-- Monthly Pattern -->
+        <tr>
+          <td>
+            <label for="monthly_pattern">{{ _('Monthly Pattern') }}</label>
+            <small>{{ _('Choose how to specify the monthly occurrence') }}</small>
+          </td>
+          <td>
+            <select name="monthly_pattern" id="monthly_pattern" class="form-control">
+              {% set current_pattern = request.form['monthly_pattern'] or (app.get('recurrence_pattern',
+              {}).get('day_of_month') and 'day_of_month') or (app.get('recurrence_pattern', {}).get('day_of_week') and
+              'day_of_week') or 'day_of_month' %}
+              <option value="day_of_month" {% if current_pattern=='day_of_month' %} selected {% endif %}>{{ _('Day of
+                Month') }}</option>
+              <option value="day_of_week" {% if current_pattern=='day_of_week' %} selected {% endif %}>{{ _('Day of Week')
+                }}</option>
+            </select>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Day of Month Option -->
+      <div id="day_of_month_option">
+        <table class="form-table">
+          <tr>
+            <td>
+              <label for="day_of_month">{{ _('Day of Month') }}</label>
+              <small>{{ _('Which day of the month (1-31)') }}</small>
+            </td>
+            <td>
+              <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="form-control"
+                value="{{ request.form['day_of_month'] or app.get('recurrence_pattern', {}).get('day_of_month', 1) }}">
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Day of Week Option -->
+      <div id="day_of_week_option" style="display: none;">
+        <table class="form-table">
+          <tr>
+            <td>
+              <label for="day_of_week_pattern">{{ _('Day of Week Pattern') }}</label>
+              <small>{{ _('Which occurrence of which day') }}</small>
+            </td>
+            <td>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <select name="week_occurrence" id="week_occurrence" class="form-control">
+                  {% set current_occurrence = (request.form['day_of_week_pattern'] or app.get('recurrence_pattern',
+                  {}).get('day_of_week', 'first_monday')).split('_')[0] %}
+                  <option value="first" {% if current_occurrence=='first' %} selected {% endif %}>{{ _('First') }}</option>
+                  <option value="second" {% if current_occurrence=='second' %} selected {% endif %}>{{ _('Second') }}</option>
+                  <option value="third" {% if current_occurrence=='third' %} selected {% endif %}>{{ _('Third') }}</option>
+                  <option value="fourth" {% if current_occurrence=='fourth' %} selected {% endif %}>{{ _('Fourth') }}</option>
+                  <option value="last" {% if current_occurrence=='last' %} selected {% endif %}>{{ _('Last') }}</option>
+                </select>
+                <select name="week_day" id="week_day" class="form-control">
+                  {% set current_day = (request.form['day_of_week_pattern'] or app.get('recurrence_pattern',
+                  {}).get('day_of_week', 'first_monday')).split('_')[1] %}
+                  <option value="monday" {% if current_day=='monday' %} selected {% endif %}>{{ _('Monday') }}</option>
+                  <option value="tuesday" {% if current_day=='tuesday' %} selected {% endif %}>{{ _('Tuesday') }}</option>
+                  <option value="wednesday" {% if current_day=='wednesday' %} selected {% endif %}>{{ _('Wednesday') }}
+                  </option>
+                  <option value="thursday" {% if current_day=='thursday' %} selected {% endif %}>{{ _('Thursday') }}</option>
+                  <option value="friday" {% if current_day=='friday' %} selected {% endif %}>{{ _('Friday') }}</option>
+                  <option value="saturday" {% if current_day=='saturday' %} selected {% endif %}>{{ _('Saturday') }}</option>
+                  <option value="sunday" {% if current_day=='sunday' %} selected {% endif %}>{{ _('Sunday') }}</option>
+                </select>
+                <!-- Hidden input to combine the values for form submission -->
+                <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="">
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="button-container">
+    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
+    <input type="submit" class="w3-button w3-red w3-round"
+           formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}"
+           formmethod="post"
+           onclick="return confirm('{{ _('Delete App?') }}');"
+           value="{{ _('Delete') }}">
+  </div>
+</form>
+
+<!-- API Examples Section -->
+<div class="api-section">
+  <h2>{{ _('API Usage') }}</h2>
+  <p>{{ _('Use these curl commands to control this app via the API:') }}</p>
+
+  <!-- Enable App -->
+  <div style="margin-bottom: 20px;">
+    <h3>{{ _('Enable App') }}</h3>
+    <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_enabled": true}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  </div>
+
+  <!-- Disable App -->
+  <div style="margin-bottom: 20px;">
+    <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
+    <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_enabled": false}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  </div>
+
+  <!-- Pin App -->
+  <div style="margin-bottom: 20px;">
+    <h3>{{ _('Pin App') }}</h3>
+    <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_pinned": true}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  </div>
+
+  <!-- Unpin App -->
+  <div style="margin-bottom: 20px;">
+    <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
+    <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Content-Type: application/json" \
+  -d '{"set_pinned": false}' \
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  </div>
+
+  <small>
+    <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
+  </small>
+</div>
+
 <script>
+  // Initialize page functionality when DOM is loaded
   document.addEventListener("DOMContentLoaded", function () {
-    const toggleBtn = document.getElementById("toggleConfigBtn");
+    initializeToggleButtons();
+    initializeRecurrenceOptions();
+  });
+
+  // Initialize toggle buttons for config and debug content
+  function initializeToggleButtons() {
+    const toggleConfigBtn = document.getElementById("toggleConfigBtn");
     const configContent = document.getElementById("configContent");
-
-    toggleBtn.addEventListener("click", function () {
-      if (configContent.classList.contains("hidden")) {
-        configContent.classList.remove("hidden");
-        configContent.classList.add("visible");
-        toggleBtn.textContent = "{{ _('Hide App Config') }}";
-      } else {
-        configContent.classList.remove("visible");
-        configContent.classList.add("hidden");
-        toggleBtn.textContent = "{{ _('Show App Config') }}";
-      }
-    });
-
-    // Add debug toggle functionality
     const toggleDebugBtn = document.getElementById("toggleDebugBtn");
     const debugContent = document.getElementById("debugContent");
 
-    toggleDebugBtn.addEventListener("click", function () {
-      if (debugContent.classList.contains("hidden")) {
-        debugContent.classList.remove("hidden");
-        debugContent.classList.add("visible");
-        toggleDebugBtn.textContent = "{{ _('Hide Render Debug') }}";
-      } else {
-        debugContent.classList.remove("visible");
-        debugContent.classList.add("hidden");
-        toggleDebugBtn.textContent = "{{ _('Show Render Debug') }}";
-      }
-    });
+    if (toggleConfigBtn && configContent) {
+      toggleConfigBtn.addEventListener("click", function () {
+        toggleContent(configContent, toggleConfigBtn,
+          "{{ _('Hide App Config') }}", "{{ _('Show App Config') }}");
+      });
+    }
 
+    if (toggleDebugBtn && debugContent) {
+      toggleDebugBtn.addEventListener("click", function () {
+        toggleContent(debugContent, toggleDebugBtn,
+          "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}");
+      });
+    }
+  }
+
+  // Generic function to toggle content visibility
+  function toggleContent(content, button, hideText, showText) {
+    if (content.classList.contains("hidden")) {
+      content.classList.remove("hidden");
+      content.classList.add("visible");
+      button.textContent = hideText;
+    } else {
+      content.classList.remove("visible");
+      content.classList.add("hidden");
+      button.textContent = showText;
+    }
+  }
+
+  // Initialize recurrence options
+  function initializeRecurrenceOptions() {
     // Initialize recurrence options on page load
     toggleCustomRecurrence();
 
@@ -290,7 +622,7 @@
       weekDaySelect.addEventListener("change", updateDayOfWeekPattern);
       updateDayOfWeekPattern(); // Initialize on page load
     }
-  });
+  }
 
   function toggleCustomRecurrence() {
     const useCustom = document.getElementById("use_custom_recurrence").checked;
