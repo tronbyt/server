@@ -171,8 +171,8 @@ def edit() -> ResponseReturnValue:
             if isinstance(user, dict):
                 user["password"] = password
                 db.save_user(user)
-            flash("Success")
-            return redirect(url_for("index"))
+            flash("Password updated successfully")
+            return redirect(url_for("auth.edit"))
         flash(error)
 
     firmware_version = None

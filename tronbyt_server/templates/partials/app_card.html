@@ -1,0 +1,82 @@
+<!-- App Card Component -->
+<div class="w3-card-4 w3-padding app-card" draggable="true" data-iname="{{ app['iname'] }}">
+  <div class="app-card-content">
+    <!-- Left: Preview Image -->
+    <div class="app-preview">
+      <div class="app-img">
+        <img src="{{url_for('manager.appwebp', device_id=device['id'],iname=app['iname']) }}"
+             alt="{{ _('Preview') }}">
+      </div>
+    </div>
+    
+    <!-- Middle: App Info and Action Buttons -->
+    <div class="app-info">
+      <div class="app-header">
+        <h3>{{ app['name'] }}-{{ app['iname'] }}</h3>
+        <div class="app-status">
+          {% if device.get('pinned_app') == app['iname'] %}
+          <span class="status-badge pinned">&#128204; {{ _('PINNED') }}</span>
+          {% else %}
+            {% if app['enabled'] %}
+            <span class="status-badge enabled">&#10003; {{ _('ENABLED') }}</span>
+            {% else %}
+            <span class="status-badge disabled">&#10005; {{ _('DISABLED') }}</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="app-details">
+        <p class="app-render-info">
+          {{ _('Interval:') }} {{ app['uinterval'] }}min | 
+          {% if app.get('empty_last_render') %}{{_('No output for ') }}{% endif %}
+          {{ _('Last:') }} {{ app.get('last_render',0)|timeago }}
+        </p>
+        {% if app['display_time'] != 0 %}
+        <p>{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
+        {% endif %}
+        {% if app.get('notes', '') != '' %}
+        <p>{{ _('Notes:') }} {{ app['notes'] }}</p>
+        {% endif %}
+      </div>
+      
+      <div class="app-actions">
+        <!-- Primary Actions Row -->
+        <div class="app-actions-primary">
+          <a class="action w3-button w3-blue w3-round"
+             href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}">{{ _('Edit') }}</a>
+          <a class="action w3-button w3-blue w3-round"
+             href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=False) }}">{{ _('Configure') }}</a>
+          <button class="action w3-button w3-green w3-round"
+                  onclick="duplicateApp('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Duplicate') }}</button>
+          <button class="action w3-button w3-red w3-round"
+                  onclick="deleteApp('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Delete') }}</button>
+        </div>
+        
+        <!-- Secondary Actions Row -->
+        <div class="app-actions-secondary">
+          <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.first %}w3-disabled{% endif %}"
+                  {% if loop.first %}disabled{% endif %}
+                  onclick="{% if not loop.first %}moveApp('{{ device['id'] }}', '{{ app['iname'] }}', 'top'){% endif %}">{{ _('Top') }}</button>
+          <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.last %}w3-disabled{% endif %}"
+                  {% if loop.last %}disabled{% endif %}
+                  onclick="{% if not loop.last %}moveApp('{{ device['id'] }}', '{{ app['iname'] }}', 'bottom'){% endif %}">{{ _('Bottom') }}</button>
+          {% if device.get('pinned_app') == app['iname'] %}
+          <button class="action w3-button w3-orange w3-round app-btn-no-hover"
+             onclick="togglePin('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Unpin') }}</button>
+          {% else %}
+            <button class="action w3-button w3-green w3-round app-btn-no-hover"
+               onclick="togglePin('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Pin') }}</button>
+            {% if app['enabled'] %}
+            <button class="action w3-button w3-orange w3-round app-btn-no-hover"
+               onclick="toggleEnabled('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Disable') }}</button>
+            {% else %}
+            <button class="action w3-button w3-green w3-round app-btn-no-hover"
+               onclick="toggleEnabled('{{ device['id'] }}', '{{ app['iname'] }}')">{{ _('Enable') }}</button>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

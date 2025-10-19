@@ -597,7 +597,12 @@ def deleteapp(device_id: str, iname: str) -> ResponseReturnValue:
 
     device["apps"].pop(iname)
     db.save_user(g.user)
-    return redirect(url_for("manager.index"))
+
+    # Check if this is an AJAX request
+    if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+        return Response("OK", status=200)
+    else:
+        return redirect(url_for("manager.index"))
 
 
 @bp.route("/<string:device_id>/addapp", methods=["GET", "POST"])
@@ -706,7 +711,7 @@ def addapp(device_id: str) -> ResponseReturnValue:
     return Response("Method not allowed", 405)
 
 
-@bp.get("/<string:device_id>/<string:iname>/toggle_enabled")
+@bp.route("/<string:device_id>/<string:iname>/toggle_enabled", methods=["GET", "POST"])
 @login_required
 def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -717,11 +722,16 @@ def toggle_enabled(device_id: str, iname: str) -> ResponseReturnValue:
     # if enabled, we should probably re-render and push but that's a pain so not doing it right now.
 
     db.save_user(user)
-    flash("Changes saved.")
-    return redirect(url_for("manager.index"))
+
+    # Check if this is an AJAX request
+    if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+        return Response("OK", status=200)
+    else:
+        flash("Changes saved.")
+        return redirect(url_for("manager.index"))
 
 
-@bp.get("/<string:device_id>/<string:iname>/toggle_pin")
+@bp.route("/<string:device_id>/<string:iname>/toggle_pin", methods=["GET", "POST"])
 @login_required
 def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):
@@ -743,7 +753,102 @@ def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
         flash("App pinned.")
 
     db.save_user(user)
-    return redirect(url_for("manager.index"))
+
+    # Check if this is an AJAX request
+    if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+        return Response("OK", status=200)
+    else:
+        return redirect(url_for("manager.index"))
+
+
+@bp.route("/<string:device_id>/<string:iname>/duplicate", methods=["POST"])
+@login_required
+def duplicate_app(device_id: str, iname: str) -> ResponseReturnValue:
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    user = g.user
+    device = user["devices"][device_id]
+
+    if iname not in device.get("apps", {}):
+        abort(HTTPStatus.NOT_FOUND, description="App not found")
+
+    # Get the original app
+    original_app = device["apps"][iname]
+
+    # Generate a unique iname for the duplicate
+    max_attempts = 10
+    for _ in range(max_attempts):
+        new_iname = str(randint(100, 999))
+        if new_iname not in device.get("apps", {}):
+            break
+    else:
+        flash("Could not generate a unique installation ID.")
+        return Response("Error generating unique ID", status=500)
+
+    # Create a copy of the original app with the new iname
+    duplicated_app = App(
+        name=original_app["name"],
+        iname=new_iname,
+        enabled=original_app.get("enabled", False),
+        last_render=0,  # Reset render time for new app
+        uinterval=original_app.get("uinterval", 15),
+        display_time=original_app.get("display_time", 0),
+        notes=original_app.get("notes", ""),
+        config=original_app.get("config", {}).copy(),  # Deep copy the config
+        path=original_app.get("path"),
+        id=original_app.get("id"),
+        empty_last_render=original_app.get("empty_last_render", False),
+        render_messages=original_app.get(
+            "render_messages", []
+        ).copy(),  # Copy render messages
+        start_time=original_app.get("start_time"),
+        end_time=original_app.get("end_time"),
+        days=original_app.get("days", []).copy() if original_app.get("days") else [],
+        use_custom_recurrence=original_app.get("use_custom_recurrence", False),
+        recurrence_type=original_app.get("recurrence_type"),
+        recurrence_interval=original_app.get("recurrence_interval"),
+        recurrence_pattern=original_app.get("recurrence_pattern", []),
+        recurrence_start_date=original_app.get("recurrence_start_date"),
+        recurrence_end_date=original_app.get("recurrence_end_date"),
+        pushed=original_app.get("pushed", False),
+    )
+
+    # Get all apps and sort by order to find the original app's position
+    apps_list = list(device["apps"].values())
+    apps_list.sort(key=lambda x: x.get("order", 0))
+
+    # Find the original app's position
+    original_order = original_app.get("order", 0)
+
+    # Update order for all apps that come after the original app
+    for app_item in apps_list:
+        if app_item.get("order", 0) > original_order:
+            app_item["order"] = app_item.get("order", 0) + 1
+            device["apps"][app_item["iname"]]["order"] = app_item["order"]
+
+    # Set the duplicate app's order to be right after the original
+    duplicated_app["order"] = original_order + 1
+
+    # Add the duplicated app to the device
+    device["apps"][new_iname] = duplicated_app
+
+    # Save the user data first
+    db.save_user(user)
+
+    # Render the duplicated app to generate its preview
+    try:
+        possibly_render(user, device_id, duplicated_app)
+    except Exception as e:
+        current_app.logger.error(f"Error rendering duplicated app {new_iname}: {e}")
+        # Don't fail the duplication if rendering fails, just log it
+
+    # Check if this is an AJAX request
+    if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+        return Response("OK", status=200)
+    else:
+        flash("App duplicated successfully.")
+        return redirect(url_for("manager.index"))
 
 
 @bp.route("/<string:device_id>/<string:iname>/updateapp", methods=["GET", "POST"])
@@ -1476,7 +1581,16 @@ def set_repo(repo_name: str, apps_path: Path, repo_url: str) -> bool:
                 flash("Repo Update Failed")
                 return False
     else:
-        flash("No Changes to Repo")
+        # Clear the repository if empty URL is provided
+        if repo_name in g.user and g.user[repo_name] != "":
+            g.user[repo_name] = ""
+            db.save_user(g.user)
+            # Remove the apps directory if it exists
+            if apps_path.exists():
+                shutil.rmtree(apps_path)
+            flash("Repository removed")
+        else:
+            flash("No Changes to Repo")
         return True
 
 
@@ -1489,7 +1603,7 @@ def set_user_repo() -> ResponseReturnValue:
         repo_url = str(request.form.get("app_repo_url"))
         apps_path = db.get_users_dir() / g.user["username"] / "apps"
         if set_repo("app_repo_url", apps_path, repo_url):
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("auth.edit"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
@@ -1506,8 +1620,27 @@ def set_api_key() -> ResponseReturnValue:
             return redirect(url_for("auth.edit"))
         g.user["api_key"] = api_key
         db.save_user(g.user)
-        return redirect(url_for("manager.index"))
+        flash("API Key Updated")
+        return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
+
+
+@bp.route("/generate_api_key", methods=["POST"])
+@login_required
+def generate_api_key() -> ResponseReturnValue:
+    """Generate a new API key for the current user."""
+    import secrets
+    import string
+
+    # Generate a new 32-character API key
+    api_key = "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
+    )
+
+    g.user["api_key"] = api_key
+    db.save_user(g.user)
+    flash("New API Key Generated")
+    return redirect(url_for("auth.edit"))
 
 
 @bp.route("/set_system_repo", methods=["GET", "POST"])
@@ -1523,7 +1656,7 @@ def set_system_repo() -> ResponseReturnValue:
             # run the generate app list for custom repo
             # will just generate json file if already there.
             system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("auth.edit"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
@@ -1537,7 +1670,7 @@ def refresh_system_repo() -> ResponseReturnValue:
         # Directly update the system repo - it handles git pull internally
         system_apps.update_system_repo(db.get_data_dir(), current_app.logger)
         flash("System repo updated successfully")
-        return redirect(url_for("manager.index"))
+        return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
 
@@ -1682,7 +1815,7 @@ def refresh_user_repo() -> ResponseReturnValue:
     if request.method == "POST":
         apps_path = db.get_users_dir() / g.user["username"] / "apps"
         if set_repo("app_repo_url", apps_path, g.user.get("app_repo_url", "")):
-            return redirect(url_for("manager.index"))
+            return redirect(url_for("auth.edit"))
         return redirect(url_for("auth.edit"))
     abort(HTTPStatus.NOT_FOUND)
 
@@ -1694,7 +1827,7 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
         abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
 
     direction = request.args.get("direction")
-    if not direction or direction not in ["up", "down"]:
+    if not direction or direction not in ["up", "down", "top", "bottom"]:
         flash("Invalid direction.")
         return redirect(url_for("manager.index"))
 
@@ -1733,11 +1866,21 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
             # Already at the top
             return redirect(url_for("manager.index"))
         target_idx = current_idx - 1
-    else:  # direction == "down"
+    elif direction == "down":
         if current_idx == len(apps_list) - 1:
             # Already at the bottom
             return redirect(url_for("manager.index"))
         target_idx = current_idx + 1
+    elif direction == "top":
+        if current_idx == 0:
+            # Already at the top
+            return redirect(url_for("manager.index"))
+        target_idx = 0
+    else:  # direction == "bottom"
+        if current_idx == len(apps_list) - 1:
+            # Already at the bottom
+            return redirect(url_for("manager.index"))
+        target_idx = len(apps_list) - 1
 
     # Move the app
     moved_app = apps_list.pop(current_idx)
@@ -1751,7 +1894,86 @@ def moveapp(device_id: str, iname: str) -> ResponseReturnValue:
     user["devices"][device_id]["apps"] = apps_dict
     db.save_user(user)
 
-    return redirect(url_for("manager.index"))
+    # Check if this is an AJAX request
+    if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+        return Response("OK", status=200)
+    else:
+        return redirect(url_for("manager.index"))
+
+
+@bp.route("/<device_id>/reorder_apps", methods=["POST"])
+@login_required
+def reorder_apps(device_id: str) -> ResponseReturnValue:
+    """Reorder apps by dragging and dropping."""
+    if not validate_device_id(device_id):
+        abort(HTTPStatus.BAD_REQUEST, description="Invalid device ID")
+
+    dragged_iname = request.form.get("dragged_iname")
+    target_iname = request.form.get("target_iname")
+    insert_after = request.form.get("insert_after", "false").lower() == "true"
+
+    if not dragged_iname or not target_iname:
+        return Response("Missing required parameters", status=400)
+
+    user = g.user
+    apps_dict = user["devices"][device_id].get("apps")
+
+    if not apps_dict:
+        return Response("No apps found", status=400)
+
+    if dragged_iname not in apps_dict or target_iname not in apps_dict:
+        return Response("App not found", status=400)
+
+    # Convert apps_dict to a list of app dictionaries, including iname
+    apps_list = []
+    for app_iname, app_data in apps_dict.items():
+        app_item = app_data.copy()
+        app_item["iname"] = app_iname
+        apps_list.append(app_item)
+
+    # Sort the list by 'order', then by 'iname' for stability if orders are not unique
+    apps_list.sort(key=lambda x: (x.get("order", 0), x.get("iname", "")))
+
+    # Find the indices of the dragged and target apps
+    dragged_idx = -1
+    target_idx = -1
+
+    for i, app_item in enumerate(apps_list):
+        if app_item["iname"] == dragged_iname:
+            dragged_idx = i
+        if app_item["iname"] == target_iname:
+            target_idx = i
+
+    if dragged_idx == -1 or target_idx == -1:
+        return Response("App not found in list", status=400)
+
+    # Don't allow moving to the same position
+    if dragged_idx == target_idx:
+        return Response("OK", status=200)
+
+    # Calculate the new position
+    if insert_after:
+        new_idx = target_idx + 1
+    else:
+        new_idx = target_idx
+
+    # Adjust for the fact that we're removing the dragged item first
+    if dragged_idx < new_idx:
+        new_idx -= 1
+
+    # Move the app
+    moved_app = apps_list.pop(dragged_idx)
+    apps_list.insert(new_idx, moved_app)
+
+    # Update 'order' attribute for all apps in the list and in the original apps_dict
+    for i, app_item in enumerate(apps_list):
+        app_item["order"] = i  # Update order in the list item
+        apps_dict[app_item["iname"]]["order"] = i  # Update order in the original dict
+
+    user["devices"][device_id]["apps"] = apps_dict
+    db.save_user(user)
+
+    return Response("OK", status=200)
 
 
 @bp.get("/health")
@@ -1857,6 +2079,18 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
             user["devices"][device_config["id"]] = device_config
             db.save_user(user)
 
+            # Trigger rendering for all imported apps to ensure they start displaying
+            for app_iname, app in device_config.get("apps", {}).items():
+                try:
+                    # Reset last_render to 0 to force immediate rendering
+                    app["last_render"] = 0
+                    possibly_render(user, device_config["id"], app)
+                except Exception as e:
+                    current_app.logger.error(
+                        f"Error rendering imported app {app_iname} on device {device_config['id']}: {e}"
+                    )
+                    # Continue with other apps even if one fails
+
             flash("Device configuration imported successfully")
             return redirect(url_for("manager.index"))
 
@@ -1952,6 +2186,18 @@ def import_user_config() -> ResponseReturnValue:
 
         # Save the updated user
         if db.save_user(current_user):
+            # Trigger rendering for all imported apps to ensure they start displaying
+            for device_id, device in current_user.get("devices", {}).items():
+                for app_iname, app in device.get("apps", {}).items():
+                    try:
+                        # Reset last_render to 0 to force immediate rendering
+                        app["last_render"] = 0
+                        possibly_render(current_user, device_id, app)
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Error rendering imported app {app_iname} on device {device_id}: {e}"
+                        )
+                        # Continue with other apps even if one fails
             flash("User configuration imported successfully")
         else:
             flash("Failed to save user configuration")
