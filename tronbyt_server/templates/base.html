@@ -315,7 +315,9 @@
       closeMobileMenu();
     } else {
       // If menu is closed (hamburger state), open it
-      toggleMobileMenu();
+      mobileMenu.classList.add('active');
+      hamburger.classList.add('active');
+      document.body.style.overflow = 'hidden';
     }
   }
 
