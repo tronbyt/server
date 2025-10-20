@@ -63,6 +63,7 @@
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
+    order: -1; /* Ensure it appears first */
   }
 
   .hamburger span {
@@ -204,10 +205,16 @@
       display: none;
     }
 
-    /* Keep nav title visible */
+    /* Keep nav title visible and centered */
     nav h1 {
       flex: 1;
       margin: 0;
+      text-align: center;
+    }
+
+    /* Ensure proper spacing between hamburger and title */
+    nav {
+      gap: 0.5rem;
     }
   }
 
@@ -239,12 +246,12 @@
   }
 </style>
 <nav>
-  <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
   <button class="hamburger" id="hamburgerButton">
     <span></span>
     <span></span>
     <span></span>
   </button>
+  <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
   <ul>
     {% if g.user %}
     <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
