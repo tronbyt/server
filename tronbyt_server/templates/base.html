@@ -50,7 +50,7 @@
     border-radius: 8px;
   }
 
-  /* Hamburger menu styles */
+  /* Left side hamburger menu styles */
   .hamburger {
     display: none;
     flex-direction: column;
@@ -58,7 +58,11 @@
     padding: 0.5rem;
     background: none;
     border: none;
-    z-index: 1001;
+    z-index: 1002;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .hamburger span {
@@ -82,26 +86,46 @@
     transform: rotate(45deg) translate(-5px, -6px);
   }
 
-  .mobile-menu {
+  /* Mobile menu overlay */
+  .mobile-menu-overlay {
     display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100vh;
-    background: var(--content-bg);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    padding: 1rem;
-    box-sizing: border-box;
-    overflow-y: auto;
   }
 
-  .mobile-menu.active {
+  .mobile-menu-overlay.active {
     display: block;
   }
 
+  /* Left side sliding panel */
+  .mobile-menu {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 300px;
+    height: 100vh;
+    background: var(--content-bg);
+    z-index: 1001;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+    transition: left 0.3s ease-in-out;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .mobile-menu.active {
+    left: 0;
+  }
+
   .mobile-menu-header {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 2rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
@@ -110,8 +134,18 @@
   .mobile-menu h1 {
     margin: 0;
     color: var(--header-text-color);
+    font-size: 1.2em;
   }
 
+  .mobile-menu-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--page-text);
+    cursor: pointer;
+    padding: 0.5rem;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   .mobile-menu ul {
     list-style: none;
@@ -206,7 +240,7 @@
 </style>
 <nav>
   <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
-  <button class="hamburger" onclick="toggleMobileMenu()">
+  <button class="hamburger" id="hamburgerButton">
     <span></span>
     <span></span>
     <span></span>
@@ -240,10 +274,14 @@
   </ul>
 </nav>
 
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
 <!-- Mobile Menu -->
 <div class="mobile-menu" id="mobileMenu">
   <div class="mobile-menu-header">
     <h1><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
+    <button class="mobile-menu-close" id="mobileMenuClose">&times;</button>
   </div>
   <ul>
     {% if g.user %}
@@ -294,11 +332,13 @@
   let isMenuOpen = false;
 
   function openMobileMenu() {
-    const mobileMenu = document.getElementById('mobileMenu');
-    const hamburger = document.querySelector('.hamburger');
-    
     if (!isMenuOpen) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const hamburger = document.querySelector('.hamburger');
+      
       mobileMenu.classList.add('active');
+      mobileMenuOverlay.classList.add('active');
       hamburger.classList.add('active');
       document.body.style.overflow = 'hidden';
       isMenuOpen = true;
@@ -306,11 +346,13 @@
   }
 
   function closeMobileMenu() {
-    const mobileMenu = document.getElementById('mobileMenu');
-    const hamburger = document.querySelector('.hamburger');
-    
     if (isMenuOpen) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const hamburger = document.querySelector('.hamburger');
+      
       mobileMenu.classList.remove('active');
+      mobileMenuOverlay.classList.remove('active');
       hamburger.classList.remove('active');
       document.body.style.overflow = '';
       isMenuOpen = false;
@@ -325,23 +367,45 @@
     }
   }
 
-  // Close mobile menu when clicking outside
-  document.addEventListener('click', function(event) {
-    const mobileMenu = document.getElementById('mobileMenu');
-    const hamburger = document.querySelector('.hamburger');
-    
-    if (isMenuOpen && 
-        !mobileMenu.contains(event.target) && 
-        !hamburger.contains(event.target)) {
-      closeMobileMenu();
-    }
-  });
+  // Initialize mobile menu
+  document.addEventListener('DOMContentLoaded', function() {
+    const hamburgerButton = document.getElementById('hamburgerButton');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
 
-  // Close mobile menu on escape key
-  document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape' && isMenuOpen) {
-      closeMobileMenu();
+    // Hamburger button
+    if (hamburgerButton) {
+      hamburgerButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMobileMenu();
+      });
     }
+
+    // Close button
+    if (mobileMenuClose) {
+      mobileMenuClose.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileMenu();
+      });
+    }
+
+    // Overlay click to close
+    if (mobileMenuOverlay) {
+      mobileMenuOverlay.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileMenu();
+      });
+    }
+
+    // Escape key to close
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && isMenuOpen) {
+        closeMobileMenu();
+      }
+    });
   });
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
