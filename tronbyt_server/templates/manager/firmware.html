@@ -9,17 +9,18 @@
   'other': 'Other'
 } %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/firmware.css') }}">
 <h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 {% if firmware_version %}
-<div style="background-color: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+<div class="firmware-info">
     <div>
         <strong>{{ _('Firmware Image Version') }}:</strong> {{ firmware_version }}
     </div>
     {% if g.user.username == 'admin' %}
     <div>
-        <a href="{{ url_for('auth.edit') }}#firmware-management" class="w3-button w3-small w3-gray">
+        <a href="{{ url_for('auth.edit') }}#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
             {{ _('Manage Firmware') }}
         </a>
     </div>
@@ -40,36 +41,31 @@
     <br>
     <input type="hidden" name="id" id="id" value="{{ device['id'] }}">
 
-    <div class="left-align" style="margin: 6px 0 8px;">
-        <label style="margin-right:8px;">{{ _('Connection Type') }}:</label>
-        <label style="margin-right:12px;"><input type="radio" name="url_variant" id="variant_http" value="http">
+    <div class="connection-type-container">
+        <label>{{ _('Connection Type') }}:</label>
+        <label><input type="radio" name="url_variant" id="variant_http" value="http">
             HTTP</label>
-        <label style="margin-right:12px;"><input type="radio" name="url_variant" id="variant_ws" value="ws">
+        <label><input type="radio" name="url_variant" id="variant_ws" value="ws">
             WebSocket</label>
         <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
     </div>
 
-    <div style="margin-bottom: 15px;">
-        <label for="img_url" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('Image URL') }}</label>
-        <input name="img_url" id="img_url" value="{{ device['img_url'] }}" style="display: block; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <div class="url-input-container">
+        <label for="img_url">{{ _('Image URL') }}</label>
+        <input name="img_url" id="img_url" value="{{ device['img_url'] }}">
     </div>
 
-    <div style="margin-bottom: 15px;">
-        <label for="wifi_ap" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
-        <input name="wifi_ap" id="wifi_ap" required style="display: block; width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <div class="wifi-input-container">
+        <label for="wifi_ap">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
+        <input name="wifi_ap" id="wifi_ap" required>
     </div>
-    <div style="margin-bottom: 15px;">
-        <label for="wifi_password" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('WiFi Password') }}</label>
-        <input name="wifi_password" id="wifi_password" required style="display: block; width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <div class="wifi-input-container">
+        <label for="wifi_password">{{ _('WiFi Password') }}</label>
+        <input name="wifi_password" id="wifi_password" required>
     </div>
-    <style>
-        .left-align {
-            text-align: left;
-        }
-    </style>
 
     {% if device.get('type') == 'tidbyt_gen1' %}
-    <div class="left-align">
+    <div class="swap-colors-container">
         <label for="swap_colors">{{ _('Swap Colors?') }}</label>
         <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {%
             endif %}>

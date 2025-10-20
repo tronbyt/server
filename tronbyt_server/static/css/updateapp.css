@@ -1,0 +1,192 @@
+/* Update App Page Styles */
+.hidden {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.visible {
+  display: block;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.form-table {
+  border-spacing: 0 15px;
+  width: 100%;
+}
+
+.form-table td {
+  vertical-align: top;
+  padding: 5px;
+}
+
+.form-table label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.form-table small {
+  color: var(--post-about-text);
+  display: block;
+  margin-top: 5px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.flex-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.button-separator {
+  color: var(--post-about-text);
+  font-weight: bold;
+  margin: 0 5px;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-preview {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.schedule-section {
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 15px;
+  margin: 15px 0;
+  background-color: var(--secondary-color);
+}
+
+.custom-recurrence-section {
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 15px;
+  margin: 15px 0;
+  background-color: var(--flash-bg);
+}
+
+.api-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: var(--content-bg);
+  border-radius: 8px;
+  border-left: 4px solid var(--enabled-text);
+  border: 1px solid var(--border-color);
+}
+
+.api-section h2 {
+  margin-top: 0;
+  color: var(--enabled-text);
+}
+
+.api-section h3 {
+  color: var(--enabled-text);
+  font-size: 1.1em;
+  margin-bottom: 10px;
+}
+
+.api-section pre {
+  background-color: var(--page-bg);
+  padding: 15px;
+  border-radius: 4px;
+  overflow-x: auto;
+  color: var(--page-text);
+  font-size: 0.9em;
+  border: 1px solid var(--border-color);
+}
+
+.api-section p {
+  color: var(--page-text);
+  margin-bottom: 20px;
+}
+
+.api-section small {
+  color: var(--post-about-text);
+  font-size: 0.9em;
+  margin-top: 20px;
+  display: block;
+}
+
+/* App preview responsive styling */
+.app-img {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.app-img img {
+  max-width: 100%;
+  height: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile responsive adjustments */
+@media screen and (max-width: 768px) {
+  .flex-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .button-group {
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+
+  .toggle-buttons {
+    justify-content: center;
+  }
+
+  .form-table {
+    font-size: 0.9em;
+  }
+
+  .form-table td {
+    padding: 8px 4px;
+  }
+
+  /* Make preview responsive on mobile */
+  .app-img {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .app-img img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+  }
+}

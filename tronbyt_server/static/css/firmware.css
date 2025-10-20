@@ -1,0 +1,82 @@
+/* Firmware Page Styles */
+.firmware-info {
+  background-color: #2a2a2a;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  border-left: 4px solid #4CAF50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.firmware-info strong {
+  color: #4CAF50;
+}
+
+.firmware-management-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.connection-type-container {
+  margin: 6px 0 8px;
+}
+
+.connection-type-container label {
+  margin-right: 12px;
+}
+
+.connection-type-container label:last-child {
+  margin-right: 0;
+}
+
+.url-input-container {
+  margin-bottom: 15px;
+}
+
+.url-input-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.url-input-container input {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.wifi-input-container {
+  margin-bottom: 15px;
+}
+
+.wifi-input-container label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.wifi-input-container input {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.left-align {
+  text-align: left;
+}
+
+.swap-colors-container {
+  margin-bottom: 15px;
+}
+
+.swap-colors-container label {
+  display: inline-block;
+  margin-right: 8px;
+}

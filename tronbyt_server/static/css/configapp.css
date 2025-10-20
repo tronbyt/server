@@ -1,0 +1,143 @@
+/* Config App Page Styles */
+.hidden {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.visible {
+  display: block;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.flex-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.button-separator {
+  color: #666;
+  font-weight: bold;
+  margin: 0 5px;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Fix dropdown overflow issues */
+.form-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.form-table td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 0;
+}
+
+.form-table select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.form-table select option {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 4px 8px;
+}
+
+/* Ensure form controls don't overflow */
+.form-control {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fix typeahead results overflow */
+.form-table ul {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.form-table ul li {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 4px 8px;
+}
+
+/* Fix location search results overflow */
+.form-table div[style*="listStyleType"] {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* App preview responsive styling */
+.app-img {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.app-img img {
+  max-width: 100%;
+  height: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile responsive adjustments */
+@media screen and (max-width: 768px) {
+  .flex-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .button-group {
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+
+  .toggle-buttons {
+    justify-content: center;
+  }
+
+  .form-table {
+    font-size: 0.9em;
+  }
+
+  .form-table td {
+    padding: 8px 4px;
+  }
+
+  /* Make preview responsive on mobile */
+  .app-img {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .app-img img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+  }
+}

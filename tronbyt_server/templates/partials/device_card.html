@@ -7,14 +7,14 @@
           <td colspan="2">
             <header>
               <h1>
-                <a href="{{ device['img_url'] }}" target="_blank" style="text-decoration: none; color: inherit;">
+                <a href="{{ device['img_url'] }}" target="_blank" class="device-link">
                   {{ device['name'] }}
                 </a>
                 {% if device.get('pinned_app') %}
                   {% set pinned_app_iname = device.get('pinned_app') %}
                   {% set pinned_app = device.get('apps', {}).get(pinned_app_iname) %}
                   {% if pinned_app %}
-                    <span style="display: inline-block; margin-left: 10px; padding: 4px 10px; background-color: #ff9800; color: white; border-radius: 4px; font-size: 0.7em; font-weight: bold; vertical-align: middle;">
+                    <span class="pinned-badge">
                       &#128204; {{ _('Pinned:') }} {{ pinned_app['name'] }}
                     </span>
                   {% endif %}
@@ -29,14 +29,13 @@
                 alt="{{ _('Preview') }}">
             </div>
             <br>{{ _('Currently Displaying App') }}
-            <div style="display: inline-block; margin-left: 10px;">
+            <div class="auto-refresh-container">
               <label class="switch">
                 <input type="checkbox" id="autoUpdate-{{ device['id'] }}"
                        onchange="toggleAutoUpdate('{{ device['id'] }}')" >
-                <span class="slider"></span>
+                <span class="slider round"></span>
               </label>
-              <label for="autoUpdate-{{ device['id'] }}"
-                     style="vertical-align: middle; margin-left: 5px;">{{ _('Auto Refresh') }}</label>
+              <label for="autoUpdate-{{ device['id'] }}" class="auto-refresh-label">{{ _('Auto Refresh') }}</label>
             </div>
           </td>
         </tr>
