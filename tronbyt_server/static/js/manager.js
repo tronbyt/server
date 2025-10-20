@@ -1,5 +1,6 @@
-// Function to update the active button state
+// Function to update the numeric display in real-time (on slider move)
 function updateBrightnessValue(deviceId, brightness) {
+  document.getElementById(`brightnessValue-${deviceId}`).innerText = brightness;
   // Update active button state
   const buttons = document.querySelectorAll(`#brightness-panel-${deviceId} .brightness-btn`);
   buttons.forEach(btn => {
