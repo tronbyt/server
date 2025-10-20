@@ -82,12 +82,14 @@
   margin-bottom: 20px;
   font-size: 1.5rem;
   color: #ffffff;
+  margin-top: 0;
 }
 
 .device-settings-section h3 {
   margin-bottom: 15px;
   font-size: 1.2rem;
   color: #ffffff;
+  margin-top: 0;
 }
 
 .device-settings-section-divider {

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/update-simple.css') }}">
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <div class="header-container">
   <h1 class="page-title">{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
@@ -24,58 +25,42 @@
   <div class="device-settings-section">
     <h2>{{ _('Basic Information') }}</h2>
     
-    <table class="device-settings-table">
-      <tr>
-        <td>
-          <label for="name" class="device-settings-label">{{ _('Name') }}</label>
-          <small class="small-text">{{ _('Descriptive name for this Tronbyt device') }}</small>
-        </td>
-        <td>
-          <input name="name" id="name" value="{{ request.form['name'] }}" required class="device-settings-input">
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
-        </td>
-        <td>
-          <select name="device_type" id="device_type" class="device-settings-input">
-            <option value="tidbyt_gen1" selected>Tidbyt Gen1</option>
-            <option value="tidbyt_gen2">Tidbyt Gen2</option>
-            <option value="pixoticker">Pixoticker</option>
-            <option value="tronbyt_s3">Tronbyt S3</option>
-            <option value="tronbyt_s3_wide">Tronbyt S3 Wide</option>
-            <option value="raspberrypi">Raspberry Pi</option>
-            <option value="other">Other</option>
-          </select>
-        </td>
-      </tr>
-    </table>
+    <div class="device-settings-row">
+      <div>
+        <label for="name" class="device-settings-label">{{ _('Name') }}</label>
+        <small class="small-text">{{ _('Descriptive name for this Tronbyt device') }}</small>
+        <input name="name" id="name" value="{{ request.form['name'] }}" required class="device-settings-input">
+      </div>
+      <div>
+        <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
+        <select name="device_type" id="device_type" class="device-settings-input">
+          <option value="tidbyt_gen1" selected>Tidbyt Gen1</option>
+          <option value="tidbyt_gen2">Tidbyt Gen2</option>
+          <option value="pixoticker">Pixoticker</option>
+          <option value="tronbyt_s3">Tronbyt S3</option>
+          <option value="tronbyt_s3_wide">Tronbyt S3 Wide</option>
+          <option value="raspberrypi">Raspberry Pi</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <div class="device-settings-section">
     <h2>{{ _('Connection URLs') }}</h2>
     
-    <table class="device-settings-table">
-      <tr>
-        <td>
-          <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
-          <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
-        </td>
-        <td>
-          <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" class="device-settings-input">
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <label for="ws_url" class="device-settings-label">{{ _('WebSocket URL') }}</label>
-          <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
-        </td>
-        <td>
-          <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}" class="device-settings-input">
-        </td>
-      </tr>
-    </table>
+    <div class="device-settings-row">
+      <div>
+        <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
+        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
+        <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" class="device-settings-input">
+      </div>
+      <div>
+        <label for="ws_url" class="device-settings-label">{{ _('WebSocket URL') }}</label>
+        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
+        <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}" class="device-settings-input">
+      </div>
+    </div>
   </div>
 
   <div class="device-settings-section">
@@ -105,27 +90,19 @@
   <div class="device-settings-section">
     <h2>{{ _('Location & Notes') }}</h2>
     
-    <table class="device-settings-table">
-      <tr>
-        <td>
-          <label for="location_search" class="device-settings-label">{{ _('Location') }}</label>
-        </td>
-        <td>
-          <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
-            value="{{ request.form['location_search'] }}" class="device-settings-input">
-          <ul id="location_results"></ul>
-          <input type="hidden" name="location" id="location" value='{{ (request.form["location"] or {}) | tojson }}'>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <label for="notes" class="device-settings-label">{{ _('Notes') }}</label>
-        </td>
-        <td>
-          <input name="notes" id="notes" value="{{ request.form['notes'] }}" class="device-settings-input" placeholder="{{ _('Optional notes about this device') }}">
-        </td>
-      </tr>
-    </table>
+    <div class="device-settings-row">
+      <div>
+        <label for="location_search" class="device-settings-label">{{ _('Location') }}</label>
+        <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
+          value="{{ request.form['location_search'] }}" class="device-settings-input">
+        <ul id="location_results"></ul>
+        <input type="hidden" name="location" id="location" value='{{ (request.form["location"] or {}) | tojson }}'>
+      </div>
+      <div>
+        <label for="notes" class="device-settings-label">{{ _('Notes') }}</label>
+        <input name="notes" id="notes" value="{{ request.form['notes'] }}" class="device-settings-input" placeholder="{{ _('Optional notes about this device') }}">
+      </div>
+    </div>
   </div>
 
   <input type="hidden" name="api_key" id="api_key">
