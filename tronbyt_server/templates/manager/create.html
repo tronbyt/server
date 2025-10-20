@@ -28,8 +28,8 @@
     <div class="device-settings-row">
       <div>
         <label for="name" class="device-settings-label">{{ _('Name') }}</label>
-        <small class="small-text">{{ _('Descriptive name for this Tronbyt device') }}</small>
         <input name="name" id="name" value="{{ request.form['name'] }}" required class="device-settings-input">
+        <small class="small-text">{{ _('Descriptive name for this Tronbyt device') }}</small>
       </div>
       <div>
         <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
@@ -52,13 +52,13 @@
     <div class="device-settings-row">
       <div>
         <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
-        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
         <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" class="device-settings-input">
+        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
       </div>
       <div>
         <label for="ws_url" class="device-settings-label">{{ _('WebSocket URL') }}</label>
-        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
         <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}" class="device-settings-input">
+        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
       </div>
     </div>
   </div>

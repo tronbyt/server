@@ -18,9 +18,10 @@
 .firmware-info {
   margin-bottom: 20px;
   padding: 15px;
-  background-color: #f0f8ff;
-  border-left: 4px solid #007acc;
+  background-color: var(--flash-bg);
+  border-left: 4px solid var(--flash-border);
   border-radius: 4px;
+  color: var(--flash-text);
 }
 
 .firmware-management-btn {
@@ -72,28 +73,29 @@
 
 /* Device settings form styles */
 .device-settings-section {
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 20px;
   margin-bottom: 20px;
+  background: var(--content-bg);
 }
 
 .device-settings-section h2 {
   margin-bottom: 20px;
   font-size: 1.5rem;
-  color: #ffffff;
+  color: var(--header-text-color);
   margin-top: 0;
 }
 
 .device-settings-section h3 {
   margin-bottom: 15px;
   font-size: 1.2rem;
-  color: #ffffff;
+  color: var(--header-text-color);
   margin-top: 0;
 }
 
 .device-settings-section-divider {
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-color);
   padding-top: 15px;
   margin-top: 15px;
 }
@@ -102,16 +104,16 @@
   display: block;
   margin-bottom: 5px;
   font-size: 0.9em;
-  color: #b0b0b0;
+  color: var(--page-text);
 }
 
 .device-settings-input {
   width: 100%;
   padding: 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--input-border);
   border-radius: 4px;
-  background-color: #2a2a2a;
-  color: #e0e0e0;
+  background-color: var(--input-bg);
+  color: var(--input-text);
 }
 
 .device-settings-table {
@@ -130,7 +132,7 @@
 }
 
 .small-text {
-  color: #888;
+  color: var(--post-about-text);
   font-size: 0.8em;
   display: block;
   margin-top: 5px;
