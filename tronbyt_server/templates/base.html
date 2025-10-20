@@ -101,9 +101,7 @@
   }
 
   .mobile-menu-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    text-align: center;
     margin-bottom: 2rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
@@ -114,14 +112,6 @@
     color: var(--header-text-color);
   }
 
-  .mobile-menu-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--page-text);
-    cursor: pointer;
-    padding: 0.5rem;
-  }
 
   .mobile-menu ul {
     list-style: none;
@@ -254,7 +244,6 @@
 <div class="mobile-menu" id="mobileMenu">
   <div class="mobile-menu-header">
     <h1><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
-    <button class="mobile-menu-close" onclick="toggleMobileMenu()">&times;</button>
   </div>
   <ul>
     {% if g.user %}

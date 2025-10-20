@@ -42,8 +42,7 @@
         </tr>
         <tr>
           <td>
-            <label>{{ _('Brightness') }}</label> =
-            <span id="brightnessValue-{{ device['id'] }}">{{device['brightness'] }}</span>
+            <label>{{ _('Brightness') }}</label>
             <div class="brightness-panel" id="brightness-panel-{{ device['id'] }}">
               <button type="button" class="brightness-btn {% if device['brightness'] == 0 %}active{% endif %}"
                       data-brightness="0" onclick="setBrightness('{{ device['id'] }}', 0)">0</button>
