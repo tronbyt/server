@@ -267,9 +267,6 @@
     resultsList.id = `${field.id}_results`;
     resultsList.style.listStyleType = "none";
     resultsList.style.padding = "0";
-    resultsList.style.maxWidth = "100%";
-    resultsList.style.wordWrap = "break-word";
-    resultsList.style.overflowWrap = "break-word";
     container.appendChild(resultsList);
 
     return { container, searchInput, resultsList };
@@ -452,9 +449,6 @@
     typeaheadResults.style.maxHeight = "150px";
     typeaheadResults.style.overflowY = "auto";
     typeaheadResults.style.display = "none";
-    typeaheadResults.style.maxWidth = "100%";
-    typeaheadResults.style.wordWrap = "break-word";
-    typeaheadResults.style.overflowWrap = "break-word";
     inputElement.appendChild(typeaheadResults);
 
     typeaheadInput.addEventListener("input", async function () {

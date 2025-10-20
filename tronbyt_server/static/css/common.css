@@ -137,7 +137,6 @@
   cursor: pointer;
   border-radius: 4px;
   font-weight: bold;
-  transition: all 0.2s;
   font-size: 14px;
 }
 
@@ -152,6 +151,7 @@
 .brightness-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .brightness-btn.active {
