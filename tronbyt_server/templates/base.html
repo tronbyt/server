@@ -215,7 +215,7 @@
   }
 </style>
 <nav>
-  <h1 class="w3-sans-serif">{{ _('Tronbyt Manager') }}</h1>
+  <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
   <button class="hamburger" onclick="toggleMobileMenu()">
     <span></span>
     <span></span>
@@ -253,7 +253,7 @@
 <!-- Mobile Menu -->
 <div class="mobile-menu" id="mobileMenu">
   <div class="mobile-menu-header">
-    <h1>{{ _('Tronbyt Manager') }}</h1>
+    <h1><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
     <button class="mobile-menu-close" onclick="toggleMobileMenu()">&times;</button>
   </div>
   <ul>

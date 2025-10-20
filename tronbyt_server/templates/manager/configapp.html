@@ -96,6 +96,20 @@
     overflow-wrap: break-word;
   }
 
+  /* App preview responsive styling */
+  .app-img {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .app-img img {
+    max-width: 100%;
+    height: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   /* Mobile responsive adjustments */
   @media screen and (max-width: 768px) {
     .flex-container {
@@ -118,6 +132,18 @@
 
     .form-table td {
       padding: 8px 4px;
+    }
+
+    /* Make preview responsive on mobile */
+    .app-img {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .app-img img {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
     }
   }
 </style>
@@ -882,10 +908,10 @@
 </script>
 
 <!-- App Preview -->
-<div class="app-img" style="width: 400px;">
-  <img id="previewImage" width="400" 
+<div class="app-img">
+  <img id="previewImage" 
     src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+    alt="{{ _('Preview') }}">
 </div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}

@@ -143,6 +143,57 @@
     margin-top: 20px;
     display: block;
   }
+
+  /* App preview responsive styling */
+  .app-img {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .app-img img {
+    max-width: 100%;
+    height: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Mobile responsive adjustments */
+  @media screen and (max-width: 768px) {
+    .flex-container {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .button-group {
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .toggle-buttons {
+      justify-content: center;
+    }
+
+    .form-table {
+      font-size: 0.9em;
+    }
+
+    .form-table td {
+      padding: 8px 4px;
+    }
+
+    /* Make preview responsive on mobile */
+    .app-img {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .app-img img {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -172,10 +223,10 @@
 </div>
 
 <!-- App Preview -->
-<div class="app-img" style="width: 400px;">
-  <img id="previewImage" width="400" 
+<div class="app-img">
+  <img id="previewImage" 
     src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
-    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+    alt="{{ _('Preview') }}">
 </div>
 
 <form method="post" id="updateForm">
