@@ -1,0 +1,49 @@
+/* Firmware Page - Unique Styles Only */
+
+.firmware-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f0f8ff;
+  border-left: 4px solid #007acc;
+  border-radius: 4px;
+}
+
+.firmware-management-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.connection-type-container {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.url-input-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.url-input-container input {
+  flex: 1;
+  padding: 8px;
+}
+
+.wifi-input-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.wifi-input-container input {
+  flex: 1;
+  padding: 8px;
+}
+
+.swap-colors-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}

@@ -9,7 +9,7 @@
   'other': 'Other'
 } %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/firmware.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/firmware-simple.css') }}">
 <h1>{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}

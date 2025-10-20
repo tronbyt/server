@@ -1,4 +1,5 @@
-/* Update Device Page Styles */
+/* Update Device Page - Unique Styles Only */
+
 .page-title {
   margin: 0;
   font-size: 1.5em;
@@ -94,44 +95,6 @@
 
 small {
   color: #888;
-}
-
-/* Brightness button panel styles */
-.brightness-panel {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
-  max-width: 300px;
-}
-
-.brightness-btn {
-  flex: 0 0 40px;
-  padding: 8px 4px;
-  border: 2px solid #444;
-  cursor: pointer;
-  border-radius: 4px;
-  font-weight: bold;
-  transition: all 0.2s;
-  font-size: 14px;
-}
-
-/* Progressively brighter backgrounds for dark theme (update page default) */
-.brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
-.brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
-.brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
-.brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
-.brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
-.brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
-
-.brightness-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(255,255,255,0.2);
-}
-
-.brightness-btn.active {
-  border-color: #377ba8;
-  border-width: 3px;
-  box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
 }
 
 /* Device settings form styles */
@@ -241,4 +204,23 @@ small {
 .config-management-btn {
   padding: 8px 16px;
   font-size: 14px;
+}
+
+/* Override brightness styles for update page (dark theme default) */
+.brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
+.brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
+.brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
+.brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
+.brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
+.brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
+
+.brightness-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(255,255,255,0.2);
+}
+
+.brightness-btn.active {
+  border-color: #377ba8;
+  border-width: 3px;
+  box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
 }

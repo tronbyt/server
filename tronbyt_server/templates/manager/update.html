@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/update.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/update-simple.css') }}">
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <div class="header-container">
   <h1 class="page-title">{% block title %}{{ _('Edit Device') }}: "{{ device['name'] }}"{% endblock %}</h1>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/configapp.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/configapp-simple.css') }}">
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
 {% endblock %}
