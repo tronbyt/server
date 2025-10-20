@@ -50,6 +50,115 @@
     border-radius: 8px;
   }
 
+  /* Hamburger menu styles */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    z-index: 1001;
+  }
+
+  .hamburger span {
+    width: 25px;
+    height: 3px;
+    background: var(--page-text);
+    margin: 3px 0;
+    transition: 0.3s;
+    border-radius: 2px;
+  }
+
+  .hamburger.active span:nth-child(1) {
+    transform: rotate(-45deg) translate(-5px, 6px);
+  }
+
+  .hamburger.active span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .hamburger.active span:nth-child(3) {
+    transform: rotate(45deg) translate(-5px, -6px);
+  }
+
+  .mobile-menu {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: var(--content-bg);
+    z-index: 1000;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .mobile-menu.active {
+    display: block;
+  }
+
+  .mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .mobile-menu h1 {
+    margin: 0;
+    color: var(--header-text-color);
+  }
+
+  .mobile-menu-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--page-text);
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+
+  .mobile-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .mobile-menu ul li {
+    margin-bottom: 0.5rem;
+  }
+
+  .mobile-menu ul li a {
+    display: block;
+    padding: 1rem;
+    color: var(--link-color);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    border: 1px solid var(--border-color);
+  }
+
+  .mobile-menu ul li a:hover {
+    background: var(--secondary-color);
+  }
+
+  .mobile-menu .theme-toggle-container {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .mobile-menu .theme-toggle {
+    justify-content: center;
+    margin-left: 0;
+    padding: 1rem;
+  }
+
   /* Media queries for different screen sizes */
   @media screen and (max-width: 768px) {
     /* General mobile improvements */
@@ -59,6 +168,22 @@
 
     .content {
       padding: 0 0.5rem 0.5rem;
+    }
+
+    /* Show hamburger menu on mobile */
+    .hamburger {
+      display: flex;
+    }
+
+    /* Hide desktop navigation on mobile */
+    nav ul {
+      display: none;
+    }
+
+    /* Keep nav title visible */
+    nav h1 {
+      flex: 1;
+      margin: 0;
     }
   }
 
@@ -74,74 +199,6 @@
 
     .w3-padding {
       padding: 8px !important;
-    }
-
-    /* Fix navigation overflow on mobile */
-    nav {
-      flex-direction: column;
-      align-items: stretch;
-      padding: 0.5rem;
-    }
-
-    nav h1 {
-      text-align: center;
-      margin-bottom: 0.5rem;
-      font-size: 1.2em;
-    }
-
-    nav ul {
-      flex-direction: column;
-      width: 100%;
-    }
-
-    nav ul li {
-      width: 100%;
-    }
-
-    nav ul li a, nav ul li span {
-      text-align: center;
-      padding: 0.75rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    nav ul li:last-child a, nav ul li:last-child span {
-      border-bottom: none;
-    }
-
-    .theme-toggle-container {
-      width: 100%;
-    }
-
-    .theme-toggle {
-      justify-content: center;
-      margin-left: 0;
-      padding: 0.75rem;
-      border-top: 1px solid var(--border-color);
-    }
-  }
-
-  /* Extra small screens (iPhone 5/SE and smaller) */
-  @media screen and (max-width: 375px) {
-    nav h1 {
-      font-size: 1.1em;
-    }
-
-    nav ul li a, nav ul li span {
-      padding: 0.6rem;
-      font-size: 0.9em;
-    }
-
-    .theme-toggle {
-      padding: 0.6rem;
-    }
-
-    .theme-toggle label {
-      font-size: 0.8em;
-    }
-
-    .theme-toggle select {
-      font-size: 0.8em;
-      padding: 2px 4px;
     }
   }
 
@@ -159,6 +216,11 @@
 </style>
 <nav>
   <h1 class="w3-sans-serif">{{ _('Tronbyt Manager') }}</h1>
+  <button class="hamburger" onclick="toggleMobileMenu()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
   <ul>
     {% if g.user %}
     <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
@@ -187,6 +249,41 @@
     {% endif %}
   </ul>
 </nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <h1>{{ _('Tronbyt Manager') }}</h1>
+    <button class="mobile-menu-close" onclick="toggleMobileMenu()">&times;</button>
+  </div>
+  <ul>
+    {% if g.user %}
+    <li><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()">{{ _('Home') }}</a></li>
+    {% if g.user['username'] == 'admin' %}
+    <li><a href="{{ url_for('auth.register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    {% endif %}
+    <li><a href="{{ url_for('auth.edit') }}" onclick="closeMobileMenu()">{{ g.user['username'] }}</a></li>
+    <li><a href="{{ url_for('auth.logout') }}" onclick="closeMobileMenu()">{{ _('Log Out') }}</a></li>
+    {% if g.user %}
+    <li class="theme-toggle-container">
+      <div class="theme-toggle">
+        <label for="mobile-theme-select">{{ _('Theme:') }}</label>
+        <select id="mobile-theme-select" name="theme">
+          <option value="light">{{ _('Light') }}</option>
+          <option value="dark">{{ _('Dark') }}</option>
+          <option value="system" selected>{{ _('System') }}</option>
+        </select>
+      </div>
+    </li>
+    {% endif %}
+    {% else %}
+    <li><a href="{{ url_for('auth.login') }}" onclick="closeMobileMenu()">{{ _('Log In') }}</a></li>
+    {% if config.get('ENABLE_USER_REGISTRATION') == '1' %}
+    <li><a href="{{ url_for('auth.register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    {% endif %}
+    {% endif %}
+  </ul>
+</div>
 <section class="content">
   <header>
     {% block header %}{% endblock %}
@@ -203,5 +300,49 @@
   {% else %}
   window.currentUserThemePreference = "system"; // Default for guests or if not set
   {% endif %}
+
+  // Mobile menu functions
+  function toggleMobileMenu() {
+    const mobileMenu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    
+    mobileMenu.classList.toggle('active');
+    hamburger.classList.toggle('active');
+    
+    // Prevent body scroll when menu is open
+    if (mobileMenu.classList.contains('active')) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  }
+
+  function closeMobileMenu() {
+    const mobileMenu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    
+    mobileMenu.classList.remove('active');
+    hamburger.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  // Close mobile menu when clicking outside
+  document.addEventListener('click', function(event) {
+    const mobileMenu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    
+    if (mobileMenu.classList.contains('active') && 
+        !mobileMenu.contains(event.target) && 
+        !hamburger.contains(event.target)) {
+      closeMobileMenu();
+    }
+  });
+
+  // Close mobile menu on escape key
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      closeMobileMenu();
+    }
+  });
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
