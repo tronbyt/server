@@ -6,12 +6,7 @@
   box-sizing: border-box;
 }
 
-/* Make preview images responsive */
-.app-img {
-  max-width: 100%;
-  height: auto;
-  width: auto;
-}
+/* App image styles moved to specific app card styles below */
 
 /* Button layout */
 .w3-button {

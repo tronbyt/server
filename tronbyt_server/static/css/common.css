@@ -119,19 +119,7 @@
   box-sizing: border-box;
 }
 
-/* App preview responsive styling */
-.app-img {
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.app-img img {
-  max-width: 100%;
-  height: auto;
-  width: 100%;
-  box-sizing: border-box;
-}
+/* App preview responsive styling removed - handled by manager.css for app cards */
 
 /* Brightness button panel styles */
 .brightness-panel {
@@ -215,15 +203,5 @@
     padding: 8px 4px;
   }
 
-  /* Make preview responsive on mobile */
-  .app-img {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .app-img img {
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-  }
+  /* App preview responsive styling removed - handled by manager.css for app cards */
 }
