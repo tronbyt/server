@@ -73,7 +73,10 @@
         case 'rev-alphabetical':
           return nameB.localeCompare(nameA);
         case 'newest':
-          const dateComparison = dateB.localeCompare(dateA);
+          // Convert date strings to Date objects for proper chronological sorting
+          const dateA_obj = dateA ? new Date(dateA) : new Date(0);
+          const dateB_obj = dateB ? new Date(dateB) : new Date(0);
+          const dateComparison = dateB_obj.getTime() - dateA_obj.getTime();
           return dateComparison === 0 ? nameA.localeCompare(nameB) : dateComparison;
         case 'system':
         default:
