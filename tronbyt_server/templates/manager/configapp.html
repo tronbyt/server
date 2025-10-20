@@ -1,48 +1,8 @@
 {% extends 'base.html' %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/configapp-simple.css') }}">
 <script src="{{ url_for('static', filename='js/location.js') }}"></script>
 <h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
-<!-- style and javascript to show and hide the config -->
-<style>
-  .hidden {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .visible {
-    display: block;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .flex-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-
-  .button-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .button-separator {
-    color: #666;
-    font-weight: bold;
-    margin: 0 5px;
-  }
-
-  .toggle-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-</style>
 {% endblock %}
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
@@ -798,10 +758,10 @@
 </script>
 
 <!-- App Preview -->
-<div class="app-img" style="width: 400px;">
-  <img id="previewImage" width="400" 
+<div class="app-img">
+  <img id="previewImage" 
     src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+    alt="{{ _('Preview') }}">
 </div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}

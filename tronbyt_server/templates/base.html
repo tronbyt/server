@@ -24,62 +24,19 @@
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/w3.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/partials.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/brands.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/solid.min.css') }}">
-<style>
-  /* Global responsive styles */
-  .w3-card-4 {
-    margin: 10px;
-    max-width: 100%;
-  }
-
-  /* Make inputs more touch-friendly on mobile */
-  input[type="range"] {
-    width: 100%;
-    max-width: 300px;
-    height: 30px;
-    /* Larger touch target */
-  }
-
-  /* Responsive buttons */
-  .w3-button {
-    margin: 5px;
-    display: inline-block;
-    width: auto;
-    border-radius: 8px;
-  }
-
-  /* Media queries for different screen sizes */
-  @media screen and (max-width: 600px) {
-    .w3-button {
-      width: 100%;
-      margin: 5px 0;
-    }
-
-    h1 {
-      font-size: 1.5em;
-    }
-
-    .w3-padding {
-      padding: 8px !important;
-    }
-  }
-
-  #brightness {
-    width: 100%;
-    max-width: 300px;
-    margin: 10px 0;
-  }
-
-  #default_interval {
-    width: 100%;
-    max-width: 300px;
-    margin: 10px 0;
-  }
-</style>
 <nav>
-  <h1 class="w3-sans-serif">{{ _('Tronbyt Manager') }}</h1>
+  <button class="hamburger" id="hamburgerButton">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
   <ul>
     {% if g.user %}
     <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
@@ -108,6 +65,44 @@
     {% endif %}
   </ul>
 </nav>
+
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <h1><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
+    <button class="mobile-menu-close" id="mobileMenuClose">&times;</button>
+  </div>
+  <ul>
+    {% if g.user %}
+    <li><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()">{{ _('Home') }}</a></li>
+    {% if g.user['username'] == 'admin' %}
+    <li><a href="{{ url_for('auth.register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    {% endif %}
+    <li><a href="{{ url_for('auth.edit') }}" onclick="closeMobileMenu()">{{ g.user['username'] }}</a></li>
+    <li><a href="{{ url_for('auth.logout') }}" onclick="closeMobileMenu()">{{ _('Log Out') }}</a></li>
+    {% if g.user %}
+    <li class="theme-toggle-container">
+      <div class="theme-toggle">
+        <label for="mobile-theme-select">{{ _('Theme:') }}</label>
+        <select id="mobile-theme-select" name="theme">
+          <option value="light">{{ _('Light') }}</option>
+          <option value="dark">{{ _('Dark') }}</option>
+          <option value="system" selected>{{ _('System') }}</option>
+        </select>
+      </div>
+    </li>
+    {% endif %}
+    {% else %}
+    <li><a href="{{ url_for('auth.login') }}" onclick="closeMobileMenu()">{{ _('Log In') }}</a></li>
+    {% if config.get('ENABLE_USER_REGISTRATION') == '1' %}
+    <li><a href="{{ url_for('auth.register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    {% endif %}
+    {% endif %}
+  </ul>
+</div>
 <section class="content">
   <header>
     {% block header %}{% endblock %}
@@ -124,5 +119,85 @@
   {% else %}
   window.currentUserThemePreference = "system"; // Default for guests or if not set
   {% endif %}
+
+  // Mobile menu state management
+  let isMenuOpen = false;
+
+  function openMobileMenu() {
+    if (!isMenuOpen) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const hamburger = document.querySelector('.hamburger');
+      
+      mobileMenu.classList.add('active');
+      mobileMenuOverlay.classList.add('active');
+      hamburger.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      isMenuOpen = true;
+    }
+  }
+
+  function closeMobileMenu() {
+    if (isMenuOpen) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const hamburger = document.querySelector('.hamburger');
+      
+      mobileMenu.classList.remove('active');
+      mobileMenuOverlay.classList.remove('active');
+      hamburger.classList.remove('active');
+      document.body.style.overflow = '';
+      isMenuOpen = false;
+    }
+  }
+
+  function toggleMobileMenu() {
+    if (isMenuOpen) {
+      closeMobileMenu();
+    } else {
+      openMobileMenu();
+    }
+  }
+
+  // Initialize mobile menu
+  document.addEventListener('DOMContentLoaded', function() {
+    const hamburgerButton = document.getElementById('hamburgerButton');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+
+    // Hamburger button
+    if (hamburgerButton) {
+      hamburgerButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMobileMenu();
+      });
+    }
+
+    // Close button
+    if (mobileMenuClose) {
+      mobileMenuClose.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileMenu();
+      });
+    }
+
+    // Overlay click to close
+    if (mobileMenuOverlay) {
+      mobileMenuOverlay.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileMenu();
+      });
+    }
+
+    // Escape key to close
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && isMenuOpen) {
+        closeMobileMenu();
+      }
+    });
+  });
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
