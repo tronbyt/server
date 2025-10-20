@@ -51,6 +51,17 @@
   }
 
   /* Media queries for different screen sizes */
+  @media screen and (max-width: 768px) {
+    /* General mobile improvements */
+    body {
+      padding: 0.5rem;
+    }
+
+    .content {
+      padding: 0 0.5rem 0.5rem;
+    }
+  }
+
   @media screen and (max-width: 600px) {
     .w3-button {
       width: 100%;
@@ -63,6 +74,74 @@
 
     .w3-padding {
       padding: 8px !important;
+    }
+
+    /* Fix navigation overflow on mobile */
+    nav {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0.5rem;
+    }
+
+    nav h1 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      font-size: 1.2em;
+    }
+
+    nav ul {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    nav ul li {
+      width: 100%;
+    }
+
+    nav ul li a, nav ul li span {
+      text-align: center;
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    nav ul li:last-child a, nav ul li:last-child span {
+      border-bottom: none;
+    }
+
+    .theme-toggle-container {
+      width: 100%;
+    }
+
+    .theme-toggle {
+      justify-content: center;
+      margin-left: 0;
+      padding: 0.75rem;
+      border-top: 1px solid var(--border-color);
+    }
+  }
+
+  /* Extra small screens (iPhone 5/SE and smaller) */
+  @media screen and (max-width: 375px) {
+    nav h1 {
+      font-size: 1.1em;
+    }
+
+    nav ul li a, nav ul li span {
+      padding: 0.6rem;
+      font-size: 0.9em;
+    }
+
+    .theme-toggle {
+      padding: 0.6rem;
+    }
+
+    .theme-toggle label {
+      font-size: 0.8em;
+    }
+
+    .theme-toggle select {
+      font-size: 0.8em;
+      padding: 2px 4px;
     }
   }
 
