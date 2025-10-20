@@ -206,7 +206,7 @@
 </style>
 <nav>
   <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
-  <button class="hamburger" onclick="handleHamburgerClick()">
+  <button class="hamburger" onclick="toggleMobileMenu()">
     <span></span>
     <span></span>
     <span></span>
@@ -290,34 +290,18 @@
   window.currentUserThemePreference = "system"; // Default for guests or if not set
   {% endif %}
 
-  // Mobile menu functions
-  function toggleMobileMenu() {
-    const mobileMenu = document.getElementById('mobileMenu');
-    const hamburger = document.querySelector('.hamburger');
-    
-    mobileMenu.classList.toggle('active');
-    hamburger.classList.toggle('active');
-    
-    // Prevent body scroll when menu is open
-    if (mobileMenu.classList.contains('active')) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  }
+  // Mobile menu state management
+  let isMenuOpen = false;
 
-  function handleHamburgerClick() {
+  function openMobileMenu() {
     const mobileMenu = document.getElementById('mobileMenu');
     const hamburger = document.querySelector('.hamburger');
     
-    // If menu is open (X state), close it
-    if (mobileMenu.classList.contains('active')) {
-      closeMobileMenu();
-    } else {
-      // If menu is closed (hamburger state), open it
+    if (!isMenuOpen) {
       mobileMenu.classList.add('active');
       hamburger.classList.add('active');
       document.body.style.overflow = 'hidden';
+      isMenuOpen = true;
     }
   }
 
@@ -325,9 +309,20 @@
     const mobileMenu = document.getElementById('mobileMenu');
     const hamburger = document.querySelector('.hamburger');
     
-    mobileMenu.classList.remove('active');
-    hamburger.classList.remove('active');
-    document.body.style.overflow = '';
+    if (isMenuOpen) {
+      mobileMenu.classList.remove('active');
+      hamburger.classList.remove('active');
+      document.body.style.overflow = '';
+      isMenuOpen = false;
+    }
+  }
+
+  function toggleMobileMenu() {
+    if (isMenuOpen) {
+      closeMobileMenu();
+    } else {
+      openMobileMenu();
+    }
   }
 
   // Close mobile menu when clicking outside
@@ -335,7 +330,7 @@
     const mobileMenu = document.getElementById('mobileMenu');
     const hamburger = document.querySelector('.hamburger');
     
-    if (mobileMenu.classList.contains('active') && 
+    if (isMenuOpen && 
         !mobileMenu.contains(event.target) && 
         !hamburger.contains(event.target)) {
       closeMobileMenu();
@@ -344,7 +339,7 @@
 
   // Close mobile menu on escape key
   document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && isMenuOpen) {
       closeMobileMenu();
     }
   });
