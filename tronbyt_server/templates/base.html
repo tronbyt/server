@@ -206,7 +206,7 @@
 </style>
 <nav>
   <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
-  <button class="hamburger" onclick="toggleMobileMenu()">
+  <button class="hamburger" onclick="handleHamburgerClick()">
     <span></span>
     <span></span>
     <span></span>
@@ -303,6 +303,19 @@
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+    }
+  }
+
+  function handleHamburgerClick() {
+    const mobileMenu = document.getElementById('mobileMenu');
+    const hamburger = document.querySelector('.hamburger');
+    
+    // If menu is open (X state), close it
+    if (mobileMenu.classList.contains('active')) {
+      closeMobileMenu();
+    } else {
+      // If menu is closed (hamburger state), open it
+      toggleMobileMenu();
     }
   }
 
