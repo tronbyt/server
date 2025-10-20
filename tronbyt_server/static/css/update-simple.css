@@ -25,7 +25,7 @@
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #1e1e1e;
+  background-color: var(--content-bg);
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
 }
@@ -33,7 +33,7 @@
 .form-container h2 {
   margin-bottom: 20px;
   font-size: 1.5rem;
-  color: #ffffff;
+  color: var(--page-text);
 }
 
 .form-group {
@@ -44,7 +44,7 @@
   display: block;
   font-weight: bold;
   margin-bottom: 5px;
-  color: #b0b0b0;
+  color: var(--page-text);
 }
 
 .form-group input,
@@ -52,11 +52,11 @@
 .form-group textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #444;
+  border: 1px solid var(--input-border);
   border-radius: 4px;
   font-size: 1rem;
-  background-color: #2a2a2a;
-  color: #e0e0e0;
+  background-color: var(--input-bg);
+  color: var(--input-text);
 }
 
 .form-group input[type="range"] {
@@ -70,7 +70,7 @@
   width: 50px;
   text-align: center;
   font-weight: bold;
-  color: #ffffff;
+  color: var(--page-text);
 }
 
 .form-actions {
@@ -94,12 +94,12 @@
 }
 
 small {
-  color: #888;
+  color: var(--post-about-text);
 }
 
 /* Device settings form styles */
 .device-settings-section {
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 20px;
   margin-bottom: 20px;
@@ -127,7 +127,7 @@ small {
 }
 
 .device-settings-section-divider {
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-color);
   padding-top: 15px;
 }
 
@@ -184,7 +184,7 @@ small {
 }
 
 .small-text {
-  color: #888;
+  color: var(--post-about-text);
   font-size: 0.8em;
   display: block;
   margin-top: 5px;
