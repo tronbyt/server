@@ -19,6 +19,7 @@
   let searchFilter = '';
   let hideInstalled = false;
   let hideBroken = false;
+  let isProcessing = false;
 
   // Debounce function to limit function calls
   function debounce(func, wait) {
@@ -36,7 +37,7 @@
   // Optimized search with debouncing
   const debouncedSearch = debounce((searchId) => {
     applyFilters();
-  }, 150);
+  }, 100);
 
   function searchApps(searchId, gridId) {
     debouncedSearch(searchId);
@@ -58,8 +59,35 @@
   }
 
   // Optimized sorting function
-  function sortItems(items) {
-    return items.sort((a, b) => {
+  function sortItems(items, sortTypeParam = null) {
+    const currentSortType = sortTypeParam || sortType;
+    
+    // Parse date function for newest sort
+    const parseDate = (dateStr) => {
+      if (!dateStr) return new Date(0);
+      // Handle format "YYYY-MM-DD HH:MM"
+      const parts = dateStr.split(' ');
+      if (parts.length === 2) {
+        const [datePart, timePart] = parts;
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hour, minute] = timePart.split(':').map(Number);
+        return new Date(year, month - 1, day, hour, minute);
+      }
+      return new Date(dateStr);
+    };
+    
+    // Debug logging for newest sort
+    if (currentSortType === 'newest') {
+      console.log('=== NEWEST SORT DEBUG ===');
+      console.log('First 20 items before sorting:');
+      items.slice(0, 20).forEach((item, index) => {
+        const name = item.getAttribute('data-name');
+        const date = item.getAttribute('data-date');
+        console.log(`${index + 1}. ${name} - Date: ${date}`);
+      });
+    }
+    
+    const sortedItems = items.sort((a, b) => {
       const nameA = a.getAttribute('data-name');
       const nameB = b.getAttribute('data-name');
       const installedA = a.getAttribute('data-installed') === 'true';
@@ -67,15 +95,15 @@
       const dateA = a.getAttribute('data-date') || '';
       const dateB = b.getAttribute('data-date') || '';
 
-      switch (sortType) {
+      switch (currentSortType) {
         case 'alphabetical':
           return nameA.localeCompare(nameB);
         case 'rev-alphabetical':
           return nameB.localeCompare(nameA);
         case 'newest':
           // Convert date strings to Date objects for proper chronological sorting
-          const dateA_obj = dateA ? new Date(dateA) : new Date(0);
-          const dateB_obj = dateB ? new Date(dateB) : new Date(0);
+          const dateA_obj = parseDate(dateA);
+          const dateB_obj = parseDate(dateB);
           const dateComparison = dateB_obj.getTime() - dateA_obj.getTime();
           return dateComparison === 0 ? nameA.localeCompare(nameB) : dateComparison;
         case 'system':
@@ -85,6 +113,20 @@
           return nameA.localeCompare(nameB);
       }
     });
+    
+    // Debug logging for newest sort - show results
+    if (currentSortType === 'newest') {
+      console.log('First 20 items after sorting:');
+      sortedItems.slice(0, 20).forEach((item, index) => {
+        const name = item.getAttribute('data-name');
+        const date = item.getAttribute('data-date');
+        const parsedDate = parseDate(date);
+        console.log(`${index + 1}. ${name} - Date: ${date} (Parsed: ${parsedDate.toISOString()})`);
+      });
+      console.log('=== END NEWEST SORT DEBUG ===');
+    }
+    
+    return sortedItems;
   }
 
   // Function to show all items in a grid
@@ -96,104 +138,115 @@
     });
   }
 
-  // Optimized filtering with virtual scrolling
+  // Robust filtering system that handles all combinations
   function applyFilters() {
-    if (isInitialLoad) return;
-
-    // Use requestAnimationFrame to batch DOM updates
+    if (isInitialLoad || isProcessing) return;
+    
+    isProcessing = true;
+    
+    // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
     requestAnimationFrame(() => {
-      const grids = document.querySelectorAll('.app-grid');
-      
-      grids.forEach(grid => {
-        if (!grid) return;
-        const searchId = grid.id.replace('_app_grid', '_search');
+      try {
+        const grids = document.querySelectorAll('.app-grid');
         
-        // Get current filter values
-        const searchInput = document.getElementById(searchId);
-        const currentSearchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
-        const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
-
-        // Get all app items from the grid (including hidden ones)
-        const allItems = Array.from(grid.getElementsByClassName('app-item'));
-        
-        // Debug logging
-        console.log(`Grid: ${grid.id}, Search: "${currentSearchFilter}", HideInstalled: ${currentHideInstalled}, HideBroken: ${currentHideBroken}`);
-        
-        // If no search filter and no other filters, show all items
-        if (!currentSearchFilter && !currentHideInstalled && !currentHideBroken) {
-          console.log('Showing all items - no filters active');
-          showAllItems(grid);
-          // Reset virtual scrolling state if it exists
-          if (grid._virtualScrolling) {
-            grid._virtualScrolling.visibleEnd = Math.min(grid._virtualScrolling.ITEMS_PER_PAGE, allItems.length);
-            grid._virtualScrolling.isLoading = false;
-          }
-          return;
-        }
-        
-        // Filter items based on search and other criteria
-        const visibleItems = allItems.filter(item => {
-          const isInstalled = item.getAttribute('data-installed') === 'true';
-          const isBroken = item.getAttribute('data-broken') === 'true';
-          const name = item.getAttribute('data-name').toLowerCase();
-          const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
-
-          // Apply search filter (search both name and summary)
-          if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
-            return false;
-          }
+        grids.forEach(grid => {
+          if (!grid) return;
+          const searchId = grid.id.replace('_app_grid', '_search');
           
-          // Apply other filters
-          if (currentHideInstalled && isInstalled) return false;
-          if (currentHideBroken && isBroken) return false;
+          // Get current filter values
+          const searchInput = document.getElementById(searchId);
+          const currentSearchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
+          const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
+          const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
+          const currentSortType = document.getElementById('sort_' + searchId)?.value || 'system';
 
-          return true;
-        });
-
-        // Sort visible items
-        const sortedItems = sortItems(visibleItems);
-
-        // Hide all items first
-        allItems.forEach(item => {
-          item.style.display = 'none';
-        });
-
-        // Show only filtered and sorted items
-        sortedItems.forEach(item => {
-          item.style.display = 'block';
-        });
-
-        // Update virtual scrolling state to work with filtered results
-        if (grid._virtualScrolling) {
-          // Reset virtual scrolling to work with filtered items
-          const filteredItems = sortedItems;
-          const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
+          // Get all app items from the grid
+          const allItems = Array.from(grid.getElementsByClassName('app-item'));
           
-          // Hide items beyond the first page of filtered results
-          filteredItems.forEach((item, index) => {
-            if (index >= ITEMS_PER_PAGE) {
+          // Filter items based on all criteria
+          const filteredItems = allItems.filter(item => {
+            const isInstalled = item.getAttribute('data-installed') === 'true';
+            const isBroken = item.getAttribute('data-broken') === 'true';
+            const name = item.getAttribute('data-name').toLowerCase();
+            const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
+
+            // Apply search filter (search both name and summary)
+            if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
+              return false;
+            }
+            
+            // Apply hide filters
+            if (currentHideInstalled && isInstalled) return false;
+            if (currentHideBroken && isBroken) return false;
+
+            return true;
+          });
+
+          // Sort filtered items
+          const sortedItems = sortItems(filteredItems, currentSortType);
+
+          // Reorder DOM elements to match the sorted order
+          sortedItems.forEach((item, index) => {
+            grid.appendChild(item);
+            item.style.display = 'block';
+          });
+
+          // Hide any remaining items that weren't in the filtered list
+          allItems.forEach(item => {
+            if (!sortedItems.includes(item)) {
               item.style.display = 'none';
             }
           });
-          
-          // Update virtual scrolling state
-          grid._virtualScrolling.visibleEnd = Math.min(ITEMS_PER_PAGE, filteredItems.length);
-          grid._virtualScrolling.isLoading = false;
-          grid._virtualScrolling.items = filteredItems;
-        }
 
-        // Update visibility and classes
-        allItems.forEach(item => {
-          if (!item) return;
-          const isInstalled = item.getAttribute('data-installed') === 'true';
-          if (isInstalled) {
-            item.classList.add('installed');
-          } else {
-            item.classList.remove('installed');
-          }
+          // Update virtual scrolling state
+          updateVirtualScrolling(grid, sortedItems, currentSearchFilter);
+
+          // Update installed class states
+          updateItemStates(allItems);
         });
+      } finally {
+        isProcessing = false;
+      }
+    });
+  }
+
+  // Update virtual scrolling based on current state
+  function updateVirtualScrolling(grid, sortedItems, hasSearchFilter) {
+    if (!grid._virtualScrolling) return;
+    
+    const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
+    const shouldUseVirtualScrolling = sortedItems.length > ITEMS_PER_PAGE && !hasSearchFilter;
+    
+    if (shouldUseVirtualScrolling) {
+      // Hide items beyond the first page
+      sortedItems.forEach((item, index) => {
+        if (index >= ITEMS_PER_PAGE) {
+          item.style.display = 'none';
+        }
       });
+      
+      // Update virtual scrolling state
+      grid._virtualScrolling.visibleEnd = Math.min(ITEMS_PER_PAGE, sortedItems.length);
+      grid._virtualScrolling.isLoading = false;
+      grid._virtualScrolling.items = sortedItems;
+    } else {
+      // Show all items
+      grid._virtualScrolling.visibleEnd = sortedItems.length;
+      grid._virtualScrolling.isLoading = false;
+      grid._virtualScrolling.items = sortedItems;
+    }
+  }
+
+  // Update item states (installed class, etc.)
+  function updateItemStates(allItems) {
+    allItems.forEach(item => {
+      if (!item) return;
+      const isInstalled = item.getAttribute('data-installed') === 'true';
+      if (isInstalled) {
+        item.classList.add('installed');
+      } else {
+        item.classList.remove('installed');
+      }
     });
   }
 
@@ -245,14 +298,20 @@
         ITEMS_PER_PAGE
       };
       
-      // Initially hide items beyond the first page
-      if (items && items.length) {
-        items.forEach((item, index) => {
-          if (!item) return;
-          if (index >= ITEMS_PER_PAGE) {
-            item.style.display = 'none';
-          }
-        });
+      // Initially hide items beyond the first page only for system sort and large lists
+      if (items && items.length > ITEMS_PER_PAGE) {
+        // Check if we should apply virtual scrolling initially
+        const shouldApplyVirtualScrolling = sortType === 'system' || 
+          (document.getElementById('system_search') && !document.getElementById('system_search').value.trim());
+        
+        if (shouldApplyVirtualScrolling) {
+          items.forEach((item, index) => {
+            if (!item) return;
+            if (index >= ITEMS_PER_PAGE) {
+              item.style.display = 'none';
+            }
+          });
+        }
       }
       
       // Function to load more items
@@ -263,11 +322,11 @@
         const nextStart = visibleEnd;
         const nextEnd = Math.min(visibleEnd + ITEMS_PER_PAGE, items.length);
         
-        // Use requestAnimationFrame to batch DOM updates
+        // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
         requestAnimationFrame(() => {
           for (let i = nextStart; i < nextEnd; i++) {
             if (items[i]) {
-              items[i].style.display = '';
+              items[i].style.display = 'block';
             }
           }
           visibleEnd = nextEnd;
@@ -296,11 +355,11 @@
         const nextStart = currentVisibleEnd;
         const nextEnd = Math.min(currentVisibleEnd + ITEMS_PER_PAGE, filteredItems.length);
         
-        // Use requestAnimationFrame to batch DOM updates
+        // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
         requestAnimationFrame(() => {
           for (let i = nextStart; i < nextEnd; i++) {
             if (filteredItems[i]) {
-              filteredItems[i].style.display = '';
+              filteredItems[i].style.display = 'block';
             }
           }
           grid._virtualScrolling.visibleEnd = nextEnd;
@@ -526,23 +585,15 @@
       document.body.classList.add('content-loaded');
       isInitialLoad = false;
       
-      // Apply initial filters (including the default "hide broken apps" filter)
+      // Initialize virtual scrolling first
+      setupVirtualScrolling();
+      
+      // Initialize lazy loading
+      setupLazyLoading();
+      
+      // Apply initial filters and sorting based on current state
       applyFilters();
     }, 100);
-
-    // Initialize lazy loading
-    setupLazyLoading();
-
-    // Initialize virtual scrolling for large lists
-    setupVirtualScrolling();
-
-    // Initialize filters and sorting for each list
-    const searchIds = ['system_search', 'custom_search'];
-    searchIds.forEach(searchId => {
-      if (document.getElementById(searchId)) {
-        sortApps(searchId);
-      }
-    });
 
     // Optimized click handlers with event delegation
     document.addEventListener('click', function(e) {
