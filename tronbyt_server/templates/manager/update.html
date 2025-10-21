@@ -350,6 +350,14 @@
             <textarea id="curl_example" rows="3" readonly class="device-settings-input" style="font-family: monospace; font-size: 0.9em;"></textarea>
           </td>
         </tr>
+        <tr>
+          <td>
+            <label for="pixlet_example" class="device-settings-label">{{ _('Example pixlet Command') }}</label>
+          </td>
+          <td>
+            <textarea id="pixlet_example" rows="3" readonly class="device-settings-input" style="font-family: monospace; font-size: 0.9em;"></textarea>
+          </td>
+        </tr>
       </table>
     </div>
   </div>
@@ -380,6 +388,9 @@
 
         const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
         document.getElementById("curl_example").value = curl;
+
+        const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
+        document.getElementById("pixlet_example").value = pixlet;
       }
 
       // Update curl command on page load

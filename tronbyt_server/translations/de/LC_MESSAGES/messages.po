@@ -696,6 +696,10 @@ msgstr ""
 msgid "Example curl Command"
 msgstr "Beispiel curl-Befehl"
 
+#: tronbyt_server/templates/manager/update.html:355
+msgid "Example pixlet Command"
+msgstr "Beispiel pixlet-Befehl"
+
 #: tronbyt_server/templates/manager/update.html:257
 msgid "Delete device and ALL apps?"
 msgstr "Gerät und alle Apps löschen?"
