@@ -77,7 +77,9 @@
     };
     
     
-    const sortedItems = items.sort((a, b) => {
+    // Create a copy to avoid mutating the original array
+    const itemsCopy = [...items];
+    const sortedItems = itemsCopy.sort((a, b) => {
       const nameA = a.getAttribute('data-name');
       const nameB = b.getAttribute('data-name');
       const installedA = a.getAttribute('data-installed') === 'true';
@@ -164,17 +166,26 @@
           // Sort filtered items
           const sortedItems = sortItems(filteredItems, currentSortType);
 
-          // Reorder DOM elements to match the sorted order
-          sortedItems.forEach((item, index) => {
-            grid.appendChild(item);
-            item.style.display = 'block';
-          });
+          // Use requestAnimationFrame to prevent UI blocking during DOM reordering
+          requestAnimationFrame(() => {
+            // Batch DOM operations for better performance
+            const fragment = document.createDocumentFragment();
+            
+            // Add sorted items to fragment
+            sortedItems.forEach((item, index) => {
+              fragment.appendChild(item);
+              item.style.display = 'block';
+            });
+            
+            // Append all at once to reduce reflows
+            grid.appendChild(fragment);
 
-          // Hide any remaining items that weren't in the filtered list
-          allItems.forEach(item => {
-            if (!sortedItems.includes(item)) {
-              item.style.display = 'none';
-            }
+            // Hide any remaining items that weren't in the filtered list
+            allItems.forEach(item => {
+              if (!sortedItems.includes(item)) {
+                item.style.display = 'none';
+              }
+            });
           });
 
           // Update virtual scrolling state
