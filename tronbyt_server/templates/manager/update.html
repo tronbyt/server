@@ -114,7 +114,7 @@
           <td>
             <div class="url-input-container">
               <input name="img_url" id="img_url" value="{{ device['img_url'] }}"
-                oninput="updateCurlCommand()">
+                oninput="updateExampleCommands()">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetImgUrl()"
                 title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
             </div>
@@ -139,7 +139,7 @@
     <script>
       function resetImgUrl() {
         document.getElementById('img_url').value = '{{ default_img_url }}';
-        updateCurlCommand(); // Update curl command if it exists
+        updateExampleCommands(); // Update example commands if they exist
       }
 
       function resetWsUrl() {
@@ -339,7 +339,7 @@
           </td>
           <td>
             <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}"
-              oninput="updateCurlCommand()" class="device-settings-input">
+              oninput="updateExampleCommands()" class="device-settings-input">
           </td>
         </tr>
         <tr>
@@ -381,7 +381,7 @@
         }
       }
 
-      function updateCurlCommand() {
+      function updateExampleCommands() {
         const apiKey = document.getElementById("api_key").value.trim();
         const imageUrl = document.getElementById("img_url").value.trim();
         const { server, deviceId } = parseImageUrl(imageUrl);
@@ -394,7 +394,7 @@
       }
 
       // Update curl command on page load
-      document.addEventListener("DOMContentLoaded", updateCurlCommand);
+      document.addEventListener("DOMContentLoaded", updateExampleCommands);
     </script>
 
   <div class="device-settings-section">
