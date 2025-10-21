@@ -335,6 +335,14 @@
       <table class="device-settings-table">
         <tr>
           <td>
+            <label for="device_id" class="device-settings-label">{{ _('Device ID') }}</label>
+          </td>
+          <td>
+            <input id="device_id" value="{{ device['id'] }}" readonly class="device-settings-input">
+          </td>
+        </tr>
+        <tr>
+          <td>
             <label for="api_key" class="device-settings-label">{{ _('Device API Key') }}</label>
           </td>
           <td>

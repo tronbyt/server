@@ -692,6 +692,10 @@ msgstr ""
 "Um zu verhindern, dass die Nachtmodus-App tagsüber angezeigt wird, setzen"
 " Sie sie auf der App-Bearbeitungsseite auf deaktiviert."
 
+#: tronbyt_server/templates/manager/update.html:338
+msgid "Device ID"
+msgstr "Geräte-ID"
+
 #: tronbyt_server/templates/manager/update.html:217
 msgid "Example curl Command"
 msgstr "Beispiel curl-Befehl"
