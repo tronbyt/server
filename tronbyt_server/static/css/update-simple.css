@@ -126,6 +126,13 @@ small {
   padding: 8px;
 }
 
+textarea.device-example-command-input {
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.9em;
+  min-height: auto;
+}
+
 .device-settings-section-divider {
   border-top: 1px solid var(--border-color);
   padding-top: 15px;
