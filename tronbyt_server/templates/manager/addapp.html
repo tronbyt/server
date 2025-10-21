@@ -76,16 +76,6 @@
       return new Date(dateStr);
     };
     
-    // Debug logging for newest sort
-    if (currentSortType === 'newest') {
-      console.log('=== NEWEST SORT DEBUG ===');
-      console.log('First 20 items before sorting:');
-      items.slice(0, 20).forEach((item, index) => {
-        const name = item.getAttribute('data-name');
-        const date = item.getAttribute('data-date');
-        console.log(`${index + 1}. ${name} - Date: ${date}`);
-      });
-    }
     
     const sortedItems = items.sort((a, b) => {
       const nameA = a.getAttribute('data-name');
@@ -114,17 +104,6 @@
       }
     });
     
-    // Debug logging for newest sort - show results
-    if (currentSortType === 'newest') {
-      console.log('First 20 items after sorting:');
-      sortedItems.slice(0, 20).forEach((item, index) => {
-        const name = item.getAttribute('data-name');
-        const date = item.getAttribute('data-date');
-        const parsedDate = parseDate(date);
-        console.log(`${index + 1}. ${name} - Date: ${date} (Parsed: ${parsedDate.toISOString()})`);
-      });
-      console.log('=== END NEWEST SORT DEBUG ===');
-    }
     
     return sortedItems;
   }
