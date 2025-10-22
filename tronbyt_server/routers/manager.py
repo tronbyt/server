@@ -1783,6 +1783,75 @@ async def schema_handler(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@router.post("/{device_id}/reorder_apps", name="reorder_apps")
+def reorder_apps(
+    device_id: DeviceID,
+    dragged_iname: str = Form(...),
+    target_iname: str = Form(...),
+    insert_after: bool = Form(False),
+    user: User = Depends(manager),
+    db_conn: sqlite3.Connection = Depends(get_db),
+) -> Response:
+    """Reorder apps by dragging and dropping."""
+    device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    apps_dict = device.apps
+
+    if dragged_iname not in apps_dict or target_iname not in apps_dict:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="App not found"
+        )
+
+    # Convert apps_dict to a list of app tuples (iname, app_data)
+    apps_list = list(apps_dict.items())
+
+    # Sort the list by app.order, then by iname for stability if orders are not unique
+    apps_list.sort(key=lambda x: (getattr(x[1], "order", 0), x[0]))
+
+    # Find the indices of the dragged and target apps
+    dragged_idx = -1
+    target_idx = -1
+
+    for i, (app_iname, app_data) in enumerate(apps_list):
+        if app_iname == dragged_iname:
+            dragged_idx = i
+        if app_iname == target_iname:
+            target_idx = i
+
+    if dragged_idx == -1 or target_idx == -1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="App not found in list"
+        )
+
+    # Don't allow moving to the same position
+    if dragged_idx == target_idx:
+        return Response("OK", status_code=status.HTTP_200_OK)
+
+    # Calculate the new position
+    if insert_after:
+        new_idx = target_idx + 1
+    else:
+        new_idx = target_idx
+
+    # Adjust for the fact that we're removing the dragged item first
+    if dragged_idx < new_idx:
+        new_idx -= 1
+
+    # Move the app
+    moved_app = apps_list.pop(dragged_idx)
+    apps_list.insert(new_idx, moved_app)
+
+    # Update 'order' attribute for all apps
+    for i, (app_iname, app_data) in enumerate(apps_list):
+        app_data.order = i
+
+    db.save_user(db_conn, user)
+
+    return Response("OK", status_code=status.HTTP_200_OK)
+
+
 @router.get("/health", name="health")
 def health() -> Response:
     """Health check endpoint."""
