@@ -1410,25 +1410,36 @@ def next_app(
         ):
             app = apps[device["night_mode_app"]]
             is_night_mode_app = True
-        elif (
-            device.get("interstitial_enabled", False)
-            and device.get("interstitial_app", "") in apps.keys()
-            and not device.get("interstitial_shown", False)
-        ):
-            # Show interstitial app
-            app = apps[device["interstitial_app"]]
-            is_interstitial_app = True
-            device["interstitial_shown"] = True
         else:
-            # Show next regular app
-            if last_app_index + 1 < len(apps_list):
-                app = apps_list[last_app_index + 1]  # add 1 to get the next app
+            # Create expanded apps list with interstitial apps inserted
+            expanded_apps_list = []
+            interstitial_app_iname = device.get("interstitial_app", "")
+            interstitial_enabled = device.get("interstitial_enabled", False)
+            
+            for i, regular_app in enumerate(apps_list):
+                # Add the regular app
+                expanded_apps_list.append(regular_app)
+                
+                # Add interstitial app after each regular app (except the last one)
+                if (interstitial_enabled 
+                    and interstitial_app_iname in apps.keys() 
+                    and i < len(apps_list) - 1):
+                    interstitial_app = apps[interstitial_app_iname]
+                    expanded_apps_list.append(interstitial_app)
+            
+            # Use the expanded list for cycling
+            if last_app_index + 1 < len(expanded_apps_list):
+                app = expanded_apps_list[last_app_index + 1]
                 last_app_index += 1
             else:
-                app = apps_list[0]  # go to the beginning
+                app = expanded_apps_list[0]
                 last_app_index = 0
-            # Reset interstitial_shown when showing regular app
-            device["interstitial_shown"] = False
+            
+            # Check if this is an interstitial app
+            if (interstitial_enabled 
+                and interstitial_app_iname in apps.keys() 
+                and app["iname"] == interstitial_app_iname):
+                is_interstitial_app = True
 
     # For pinned apps, always display them regardless of enabled/schedule status
     # For interstitial apps, always display them regardless of enabled/schedule status
@@ -1472,9 +1483,6 @@ def next_app(
             f"index {last_app_index} -- bright {b} -- dwell_secs {s}{immediate_text}"
         )
         db.save_last_app_index(device_id, last_app_index)
-        # Save device state if we modified interstitial_shown
-        if is_interstitial_app or (not is_pinned_app and not is_night_mode_app):
-            db.save_user(user)
         return response
 
     current_app.logger.error(f"file {webp_path} not found")

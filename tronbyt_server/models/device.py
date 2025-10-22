@@ -44,7 +44,6 @@ class Device(TypedDict, total=False):
     pinned_app: str  # iname of the pinned app, if any
     interstitial_enabled: bool
     interstitial_app: str  # iname of the interstitial app, if any
-    interstitial_shown: bool  # tracks if we just showed interstitial app
 
 
 def validate_timezone(tz: str) -> Optional[ZoneInfo]:
