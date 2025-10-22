@@ -1,126 +1,11 @@
 {% extends 'base.html' %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/update-simple.css') }}">
 <script src="{{ url_for('static', path='js/location.js') }}"></script>
-<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; width: 100%;">
-  <h1 class="page-title" style="margin: 0; font-size: 1.5em;">{% block title %}{{ _('Edit Device') }}: "{{ device.name }}"{% endblock %}</h1>
-  <div id="header-buttons" style="display: flex; gap: 8px; align-items: center;"></div>
+<div class="header-container">
+  <h1 class="page-title">{% block title %}{{ _('Edit Device') }}: "{{ device['name'] }}"{% endblock %}</h1>
+  <div id="header-buttons"></div>
 </div>
-<style>
-  .form-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #1e1e1e;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-  }
-
-  .form-container h2 {
-    margin-bottom: 20px;
-    font-size: 1.5rem;
-    color: #ffffff;
-  }
-
-  .form-group {
-    margin-bottom: 15px;
-  }
-
-  .form-group label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #b0b0b0;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #444;
-    border-radius: 4px;
-    font-size: 1rem;
-    background-color: #2a2a2a;
-    color: #e0e0e0;
-  }
-
-  .form-group input[type="range"] {
-    width: calc(100% - 50px);
-    display: inline-block;
-    vertical-align: middle;
-  }
-
-  .form-group output {
-    display: inline-block;
-    width: 50px;
-    text-align: center;
-    font-weight: bold;
-    color: #ffffff;
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-  }
-
-  .form-actions .w3-button {
-    padding: 10px 20px;
-    font-size: 1rem;
-  }
-
-  .config-links {
-    margin-top: 30px;
-    text-align: center;
-  }
-
-  .config-links a {
-    margin: 0 10px;
-  }
-
-
-  small {
-    color: #888;
-  }
-
-  /* Brightness button panel styles */
-  .brightness-panel {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-    max-width: 300px;
-  }
-
-  .brightness-btn {
-    flex: 0 0 40px;
-    padding: 8px 4px;
-    border: 2px solid #444;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: bold;
-    transition: all 0.2s;
-    font-size: 14px;
-  }
-
-  /* Progressively brighter backgrounds for dark theme (update page default) */
-  .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
-  .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
-  .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
-  .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
-  .brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
-  .brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
-
-  .brightness-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 4px rgba(255,255,255,0.2);
-  }
-
-  .brightness-btn.active {
-    border-color: #377ba8;
-    border-width: 3px;
-    box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
-  }
-</style>
 <script>
   function setBrightnessUpdate(brightness) {
     document.getElementById('brightness').value = brightness;
@@ -166,9 +51,8 @@
     // Create Save button
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
-    saveBtn.className = 'w3-button w3-green';
+    saveBtn.className = 'w3-button w3-green config-management-btn';
     saveBtn.textContent = '{{ _('Save') }}';
-    saveBtn.style.cssText = 'padding: 8px 16px; font-size: 14px; margin-right: 8px;';
     saveBtn.onclick = function() {
       if (confirm('{{ _('Save device settings?') }}')) {
         form.submit();
@@ -178,12 +62,11 @@
     // Create Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
-    deleteBtn.className = 'w3-button w3-red';
+    deleteBtn.className = 'w3-button w3-red config-management-btn';
     deleteBtn.textContent = '{{ _('Delete') }}';
-    deleteBtn.style.cssText = 'padding: 8px 16px; font-size: 14px;';
     deleteBtn.onclick = function() {
       if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) {
-        form.action = "{{ url_for('delete', device_id=device.id) }}";
+        form.action = "{{ url_for('delete', device_id=device['id']) }}";
         form.method = 'post';
         form.submit();
       }
@@ -198,54 +81,54 @@
 <form method="post" id="device-form">
   <h1>{{ _('Device Settings') }}</h1>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Basic Information') }}</h2>
 
-    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-      <div style="flex: 1;">
-        <label for="name" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Device Name') }}</label>
-        <input name="name" id="name" value="{{ device.name }}" required style="width: 100%; padding: 8px;">
+    <div class="device-settings-row">
+      <div>
+        <label for="name" class="device-settings-label">{{ _('Device Name') }}</label>
+        <input name="name" id="name" value="{{ request.form['name'] or device['name'] }}" required class="device-settings-input">
       </div>
-      <div style="flex: 1;">
-        <label for="device_type" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Device Type') }}</label>
-        <select name="device_type" id="device_type" style="width: 100%; padding: 8px;">
-          <option value="tidbyt_gen1" {% if device.type=='tidbyt_gen1' %}selected{% endif %}>Tidbyt Gen1</option>
-          <option value="tidbyt_gen2" {% if device.type=='tidbyt_gen2' %}selected{% endif %}>Tidbyt Gen2</option>
-          <option value="pixoticker" {% if device.type=='pixoticker' %}selected{% endif %}>Pixoticker</option>
-          <option value="tronbyt_s3" {% if device.type=='tronbyt_s3' %}selected{% endif %}>Tronbyt S3</option>
-          <option value="tronbyt_s3_wide" {% if device.type=='tronbyt_s3_wide' %}selected{% endif %}>Tronbyt S3 Wide</option>
-          <option value="raspberrypi" {% if device.type=='raspberrypi' %}selected{% endif %}>Raspberry Pi</option>
-          <option value="other" {% if device.type=='other' %}selected{% endif %}>Other</option>
+      <div>
+        <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
+        <select name="device_type" id="device_type" class="device-settings-input">
+          <option value="tidbyt_gen1" {% if device.get('type')=='tidbyt_gen1' %}selected{% endif %}>Tidbyt Gen1</option>
+          <option value="tidbyt_gen2" {% if device.get('type')=='tidbyt_gen2' %}selected{% endif %}>Tidbyt Gen2</option>
+          <option value="pixoticker" {% if device.get('type')=='pixoticker' %}selected{% endif %}>Pixoticker</option>
+          <option value="tronbyt_s3" {% if device.get('type')=='tronbyt_s3' %}selected{% endif %}>Tronbyt S3</option>
+          <option value="tronbyt_s3_wide" {% if device.get('type')=='tronbyt_s3_wide' %}selected{% endif %}>Tronbyt S3 Wide</option>
+          <option value="raspberrypi" {% if device.get('type')=='raspberrypi' %}selected{% endif %}>Raspberry Pi</option>
+          <option value="other" {% if device.get('type')=='other' %}selected{% endif %}>Other</option>
         </select>
       </div>
     </div>
 
-    <div style="border-top: 1px solid #333; padding-top: 15px;">
+    <div class="device-settings-section-divider">
       <h3>{{ _('Connection URLs') }}</h3>
 
-      <table style="width: 100%; border-spacing: 0 10px;">
+      <table class="device-settings-table">
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="img_url" style="font-size: 0.9em;">{{ _('Image URL') }}</label>
+          <td>
+            <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
           </td>
-          <td style="width: 70%;">
-            <div style="display: flex; gap: 10px; align-items: center;">
-              <input name="img_url" id="img_url" value="{{ device.img_url }}" style="flex: 1; padding: 8px;"
-                oninput="updateCurlCommand()">
-              <button type="button" class="w3-button w3-small w3-gray" onclick="resetImgUrl()"
-                title="{{ _('Reset to default') }}" style="padding: 8px 12px; font-size: 12px;">{{ _('Reset') }}</button>
+          <td>
+            <div class="url-input-container">
+              <input name="img_url" id="img_url" value="{{ device['img_url'] }}"
+                oninput="updateExampleCommands()">
+              <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetImgUrl()"
+                title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
             </div>
           </td>
         </tr>
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="ws_url" style="font-size: 0.9em;">{{ _('Websocket URL') }}</label>
+          <td>
+            <label for="ws_url" class="device-settings-label">{{ _('Websocket URL') }}</label>
           </td>
-          <td style="width: 70%;">
-            <div style="display: flex; gap: 10px; align-items: center;">
-              <input name="ws_url" id="ws_url" value="{{ device.ws_url }}" style="flex: 1; padding: 8px;">
-              <button type="button" class="w3-button w3-small w3-gray" onclick="resetWsUrl()"
-                title="{{ _('Reset to default') }}" style="padding: 8px 12px; font-size: 12px;">{{ _('Reset') }}</button>
+          <td>
+            <div class="url-input-container">
+              <input name="ws_url" id="ws_url" value="{{ device['ws_url'] }}">
+              <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetWsUrl()"
+                title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
             </div>
           </td>
         </tr>
@@ -256,7 +139,7 @@
     <script>
       function resetImgUrl() {
         document.getElementById('img_url').value = '{{ default_img_url }}';
-        updateCurlCommand(); // Update curl command if it exists
+        updateExampleCommands(); // Update example commands if they exist
       }
 
       function resetWsUrl() {
@@ -264,46 +147,46 @@
       }
     </script>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Display Settings') }}</h2>
 
-    <table style="width: 100%; border-spacing: 0 10px;">
+    <table class="device-settings-table">
       <tr>
-        <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-          <label for="default_interval" style="font-size: 0.9em;">{{ _('App Cycle Time (Seconds)') }}</label>
+        <td>
+          <label for="default_interval" class="device-settings-label">{{ _('App Cycle Time (Seconds)') }}</label>
         </td>
-        <td style="width: 70%;">
-          <div style="display: flex; align-items: center; gap: 10px;">
+        <td>
+          <div class="range-container">
             <input type="range" name="default_interval" id="default_interval" min="1" max="30"
-              value="{{ device.default_interval }}" oninput="this.nextElementSibling.value = this.value" style="flex: 1;">
-            <output style="min-width: 30px; text-align: center; font-weight: bold;">{{ device.default_interval }}</output>
+              value="{{ device['default_interval'] }}" oninput="this.nextElementSibling.value = this.value">
+            <output class="range-output">{{ device['default_interval'] }}</output>
           </div>
         </td>
       </tr>
     </table>
 
-    <div style="border-top: 1px solid #333; padding-top: 15px;">
+    <div class="device-settings-section-divider">
       <h3>{{ _('Brightness Settings') }}</h3>
 
-      <table style="width: 100%; border-spacing: 0 10px;">
+      <table class="device-settings-table">
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="brightness" style="font-size: 0.9em;">{{ _('Brightness') }}</label>
+          <td>
+            <label for="brightness" class="device-settings-label">{{ _('Brightness') }}</label>
           </td>
-          <td style="width: 70%;">
-            <input type="hidden" name="brightness" id="brightness" value="{{ device.brightness }}">
+          <td>
+            <input type="hidden" name="brightness" id="brightness" value="{{ device['brightness'] }}">
             <div class="brightness-panel" id="brightness-panel">
-              <button type="button" class="brightness-btn {% if device.brightness == 0 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device['brightness'] == 0 %}active{% endif %}"
                       data-brightness="0" onclick="setBrightnessUpdate(0)">0</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 1 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device['brightness'] == 1 %}active{% endif %}"
                       data-brightness="1" onclick="setBrightnessUpdate(1)">1</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 2 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device['brightness'] == 2 %}active{% endif %}"
                       data-brightness="2" onclick="setBrightnessUpdate(2)">2</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 3 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device['brightness'] == 3 %}active{% endif %}"
                       data-brightness="3" onclick="setBrightnessUpdate(3)">3</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 4 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device['brightness'] == 4 %}active{% endif %}"
                       data-brightness="4" onclick="setBrightnessUpdate(4)">4</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 5 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device['brightness'] == 5 %}active{% endif %}"
                       data-brightness="5" onclick="setBrightnessUpdate(5)">5</button>
             </div>
           </td>
@@ -312,115 +195,115 @@
     </div>
   </div>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Night Mode Settings') }}</h2>
 
-    <table style="width: 100%; border-spacing: 0 10px;">
+    <table class="device-settings-table">
       <tr>
-        <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-          <label for="night_mode_enabled" style="font-size: 0.9em;">{{ _('Enable Night Mode') }}</label>
+        <td>
+          <label for="night_mode_enabled" class="device-settings-label">{{ _('Enable Night Mode') }}</label>
         </td>
-        <td style="width: 70%;">
-          <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device.night_mode_enabled %}checked{% endif %}>
+        <td>
+          <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled'] %}checked{% endif %}>
         </td>
       </tr>
     </table>
 
-    <div style="border-top: 1px solid #333; padding-top: 15px;">
+    <div class="device-settings-section-divider">
       <h3>{{ _('Night Mode Configuration') }}</h3>
 
-      <table style="width: 100%; border-spacing: 0 10px;">
+      <table class="device-settings-table">
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="night_start" style="font-size: 0.9em;">{{ _('Night Start Time') }}</label>
+          <td>
+            <label for="night_start" class="device-settings-label">{{ _('Night Start Time') }}</label>
           </td>
-          <td style="width: 70%;">
-            <input type="time" name="night_start" id="night_start" value="{{ device.night_start | default('22:00') }}" style="padding: 8px;">
+          <td>
+            <input type="time" name="night_start" id="night_start" value="{{ device.get('night_start', '22:00') }}" class="device-settings-input">
           </td>
         </tr>
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="night_end" style="font-size: 0.9em;">{{ _('Night End Time') }}</label>
+          <td>
+            <label for="night_end" class="device-settings-label">{{ _('Night End Time') }}</label>
           </td>
-          <td style="width: 70%;">
-            <input type="time" name="night_end" id="night_end" value="{{ device.night_end | default('06:00') }}" style="padding: 8px;">
+          <td>
+            <input type="time" name="night_end" id="night_end" value="{{ device.get('night_end', '06:00') }}" class="device-settings-input">
           </td>
         </tr>
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="night_brightness" style="font-size: 0.9em;">{{ _('Night Brightness') }}</label>
+          <td>
+            <label for="night_brightness" class="device-settings-label">{{ _('Night Brightness') }}</label>
           </td>
-          <td style="width: 70%;">
-            <input type="hidden" name="night_brightness" id="night_brightness" value="{{ device.night_brightness | default(1) }}">
+          <td>
+            <input type="hidden" name="night_brightness" id="night_brightness" value="{{ device.get('night_brightness', 1) }}">
             <div class="brightness-panel" id="night-brightness-panel">
-              <button type="button" class="brightness-btn {% if device.night_brightness | default(1) == 0 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 0 %}active{% endif %}"
                       data-brightness="0" onclick="setNightBrightnessUpdate(0)">0</button>
-              <button type="button" class="brightness-btn {% if device.night_brightness | default(1) == 1 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 1 %}active{% endif %}"
                       data-brightness="1" onclick="setNightBrightnessUpdate(1)">1</button>
-              <button type="button" class="brightness-btn {% if device.night_brightness | default(1) == 2 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 2 %}active{% endif %}"
                       data-brightness="2" onclick="setNightBrightnessUpdate(2)">2</button>
-              <button type="button" class="brightness-btn {% if device.night_brightness | default(1) == 3 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 3 %}active{% endif %}"
                       data-brightness="3" onclick="setNightBrightnessUpdate(3)">3</button>
-              <button type="button" class="brightness-btn {% if device.night_brightness | default(1) == 4 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 4 %}active{% endif %}"
                       data-brightness="4" onclick="setNightBrightnessUpdate(4)">4</button>
-              <button type="button" class="brightness-btn {% if device.night_brightness | default(1) == 5 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.get('night_brightness', 1) == 5 %}active{% endif %}"
                       data-brightness="5" onclick="setNightBrightnessUpdate(5)">5</button>
             </div>
           </td>
         </tr>
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="night_mode_app" style="font-size: 0.9em;">{{ _('Night Mode App') }}</label>
+          <td>
+            <label for="night_mode_app" class="device-settings-label">{{ _('Night Mode App') }}</label>
           </td>
-          <td style="width: 70%;">
-            <select name="night_mode_app" id="night_mode_app" style="width: 300px; padding: 8px;">
+          <td>
+            <select name="night_mode_app" id="night_mode_app" class="select-container">
               <option value="None">{{ _('None') }}</option>
-              {% if device.apps %}
-              {% for app in device.apps.values() %}
-              <option value="{{ app.iname }}" {% if device.night_mode_app and device.night_mode_app==app.iname %}selected{% endif %}>
-                {{ app.iname }} {{ app.name }}
+              {% if 'apps' in device %}
+              {% for app in device['apps'].values() %}
+              <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname'] %}selected{% endif %}>
+                {{ app['iname'] }} {{ app['name'] }}
               </option>
               {% endfor %}
               {% endif %}
             </select>
-            <small style="color: #888; font-size: 0.8em; display: block; margin-top: 5px;">{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
+            <small class="small-text">{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
           </td>
         </tr>
       </table>
     </div>
   </div>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Dim Mode Settings') }}</h2>
 
-    <table style="width: 100%; border-spacing: 0 10px;">
+    <table class="device-settings-table">
       <tr>
-        <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-          <label for="dim_time" style="font-size: 0.9em;">{{ _('Dim Start Time') }}</label>
+        <td>
+          <label for="dim_time" class="device-settings-label">{{ _('Dim Start Time') }}</label>
         </td>
-        <td style="width: 70%;">
-          <input type="time" name="dim_time" id="dim_time" value="{{ device.dim_time | default('') }}" style="padding: 8px;">
-          <small style="color: #888; font-size: 0.8em; display: block; margin-top: 5px;">{{ _('Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.') }}</small>
+        <td>
+          <input type="time" name="dim_time" id="dim_time" value="{{ device.get('dim_time', '') }}" class="device-settings-input">
+          <small class="small-text">{{ _('Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.') }}</small>
         </td>
       </tr>
       <tr>
-        <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-          <label for="dim_brightness" style="font-size: 0.9em;">{{ _('Dim Brightness') }}</label>
+        <td>
+          <label for="dim_brightness" class="device-settings-label">{{ _('Dim Brightness') }}</label>
         </td>
-        <td style="width: 70%;">
-          <input type="hidden" name="dim_brightness" id="dim_brightness" value="{{ device.dim_brightness | default(2) }}">
+        <td>
+          <input type="hidden" name="dim_brightness" id="dim_brightness" value="{{ device.get('dim_brightness', 2) }}">
           <div class="brightness-panel" id="dim-brightness-panel">
-            <button type="button" class="brightness-btn {% if device.dim_brightness | default(2) == 0 %}active{% endif %}"
+            <button type="button" class="brightness-btn {% if device.get('dim_brightness', 2) == 0 %}active{% endif %}"
                     data-brightness="0" onclick="setDimBrightnessUpdate(0)">0</button>
-            <button type="button" class="brightness-btn {% if device.dim_brightness | default(2) == 1 %}active{% endif %}"
+            <button type="button" class="brightness-btn {% if device.get('dim_brightness', 2) == 1 %}active{% endif %}"
                     data-brightness="1" onclick="setDimBrightnessUpdate(1)">1</button>
-            <button type="button" class="brightness-btn {% if device.dim_brightness | default(2) == 2 %}active{% endif %}"
+            <button type="button" class="brightness-btn {% if device.get('dim_brightness', 2) == 2 %}active{% endif %}"
                     data-brightness="2" onclick="setDimBrightnessUpdate(2)">2</button>
-            <button type="button" class="brightness-btn {% if device.dim_brightness | default(2) == 3 %}active{% endif %}"
+            <button type="button" class="brightness-btn {% if device.get('dim_brightness', 2) == 3 %}active{% endif %}"
                     data-brightness="3" onclick="setDimBrightnessUpdate(3)">3</button>
-            <button type="button" class="brightness-btn {% if device.dim_brightness | default(2) == 4 %}active{% endif %}"
+            <button type="button" class="brightness-btn {% if device.get('dim_brightness', 2) == 4 %}active{% endif %}"
                     data-brightness="4" onclick="setDimBrightnessUpdate(4)">4</button>
-            <button type="button" class="brightness-btn {% if device.dim_brightness | default(2) == 5 %}active{% endif %}"
+            <button type="button" class="brightness-btn {% if device.get('dim_brightness', 2) == 5 %}active{% endif %}"
                     data-brightness="5" onclick="setDimBrightnessUpdate(5)">5</button>
           </div>
         </td>
@@ -428,43 +311,59 @@
     </table>
   </div>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Location & API Settings') }}</h2>
 
-    <table style="width: 100%; border-spacing: 0 10px;">
+    <table class="device-settings-table">
       <tr>
-        <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-          <label for="location_search" style="font-size: 0.9em;">{{ _('Location') }}</label>
+        <td>
+          <label for="location_search" class="device-settings-label">{{ _('Location') }}</label>
         </td>
-        <td style="width: 70%;">
+        <td>
           <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
-            value="{{ device.location.description | default('') }}" style="width: 300px; padding: 8px;">
+            value="{{ request.form['location_search'] or device.get('location', {}).get('description', '') }}" class="device-settings-input">
           <ul id="location_results"></ul>
           <input type="hidden" name="location" id="location"
-            value='{{ device.location.model_dump_json() if device.location else "{}" }}'>
+            value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
         </td>
       </tr>
     </table>
 
-    <div style="border-top: 1px solid #333; padding-top: 15px;">
+    <div class="device-settings-section-divider">
       <h3>{{ _('API Configuration') }}</h3>
 
-      <table style="width: 100%; border-spacing: 0 10px;">
+      <table class="device-settings-table">
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="api_key" style="font-size: 0.9em;">{{ _('Device API Key') }}</label>
+          <td>
+            <label for="device_id" class="device-settings-label">{{ _('Device ID') }}</label>
           </td>
-          <td style="width: 70%;">
-            <input name="api_key" id="api_key" value="{{ device.api_key }}"
-              oninput="updateCurlCommand()" style="width: 300px; padding: 8px;">
+          <td>
+            <input id="device_id" value="{{ device['id'] }}" readonly class="device-settings-input">
           </td>
         </tr>
         <tr>
-          <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-            <label for="curl_example" style="font-size: 0.9em;">{{ _('Example curl Command') }}</label>
+          <td>
+            <label for="api_key" class="device-settings-label">{{ _('Device API Key') }}</label>
           </td>
-          <td style="width: 70%;">
-            <textarea id="curl_example" rows="3" readonly style="width: 100%; padding: 8px; font-family: monospace; font-size: 0.9em;"></textarea>
+          <td>
+            <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}"
+              oninput="updateExampleCommands()" class="device-settings-input">
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="curl_example" class="device-settings-label">{{ _('Example curl Command') }}</label>
+          </td>
+          <td>
+            <textarea id="curl_example" rows="3" readonly class="device-example-command-input"></textarea>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="pixlet_example" class="device-settings-label">{{ _('Example pixlet Command') }}</label>
+          </td>
+          <td>
+            <textarea id="pixlet_example" rows="3" readonly class="device-example-command-input"></textarea>
           </td>
         </tr>
       </table>
@@ -490,42 +389,45 @@
         }
       }
 
-      function updateCurlCommand() {
+      function updateExampleCommands() {
         const apiKey = document.getElementById("api_key").value.trim();
         const imageUrl = document.getElementById("img_url").value.trim();
         const { server, deviceId } = parseImageUrl(imageUrl);
 
         const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
         document.getElementById("curl_example").value = curl;
+
+        const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
+        document.getElementById("pixlet_example").value = pixlet;
       }
 
       // Update curl command on page load
-      document.addEventListener("DOMContentLoaded", updateCurlCommand);
+      document.addEventListener("DOMContentLoaded", updateExampleCommands);
     </script>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Additional Settings') }}</h2>
 
-    <table style="width: 100%; border-spacing: 0 10px;">
+    <table class="device-settings-table">
       <tr>
-        <td style="width: 30%; vertical-align: top; padding-right: 15px;">
-          <label for="notes" style="font-size: 0.9em;">{{ _('Notes') }}</label>
+        <td>
+          <label for="notes" class="device-settings-label">{{ _('Notes') }}</label>
         </td>
-        <td style="width: 70%;">
-          <input name="notes" id="notes" value="{{ device.notes }}" style="width: 400px; padding: 8px;" placeholder="{{ _('Optional notes about this device') }}">
+        <td>
+          <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}" class="notes-input" placeholder="{{ _('Optional notes about this device') }}">
         </td>
       </tr>
     </table>
   </div>
 
-  <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+  <div class="device-settings-section">
     <h2>{{ _('Configuration Management') }}</h2>
 
-    <div style="display: flex; gap: 10px; align-items: center;">
-      <a href="{{ url_for('export_device_config', device_id=device.id) }}" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+    <div class="config-management-container">
+      <a href="{{ url_for('export_device_config', device_id=device['id']) }}" class="w3-button w3-blue config-management-btn">
         📥 {{ _('Export Configuration') }}
       </a>
-      <a href="{{ url_for('import_device_config', device_id=device.id) }}" class="w3-button w3-orange" style="padding: 8px 16px; font-size: 14px;">
+      <a href="{{ url_for('import_device_config', device_id=device['id']) }}" class="w3-button w3-orange config-management-btn">
         📤 {{ _('Import Configuration') }}
       </a>
     </div>

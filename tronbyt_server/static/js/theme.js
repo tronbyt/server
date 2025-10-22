@@ -2,6 +2,7 @@
 (function() {
     const THEME_STORAGE_KEY = 'theme_preference';
     const themeSelect = document.getElementById('theme-select');
+    const mobileThemeSelect = document.getElementById('mobile-theme-select');
     const docElement = document.documentElement; // Usually <html>
 
     let mediaQueryListener = null;
@@ -65,9 +66,10 @@
     function handleSystemThemeChange(e) {
         // This function is called when system theme changes.
         // It should only re-apply the theme if 'system' is currently selected.
-        if (themeSelect && themeSelect.value === 'system') {
+        const currentTheme = (themeSelect && themeSelect.value) || (mobileThemeSelect && mobileThemeSelect.value);
+        if (currentTheme === 'system') {
             applyTheme('system');
-        } else if (!themeSelect) {
+        } else if (!themeSelect && !mobileThemeSelect) {
             // For pages without the selector (e.g. login page for anonymous users)
             // If a theme is in local storage, respect it. Otherwise, follow system.
             const localTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -99,13 +101,14 @@
 
         let effectiveTheme = 'system'; // Default
 
-        if (themeSelect) { // User is logged in and on a page with the theme selector
+        if (themeSelect || mobileThemeSelect) { // User is logged in and on a page with the theme selector
             if (localPreference) {
                 effectiveTheme = localPreference;
             } else if (serverUserPreference) {
                 effectiveTheme = serverUserPreference;
             }
-            themeSelect.value = effectiveTheme;
+            if (themeSelect) themeSelect.value = effectiveTheme;
+            if (mobileThemeSelect) mobileThemeSelect.value = effectiveTheme;
         } else { // User is not logged in or on a page without selector (e.g. login page)
             if (localPreference) {
                 effectiveTheme = localPreference;
@@ -120,25 +123,38 @@
             removeSystemThemeListener(); // Ensure no listener if not 'system'
         }
         // For logged-in users, ensure localStorage is updated if server preference was used
-        if (themeSelect && serverUserPreference && !localPreference) {
+        if ((themeSelect || mobileThemeSelect) && serverUserPreference && !localPreference) {
             storePreference(serverUserPreference);
         }
 
+        function setupThemeChangeHandler(selector) {
+            if (selector) {
+                selector.addEventListener('change', function() {
+                    const selectedTheme = this.value;
+                    applyTheme(selectedTheme);
+                    storePreference(selectedTheme);
+                    savePreferenceToServer(selectedTheme); // Save to backend for logged-in user
 
-        if (themeSelect) {
-            themeSelect.addEventListener('change', function() {
-                const selectedTheme = this.value;
-                applyTheme(selectedTheme);
-                storePreference(selectedTheme);
-                savePreferenceToServer(selectedTheme); // Save to backend for logged-in user
+                    // Sync both selectors
+                    if (themeSelect && mobileThemeSelect) {
+                        if (this === themeSelect) {
+                            mobileThemeSelect.value = selectedTheme;
+                        } else {
+                            themeSelect.value = selectedTheme;
+                        }
+                    }
 
-                if (selectedTheme === 'system') {
-                    setupSystemThemeListener();
-                } else {
-                    removeSystemThemeListener();
-                }
-            });
+                    if (selectedTheme === 'system') {
+                        setupSystemThemeListener();
+                    } else {
+                        removeSystemThemeListener();
+                    }
+                });
+            }
         }
+
+        setupThemeChangeHandler(themeSelect);
+        setupThemeChangeHandler(mobileThemeSelect);
     }
 
     if (document.readyState === 'loading') {

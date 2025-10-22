@@ -6,12 +6,7 @@
   box-sizing: border-box;
 }
 
-/* Make preview images responsive */
-.app-img {
-  max-width: 100%;
-  height: auto;
-  width: auto;
-}
+/* App image styles moved to specific app card styles below */
 
 /* Button layout */
 .w3-button {
@@ -606,6 +601,11 @@ button.action.w3-button {
   border-radius: 4px;
   text-align: center;
   border: 1px solid #d1d5db;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 [data-theme="dark"] .view-toggle-row {
@@ -849,6 +849,42 @@ button.action.w3-button {
   }
 }
 
+/* Extra small screens (iPhone) */
+@media screen and (max-width: 480px) {
+  .apps-grid-view {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  
+  .apps-grid-view .app-card {
+    min-height: 200px;
+  }
+  
+  .apps-grid-view .app-preview .app-img img {
+    width: 100px;
+    height: 50px;
+  }
+  
+  .apps-grid-view .app-header h3 {
+    font-size: 0.8em;
+  }
+  
+  .apps-grid-view .app-details p {
+    font-size: 0.7em;
+    margin: 2px 0;
+  }
+  
+  .apps-grid-view .app-actions .w3-button,
+  .apps-grid-view .app-actions .action.w3-button,
+  .apps-grid-view a.action.w3-button,
+  .apps-grid-view button.action.w3-button {
+    font-size: 0.65em;
+    padding: 2px 4px;
+    height: 24px;
+    min-width: 45px;
+  }
+}
+
 /* List View Styles (default) */
 .apps-list-view {
   display: block;
@@ -869,6 +905,23 @@ button.action.w3-button {
   .view-toggle-row {
     padding: 8px;
     margin-top: 10px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .view-toggle-container {
+    order: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+  
+  .instruction-text {
+    order: 2;
+    font-size: 0.8em;
+    margin-top: 4px;
+    text-align: center;
   }
   
   .view-toggle-btn {

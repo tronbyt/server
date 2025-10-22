@@ -1,66 +1,10 @@
 {% extends 'base.html' %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/update-simple.css') }}">
 <script src="{{ url_for('static', path='js/location.js') }}"></script>
-<h1>{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
-<style>
-  /* Brightness button panel styles */
-  .brightness-panel {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-    margin-bottom: 15px;
-    max-width: 300px;
-  }
-
-  .brightness-btn {
-    flex: 0 0 40px;
-    padding: 8px 4px;
-    border: 2px solid #ccc;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: bold;
-    transition: all 0.2s;
-    font-size: 14px;
-  }
-
-  /* Light theme - progressively brighter backgrounds */
-  .brightness-btn[data-brightness="0"] { background-color: #333; color: white; border-color: #222; }
-  .brightness-btn[data-brightness="1"] { background-color: #666; color: white; border-color: #555; }
-  .brightness-btn[data-brightness="2"] { background-color: #888; color: white; border-color: #777; }
-  .brightness-btn[data-brightness="3"] { background-color: #aaa; color: white; border-color: #999; }
-  .brightness-btn[data-brightness="4"] { background-color: #ccc; color: #333; border-color: #bbb; }
-  .brightness-btn[data-brightness="5"] { background-color: #eee; color: #333; border-color: #ddd; }
-
-  .brightness-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-
-  .brightness-btn.active {
-    border-color: #377ba8;
-    border-width: 3px;
-    box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
-  }
-
-  /* Dark theme - progressively brighter backgrounds */
-  [data-theme="dark"] .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
-  [data-theme="dark"] .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
-  [data-theme="dark"] .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
-  [data-theme="dark"] .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
-  [data-theme="dark"] .brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
-  [data-theme="dark"] .brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
-
-  [data-theme="dark"] .brightness-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 4px rgba(255,255,255,0.2);
-  }
-
-  [data-theme="dark"] .brightness-btn.active {
-    border-color: #5a9cd1;
-    border-width: 3px;
-    box-shadow: 0 0 8px rgba(90, 156, 209, 0.5);
-  }
-</style>
+<div class="header-container">
+  <h1 class="page-title">{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
+</div>
 <script>
   function setBrightnessCreate(brightness) {
     document.getElementById('brightness').value = brightness;
@@ -77,54 +21,105 @@
 </script>
 {% endblock %}
 {% block content %}
-<form method="post">
-  <span><label for="name">{{ _('Name') }}</label> ({{ _('Descriptive name for this Tronbyt device') }})</span>
-  <input name="name" id="name" required>
-  <span><label for="device_type">{{ _('Device Type') }}</label></span>
-  <select name="device_type" id="device_type">
-    <option value="tidbyt_gen1" selected>Tidbyt Gen1</option>
-    <option value="tidbyt_gen2">Tidbyt Gen2</option>
-    <option value="pixoticker">Pixoticker</option>
-    <option value="tronbyt_s3">Tronbyt S3</option>
-    <option value="tronbyt_s3_wide">Tronbyt S3 Wide</option>
-    <option value="raspberrypi">Raspberry Pi</option>
-    <option value="other">Other</option>
-  </select>
-  <span><label for="img_url">{{ _('Image URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
-  <input name="img_url" id="img_url">
-  <span><label for="ws_url">{{ _('WebSocket URL') }}</label> ({{ _('Leave blank unless advanced user.') }})</span>
-  <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}">
-  <span><label>{{ _('Brightness Level ( 0 - 5 )') }}</label></span>
-  <output id="brightness-output">3</output>
-  <input type="hidden" name="brightness" id="brightness" value="3">
-  <div class="brightness-panel" id="brightness-panel">
-    <button type="button" class="brightness-btn" data-brightness="0" onclick="setBrightnessCreate(0)">0</button>
-    <button type="button" class="brightness-btn" data-brightness="1" onclick="setBrightnessCreate(1)">1</button>
-    <button type="button" class="brightness-btn" data-brightness="2" onclick="setBrightnessCreate(2)">2</button>
-    <button type="button" class="brightness-btn active" data-brightness="3" onclick="setBrightnessCreate(3)">3</button>
-    <button type="button" class="brightness-btn" data-brightness="4" onclick="setBrightnessCreate(4)">4</button>
-    <button type="button" class="brightness-btn" data-brightness="5" onclick="setBrightnessCreate(5)">5</button>
+<form method="post" id="create-device-form">
+  <div class="device-settings-section">
+    <h2>{{ _('Basic Information') }}</h2>
+
+    <div class="device-settings-row">
+      <div>
+        <label for="name" class="device-settings-label">{{ _('Name') }}</label>
+        <input name="name" id="name" value="{{ request.form['name'] }}" required class="device-settings-input">
+        <small class="small-text">{{ _('Descriptive name for this Tronbyt device') }}</small>
+      </div>
+      <div>
+        <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
+        <select name="device_type" id="device_type" class="device-settings-input">
+          <option value="tidbyt_gen1" selected>Tidbyt Gen1</option>
+          <option value="tidbyt_gen2">Tidbyt Gen2</option>
+          <option value="pixoticker">Pixoticker</option>
+          <option value="tronbyt_s3">Tronbyt S3</option>
+          <option value="tronbyt_s3_wide">Tronbyt S3 Wide</option>
+          <option value="raspberrypi">Raspberry Pi</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
   </div>
 
-  <!-- <span><label for="api_key">Device API KEY</label> (leave blank)</span> -->
-  <!-- <textarea name="api_key" id="api_key" rows="5"></textarea>  -->
-  <input type="hidden" name="api_key" id="api_key">
-  <label for="notes">{{ _('Notes') }}</label>
-  <input name="notes" id="notes">
-  <div>
-    <label for="location_search">{{ _('Location') }}</label>
-    <input type="text" id="location_search" style="width: 100%" placeholder="{{ _('Enter a location') }}">
-    <ul id="location_results"></ul>
+  <div class="device-settings-section">
+    <h2>{{ _('Connection URLs') }}</h2>
+
+    <div class="device-settings-row">
+      <div>
+        <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
+        <input name="img_url" id="img_url" value="{{ request.form['img_url'] }}" class="device-settings-input">
+        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
+      </div>
+      <div>
+        <label for="ws_url" class="device-settings-label">{{ _('WebSocket URL') }}</label>
+        <input name="ws_url" id="ws_url" value="{{ request.form['ws_url'] }}" class="device-settings-input">
+        <small class="small-text">{{ _('Leave blank unless advanced user.') }}</small>
+      </div>
+    </div>
   </div>
-  <input type="hidden" name="location" id="location" value='{}'>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
-    });
-  </script>
-  <input type="submit" class="w3-button w3-green" value="{{ _('Save') }}">
+
+  <div class="device-settings-section">
+    <h2>{{ _('Display Settings') }}</h2>
+
+    <table class="device-settings-table">
+      <tr>
+        <td>
+          <label class="device-settings-label">{{ _('Brightness Level (0 - 5)') }}</label>
+        </td>
+        <td>
+          <output id="brightness-output">3</output>
+          <input type="hidden" name="brightness" id="brightness" value="3">
+          <div class="brightness-panel" id="brightness-panel">
+            <button type="button" class="brightness-btn" data-brightness="0" onclick="setBrightnessCreate(0)">0</button>
+            <button type="button" class="brightness-btn" data-brightness="1" onclick="setBrightnessCreate(1)">1</button>
+            <button type="button" class="brightness-btn" data-brightness="2" onclick="setBrightnessCreate(2)">2</button>
+            <button type="button" class="brightness-btn active" data-brightness="3" onclick="setBrightnessCreate(3)">3</button>
+            <button type="button" class="brightness-btn" data-brightness="4" onclick="setBrightnessCreate(4)">4</button>
+            <button type="button" class="brightness-btn" data-brightness="5" onclick="setBrightnessCreate(5)">5</button>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="device-settings-section">
+    <h2>{{ _('Location & Notes') }}</h2>
+
+    <div class="device-settings-row">
+      <div>
+        <label for="location_search" class="device-settings-label">{{ _('Location') }}</label>
+        <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
+          value="{{ request.form['location_search'] }}" class="device-settings-input">
+        <ul id="location_results"></ul>
+        <input type="hidden" name="location" id="location" value='{{ (request.form["location"] or {}) | tojson }}'>
+      </div>
+      <div>
+        <label for="notes" class="device-settings-label">{{ _('Notes') }}</label>
+        <input name="notes" id="notes" value="{{ request.form['notes'] }}" class="device-settings-input" placeholder="{{ _('Optional notes about this device') }}">
+      </div>
+    </div>
+  </div>
+
+  <input type="hidden" name="api_key" id="api_key">
+
+  <div class="device-settings-section">
+    <div class="config-management-container">
+      <input type="submit" class="w3-button w3-green config-management-btn" value="{{ _('Save') }}">
+      <a href="{{ url_for('import_device') }}" class="w3-button w3-orange config-management-btn">
+        {{ _('Import Configuration') }}
+      </a>
+    </div>
+  </div>
 </form>
-<a href="{{ url_for('import_device') }}" class="w3-button w3-orange">
-  {{ _('Import Configuration') }}
-</a>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
+  });
+</script>
 {% endblock %}

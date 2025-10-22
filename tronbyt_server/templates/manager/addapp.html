@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/addapp-simple.css') }}">
 <h1>{% block title %}{{ _('Add App') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
@@ -18,6 +19,7 @@
   let searchFilter = '';
   let hideInstalled = false;
   let hideBroken = false;
+  let isProcessing = false;
 
   // Debounce function to limit function calls
   function debounce(func, wait) {
@@ -35,7 +37,7 @@
   // Optimized search with debouncing
   const debouncedSearch = debounce((searchId) => {
     applyFilters();
-  }, 150);
+  }, 100);
 
   function searchApps(searchId, gridId) {
     debouncedSearch(searchId);
@@ -57,8 +59,26 @@
   }
 
   // Optimized sorting function
-  function sortItems(items) {
-    return items.sort((a, b) => {
+  function sortItems(items, sortTypeParam = null) {
+    const currentSortType = sortTypeParam || sortType;
+
+    // Parse date function for newest sort
+    const parseDate = (dateStr) => {
+      if (!dateStr) return new Date(0);
+      // Handle format "YYYY-MM-DD HH:MM"
+      const parts = dateStr.split(' ');
+      if (parts.length === 2) {
+        const [datePart, timePart] = parts;
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hour, minute] = timePart.split(':').map(Number);
+        return new Date(year, month - 1, day, hour, minute);
+      }
+      return new Date(dateStr);
+    };
+
+    // Create a copy to avoid mutating the original array
+    const itemsCopy = [...items];
+    const sortedItems = itemsCopy.sort((a, b) => {
       const nameA = a.getAttribute('data-name');
       const nameB = b.getAttribute('data-name');
       const installedA = a.getAttribute('data-installed') === 'true';
@@ -66,13 +86,16 @@
       const dateA = a.getAttribute('data-date') || '';
       const dateB = b.getAttribute('data-date') || '';
 
-      switch (sortType) {
+      switch (currentSortType) {
         case 'alphabetical':
           return nameA.localeCompare(nameB);
         case 'rev-alphabetical':
           return nameB.localeCompare(nameA);
         case 'newest':
-          const dateComparison = dateB.localeCompare(dateA);
+          // Convert date strings to Date objects for proper chronological sorting
+          const dateA_obj = parseDate(dateA);
+          const dateB_obj = parseDate(dateB);
+          const dateComparison = dateB_obj.getTime() - dateA_obj.getTime();
           return dateComparison === 0 ? nameA.localeCompare(nameB) : dateComparison;
         case 'system':
         default:
@@ -81,6 +104,9 @@
           return nameA.localeCompare(nameB);
       }
     });
+
+
+    return sortedItems;
   }
 
   // Function to show all items in a grid
@@ -92,104 +118,124 @@
     });
   }
 
-  // Optimized filtering with virtual scrolling
+  // Robust filtering system that handles all combinations
   function applyFilters() {
-    if (isInitialLoad) return;
+    if (isInitialLoad || isProcessing) return;
 
-    // Use requestAnimationFrame to batch DOM updates
+    isProcessing = true;
+
+    // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
     requestAnimationFrame(() => {
-      const grids = document.querySelectorAll('.app-grid');
+      try {
+        const grids = document.querySelectorAll('.app-grid');
 
-      grids.forEach(grid => {
-        if (!grid) return;
-        const searchId = grid.id.replace('_app_grid', '_search');
+        grids.forEach(grid => {
+          if (!grid) return;
+          const searchId = grid.id.replace('_app_grid', '_search');
 
-        // Get current filter values
-        const searchInput = document.getElementById(searchId);
-        const currentSearchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
-        const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
+          // Get current filter values
+          const searchInput = document.getElementById(searchId);
+          const currentSearchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
+          const currentHideInstalled = document.getElementById('hide_installed_' + searchId)?.checked || false;
+          const currentHideBroken = document.getElementById('hide_broken_' + searchId)?.checked || false;
+          const currentSortType = document.getElementById('sort_' + searchId)?.value || 'system';
 
-        // Get all app items from the grid (including hidden ones)
-        const allItems = Array.from(grid.getElementsByClassName('app-item'));
+          // Get all app items from the grid
+          const allItems = Array.from(grid.getElementsByClassName('app-item'));
 
-        // Debug logging
-        console.log(`Grid: ${grid.id}, Search: "${currentSearchFilter}", HideInstalled: ${currentHideInstalled}, HideBroken: ${currentHideBroken}`);
+          // Filter items based on all criteria
+          const filteredItems = allItems.filter(item => {
+            const isInstalled = item.getAttribute('data-installed') === 'true';
+            const isBroken = item.getAttribute('data-broken') === 'true';
+            const name = item.getAttribute('data-name').toLowerCase();
+            const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
 
-        // If no search filter and no other filters, show all items
-        if (!currentSearchFilter && !currentHideInstalled && !currentHideBroken) {
-          console.log('Showing all items - no filters active');
-          showAllItems(grid);
-          // Reset virtual scrolling state if it exists
-          if (grid._virtualScrolling) {
-            grid._virtualScrolling.visibleEnd = Math.min(grid._virtualScrolling.ITEMS_PER_PAGE, allItems.length);
-            grid._virtualScrolling.isLoading = false;
-          }
-          return;
-        }
-
-        // Filter items based on search and other criteria
-        const visibleItems = allItems.filter(item => {
-          const isInstalled = item.getAttribute('data-installed') === 'true';
-          const isBroken = item.getAttribute('data-broken') === 'true';
-          const name = item.getAttribute('data-name').toLowerCase();
-          const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
-
-          // Apply search filter (search both name and summary)
-          if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
-            return false;
-          }
-
-          // Apply other filters
-          if (currentHideInstalled && isInstalled) return false;
-          if (currentHideBroken && isBroken) return false;
-
-          return true;
-        });
-
-        // Sort visible items
-        const sortedItems = sortItems(visibleItems);
-
-        // Hide all items first
-        allItems.forEach(item => {
-          item.style.display = 'none';
-        });
-
-        // Show only filtered and sorted items
-        sortedItems.forEach(item => {
-          item.style.display = 'block';
-        });
-
-        // Update virtual scrolling state to work with filtered results
-        if (grid._virtualScrolling) {
-          // Reset virtual scrolling to work with filtered items
-          const filteredItems = sortedItems;
-          const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
-
-          // Hide items beyond the first page of filtered results
-          filteredItems.forEach((item, index) => {
-            if (index >= ITEMS_PER_PAGE) {
-              item.style.display = 'none';
+            // Apply search filter (search both name and summary)
+            if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
+              return false;
             }
+
+            // Apply hide filters
+            if (currentHideInstalled && isInstalled) return false;
+            if (currentHideBroken && isBroken) return false;
+
+            return true;
+          });
+
+          // Sort filtered items
+          const sortedItems = sortItems(filteredItems, currentSortType);
+
+          // Use requestAnimationFrame to prevent UI blocking during DOM reordering
+          requestAnimationFrame(() => {
+            // Batch DOM operations for better performance
+            const fragment = document.createDocumentFragment();
+
+            // Add sorted items to fragment
+            sortedItems.forEach((item, index) => {
+              fragment.appendChild(item);
+              item.style.display = 'block';
+            });
+
+            // Append all at once to reduce reflows
+            grid.appendChild(fragment);
+
+            // Hide any remaining items that weren't in the filtered list
+            allItems.forEach(item => {
+              if (!sortedItems.includes(item)) {
+                item.style.display = 'none';
+              }
+            });
           });
 
           // Update virtual scrolling state
-          grid._virtualScrolling.visibleEnd = Math.min(ITEMS_PER_PAGE, filteredItems.length);
-          grid._virtualScrolling.isLoading = false;
-          grid._virtualScrolling.items = filteredItems;
-        }
+          updateVirtualScrolling(grid, sortedItems, currentSearchFilter);
 
-        // Update visibility and classes
-        allItems.forEach(item => {
-          if (!item) return;
-          const isInstalled = item.getAttribute('data-installed') === 'true';
-          if (isInstalled) {
-            item.classList.add('installed');
-          } else {
-            item.classList.remove('installed');
-          }
+          // Update installed class states
+          updateItemStates(allItems);
         });
+      } finally {
+        isProcessing = false;
+      }
+    });
+  }
+
+  // Update virtual scrolling based on current state
+  function updateVirtualScrolling(grid, sortedItems, hasSearchFilter) {
+    if (!grid._virtualScrolling) return;
+
+    const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
+    const shouldUseVirtualScrolling = sortedItems.length > ITEMS_PER_PAGE && !hasSearchFilter;
+
+    if (shouldUseVirtualScrolling) {
+      // Hide items beyond the first page
+      sortedItems.forEach((item, index) => {
+        if (index >= ITEMS_PER_PAGE) {
+          item.style.display = 'none';
+        }
       });
+
+      // Update virtual scrolling state
+      grid._virtualScrolling.visibleEnd = Math.min(ITEMS_PER_PAGE, sortedItems.length);
+      grid._virtualScrolling.isLoading = false;
+      grid._virtualScrolling.items = sortedItems;
+    } else {
+      // Show all items
+      grid._virtualScrolling.visibleEnd = sortedItems.length;
+      grid._virtualScrolling.isLoading = false;
+      grid._virtualScrolling.items = sortedItems;
+    }
+  }
+
+  // Update item states (installed class, etc.)
+  function updateItemStates(allItems) {
+    allItems.forEach(item => {
+      if (!item) return;
+      const isInstalled = item.getAttribute('data-installed') === 'true';
+      if (isInstalled) {
+        item.classList.add('installed');
+      } else {
+        item.classList.remove('installed');
+      }
     });
   }
 
@@ -241,14 +287,20 @@
         ITEMS_PER_PAGE
       };
 
-      // Initially hide items beyond the first page
-      if (items && items.length) {
-        items.forEach((item, index) => {
-          if (!item) return;
-          if (index >= ITEMS_PER_PAGE) {
-            item.style.display = 'none';
-          }
-        });
+      // Initially hide items beyond the first page only for system sort and large lists
+      if (items && items.length > ITEMS_PER_PAGE) {
+        // Check if we should apply virtual scrolling initially
+        const shouldApplyVirtualScrolling = sortType === 'system' ||
+          (document.getElementById('system_search') && !document.getElementById('system_search').value.trim());
+
+        if (shouldApplyVirtualScrolling) {
+          items.forEach((item, index) => {
+            if (!item) return;
+            if (index >= ITEMS_PER_PAGE) {
+              item.style.display = 'none';
+            }
+          });
+        }
       }
 
       // Function to load more items
@@ -259,11 +311,11 @@
         const nextStart = visibleEnd;
         const nextEnd = Math.min(visibleEnd + ITEMS_PER_PAGE, items.length);
 
-        // Use requestAnimationFrame to batch DOM updates
+        // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
         requestAnimationFrame(() => {
           for (let i = nextStart; i < nextEnd; i++) {
             if (items[i]) {
-              items[i].style.display = '';
+              items[i].style.display = 'block';
             }
           }
           visibleEnd = nextEnd;
@@ -292,11 +344,11 @@
         const nextStart = currentVisibleEnd;
         const nextEnd = Math.min(currentVisibleEnd + ITEMS_PER_PAGE, filteredItems.length);
 
-        // Use requestAnimationFrame to batch DOM updates
+        // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
         requestAnimationFrame(() => {
           for (let i = nextStart; i < nextEnd; i++) {
             if (filteredItems[i]) {
-              filteredItems[i].style.display = '';
+              filteredItems[i].style.display = 'block';
             }
           }
           grid._virtualScrolling.visibleEnd = nextEnd;
@@ -390,7 +442,7 @@
     });
   }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}">{{
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device['id']) }}">{{
   _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
@@ -440,8 +492,8 @@
 
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item {% if app.broken %}broken-app{% endif %}" data-value="{{ app.name }}" data-installed="{{ app.is_installed | default(false) | lower }}"
-        data-date="{{ app.date or '' }}" data-name="{{ app.name }}" data-broken="{{ app.broken | default(false) | lower }}">
+      <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
+        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}" data-broken="{{ app.get('broken', false) | lower }}">
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
@@ -450,7 +502,7 @@
         <div class="app-img">
           <div class="skeleton-loader"></div>
           {% if 'preview' in app %}
-          <img data-src="{{ url_for('app_preview', filename=app.preview) }}"
+          <img data-src="{{ url_for('app_preview', filename=app['preview']) }}"
                alt="{{ app['name'] }}"
                class="lazy-image"
                {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
@@ -464,26 +516,26 @@
 
         <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
-        <p {% if app.broken %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app.author }}</p>
+        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app['author'] }}</p>
         {% endif %}
-        {% if app.broken %}
+        {% if app.get('broken') %}
         <div style="background-color: #f44336; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 12px; text-align: center; line-height: 1.3; margin-top: 5px;">
           ❌ {{ _('BROKEN') }}<br>
-          <span style="font-size: 10px; font-weight: normal;">{{ app.brokenReason or 'Unknown' }}</span>
+          <span style="font-size: 10px; font-weight: normal;">{{ app.get('brokenReason', 'Unknown') }}</span>
         </div>
         {% endif %}
         {% if is_custom_apps %}
-        <a href="{{ url_for('deleteupload', filename=app.path.split('/')[-1], device_id=device.id) }}"
+        <a href="{{ url_for('deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}"
            class="delete-upload-btn"
            onclick="event.stopPropagation(); return confirm('{{ _('Delete this uploaded app?') }}');">
           🗑️ {{ _('Delete') }}
         </a>
         {% endif %}
-        {% if settings.PRODUCTION == '0' and not app.path.startswith("users/") %}
-          {% if app.broken %}
-          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
+        {% if config['PRODUCTION'] == '0' and not app.get('path', '').startswith("users/") %}
+          {% if app.get('broken') %}
+          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
           {% else %}
-          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
+          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
           {% endif %}
         {% endif %}
       </div>
@@ -503,270 +555,17 @@
   <input type="hidden" name="name" id="selected_app">
   <br>
   <label for="uinterval">{{ _('Render Interval (minutes)') }}</label>
-  <input name="uinterval" type="number" id="uinterval" min="0" value="10" required>
+  <input name="uinterval" type="number" id="uinterval" min="0" value="{{ request.form['uinterval'] or 10 }}" required>
   <label for="display_time">{{ _('Display Time (seconds)') }}</label>
-  <input name="display_time" type="number" id="display_time" min="0" value="0" required>
+  <input name="display_time" type="number" id="display_time" min="0" value="{{ request.form['display_time'] or 0 }}"
+    required>
 
   <label for="notes">{{ _('Notes') }}</label>
-  <textarea name="notes" id="notes"></textarea>
+  <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
 
   <input type="submit" value="{{ _('Configure') }}" class="w3-button w3-green" onclick="move()"></input>
 </form>
 
-<style>
-  /* Loading indicator */
-  .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    text-align: center;
-  }
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #4CAF50;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  /* Hide loading indicator when content is loaded */
-  .content-loaded .loading-container {
-    display: none;
-  }
-
-  /* Skeleton loader */
-  .skeleton-loader {
-    width: 100%;
-    aspect-ratio: 2 / 1;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 4px;
-    margin-bottom: 10px;
-  }
-
-  @keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-
-  /* Hide skeleton when image loads */
-  .app-img img.loaded + .skeleton-loader {
-    display: none;
-  }
-
-  /* Optimized grid layout */
-  .app-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
-    contain: layout style paint;
-  }
-
-  .app-item {
-    border: 1px solid #d8d8d8;
-    padding: 10px;
-    text-align: center;
-    cursor: pointer;
-    position: relative;
-    contain: layout style paint;
-    will-change: transform;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .app-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  }
-
-  .app-img {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 2 / 1;
-    overflow: hidden;
-    border-radius: 4px;
-  }
-
-  .lazy-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .lazy-image.loaded {
-    opacity: 1;
-  }
-
-  .app-item.selected {
-    border-color: #4CAF50;
-    box-shadow: 0 0 0 2px #4CAF50;
-  }
-
-  .app-item.installed {
-    border-color: #ffa500;
-  }
-
-  .installed-badge {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background-color: #ff9800;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-weight: bold;
-    z-index: 10;
-  }
-
-  .app-item.broken-app {
-    border: 2px solid #f44336;
-    background-color: rgba(244, 67, 54, 0.05);
-    cursor: not-allowed;
-  }
-
-  .app-item.broken-app:hover {
-    background-color: rgba(244, 67, 54, 0.1);
-    transform: none;
-  }
-
-  .filter-sort-controls select {
-    padding: 2px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-  }
-
-  .filter-sort-container {
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-  }
-
-  .filter-sort-wrapper {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .filter-label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .filter-checkbox {
-    margin: 0 !important;
-  }
-
-  .filter-sort-controls {
-    margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-  }
-
-  .filter-sort-controls-inner {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .control-label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .filter-sort-controls input[type="search"] {
-    margin-bottom: 0;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-  }
-
-  .filter-sort-controls .control-checkbox {
-    margin: 0;
-  }
-
-  /* Performance optimizations */
-  .app-grid {
-    transform: translateZ(0); /* Force hardware acceleration */
-    backface-visibility: hidden;
-  }
-
-  .app-item {
-    transform: translateZ(0); /* Force hardware acceleration */
-    backface-visibility: hidden;
-  }
-
-  /* Reduce paint operations during scrolling */
-  .app-item img {
-    transform: translateZ(0);
-    will-change: transform;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* Optimize text rendering */
-  .app-item p {
-    text-rendering: optimizeSpeed;
-    font-smooth: never;
-    -webkit-font-smoothing: subpixel-antialiased;
-  }
-
-  /* Use higher specificity to override global link styles without !important */
-  .app-item a.delete-upload-btn {
-    display: inline-block;
-    background-color: #f44336;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 3px;
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: bold;
-    margin-top: 8px;
-    transition: background-color 0.2s;
-    position: relative;
-    z-index: 5;
-  }
-
-  .app-item a.delete-upload-btn:hover {
-    background-color: #d32f2f;
-    text-decoration: none;
-    color: white;
-  }
-
-  .app-item a.delete-upload-btn:visited {
-    color: white;
-  }
-
-  .app-item a.delete-upload-btn:active {
-    color: white;
-  }
-
-  .app-item a.delete-upload-btn:focus {
-    color: white;
-    outline: 2px solid #d32f2f;
-    outline-offset: 2px;
-  }
-</style>
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -775,23 +574,15 @@
       document.body.classList.add('content-loaded');
       isInitialLoad = false;
 
-      // Apply initial filters (including the default "hide broken apps" filter)
+      // Initialize virtual scrolling first
+      setupVirtualScrolling();
+
+      // Initialize lazy loading
+      setupLazyLoading();
+
+      // Apply initial filters and sorting based on current state
       applyFilters();
     }, 100);
-
-    // Initialize lazy loading
-    setupLazyLoading();
-
-    // Initialize virtual scrolling for large lists
-    setupVirtualScrolling();
-
-    // Initialize filters and sorting for each list
-    const searchIds = ['system_search', 'custom_search'];
-    searchIds.forEach(searchId => {
-      if (document.getElementById(searchId)) {
-        sortApps(searchId);
-      }
-    });
 
     // Optimized click handlers with event delegation
     document.addEventListener('click', function(e) {

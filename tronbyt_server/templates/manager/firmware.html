@@ -9,17 +9,20 @@
   'other': 'Other'
 } %}
 {% block header %}
-<h1>{% block title %}{{ _('Generate Firmware for') }} {{ device.name }} - {{ device_type_names.get(device.type, device.type) }}{% endblock %}</h1>
+<link rel="stylesheet" href="{{ url_for('static', path='css/firmware-simple.css') }}">
+<div class="header-container">
+  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
+</div>
 {% endblock %}
 {% block content %}
 {% if firmware_version %}
-<div style="background-color: #2a2a2a; padding: 10px; margin-bottom: 15px; border-radius: 4px; border-left: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+<div class="firmware-info">
     <div>
         <strong>{{ _('Firmware Image Version') }}:</strong> {{ firmware_version }}
     </div>
-    {% if user.username == 'admin' %}
+    {% if g.user.username == 'admin' %}
     <div>
-        <a href="{{ url_for('get_edit') }}#firmware-management" class="w3-button w3-small w3-gray">
+        <a href="{{ url_for('edit') }}#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
             {{ _('Manage Firmware') }}
         </a>
     </div>
@@ -27,54 +30,90 @@
 </div>
 {% endif %}
 
-<form method="post">
-    <h2>{{ _('Download ESP Flasher here') }} <a href="https://github.com/Jason2866/ESP_Flasher/releases">ESP Flasher</a></h2>
-    {{ _('Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your
-    downloaded firmware file to flash your device. Do NOT use a web based flasher.') }}
-    <br><i>{{ _('macOS and Windows users may need to install a serial driver:') }}
+<form method="post" id="firmware-form">
+  <div class="device-settings-section">
+    <h2>{{ _('Firmware Generation') }}</h2>
+
+    <div class="device-settings-section-divider">
+      <h3>{{ _('Download ESP Flasher') }}</h3>
+      <p>{{ _('Download ESP Flasher here') }} <a href="https://github.com/Jason2866/ESP_Flasher/releases" target="_blank">ESP Flasher</a></p>
+      <p>{{ _('Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher.') }}</p>
+      <p><i>{{ _('macOS and Windows users may need to install a serial driver:') }}
         <br>
-        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x Drivers</a>
+        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank">CP210x Drivers</a>
         <br>
-        <a href="https://github.com/WCHSoftGroup/ch34xser_macos">CH34x Drivers</a>
-    </i>
-    <br>
-    <input type="hidden" name="id" id="id" value="{{ device.id }}">
-
-    <div class="left-align" style="margin: 6px 0 8px;">
-        <label style="margin-right:8px;">{{ _('Connection Type') }}:</label>
-        <label style="margin-right:12px;"><input type="radio" name="url_variant" id="variant_http" value="http">
-            HTTP</label>
-        <label style="margin-right:12px;"><input type="radio" name="url_variant" id="variant_ws" value="ws">
-            WebSocket</label>
-        <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
+        <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank">CH34x Drivers</a>
+      </i></p>
     </div>
 
-    <div style="margin-bottom: 15px;">
-        <label for="img_url" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('Image URL') }}</label>
-        <input name="img_url" id="img_url" value="{{ device.img_url }}" style="display: block; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+    <input type="hidden" name="id" id="id" value="{{ device['id'] }}">
+
+    <div class="device-settings-section-divider">
+      <h3>{{ _('Connection Settings') }}</h3>
+
+      <table class="device-settings-table">
+        <tr>
+          <td>
+            <label class="device-settings-label">{{ _('Connection Type') }}</label>
+          </td>
+          <td>
+            <div class="connection-type-container">
+              <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
+              <label><input type="radio" name="url_variant" id="variant_ws" value="ws"> WebSocket</label>
+              <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
+          </td>
+          <td>
+            <input name="img_url" id="img_url" value="{{ device['img_url'] }}" class="device-settings-input">
+          </td>
+        </tr>
+      </table>
     </div>
 
-    <div style="margin-bottom: 15px;">
-        <label for="wifi_ap" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
-        <input name="wifi_ap" id="wifi_ap" required style="display: block; width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-    </div>
-    <div style="margin-bottom: 15px;">
-        <label for="wifi_password" style="display: block; margin-bottom: 5px; font-weight: bold;">{{ _('WiFi Password') }}</label>
-        <input name="wifi_password" id="wifi_password" required style="display: block; width: 100%; max-width: 400px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-    </div>
-    <style>
-        .left-align {
-            text-align: left;
-        }
-    </style>
+    <div class="device-settings-section-divider">
+      <h3>{{ _('WiFi Configuration') }}</h3>
 
-    {% if device.type == 'tidbyt_gen1' %}
-    <div class="left-align">
-        <label for="swap_colors">{{ _('Swap Colors?') }}</label>
-        <input type="checkbox" name="swap_colors" id="swap_colors">
+      <table class="device-settings-table">
+        <tr>
+          <td>
+            <label for="wifi_ap" class="device-settings-label">{{ _('WiFi Network Name (SSID) 2.4Ghz Only') }}</label>
+          </td>
+          <td>
+            <input name="wifi_ap" id="wifi_ap" required class="device-settings-input">
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="wifi_password" class="device-settings-label">{{ _('WiFi Password') }}</label>
+          </td>
+          <td>
+            <input name="wifi_password" id="wifi_password" required class="device-settings-input">
+          </td>
+        </tr>
+        {% if device.get('type') == 'tidbyt_gen1' %}
+        <tr>
+          <td>
+            <label for="swap_colors" class="device-settings-label">{{ _('Swap Colors?') }}</label>
+          </td>
+          <td>
+            <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {% endif %}>
+          </td>
+        </tr>
+        {% endif %}
+      </table>
     </div>
-    {% endif %}
-    <input class="w3-button w3-blue" type="submit" value="{{ _('Generate Firmware File') }}">
+  </div>
+
+  <div class="device-settings-section">
+    <div class="config-management-container">
+      <input class="w3-button w3-blue config-management-btn" type="submit" value="{{ _('Generate Firmware File') }}">
+    </div>
+  </div>
 </form>
 <hr>
 
@@ -84,8 +123,8 @@
         const httpRadio = document.getElementById('variant_http');
         const wsRadio = document.getElementById('variant_ws');
         const customRadio = document.getElementById('variant_custom');
-        const httpVal = "{{ device.img_url }}";
-        const wsVal = "{{ device.ws_url }}";
+        const httpVal = "{{ device['img_url'] }}";
+        const wsVal = "{{ device['ws_url'] }}";
 
         function updateUrl() {
             if (httpRadio.checked || wsRadio.checked) {

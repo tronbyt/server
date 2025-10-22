@@ -1,156 +1,14 @@
 {% extends 'base.html' %}
 {% block header %}
-<h1>{% block title %}{{ _('Edit') }} "{{ app.name }}-{{ app.iname }}"{% endblock %}</h1>
-<!-- style and javascript to show and hide the config -->
-<style>
-  .hidden {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .visible {
-    display: block;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .form-table {
-    border-spacing: 0 15px;
-    width: 100%;
-  }
-
-  .form-table td {
-    vertical-align: top;
-    padding: 5px;
-  }
-
-  .form-table label {
-    font-weight: bold;
-    display: block;
-    margin-bottom: 5px;
-  }
-
-  .form-table small {
-    color: var(--post-about-text);
-    display: block;
-    margin-top: 5px;
-  }
-
-  .form-control {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid var(--input-border);
-    border-radius: 4px;
-    font-size: 14px;
-    background-color: var(--input-bg);
-    color: var(--input-text);
-  }
-
-  .button-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .flex-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-
-  .button-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .button-separator {
-    color: var(--post-about-text);
-    font-weight: bold;
-    margin: 0 5px;
-  }
-
-  .toggle-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .app-preview {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-
-  .schedule-section {
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 15px;
-    margin: 15px 0;
-    background-color: var(--secondary-color);
-  }
-
-  .custom-recurrence-section {
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 15px;
-    margin: 15px 0;
-    background-color: var(--flash-bg);
-  }
-
-  .api-section {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: var(--content-bg);
-    border-radius: 8px;
-    border-left: 4px solid var(--enabled-text);
-    border: 1px solid var(--border-color);
-  }
-
-  .api-section h2 {
-    margin-top: 0;
-    color: var(--enabled-text);
-  }
-
-  .api-section h3 {
-    color: var(--enabled-text);
-    font-size: 1.1em;
-    margin-bottom: 10px;
-  }
-
-  .api-section pre {
-    background-color: var(--page-bg);
-    padding: 15px;
-    border-radius: 4px;
-    overflow-x: auto;
-    color: var(--page-text);
-    font-size: 0.9em;
-    border: 1px solid var(--border-color);
-  }
-
-  .api-section p {
-    color: var(--page-text);
-    margin-bottom: 20px;
-  }
-
-  .api-section small {
-    color: var(--post-about-text);
-    font-size: 0.9em;
-    margin-top: 20px;
-    display: block;
-  }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='css/updateapp-simple.css') }}">
+<h1>{% block title %}{{ _('Edit') }} "{{ app['name'] }}-{{ app['iname'] }}"{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
   <!-- Navigation Button -->
     <div class="button-group">
-      <a href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}"
+      <a href="{{ url_for('configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=0) }}"
         class="w3-button" style="background-color: var(--enabled-text); color: white;">{{ _('Configure App') }}</a>
     </div>
 
@@ -172,15 +30,15 @@
 </div>
 
 <!-- App Preview -->
-<div class="app-img" style="width: 400px;">
-  <img id="previewImage" width="400"
-    src="{{url_for('appwebp', device_id=device.id, iname=app.iname) }}"
-    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+<div class="app-img">
+  <img id="previewImage"
+    src="{{url_for('appwebp', device_id=device_id,iname=app['iname']) }}"
+    alt="{{ _('Preview') }}">
 </div>
 
 <form method="post" id="updateForm">
-  <input type="hidden" name="iname" id="iname" value="{{ app.iname }}" readonly>
-  <input type="hidden" name="name" id="name" value="{{ app.name }}" readonly>
+  <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
+  <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
 
   <table class="form-table">
     <!-- Enabled Status -->
@@ -191,7 +49,7 @@
       </td>
       <td>
         <input name="enabled" type="checkbox" id="enabled" class="form-control"
-               {% if app.enabled %} checked {% endif %}>
+               {% if app['enabled'] %} checked {% endif %}>
       </td>
     </tr>
 
@@ -203,7 +61,7 @@
       </td>
       <td>
         <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
-               value="{{ app.uinterval }}" required>
+               value="{{ request.form['uinterval'] or app['uinterval'] }}" required>
       </td>
     </tr>
 
@@ -215,7 +73,7 @@
       </td>
       <td>
         <input type="number" name="display_time" id="display_time" min="0" class="form-control"
-               value="{{ app.display_time or 0 }}">
+               value="{{ request.form['display_time'] or app['display_time'] or 0 }}">
       </td>
     </tr>
 
@@ -227,7 +85,7 @@
       </td>
       <td>
         <input name="notes" id="notes" class="form-control"
-               value="{{ app.notes }}">
+               value="{{request.form['notes'] or app['notes'] }}">
       </td>
     </tr>
   </table>
@@ -245,7 +103,7 @@
         </td>
         <td>
           <input type="time" name="start_time" id="start_time" class="form-control"
-                 value="{{ app.start_time }}">
+                 value="{{ request.form['start_time'] or app['start_time'] }}">
         </td>
       </tr>
 
@@ -257,7 +115,7 @@
         </td>
         <td>
           <input type="time" name="end_time" id="end_time" class="form-control"
-                 value="{{ app.end_time }}">
+                 value="{{ request.form['end_time'] or app['end_time'] }}">
         </td>
       </tr>
     </table>
@@ -298,6 +156,7 @@
       </div>
     </div>
   </div>
+
   <!-- Custom Recurrence Toggle -->
   <div style="margin: 20px 0;">
     <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
@@ -503,10 +362,8 @@
   <div class="button-container">
     <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
     <input type="submit" class="w3-button w3-red w3-round"
-           formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}"
-           formmethod="post"
-           onclick="return confirm('{{ _('Delete App?') }}');"
-           value="{{ _('Delete') }}">
+      formaction="{{ url_for('deleteapp', device_id=device_id,iname=app['iname']) }}" formmethod="post"
+      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}">
   </div>
 </form>
 
@@ -519,40 +376,40 @@
   <div style="margin-bottom: 20px;">
     <h3>{{ _('Enable App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Disable App -->
   <div style="margin-bottom: 20px;">
     <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Pin App -->
   <div style="margin-bottom: 20px;">
     <h3>{{ _('Pin App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Unpin App -->
   <div style="margin-bottom: 20px;">
     <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key | default('YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
+  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <small>

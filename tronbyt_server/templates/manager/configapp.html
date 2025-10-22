@@ -1,55 +1,15 @@
 {% extends 'base.html' %}
 {% block header %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/configapp-simple.css') }}">
 <script src="{{ url_for('static', path='js/location.js') }}"></script>
-<h1>{% block title %}{{ _('Configuring') }} {{ app.iname }} ({{ app.name }}){% endblock %}</h1>
-<!-- style and javascript to show and hide the config -->
-<style>
-  .hidden {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .visible {
-    display: block;
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out;
-  }
-
-  .flex-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-
-  .button-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .button-separator {
-    color: #666;
-    font-weight: bold;
-    margin: 0 5px;
-  }
-
-  .toggle-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-</style>
+<h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
   <!-- Navigation Button -->
   <div class="button-group">
-    <a href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}"
+    <a href="{{ url_for('updateapp', device_id=device['id'], iname=app['iname']) }}"
       class="w3-button" style="background-color: #2196F3;">{{ _('Edit App') }}</a>
   </div>
 
@@ -67,15 +27,15 @@
 
 <!-- Debug Content -->
 <div id="debugContent" class="hidden">
-  <pre class="flash">{{ (app.render_messages or []) | join('\n') }}</pre>
+  <pre class="flash">{{ app.get('render_messages', []) | join('\n') }}</pre>
 </div>
 
 <script>
   // Make the schema and config objects available to JavaScript
   const schema = {{ schema | tojson }};
   const config = {{ config | tojson }};
-  {% if device.location %}
-  const deviceLocation = JSON.stringify({{ device.location | tojson }});
+  {% if "location" in device %}
+  const deviceLocation = JSON.stringify({{ device['location'] | tojson }});
   {% else %}
   const deviceLocation = null;
   {% endif %}
@@ -500,7 +460,7 @@
       }
 
       try {
-        const handlerUrl = `{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='DUMMY_HANDLER') }}`.replace('DUMMY_HANDLER', field.handler);
+        const handlerUrl = `{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -554,7 +514,7 @@
     const updateGeneratedFields = async () => {
       const sourceValue = sourceField.value;
       try {
-        const handlerUrl = `{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='DUMMY_HANDLER') }}`.replace('DUMMY_HANDLER', field.handler);
+        const handlerUrl = `{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -590,7 +550,7 @@
   // Function to fetch options for location-based fields
   async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
     try {
-      const response = await fetch(`{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='DUMMY_HANDLER') }}`.replace('DUMMY_HANDLER', field.handler), {
+      const response = await fetch(`{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // locationQueryJson is the result of the Geoapify search (e.g., {name: "New York", lat: ..., lon:...})
@@ -701,13 +661,13 @@
     cancelButton.addEventListener('click', function() {
       {% if delete_on_cancel == 1 %}
       // Delete the app via fetch, then close the tab
-      fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
+      fetch("{{ url_for('deleteapp', device_id=device['id'], iname=app['iname']) }}", {
         method: 'GET'
       }).then(() => {
         window.close();
       }).catch(() => {
         // If fetch fails or window.close() doesn't work, redirect
-        window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
+        window.location.href = "{{ url_for('addapp', device_id=device['id']) }}";
       });
       {% else %}
       // Just close the tab or go back to index
@@ -798,10 +758,10 @@
 </script>
 
 <!-- App Preview -->
-<div class="app-img" style="width: 400px;">
-  <img id="previewImage" width="400"
-    src="{{ url_for('preview', device_id=device.id, iname=app.iname) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}" style="width: 400px; height: auto;">
+<div class="app-img">
+  <img id="previewImage"
+    src="{{ url_for('preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    alt="{{ _('Preview') }}">
 </div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}
