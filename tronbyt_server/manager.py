@@ -1416,21 +1416,19 @@ def next_app(
             and not device.get("interstitial_shown", False)
         ):
             # Show interstitial app
-            current_app.logger.debug(f"Showing interstitial app: {device.get('interstitial_app')}")
             app = apps[device["interstitial_app"]]
             is_interstitial_app = True
             device["interstitial_shown"] = True
         else:
-            # Show regular app and reset interstitial_shown
-            device["interstitial_shown"] = False
-            if last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
+            # Show next regular app
+            if last_app_index + 1 < len(apps_list):
                 app = apps_list[last_app_index + 1]  # add 1 to get the next app
                 last_app_index += 1
-                current_app.logger.debug(f"Showing regular app at index {last_app_index}: {app['name']}")
             else:
                 app = apps_list[0]  # go to the beginning
                 last_app_index = 0
-                current_app.logger.debug(f"Showing first regular app: {app['name']}")
+            # Reset interstitial_shown when showing regular app
+            device["interstitial_shown"] = False
 
     # For pinned apps, always display them regardless of enabled/schedule status
     # For interstitial apps, always display them regardless of enabled/schedule status
