@@ -169,22 +169,20 @@
     </div>
 
     <div style="border-top: 1px solid #333; padding-top: 15px;">
-        <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <form method="post" action="{{ url_for('set_api_key') }}" style="display: flex; gap: 10px; align-items: flex-end;">
             <div style="flex: 1;">
                 <label for="api_key" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('User API Key') }}</label>
-                <input type="text" name="api_key" id="api_key" required value="{{ user.get('api_key', '') }}" style="width: 100%; padding: 8px;">
+                <input type="text" name="api_key" id="api_key" required value="{{ user.api_key or '' }}" style="width: 100%; padding: 8px;">
             </div>
-            <form method="post" action="{{ url_for('set_api_key') }}" style="display: inline;">
-                <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Update API key?') }}');">
-                    {{ _('Save') }}
-                </button>
-            </form>
-            <form method="post" action="{{ url_for('generate_api_key') }}" style="display: inline; margin-left: 5px;">
-                <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Generate a new API key? This will replace your current API key.') }}');">
-                    🔄 {{ _('Generate New') }}
-                </button>
-            </form>
-        </div>
+            <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Update API key?') }}');">
+                {{ _('Save') }}
+            </button>
+        </form>
+        <form method="post" action="{{ url_for('generate_api_key') }}" style="margin-top: 10px;">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Generate a new API key? This will replace your current API key.') }}');">
+                🔄 {{ _('Generate New') }}
+            </button>
+        </form>
     </div>
 </div>
 

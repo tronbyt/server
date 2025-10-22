@@ -1077,7 +1077,7 @@ def configapp(
     )
 
 
-@router.post("/{device_id}/{iname}/configapp", name="preview")
+@router.post("/{device_id}/{iname}/configapp", name="configapp_post")
 async def configapp_post(
     request: Request,
     device_id: DeviceID,
@@ -1598,7 +1598,7 @@ async def import_device_config_post(
         )
 
 
-@router.post("/import_user_config", name="import_device")
+@router.post("/import_user_config", name="import_user_config")
 async def import_user_config(
     request: Request,
     user: User = Depends(manager),
@@ -1639,7 +1639,7 @@ def import_device(request: Request, user: User = Depends(manager)) -> Response:
     )
 
 
-@router.post("/import_device", name="next_app")
+@router.post("/import_device", name="import_device_post")
 async def import_device_post(
     request: Request,
     user: User = Depends(manager),

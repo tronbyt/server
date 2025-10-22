@@ -92,4 +92,4 @@ def auth_exception_handler(
     with next(get_db(settings=get_settings())) as db_conn:
         if not db.has_users(db_conn):
             return RedirectResponse(request.url_for("get_register_owner"))
-    return RedirectResponse(request.url_for("get_login"))
+    return RedirectResponse(request.url_for("login"))

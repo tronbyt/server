@@ -460,7 +460,7 @@
       }
 
       try {
-        const handlerUrl = `{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
+        const handlerUrl = "{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -514,7 +514,7 @@
     const updateGeneratedFields = async () => {
       const sourceValue = sourceField.value;
       try {
-        const handlerUrl = `{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
+        const handlerUrl = "{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -550,7 +550,8 @@
   // Function to fetch options for location-based fields
   async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
     try {
-      const response = await fetch(`{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`, {
+      const handlerUrl = "{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
+      const response = await fetch(handlerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // locationQueryJson is the result of the Geoapify search (e.g., {name: "New York", lat: ..., lon:...})

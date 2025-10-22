@@ -343,3 +343,18 @@ def set_theme_preference(
             },
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@router.post("/generate_api_key", name="generate_api_key")
+def generate_api_key(
+    request: Request,
+    user: Annotated[User, Depends(manager)],
+    db_conn: sqlite3.Connection = Depends(get_db),
+) -> Response:
+    """Generate a new API key for the user."""
+    user.api_key = _generate_api_key()
+    if db.save_user(db_conn, user):
+        flash(request, "New API key generated successfully.")
+    else:
+        flash(request, "Failed to generate new API key.")
+    return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
