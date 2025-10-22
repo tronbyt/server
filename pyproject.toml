@@ -12,7 +12,7 @@ dependencies = [
     "requests",
     "tzlocal",
     "fastapi>=0.117.1",
-    "uvicorn>=0.36.0",
+    "uvicorn[standard]>=0.36.0",
     "python-multipart>=0.0.20",
     "fastapi-babel>=1.0.0",
     "fastapi-login>=1.10.3",

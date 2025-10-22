@@ -76,7 +76,7 @@ def post_register_owner(
     return templates.TemplateResponse(request, "auth/register_owner.html")
 
 
-@router.get("/register")
+@router.get("/register", name="register")
 def get_register(
     request: Request,
     user: User | None = Depends(manager.optional),
@@ -175,7 +175,7 @@ def post_register(
     )
 
 
-@router.get("/login")
+@router.get("/login", name="login")
 def get_login(
     request: Request,
     db_conn: sqlite3.Connection = Depends(get_db),
@@ -247,7 +247,7 @@ def post_login(
     return response
 
 
-@router.get("/edit")
+@router.get("/edit", name="edit")
 def get_edit(request: Request, user: User = Depends(manager)) -> Response:
     """Render the edit user page."""
     firmware_version = None
@@ -300,7 +300,7 @@ def post_edit(
     )
 
 
-@router.get("/logout")
+@router.get("/logout", name="logout")
 def logout(request: Request) -> Response:
     """Log the user out."""
     flash(request, "Logged Out")

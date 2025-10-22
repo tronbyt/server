@@ -218,7 +218,7 @@ def _next_app_logic(
     return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
 
 
-@router.get("/")
+@router.get("/", name="index")
 def index(
     request: Request,
     user: User = Depends(manager),
@@ -250,7 +250,7 @@ def index(
     )
 
 
-@router.get("/create")
+@router.get("/create", name="create")
 def create(request: Request, user: User = Depends(manager)) -> Response:
     """Render the device creation page."""
     return templates.TemplateResponse(request, "manager/create.html", {"user": user})
@@ -269,7 +269,7 @@ class DeviceCreateFormData(BaseModel):
     location: str | None = None
 
 
-@router.post("/create")
+@router.post("/create", name="create_post")
 def create_post(
     request: Request,
     form_data: Annotated[DeviceCreateFormData, Form()],
@@ -351,7 +351,7 @@ def create_post(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/update")
+@router.get("/{device_id}/update", name="update")
 def update(
     request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
@@ -387,7 +387,7 @@ def update(
     )
 
 
-@router.post("/{device_id}/update_brightness")
+@router.post("/{device_id}/update_brightness", name="update_brightness")
 def update_brightness(
     device_id: DeviceID,
     user: User = Depends(manager),
@@ -420,7 +420,7 @@ def update_brightness(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@router.post("/{device_id}/update_interval")
+@router.post("/{device_id}/update_interval", name="update_interval")
 def update_interval(
     device_id: DeviceID,
     user: User = Depends(manager),
@@ -458,7 +458,7 @@ class DeviceUpdateFormData(BaseModel):
     location: str | None = None
 
 
-@router.post("/{device_id}/update")
+@router.post("/{device_id}/update", name="update_post")
 def update_post(
     request: Request,
     device_id: DeviceID,
@@ -552,7 +552,7 @@ def update_post(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.post("/{device_id}/delete")
+@router.post("/{device_id}/delete", name="delete")
 def delete(
     device_id: DeviceID,
     user: User = Depends(manager),
@@ -568,7 +568,7 @@ def delete(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/addapp")
+@router.get("/{device_id}/addapp", name="addapp")
 def addapp(
     request: Request,
     device_id: DeviceID,
@@ -614,7 +614,7 @@ def addapp(
     )
 
 
-@router.post("/{device_id}/addapp")
+@router.post("/{device_id}/addapp", name="addapp_post")
 def addapp_post(
     request: Request,
     device_id: DeviceID,
@@ -674,7 +674,7 @@ def addapp_post(
     )
 
 
-@router.get("/{device_id}/uploadapp")
+@router.get("/{device_id}/uploadapp", name="uploadapp")
 def uploadapp(
     request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
@@ -688,7 +688,7 @@ def uploadapp(
     )
 
 
-@router.post("/{device_id}/uploadapp")
+@router.post("/{device_id}/uploadapp", name="app_preview")
 async def uploadapp_post(
     request: Request,
     device_id: DeviceID,
@@ -752,7 +752,7 @@ async def uploadapp_post(
     )
 
 
-@router.get("/app_preview/{filename}")
+@router.get("/app_preview/{filename}", name="app_preview")
 def app_preview(filename: str) -> FileResponse:
     """Serve app preview images."""
     file_path = db.get_data_dir() / "apps" / filename
@@ -761,7 +761,7 @@ def app_preview(filename: str) -> FileResponse:
     return FileResponse(file_path)
 
 
-@router.get("/{device_id}/deleteupload/{filename}")
+@router.get("/{device_id}/deleteupload/{filename}", name="deleteupload")
 def deleteupload(
     request: Request,
     device_id: DeviceID,
@@ -790,8 +790,8 @@ def deleteupload(
     )
 
 
-@router.get("/{device_id}/{iname}/delete")
-@router.post("/{device_id}/{iname}/delete")
+@router.get("/{device_id}/{iname}/delete", name="deleteapp")
+@router.post("/{device_id}/{iname}/delete", name="deleteapp")
 def deleteapp(
     device_id: DeviceID,
     iname: str,
@@ -819,7 +819,7 @@ def deleteapp(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/toggle_pin")
+@router.get("/{device_id}/{iname}/toggle_pin", name="toggle_pin")
 def toggle_pin(
     request: Request,
     device_id: DeviceID,
@@ -848,7 +848,7 @@ def toggle_pin(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/updateapp")
+@router.get("/{device_id}/{iname}/updateapp", name="updateapp")
 def updateapp(
     request: Request, device_id: DeviceID, iname: str, user: User = Depends(manager)
 ) -> Response:
@@ -901,7 +901,7 @@ class AppUpdateFormData(BaseModel):
     day_of_week_pattern: str | None = None
 
 
-@router.post("/{device_id}/{iname}/updateapp")
+@router.post("/{device_id}/{iname}/updateapp", name="updateapp_post")
 def updateapp_post(
     request: Request,
     device_id: DeviceID,
@@ -973,7 +973,7 @@ def updateapp_post(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/toggle_enabled")
+@router.get("/{device_id}/{iname}/toggle_enabled", name="toggle_enabled")
 def toggle_enabled(
     request: Request,
     device_id: DeviceID,
@@ -994,7 +994,7 @@ def toggle_enabled(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/moveapp")
+@router.get("/{device_id}/{iname}/moveapp", name="moveapp")
 def moveapp(
     request: Request,
     device_id: DeviceID,
@@ -1043,7 +1043,7 @@ def moveapp(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/configapp")
+@router.get("/{device_id}/{iname}/configapp", name="configapp")
 def configapp(
     request: Request,
     device_id: DeviceID,
@@ -1077,7 +1077,7 @@ def configapp(
     )
 
 
-@router.post("/{device_id}/{iname}/configapp")
+@router.post("/{device_id}/{iname}/configapp", name="preview")
 async def configapp_post(
     request: Request,
     device_id: DeviceID,
@@ -1118,7 +1118,7 @@ async def configapp_post(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/preview")
+@router.get("/{device_id}/{iname}/preview", name="preview")
 def preview(
     request: Request,
     device_id: DeviceID,
@@ -1169,7 +1169,7 @@ def preview(
         )
 
 
-@router.get("/adminindex")
+@router.get("/adminindex", name="adminindex")
 def adminindex(
     request: Request,
     user: User = Depends(manager),
@@ -1184,7 +1184,7 @@ def adminindex(
     )
 
 
-@router.post("/admin/{username}/deleteuser")
+@router.post("/admin/{username}/deleteuser", name="deleteuser")
 def deleteuser(
     username: str,
     user: User = Depends(manager),
@@ -1198,7 +1198,7 @@ def deleteuser(
     return RedirectResponse(url="/adminindex", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/firmware")
+@router.get("/{device_id}/firmware", name="generate_firmware")
 def generate_firmware(
     request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
@@ -1214,7 +1214,7 @@ def generate_firmware(
     )
 
 
-@router.post("/{device_id}/firmware")
+@router.post("/{device_id}/firmware", name="generate_firmware_post")
 def generate_firmware_post(
     device_id: DeviceID,
     user: User = Depends(manager),
@@ -1252,7 +1252,7 @@ def generate_firmware_post(
     )
 
 
-@router.post("/set_user_repo")
+@router.post("/set_user_repo", name="set_user_repo")
 def set_user_repo(
     request: Request,
     user: User = Depends(manager),
@@ -1276,7 +1276,7 @@ def set_user_repo(
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
-@router.post("/set_api_key")
+@router.post("/set_api_key", name="set_api_key")
 def set_api_key(
     request: Request,
     user: User = Depends(manager),
@@ -1292,7 +1292,7 @@ def set_api_key(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.post("/set_system_repo")
+@router.post("/set_system_repo", name="set_system_repo")
 def set_system_repo(
     request: Request,
     user: User = Depends(manager),
@@ -1315,7 +1315,7 @@ def set_system_repo(
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
-@router.post("/refresh_system_repo")
+@router.post("/refresh_system_repo", name="refresh_system_repo")
 def refresh_system_repo(
     request: Request,
     user: User = Depends(manager),
@@ -1331,7 +1331,7 @@ def refresh_system_repo(
     )
 
 
-@router.post("/mark_app_broken/{app_name}")
+@router.post("/mark_app_broken/{app_name}", name="mark_app_broken")
 def mark_app_broken(
     app_name: str,
     user: User = Depends(manager),
@@ -1400,7 +1400,7 @@ def mark_app_broken(
         )
 
 
-@router.post("/unmark_app_broken/{app_name}")
+@router.post("/unmark_app_broken/{app_name}", name="unmark_app_broken")
 def unmark_app_broken(
     app_name: str,
     user: User = Depends(manager),
@@ -1474,7 +1474,7 @@ def unmark_app_broken(
         )
 
 
-@router.post("/update_firmware")
+@router.post("/update_firmware", name="update_firmware")
 def update_firmware(request: Request, user: User = Depends(manager)) -> Response:
     """Update firmware binaries (admin only)."""
     if user.username != "admin":
@@ -1497,7 +1497,7 @@ def update_firmware(request: Request, user: User = Depends(manager)) -> Response
     )
 
 
-@router.post("/refresh_user_repo")
+@router.post("/refresh_user_repo", name="refresh_user_repo")
 def refresh_user_repo(
     request: Request,
     user: User = Depends(manager),
@@ -1510,7 +1510,7 @@ def refresh_user_repo(
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/export_user_config")
+@router.get("/export_user_config", name="export_user_config")
 def export_user_config(user: User = Depends(manager)) -> Response:
     """Export user configuration as a JSON file."""
     user_dict = user.model_dump()
@@ -1525,7 +1525,7 @@ def export_user_config(user: User = Depends(manager)) -> Response:
     )
 
 
-@router.get("/{device_id}/export_config")
+@router.get("/{device_id}/export_config", name="export_device_config")
 def export_device_config(
     device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
@@ -1540,7 +1540,7 @@ def export_device_config(
     )
 
 
-@router.get("/{device_id}/import_config")
+@router.get("/{device_id}/import_config", name="import_device_config")
 def import_device_config(
     request: Request, device_id: DeviceID, user: User = Depends(manager)
 ) -> Response:
@@ -1551,7 +1551,7 @@ def import_device_config(
     )
 
 
-@router.post("/{device_id}/import_config")
+@router.post("/{device_id}/import_config", name="import_device")
 async def import_device_config_post(
     request: Request,
     device_id: DeviceID,
@@ -1598,7 +1598,7 @@ async def import_device_config_post(
         )
 
 
-@router.post("/import_user_config")
+@router.post("/import_user_config", name="import_device")
 async def import_user_config(
     request: Request,
     user: User = Depends(manager),
@@ -1631,7 +1631,7 @@ async def import_user_config(
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/import_device")
+@router.get("/import_device", name="import_device")
 def import_device(request: Request, user: User = Depends(manager)) -> Response:
     """Render the import device page."""
     return templates.TemplateResponse(
@@ -1639,7 +1639,7 @@ def import_device(request: Request, user: User = Depends(manager)) -> Response:
     )
 
 
-@router.post("/import_device")
+@router.post("/import_device", name="next_app")
 async def import_device_post(
     request: Request,
     user: User = Depends(manager),
@@ -1684,14 +1684,14 @@ async def import_device_post(
         return RedirectResponse(url="/import_device", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/next")
+@router.get("/{device_id}/next", name="next_app")
 def next_app(
     device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
     return _next_app_logic(db_conn, device_id)
 
 
-@router.get("/{device_id}/brightness")
+@router.get("/{device_id}/brightness", name="get_brightness")
 def get_brightness(
     device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
@@ -1705,7 +1705,7 @@ def get_brightness(
     return Response(content=str(brightness_value), media_type="text/plain")
 
 
-@router.get("/{device_id}/currentapp")
+@router.get("/{device_id}/currentapp", name="currentwebp")
 def currentwebp(
     device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
@@ -1729,7 +1729,7 @@ def currentwebp(
     return appwebp(device_id, current_app_iname, db_conn)
 
 
-@router.get("/{device_id}/{iname}/appwebp")
+@router.get("/{device_id}/{iname}/appwebp", name="appwebp")
 def appwebp(
     device_id: DeviceID, iname: str, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
@@ -1753,7 +1753,7 @@ def appwebp(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
-@router.post("/{device_id}/{iname}/schema_handler/{handler}")
+@router.post("/{device_id}/{iname}/schema_handler/{handler}", name="schema_handler")
 async def schema_handler(
     request: Request,
     device_id: DeviceID,
@@ -1783,7 +1783,7 @@ async def schema_handler(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@router.get("/health")
+@router.get("/health", name="health")
 def health() -> Response:
     """Health check endpoint."""
     return Response(content="OK", status_code=status.HTTP_200_OK)

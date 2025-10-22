@@ -27,7 +27,7 @@
 
 <!-- Debug Content -->
 <div id="debugContent" class="hidden">
-  <pre class="flash">{{ app.get('render_messages', []) | join('\n') }}</pre>
+  <pre class="flash">{{ (app.render_messages or []) | join('\n') }}</pre>
 </div>
 
 <script>

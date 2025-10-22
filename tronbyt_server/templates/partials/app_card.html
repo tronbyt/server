@@ -14,7 +14,7 @@
       <div class="app-header">
         <h3>{{ app['name'] }}-{{ app['iname'] }}</h3>
         <div class="app-status">
-          {% if device.get('pinned_app') == app['iname'] %}
+          {% if device.pinned_app == app['iname'] %}
           <span class="status-badge pinned">&#128204; {{ _('PINNED') }}</span>
           {% else %}
             {% if app['enabled'] %}
@@ -29,14 +29,14 @@
       <div class="app-details">
         <p class="app-render-info">
           {{ _('Interval:') }} {{ app['uinterval'] }}min |
-          {% if app.get('empty_last_render') %}{{_('No output for ') }}{% endif %}
-          {{ _('Last:') }} {{ app.get('last_render',0)|timeago }}
+          {% if app.empty_last_render %}{{_('No output for ') }}{% endif %}
+          {{ _('Last:') }} {{ (app.last_render or 0)|timeago }}
         </p>
         {% if app['display_time'] != 0 %}
         <p>{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
         {% endif %}
-        {% if app.get('notes', '') != '' %}
-        <p>{{ _('Notes:') }} {{ app['notes'] }}</p>
+        {% if app.notes and app.notes != '' %}
+        <p>{{ _('Notes:') }} {{ app.notes }}</p>
         {% endif %}
       </div>
 
@@ -46,7 +46,7 @@
           <a class="action w3-button w3-blue w3-round"
              href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}">{{ _('Edit') }}</a>
           <a class="action w3-button w3-blue w3-round"
-             href="{{ url_for('configapp', device_id=device.id, iname=app.iname, delete_on_cancel=False) }}">{{ _('Configure') }}</a>
+             href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=False">{{ _('Configure') }}</a>
           <button class="action w3-button w3-green w3-round"
                   onclick="duplicateApp('{{ device.id }}', '{{ app.iname }}')">{{ _('Duplicate') }}</button>
           <button class="action w3-button w3-red w3-round"
@@ -61,7 +61,7 @@
           <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.last %}w3-disabled{% endif %}"
                   {% if loop.last %}disabled{% endif %}
                   onclick="{% if not loop.last %}moveApp('{{ device.id }}', '{{ app.iname }}', 'bottom'){% endif %}">{{ _('Bottom') }}</button>
-          {% if device.get('pinned_app') == app.iname %}
+          {% if device.pinned_app == app.iname %}
           <button class="action w3-button w3-orange w3-round app-btn-no-hover"
              onclick="togglePin('{{ device.id }}', '{{ app.iname }}')">{{ _('Unpin') }}</button>
           {% else %}

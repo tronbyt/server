@@ -6,6 +6,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 ENV PDM_CHECK_UPDATE=false
 COPY . /app/
 WORKDIR /app
+RUN pdm lock --check || pdm lock
 RUN pdm install --check --prod --no-editable && pdm build --no-sdist --no-wheel
 
 # Ignore hadolint findings about version pinning

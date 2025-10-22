@@ -95,7 +95,7 @@
             <input name="wifi_password" id="wifi_password" required class="device-settings-input">
           </td>
         </tr>
-        {% if device.get('type') == 'tidbyt_gen1' %}
+        {% if device.type == 'tidbyt_gen1' %}
         <tr>
           <td>
             <label for="swap_colors" class="device-settings-label">{{ _('Swap Colors?') }}</label>

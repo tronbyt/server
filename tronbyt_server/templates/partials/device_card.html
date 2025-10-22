@@ -12,7 +12,7 @@
                 </a>
                 {% if device.pinned_app %}
                   {% set pinned_app_iname = device.pinned_app %}
-                  {% set pinned_app = device.get('apps', {}).get(pinned_app_iname) %}
+                  {% set pinned_app = device.apps.get(pinned_app_iname) if device.apps else None %}
                   {% if pinned_app %}
                     <span class="pinned-badge">
                       &#128204; {{ _('Pinned:') }} {{ pinned_app['name'] }}

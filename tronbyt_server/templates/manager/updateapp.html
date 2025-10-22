@@ -8,7 +8,7 @@
 <div class="flex-container">
   <!-- Navigation Button -->
     <div class="button-group">
-      <a href="{{ url_for('configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=0) }}"
+      <a href="{{ url_for('configapp', device_id=device['id'], iname=app['iname']) }}?delete_on_cancel=0"
         class="w3-button" style="background-color: var(--enabled-text); color: white;">{{ _('Configure App') }}</a>
     </div>
 
@@ -376,7 +376,7 @@
   <div style="margin-bottom: 20px;">
     <h3>{{ _('Enable App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": true}' \
   {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
@@ -386,7 +386,7 @@
   <div style="margin-bottom: 20px;">
     <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": false}' \
   {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
@@ -396,7 +396,7 @@
   <div style="margin-bottom: 20px;">
     <h3>{{ _('Pin App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": true}' \
   {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
@@ -406,7 +406,7 @@
   <div style="margin-bottom: 20px;">
     <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": false}' \
   {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
