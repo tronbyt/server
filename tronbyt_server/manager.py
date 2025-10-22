@@ -1537,13 +1537,31 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
     try:
         user = g.user
         device = user["devices"][device_id]
-        apps_list = sorted(device.get("apps", {}).values(), key=itemgetter("order"))
+        apps = device.get("apps", {})
+        apps_list = sorted(apps.values(), key=itemgetter("order"))
         if not apps_list:
             return send_default_image(device)
+        
+        # Create expanded apps list with interstitial apps inserted (same logic as next_app)
+        expanded_apps_list = []
+        interstitial_app_iname = device.get("interstitial_app", "")
+        interstitial_enabled = device.get("interstitial_enabled", False)
+        
+        for i, regular_app in enumerate(apps_list):
+            # Add the regular app
+            expanded_apps_list.append(regular_app)
+            
+            # Add interstitial app after each regular app (except the last one)
+            if (interstitial_enabled 
+                and interstitial_app_iname in apps.keys() 
+                and i < len(apps_list) - 1):
+                interstitial_app = apps[interstitial_app_iname]
+                expanded_apps_list.append(interstitial_app)
+        
         current_app_index = db.get_last_app_index(device_id) or 0
-        if current_app_index >= len(apps_list):
+        if current_app_index >= len(expanded_apps_list):
             current_app_index = 0
-        current_app_iname = apps_list[current_app_index]["iname"]
+        current_app_iname = expanded_apps_list[current_app_index]["iname"]
         return appwebp(device_id, current_app_iname)
     except Exception as e:
         current_app.logger.error(f"Exception: {str(e)}")
