@@ -37,7 +37,7 @@ def get_register_owner(
     """Render the owner registration page."""
     if db.has_users(db_conn):
         return RedirectResponse(
-            url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("login"), status_code=status.HTTP_302_FOUND
         )
     return templates.TemplateResponse(request, "auth/register_owner.html")
 
@@ -51,7 +51,7 @@ def post_register_owner(
     """Handle owner registration."""
     if db.has_users(db_conn):
         return RedirectResponse(
-            url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("login"), status_code=status.HTTP_302_FOUND
         )
 
     if not password:
@@ -68,7 +68,7 @@ def post_register_owner(
             db.create_user_dir(username)
             flash(request, "Admin user created. Please log in.")
             return RedirectResponse(
-                url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+                url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
         else:
             flash(request, "Could not create admin user.")
@@ -92,7 +92,7 @@ def get_register(
         if not user or user.username != "admin":
             flash(request, "User registration is not enabled.")
             return RedirectResponse(
-                url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+                url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
     return templates.TemplateResponse(request, "auth/register.html", {"user": user})
 
@@ -123,14 +123,14 @@ def post_register(
         if not user or user.username != "admin":
             flash(request, "User registration is not enabled.")
             return RedirectResponse(
-                url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+                url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
 
     max_users = settings.MAX_USERS
     if max_users > 0 and len(db.get_all_users(db_conn)) >= max_users:
         flash(request, "Maximum number of users reached. Registration is disabled.")
         return RedirectResponse(
-            url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("login"), status_code=status.HTTP_302_FOUND
         )
 
     error = None
@@ -163,7 +163,7 @@ def post_register(
             else:
                 flash(request, f"Registered as {form_data.username}.")
                 return RedirectResponse(
-                    url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+                    url=request.url_for("login"), status_code=status.HTTP_302_FOUND
                 )
         else:
             error = "Couldn't Save User"
@@ -176,7 +176,7 @@ def post_register(
 
 
 @router.get("/login", name="login")
-def get_login(
+def login(
     request: Request,
     db_conn: sqlite3.Connection = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -305,7 +305,7 @@ def logout(request: Request) -> Response:
     """Log the user out."""
     flash(request, "Logged Out")
     response = RedirectResponse(
-        url=request.url_for("get_login"), status_code=status.HTTP_302_FOUND
+        url=request.url_for("login"), status_code=status.HTTP_302_FOUND
     )
     response.delete_cookie(manager.cookie_name)
     return response
