@@ -196,6 +196,47 @@
   </div>
 
   <div class="device-settings-section">
+    <h2>{{ _('Interstitial App Settings') }}</h2>
+    
+    <table class="device-settings-table">
+      <tr>
+        <td>
+          <label for="interstitial_enabled" class="device-settings-label">{{ _('Enable Interstitial App') }}</label>
+        </td>
+        <td>
+          <input type="checkbox" name="interstitial_enabled" id="interstitial_enabled" {% if device.get('interstitial_enabled') %}checked{% endif %}>
+          <small class="small-text">{{ _('Display an interstitial app between each regular app in the rotation.') }}</small>
+        </td>
+      </tr>
+    </table>
+
+    <div class="device-settings-section-divider">
+      <h3>{{ _('Interstitial App Configuration') }}</h3>
+      
+      <table class="device-settings-table">
+        <tr>
+          <td>
+            <label for="interstitial_app" class="device-settings-label">{{ _('Interstitial App') }}</label>
+          </td>
+          <td>
+            <select name="interstitial_app" id="interstitial_app" class="select-container">
+              <option value="None">{{ _('None') }}</option>
+              {% if 'apps' in device %}
+              {% for app in device['apps'].values() %}
+              <option value="{{ app['iname'] }}" {% if 'interstitial_app' in device and device['interstitial_app']==app['iname'] %}selected{% endif %}>
+                {{ app['iname'] }} {{ app['name'] }}
+              </option>
+              {% endfor %}
+              {% endif %}
+            </select>
+            <small class="small-text">{{ _('The interstitial app will display even if it is disabled in the regular rotation.') }}</small>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="device-settings-section">
     <h2>{{ _('Night Mode Settings') }}</h2>
     
     <table class="device-settings-table">

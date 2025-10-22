@@ -494,6 +494,15 @@ def update(device_id: str) -> ResponseReturnValue:
                 ui_dim_brightness = int(dim_brightness)
                 device["dim_brightness"] = db.ui_scale_to_percent(ui_dim_brightness)
 
+            # Handle interstitial app settings
+            device["interstitial_enabled"] = bool(request.form.get("interstitial_enabled"))
+            interstitial_app = request.form.get("interstitial_app")
+            if interstitial_app and interstitial_app != "None":
+                device["interstitial_app"] = interstitial_app
+            elif "interstitial_app" in device:
+                # Remove interstitial_app if set to None
+                del device["interstitial_app"]
+
             locationJSON = request.form.get("location")
             if locationJSON and locationJSON != "{}":
                 try:
@@ -1393,24 +1402,43 @@ def next_app(
         # Normal app selection logic
         apps_list = sorted(apps.values(), key=itemgetter("order"))
         is_night_mode_app = False
+        is_interstitial_app = False
+        
         if (
             db.get_night_mode_is_active(device)
             and device.get("night_mode_app", "") in apps.keys()
         ):
             app = apps[device["night_mode_app"]]
             is_night_mode_app = True
-        elif last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
-            app = apps_list[last_app_index + 1]  # add 1 to get the next app
-            last_app_index += 1
+        elif (
+            device.get("interstitial_enabled", False)
+            and device.get("interstitial_app", "") in apps.keys()
+            and not device.get("interstitial_shown", False)
+        ):
+            # Show interstitial app
+            current_app.logger.debug(f"Showing interstitial app: {device.get('interstitial_app')}")
+            app = apps[device["interstitial_app"]]
+            is_interstitial_app = True
+            device["interstitial_shown"] = True
         else:
-            app = apps_list[0]  # go to the beginning
-            last_app_index = 0
+            # Show regular app and reset interstitial_shown
+            device["interstitial_shown"] = False
+            if last_app_index + 1 < len(apps_list):  # will +1 be in bounds of array ?
+                app = apps_list[last_app_index + 1]  # add 1 to get the next app
+                last_app_index += 1
+                current_app.logger.debug(f"Showing regular app at index {last_app_index}: {app['name']}")
+            else:
+                app = apps_list[0]  # go to the beginning
+                last_app_index = 0
+                current_app.logger.debug(f"Showing first regular app: {app['name']}")
 
     # For pinned apps, always display them regardless of enabled/schedule status
+    # For interstitial apps, always display them regardless of enabled/schedule status
     # For other apps, check if they should be displayed
     if (
         not is_pinned_app
         and not is_night_mode_app
+        and not is_interstitial_app
         and (not app["enabled"] or not db.get_is_app_schedule_active(app, device))
     ):
         # recurse until we find one that's enabled
@@ -1446,6 +1474,9 @@ def next_app(
             f"index {last_app_index} -- bright {b} -- dwell_secs {s}{immediate_text}"
         )
         db.save_last_app_index(device_id, last_app_index)
+        # Save device state if we modified interstitial_shown
+        if is_interstitial_app or (not is_pinned_app and not is_night_mode_app):
+            db.save_user(user)
         return response
 
     current_app.logger.error(f"file {webp_path} not found")
