@@ -93,7 +93,16 @@
     // Reload the preview image to reflect updated config
     const url = new URL(previewImage.src);
     url.searchParams.set("config", JSON.stringify(config));
+    let loading = true;
+    previewImage.addEventListener('load', () => {
+        loading = false;
+        previewImage.classList.add('loaded');
+        previewImage.classList.remove('hidden');
+    }, { once: true });
     previewImage.src = url.toString();
+    setTimeout(() => {
+        if (loading) previewImage.classList.remove('loaded');
+    }, 500);
   }, 100);
 
   // Centralized config update handler
@@ -759,9 +768,11 @@
 
 <!-- App Preview -->
 <div class="app-img">
-  <img id="previewImage" 
+  <img id="previewImage"
     src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}">
+    alt="{{ _('Preview') }}"
+    class="hidden">
+  <div class="skeleton-loader"></div>
 </div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}

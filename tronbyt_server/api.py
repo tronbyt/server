@@ -185,6 +185,66 @@ def handle_push(device_id: str) -> ResponseReturnValue:
         )
 
 
+DEFAULT_DOTS_WIDTH = 64
+DEFAULT_DOTS_HEIGHT = 32
+DEFAULT_DOTS_RADIUS = 0.4
+MAX_DOTS_DIMENSION = 256
+
+
+@bp.get("/dots")
+def generate_dots_svg() -> ResponseReturnValue:
+    def _parse_dimension(param: str, default: int) -> int:
+        raw_value = request.args.get(param, default)
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                description=f"Parameter '{param}' must be an integer",
+            )
+        if value <= 0 or value > MAX_DOTS_DIMENSION:
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                description=f"Parameter '{param}' must be between 1 and {MAX_DOTS_DIMENSION}",
+            )
+        return value
+
+    def _parse_radius(param: str, default: float) -> float:
+        raw_value = request.args.get(param, default)
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                description=f"Parameter '{param}' must be a number",
+            )
+        if value <= 0 or value > 1:
+            abort(
+                HTTPStatus.BAD_REQUEST,
+                description=f"Parameter '{param}' must be between 0 and 1",
+            )
+        return value
+
+    width = _parse_dimension("w", DEFAULT_DOTS_WIDTH)
+    height = _parse_dimension("h", DEFAULT_DOTS_HEIGHT)
+    radius = _parse_radius("r", DEFAULT_DOTS_RADIUS)
+
+    data = [
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" fill="#fff">'
+    ]
+    # Pre-compute strings to avoid repeated formatting overhead inside the loop
+    radius_str = f"{radius:g}"
+    for y in range(height):
+        y_str = f"{y + 0.5:g}"
+        for x in range(width):
+            x_str = f"{x + 0.5:g}"
+            data.append(f'<circle cx="{x_str}" cy="{y_str}" r="{radius_str}"/>')
+    data.append("</svg>\n")
+
+    return Response("".join(data), mimetype="image/svg+xml")
+
+
 @bp.get("/devices/<string:device_id>/installations")
 def list_installations(device_id: str) -> ResponseReturnValue:
     if not validate_device_id(device_id):

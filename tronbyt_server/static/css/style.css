@@ -114,6 +114,8 @@ input[type=submit] {
 
 /* app-img styles with variables */
 .app-img {
+  aspect-ratio: 2 / 1;
+  position: relative;
   background: var(--app-img-bg);
   overflow: hidden;
   border: 1px solid var(--app-img-border);
@@ -124,14 +126,40 @@ input[type=submit] {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  -webkit-mask-image: url('/static/images/dots.svg');
+  -webkit-mask-image: url('/v0/dots');
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: cover;
-  mask-image: url('/static/images/dots.svg');
+  mask-image: url('/v0/dots');
   mask-repeat: no-repeat;
   mask-size: cover;
   width: 100%;
   height: 100%;
+}
+.app-img.is-2x img {
+  -webkit-mask-image: url('/v0/dots?w=128&h=64');
+  mask-image: url('/v0/dots?w=128&h=64');
+}
+
+/* Skeleton loader */
+.skeleton-loader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #0009 25%, #fff3 50%, #0009 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Hide skeleton when image loads */
+.app-img img.loaded + .skeleton-loader {
+  display: none;
 }
 
 /* Theme Toggle Styles - now using variables */

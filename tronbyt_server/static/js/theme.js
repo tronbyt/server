@@ -63,6 +63,36 @@
         .catch(error => console.error('Error saving theme preference:', error));
     }
 
+    function handle2xAppImages () {
+        const APP_IMG_2X_WIDTH = 128;
+
+        const processImage = (img) => {
+            const applyClass = () => img.closest('.app-img')?.classList.toggle('is-2x', img.naturalWidth === APP_IMG_2X_WIDTH);
+            if (img.complete) {
+                applyClass();
+            } else {
+                img.addEventListener('load', applyClass, { once: true });
+            }
+        };
+
+        document.querySelectorAll('.app-img img').forEach(processImage);
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType !== 1) return;
+                    if (node.matches('.app-img img')) {
+                        processImage(node);
+                    } else {
+                        node.querySelectorAll('.app-img img').forEach(processImage);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     function handleSystemThemeChange(e) {
         // This function is called when system theme changes.
         // It should only re-apply the theme if 'system' is currently selected.
@@ -155,6 +185,7 @@
 
         setupThemeChangeHandler(themeSelect);
         setupThemeChangeHandler(mobileThemeSelect);
+        handle2xAppImages();
     }
 
     if (document.readyState === 'loading') {
