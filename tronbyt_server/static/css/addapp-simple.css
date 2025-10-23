@@ -30,27 +30,6 @@
   display: none;
 }
 
-/* Skeleton loader */
-.skeleton-loader {
-  width: 100%;
-  aspect-ratio: 2 / 1;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-  border-radius: 4px;
-  margin-bottom: 10px;
-}
-
-@keyframes loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* Hide skeleton when image loads */
-.app-img img.loaded + .skeleton-loader {
-  display: none;
-}
-
 /* Optimized grid layout */
 .app-grid {
   display: grid;
