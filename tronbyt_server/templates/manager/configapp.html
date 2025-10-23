@@ -223,6 +223,10 @@
           if (!config[field.id]) {
             config[field.id] = field.default || "#000000";
           }
+          if (field.palette) {
+              const div = createColorPaletteButtons(field, inputElement);
+              inputCell.appendChild(div);
+          }
           break;
 
         case "png":
@@ -569,6 +573,33 @@
     sourceField.addEventListener("input", updateGeneratedFields);
 
     updateGeneratedFields(); // Initial call to populate fields
+  }
+
+  function createColorPaletteButtons(field, inputElement) {
+    const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
+    const div = document.createElement('div');
+    div.className = 'palette';
+    field.palette?.forEach(color => {
+      if (!hexColorRegex.test(color)) {
+        console.warn(`Skipping invalid color from palette: ${color}`);
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'w3-button';
+      btn.style.setProperty('--color', color);
+      btn.setAttribute('aria-label', `Set color to ${color}`);
+      btn.addEventListener('click', () => {
+          if (color.length === 4) {
+            // Expand #rgb to #rrggbb
+            color = '#' + [...color.slice(1)].map(c => c + c).join('');
+          }
+          inputElement.value = color;
+          inputElement.dispatchEvent(new Event('input'));
+      })
+      div.appendChild(btn);
+    })
+    return div;
   }
 
   // Function to fetch options for location-based fields
