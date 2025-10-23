@@ -64,14 +64,33 @@
     }
 
     function handle2xAppImages () {
-        document.querySelectorAll('.app-img img').forEach(img => {
-          const applyClass = () => {
-              img.closest('.app-img')?.classList.toggle('is-2x', img.naturalWidth === 128);
-          };
+        const APP_IMG_2X_WIDTH = 128;
 
-          if (img.complete) applyClass();
-          else img.addEventListener('load', applyClass, { once: true });
+        const processImage = (img) => {
+            const applyClass = () => img.closest('.app-img')?.classList.toggle('is-2x', img.naturalWidth === APP_IMG_2X_WIDTH);
+            if (img.complete) {
+                applyClass();
+            } else {
+                img.addEventListener('load', applyClass, { once: true });
+            }
+        };
+
+        document.querySelectorAll('.app-img img').forEach(processImage);
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType !== 1) return;
+                    if (node.matches('.app-img img')) {
+                        processImage(node);
+                    } else {
+                        node.querySelectorAll('.app-img img').forEach(processImage);
+                    }
+                });
+            });
         });
+
+        observer.observe(document.body, { childList: true, subtree: true });
     }
 
     function handleSystemThemeChange(e) {
