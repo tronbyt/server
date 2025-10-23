@@ -1559,9 +1559,20 @@ def currentwebp(device_id: str) -> ResponseReturnValue:
                 expanded_apps_list.append(interstitial_app)
         
         current_app_index = db.get_last_app_index(device_id) or 0
+        
+        # Handle compatibility: if the index is too large for the expanded list,
+        # it might be from the old system (before interstitial apps)
         if current_app_index >= len(expanded_apps_list):
-            current_app_index = 0
-        current_app_iname = expanded_apps_list[current_app_index]["iname"]
+            # If interstitial is enabled, the old index might be valid for the original apps_list
+            if interstitial_enabled and current_app_index < len(apps_list):
+                # Use the original apps_list for backward compatibility
+                current_app_iname = apps_list[current_app_index]["iname"]
+            else:
+                # Reset to 0 if index is completely invalid
+                current_app_index = 0
+                current_app_iname = expanded_apps_list[current_app_index]["iname"]
+        else:
+            current_app_iname = expanded_apps_list[current_app_index]["iname"]
         return appwebp(device_id, current_app_iname)
     except Exception as e:
         current_app.logger.error(f"Exception: {str(e)}")
