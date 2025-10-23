@@ -11,7 +11,7 @@ def test_dots_svg_defaults(client: FlaskClient) -> None:
     assert 'width="64"' in body
     assert 'height="32"' in body
     assert body.count("<circle") == 64 * 32
-    assert '<circle cx="0.5" cy="0.5" r="0.4"/>' in body
+    assert '<circle cx="0.5" cy="0.5" r="0.3"/>' in body
 
 
 def test_dots_svg_custom_parameters(client: FlaskClient) -> None:
