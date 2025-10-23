@@ -133,6 +133,10 @@ input[type=submit] {
   width: 100%;
   height: 100%;
 }
+.app-img.is-2x img {
+  -webkit-mask-image: url('/static/images/dots2x.svg');
+  mask-image: url('/static/images/dots2x.svg');
+}
 
 /* Theme Toggle Styles - now using variables */
 .theme-toggle-container {
