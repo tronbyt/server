@@ -93,14 +93,9 @@
     // Reload the preview image to reflect updated config
     const url = new URL(previewImage.src);
     url.searchParams.set("config", JSON.stringify(config));
-    let loading = true;
-    previewImage.addEventListener('load', () => {
-        loading = false;
-        previewImage.classList.add('loaded');
-    }, { once: true });
     previewImage.src = url.toString();
     setTimeout(() => {
-        if (loading) previewImage.classList.remove('loaded');
+        if (!previewImage.complete) previewImage.classList.remove('loaded');
     }, 500);
   }, 100);
 
@@ -644,6 +639,11 @@
 
   // Initialize the form on page load
   document.addEventListener("DOMContentLoaded", function () {
+    const previewImage = document.getElementById('previewImage');
+    previewImage.addEventListener('load', () => {
+      previewImage.classList.add('loaded');
+    });
+
     const form = document.getElementById("dynamicForm");
 
     // Create and add the form table first
