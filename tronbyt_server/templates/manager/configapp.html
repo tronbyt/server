@@ -18,6 +18,12 @@
     <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
     <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
   </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <button type="button" class="w3-button w3-green w3-round" id="saveButton">{{ _('Save') }}</button>
+    <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop">{{ _('Cancel') }}</button>
+  </div>
 </div>
 
 <!-- Config Content -->
@@ -687,47 +693,6 @@
       formTable.appendChild(row);
     });
 
-    // Create and add top button container before the form table
-    const topButtonContainer = document.createElement("div");
-    topButtonContainer.className = "button-container";
-
-    const topSubmitButton = document.createElement("input");
-    topSubmitButton.className = "w3-button w3-green w3-round";
-    topSubmitButton.type = "submit";
-    topSubmitButton.value = "{{ _('Save') }}";
-    topButtonContainer.appendChild(topSubmitButton);
-
-    const topCancelButton = document.createElement("button");
-    topCancelButton.id = "topCancelButton";
-    topCancelButton.className = "w3-button w3-red w3-round";
-    topCancelButton.type = "button";
-    topCancelButton.textContent = "{{ _('Cancel') }}";
-
-    topCancelButton.addEventListener('click', function() {
-      {% if delete_on_cancel == 1 %}
-      // Delete the app via fetch, then close the tab
-      fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
-        method: 'GET'
-      }).then(() => {
-        window.close();
-      }).catch(() => {
-        // If fetch fails or window.close() doesn't work, redirect
-        window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
-      });
-      {% else %}
-      // Just close the tab or go back to index
-      if (window.opener) {
-        window.close();
-      } else {
-        window.location.href = "{{ url_for('index') }}";
-      }
-      {% endif %}
-    });
-
-    topButtonContainer.appendChild(topCancelButton);
-
-    form.appendChild(topButtonContainer);
-
     form.appendChild(formTable);
 
     // Create and add button container after the form table
@@ -850,6 +815,58 @@
 
     // Initialize toggle buttons
     initializeToggleButtons();
+
+    // Add event listeners for action buttons in flex-container
+    const saveButton = document.getElementById("saveButton");
+    if (saveButton) {
+      saveButton.addEventListener("click", () => {
+        fetch(form.action, {
+          method: form.method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(config),
+        }).then(response => {
+          if (response.ok) {
+            console.log("Form submitted successfully");
+            {% if delete_on_cancel == 1 %}
+            if (window.opener) {
+              window.close();
+            } else {
+              window.location.href = "{{ url_for('index') }}";
+            }
+            {% else %}
+            window.location.href = response.url;
+            {% endif %}
+          } else {
+            console.error("Form submission failed");
+          }
+        }).catch(error => {
+          console.error("Error submitting form:", error);
+        });
+      });
+    }
+
+    const cancelButtonTop = document.getElementById("cancelButtonTop");
+    if (cancelButtonTop) {
+      cancelButtonTop.addEventListener("click", function() {
+        {% if delete_on_cancel == 1 %}
+        fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
+          method: 'GET'
+        }).then(() => {
+          window.close();
+        }).catch(() => {
+          window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
+        });
+        {% else %}
+        if (window.opener) {
+          window.close();
+        } else {
+          window.location.href = "{{ url_for('index') }}";
+        }
+        {% endif %}
+      });
+    }
   });
 </script>
 

@@ -17,6 +17,14 @@
     <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show App Config') }}</button>
     <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show Render Debug') }}</button>
   </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}" />
+    <input type="submit" class="w3-button w3-red w3-round"
+      formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
+      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}" />
+  </div>
 </div>
 
 <!-- Config Content -->
@@ -39,14 +47,6 @@
 <form method="post" id="updateForm">
   <input type="hidden" name="iname" id="iname" value="{{ form.get('iname') or app.iname }}" readonly>
   <input type="hidden" name="name" id="name" value="{{ form.get('name') or app.name }}" readonly>
-
-  <!-- Action Buttons (Top) -->
-  <div class="button-container">
-    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}" />
-    <input type="submit" class="w3-button w3-red w3-round"
-      formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
-      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}" />
-  </div>
 
   <table class="form-table">
     <!-- Enabled Status -->
