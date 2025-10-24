@@ -20,7 +20,7 @@
     <div>
         <strong>{{ _('Firmware Image Version') }}:</strong> {{ firmware_version }}
     </div>
-    {% if g.user.username == 'admin' %}
+    {% if user.username == 'admin' %}
     <div>
         <a href="{{ url_for('edit') }}#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
             {{ _('Manage Firmware') }}

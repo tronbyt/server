@@ -248,6 +248,14 @@
           if (img.dataset.src) {
             img.src = img.dataset.src;
             img.removeAttribute('data-src');
+            // Add loaded class when image loads
+            img.onload = function() {
+              img.classList.add('loaded');
+            };
+            // Also add loaded class immediately for cached images
+            if (img.complete) {
+              img.classList.add('loaded');
+            }
             observer.unobserve(img);
           } else {
             console.warn('Image source is empty or undefined.');

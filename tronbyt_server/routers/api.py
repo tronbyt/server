@@ -20,6 +20,12 @@ from tronbyt_server.models import App, Device, DeviceID, User
 router = APIRouter(prefix="/v0", tags=["api"])
 logger = logging.getLogger(__name__)
 
+# Constants for dots SVG generation
+DEFAULT_DOTS_WIDTH = 64
+DEFAULT_DOTS_HEIGHT = 32
+DEFAULT_DOTS_RADIUS = 0.3
+MAX_DOTS_DIMENSION = 256
+
 
 class DeviceUpdate(BaseModel):
     brightness: int | None = None
@@ -51,6 +57,53 @@ def get_device_payload(device: Device) -> dict[str, Any]:
         "brightness": db.get_device_brightness_8bit(device),
         "autoDim": device.night_mode_enabled,
     }
+
+
+@router.get("/dots")
+def generate_dots_svg(
+    w: int = DEFAULT_DOTS_WIDTH,
+    h: int = DEFAULT_DOTS_HEIGHT,
+    r: float = DEFAULT_DOTS_RADIUS,
+) -> Response:
+    """Generate an SVG mask pattern with dots."""
+    # Validate width
+    if w <= 0 or w > MAX_DOTS_DIMENSION:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Parameter 'w' must be between 1 and {MAX_DOTS_DIMENSION}",
+        )
+
+    # Validate height
+    if h <= 0 or h > MAX_DOTS_DIMENSION:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Parameter 'h' must be between 1 and {MAX_DOTS_DIMENSION}",
+        )
+
+    # Validate radius
+    if r <= 0 or r > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Parameter 'r' must be between 0 and 1",
+        )
+
+    # Generate SVG with dots
+    data = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" fill="#fff">',
+    ]
+
+    # Pre-compute radius string to avoid repeated formatting
+    radius_str = f"{r:g}"
+    for y in range(h):
+        y_str = f"{y + 0.5:g}"
+        for x in range(w):
+            x_str = f"{x + 0.5:g}"
+            data.append(f'<circle cx="{x_str}" cy="{y_str}" r="{radius_str}"/>')
+
+    data.append("</svg>\n")
+
+    return Response(content="".join(data), media_type="image/svg+xml")
 
 
 @router.get("/devices", response_model=dict[str, list[dict[str, Any]]])

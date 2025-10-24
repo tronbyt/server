@@ -106,7 +106,7 @@
       </div>
 
       <div id="appsList-{{ device['id'] }}" class="visible apps-list-view">
-        {% set apps_list = device.apps.values() if device.apps else []|sort(attribute='order')|list %}
+        {% set apps_list = (device.apps.values()|list if device.apps else [])|sort(attribute='order') %}
         {% set pinned_app_iname = device.pinned_app %}
         {% set pinned_apps = apps_list|selectattr('iname', 'equalto', pinned_app_iname) if pinned_app_iname else [] %}
         {% set unpinned_apps = apps_list|rejectattr('iname', 'equalto', pinned_app_iname) %}

@@ -24,7 +24,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator
 from werkzeug.utils import secure_filename
 from zoneinfo import available_timezones
 from markupsafe import escape
@@ -819,7 +819,7 @@ def deleteapp(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/toggle_pin", name="toggle_pin")
+@router.post("/{device_id}/{iname}/toggle_pin", name="toggle_pin")
 def toggle_pin(
     request: Request,
     device_id: DeviceID,
@@ -848,6 +848,107 @@ def toggle_pin(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
+@router.post("/{device_id}/{iname}/duplicate", name="duplicate_app")
+def duplicate_app(
+    request: Request,
+    device_id: DeviceID,
+    iname: str,
+    user: User = Depends(manager),
+    db_conn: sqlite3.Connection = Depends(get_db),
+) -> Response:
+    """Duplicate an existing app on a device."""
+    device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
+
+    if iname not in device.apps:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
+        )
+
+    # Get the original app
+    original_app = device.apps[iname]
+
+    # Generate a unique iname for the duplicate
+    max_attempts = 10
+    for _ in range(max_attempts):
+        new_iname = str(randint(100, 999))
+        if new_iname not in device.apps:
+            break
+    else:
+        flash(request, "Could not generate a unique installation ID.")
+        return Response(
+            "Error generating unique ID",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    # Create a copy of the original app with the new iname
+    duplicated_app = App(
+        name=original_app.name,
+        iname=new_iname,
+        enabled=original_app.enabled,
+        last_render=0,  # Reset render time for new app
+        uinterval=original_app.uinterval,
+        display_time=original_app.display_time,
+        notes=original_app.notes,
+        config=original_app.config.copy(),  # Deep copy the config
+        path=original_app.path,
+        id=original_app.id,
+        empty_last_render=original_app.empty_last_render,
+        render_messages=original_app.render_messages.copy()
+        if original_app.render_messages
+        else [],
+        start_time=original_app.start_time,
+        end_time=original_app.end_time,
+        days=original_app.days.copy() if original_app.days else [],
+        use_custom_recurrence=original_app.use_custom_recurrence,
+        recurrence_type=original_app.recurrence_type,
+        recurrence_interval=original_app.recurrence_interval,
+        recurrence_pattern=original_app.recurrence_pattern,
+        recurrence_start_date=original_app.recurrence_start_date,
+        recurrence_end_date=original_app.recurrence_end_date,
+        pushed=original_app.pushed,
+        order=0,  # Will be set below
+    )
+
+    # Get all apps and sort by order to find the original app's position
+    apps_list = list(device.apps.values())
+    apps_list.sort(key=lambda x: x.order)
+
+    # Find the original app's position
+    original_order = original_app.order
+
+    # Update order for all apps that come after the original app
+    for app_item in apps_list:
+        if app_item.order > original_order:
+            app_item.order = app_item.order + 1
+
+    # Set the duplicate app's order to be right after the original
+    duplicated_app.order = original_order + 1
+
+    # Add the duplicated app to the device
+    device.apps[new_iname] = duplicated_app
+
+    # Save the user data first
+    db.save_user(db_conn, user)
+
+    # Render the duplicated app to generate its preview
+    try:
+        possibly_render(db_conn, user, device_id, duplicated_app, logger)
+    except Exception as e:
+        logger.error(f"Error rendering duplicated app {new_iname}: {e}")
+        # Don't fail the duplication if rendering fails, just log it
+
+    # Check if this is an AJAX request
+    if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+        return Response("OK", status_code=status.HTTP_200_OK)
+    else:
+        flash(request, "App duplicated successfully.")
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+
+
 @router.get("/{device_id}/{iname}/updateapp", name="updateapp")
 def updateapp(
     request: Request, device_id: DeviceID, iname: str, user: User = Depends(manager)
@@ -870,20 +971,29 @@ def updateapp(
         request,
         "manager/updateapp.html",
         {
-            "app": app,
-            "device": device,
+            "app": app.model_dump(),
+            "device": device.model_dump(),
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
             "user": user,
+            "server_root": server_root(),
+            "form": {},  # Empty form data for GET request
         },
     )
+
+
+def empty_str_to_none(v: Any) -> Any:
+    """Convert empty strings to None."""
+    if v == "":
+        return None
+    return v
 
 
 class AppUpdateFormData(BaseModel):
     """Represents the form data for updating an app."""
 
     name: str
-    uinterval: int | None = None
+    uinterval: Annotated[int | None, BeforeValidator(empty_str_to_none)] = None
     display_time: int = 0
     notes: str | None = None
     enabled: bool = False
@@ -892,12 +1002,14 @@ class AppUpdateFormData(BaseModel):
     days: list[str] = []
     use_custom_recurrence: bool = False
     recurrence_type: str | None = None
-    recurrence_interval: int | None = None
+    recurrence_interval: Annotated[int | None, BeforeValidator(empty_str_to_none)] = (
+        None
+    )
     recurrence_start_date: str | None = None
     recurrence_end_date: str | None = None
     weekdays: list[str] = []
     monthly_pattern: str | None = None
-    day_of_month: int | None = None
+    day_of_month: Annotated[int | None, BeforeValidator(empty_str_to_none)] = None
     day_of_week_pattern: str | None = None
 
 
@@ -973,7 +1085,11 @@ def updateapp_post(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/toggle_enabled", name="toggle_enabled")
+@router.api_route(
+    "/{device_id}/{iname}/toggle_enabled",
+    methods=["GET", "POST"],
+    name="toggle_enabled",
+)
 def toggle_enabled(
     request: Request,
     device_id: DeviceID,
@@ -994,16 +1110,16 @@ def toggle_enabled(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/{device_id}/{iname}/moveapp", name="moveapp")
+@router.post("/{device_id}/{iname}/moveapp", name="moveapp")
 def moveapp(
     request: Request,
     device_id: DeviceID,
     iname: str,
-    direction: str,
+    direction: str = Form(...),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    if direction not in ["up", "down"]:
+    if direction not in ["up", "down", "top", "bottom"]:
         flash(request, "Invalid direction.")
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
@@ -1026,21 +1142,36 @@ def moveapp(
         if current_idx == 0:
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
         target_idx = current_idx - 1
-    else:
+        apps_list[current_idx], apps_list[target_idx] = (
+            apps_list[target_idx],
+            apps_list[current_idx],
+        )
+    elif direction == "down":
         if current_idx == len(apps_list) - 1:
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
         target_idx = current_idx + 1
-
-    apps_list[current_idx], apps_list[target_idx] = (
-        apps_list[target_idx],
-        apps_list[current_idx],
-    )
+        apps_list[current_idx], apps_list[target_idx] = (
+            apps_list[target_idx],
+            apps_list[current_idx],
+        )
+    elif direction == "top":
+        if current_idx == 0:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        # Move app to the top (index 0)
+        app_to_move = apps_list.pop(current_idx)
+        apps_list.insert(0, app_to_move)
+    elif direction == "bottom":
+        if current_idx == len(apps_list) - 1:
+            return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        # Move app to the bottom (last index)
+        app_to_move = apps_list.pop(current_idx)
+        apps_list.append(app_to_move)
 
     for i, app in enumerate(apps_list):
         app.order = i
 
     db.save_user(db_conn, user)
-    return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    return Response("OK", status_code=status.HTTP_200_OK)
 
 
 @router.get("/{device_id}/{iname}/configapp", name="configapp")
@@ -1844,10 +1975,13 @@ def reorder_apps(
     apps_list.insert(new_idx, moved_app)
 
     # Update 'order' attribute for all apps
+    logger.info(f"Reordering apps for device {device_id}")
     for i, (app_iname, app_data) in enumerate(apps_list):
+        logger.info(f"Setting {app_iname} order to {i} (was {app_data.order})")
         app_data.order = i
 
     db.save_user(db_conn, user)
+    logger.info("Saved user after reordering apps")
 
     return Response("OK", status_code=status.HTTP_200_OK)
 

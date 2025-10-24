@@ -452,12 +452,14 @@ def get_device_brightness_8bit(device: Device) -> int:
     # Priority: night mode > dim mode > normal brightness
     # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
-        return device.night_brightness or 1
+        return device.night_brightness if device.night_brightness is not None else 1
     # If we're in dim mode (but not night mode), use dim_brightness
     elif get_dim_mode_is_active(device):
-        return device.dim_brightness or device.brightness or 50
+        if device.dim_brightness is not None:
+            return device.dim_brightness
+        return device.brightness if device.brightness is not None else 50
     else:
-        return device.brightness or 50
+        return device.brightness if device.brightness is not None else 50
 
 
 def percent_to_ui_scale(percent: int) -> int:

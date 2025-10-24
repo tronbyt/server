@@ -37,8 +37,8 @@
 </div>
 
 <form method="post" id="updateForm">
-  <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
-  <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
+  <input type="hidden" name="iname" id="iname" value="{{ form.get('iname') or app['iname'] }}" readonly>
+  <input type="hidden" name="name" id="name" value="{{ form.get('name') or app['name'] }}" readonly>
 
   <table class="form-table">
     <!-- Enabled Status -->
@@ -61,7 +61,7 @@
       </td>
       <td>
         <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
-               value="{{ request.form['uinterval'] or app['uinterval'] }}" required>
+               value="{{ form.get('uinterval') or app['uinterval'] }}" required>
       </td>
     </tr>
 
@@ -73,7 +73,7 @@
       </td>
       <td>
         <input type="number" name="display_time" id="display_time" min="0" class="form-control"
-               value="{{ request.form['display_time'] or app['display_time'] or 0 }}">
+               value="{{ form.get('display_time') or app['display_time'] or 0 }}">
       </td>
     </tr>
 
@@ -85,7 +85,7 @@
       </td>
       <td>
         <input name="notes" id="notes" class="form-control"
-               value="{{request.form['notes'] or app['notes'] }}">
+               value="{{form.get('notes') or app['notes'] }}">
       </td>
     </tr>
   </table>
@@ -103,7 +103,7 @@
         </td>
         <td>
           <input type="time" name="start_time" id="start_time" class="form-control"
-                 value="{{ request.form['start_time'] or app['start_time'] }}">
+                 value="{{ form.get('start_time') or app['start_time'] }}">
         </td>
       </tr>
 
@@ -115,7 +115,7 @@
         </td>
         <td>
           <input type="time" name="end_time" id="end_time" class="form-control"
-                 value="{{ request.form['end_time'] or app['end_time'] }}">
+                 value="{{ form.get('end_time') or app['end_time'] }}">
         </td>
       </tr>
     </table>
@@ -161,7 +161,7 @@
   <div style="margin: 20px 0;">
     <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
       <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {% if
-        request.form.get('use_custom_recurrence') or app.get('use_custom_recurrence', False) %} checked {% endif %}
+        form.get('use_custom_recurrence') or app.get('use_custom_recurrence', False) %} checked {% endif %}
         onchange="toggleCustomRecurrence()">
       <div>
         <strong>{{ _('Use Custom Recurrence') }}</strong>
@@ -185,13 +185,13 @@
         </td>
         <td>
           <select name="recurrence_type" id="recurrence_type" class="form-control" onchange="toggleRecurrenceOptions()">
-            <option value="daily" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='daily'
+            <option value="daily" {% if (form.get('recurrence_type') or app.get('recurrence_type', 'daily' ))=='daily'
               %} selected {% endif %}>{{ _('Daily') }}</option>
-            <option value="weekly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='weekly'
+            <option value="weekly" {% if (form.get('recurrence_type') or app.get('recurrence_type', 'daily' ))=='weekly'
               %} selected {% endif %}>{{ _('Weekly') }}</option>
-            <option value="monthly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily'
+            <option value="monthly" {% if (form.get('recurrence_type') or app.get('recurrence_type', 'daily'
               ))=='monthly' %} selected {% endif %}>{{ _('Monthly') }}</option>
-            <option value="yearly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='yearly'
+            <option value="yearly" {% if (form.get('recurrence_type') or app.get('recurrence_type', 'daily' ))=='yearly'
               %} selected {% endif %}>{{ _('Yearly') }}</option>
           </select>
         </td>
@@ -206,7 +206,7 @@
         <td>
           <div style="display: flex; align-items: center; gap: 10px;">
             <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" class="form-control"
-              value="{{ request.form['recurrence_interval'] or app.get('recurrence_interval', 1) }}" style="width: 100px;">
+              value="{{ form.get('recurrence_interval') or app.get('recurrence_interval', 1) }}" style="width: 100px;">
             <span id="interval_unit">{{ _('days') }}</span>
           </div>
         </td>
@@ -220,7 +220,7 @@
         </td>
         <td>
           <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="form-control"
-            value="{{ request.form['recurrence_start_date'] or app.get('recurrence_start_date') or '' }}">
+            value="{{ form.get('recurrence_start_date') or app.get('recurrence_start_date') or '' }}">
         </td>
       </tr>
 
@@ -232,7 +232,7 @@
         </td>
         <td>
           <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="form-control"
-            value="{{ request.form['recurrence_end_date'] or app.get('recurrence_end_date') or '' }}">
+            value="{{ form.get('recurrence_end_date') or app.get('recurrence_end_date') or '' }}">
         </td>
       </tr>
     </table>
@@ -243,8 +243,7 @@
       <label for="weekdays">{{ _('Active Days') }}</label>
       <small>{{ _('(none selected is ALL selected)') }}</small>
       <div style="margin-top: 10px;">
-        {% set selected_weekdays = request.form.getlist('weekdays') or app.get('recurrence_pattern', {}).get('weekdays',
-        app.get('days', [])) %}
+        {% set selected_weekdays = form.get('weekdays') or app.get('recurrence_pattern', {}).get('weekdays') or app.get('days', []) or [] %}
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
           <input type="checkbox" name="weekdays" value="monday" {% if 'monday' in selected_weekdays or not
             selected_weekdays %} checked {% endif %}> {{ _('Monday') }}
@@ -289,7 +288,7 @@
           </td>
           <td>
             <select name="monthly_pattern" id="monthly_pattern" class="form-control">
-              {% set current_pattern = request.form['monthly_pattern'] or (app.get('recurrence_pattern',
+              {% set current_pattern = form.get('monthly_pattern') or (app.get('recurrence_pattern',
               {}).get('day_of_month') and 'day_of_month') or (app.get('recurrence_pattern', {}).get('day_of_week') and
               'day_of_week') or 'day_of_month' %}
               <option value="day_of_month" {% if current_pattern=='day_of_month' %} selected {% endif %}>{{ _('Day of
@@ -311,7 +310,7 @@
             </td>
             <td>
               <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="form-control"
-                value="{{ request.form['day_of_month'] or app.get('recurrence_pattern', {}).get('day_of_month', 1) }}">
+                value="{{ form.get('day_of_month') or app.get('recurrence_pattern', {}).get('day_of_month', 1) }}">
             </td>
           </tr>
         </table>
@@ -328,8 +327,7 @@
             <td>
               <div style="display: flex; gap: 10px; align-items: center;">
                 <select name="week_occurrence" id="week_occurrence" class="form-control">
-                  {% set current_occurrence = (request.form['day_of_week_pattern'] or app.get('recurrence_pattern',
-                  {}).get('day_of_week', 'first_monday')).split('_')[0] %}
+                  {% set current_occurrence = (form.get('day_of_week_pattern') or app.get('recurrence_pattern', {}).get('day_of_week') or 'first_monday').split('_')[0] %}
                   <option value="first" {% if current_occurrence=='first' %} selected {% endif %}>{{ _('First') }}</option>
                   <option value="second" {% if current_occurrence=='second' %} selected {% endif %}>{{ _('Second') }}</option>
                   <option value="third" {% if current_occurrence=='third' %} selected {% endif %}>{{ _('Third') }}</option>
@@ -337,8 +335,7 @@
                   <option value="last" {% if current_occurrence=='last' %} selected {% endif %}>{{ _('Last') }}</option>
                 </select>
                 <select name="week_day" id="week_day" class="form-control">
-                  {% set current_day = (request.form['day_of_week_pattern'] or app.get('recurrence_pattern',
-                  {}).get('day_of_week', 'first_monday')).split('_')[1] %}
+                  {% set current_day = (form.get('day_of_week_pattern') or app.get('recurrence_pattern', {}).get('day_of_week') or 'first_monday').split('_')[1] %}
                   <option value="monday" {% if current_day=='monday' %} selected {% endif %}>{{ _('Monday') }}</option>
                   <option value="tuesday" {% if current_day=='tuesday' %} selected {% endif %}>{{ _('Tuesday') }}</option>
                   <option value="wednesday" {% if current_day=='wednesday' %} selected {% endif %}>{{ _('Wednesday') }}
@@ -379,7 +376,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Disable App -->
@@ -389,7 +386,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Pin App -->
@@ -399,7 +396,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Unpin App -->
@@ -409,7 +406,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <small>

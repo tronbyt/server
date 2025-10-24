@@ -15,5 +15,11 @@ def run_once() -> None:
         firmware_utils.update_firmware_binaries(db.get_data_dir(), logger)
     except Exception as e:
         logger.error(f"Failed to update firmware during startup: {e}")
-    system_apps.update_system_repo(db.get_data_dir(), logger)
+
+    # Skip system apps update in dev mode
+    if get_settings().PRODUCTION == "1":
+        system_apps.update_system_repo(db.get_data_dir(), logger)
+    else:
+        logger.info("Skipping system apps update (dev mode)")
+
     logger.info("One-time startup tasks complete.")
