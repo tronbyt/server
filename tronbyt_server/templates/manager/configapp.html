@@ -93,9 +93,15 @@
     // Reload the preview image to reflect updated config
     const url = new URL(previewImage.src);
     url.searchParams.set("config", JSON.stringify(config));
+    let loading = true;
+    previewImage.addEventListener('load', () => {
+        loading = false;
+        previewImage.classList.add('loaded');
+        previewImage.classList.remove('hidden');
+    }, { once: true });
     previewImage.src = url.toString();
     setTimeout(() => {
-        if (!previewImage.complete) previewImage.classList.remove('loaded');
+        if (loading) previewImage.classList.remove('loaded');
     }, 500);
   }, 100);
 
@@ -216,6 +222,10 @@
           // Set initial config value if using default
           if (!config[field.id]) {
             config[field.id] = field.default || "#000000";
+          }
+          if (field.palette) {
+              const div = createColorPaletteButtons(field, inputElement);
+              inputCell.appendChild(div);
           }
           break;
 
@@ -565,6 +575,33 @@
     updateGeneratedFields(); // Initial call to populate fields
   }
 
+  function createColorPaletteButtons(field, inputElement) {
+    const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
+    const div = document.createElement('div');
+    div.className = 'palette';
+    field.palette?.forEach(color => {
+      if (!hexColorRegex.test(color)) {
+        console.warn(`Skipping invalid color from palette: ${color}`);
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'w3-button';
+      btn.style.setProperty('--color', color);
+      btn.setAttribute('aria-label', `Set color to ${color}`);
+      btn.addEventListener('click', () => {
+          if (color.length === 4) {
+            // Expand #rgb to #rrggbb
+            color = '#' + [...color.slice(1)].map(c => c + c).join('');
+          }
+          inputElement.value = color;
+          inputElement.dispatchEvent(new Event('input'));
+      })
+      div.appendChild(btn);
+    })
+    return div;
+  }
+
   // Function to fetch options for location-based fields
   async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
     try {
@@ -825,9 +862,10 @@
 <!-- App Preview -->
 <div class="app-img">
   <img id="previewImage"
-    src="{{ url_for('preview', device_id=device.id, iname=app.iname) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}">
+    src="{{ url_for('preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    alt="{{ _('Preview') }}"
+    class="hidden">
   <div class="skeleton-loader"></div>
-  </div>
+</div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}

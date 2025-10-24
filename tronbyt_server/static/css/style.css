@@ -114,6 +114,7 @@ input[type=submit] {
 
 /* app-img styles with variables */
 .app-img {
+  aspect-ratio: 2 / 1;
   position: relative;
   background: var(--app-img-bg);
   overflow: hidden;
@@ -150,7 +151,6 @@ input[type=submit] {
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 4px;
-  z-index: 1;
 }
 
 @keyframes loading {
@@ -159,8 +159,7 @@ input[type=submit] {
 }
 
 /* Hide skeleton when image loads */
-.app-img img.loaded ~ .skeleton-loader,
-.app-img:has(img.loaded) .skeleton-loader {
+.app-img img.loaded + .skeleton-loader {
   display: none;
 }
 

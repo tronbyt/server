@@ -3,3 +3,25 @@
 .button-separator {
   color: #666; /* Override common color */
 }
+
+.palette {
+  text-align: center;
+  padding-bottom: 10px;
+}
+.palette button {
+  background-color: var(--color);
+  border-radius: 100%;
+  margin: 2px;
+  padding: 10px;
+}
+.palette button:hover {
+  background-color: var(--color) !important;
+  filter: brightness(1.25);
+}
+
+@media screen and (max-width: 600px) {
+  .palette button {
+    width: auto;
+    padding: 20px;
+  }
+}
