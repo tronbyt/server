@@ -657,6 +657,47 @@
       formTable.appendChild(row);
     });
 
+    // Create and add top button container before the form table
+    const topButtonContainer = document.createElement("div");
+    topButtonContainer.className = "button-container";
+
+    const topSubmitButton = document.createElement("input");
+    topSubmitButton.className = "w3-button w3-green w3-round";
+    topSubmitButton.type = "submit";
+    topSubmitButton.value = "{{ _('Save') }}";
+    topButtonContainer.appendChild(topSubmitButton);
+
+    const topCancelButton = document.createElement("button");
+    topCancelButton.id = "topCancelButton";
+    topCancelButton.className = "w3-button w3-red w3-round";
+    topCancelButton.type = "button";
+    topCancelButton.textContent = "{{ _('Cancel') }}";
+
+    topCancelButton.addEventListener('click', function() {
+      {% if delete_on_cancel == 1 %}
+      // Delete the app via fetch, then close the tab
+      fetch("{{ url_for('deleteapp', device_id=device['id'], iname=app['iname']) }}", {
+        method: 'GET'
+      }).then(() => {
+        window.close();
+      }).catch(() => {
+        // If fetch fails or window.close() doesn't work, redirect
+        window.location.href = "{{ url_for('addapp', device_id=device['id']) }}";
+      });
+      {% else %}
+      // Just close the tab or go back to index
+      if (window.opener) {
+        window.close();
+      } else {
+        window.location.href = "{{ url_for('index') }}";
+      }
+      {% endif %}
+    });
+
+    topButtonContainer.appendChild(topCancelButton);
+
+    form.appendChild(topButtonContainer);
+
     form.appendChild(formTable);
 
     // Create and add button container after the form table
