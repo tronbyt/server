@@ -14,7 +14,7 @@ class User(BaseModel):
     password: str
     email: str = ""
     devices: dict[str, Device] = {}
-    api_key: str
+    api_key: str = ""
     theme_preference: Literal["light", "dark", "system"] = "system"
     system_repo_url: str = ""
     app_repo_url: str = ""

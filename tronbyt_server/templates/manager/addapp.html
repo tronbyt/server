@@ -450,7 +450,7 @@
     });
   }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device['id']) }}">{{
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}">{{
   _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
@@ -533,7 +533,7 @@
         </div>
         {% endif %}
         {% if is_custom_apps %}
-        <a href="{{ url_for('deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}"
+        <a href="{{ url_for('deleteupload', filename=app['path'].split('/')[-1], device_id=device.id) }}"
            class="delete-upload-btn"
            onclick="event.stopPropagation(); return confirm('{{ _('Delete this uploaded app?') }}');">
           🗑️ {{ _('Delete') }}

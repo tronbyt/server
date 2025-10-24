@@ -1,5 +1,5 @@
 <!-- App Card Component -->
-<div class="w3-card-4 w3-padding app-card" draggable="true" data-iname="{{ app['iname'] }}">
+<div class="w3-card-4 w3-padding app-card" draggable="true" data-iname="{{ app.iname }}">
   <div class="app-card-content">
     <!-- Left: Preview Image -->
     <div class="app-preview">
@@ -12,12 +12,12 @@
     <!-- Middle: App Info and Action Buttons -->
     <div class="app-info">
       <div class="app-header">
-        <h3>{{ app['name'] }}-{{ app['iname'] }}</h3>
+        <h3>{{ app.name }}-{{ app.iname }}</h3>
         <div class="app-status">
-          {% if device.pinned_app == app['iname'] %}
+          {% if device.pinned_app == app.iname %}
           <span class="status-badge pinned">&#128204; {{ _('PINNED') }}</span>
           {% else %}
-            {% if app['enabled'] %}
+            {% if app.enabled %}
             <span class="status-badge enabled">&#10003; {{ _('ENABLED') }}</span>
             {% else %}
             <span class="status-badge disabled">&#10005; {{ _('DISABLED') }}</span>
@@ -28,12 +28,12 @@
 
       <div class="app-details">
         <p class="app-render-info">
-          {{ _('Interval:') }} {{ app['uinterval'] }}min |
+          {{ _('Interval:') }} {{ app.uinterval }}min |
           {% if app.empty_last_render %}{{_('No output for ') }}{% endif %}
           {{ _('Last:') }} {{ (app.last_render or 0)|timeago }}
         </p>
-        {% if app['display_time'] != 0 %}
-        <p>{{ _('Display Time (secs):') }} {{ app['display_time'] }}</p>
+        {% if app.display_time != 0 %}
+        <p>{{ _('Display Time (secs):') }} {{ app.display_time }}</p>
         {% endif %}
         {% if app.notes and app.notes != '' %}
         <p>{{ _('Notes:') }} {{ app.notes }}</p>

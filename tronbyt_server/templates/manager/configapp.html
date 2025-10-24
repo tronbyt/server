@@ -2,14 +2,14 @@
 {% block header %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/configapp-simple.css') }}">
 <script src="{{ url_for('static', path='js/location.js') }}"></script>
-<h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
+<h1>{% block title %}{{ _('Configuring') }} {{ app.iname }} ({{ app.name}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
   <!-- Navigation Button -->
   <div class="button-group">
-    <a href="{{ url_for('updateapp', device_id=device['id'], iname=app['iname']) }}"
+    <a href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}"
       class="w3-button" style="background-color: #2196F3;">{{ _('Edit App') }}</a>
   </div>
 
@@ -35,7 +35,7 @@
   const schema = {{ schema | tojson }};
   const config = {{ config | tojson }};
   {% if "location" in device %}
-  const deviceLocation = JSON.stringify({{ device['location'] | tojson }});
+  const deviceLocation = JSON.stringify({{ device.location | tojson }});
   {% else %}
   const deviceLocation = null;
   {% endif %}
@@ -478,7 +478,7 @@
       }
 
       try {
-        const handlerUrl = "{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
+        const handlerUrl = "{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -532,7 +532,7 @@
     const updateGeneratedFields = async () => {
       const sourceValue = sourceField.value;
       try {
-        const handlerUrl = "{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
+        const handlerUrl = "{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -568,7 +568,7 @@
   // Function to fetch options for location-based fields
   async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
     try {
-      const handlerUrl = "{{ url_for('schema_handler', device_id=device['id'], iname=app['iname'], handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
+      const handlerUrl = "{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
       const response = await fetch(handlerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -675,13 +675,13 @@
     topCancelButton.addEventListener('click', function() {
       {% if delete_on_cancel == 1 %}
       // Delete the app via fetch, then close the tab
-      fetch("{{ url_for('deleteapp', device_id=device['id'], iname=app['iname']) }}", {
+      fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
         method: 'GET'
       }).then(() => {
         window.close();
       }).catch(() => {
         // If fetch fails or window.close() doesn't work, redirect
-        window.location.href = "{{ url_for('addapp', device_id=device['id']) }}";
+        window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
       });
       {% else %}
       // Just close the tab or go back to index
@@ -726,13 +726,13 @@
     cancelButton.addEventListener('click', function() {
       {% if delete_on_cancel == 1 %}
       // Delete the app via fetch, then close the tab
-      fetch("{{ url_for('deleteapp', device_id=device['id'], iname=app['iname']) }}", {
+      fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
         method: 'GET'
       }).then(() => {
         window.close();
       }).catch(() => {
         // If fetch fails or window.close() doesn't work, redirect
-        window.location.href = "{{ url_for('addapp', device_id=device['id']) }}";
+        window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
       });
       {% else %}
       // Just close the tab or go back to index
@@ -825,7 +825,7 @@
 <!-- App Preview -->
 <div class="app-img">
   <img id="previewImage"
-    src="{{ url_for('preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    src="{{ url_for('preview', device_id=device.id, iname=app.iname) }}?config={{ config | tojson | urlencode }}"
     alt="{{ _('Preview') }}">
   <div class="skeleton-loader"></div>
   </div>

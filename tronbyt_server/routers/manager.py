@@ -975,8 +975,8 @@ def updateapp(
         request,
         "manager/updateapp.html",
         {
-            "app": app.model_dump(),
-            "device": device.model_dump(),
+            "app": app,
+            "device": device,
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
             "user": user,

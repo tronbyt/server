@@ -45,7 +45,7 @@
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label for="app_repo_url" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Repository URL') }}</label>
-                    <input name="app_repo_url" id="app_repo_url" required value="{{ user['system_repo_url'] }}" style="width: 100%; padding: 8px;">
+                    <input name="app_repo_url" id="app_repo_url" required value="{{ user.system_repo_url }}" style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
                     {{ _('Save') }}
@@ -97,11 +97,11 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
         <div style="flex: 1;">
             <strong>{{ _('Current Repository') }}</strong>
-            {% if user['app_repo_url'] %}
+            {% if user.app_repo_url %}
             <div style="margin-top: 8px;">
                 <div style="margin-bottom: 5px;">
-                    <a href="{{ user['app_repo_url'] }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
-                        {{ user['app_repo_url'] }}
+                    <a href="{{ user.app_repo_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
+                        {{ user.app_repo_url }}
                     </a>
                 </div>
                 <div style="color: #888; font-size: 0.9em;">
@@ -112,7 +112,7 @@
             <div style="margin-top: 8px; color: #888;">{{ _('No custom repository configured.') }}</div>
             {% endif %}
         </div>
-        {% if user['app_repo_url'] %}
+        {% if user.app_repo_url %}
         <div style="margin-left: 15px; display: flex; gap: 8px;">
             <form method="post" action="{{ url_for('refresh_user_repo') }}">
                 <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh custom apps repository?') }}');">
@@ -135,7 +135,7 @@
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label for="app_repo_url" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Repository URL') }}</label>
-                    <input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}" style="width: 100%; padding: 8px;">
+                    <input name="app_repo_url" id="app_repo_url" required value="{{ user.app_repo_url }}" style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
                     {{ _('Save') }}

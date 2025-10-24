@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="{{ url_for('static', path='css/update-simple.css') }}">
 <script src="{{ url_for('static', path='js/location.js') }}"></script>
 <div class="header-container">
-  <h1 class="page-title">{% block title %}{{ _('Edit Device') }}: "{{ device['name'] }}"{% endblock %}</h1>
+  <h1 class="page-title">{% block title %}{{ _('Edit Device') }}: "{{ device.name }}"{% endblock %}</h1>
   <div id="header-buttons"></div>
 </div>
 <script>
@@ -66,7 +66,7 @@
     deleteBtn.textContent = '{{ _('Delete') }}';
     deleteBtn.onclick = function() {
       if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) {
-        form.action = "{{ url_for('delete', device_id=device['id']) }}";
+        form.action = "{{ url_for('delete', device_id=device.id) }}";
         form.method = 'post';
         form.submit();
       }
@@ -87,7 +87,7 @@
     <div class="device-settings-row">
       <div>
         <label for="name" class="device-settings-label">{{ _('Device Name') }}</label>
-        <input name="name" id="name" value="{{ request.form['name'] or device['name'] }}" required class="device-settings-input">
+        <input name="name" id="name" value="{{ request.form['name'] or device.name }}" required class="device-settings-input">
       </div>
       <div>
         <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
@@ -113,7 +113,7 @@
           </td>
           <td>
             <div class="url-input-container">
-              <input name="img_url" id="img_url" value="{{ device['img_url'] }}"
+              <input name="img_url" id="img_url" value="{{ device.img_url }}"
                 oninput="updateExampleCommands()">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetImgUrl()"
                 title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
@@ -126,7 +126,7 @@
           </td>
           <td>
             <div class="url-input-container">
-              <input name="ws_url" id="ws_url" value="{{ device['ws_url'] }}">
+              <input name="ws_url" id="ws_url" value="{{ device.ws_url }}">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetWsUrl()"
                 title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
             </div>
@@ -158,8 +158,8 @@
         <td>
           <div class="range-container">
             <input type="range" name="default_interval" id="default_interval" min="1" max="30"
-              value="{{ device['default_interval'] }}" oninput="this.nextElementSibling.value = this.value">
-            <output class="range-output">{{ device['default_interval'] }}</output>
+              value="{{ device.default_interval }}" oninput="this.nextElementSibling.value = this.value">
+            <output class="range-output">{{ device.default_interval }}</output>
           </div>
         </td>
       </tr>
@@ -174,19 +174,19 @@
             <label for="brightness" class="device-settings-label">{{ _('Brightness') }}</label>
           </td>
           <td>
-            <input type="hidden" name="brightness" id="brightness" value="{{ device['brightness'] }}">
+            <input type="hidden" name="brightness" id="brightness" value="{{ device.brightness }}">
             <div class="brightness-panel" id="brightness-panel">
-              <button type="button" class="brightness-btn {% if device['brightness'] == 0 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness == 0 %}active{% endif %}"
                       data-brightness="0" onclick="setBrightnessUpdate(0)">0</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 1 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness == 1 %}active{% endif %}"
                       data-brightness="1" onclick="setBrightnessUpdate(1)">1</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 2 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness == 2 %}active{% endif %}"
                       data-brightness="2" onclick="setBrightnessUpdate(2)">2</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 3 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness == 3 %}active{% endif %}"
                       data-brightness="3" onclick="setBrightnessUpdate(3)">3</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 4 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness == 4 %}active{% endif %}"
                       data-brightness="4" onclick="setBrightnessUpdate(4)">4</button>
-              <button type="button" class="brightness-btn {% if device['brightness'] == 5 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness == 5 %}active{% endif %}"
                       data-brightness="5" onclick="setBrightnessUpdate(5)">5</button>
             </div>
           </td>
@@ -204,7 +204,7 @@
           <label for="night_mode_enabled" class="device-settings-label">{{ _('Enable Night Mode') }}</label>
         </td>
         <td>
-          <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device['night_mode_enabled'] %}checked{% endif %}>
+          <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device.night_mode_enabled %}checked{% endif %}>
         </td>
       </tr>
     </table>
@@ -259,9 +259,9 @@
             <select name="night_mode_app" id="night_mode_app" class="select-container">
               <option value="None">{{ _('None') }}</option>
               {% if 'apps' in device %}
-              {% for app in device['apps'].values() %}
-              <option value="{{ app['iname'] }}" {% if 'night_mode_app' in device and device['night_mode_app']==app['iname'] %}selected{% endif %}>
-                {{ app['iname'] }} {{ app['name'] }}
+              {% for app in device.apps.values() %}
+              <option value="{{ app.iname }}" {% if 'night_mode_app' in device and device.night_mode_app==app.iname %}selected{% endif %}>
+                {{ app.iname }} {{ app.name }}
               </option>
               {% endfor %}
               {% endif %}
@@ -324,7 +324,7 @@
             value="{{ request.form['location_search'] or device.location.description if device.location else '' }}" class="device-settings-input">
           <ul id="location_results"></ul>
           <input type="hidden" name="location" id="location"
-            value='{{ (request.form["location"] or device["location"].model_dump() if device["location"] else {}) | tojson }}'>
+            value='{{ (request.form["location"] or device.location.model_dump() if device.location else {}) | tojson }}'>
         </td>
       </tr>
     </table>
@@ -338,7 +338,7 @@
             <label for="device_id" class="device-settings-label">{{ _('Device ID') }}</label>
           </td>
           <td>
-            <input id="device_id" value="{{ device['id'] }}" readonly class="device-settings-input">
+            <input id="device_id" value="{{ device.id }}" readonly class="device-settings-input">
           </td>
         </tr>
         <tr>
@@ -346,7 +346,7 @@
             <label for="api_key" class="device-settings-label">{{ _('Device API Key') }}</label>
           </td>
           <td>
-            <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device['api_key'] }}"
+            <input name="api_key" id="api_key" value="{{ request.form['api_key'] or device.api_key }}"
               oninput="updateExampleCommands()" class="device-settings-input">
           </td>
         </tr>
@@ -414,7 +414,7 @@
           <label for="notes" class="device-settings-label">{{ _('Notes') }}</label>
         </td>
         <td>
-          <input name="notes" id="notes" value="{{ request.form['notes'] or device['notes'] }}" class="notes-input" placeholder="{{ _('Optional notes about this device') }}">
+          <input name="notes" id="notes" value="{{ request.form['notes'] or device.notes }}" class="notes-input" placeholder="{{ _('Optional notes about this device') }}">
         </td>
       </tr>
     </table>
@@ -424,10 +424,10 @@
     <h2>{{ _('Configuration Management') }}</h2>
 
     <div class="config-management-container">
-      <a href="{{ url_for('export_device_config', device_id=device['id']) }}" class="w3-button w3-blue config-management-btn">
+      <a href="{{ url_for('export_device_config', device_id=device.id) }}" class="w3-button w3-blue config-management-btn">
         📥 {{ _('Export Configuration') }}
       </a>
-      <a href="{{ url_for('import_device_config', device_id=device['id']) }}" class="w3-button w3-orange config-management-btn">
+      <a href="{{ url_for('import_device_config', device_id=device.id) }}" class="w3-button w3-orange config-management-btn">
         📤 {{ _('Import Configuration') }}
       </a>
     </div>
@@ -435,7 +435,7 @@
 
   <div class="button-container">
     <button type="button" class="w3-button w3-green config-management-btn" onclick="if (confirm('{{ _('Save device settings?') }}')) { this.form.submit(); }">{{ _('Save') }}</button>
-    <button type="button" class="w3-button w3-red config-management-btn" onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device['id']) }}'; this.form.method = 'post'; this.form.submit(); }">{{ _('Delete') }}</button>
+    <button type="button" class="w3-button w3-red config-management-btn" onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device.id) }}'; this.form.method = 'post'; this.form.submit(); }">{{ _('Delete') }}</button>
   </div>
 </form>
 {% endblock %}

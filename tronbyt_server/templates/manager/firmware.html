@@ -11,7 +11,7 @@
 {% block header %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/firmware-simple.css') }}">
 <div class="header-container">
-  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
+  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device.name }} - {{ device_type_names.get(device.type, device.type) }}{% endblock %}</h1>
 </div>
 {% endblock %}
 {% block content %}
@@ -46,7 +46,7 @@
       </i></p>
     </div>
 
-    <input type="hidden" name="id" id="id" value="{{ device['id'] }}">
+    <input type="hidden" name="id" id="id" value="{{ device.id }}">
 
     <div class="device-settings-section-divider">
       <h3>{{ _('Connection Settings') }}</h3>
@@ -69,7 +69,7 @@
             <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
           </td>
           <td>
-            <input name="img_url" id="img_url" value="{{ device['img_url'] }}" class="device-settings-input">
+            <input name="img_url" id="img_url" value="{{ device.img_url }}" class="device-settings-input">
           </td>
         </tr>
       </table>
@@ -123,8 +123,8 @@
         const httpRadio = document.getElementById('variant_http');
         const wsRadio = document.getElementById('variant_ws');
         const customRadio = document.getElementById('variant_custom');
-        const httpVal = "{{ device['img_url'] }}";
-        const wsVal = "{{ device['ws_url'] }}";
+        const httpVal = "{{ device.img_url }}";
+        const wsVal = "{{ device.ws_url }}";
 
         function updateUrl() {
             if (httpRadio.checked || wsRadio.checked) {
