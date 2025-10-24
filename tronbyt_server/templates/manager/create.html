@@ -108,11 +108,12 @@
   <input type="hidden" name="api_key" id="api_key">
 
   <div class="device-settings-section">
-    <div class="config-management-container">
-      <input type="submit" class="w3-button w3-green config-management-btn" value="{{ _('Save') }}">
-      <a href="{{ url_for('import_device') }}" class="w3-button w3-orange config-management-btn">
+    <div class="config-management-container" style="display:flex;align-items:center;gap:8px;">
+      <button type="submit" class="w3-button w3-green config-management-btn">{{ _('Save') }}</button>
+      <button type="button" class="w3-button w3-orange config-management-btn"
+              onclick="window.location.href='{{ url_for('import_device') }}';">
         {{ _('Import Configuration') }}
-      </a>
+      </button>
     </div>
   </div>
 </form>
