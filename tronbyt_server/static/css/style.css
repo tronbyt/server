@@ -114,7 +114,6 @@ input[type=submit] {
 
 /* app-img styles with variables */
 .app-img {
-  aspect-ratio: 2 / 1;
   position: relative;
   background: var(--app-img-bg);
   overflow: hidden;
@@ -122,6 +121,7 @@ input[type=submit] {
   border-radius: 0.5rem;
 }
 .app-img img {
+  aspect-ratio: 2 / 1;
   background: var(--app-img-bg); /* Match parent background */
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
