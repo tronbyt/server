@@ -46,6 +46,7 @@ _init = "pybabel init -i messages.pot -d tronbyt_server/translations -l {args}"
 init = { composite = ["extract", "_init {args}"] }
 _update = "pybabel update -i messages.pot -d tronbyt_server/translations"
 update = { composite = ["extract", "_update"] }
+compile = "pybabel compile -d tronbyt_server/translations"
 
 [tool.pdm.version]
 source = "scm"

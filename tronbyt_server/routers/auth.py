@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import Response, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from werkzeug.security import generate_password_hash
+from fastapi_babel import _
 
 import tronbyt_server.db as db
 from tronbyt_server import system_apps, version
@@ -55,7 +56,7 @@ def post_register_owner(
         )
 
     if not password:
-        flash(request, "Password is required.")
+        flash(request, _("Password is required."))
     else:
         username = "admin"
         api_key = _generate_api_key()
@@ -66,12 +67,12 @@ def post_register_owner(
         )
         if db.save_user(db_conn, user, new_user=True):
             db.create_user_dir(username)
-            flash(request, "Admin user created. Please log in.")
+            flash(request, _("Admin user created. Please log in."))
             return RedirectResponse(
                 url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
         else:
-            flash(request, "Could not create admin user.")
+            flash(request, _("Could not create admin user."))
 
     return templates.TemplateResponse(request, "auth/register_owner.html")
 
@@ -90,7 +91,7 @@ def get_register(
         )
     if settings.ENABLE_USER_REGISTRATION != "1":
         if not user or user.username != "admin":
-            flash(request, "User registration is not enabled.")
+            flash(request, _("User registration is not enabled."))
             return RedirectResponse(
                 url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
@@ -121,14 +122,17 @@ def post_register(
 
     if settings.ENABLE_USER_REGISTRATION != "1":
         if not user or user.username != "admin":
-            flash(request, "User registration is not enabled.")
+            flash(request, _("User registration is not enabled."))
             return RedirectResponse(
                 url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
 
     max_users = settings.MAX_USERS
     if max_users > 0 and len(db.get_all_users(db_conn)) >= max_users:
-        flash(request, "Maximum number of users reached. Registration is disabled.")
+        flash(
+            request,
+            _("Maximum number of users reached. Registration is disabled."),
+        )
         return RedirectResponse(
             url=request.url_for("login"), status_code=status.HTTP_302_FOUND
         )
@@ -136,13 +140,13 @@ def post_register(
     error = None
     status_code = status.HTTP_200_OK
     if not form_data.username:
-        error = "Username is required."
+        error = _("Username is required.")
         status_code = status.HTTP_400_BAD_REQUEST
     elif not form_data.password:
-        error = "Password is required."
+        error = _("Password is required.")
         status_code = status.HTTP_400_BAD_REQUEST
     elif db.get_user(db_conn, form_data.username):
-        error = "User is already registered."
+        error = _("User is already registered.")
         status_code = status.HTTP_409_CONFLICT
 
     if error is None:
@@ -156,17 +160,25 @@ def post_register(
         if db.save_user(db_conn, new_user, new_user=True):
             db.create_user_dir(form_data.username)
             if user and user.username == "admin":
-                flash(request, f"User {form_data.username} registered successfully.")
+                flash(
+                    request,
+                    _("User {username} registered successfully.").format(
+                        username=form_data.username
+                    ),
+                )
                 return RedirectResponse(
                     url="/auth/register", status_code=status.HTTP_302_FOUND
                 )
             else:
-                flash(request, f"Registered as {form_data.username}.")
+                flash(
+                    request,
+                    _("Registered as {username}.").format(username=form_data.username),
+                )
                 return RedirectResponse(
                     url=request.url_for("login"), status_code=status.HTTP_302_FOUND
                 )
         else:
-            error = "Couldn't Save User"
+            error = _("Couldn't Save User")
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     if error:
         flash(request, error)
@@ -212,7 +224,7 @@ def post_login(
 
     user_data = db.auth_user(db_conn, form_data.username, form_data.password)
     if not isinstance(user_data, User):
-        flash(request, "Incorrect username/password.")
+        flash(request, _("Incorrect username/password."))
         if not settings.PRODUCTION == "0":
             time.sleep(2)
         return templates.TemplateResponse(
@@ -282,12 +294,12 @@ def post_edit(
     """Handle user edit."""
     authed_user_data = db.auth_user(db_conn, user.username, old_password)
     if not isinstance(authed_user_data, User):
-        flash(request, "Bad old password.")
+        flash(request, _("Bad old password."))
     else:
         authed_user = authed_user_data
         authed_user.password = generate_password_hash(password)
         db.save_user(db_conn, authed_user)
-        flash(request, "Success")
+        flash(request, _("Success"))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     firmware_version = None
@@ -303,7 +315,7 @@ def post_edit(
 @router.get("/logout", name="logout")
 def logout(request: Request) -> Response:
     """Log the user out."""
-    flash(request, "Logged Out")
+    flash(request, _("Logged Out"))
     response = RedirectResponse(
         url=request.url_for("login"), status_code=status.HTTP_302_FOUND
     )
@@ -354,7 +366,7 @@ def generate_api_key(
     """Generate a new API key for the user."""
     user.api_key = _generate_api_key()
     if db.save_user(db_conn, user):
-        flash(request, "New API key generated successfully.")
+        flash(request, _("New API key generated successfully."))
     else:
-        flash(request, "Failed to generate new API key.")
+        flash(request, _("Failed to generate new API key."))
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)

@@ -24,6 +24,7 @@ from fastapi import (
     status,
     UploadFile,
 )
+from fastapi_babel import _
 from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
 from pydantic import BaseModel, BeforeValidator
 from werkzeug.utils import secure_filename
@@ -280,7 +281,7 @@ def create_post(
     """Handle device creation."""
     error = None
     if not form_data.name or db.get_device_by_name(user, form_data.name):
-        error = "Unique name is required."
+        error = _("Unique name is required.")
     if error is not None:
         flash(request, error)
         return templates.TemplateResponse(
@@ -291,12 +292,12 @@ def create_post(
         )
 
     max_attempts = 10
-    for _ in range(max_attempts):
+    for _i in range(max_attempts):
         device_id = str(uuid.uuid4())[0:8]
         if device_id not in user.devices:
             break
     else:
-        flash(request, "Could not generate a unique device ID.")
+        flash(request, _("Could not generate a unique device ID."))
         return templates.TemplateResponse(
             request,
             "manager/create.html",
@@ -341,9 +342,9 @@ def create_post(
                     timezone=loc.get("timezone", ""),
                 )
             else:
-                flash(request, "Invalid location")
+                flash(request, _("Invalid location"))
         except json.JSONDecodeError as e:
-            flash(request, f"Location JSON error {e}")
+            flash(request, _("Location JSON error {error}").format(error=e))
 
     user.devices[device.id] = device
     if db.save_user(db_conn, user) and not db.get_device_webp_dir(device.id).is_dir():
@@ -475,7 +476,7 @@ def update_post(
 
     error = None
     if not form_data.name or not device_id:
-        error = "Id and Name is required."
+        error = _("Id and Name is required.")
     if error is not None:
         flash(request, error)
         return RedirectResponse(
@@ -507,13 +508,13 @@ def update_post(
         try:
             device.night_start = parse_time_input(form_data.night_start)
         except ValueError as e:
-            flash(request, f"Invalid night start time: {e}")
+            flash(request, _("Invalid night start time: {error}").format(error=e))
 
     if form_data.night_end:
         try:
             device.night_end = parse_time_input(form_data.night_end)
         except ValueError as e:
-            flash(request, f"Invalid night end time: {e}")
+            flash(request, _("Invalid night end time: {error}").format(error=e))
 
     # Handle dim time and dim brightness
     # Note: Dim mode ends at night_end time (if set) or 6:00 AM by default
@@ -521,7 +522,7 @@ def update_post(
         try:
             device.dim_time = parse_time_input(form_data.dim_time)
         except ValueError as e:
-            flash(request, f"Invalid dim time: {e}")
+            flash(request, _("Invalid dim time: {error}").format(error=e))
     elif device.dim_time:
         # Remove dim_time if the field is empty
         device.dim_time = None
@@ -544,9 +545,9 @@ def update_post(
                     timezone=loc.get("timezone", ""),
                 )
             else:
-                flash(request, "Invalid location")
+                flash(request, _("Invalid location"))
         except json.JSONDecodeError as e:
-            flash(request, f"Location JSON error {e}")
+            flash(request, _("Location JSON error {error}").format(error=e))
 
     db.save_user(db_conn, user)
 
@@ -631,18 +632,18 @@ def addapp_post(
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
     if not name:
-        flash(request, "App name required.")
+        flash(request, _("App name required."))
         return RedirectResponse(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
 
     max_attempts = 10
-    for _ in range(max_attempts):
+    for _i in range(max_attempts):
         iname = str(randint(100, 999))
         if iname not in device.apps:
             break
     else:
-        flash(request, "Could not generate a unique installation ID.")
+        flash(request, _("Could not generate a unique installation ID."))
         return RedirectResponse(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
@@ -699,7 +700,7 @@ async def uploadapp_post(
 ) -> Response:
     user_apps_path = db.get_users_dir() / user.username / "apps"
     if not file.filename:
-        flash(request, "No file")
+        flash(request, _("No file"))
         return RedirectResponse(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
@@ -713,7 +714,7 @@ async def uploadapp_post(
         app_subdir.relative_to(db.get_users_dir())
     except ValueError:
         logger.warning("Security warning: Attempted path traversal in apps_path")
-        flash(request, "Invalid file path")
+        flash(request, _("Invalid file path"))
         return templates.TemplateResponse(
             request,
             "manager/uploadapp.html",
@@ -722,7 +723,7 @@ async def uploadapp_post(
         )
 
     if not await db.save_user_app(file, app_subdir):
-        flash(request, "File type not allowed")
+        flash(request, _("File type not allowed"))
         return templates.TemplateResponse(
             request,
             "manager/uploadapp.html",
@@ -730,7 +731,7 @@ async def uploadapp_post(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    flash(request, "Upload Successful")
+    flash(request, _("Upload Successful"))
     preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
     render_app(
         db_conn,
@@ -781,7 +782,9 @@ def deleteupload(
     ):
         flash(
             request,
-            f"Cannot delete {filename} because it is installed on a device.",
+            _("Cannot delete {filename} because it is installed on a device.").format(
+                filename=filename
+            ),
         )
     else:
         db.delete_user_upload(user, filename)
@@ -840,10 +843,10 @@ def toggle_pin(
     # Check if this app is currently pinned
     if getattr(device, "pinned_app", None) == iname:
         device.pinned_app = ""
-        flash(request, "App unpinned.")
+        flash(request, _("App unpinned."))
     else:
         device.pinned_app = iname
-        flash(request, "App pinned.")
+        flash(request, _("App pinned."))
 
     db.save_user(db_conn, user)
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -874,12 +877,12 @@ def duplicate_app(
 
     # Generate a unique iname for the duplicate
     max_attempts = 10
-    for _ in range(max_attempts):
+    for _i in range(max_attempts):
         new_iname = str(randint(100, 999))
         if new_iname not in device.apps:
             break
     else:
-        flash(request, "Could not generate a unique installation ID.")
+        flash(request, _("Could not generate a unique installation ID."))
         return Response(
             "Error generating unique ID",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -946,7 +949,7 @@ def duplicate_app(
     if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
         return Response("OK", status_code=status.HTTP_200_OK)
     else:
-        flash(request, "App duplicated successfully.")
+        flash(request, _("App duplicated successfully."))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
@@ -1064,7 +1067,7 @@ def updateapp_post(
         update_data["recurrence_end_date"] = form_data.recurrence_end_date
 
     if not form_data.name:
-        flash(request, "Name is required.")
+        flash(request, _("Name is required."))
         temp_app = app.model_copy(update=update_data)
         return templates.TemplateResponse(
             request,
@@ -1107,7 +1110,7 @@ def toggle_enabled(
 
     app.enabled = not app.enabled
     db.save_user(db_conn, user)
-    flash(request, "Changes saved.")
+    flash(request, _("Changes saved."))
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
@@ -1121,7 +1124,7 @@ def moveapp(
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     if direction not in ["up", "down", "top", "bottom"]:
-        flash(request, "Invalid direction.")
+        flash(request, _("Invalid direction."))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     device = user.devices.get(device_id)
@@ -1136,7 +1139,7 @@ def moveapp(
             break
 
     if current_idx == -1:
-        flash(request, "App not found.")
+        flash(request, _("App not found."))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     if direction == "up":
@@ -1188,7 +1191,7 @@ def configapp(
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
     app = device.apps.get(iname)
     if not app or not app.path:
-        flash(request, "Error saving app, please try again.")
+        flash(request, _("Error saving app, please try again."))
         return RedirectResponse(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
@@ -1245,7 +1248,7 @@ async def configapp_post(
         app.last_render = int(time.time())
         db.save_app(db_conn, device_id, app)
     else:
-        flash(request, "Error Rendering App")
+        flash(request, _("Error Rendering App"))
 
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
@@ -1417,7 +1420,7 @@ def set_api_key(
 ) -> Response:
     """Set the user's API key."""
     if not api_key:
-        flash(request, "API Key cannot be empty.")
+        flash(request, _("API Key cannot be empty."))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     user.api_key = api_key
     db.save_user(db_conn, user)
@@ -1457,7 +1460,7 @@ def refresh_system_repo(
         raise HTTPException(status_code=403, detail="Forbidden")
     # Directly update the system repo - it handles git pull internally
     system_apps.update_system_repo(db.get_data_dir(), logger)
-    flash(request, "System repo updated successfully")
+    flash(request, _("System repo updated successfully"))
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
     )
@@ -1615,14 +1618,14 @@ def update_firmware(request: Request, user: User = Depends(manager)) -> Response
         result = firmware_utils.update_firmware_binaries(db.get_data_dir(), logger)
         if result["success"]:
             if result["action"] == "updated":
-                flash(request, f"✅ {result['message']}", "success")
+                flash(request, _("✅ {result['message']}"), "success")
             elif result["action"] == "skipped":
-                flash(request, f"ℹ️ {result['message']}", "info")
+                flash(request, _("ℹ️ {result['message']}"), "info")
         else:
-            flash(request, f"❌ {result['message']}", "error")
+            flash(request, _("❌ {result['message']}"), "error")
     except Exception as e:
         logger.error(f"Error updating firmware: {e}")
-        flash(request, f"❌ Firmware update failed: {str(e)}", "error")
+        flash(request, _("❌ Firmware update failed: {str(e)}"), "error")
     return RedirectResponse(
         url="/auth/edit#firmware-management",
         status_code=status.HTTP_302_FOUND,
@@ -1692,13 +1695,13 @@ async def import_device_config_post(
     file: UploadFile = File(...),
 ) -> Response:
     if not file.filename:
-        flash(request, "No selected file")
+        flash(request, _("No selected file"))
         return RedirectResponse(
             url=f"/{device_id}/import_config",
             status_code=status.HTTP_302_FOUND,
         )
     if not file.filename.endswith(".json"):
-        flash(request, "Invalid file type. Please upload a JSON file.")
+        flash(request, _("Invalid file type. Please upload a JSON file."))
         return RedirectResponse(
             url=f"/{device_id}/import_config",
             status_code=status.HTTP_302_FOUND,
@@ -1708,22 +1711,22 @@ async def import_device_config_post(
         contents = await file.read()
         device_config = json.loads(contents)
         if not isinstance(device_config, dict):
-            flash(request, "Invalid JSON structure")
+            flash(request, _("Invalid JSON structure"))
             return RedirectResponse(
                 url=f"/{device_id}/import_config",
                 status_code=status.HTTP_302_FOUND,
             )
         if device_config["id"] != device_id:
-            flash(request, "Not the same device id. Import skipped.")
+            flash(request, _("Not the same device id. Import skipped."))
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         device_config["img_url"] = f"{server_root()}/{device_id}/next"
         user.devices[device_config["id"]] = Device(**device_config)
         db.save_user(db_conn, user)
-        flash(request, "Device configuration imported successfully")
+        flash(request, _("Device configuration imported successfully"))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except json.JSONDecodeError as e:
-        flash(request, f"Error parsing JSON file: {e}")
+        flash(request, _("Error parsing JSON file: {error}").format(error=e))
         return RedirectResponse(
             url=f"/{device_id}/import_config",
             status_code=status.HTTP_302_FOUND,
@@ -1739,27 +1742,27 @@ async def import_user_config(
 ) -> Response:
     """Handle import of user configuration."""
     if not file.filename:
-        flash(request, "No selected file")
+        flash(request, _("No selected file"))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     if not file.filename.endswith(".json"):
-        flash(request, "Invalid file type. Please upload a JSON file.")
+        flash(request, _("Invalid file type. Please upload a JSON file."))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
     try:
         contents = await file.read()
         user_config = json.loads(contents)
         if not isinstance(user_config, dict):
-            flash(request, "Invalid JSON structure")
+            flash(request, _("Invalid JSON structure"))
             return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
         password = user.password
         user_config["password"] = password
         new_user = User(**user_config)
         db.save_user(db_conn, new_user)
-        flash(request, "User configuration imported successfully")
+        flash(request, _("User configuration imported successfully"))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     except json.JSONDecodeError as e:
-        flash(request, f"Error parsing JSON file: {e}")
+        flash(request, _("Error parsing JSON file: {error}").format(error=e))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
@@ -1780,39 +1783,39 @@ async def import_device_post(
 ) -> Response:
     """Handle import of a new device."""
     if not file.filename:
-        flash(request, "No selected file")
+        flash(request, _("No selected file"))
         return RedirectResponse(url="/import_device", status_code=status.HTTP_302_FOUND)
     if not file.filename.endswith(".json"):
-        flash(request, "Invalid file type. Please upload a JSON file.")
+        flash(request, _("Invalid file type. Please upload a JSON file."))
         return RedirectResponse(url="/import_device", status_code=status.HTTP_302_FOUND)
 
     try:
         contents = await file.read()
         device_config = json.loads(contents)
         if not isinstance(device_config, dict):
-            flash(request, "Invalid JSON structure")
+            flash(request, _("Invalid JSON structure"))
             return RedirectResponse(
                 url="/import_device", status_code=status.HTTP_302_FOUND
             )
 
         device_id = device_config.get("id")
         if not device_id:
-            flash(request, "Device ID missing in config.")
+            flash(request, _("Device ID missing in config."))
             return RedirectResponse(
                 url="/import_device", status_code=status.HTTP_302_FOUND
             )
         if device_id in user.devices or db.get_device_by_id(db_conn, device_id):
-            flash(request, "Device already exists. Import skipped.")
+            flash(request, _("Device already exists. Import skipped."))
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         device_config["img_url"] = f"{server_root()}/{device_id}/next"
         device = Device(**device_config)
         user.devices[device.id] = device
         db.save_user(db_conn, user)
-        flash(request, "Device configuration imported successfully")
+        flash(request, _("Device configuration imported successfully"))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except json.JSONDecodeError as e:
-        flash(request, f"Error parsing JSON file: {e}")
+        flash(request, _("Error parsing JSON file: {error}").format(error=e))
         return RedirectResponse(url="/import_device", status_code=status.HTTP_302_FOUND)
 
 

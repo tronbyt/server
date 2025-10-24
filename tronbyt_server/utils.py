@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import Request, Response
 from fastapi.responses import FileResponse
 from werkzeug.utils import secure_filename
+from fastapi_babel import _
 
 from tronbyt_server import db
 from tronbyt_server.config import get_settings
@@ -154,21 +155,21 @@ def set_repo(
                 ]
             )
             if result.returncode == 0:
-                flash(request, "Repo Cloned")
+                flash(request, _("Repo Cloned"))
                 return True
             else:
-                flash(request, "Error Cloning Repo")
+                flash(request, _("Error Cloning Repo"))
                 return False
         else:
             result = git_command(["git", "-C", str(apps_path), "pull"])
             if result.returncode == 0:
-                flash(request, "Repo Updated")
+                flash(request, _("Repo Updated"))
                 return True
             else:
-                flash(request, "Repo Update Failed")
+                flash(request, _("Repo Update Failed"))
                 return False
     else:
-        flash(request, "No Changes to Repo")
+        flash(request, _("No Changes to Repo"))
         return True
 
 
