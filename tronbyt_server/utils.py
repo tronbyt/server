@@ -57,7 +57,7 @@ def ws_root() -> str:
 def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:
     """Add default configuration values to an app's config."""
     config["$tz"] = db.get_device_timezone_str(device)
-    config["$2x"] = str(device.supports_2x).lower()
+    config["$2x"] = str(device.supports_2x()).lower()
     return config
 
 
