@@ -384,7 +384,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": true}' \
-  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Disable App -->
@@ -394,7 +394,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": false}' \
-  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Pin App -->
@@ -404,7 +404,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": true}' \
-  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <!-- Unpin App -->
@@ -414,7 +414,7 @@
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": false}' \
-  {{ server_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
   </div>
 
   <small>
