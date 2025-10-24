@@ -19,9 +19,10 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
-    UploadFile,
     status,
+    UploadFile,
 )
 from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
 from pydantic import BaseModel, BeforeValidator
@@ -1115,7 +1116,7 @@ def moveapp(
     request: Request,
     device_id: DeviceID,
     iname: str,
-    direction: str = Form(...),
+    direction: str = Query(...),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:

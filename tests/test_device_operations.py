@@ -1,6 +1,8 @@
 import sqlite3
+from pathlib import Path
 from fastapi.testclient import TestClient
 from tests import utils
+from tronbyt_server.config import get_settings
 
 
 def test_device_operations(
@@ -27,6 +29,19 @@ def test_device_operations(
 
     r = auth_client.get(f"/{device_id}/firmware")
     assert r.status_code == 200
+
+    # Create dummy firmware file for testing
+    settings = get_settings()
+    firmware_dir = Path(settings.DATA_DIR) / "firmware"
+    firmware_dir.mkdir(parents=True, exist_ok=True)
+    firmware_file = firmware_dir / "tidbyt-gen1.bin"
+    content = (
+        b"A" * 1000
+        + b"XplaceholderWIFISSID____________\x00"
+        + b"XplaceholderWIFIPASSWORD________________________________________\x00"
+        + b"XplaceholderREMOTEURL___________________________________________________________________________________________________________\x00"
+    )
+    firmware_file.write_bytes(content)
 
     data = {
         "id": device_id,

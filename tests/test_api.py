@@ -134,32 +134,32 @@ class TestMoveApp:
         )
 
         # Move app2 down
-        auth_client.get(f"/{device_id}/{app2}/moveapp?direction=down")
+        auth_client.post(f"/{device_id}/{app2}/moveapp", params={"direction": "down"})
         apps = self._get_sorted_apps_from_db(db_connection, device_id)
         assert [app.iname for app in apps] == [app1, app3, app2, app4]
         for i, app in enumerate(apps):
             assert app.order == i
 
         # Move app2 up
-        auth_client.get(f"/{device_id}/{app2}/moveapp?direction=up")
+        auth_client.post(f"/{device_id}/{app2}/moveapp", params={"direction": "up"})
         apps = self._get_sorted_apps_from_db(db_connection, device_id)
         assert [app.iname for app in apps] == [app1, app2, app3, app4]
         for i, app in enumerate(apps):
             assert app.order == i
 
         # Move app1 up (should not change order)
-        auth_client.get(f"/{device_id}/{app1}/moveapp?direction=up")
+        auth_client.post(f"/{device_id}/{app1}/moveapp", params={"direction": "up"})
         apps = self._get_sorted_apps_from_db(db_connection, device_id)
         assert [app.iname for app in apps] == [app1, app2, app3, app4]
 
         # Move app4 down (should not change order)
-        auth_client.get(f"/{device_id}/{app4}/moveapp?direction=down")
+        auth_client.post(f"/{device_id}/{app4}/moveapp", params={"direction": "down"})
         apps = self._get_sorted_apps_from_db(db_connection, device_id)
         assert [app.iname for app in apps] == [app1, app2, app3, app4]
 
         # Move app1 down twice
-        auth_client.get(f"/{device_id}/{app1}/moveapp?direction=down")
-        auth_client.get(f"/{device_id}/{app1}/moveapp?direction=down")
+        auth_client.post(f"/{device_id}/{app1}/moveapp", params={"direction": "down"})
+        auth_client.post(f"/{device_id}/{app1}/moveapp", params={"direction": "down"})
         apps = self._get_sorted_apps_from_db(db_connection, device_id)
         assert [app.iname for app in apps] == [app2, app3, app1, app4]
         for i, app in enumerate(apps):
