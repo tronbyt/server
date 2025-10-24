@@ -162,18 +162,28 @@
           inputElement = document.createElement("input");
           inputElement.type = "text";
           inputElement.value = config[field.id] || field.default || "";
+          // Set initial config value if using default
+          if (!config[field.id] && field.default) {
+            config[field.id] = field.default;
+          }
           break;
 
         case "onoff":
           inputElement = document.createElement("input");
           inputElement.type = "checkbox";
           inputElement.checked = config[field.id] === "true" || (config[field.id] === undefined && field.default === "true");
+          // Set initial config value for the checkbox
+          config[field.id] = inputElement.checked ? "true" : "false";
           break;
 
         case "datetime":
           inputElement = document.createElement("input");
           inputElement.type = "datetime-local";
           inputElement.value = (config[field.id] || field.default || "").replace("Z", "");
+          // Set initial config value if using default
+          if (!config[field.id] && field.default) {
+            config[field.id] = field.default;
+          }
           break;
 
         case "dropdown":
@@ -182,8 +192,9 @@
             field.options.forEach(option => {
               const opt = document.createElement("option");
               opt.value = option.value;
-              opt.textContent = option.text;
-              opt.selected = config[field.id] === option.value;
+              opt.textContent = option.display;
+              // Select option if it matches config value, or if no config value exists, match against field.default
+              opt.selected = config[field.id] === option.value || (!config[field.id] && field.default === option.value);
               inputElement.appendChild(opt);
             });
           }
@@ -208,6 +219,10 @@
           inputElement = document.createElement("input");
           inputElement.type = "color";
           inputElement.value = config[field.id] || field.default || "#000000";
+          // Set initial config value if using default
+          if (!config[field.id]) {
+            config[field.id] = field.default || "#000000";
+          }
           break;
 
         case "png":
