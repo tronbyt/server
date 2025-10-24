@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh"
     MAX_CONTENT_LENGTH: int = 1000 * 1000
-    SERVER_HOSTNAME_OR_IP: str = "localhost"
+    SERVER_HOSTNAME: str = "localhost"
     SERVER_PORT: str = "8000"
     SERVER_PROTOCOL: str = "http"
     USERS_DIR: str = "users"

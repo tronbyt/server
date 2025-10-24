@@ -34,7 +34,7 @@ def server_root() -> str:
     """Get the root URL of the server."""
     settings = get_settings()
     protocol = settings.SERVER_PROTOCOL
-    hostname = settings.SERVER_HOSTNAME_OR_IP
+    hostname = settings.SERVER_HOSTNAME
     port = settings.SERVER_PORT
     url = f"{protocol}://{hostname}"
     if (protocol == "https" and port != "443") or (protocol == "http" and port != "80"):
@@ -47,7 +47,7 @@ def ws_root() -> str:
     settings = get_settings()
     server_protocol = settings.SERVER_PROTOCOL
     protocol = "wss" if server_protocol == "https" else "ws"
-    hostname = settings.SERVER_HOSTNAME_OR_IP
+    hostname = settings.SERVER_HOSTNAME
     port = settings.SERVER_PORT
     url = f"{protocol}://{hostname}"
     if (protocol == "wss" and port != "443") or (protocol == "ws" and port != "80"):
