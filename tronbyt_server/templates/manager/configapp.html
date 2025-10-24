@@ -823,33 +823,13 @@
   });
 </script>
 
-<<<<<<< HEAD
-    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-=======
 <!-- App Preview -->
 <div class="app-img">
   <img id="previewImage"
     src="{{ url_for('preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
->>>>>>> ebdd13e (progress to merge fixing)
-    alt="{{ _('Preview') }}"
-    class="hidden">
-  <div class="skeleton-loader"></div>
->>>>>>> 96facaa (feat(config): add loading indicator when preview is updating (#374))
-  </div>
-  <!-- App Preview -->
-  <div class="app-img">
-    <img id="previewImage"
-    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
     alt="{{ _('Preview') }}"
     class="hidden">
   <div class="skeleton-loader"></div>
   </div>
-=======
-    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}"
-    class="hidden">
-  <div class="skeleton-loader"></div>
->>>>>>> 96facaa (feat(config): add loading indicator when preview is updating (#374))
-</div>
 <form method="post" id="dynamicForm"></form>
 {% endblock %}
