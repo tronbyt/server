@@ -136,8 +136,8 @@ input[type=submit] {
   height: 100%;
 }
 .app-img.is-2x img {
-  -webkit-mask-image: url('/v0/dots?w=128&h=64');
-  mask-image: url('/v0/dots?w=128&h=64');
+  -webkit-mask-image: url('/v0/dots?w=128&h=64&r=0.4');
+  mask-image: url('/v0/dots?w=128&h=64&r=0.4');
 }
 
 /* Skeleton loader */

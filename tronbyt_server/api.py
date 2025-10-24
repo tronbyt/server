@@ -187,7 +187,7 @@ def handle_push(device_id: str) -> ResponseReturnValue:
 
 DEFAULT_DOTS_WIDTH = 64
 DEFAULT_DOTS_HEIGHT = 32
-DEFAULT_DOTS_RADIUS = 0.4
+DEFAULT_DOTS_RADIUS = 0.3
 MAX_DOTS_DIMENSION = 256
 
 
