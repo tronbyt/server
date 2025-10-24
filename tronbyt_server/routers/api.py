@@ -1,13 +1,14 @@
 """API router."""
 
 import base64
+import hashlib
 import logging
 import sqlite3
 import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from werkzeug.utils import secure_filename
@@ -61,11 +62,20 @@ def get_device_payload(device: Device) -> dict[str, Any]:
 
 @router.get("/dots")
 def generate_dots_svg(
+    request: Request,
     w: int = DEFAULT_DOTS_WIDTH,
     h: int = DEFAULT_DOTS_HEIGHT,
     r: float = DEFAULT_DOTS_RADIUS,
 ) -> Response:
     """Generate an SVG mask pattern with dots."""
+    # ETag generation
+    etag_content = f"{w}-{h}-{r}"
+    etag = f'"{hashlib.md5(etag_content.encode()).hexdigest()}"'
+
+    # Check If-None-Match header
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+
     # Validate width
     if w <= 0 or w > MAX_DOTS_DIMENSION:
         raise HTTPException(
@@ -103,7 +113,12 @@ def generate_dots_svg(
 
     data.append("</svg>\n")
 
-    return Response(content="".join(data), media_type="image/svg+xml")
+    headers = {
+        "Cache-Control": "public, max-age=31536000",
+        "ETag": etag,
+    }
+
+    return Response(content="".join(data), media_type="image/svg+xml", headers=headers)
 
 
 @router.get("/devices", response_model=dict[str, list[dict[str, Any]]])
