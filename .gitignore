@@ -21,3 +21,4 @@ messages.pot
 tronbyt_server/version.json
 
 .vscode/*
+.claude/settings.local.json
