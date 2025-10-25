@@ -44,7 +44,7 @@ resource "google_compute_disk" "default" {
 # A GCE instance
 resource "google_compute_instance" "default" {
   name         = "tronbyt-server-instance"
-  machine_type = "e2-small"                       # A reasonable default
+  machine_type = "e2-micro"                       # Free tier
   zone         = google_compute_disk.default.zone # Must be in the same zone as the disk
 
   tags = ["tronbyt-server", "http-server", "https-server"]
