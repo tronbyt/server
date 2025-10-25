@@ -1446,7 +1446,7 @@ def set_system_repo(
         app_repo_url,
     ):
         system_apps.update_system_repo(db.get_data_dir(), logger)
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
@@ -1461,9 +1461,7 @@ def refresh_system_repo(
     # Directly update the system repo - it handles git pull internally
     system_apps.update_system_repo(db.get_data_dir(), logger)
     flash(request, _("System repo updated successfully"))
-    return RedirectResponse(
-        url=request.url_for("index"), status_code=status.HTTP_302_FOUND
-    )
+    return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/mark_app_broken/{app_name}", name="mark_app_broken")
