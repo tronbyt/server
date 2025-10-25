@@ -1490,10 +1490,6 @@ msgstr "Angeheftet:"
 msgid "Currently Displaying App"
 msgstr "Derzeit angezeigte App"
 
-#: tronbyt_server/templates/partials/device_card.html:38
-msgid "Auto Refresh"
-msgstr "Automatisch aktualisieren"
-
 #: tronbyt_server/templates/partials/device_card.html:81
 msgid "Firmware"
 msgstr "Firmware"

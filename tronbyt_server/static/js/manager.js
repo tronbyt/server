@@ -85,44 +85,22 @@ function toggleDetails(deviceId) {
   }
 }
 
-// Add autoUpdate state tracking
-const autoUpdateStates = {};
-const autoUpdateIntervals = {};
-
 // Initialize auto-update for all devices when page loads
 document.addEventListener('DOMContentLoaded', function() {
-  const autoUpdateCheckboxes = document.querySelectorAll('[id^="autoUpdate-"]');
-  autoUpdateCheckboxes.forEach(checkbox => {
-    const deviceId = checkbox.id.replace('autoUpdate-', '');
-    toggleAutoUpdate(deviceId);
-  });
-});
-
-function toggleAutoUpdate(deviceId) {
-  const checkbox = document.getElementById(`autoUpdate-${deviceId}`);
-
-  if (checkbox.checked) {
-    // Start auto-updating
-    autoUpdateStates[deviceId] = true;
-    autoUpdateIntervals[deviceId] = setInterval(() => {
+  const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
+  webpImages.forEach(image => {
+    const deviceId = image.id.replace('currentWebp-', '');
+    setInterval(() => {
       reloadImage(deviceId);
     }, 5000); // Update every 5 seconds
-  } else {
-    // Stop auto-updating
-    autoUpdateStates[deviceId] = false;
-    if (autoUpdateIntervals[deviceId]) {
-      clearInterval(autoUpdateIntervals[deviceId]);
-    }
-  }
-}
+  });
+});
 
 function reloadImage(deviceId) {
   const currentWebpImg = document.getElementById(`currentWebp-${deviceId}`);
   const timestamp = new Date().getTime(); // Prevent caching
   currentWebpImg.src = `${currentWebpImg.dataset.src}?t=${timestamp}`;
 }
-
-
 
 // AJAX function to move apps without page reload
 function moveApp(deviceId, iname, direction) {

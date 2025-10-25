@@ -29,14 +29,6 @@
                 alt="{{ _('Preview') }}">
             </div>
             <br>{{ _('Currently Displaying App') }}
-            <div class="auto-refresh-container">
-              <label class="switch">
-                <input type="checkbox" id="autoUpdate-{{ device.id }}"
-                       onchange="toggleAutoUpdate('{{ device.id }}')" >
-                <span class="slider round"></span>
-              </label>
-              <label for="autoUpdate-{{ device.id }}" class="auto-refresh-label">{{ _('Auto Refresh') }}</label>
-            </div>
           </td>
         </tr>
         <tr>
