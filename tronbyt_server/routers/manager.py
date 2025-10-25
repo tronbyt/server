@@ -1646,7 +1646,7 @@ def refresh_user_repo(
 @router.get("/export_user_config", name="export_user_config")
 def export_user_config(user: User = Depends(manager)) -> Response:
     """Export user configuration as a JSON file."""
-    user_dict = user.model_dump()
+    user_dict = user.model_dump(mode="json")
     user_dict.pop("password", None)
     user_json = json.dumps(user_dict, indent=4)
     return Response(
@@ -1665,7 +1665,7 @@ def export_device_config(
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    device_json = json.dumps(device.model_dump(), indent=4)
+    device_json = json.dumps(device.model_dump(mode="json"), indent=4)
     return Response(
         content=device_json,
         media_type="application/json",
