@@ -1714,6 +1714,12 @@ async def import_device_config_post(
                 url=f"/{device_id}/import_config",
                 status_code=status.HTTP_302_FOUND,
             )
+        if "id" not in device_config:
+            flash(request, _("Invalid config file: missing device ID"))
+            return RedirectResponse(
+                url=f"/{device_id}/import_config",
+                status_code=status.HTTP_302_FOUND,
+            )
         if device_config["id"] != device_id:
             flash(request, _("Not the same device id. Import skipped."))
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -1725,6 +1731,12 @@ async def import_device_config_post(
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except json.JSONDecodeError as e:
         flash(request, _("Error parsing JSON file: {error}").format(error=e))
+        return RedirectResponse(
+            url=f"/{device_id}/import_config",
+            status_code=status.HTTP_302_FOUND,
+        )
+    except Exception as e:
+        flash(request, _("Error importing config: {error}").format(error=str(e)))
         return RedirectResponse(
             url=f"/{device_id}/import_config",
             status_code=status.HTTP_302_FOUND,
@@ -1761,6 +1773,9 @@ async def import_user_config(
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     except json.JSONDecodeError as e:
         flash(request, _("Error parsing JSON file: {error}").format(error=e))
+        return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        flash(request, _("Error importing config: {error}").format(error=str(e)))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
 
