@@ -124,6 +124,42 @@ def parse_time_input(time_str: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def _map_app_index_to_expanded_list(
+    old_index: int, 
+    apps_list_length: int, 
+    interstitial_enabled: bool
+) -> int:
+    """
+    Map an old app index to the correct position in the expanded list with interstitial apps.
+    
+    Args:
+        old_index: The original index in the regular apps list
+        apps_list_length: Length of the original apps list
+        interstitial_enabled: Whether interstitial apps are enabled
+        
+    Returns:
+        The correct index in the expanded list
+        
+    Example:
+        Original apps: [A, B, C] (indices 0, 1, 2)
+        With interstitial I: [A, I, B, I, C] (indices 0, 1, 2, 3, 4)
+        Mapping: 0→0, 1→2, 2→4
+    """
+    if not interstitial_enabled or apps_list_length <= 1:
+        # No interstitial apps or only one app, no mapping needed
+        return old_index
+    
+    # Each regular app gets an interstitial after it (except the last one)
+    # For apps before the last: new_index = old_index * 2
+    # For the last app: new_index = old_index + (apps_list_length - 1)
+    if old_index >= apps_list_length - 1:
+        # If pointing to the last app, it doesn't get an interstitial after it
+        return old_index + (apps_list_length - 1)
+    else:
+        # Regular mapping: each app gets doubled due to interstitial
+        return old_index * 2
+
+
 def _next_app_logic(
     db_conn: sqlite3.Connection,
     device_id: DeviceID,
@@ -205,9 +241,14 @@ def _next_app_logic(
                     interstitial_app = device.apps[interstitial_app_iname]
                     expanded_apps_list.append(interstitial_app)
             
+            # Map the old index to the correct position in the expanded list
+            mapped_index = _map_app_index_to_expanded_list(
+                last_app_index, len(apps_list), interstitial_enabled
+            )
+            
             # Use the expanded list for cycling
-            if last_app_index + 1 < len(expanded_apps_list):
-                app = expanded_apps_list[last_app_index + 1]
+            if mapped_index + 1 < len(expanded_apps_list):
+                app = expanded_apps_list[mapped_index + 1]
                 last_app_index += 1
             else:
                 app = expanded_apps_list[0]
@@ -2014,9 +2055,14 @@ def currentwebp(
             # Get current app index (don't advance it for /currentapp)
             current_app_index = db.get_last_app_index(db_conn, device_id) or 0
 
-            # Handle compatibility: if the index is too large for the expanded list,
+            # Map the old index to the correct position in the expanded list
+            mapped_index = _map_app_index_to_expanded_list(
+                current_app_index, len(apps_list), interstitial_enabled
+            )
+            
+            # Handle compatibility: if the mapped index is too large for the expanded list,
             # it might be from the old system (before interstitial apps)
-            if current_app_index >= len(expanded_apps_list):
+            if mapped_index >= len(expanded_apps_list):
                 # If interstitial is enabled, the old index might be valid for the original apps_list
                 if interstitial_enabled and current_app_index < len(apps_list):
                     # Use the original apps_list for backward compatibility
@@ -2025,7 +2071,7 @@ def currentwebp(
                     # Reset to 0 if index is completely invalid
                     app = expanded_apps_list[0]
             else:
-                app = expanded_apps_list[current_app_index]
+                app = expanded_apps_list[mapped_index]
             
             # Check if this is an interstitial app
             if (
