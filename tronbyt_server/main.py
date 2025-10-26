@@ -1,7 +1,10 @@
 """Main application file."""
 
 import logging
+import shutil
 from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -23,13 +26,44 @@ from tronbyt_server.templates import templates
 from typing import AsyncGenerator
 
 
+def backup_database(db_file: str, logger: logging.Logger) -> None:
+    """Create a timestamped backup of the SQLite database."""
+    db_path = Path(db_file)
+    if not db_path.exists():
+        logger.warning(f"Database file does not exist, skipping backup: {db_file}")
+        return
+
+    # Create backup directory if it doesn't exist
+    backup_dir = db_path.parent / "backups"
+    backup_dir.mkdir(exist_ok=True)
+
+    # Create timestamped backup filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"{db_path.stem}_{timestamp}.db"
+    backup_path = backup_dir / backup_filename
+
+    try:
+        shutil.copy2(db_file, backup_path)
+        logger.info(f"Database backed up to: {backup_path}")
+    except Exception as e:
+        logger.error(f"Failed to backup database: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Run startup and shutdown events."""
     # Startup
     logging.basicConfig(level=get_settings().LOG_LEVEL)
     logger = logging.getLogger(__name__)
-    db_connection = next(get_db(settings=get_settings()))
+
+    # Backup the database before initializing (only in production)
+    settings = get_settings()
+    if settings.PRODUCTION == "1":
+        backup_database(settings.DB_FILE, logger)
+    else:
+        logger.info("Development mode - skipping database backup")
+
+    db_connection = next(get_db(settings=settings))
     with db_connection:
         db.init_db(db_connection)
     yield

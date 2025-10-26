@@ -1772,16 +1772,34 @@ async def import_user_config(
             flash(request, _("Invalid JSON structure"))
             return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
-        password = user.password
-        user_config["password"] = password
-        new_user = User(**user_config)
+        # Replace all user data except username and password
+        current_username = user.username
+        current_password = user.password
+
+        user_config["username"] = current_username
+        user_config["password"] = current_password
+
+        logging.info(f"Attempting to import user config: {user_config.keys()}")
+        try:
+            new_user = User(**user_config)
+            logging.info(
+                f"Successfully created User object with {len(new_user.devices)} devices"
+            )
+        except Exception as validation_error:
+            logging.error(
+                f"Pydantic validation error: {validation_error}", exc_info=True
+            )
+            raise
+
         db.save_user(db_conn, new_user)
         flash(request, _("User configuration imported successfully"))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error during user config import: {e}")
         flash(request, _("Error parsing JSON file: {error}").format(error=e))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     except Exception as e:
+        logging.error(f"Error importing user config: {e}", exc_info=True)
         flash(request, _("Error importing config: {error}").format(error=str(e)))
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 

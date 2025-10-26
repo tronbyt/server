@@ -213,9 +213,6 @@ async def _wait_for_acknowledgment(
         try:
             await asyncio.wait_for(ack.displaying_event.wait(), timeout=poll_interval)
             # Got displaying acknowledgment, render next image
-            logger.debug(
-                f"Image displaying acknowledged (seq: {ack.displaying_counter})"
-            )
             return await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
         except asyncio.TimeoutError:
             # No acknowledgment yet, continue waiting
