@@ -40,7 +40,7 @@ class RecurrencePattern(BaseModel):
     )
 
 
-RecurrenceType = Literal["daily", "weekly", "monthly", "yearly"]
+RecurrenceType = Literal["daily", "weekly", "monthly", "yearly", None]
 
 
 class App(BaseModel):
