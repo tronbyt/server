@@ -325,7 +325,10 @@ def get_device_timezone(device: Device) -> ZoneInfo:
             return ZoneInfo(device.timezone)
         except Exception:
             pass
-    return get_localzone()
+    # mypy doesn't understand that get_localzone() returns ZoneInfo-compatible
+    local_tz = get_localzone()
+    assert isinstance(local_tz, ZoneInfo), "get_localzone() must return ZoneInfo"
+    return local_tz
 
 
 def get_device_timezone_str(device: Device) -> str:
@@ -824,6 +827,10 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
     if recurrence_end_date:
         if current_time.date() > recurrence_end_date:
             return False
+
+    # Default recurrence_interval to 1 if not set
+    if recurrence_interval is None:
+        recurrence_interval = 1
 
     current_date = current_time.date()
 

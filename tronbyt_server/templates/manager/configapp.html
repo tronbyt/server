@@ -873,7 +873,7 @@
 <!-- App Preview -->
 <div class="app-img">
   <img id="previewImage"
-    src="{{ url_for('preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    src="{{ url_for('preview', device_id=device.id, iname=app.iname) }}?config={{ config | tojson | urlencode }}"
     alt="{{ _('Preview') }}">
   <div class="skeleton-loader"></div>
 </div>

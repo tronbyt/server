@@ -169,6 +169,7 @@ def _next_app_logic(
     pinned_app_iname = device.pinned_app
     is_pinned_app = False
     is_night_mode_app = False
+    is_interstitial_app = False
     if pinned_app_iname and pinned_app_iname in device.apps:
         logger.debug(f"Using pinned app: {pinned_app_iname}")
         app = device.apps[pinned_app_iname]
@@ -184,27 +185,65 @@ def _next_app_logic(
         if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
             app = device.apps[device.night_mode_app]
             is_night_mode_app = True
-        elif last_app_index + 1 < len(apps_list):
-            app = apps_list[last_app_index + 1]
-            last_app_index += 1
         else:
-            app = apps_list[0]
-            last_app_index = 0
+            # Create expanded apps list with interstitial apps inserted
+            expanded_apps_list = []
+            interstitial_app_iname = device.interstitial_app
+            interstitial_enabled = device.interstitial_enabled
+
+            for i, regular_app in enumerate(apps_list):
+                # Add the regular app
+                expanded_apps_list.append(regular_app)
+
+                # Add interstitial app after each regular app (except the last one)
+                if (
+                    interstitial_enabled
+                    and interstitial_app_iname
+                    and interstitial_app_iname in device.apps
+                    and i < len(apps_list) - 1
+                ):
+                    interstitial_app = device.apps[interstitial_app_iname]
+                    expanded_apps_list.append(interstitial_app)
+
+            # Use the expanded list for cycling
+            if last_app_index + 1 < len(expanded_apps_list):
+                app = expanded_apps_list[last_app_index + 1]
+                last_app_index += 1
+            else:
+                app = expanded_apps_list[0]
+                last_app_index = 0
+
+            # Check if this is an interstitial app
+            if (
+                interstitial_enabled
+                and interstitial_app_iname
+                and interstitial_app_iname in device.apps
+                and app.iname == interstitial_app_iname
+            ):
+                is_interstitial_app = True
 
     # For pinned apps, always display them regardless of enabled/schedule status
+    # For interstitial apps, always display them regardless of enabled/schedule status
     # For other apps, check if they should be displayed
     if (
         not is_pinned_app
         and not is_night_mode_app
+        and not is_interstitial_app
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
-        return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
+        # Simply increment index to try next app instead of same app
+        return _next_app_logic(
+            db_conn, device_id, last_app_index + 1, recursion_depth + 1
+        )
 
     if (
         not possibly_render(db_conn, user, device_id, app, logger)
         or app.empty_last_render
     ):
-        return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
+        # Simply increment index to try next app instead of same app
+        return _next_app_logic(
+            db_conn, device_id, last_app_index + 1, recursion_depth + 1
+        )
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
@@ -216,7 +255,7 @@ def _next_app_logic(
         db.save_last_app_index(db_conn, device_id, last_app_index)
         return response
 
-    return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
+    return _next_app_logic(db_conn, device_id, last_app_index + 1, recursion_depth + 1)
 
 
 @router.get("/", name="index")
@@ -465,6 +504,8 @@ class DeviceUpdateFormData(BaseModel):
     dim_brightness: int | None = None
     timezone: str | None = None
     location: str | None = None
+    interstitial_enabled: bool = False
+    interstitial_app: str | None = None
 
 
 @router.post("/{device_id}/update", name="update_post")
@@ -536,6 +577,13 @@ def update_post(
 
     if form_data.dim_brightness:
         device.dim_brightness = db.ui_scale_to_percent(form_data.dim_brightness)
+
+    # Handle interstitial app settings
+    device.interstitial_enabled = form_data.interstitial_enabled
+    if form_data.interstitial_app and form_data.interstitial_app != "None":
+        device.interstitial_app = form_data.interstitial_app
+    else:
+        device.interstitial_app = None
 
     if form_data.location and form_data.location != "{}":
         try:
@@ -1909,17 +1957,111 @@ def currentwebp(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    apps_list = sorted(
-        list(device.apps.values()),
-        key=lambda x: x.order,
-    )
-    if not apps_list:
+    # first check for a pushed file starting with __ and just return that and then delete it.
+    # This needs to happen before brightness check to clear any ephemeral images
+    pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+    if pushed_dir.is_dir():
+        for ephemeral_file in sorted(pushed_dir.glob("__*")):
+            print(f"Found pushed image {ephemeral_file}")
+            response = send_image(ephemeral_file, device, None, True)
+            ephemeral_file.unlink()
+            return response
+
+    # If brightness is 0, short-circuit and return default image to save processing
+    brightness = device.brightness or 50
+    if brightness == 0:
+        logger.debug("Brightness is 0, returning default image")
         return send_default_image(device)
-    current_app_index = db.get_last_app_index(db_conn, device_id) or 0
-    if current_app_index >= len(apps_list):
-        current_app_index = 0
-    current_app_iname = apps_list[current_app_index].iname
-    return appwebp(device_id, current_app_iname, db_conn)
+
+    # if no apps return default image
+    if not device.apps:
+        return send_default_image(device)
+
+    # Check for pinned app first - this short-circuits all other app selection logic
+    pinned_app_iname = device.pinned_app
+    is_pinned_app = False
+    is_night_mode_app = False
+    is_interstitial_app = False
+    if pinned_app_iname and pinned_app_iname in device.apps:
+        logger.debug(f"Using pinned app: {pinned_app_iname}")
+        app = device.apps[pinned_app_iname]
+        is_pinned_app = True
+        # For pinned apps, we don't update last_app_index since we're not cycling
+    else:
+        # Normal app selection logic
+        apps_list = sorted(
+            [app for app in device.apps.values()],
+            key=lambda x: x.order,
+        )
+        is_night_mode_app = False
+        if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
+            app = device.apps[device.night_mode_app]
+            is_night_mode_app = True
+        else:
+            # Create expanded apps list with interstitial apps inserted
+            expanded_apps_list = []
+            interstitial_app_iname = device.interstitial_app
+            interstitial_enabled = device.interstitial_enabled
+
+            for i, regular_app in enumerate(apps_list):
+                # Add the regular app
+                expanded_apps_list.append(regular_app)
+
+                # Add interstitial app after each regular app (except the last one)
+                if (
+                    interstitial_enabled
+                    and interstitial_app_iname
+                    and interstitial_app_iname in device.apps
+                    and i < len(apps_list) - 1
+                ):
+                    interstitial_app = device.apps[interstitial_app_iname]
+                    expanded_apps_list.append(interstitial_app)
+
+            # Get current app index (don't advance it for /currentapp)
+            current_app_index = db.get_last_app_index(db_conn, device_id) or 0
+
+            # Handle compatibility: if the index is too large for the expanded list,
+            # it might be from the old system (before interstitial apps)
+            if current_app_index >= len(expanded_apps_list):
+                # If interstitial is enabled, the old index might be valid for the original apps_list
+                if interstitial_enabled and current_app_index < len(apps_list):
+                    # Use the original apps_list for backward compatibility
+                    app = apps_list[current_app_index]
+                else:
+                    # Reset to 0 if index is completely invalid
+                    app = expanded_apps_list[0]
+            else:
+                app = expanded_apps_list[current_app_index]
+
+            # Check if this is an interstitial app
+            if (
+                interstitial_enabled
+                and interstitial_app_iname
+                and interstitial_app_iname in device.apps
+                and app.iname == interstitial_app_iname
+            ):
+                is_interstitial_app = True
+
+    # For pinned apps, always display them regardless of enabled/schedule status
+    # For interstitial apps, always display them regardless of enabled/schedule status
+    # For other apps, check if they should be displayed
+    if (
+        not is_pinned_app
+        and not is_night_mode_app
+        and not is_interstitial_app
+        and (not app.enabled or not db.get_is_app_schedule_active(app, device))
+    ):
+        return send_default_image(device)
+
+    if app.pushed:
+        webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
+    else:
+        webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
+
+    if webp_path.exists() and webp_path.stat().st_size > 0:
+        return send_image(webp_path, device, app)
+    else:
+        return send_default_image(device)
 
 
 @router.get("/{device_id}/{iname}/appwebp", name="appwebp")

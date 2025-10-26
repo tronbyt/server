@@ -15,11 +15,13 @@ def timeago(seconds: int) -> str:
     """Format a timestamp as a time ago string."""
     if seconds == 0:
         return str(_("Never"))
-    return format_timedelta(
+    result = format_timedelta(
         dt.timedelta(seconds=seconds - int(time.time())),
         granularity="second",
         add_direction=True,
     )
+    assert isinstance(result, str)
+    return result
 
 
 templates = Jinja2Templates(directory="tronbyt_server/templates")

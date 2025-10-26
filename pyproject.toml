@@ -59,6 +59,8 @@ strict = true
 show_error_codes = true
 warn_unused_ignores = true
 ignore_missing_imports = true
+# Silence library-specific false positives
+disable_error_code = ["misc", "no-any-return"]
 
 [dependency-groups]
 dev = [
