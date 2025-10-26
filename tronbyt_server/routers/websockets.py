@@ -101,9 +101,20 @@ async def _send_response(
                 await websocket.send_text(json.dumps({"brightness": brightness}))
                 last_brightness = brightness
 
-        # Send metadata message before the image if we need immediate display
+        # Send the image as a binary message FIRST
+        # This allows the device to queue/buffer the image before being told to interrupt
+        if isinstance(response, FileResponse):
+            content = await asyncio.get_running_loop().run_in_executor(
+                None, Path(response.path).read_bytes
+            )
+            await websocket.send_bytes(content)
+        else:
+            await websocket.send_bytes(cast(bytes, response.body))
+
+        # Send immediate flag AFTER image bytes so device can queue the image first
+        # Then immediately interrupt and display it
         if immediate:
-            logger.debug("Sending immediate display flag to device")
+            logger.debug("Sending immediate display flag to device AFTER image bytes")
             await websocket.send_text(
                 json.dumps(
                     {
@@ -112,14 +123,6 @@ async def _send_response(
                 )
             )
 
-        # Send the image as a binary message
-        if isinstance(response, FileResponse):
-            content = await asyncio.get_running_loop().run_in_executor(
-                None, Path(response.path).read_bytes
-            )
-            await websocket.send_bytes(content)
-        else:
-            await websocket.send_bytes(cast(bytes, response.body))
         dwell_time = int(response.headers.get("Tronbyt-Dwell-Secs", 5))
     else:
         await websocket.send_text(
