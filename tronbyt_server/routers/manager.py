@@ -152,7 +152,7 @@ def _create_expanded_apps_list(device, apps_list):
         ):
             interstitial_app = device.apps[interstitial_app_iname]
             expanded_apps_list.append(interstitial_app)
-    
+
     return expanded_apps_list
 
 
