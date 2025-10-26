@@ -85,44 +85,22 @@ function toggleDetails(deviceId) {
   }
 }
 
-// Add autoUpdate state tracking
-const autoUpdateStates = {};
-const autoUpdateIntervals = {};
-
 // Initialize auto-update for all devices when page loads
 document.addEventListener('DOMContentLoaded', function() {
-  const autoUpdateCheckboxes = document.querySelectorAll('[id^="autoUpdate-"]');
-  autoUpdateCheckboxes.forEach(checkbox => {
-    const deviceId = checkbox.id.replace('autoUpdate-', '');
-    toggleAutoUpdate(deviceId);
-  });
-});
-
-function toggleAutoUpdate(deviceId) {
-  const checkbox = document.getElementById(`autoUpdate-${deviceId}`);
-
-  if (checkbox.checked) {
-    // Start auto-updating
-    autoUpdateStates[deviceId] = true;
-    autoUpdateIntervals[deviceId] = setInterval(() => {
+  const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
+  webpImages.forEach(image => {
+    const deviceId = image.id.replace('currentWebp-', '');
+    setInterval(() => {
       reloadImage(deviceId);
     }, 5000); // Update every 5 seconds
-  } else {
-    // Stop auto-updating
-    autoUpdateStates[deviceId] = false;
-    if (autoUpdateIntervals[deviceId]) {
-      clearInterval(autoUpdateIntervals[deviceId]);
-    }
-  }
-}
+  });
+});
 
 function reloadImage(deviceId) {
   const currentWebpImg = document.getElementById(`currentWebp-${deviceId}`);
   const timestamp = new Date().getTime(); // Prevent caching
   currentWebpImg.src = `${currentWebpImg.dataset.src}?t=${timestamp}`;
 }
-
-
 
 // AJAX function to move apps without page reload
 function moveApp(deviceId, iname, direction) {
@@ -156,10 +134,10 @@ function moveApp(deviceId, iname, direction) {
 function refreshAppsList(deviceId, movedAppIname = null) {
   // Get the current apps list container
   const appsListContainer = document.getElementById(`appsList-${deviceId}`);
-  
+
   // Store current view state
   const isGridView = appsListContainer.classList.contains('apps-grid-view');
-  
+
   // Fetch the updated page content
   fetch(window.location.href)
     .then(response => response.text())
@@ -167,24 +145,24 @@ function refreshAppsList(deviceId, movedAppIname = null) {
       // Create a temporary DOM element to parse the response
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      
+
       // Find the updated apps list for this device
       const updatedAppsList = doc.getElementById(`appsList-${deviceId}`);
-      
+
       if (updatedAppsList) {
         // Replace the current apps list with the updated one
         appsListContainer.innerHTML = updatedAppsList.innerHTML;
-        
+
         // Restore the view state
         if (isGridView) {
           switchToGridView(deviceId);
         } else {
           switchToListView(deviceId);
         }
-        
+
         // Reinitialize drag and drop for the new cards
         initializeDragAndDrop();
-        
+
         // If an app was moved, highlight it with visual feedback
         if (movedAppIname) {
           // Find the moved app card in the updated content
@@ -194,7 +172,7 @@ function refreshAppsList(deviceId, movedAppIname = null) {
             if (card.getAttribute('data-iname') === movedAppIname) {
               // Add the moved class to trigger the animation
               card.classList.add('app-card-moved');
-              
+
               // Remove the class after animation completes
               setTimeout(() => {
                 card.classList.remove('app-card-moved');
@@ -288,7 +266,7 @@ function deleteApp(deviceId, iname) {
   if (!confirm('Delete App?')) {
     return;
   }
-  
+
   fetch(`/${deviceId}/${iname}/delete`, {
     method: 'POST',
     headers: {
@@ -351,14 +329,14 @@ function saveAllDevicePreferences() {
     const deviceId = container.id.replace('appsList-', '');
     const isCollapsed = container.classList.contains('collapsed');
     const isGridView = container.classList.contains('apps-grid-view');
-    
+
     let viewMode = 'list';
     if (isGridView) {
       viewMode = 'grid';
     } else if (isCollapsed) {
       viewMode = 'collapsed';
     }
-    
+
     saveDevicePreferences(deviceId, {
       collapsed: isCollapsed,
       viewMode: viewMode
@@ -393,14 +371,14 @@ function restoreDevicePreferences(deviceId) {
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
   const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
-  
+
   // Restore view mode
   if (prefs.viewMode === 'grid') {
     // Update button states
     gridBtn.classList.add('active');
     listBtn.classList.remove('active');
     collapsedBtn.classList.remove('active');
-    
+
     // Update container classes
     appsList.classList.remove('apps-list-view', 'collapsed');
     appsList.classList.add('apps-grid-view');
@@ -412,7 +390,7 @@ function restoreDevicePreferences(deviceId) {
     collapsedBtn.classList.add('active');
     listBtn.classList.remove('active');
     gridBtn.classList.remove('active');
-    
+
     // Update container classes - collapse the apps list
     appsList.classList.remove('apps-grid-view');
     appsList.classList.add('apps-list-view', 'collapsed');
@@ -424,7 +402,7 @@ function restoreDevicePreferences(deviceId) {
     listBtn.classList.add('active');
     gridBtn.classList.remove('active');
     collapsedBtn.classList.remove('active');
-    
+
     appsList.classList.remove('apps-grid-view', 'collapsed');
     appsList.classList.add('apps-list-view');
     appsList.style.maxHeight = "none";
@@ -438,22 +416,22 @@ function switchToListView(deviceId) {
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
   const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
-  
+
   // Update button states
   listBtn.classList.add('active');
   gridBtn.classList.remove('active');
   collapsedBtn.classList.remove('active');
-  
+
   // Update container classes
   appsList.classList.remove('apps-grid-view', 'collapsed');
   appsList.classList.add('apps-list-view');
   appsList.style.maxHeight = "none";
   appsList.style.overflow = "visible";
   appsList.style.padding = "";
-  
+
   // Reinitialize drag and drop for the new layout
   initializeDragAndDrop();
-  
+
   // Save preferences
   const prefs = loadDevicePreferences(deviceId);
   prefs.viewMode = 'list';
@@ -466,22 +444,22 @@ function switchToGridView(deviceId) {
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
   const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
-  
+
   // Update button states
   gridBtn.classList.add('active');
   listBtn.classList.remove('active');
   collapsedBtn.classList.remove('active');
-  
+
   // Update container classes
   appsList.classList.remove('apps-list-view', 'collapsed');
   appsList.classList.add('apps-grid-view');
   appsList.style.maxHeight = "none";
   appsList.style.overflow = "visible";
   appsList.style.padding = "";
-  
+
   // Reinitialize drag and drop for the new layout
   initializeDragAndDrop();
-  
+
   // Save preferences
   const prefs = loadDevicePreferences(deviceId);
   prefs.viewMode = 'grid';
@@ -494,19 +472,19 @@ function switchToCollapsedView(deviceId) {
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
   const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
-  
+
   // Update button states
   collapsedBtn.classList.add('active');
   listBtn.classList.remove('active');
   gridBtn.classList.remove('active');
-  
+
   // Update container classes - collapse the apps list
   appsList.classList.remove('apps-grid-view');
   appsList.classList.add('apps-list-view', 'collapsed');
   appsList.style.maxHeight = "0";
   appsList.style.overflow = "hidden";
   appsList.style.padding = "0";
-  
+
   // Save preferences
   const prefs = loadDevicePreferences(deviceId);
   prefs.viewMode = 'collapsed';
@@ -520,7 +498,7 @@ function initializeDragAndDrop() {
   appCards.forEach(card => {
     setupDragAndDrop(card);
   });
-  
+
   // Add drop zones at the top and bottom of each device's app list
   addDropZones();
 }
@@ -528,34 +506,34 @@ function initializeDragAndDrop() {
 function addDropZones() {
   // Find all app list containers
   const appListContainers = document.querySelectorAll('[id^="appsList-"]');
-  
+
   appListContainers.forEach(container => {
     const deviceId = container.id.replace('appsList-', '');
     const isGridView = container.classList.contains('apps-grid-view');
-    
+
     // Clean up existing drop zones first
     const existingDropZones = container.querySelectorAll('.drop-zone');
     existingDropZones.forEach(zone => zone.remove());
-    
+
     if (isGridView) {
       // For grid view, don't add drop zones - we'll handle it differently
       return;
     }
-    
+
     // Add top drop zone for list view
     const topDropZone = document.createElement('div');
     topDropZone.className = 'drop-zone top';
     topDropZone.setAttribute('data-device-id', deviceId);
     topDropZone.setAttribute('data-position', 'top');
     container.insertBefore(topDropZone, container.firstChild);
-    
+
     // Add bottom drop zone for list view
     const bottomDropZone = document.createElement('div');
     bottomDropZone.className = 'drop-zone bottom';
     bottomDropZone.setAttribute('data-device-id', deviceId);
     bottomDropZone.setAttribute('data-position', 'bottom');
     container.appendChild(bottomDropZone);
-    
+
     // Add event listeners to drop zones
     [topDropZone, bottomDropZone].forEach(zone => {
       zone.addEventListener('dragover', handleDropZoneDragOver);
@@ -569,7 +547,7 @@ function addDropZones() {
 function setupDragAndDrop(card) {
   // Make the card draggable
   card.draggable = true;
-  
+
   // Add drag event listeners
   card.addEventListener('dragstart', handleDragStart);
   card.addEventListener('dragend', handleDragEnd);
@@ -577,7 +555,7 @@ function setupDragAndDrop(card) {
   card.addEventListener('drop', handleDrop);
   card.addEventListener('dragenter', handleDragEnter);
   card.addEventListener('dragleave', handleDragLeave);
-  
+
   // Prevent drag on buttons and links
   const buttons = card.querySelectorAll('button, a, input');
   buttons.forEach(button => {
@@ -591,19 +569,22 @@ function setupDragAndDrop(card) {
 }
 
 function handleDragStart(e) {
+  console.log('handleDragStart called');
   draggedElement = e.target;
   draggedElement.classList.add('dragging');
-  
+
   // Extract device ID and app iname from the card
   const deviceId = extractDeviceIdFromCard(draggedElement);
   const iname = extractInameFromCard(draggedElement);
-  
+
+  console.log('Drag started:', { deviceId, iname });
+
   if (deviceId && iname) {
     draggedDeviceId = deviceId;
     draggedIname = iname;
     e.dataTransfer.setData('text/plain', `${deviceId}:${iname}`);
   }
-  
+
   e.dataTransfer.effectAllowed = 'move';
 }
 
@@ -612,12 +593,12 @@ function handleDragEnd(e) {
   draggedElement = null;
   draggedDeviceId = null;
   draggedIname = null;
-  
+
   // Clean up all drag-over classes
   document.querySelectorAll('.app-card').forEach(card => {
     card.classList.remove('drag-over', 'drag-over-bottom');
   });
-  
+
   // Clean up drop zones
   document.querySelectorAll('.drop-zone').forEach(zone => {
     zone.classList.remove('active');
@@ -626,25 +607,25 @@ function handleDragEnd(e) {
 
 function handleDragOver(e) {
   e.preventDefault();
-  
+
   const card = e.currentTarget;
   const targetDeviceId = extractDeviceIdFromCard(card);
-  
+
   // Only allow visual feedback for cards from the same device
   if (!draggedDeviceId || targetDeviceId !== draggedDeviceId) {
     e.dataTransfer.dropEffect = 'none';
     return;
   }
-  
+
   e.dataTransfer.dropEffect = 'move';
   const container = card.closest('[id^="appsList-"]');
   const isGridView = container && container.classList.contains('apps-grid-view');
-  
+
   if (isGridView) {
     // In grid view, show left/right insertion feedback
     const rect = card.getBoundingClientRect();
     const cardCenterX = rect.left + (rect.width / 2);
-    
+
     // Determine if we should insert before or after the target
     if (e.clientX < cardCenterX) {
       card.classList.remove('drag-over-bottom');
@@ -657,7 +638,7 @@ function handleDragOver(e) {
     // In list view, use the original top/bottom logic
     const rect = card.getBoundingClientRect();
     const midpoint = rect.top + (rect.height / 2);
-    
+
     // Determine if we're dragging over the top or bottom half
     if (e.clientY < midpoint) {
       card.classList.remove('drag-over-bottom');
@@ -673,7 +654,7 @@ function handleDragEnter(e) {
   e.preventDefault();
   const card = e.currentTarget;
   const targetDeviceId = extractDeviceIdFromCard(card);
-  
+
   // Only allow dropping on cards from the same device
   if (draggedDeviceId && targetDeviceId === draggedDeviceId) {
     card.classList.add('drag-over');
@@ -690,33 +671,38 @@ function handleDragLeave(e) {
 
 function handleDrop(e) {
   e.preventDefault();
-  
+  console.log('handleDrop called');
+
   const targetCard = e.currentTarget;
   const targetDeviceId = extractDeviceIdFromCard(targetCard);
   const targetIname = extractInameFromCard(targetCard);
   const container = targetCard.closest('[id^="appsList-"]');
   const isGridView = container && container.classList.contains('apps-grid-view');
-  
+
+  console.log('Drop target:', { targetDeviceId, targetIname, draggedDeviceId, draggedIname });
+
   // Only allow dropping on cards from the same device
   if (!draggedDeviceId || targetDeviceId !== draggedDeviceId) {
+    console.log('Drop rejected: different device or no dragged device');
     return;
   }
-  
+
   // Don't allow dropping on the same card
   if (targetIname === draggedIname) {
+    console.log('Drop rejected: same card');
     return;
   }
-  
+
   if (isGridView) {
     // In grid view, determine insert position based on mouse position
     const rect = targetCard.getBoundingClientRect();
     const cardCenterX = rect.left + (rect.width / 2);
     const cardCenterY = rect.top + (rect.height / 2);
-    
+
     // Determine if we should insert before or after the target
     // For grid, we'll use a simple approach: if mouse is in the right half, insert after
     const insertAfter = e.clientX > cardCenterX;
-    
+
     // Reorder the apps (same as list view)
     reorderApps(draggedDeviceId, draggedIname, targetIname, insertAfter);
   } else {
@@ -724,11 +710,11 @@ function handleDrop(e) {
     const rect = targetCard.getBoundingClientRect();
     const midpoint = rect.top + (rect.height / 2);
     const insertAfter = e.clientY > midpoint;
-    
+
     // Reorder the apps
     reorderApps(draggedDeviceId, draggedIname, targetIname, insertAfter);
   }
-  
+
   // Clean up
   targetCard.classList.remove('drag-over', 'drag-over-bottom');
 }
@@ -748,6 +734,13 @@ function extractInameFromCard(card) {
 }
 
 function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
+  console.log('reorderApps called:', { deviceId, draggedIname, targetIname, insertAfter });
+
+  if (!deviceId || !draggedIname || !targetIname) {
+    console.error('Missing required parameters for reorderApps');
+    return;
+  }
+
   const formData = new URLSearchParams();
   formData.append('dragged_iname', draggedIname);
   formData.append('target_iname', targetIname);
@@ -780,16 +773,16 @@ function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
 // Drop zone event handlers
 function handleDropZoneDragOver(e) {
   e.preventDefault();
-  
+
   const zone = e.currentTarget;
   const deviceId = zone.getAttribute('data-device-id');
-  
+
   // Only allow visual feedback for zones from the same device
   if (!draggedDeviceId || deviceId !== draggedDeviceId) {
     e.dataTransfer.dropEffect = 'none';
     return;
   }
-  
+
   e.dataTransfer.dropEffect = 'move';
 }
 
@@ -797,7 +790,7 @@ function handleDropZoneDragEnter(e) {
   e.preventDefault();
   const zone = e.currentTarget;
   const deviceId = zone.getAttribute('data-device-id');
-  
+
   // Only allow dropping on zones from the same device
   if (draggedDeviceId && deviceId === draggedDeviceId) {
     zone.classList.add('active');
@@ -814,27 +807,27 @@ function handleDropZoneDragLeave(e) {
 
 function handleDropZoneDrop(e) {
   e.preventDefault();
-  
+
   const zone = e.currentTarget;
   const deviceId = zone.getAttribute('data-device-id');
   const position = zone.getAttribute('data-position');
-  
+
   // Only allow dropping on zones from the same device
   if (!draggedDeviceId || deviceId !== draggedDeviceId) {
     return;
   }
-  
+
   // Get the first or last app in the list to determine target
   const container = zone.parentElement;
   const appCards = container.querySelectorAll('.app-card');
-  
+
   if (appCards.length === 0) {
     return;
   }
-  
+
   let targetIname;
   let insertAfter;
-  
+
   if (position === 'top') {
     targetIname = appCards[0].getAttribute('data-iname');
     insertAfter = false;
@@ -842,10 +835,10 @@ function handleDropZoneDrop(e) {
     targetIname = appCards[appCards.length - 1].getAttribute('data-iname');
     insertAfter = true;
   }
-  
+
   // Reorder the apps
   reorderApps(deviceId, draggedIname, targetIname, insertAfter);
-  
+
   // Clean up
   zone.classList.remove('active');
 }

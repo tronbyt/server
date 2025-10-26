@@ -1,21 +1,29 @@
 {% extends 'base.html' %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/updateapp-simple.css') }}">
-<h1>{% block title %}{{ _('Edit') }} "{{ app['name'] }}-{{ app['iname'] }}"{% endblock %}</h1>
+<link rel="stylesheet" href="{{ url_for('static', path='css/updateapp-simple.css') }}">
+<h1>{% block title %}{{ _('Edit') }} "{{ app.name }}-{{ app.iname }}"{% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
   <!-- Navigation Button -->
     <div class="button-group">
-      <a href="{{ url_for('manager.configapp', device_id=device['id'], iname=app['iname'], delete_on_cancel=0) }}"
+      <a href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=0"
         class="w3-button" style="background-color: var(--enabled-text); color: white;">{{ _('Configure App') }}</a>
     </div>
-  
+
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
     <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show App Config') }}</button>
     <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show Render Debug') }}</button>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <input type="submit" form="updateForm" class="w3-button w3-green w3-round" value="{{ _('Save') }}" />
+    <input type="submit" form="updateForm" class="w3-button w3-red w3-round"
+      formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
+      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}" />
   </div>
 </div>
 
@@ -26,20 +34,20 @@
 
 <!-- Debug Content -->
 <div id="debugContent" class="hidden">
-  <pre class="flash">{{ app.get('render_messages', []) | tojson(indent=2) }}</pre>
+  <pre class="flash">{{ app.render_messages | default([]) | tojson(indent=2) }}</pre>
 </div>
 
 <!-- App Preview -->
 <div class="app-img">
-  <img id="previewImage" 
-    src="{{url_for('manager.appwebp', device_id=device_id,iname=app['iname']) }}"
+  <img id="previewImage"
+    src="{{url_for('appwebp', device_id=device_id,iname=app.iname) }}"
     alt="{{ _('Preview') }}">
 </div>
 
 <form method="post" id="updateForm">
-  <input type="hidden" name="iname" id="iname" value="{{ request.form['iname'] or app['iname'] }}" readonly>
-  <input type="hidden" name="name" id="name" value="{{ request.form['name'] or app['name'] }}" readonly>
-  
+  <input type="hidden" name="iname" id="iname" value="{{ form.get('iname') or app.iname }}" readonly>
+  <input type="hidden" name="name" id="name" value="{{ form.get('name') or app.name }}" readonly>
+
   <table class="form-table">
     <!-- Enabled Status -->
     <tr>
@@ -48,8 +56,8 @@
         <small>{{ _('Enable or disable this app') }}</small>
       </td>
       <td>
-        <input name="enabled" type="checkbox" id="enabled" class="form-control" 
-               {% if app['enabled'] %} checked {% endif %}>
+        <input name="enabled" type="checkbox" id="enabled" class="form-control"
+               {% if app.enabled %} checked {% endif %}>
       </td>
     </tr>
 
@@ -61,7 +69,7 @@
       </td>
       <td>
         <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
-               value="{{ request.form['uinterval'] or app['uinterval'] }}" required>
+               value="{{ form.get('uinterval') or app.uinterval }}" required>
       </td>
     </tr>
 
@@ -73,7 +81,7 @@
       </td>
       <td>
         <input type="number" name="display_time" id="display_time" min="0" class="form-control"
-               value="{{ request.form['display_time'] or app['display_time'] or 0 }}">
+               value="{{ form.get('display_time') or app.display_time or 0 }}">
       </td>
     </tr>
 
@@ -84,8 +92,8 @@
         <small>{{ _('Optional notes about this app') }}</small>
       </td>
       <td>
-        <input name="notes" id="notes" class="form-control" 
-               value="{{request.form['notes'] or app['notes'] }}">
+        <input name="notes" id="notes" class="form-control"
+               value="{{form.get('notes') or app.notes }}">
       </td>
     </tr>
   </table>
@@ -93,7 +101,7 @@
   <!-- Schedule Section -->
   <div class="schedule-section">
     <h2>{{ _('Schedule') }}</h2>
-    
+
     <table class="form-table">
       <!-- Start Time -->
       <tr>
@@ -103,7 +111,7 @@
         </td>
         <td>
           <input type="time" name="start_time" id="start_time" class="form-control"
-                 value="{{ request.form['start_time'] or app['start_time'] }}">
+                 value="{{ form.get('start_time') or app.start_time }}">
         </td>
       </tr>
 
@@ -115,7 +123,7 @@
         </td>
         <td>
           <input type="time" name="end_time" id="end_time" class="form-control"
-                 value="{{ request.form['end_time'] or app['end_time'] }}">
+                 value="{{ form.get('end_time') or app.end_time }}">
         </td>
       </tr>
     </table>
@@ -126,32 +134,25 @@
       <small>{{ _('(none selected is ALL selected)') }}</small>
       <div style="margin-top: 10px;">
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="monday" {% if 'monday' in app.get('days', []) or not app.get('days', [])
-            %} checked {% endif %}> {{ _('Monday') }}
+          <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {% endif %}> {{ _('Monday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.get('days', []) or not app.get('days',
-            []) %} checked {% endif %}> {{ _('Tuesday') }}
+          <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {% endif %}> {{ _('Tuesday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.get('days', []) or not
-            app.get('days', []) %} checked {% endif %}> {{ _('Wednesday') }}
+          <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked {% endif %}> {{ _('Wednesday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.get('days', []) or not app.get('days',
-            []) %} checked {% endif %}> {{ _('Thursday') }}
+          <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {% endif %}> {{ _('Thursday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="friday" {% if 'friday' in app.get('days', []) or not app.get('days', [])
-            %} checked {% endif %}> {{ _('Friday') }}
+          <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {% endif %}> {{ _('Friday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.get('days', []) or not app.get('days',
-            []) %} checked {% endif %}> {{ _('Saturday') }}
+          <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {% endif %}> {{ _('Saturday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.get('days', []) or not app.get('days', [])
-            %} checked {% endif %}> {{ _('Sunday') }}
+          <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {% endif %}> {{ _('Sunday') }}
         </label>
       </div>
     </div>
@@ -161,7 +162,7 @@
   <div style="margin: 20px 0;">
     <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
       <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {% if
-        request.form.get('use_custom_recurrence') or app.get('use_custom_recurrence', False) %} checked {% endif %}
+        form.get('use_custom_recurrence') or app.use_custom_recurrence %} checked {% endif %}
         onchange="toggleCustomRecurrence()">
       <div>
         <strong>{{ _('Use Custom Recurrence') }}</strong>
@@ -175,7 +176,7 @@
   <!-- Custom Recurrence Section -->
   <div id="custom_recurrence" class="custom-recurrence-section" style="display: none;">
     <h3>{{ _('Custom Recurrence') }}</h3>
-    
+
     <table class="form-table">
       <!-- Frequency -->
       <tr>
@@ -185,14 +186,10 @@
         </td>
         <td>
           <select name="recurrence_type" id="recurrence_type" class="form-control" onchange="toggleRecurrenceOptions()">
-            <option value="daily" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='daily'
-              %} selected {% endif %}>{{ _('Daily') }}</option>
-            <option value="weekly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='weekly'
-              %} selected {% endif %}>{{ _('Weekly') }}</option>
-            <option value="monthly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily'
-              ))=='monthly' %} selected {% endif %}>{{ _('Monthly') }}</option>
-            <option value="yearly" {% if (request.form['recurrence_type'] or app.get('recurrence_type', 'daily' ))=='yearly'
-              %} selected {% endif %}>{{ _('Yearly') }}</option>
+            <option value="daily" {% if (form.get('recurrence_type') or app.recurrence_type) == 'daily' %} selected {% endif %}>{{ _('Daily') }}</option>
+            <option value="weekly" {% if (form.get('recurrence_type') or app.recurrence_type) == 'weekly' %} selected {% endif %}>{{ _('Weekly') }}</option>
+            <option value="monthly" {% if (form.get('recurrence_type') or app.recurrence_type) == 'monthly' %} selected {% endif %}>{{ _('Monthly') }}</option>
+            <option value="yearly" {% if (form.get('recurrence_type') or app.recurrence_type) == 'yearly' %} selected {% endif %}>{{ _('Yearly') }}</option>
           </select>
         </td>
       </tr>
@@ -206,7 +203,7 @@
         <td>
           <div style="display: flex; align-items: center; gap: 10px;">
             <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" class="form-control"
-              value="{{ request.form['recurrence_interval'] or app.get('recurrence_interval', 1) }}" style="width: 100px;">
+              value="{{ form.get('recurrence_interval') or app.recurrence_interval or 1 }}" style="width: 100px;">
             <span id="interval_unit">{{ _('days') }}</span>
           </div>
         </td>
@@ -220,7 +217,7 @@
         </td>
         <td>
           <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="form-control"
-            value="{{ request.form['recurrence_start_date'] or app.get('recurrence_start_date') or '' }}">
+            value="{{ form.get('recurrence_start_date') or app.recurrence_start_date or '' }}">
         </td>
       </tr>
 
@@ -232,7 +229,7 @@
         </td>
         <td>
           <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="form-control"
-            value="{{ request.form['recurrence_end_date'] or app.get('recurrence_end_date') or '' }}">
+            value="{{ form.get('recurrence_end_date') or app.recurrence_end_date or '' }}">
         </td>
       </tr>
     </table>
@@ -243,8 +240,7 @@
       <label for="weekdays">{{ _('Active Days') }}</label>
       <small>{{ _('(none selected is ALL selected)') }}</small>
       <div style="margin-top: 10px;">
-        {% set selected_weekdays = request.form.getlist('weekdays') or app.get('recurrence_pattern', {}).get('weekdays') or
-        app.get('days') or [] %}
+        {% set selected_weekdays = form.get('weekdays') or app.recurrence_pattern.weekdays or app.days or [] %}
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
           <input type="checkbox" name="weekdays" value="monday" {% if 'monday' in selected_weekdays or not
             selected_weekdays %} checked {% endif %}> {{ _('Monday') }}
@@ -279,7 +275,7 @@
     <!-- Monthly Options -->
     <div id="monthly_options" style="display: none; margin-top: 20px;">
       <h4>{{ _('Monthly Options') }}</h4>
-      
+
       <table class="form-table">
         <!-- Monthly Pattern -->
         <tr>
@@ -289,9 +285,7 @@
           </td>
           <td>
             <select name="monthly_pattern" id="monthly_pattern" class="form-control">
-              {% set current_pattern = request.form['monthly_pattern'] or (app.get('recurrence_pattern',
-              {}).get('day_of_month') and 'day_of_month') or (app.get('recurrence_pattern', {}).get('day_of_week') and
-              'day_of_week') or 'day_of_month' %}
+              {% set current_pattern = form.get('monthly_pattern') or (app.recurrence_pattern.day_of_month and 'day_of_month') or (app.recurrence_pattern.day_of_week and 'day_of_week') or 'day_of_month' %}
               <option value="day_of_month" {% if current_pattern=='day_of_month' %} selected {% endif %}>{{ _('Day of
                 Month') }}</option>
               <option value="day_of_week" {% if current_pattern=='day_of_week' %} selected {% endif %}>{{ _('Day of Week')
@@ -311,7 +305,7 @@
             </td>
             <td>
               <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="form-control"
-                value="{{ request.form['day_of_month'] or app.get('recurrence_pattern', {}).get('day_of_month', 1) }}">
+                value="{{ form.get('day_of_month') or app.recurrence_pattern.day_of_month or 1 }}">
             </td>
           </tr>
         </table>
@@ -328,8 +322,7 @@
             <td>
               <div style="display: flex; gap: 10px; align-items: center;">
                 <select name="week_occurrence" id="week_occurrence" class="form-control">
-                  {% set current_occurrence = (request.form.get('day_of_week_pattern') or app.get('recurrence_pattern',
-                  {}).get('day_of_week') or 'first_monday').split('_')[0] %}
+                  {% set current_occurrence = (form.get('day_of_week_pattern') or app.recurrence_pattern.day_of_week or 'first_monday').split('_')[0] %}
                   <option value="first" {% if current_occurrence=='first' %} selected {% endif %}>{{ _('First') }}</option>
                   <option value="second" {% if current_occurrence=='second' %} selected {% endif %}>{{ _('Second') }}</option>
                   <option value="third" {% if current_occurrence=='third' %} selected {% endif %}>{{ _('Third') }}</option>
@@ -337,8 +330,7 @@
                   <option value="last" {% if current_occurrence=='last' %} selected {% endif %}>{{ _('Last') }}</option>
                 </select>
                 <select name="week_day" id="week_day" class="form-control">
-                  {% set current_day = (request.form.get('day_of_week_pattern') or app.get('recurrence_pattern',
-                  {}).get('day_of_week') or 'first_monday').split('_')[1] %}
+                  {% set current_day = (form.get('day_of_week_pattern') or app.recurrence_pattern.day_of_week or 'first_monday').split('_')[1] %}
                   <option value="monday" {% if current_day=='monday' %} selected {% endif %}>{{ _('Monday') }}</option>
                   <option value="tuesday" {% if current_day=='tuesday' %} selected {% endif %}>{{ _('Tuesday') }}</option>
                   <option value="wednesday" {% if current_day=='wednesday' %} selected {% endif %}>{{ _('Wednesday') }}
@@ -360,10 +352,10 @@
 
   <!-- Action Buttons -->
   <div class="button-container">
-    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}">
+    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}" />
     <input type="submit" class="w3-button w3-red w3-round"
-      formaction="{{ url_for('manager.deleteapp', device_id=device_id,iname=app['iname']) }}" formmethod="post"
-      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}">
+      formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
+      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}" />
   </div>
 </form>
 
@@ -376,40 +368,40 @@
   <div style="margin-bottom: 20px;">
     <h3>{{ _('Enable App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
   </div>
 
   <!-- Disable App -->
   <div style="margin-bottom: 20px;">
     <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_enabled": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
   </div>
 
   <!-- Pin App -->
   <div style="margin-bottom: 20px;">
     <h3>{{ _('Pin App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": true}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
   </div>
 
   <!-- Unpin App -->
   <div style="margin-bottom: 20px;">
     <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
     <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.get('api_key', 'YOUR_API_KEY') }}" \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"set_pinned": false}' \
-  {{ request.url_root }}v0/devices/{{ device_id }}/installations/{{ app['iname'] }}</pre>
+  {{ server_root }}/v0/devices/{{ device_id }}/installations/{{ app.iname }}</pre>
   </div>
 
   <small>
@@ -433,14 +425,14 @@
 
     if (toggleConfigBtn && configContent) {
       toggleConfigBtn.addEventListener("click", function () {
-        toggleContent(configContent, toggleConfigBtn, 
+        toggleContent(configContent, toggleConfigBtn,
           "{{ _('Hide App Config') }}", "{{ _('Show App Config') }}");
       });
     }
 
     if (toggleDebugBtn && debugContent) {
       toggleDebugBtn.addEventListener("click", function () {
-        toggleContent(debugContent, toggleDebugBtn, 
+        toggleContent(debugContent, toggleDebugBtn,
           "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}");
       });
     }

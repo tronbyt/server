@@ -1,98 +1,127 @@
 """Data models and validation functions for devices in Tronbyt Server."""
 
-import re
-from typing import Dict, Optional, Required, TypedDict, Union
+from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
-from tronbyt_server.models.app import App
+from pydantic import (
+    BaseModel,
+    Field,
+    AfterValidator,
+    BeforeValidator,
+)
 
-DEFAULT_DEVICE_TYPE = "tidbyt_gen1"
+from .app import App
+
+DeviceType = Literal[
+    "tidbyt_gen1",
+    "tidbyt_gen2",
+    "pixoticker",
+    "raspberrypi",
+    "tronbyt_s3",
+    "tronbyt_s3_wide",
+    "other",
+]
+DEFAULT_DEVICE_TYPE: DeviceType = "tidbyt_gen1"
 
 TWO_X_CAPABLE_DEVICE_TYPES = ["tronbyt_s3_wide"]
 
-
-class Location(TypedDict, total=False):
-    locality: str
-    description: str
-    place_id: str
-    timezone: str
-    lat: Required[float]
-    lng: Required[float]
+DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
+Brightness = Annotated[
+    int,
+    Field(ge=0, le=100, description="Percentage-based brightness (0-100)"),
+]
 
 
-class Device(TypedDict, total=False):
-    id: Required[str]
-    name: str
-    type: str
-    api_key: str
-    img_url: str
-    ws_url: str
-    notes: str
-    brightness: int  # Percentage-based brightness (0-100)
-    night_mode_enabled: bool
-    night_mode_app: str
-    night_start: Union[int, str]  # Time in HH:MM format or legacy int (hour only)
-    night_end: Union[int, str]  # Time in HH:MM format or legacy int (hour only)
-    night_brightness: int  # Percentage-based night brightness (0-100)
-    dim_time: str  # Time in HH:MM format when dimming should start
-    dim_brightness: int  # Percentage-based dim brightness (0-100)
-    default_interval: int
-    timezone: str
-    location: Optional[Location]
-    apps: Dict[str, App]
-    last_app_index: int
-    pinned_app: str  # iname of the pinned app, if any
-    interstitial_enabled: bool
-    interstitial_app: str  # iname of the interstitial app, if any
-
-
-def validate_timezone(tz: str) -> Optional[ZoneInfo]:
+def validate_timezone(tz: str | None) -> str | None:
     """
     Validate if a timezone string is valid.
 
     Args:
-        tz (str): The timezone string to validate.
+        tz (str | None): The timezone string to validate.
 
     Returns:
-        Optional[ZoneInfo]: A ZoneInfo object if the timezone string is valid,
-        None otherwise.
+        str | None: The timezone string if it is valid.
     """
+    if not tz:
+        return tz
     try:
-        return ZoneInfo(tz)
+        ZoneInfo(tz)
+        return tz
     except Exception:
         return None
 
 
-def validate_device_id(device_id: str) -> bool:
+def format_time(v: Any) -> str | None:
     """
-    Validate the device ID to ensure it meets the required format.
-    A valid device ID should be a string of exactly 8 hexadecimal characters.
+    Format time from int to HH:MM string.
 
-    :param device_id: The device ID to validate.
-    :return: True if the device ID is valid, False otherwise.
+    Args:
+        v (Any): The value to format.
+
+    Returns:
+        Optional[str]: The formatted time string or None.
     """
-    if not device_id:
-        return False
-    return bool(re.match(r"^[a-fA-F0-9]{8}$", device_id))
+    if isinstance(v, int):
+        return f"{v:02d}:00"
+    if isinstance(v, str):
+        return v
+    return None
 
 
-def validate_device_type(device_type: str) -> bool:
-    return device_type in [
-        "tidbyt_gen1",
-        "tidbyt_gen2",
-        "pixoticker",
-        "raspberrypi",
-        "tronbyt_s3",
-        "tronbyt_s3_wide",
-        "other",
-    ]
+class Location(BaseModel):
+    """Pydantic model for a location."""
+
+    name: Annotated[
+        str | None,
+        Field(
+            description="Deprecated: kept for backward compatibility", deprecated=True
+        ),
+    ] = None
+    locality: str = ""
+    description: str = ""
+    place_id: str = ""
+    timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
+    lat: float
+    lng: float
 
 
-def device_supports_2x(device: Device) -> bool:
-    """
-    Check if the device supports 2x apps.
+class Device(BaseModel):
+    """Pydantic model for a device."""
 
-    :param device: The device to check.
-    :return: True if the device supports 2x apps, False otherwise.
-    """
-    return device.get("type") in TWO_X_CAPABLE_DEVICE_TYPES
+    id: DeviceID
+    name: str = ""
+    type: DeviceType = DEFAULT_DEVICE_TYPE
+    api_key: str = ""
+    img_url: str = ""
+    ws_url: str = ""
+    notes: str = ""
+    brightness: Brightness = 100
+    night_mode_enabled: bool = False
+    night_mode_app: str = ""
+    night_start: Annotated[str | None, BeforeValidator(format_time)] = (
+        None  # Time in HH:MM format or legacy int (hour only)
+    )
+    night_end: Annotated[str | None, BeforeValidator(format_time)] = (
+        None  # Time in HH:MM format or legacy int (hour only)
+    )
+    night_brightness: Brightness = 0
+    dim_time: str | None = None  # Time in HH:MM format when dimming should start
+    dim_brightness: Brightness | None = None
+    default_interval: int = Field(
+        15, ge=0, description="Default interval in minutes (>= 0)"
+    )
+    timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
+    location: Location | None = None
+    apps: dict[str, App] = {}
+    last_app_index: int = 0
+    pinned_app: str | None = None  # iname of the pinned app, if any
+    interstitial_enabled: bool = False
+    interstitial_app: str | None = None  # iname of the interstitial app, if any
+
+    def supports_2x(self) -> bool:
+        """
+        Check if the device supports 2x apps.
+
+        :return: True if the device supports 2x apps, False otherwise.
+        """
+        return self.type in TWO_X_CAPABLE_DEVICE_TYPES

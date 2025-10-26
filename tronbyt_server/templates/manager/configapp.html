@@ -1,22 +1,28 @@
 {% extends 'base.html' %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/configapp-simple.css') }}">
-<script src="{{ url_for('static', filename='js/location.js') }}"></script>
-<h1>{% block title %}{{ _('Configuring') }} {{ app['iname'] }} ({{ app['name']}}){% endblock %}</h1>
+<link rel="stylesheet" href="{{ url_for('static', path='css/configapp-simple.css') }}">
+<script src="{{ url_for('static', path='js/location.js') }}"></script>
+<h1>{% block title %}{{ _('Configuring') }} {{ app.iname }} ({{ app.name}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
   <!-- Navigation Button -->
   <div class="button-group">
-    <a href="{{ url_for('manager.updateapp', device_id=device['id'], iname=app['iname']) }}"
+    <a href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}"
       class="w3-button" style="background-color: #2196F3;">{{ _('Edit App') }}</a>
   </div>
-  
+
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
     <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
     <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <button type="button" class="w3-button w3-green w3-round" id="saveButton">{{ _('Save') }}</button>
+    <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop">{{ _('Cancel') }}</button>
   </div>
 </div>
 
@@ -27,7 +33,7 @@
 
 <!-- Debug Content -->
 <div id="debugContent" class="hidden">
-  <pre class="flash">{{ app.get('render_messages', []) | join('\n') }}</pre>
+  <pre class="flash">{{ (app.render_messages or []) | join('\n') }}</pre>
 </div>
 
 <script>
@@ -35,7 +41,7 @@
   const schema = {{ schema | tojson }};
   const config = {{ config | tojson }};
   {% if "location" in device %}
-  const deviceLocation = JSON.stringify({{ device['location'] | tojson }});
+  const deviceLocation = JSON.stringify({{ device.location | tojson }});
   {% else %}
   const deviceLocation = null;
   {% endif %}
@@ -49,14 +55,14 @@
 
     if (toggleConfigBtn && configContent) {
       toggleConfigBtn.addEventListener("click", function () {
-        toggleContent(configContent, toggleConfigBtn, 
+        toggleContent(configContent, toggleConfigBtn,
           "{{ _('Hide App Config') }}", "{{ _('Show App Config') }}");
       });
     }
 
     if (toggleDebugBtn && debugContent) {
       toggleDebugBtn.addEventListener("click", function () {
-        toggleContent(debugContent, toggleDebugBtn, 
+        toggleContent(debugContent, toggleDebugBtn,
           "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}");
       });
     }
@@ -93,15 +99,9 @@
     // Reload the preview image to reflect updated config
     const url = new URL(previewImage.src);
     url.searchParams.set("config", JSON.stringify(config));
-    let loading = true;
-    previewImage.addEventListener('load', () => {
-        loading = false;
-        previewImage.classList.add('loaded');
-        previewImage.classList.remove('hidden');
-    }, { once: true });
     previewImage.src = url.toString();
     setTimeout(() => {
-        if (loading) previewImage.classList.remove('loaded');
+        if (!previewImage.complete) previewImage.classList.remove('loaded');
     }, 500);
   }, 100);
 
@@ -488,7 +488,7 @@
       }
 
       try {
-        const handlerUrl = `{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
+        const handlerUrl = "{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -542,7 +542,7 @@
     const updateGeneratedFields = async () => {
       const sourceValue = sourceField.value;
       try {
-        const handlerUrl = `{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`;
+        const handlerUrl = "{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -605,7 +605,8 @@
   // Function to fetch options for location-based fields
   async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
     try {
-      const response = await fetch(`{{ url_for('manager.schema_handler', device_id=device['id'], iname=app['iname'], handler='') }}${field.handler}`, {
+      const handlerUrl = "{{ url_for('schema_handler', device_id=device.id, iname=app.iname, handler='HANDLER_PLACEHOLDER') }}".replace('HANDLER_PLACEHOLDER', field.handler);
+      const response = await fetch(handlerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // locationQueryJson is the result of the Geoapify search (e.g., {name: "New York", lat: ..., lon:...})
@@ -675,6 +676,11 @@
 
   // Initialize the form on page load
   document.addEventListener("DOMContentLoaded", function () {
+    const previewImage = document.getElementById('previewImage');
+    previewImage.addEventListener('load', () => {
+      previewImage.classList.add('loaded');
+    });
+
     const form = document.getElementById("dynamicForm");
 
     // Create and add the form table first
@@ -716,20 +722,20 @@
     cancelButton.addEventListener('click', function() {
       {% if delete_on_cancel == 1 %}
       // Delete the app via fetch, then close the tab
-      fetch("{{ url_for('manager.deleteapp', device_id=device['id'], iname=app['iname']) }}", {
+      fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
         method: 'GET'
       }).then(() => {
         window.close();
       }).catch(() => {
         // If fetch fails or window.close() doesn't work, redirect
-        window.location.href = "{{ url_for('manager.addapp', device_id=device['id']) }}";
+        window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
       });
       {% else %}
       // Just close the tab or go back to index
       if (window.opener) {
         window.close();
       } else {
-        window.location.href = "{{ url_for('manager.index') }}";
+        window.location.href = "{{ url_for('index') }}";
       }
       {% endif %}
     });
@@ -767,7 +773,7 @@
             window.close();
           } else {
             // Fallback if window.close() doesn't work
-            window.location.href = "{{ url_for('manager.index') }}";
+            window.location.href = "{{ url_for('index') }}";
           }
           {% else %}
           // Normal redirect for existing apps
@@ -809,15 +815,66 @@
 
     // Initialize toggle buttons
     initializeToggleButtons();
+
+    // Add event listeners for action buttons in flex-container
+    const saveButton = document.getElementById("saveButton");
+    if (saveButton) {
+      saveButton.addEventListener("click", () => {
+        fetch(form.action, {
+          method: form.method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(config),
+        }).then(response => {
+          if (response.ok) {
+            console.log("Form submitted successfully");
+            {% if delete_on_cancel == 1 %}
+            if (window.opener) {
+              window.close();
+            } else {
+              window.location.href = "{{ url_for('index') }}";
+            }
+            {% else %}
+            window.location.href = response.url;
+            {% endif %}
+          } else {
+            console.error("Form submission failed");
+          }
+        }).catch(error => {
+          console.error("Error submitting form:", error);
+        });
+      });
+    }
+
+    const cancelButtonTop = document.getElementById("cancelButtonTop");
+    if (cancelButtonTop) {
+      cancelButtonTop.addEventListener("click", function() {
+        {% if delete_on_cancel == 1 %}
+        fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
+          method: 'GET'
+        }).then(() => {
+          window.close();
+        }).catch(() => {
+          window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
+        });
+        {% else %}
+        if (window.opener) {
+          window.close();
+        } else {
+          window.location.href = "{{ url_for('index') }}";
+        }
+        {% endif %}
+      });
+    }
   });
 </script>
 
 <!-- App Preview -->
 <div class="app-img">
   <img id="previewImage"
-    src="{{ url_for('manager.preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
-    alt="{{ _('Preview') }}"
-    class="hidden">
+    src="{{ url_for('preview', device_id=device['id'], iname=app['iname']) }}?config={{ config | tojson | urlencode }}"
+    alt="{{ _('Preview') }}">
   <div class="skeleton-loader"></div>
 </div>
 <form method="post" id="dynamicForm"></form>

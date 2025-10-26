@@ -3,12 +3,11 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
-def get_version_info() -> Dict[str, Optional[str]]:
+def get_version_info() -> dict[str, str | None]:
     """Get version information from version.json file.
 
     Returns:
@@ -28,7 +27,7 @@ def get_version_info() -> Dict[str, Optional[str]]:
         version_file = Path(__file__).parent / "version.json"
 
         if not version_file.exists():
-            logger.debug(
+            logger.warn(
                 f"Version file not found at {version_file}, using default version 'dev'"
             )
             return default_info
@@ -59,7 +58,7 @@ def get_version() -> str:
     return get_version_info()["version"] or "dev"
 
 
-def get_commit_hash() -> Optional[str]:
+def get_commit_hash() -> str | None:
     """Get the commit hash.
 
     Returns:
@@ -68,7 +67,7 @@ def get_commit_hash() -> Optional[str]:
     return get_version_info()["commit_hash"]
 
 
-def get_short_commit_hash() -> Optional[str]:
+def get_short_commit_hash() -> str | None:
     """Get the short commit hash (first 7 characters).
 
     Returns:

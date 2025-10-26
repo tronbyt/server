@@ -6,11 +6,12 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 ENV PDM_CHECK_UPDATE=false
 COPY . /app/
 WORKDIR /app
+RUN pdm lock --check || pdm lock
 RUN pdm install --check --prod --no-editable && pdm build --no-sdist --no-wheel
 
 # Ignore hadolint findings about version pinning
 # hadolint global ignore=DL3007,DL3008,DL3013
-FROM ghcr.io/tronbyt/pixlet:0.45.0 AS pixlet
+FROM ghcr.io/tronbyt/pixlet:0.46.0 AS pixlet
 
 # build runtime image
 FROM debian:trixie-slim AS runtime

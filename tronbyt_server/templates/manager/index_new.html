@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- Include external CSS and JS -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/manager.css') }}">
-<script src="{{ url_for('static', filename='js/manager.js') }}" defer></script>
+<link rel="stylesheet" href="{{ url_for('static', path='css/manager.css') }}">
+<script src="{{ url_for('static', path='js/manager.js') }}" defer></script>
 {% endblock %}
 
 {% block content %}
-{% if g.user %}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.create') }}">{{ _('New Tronbyt') }}</a>
+{% if user %}
+<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('create') }}">{{ _('New Tronbyt') }}</a>
 <hr>
 {% endif %}
 
