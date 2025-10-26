@@ -58,8 +58,8 @@
           </td>
           <td>
             <div class="connection-type-container">
-              <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
               <label><input type="radio" name="url_variant" id="variant_ws" value="ws"> WebSocket</label>
+              <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
               <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
             </div>
           </td>
@@ -141,7 +141,7 @@
         });
 
         // Initialize
-        httpRadio.checked = true;
+        wsRadio.checked = true;
         updateUrl();
     })();
 </script>
