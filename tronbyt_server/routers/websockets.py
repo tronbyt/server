@@ -30,6 +30,7 @@ class DeviceAcknowledgment:
         self.old_firmware_detected = False
         self.queued_counter: int | None = None
         self.displaying_counter: int | None = None
+        self.brightness_to_send: int | None = None  # If set, send this brightness value
 
     def reset(self) -> None:
         """Reset events for next image."""
@@ -37,6 +38,7 @@ class DeviceAcknowledgment:
         self.displaying_event.clear()
         self.queued_counter = None
         self.displaying_counter = None
+        # Don't reset brightness_to_send - it should persist until sent
 
     def mark_queued(self, counter: int) -> None:
         """Mark image as queued by device."""
@@ -61,6 +63,29 @@ class DeviceAcknowledgment:
                 "No 'displaying' message after timeout - marking as old firmware"
             )
             self.old_firmware_detected = True
+
+
+# Global registry of active websocket connections
+# Maps device_id -> (websocket, ack) tuple
+_active_connections: dict[str, tuple[WebSocket, DeviceAcknowledgment]] = {}
+
+
+async def send_brightness_update(device_id: str, brightness: int) -> bool:
+    """Send a brightness update to an active websocket connection.
+
+    Returns True if sent successfully, False if no active connection.
+    """
+    if device_id not in _active_connections:
+        return False
+
+    websocket, _ = _active_connections[device_id]
+    try:
+        await websocket.send_text(json.dumps({"brightness": brightness}))
+        logger.info(f"[{device_id}] Sent brightness update: {brightness}")
+        return True
+    except Exception as e:
+        logger.error(f"[{device_id}] Failed to send brightness update: {e}")
+        return False
 
 
 async def _send_response(
@@ -306,24 +331,34 @@ async def websocket_endpoint(
     # Create shared acknowledgment state for sender/receiver communication
     ack = DeviceAcknowledgment()
 
-    sender_task = asyncio.create_task(sender(websocket, device_id, db_conn, ack))
-    receiver_task = asyncio.create_task(receiver(websocket, device_id, ack))
+    # Register this connection globally so other parts of the app can send messages
+    _active_connections[device_id] = (websocket, ack)
+    logger.info(f"[{device_id}] WebSocket connection registered")
 
-    done, pending = await asyncio.wait(
-        [sender_task, receiver_task], return_when=asyncio.FIRST_COMPLETED
-    )
+    try:
+        sender_task = asyncio.create_task(sender(websocket, device_id, db_conn, ack))
+        receiver_task = asyncio.create_task(receiver(websocket, device_id, ack))
 
-    for task in done:
-        try:
-            task.result()
-        except WebSocketDisconnect:
-            logger.info(f"WebSocket disconnected for device {device_id}")
-            break
-        except Exception as e:
-            logger.error(f"WebSocket task failed for device {device_id}: {e}")
-            break
+        done, pending = await asyncio.wait(
+            [sender_task, receiver_task], return_when=asyncio.FIRST_COMPLETED
+        )
 
-    for task in pending:
-        task.cancel()
+        for task in done:
+            try:
+                task.result()
+            except WebSocketDisconnect:
+                logger.info(f"WebSocket disconnected for device {device_id}")
+                break
+            except Exception as e:
+                logger.error(f"WebSocket task failed for device {device_id}: {e}")
+                break
 
-    await asyncio.gather(*pending, return_exceptions=True)
+        for task in pending:
+            task.cancel()
+
+        await asyncio.gather(*pending, return_exceptions=True)
+    finally:
+        # Unregister this connection
+        if device_id in _active_connections:
+            del _active_connections[device_id]
+            logger.info(f"[{device_id}] WebSocket connection unregistered")

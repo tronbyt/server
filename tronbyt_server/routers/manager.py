@@ -50,7 +50,6 @@ from tronbyt_server.models import (
 from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (
-    push_brightness_test_image,
     possibly_render,
     render_app,
     send_default_image,
@@ -390,7 +389,7 @@ def update(
 
 
 @router.post("/{device_id}/update_brightness", name="update_brightness")
-def update_brightness(
+async def update_brightness(
     device_id: DeviceID,
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
@@ -410,14 +409,22 @@ def update_brightness(
 
     device.brightness = db.ui_scale_to_percent(brightness)
     db.save_user(db_conn, user)
+    new_brightness_8bit = db.get_device_brightness_8bit(device)
 
-    # Push an ephemeral brightness test image to the device (but not when brightness is 0)
-    if brightness > 0:
-        try:
-            push_brightness_test_image(device_id, logger)
-        except Exception as e:
-            logger.error(f"Failed to push brightness test image: {e}")
-            # Don't fail the brightness update if the test image fails
+    # Send brightness command directly to active websocket connection (if any)
+    # This doesn't interrupt the natural flow of rotation
+    from tronbyt_server.routers.websockets import send_brightness_update
+
+    sent = await send_brightness_update(device_id, new_brightness_8bit)
+
+    if sent:
+        logger.info(
+            f"[{device_id}] Sent brightness update immediately: {new_brightness_8bit}"
+        )
+    else:
+        logger.info(
+            f"[{device_id}] No active websocket, brightness will apply to next connection"
+        )
 
     return Response(status_code=status.HTTP_200_OK)
 
