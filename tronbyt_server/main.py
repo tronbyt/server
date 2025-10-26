@@ -2,6 +2,7 @@
 
 import logging
 import shutil
+import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -37,9 +38,22 @@ def backup_database(db_file: str, logger: logging.Logger) -> None:
     backup_dir = db_path.parent / "backups"
     backup_dir.mkdir(exist_ok=True)
 
-    # Create timestamped backup filename
+    # Get schema version from database
+    schema_version = "unknown"
+    try:
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        cursor.execute("SELECT schema_version FROM meta LIMIT 1")
+        row = cursor.fetchone()
+        if row:
+            schema_version = str(row[0])
+        conn.close()
+    except Exception as e:
+        logger.warning(f"Could not retrieve schema version: {e}")
+
+    # Create timestamped backup filename with schema version
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_filename = f"{db_path.stem}_{timestamp}.db"
+    backup_filename = f"{db_path.stem}_{timestamp}_v{schema_version}.db"
     backup_path = backup_dir / backup_filename
 
     try:
