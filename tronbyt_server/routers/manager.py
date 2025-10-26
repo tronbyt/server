@@ -1673,10 +1673,20 @@ def export_device_config(
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     device_json = json.dumps(device.model_dump(mode="json"), indent=4)
+
+    # Create filename with device name if available
+    device_name = device.name if device.name else device_id
+    # Sanitize the device name for use in filename (remove/replace invalid characters)
+    safe_name = "".join(
+        c if c.isalnum() or c in (" ", "-", "_") else "_" for c in device_name
+    )
+    safe_name = safe_name.replace(" ", "_")
+    filename = f"{safe_name}_config.json"
+
     return Response(
         content=device_json,
         media_type="application/json",
-        headers={"Content-Disposition": f"attachment;filename={device_id}_config.json"},
+        headers={"Content-Disposition": f"attachment;filename={filename}"},
     )
 
 
@@ -1731,7 +1741,9 @@ async def import_device_config_post(
             flash(request, _("Not the same device id. Import skipped."))
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
+        # Regenerate URLs with current server root
         device_config["img_url"] = f"{server_root()}/{device_id}/next"
+        device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
         user.devices[device_config["id"]] = Device(**device_config)
         db.save_user(db_conn, user)
         flash(request, _("Device configuration imported successfully"))
@@ -1778,6 +1790,12 @@ async def import_user_config(
 
         user_config["username"] = current_username
         user_config["password"] = current_password
+
+        # Regenerate img_url and ws_url with new server root for all devices
+        if "devices" in user_config:
+            for device_id, device_data in user_config["devices"].items():
+                device_data["img_url"] = f"{server_root()}/{device_id}/next"
+                device_data["ws_url"] = f"{ws_root()}/{device_id}/ws"
 
         logging.info(f"Attempting to import user config: {user_config.keys()}")
         try:
@@ -1846,7 +1864,9 @@ async def import_device_post(
             flash(request, _("Device already exists. Import skipped."))
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
+        # Regenerate URLs with current server root
         device_config["img_url"] = f"{server_root()}/{device_id}/next"
+        device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
         device = Device(**device_config)
         user.devices[device.id] = device
         db.save_user(db_conn, user)
