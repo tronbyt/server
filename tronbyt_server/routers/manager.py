@@ -124,7 +124,7 @@ def parse_time_input(time_str: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
-def _create_expanded_apps_list(device, apps_list):
+def _create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]:
     """
     Create an expanded apps list with interstitial apps inserted between regular apps.
 
