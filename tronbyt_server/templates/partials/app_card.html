@@ -6,6 +6,11 @@
       <div class="app-img">
         <img src="{{url_for('appwebp', device_id=device.id,iname=app.iname) }}"
              alt="{{ _('Preview') }}">
+        {% if app.empty_last_render %}
+        <div class="inactive-overlay">
+          <span class="inactive-badge-overlay">&#9888; {{ _('INACTIVE') }}</span>
+        </div>
+        {% endif %}
       </div>
     </div>
 
