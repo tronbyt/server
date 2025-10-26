@@ -32,7 +32,6 @@ def get_db() -> sqlite3.Connection:
 
 def init_db(db: sqlite3.Connection) -> None:
     """Initialize the database."""
-    # (get_users_dir() / "admin" / "configs").mkdir(parents=True, exist_ok=True)
     cursor = db.cursor()
     cursor.execute(
         """
@@ -593,7 +592,6 @@ def delete_user(db: sqlite3.Connection, username: str) -> bool:
 def create_user_dir(user: str) -> None:
     """Create a directory for a user."""
     user_dir = get_users_dir() / secure_filename(user)
-    (user_dir / "configs").mkdir(parents=True, exist_ok=True)
     (user_dir / "apps").mkdir(parents=True, exist_ok=True)
 
 
