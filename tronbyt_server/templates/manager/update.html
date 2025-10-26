@@ -204,7 +204,7 @@
           <label for="interstitial_enabled" class="device-settings-label">{{ _('Enable Interstitial App') }}</label>
         </td>
         <td>
-          <input type="checkbox" name="interstitial_enabled" id="interstitial_enabled" {% if device.get('interstitial_enabled') %}checked{% endif %}>
+          <input type="checkbox" name="interstitial_enabled" id="interstitial_enabled" {% if device.interstitial_enabled %}checked{% endif %}>
           <small class="small-text">{{ _('Display an interstitial app between each regular app in the rotation.') }}</small>
         </td>
       </tr>
@@ -221,10 +221,10 @@
           <td>
             <select name="interstitial_app" id="interstitial_app" class="select-container">
               <option value="None">{{ _('None') }}</option>
-              {% if 'apps' in device %}
-              {% for app in device['apps'].values() %}
-              <option value="{{ app['iname'] }}" {% if 'interstitial_app' in device and device['interstitial_app']==app['iname'] %}selected{% endif %}>
-                {{ app['iname'] }} {{ app['name'] }}
+              {% if device.apps %}
+              {% for app in device.apps.values() %}
+              <option value="{{ app.iname }}" {% if device.interstitial_app and device.interstitial_app == app.iname %}selected{% endif %}>
+                {{ app.iname }} {{ app.name }}
               </option>
               {% endfor %}
               {% endif %}
