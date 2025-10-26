@@ -785,6 +785,9 @@ def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool
                 "sunday",
             ],
         )
+        # Empty days array means all days (none selected = all selected)
+        if not active_days:
+            return True
         return isinstance(active_days, list) and current_day in active_days
 
 
