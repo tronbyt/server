@@ -2058,18 +2058,12 @@ def currentwebp(
                 current_app_index, len(apps_list), device.interstitial_enabled
             )
 
-            # Handle compatibility: if the mapped index is too large for the expanded list,
-            # it might be from the old system (before interstitial apps)
-            if mapped_index >= len(expanded_apps_list):
-                # If interstitial is enabled, the old index might be valid for the original apps_list
-                if device.interstitial_enabled and current_app_index < len(apps_list):
-                    # Use the original apps_list for backward compatibility
-                    app = apps_list[current_app_index]
-                else:
-                    # Reset to 0 if index is completely invalid
-                    app = expanded_apps_list[0]
-            else:
+            # Use the mapped index directly (same logic as _next_app_logic)
+            if mapped_index < len(expanded_apps_list):
                 app = expanded_apps_list[mapped_index]
+            else:
+                # Fallback to first app if index is out of bounds
+                app = expanded_apps_list[0]
 
             # Check if this is an interstitial app
             if (
