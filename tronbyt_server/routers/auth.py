@@ -305,10 +305,18 @@ def post_edit(
     firmware_version = None
     if user and user.username == "admin":
         firmware_version = db.get_firmware_version()
+    
+    # Get server version info for all users
+    server_version_info = version.get_version_info()
+    
     return templates.TemplateResponse(
         request,
         "auth/edit.html",
-        {"user": user, "firmware_version": firmware_version},
+        {
+            "user": user,
+            "firmware_version": firmware_version,
+            "server_version_info": server_version_info,
+        },
     )
 
 
