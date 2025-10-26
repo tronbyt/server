@@ -246,43 +246,6 @@ def send_image(
     return response
 
 
-def push_brightness_test_image(device_id: str, logger: logging.Logger) -> None:
-    """Push an ephemeral brightness test image to the device using test_pattern.webp."""
-    try:
-        # Use the default.webp from static directory as the test image
-        static_dir = Path("tronbyt_server/static/images")
-        default_webp_path = static_dir / "test_pattern.webp"
-
-        if not default_webp_path.exists():
-            logger.warning(f"Default test image not found at {default_webp_path}")
-            return
-
-        # Read the default image
-        webp_bytes = default_webp_path.read_bytes()
-
-        # Save as ephemeral file (starts with __)
-        device_webp_path = db.get_device_webp_dir(device_id)
-        device_webp_path.mkdir(parents=True, exist_ok=True)
-        pushed_path = device_webp_path / "pushed"
-        pushed_path.mkdir(exist_ok=True)
-
-        # Use timestamp for unique filename
-        filename = f"__brightness_test_{time.monotonic_ns()}.webp"
-        file_path = pushed_path / filename
-
-        # Save the image
-        file_path.write_bytes(webp_bytes)
-
-        # Notify the device to pick up the new image
-        push_new_image(device_id, logger)
-
-        logger.debug(f"Pushed brightness test image to {device_id}")
-
-    except Exception as e:
-        logger.error(f"Failed to push brightness test image: {e}")
-        raise
-
-
 def push_new_image(device_id: str, logger: logging.Logger) -> None:
     """Wake up WebSocket loops to push a new image to a given device."""
     get_sync_manager(logger).notify(device_id)
