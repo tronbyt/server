@@ -190,16 +190,18 @@ def _next_app_logic(
             expanded_apps_list = []
             interstitial_app_iname = device.interstitial_app
             interstitial_enabled = device.interstitial_enabled
-            
+
             for i, regular_app in enumerate(apps_list):
                 # Add the regular app
                 expanded_apps_list.append(regular_app)
-                
+
                 # Add interstitial app after each regular app (except the last one)
-                if (interstitial_enabled 
-                    and interstitial_app_iname 
-                    and interstitial_app_iname in device.apps 
-                    and i < len(apps_list) - 1):
+                if (
+                    interstitial_enabled
+                    and interstitial_app_iname
+                    and interstitial_app_iname in device.apps
+                    and i < len(apps_list) - 1
+                ):
                     interstitial_app = device.apps[interstitial_app_iname]
                     expanded_apps_list.append(interstitial_app)
             
@@ -212,10 +214,12 @@ def _next_app_logic(
                 last_app_index = 0
             
             # Check if this is an interstitial app
-            if (interstitial_enabled 
-                and interstitial_app_iname 
-                and interstitial_app_iname in device.apps 
-                and app.iname == interstitial_app_iname):
+            if (
+                interstitial_enabled
+                and interstitial_app_iname
+                and interstitial_app_iname in device.apps
+                and app.iname == interstitial_app_iname
+            ):
                 is_interstitial_app = True
 
     # For pinned apps, always display them regardless of enabled/schedule status
@@ -1992,22 +1996,24 @@ def currentwebp(
             expanded_apps_list = []
             interstitial_app_iname = device.interstitial_app
             interstitial_enabled = device.interstitial_enabled
-            
+
             for i, regular_app in enumerate(apps_list):
                 # Add the regular app
                 expanded_apps_list.append(regular_app)
-                
+
                 # Add interstitial app after each regular app (except the last one)
-                if (interstitial_enabled 
-                    and interstitial_app_iname 
-                    and interstitial_app_iname in device.apps 
-                    and i < len(apps_list) - 1):
+                if (
+                    interstitial_enabled
+                    and interstitial_app_iname
+                    and interstitial_app_iname in device.apps
+                    and i < len(apps_list) - 1
+                ):
                     interstitial_app = device.apps[interstitial_app_iname]
                     expanded_apps_list.append(interstitial_app)
             
             # Get current app index (don't advance it for /currentapp)
             current_app_index = db.get_last_app_index(db_conn, device_id) or 0
-            
+
             # Handle compatibility: if the index is too large for the expanded list,
             # it might be from the old system (before interstitial apps)
             if current_app_index >= len(expanded_apps_list):
@@ -2022,10 +2028,12 @@ def currentwebp(
                 app = expanded_apps_list[current_app_index]
             
             # Check if this is an interstitial app
-            if (interstitial_enabled 
-                and interstitial_app_iname 
-                and interstitial_app_iname in device.apps 
-                and app.iname == interstitial_app_iname):
+            if (
+                interstitial_enabled
+                and interstitial_app_iname
+                and interstitial_app_iname in device.apps
+                and app.iname == interstitial_app_iname
+            ):
                 is_interstitial_app = True
 
     # For pinned apps, always display them regardless of enabled/schedule status
