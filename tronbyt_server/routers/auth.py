@@ -67,7 +67,7 @@ def post_register_owner(
         )
         if db.save_user(db_conn, user, new_user=True):
             db.create_user_dir(username)
-            flash(request, _("Admin user created. Please log in."))
+            flash(request, _("admin user created. Please log in."))
             return RedirectResponse(
                 url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )

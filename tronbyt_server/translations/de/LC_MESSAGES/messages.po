@@ -47,8 +47,8 @@ msgid "Password is required."
 msgstr "Passwort ist erforderlich."
 
 #: tronbyt_server/routers/auth.py:70
-msgid "Admin user created. Please log in."
-msgstr "Admin-Benutzer erstellt. Bitte anmelden."
+msgid "admin user created. Please log in."
+msgstr "admin-Benutzer erstellt. Bitte anmelden."
 
 #: tronbyt_server/routers/auth.py:75
 msgid "Could not create admin user."
