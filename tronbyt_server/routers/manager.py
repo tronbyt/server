@@ -2058,10 +2058,11 @@ def currentwebp(
                 current_app_index, len(apps_list), device.interstitial_enabled
             )
 
-            # Use the same logic as _next_app_logic but don't advance the index
-            if mapped_index + 1 < len(expanded_apps_list):
-                app = expanded_apps_list[mapped_index + 1]
+            # Use the mapped index directly (show current app, not next)
+            if mapped_index < len(expanded_apps_list):
+                app = expanded_apps_list[mapped_index]
             else:
+                # Fallback to first app if index is out of bounds
                 app = expanded_apps_list[0]
 
             # Check if this is an interstitial app
