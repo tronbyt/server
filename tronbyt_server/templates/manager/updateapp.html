@@ -243,8 +243,8 @@
       <label for="weekdays">{{ _('Active Days') }}</label>
       <small>{{ _('(none selected is ALL selected)') }}</small>
       <div style="margin-top: 10px;">
-        {% set selected_weekdays = request.form.getlist('weekdays') or app.get('recurrence_pattern', {}).get('weekdays',
-        app.get('days', [])) %}
+        {% set selected_weekdays = request.form.getlist('weekdays') or app.get('recurrence_pattern', {}).get('weekdays') or
+        app.get('days') or [] %}
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
           <input type="checkbox" name="weekdays" value="monday" {% if 'monday' in selected_weekdays or not
             selected_weekdays %} checked {% endif %}> {{ _('Monday') }}
@@ -328,8 +328,8 @@
             <td>
               <div style="display: flex; gap: 10px; align-items: center;">
                 <select name="week_occurrence" id="week_occurrence" class="form-control">
-                  {% set current_occurrence = (request.form['day_of_week_pattern'] or app.get('recurrence_pattern',
-                  {}).get('day_of_week', 'first_monday')).split('_')[0] %}
+                  {% set current_occurrence = (request.form.get('day_of_week_pattern') or app.get('recurrence_pattern',
+                  {}).get('day_of_week') or 'first_monday').split('_')[0] %}
                   <option value="first" {% if current_occurrence=='first' %} selected {% endif %}>{{ _('First') }}</option>
                   <option value="second" {% if current_occurrence=='second' %} selected {% endif %}>{{ _('Second') }}</option>
                   <option value="third" {% if current_occurrence=='third' %} selected {% endif %}>{{ _('Third') }}</option>
@@ -337,8 +337,8 @@
                   <option value="last" {% if current_occurrence=='last' %} selected {% endif %}>{{ _('Last') }}</option>
                 </select>
                 <select name="week_day" id="week_day" class="form-control">
-                  {% set current_day = (request.form['day_of_week_pattern'] or app.get('recurrence_pattern',
-                  {}).get('day_of_week', 'first_monday')).split('_')[1] %}
+                  {% set current_day = (request.form.get('day_of_week_pattern') or app.get('recurrence_pattern',
+                  {}).get('day_of_week') or 'first_monday').split('_')[1] %}
                   <option value="monday" {% if current_day=='monday' %} selected {% endif %}>{{ _('Monday') }}</option>
                   <option value="tuesday" {% if current_day=='tuesday' %} selected {% endif %}>{{ _('Tuesday') }}</option>
                   <option value="wednesday" {% if current_day=='wednesday' %} selected {% endif %}>{{ _('Wednesday') }}

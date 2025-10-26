@@ -2081,11 +2081,20 @@ def export_device_config(device_id: str) -> ResponseReturnValue:
     # Convert the device dictionary to JSON
     device_json = json.dumps(device, indent=4)
 
+    # Create filename with device name if available
+    device_name = device.get("name", device_id)
+    # Sanitize the device name for use in filename (remove/replace invalid characters)
+    safe_name = "".join(
+        c if c.isalnum() or c in (" ", "-", "_") else "_" for c in device_name
+    )
+    safe_name = safe_name.replace(" ", "_")
+    filename = f"{safe_name}_config.json"
+
     # Create a response to serve the JSON as a file download
     response = Response(
         device_json,
         mimetype="application/json",
-        headers={"Content-Disposition": f"attachment;filename={device_id}_config.json"},
+        headers={"Content-Disposition": f"attachment;filename={filename}"},
     )
     return response
 
@@ -2140,7 +2149,9 @@ def import_device_config(device_id: str) -> ResponseReturnValue:
                 flash("Not the same device id. Import skipped.")
                 return redirect(url_for("manager.index"))
 
+            # Convert URLs to new server root
             device_config["img_url"] = f"{server_root()}/{device_id}/next"
+            device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
             # Add the new device to the user's devices
             user["devices"][device_config["id"]] = device_config
             db.save_user(user)
@@ -2242,6 +2253,15 @@ def import_user_config() -> ResponseReturnValue:
                     flash("Conflicting data. Import aborted.")
                     return redirect(url_for("auth.edit"))
 
+            # Regenerate img_url and ws_url with new server root for all devices
+            current_server_root = server_root()
+            current_ws_root = ws_root()
+
+            for device_id, device_data in user_config["devices"].items():
+                # Regenerate URLs with current server root
+                device_data["img_url"] = f"{current_server_root}/{device_id}/next"
+                device_data["ws_url"] = f"{current_ws_root}/{device_id}/ws"
+
         # Update the current user with the imported data
         current_user.clear()
         current_user.update(user_config)
@@ -2317,7 +2337,9 @@ def import_device() -> ResponseReturnValue:
                 return redirect(url_for("manager.index"))
 
             device = device_config
+            # Convert URLs to new server root
             device["img_url"] = f"{server_root()}/{device_config['id']}/next"
+            device["ws_url"] = f"{ws_root()}/{device_config['id']}/ws"
 
             # Add the new device to the user's devices
             user.setdefault("devices", {})[device_config["id"]] = device

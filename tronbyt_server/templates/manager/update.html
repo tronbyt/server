@@ -362,10 +362,10 @@
         </td>
         <td>
           <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
-            value="{{ request.form['location_search'] or device.get('location', {}).get('description', '') }}" class="device-settings-input">
+            value="{{ request.form.get('location_search') or (device.get('location') or {}).get('description', '') }}" class="device-settings-input">
           <ul id="location_results"></ul>
           <input type="hidden" name="location" id="location"
-            value='{{ (request.form["location"] or device["location"] or {}) | tojson }}'>
+            value='{{ (request.form.get("location") or device.get("location") or {}) | tojson }}'>
         </td>
       </tr>
     </table>
