@@ -237,14 +237,16 @@ def _get_app_to_display(
             else:
                 app = expanded_apps_list[last_app_index]
 
-            # Check if this is an interstitial app
+            # Check if this is at an interstitial position
+            # Interstitial positions are at odd indices (1, 3, 5, etc.)
             if (
                 device.interstitial_enabled
                 and device.interstitial_app
                 and device.interstitial_app in device.apps
                 and app.iname == device.interstitial_app
             ):
-                is_interstitial_app = True
+                # Check if we're at an odd index (interstitial position)
+                is_interstitial_app = (last_app_index is not None and last_app_index % 2 == 1)
 
             # Calculate new index if advancing
             new_index = last_app_index
@@ -318,25 +320,28 @@ def _next_app_logic(
         return send_default_image(device)
 
     # For pinned apps, always display them regardless of enabled/schedule status
-    # For interstitial apps, check if they're enabled when reached in normal rotation
+    # For interstitial apps at interstitial positions, always display them
+    # For interstitial apps at regular positions, check if enabled
     # For other apps, check if they should be displayed
     if (
         not is_pinned_app
         and not is_night_mode_app
-        and not is_interstitial_app
+        and not is_interstitial_app  # Skip enabled check if at interstitial position
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
         # Current app is disabled or has inactive schedule - skip it
         # Pass next_index directly since it already points to the next app
         return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
     
-    # For interstitial apps reached in normal rotation, check if they're enabled
+    # If the app is the interstitial app but we're NOT at an interstitial position,
+    # check if it's enabled for regular rotation
     if (
-        is_interstitial_app
+        app.iname == device.interstitial_app
+        and device.interstitial_app in device.apps
+        and not is_interstitial_app
         and not app.enabled
     ):
-        # Interstitial app is disabled - skip it in normal rotation
-        # Pass next_index directly since it already points to the next app
+        # Interstitial app at regular position is disabled - skip it
         return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     if (
