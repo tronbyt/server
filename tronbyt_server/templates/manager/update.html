@@ -258,13 +258,11 @@
           <td>
             <select name="night_mode_app" id="night_mode_app" class="select-container">
               <option value="None">{{ _('None') }}</option>
-              {% if 'apps' in device %}
               {% for app in device.apps.values() %}
-              <option value="{{ app.iname }}" {% if 'night_mode_app' in device and device.night_mode_app==app.iname %}selected{% endif %}>
+              <option value="{{ app.iname }}" {% if device.night_mode_app==app.iname %}selected{% endif %}>
                 {{ app.iname }} {{ app.name }}
               </option>
               {% endfor %}
-              {% endif %}
             </select>
             <small class="small-text">{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
           </td>
