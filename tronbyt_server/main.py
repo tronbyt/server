@@ -25,6 +25,8 @@ from tronbyt_server.dependencies import (
 from tronbyt_server.routers import api, auth, manager, websockets
 from tronbyt_server.templates import templates
 
+MODULE_ROOT = Path(__file__).parent.resolve()
+
 
 def backup_database(db_file: str, logger: logging.Logger) -> None:
     """Create a timestamped backup of the SQLite database."""
@@ -93,9 +95,9 @@ app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)
 
 # Babel configuration
 babel_configs = BabelConfigs(
-    ROOT_DIR=".",
+    ROOT_DIR=MODULE_ROOT.parent,
     BABEL_DEFAULT_LOCALE="en",
-    BABEL_TRANSLATION_DIRECTORY="tronbyt_server/translations",
+    BABEL_TRANSLATION_DIRECTORY=MODULE_ROOT / "translations",
 )
 app.add_middleware(
     BabelMiddleware, babel_configs=babel_configs, jinja2_templates=templates
@@ -109,7 +111,7 @@ def handle_auth_exception(request: Request, exc: NotAuthenticatedException) -> R
     return auth_exception_handler(request, exc)
 
 
-app.mount("/static", StaticFiles(directory="tronbyt_server/static"), name="static")
+app.mount("/static", StaticFiles(directory=MODULE_ROOT / "static"), name="static")
 
 app.include_router(api.router)
 app.include_router(auth.router)

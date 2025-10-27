@@ -14,7 +14,6 @@ from werkzeug.utils import secure_filename
 from fastapi_babel import _
 
 from tronbyt_server import db
-from tronbyt_server.config import get_settings
 from tronbyt_server.flash import flash
 from tronbyt_server.models import App, Device, User
 from tronbyt_server.pixlet import render_app as pixlet_render_app
@@ -28,31 +27,6 @@ def git_command(
     env = os.environ.copy()
     env.setdefault("HOME", os.getcwd())
     return subprocess.run(command, cwd=cwd, env=env, check=check)
-
-
-def server_root() -> str:
-    """Get the root URL of the server."""
-    settings = get_settings()
-    protocol = settings.SERVER_PROTOCOL
-    hostname = settings.SERVER_HOSTNAME
-    port = settings.SERVER_PORT
-    url = f"{protocol}://{hostname}"
-    if (protocol == "https" and port != "443") or (protocol == "http" and port != "80"):
-        url += f":{port}"
-    return url
-
-
-def ws_root() -> str:
-    """Get the root URL for websockets."""
-    settings = get_settings()
-    server_protocol = settings.SERVER_PROTOCOL
-    protocol = "wss" if server_protocol == "https" else "ws"
-    hostname = settings.SERVER_HOSTNAME
-    port = settings.SERVER_PORT
-    url = f"{protocol}://{hostname}"
-    if (protocol == "wss" and port != "443") or (protocol == "ws" and port != "80"):
-        url += f":{port}"
-    return url
 
 
 def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:

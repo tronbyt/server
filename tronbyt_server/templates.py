@@ -3,6 +3,7 @@
 import datetime as dt
 import time
 
+from pathlib import Path
 from babel.dates import format_timedelta
 from fastapi.templating import Jinja2Templates
 from fastapi_babel import _
@@ -22,7 +23,7 @@ def timeago(seconds: int) -> str:
     )
 
 
-templates = Jinja2Templates(directory="tronbyt_server/templates")
+templates = Jinja2Templates(directory=Path(__file__).parent.resolve() / "templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 templates.env.globals["_"] = _
 templates.env.globals["config"] = get_settings()

@@ -251,7 +251,7 @@ def post_login(
         key=manager.cookie_name,
         value=access_token,
         max_age=cookie_max_age,
-        secure=settings.SERVER_PROTOCOL == "https",  # Set secure flag in production
+        secure=request.url.scheme == "https",  # Set secure flag in production
         httponly=True,  # Standard security practice
         samesite="lax",  # Can be "strict" or "lax"
     )

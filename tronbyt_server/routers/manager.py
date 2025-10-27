@@ -54,9 +54,7 @@ from tronbyt_server.utils import (
     render_app,
     send_default_image,
     send_image,
-    server_root,
     set_repo,
-    ws_root,
 )
 
 router = APIRouter(tags=["manager"])
@@ -231,7 +229,9 @@ def index(
     if user.devices:
         for device in reversed(list(user.devices.values())):
             if not device.ws_url:
-                device.ws_url = ws_root() + f"/{device.id}/ws"
+                device.ws_url = str(
+                    request.url_for("websocket_endpoint", device_id=device.id)
+                )
                 user_updated = True
 
             ui_device = device.model_copy()
@@ -304,8 +304,10 @@ def create_post(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-    img_url = form_data.img_url or f"{server_root()}/{device_id}/next"
-    ws_url = form_data.ws_url or ws_root() + f"/{device_id}/ws"
+    img_url = form_data.img_url or str(request.url_for("next_app", device_id=device_id))
+    ws_url = form_data.ws_url or str(
+        request.url_for("websocket_endpoint", device_id=device_id)
+    )
     api_key = form_data.api_key or "".join(
         secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
     )
@@ -360,8 +362,8 @@ def update(
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
-    default_img_url = f"{server_root()}/{device_id}/next"
-    default_ws_url = ws_root() + f"/{device_id}/ws"
+    default_img_url = request.url_for("next_app", device_id=device_id)
+    default_ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
 
     ui_device = device.model_copy()
     if ui_device.brightness:
@@ -499,12 +501,12 @@ def update_post(
     device.img_url = (
         db.sanitize_url(form_data.img_url)
         if form_data.img_url
-        else f"{server_root()}/{device_id}/next"
+        else str(request.url_for("next_app", device_id=device_id))
     )
     device.ws_url = (
         db.sanitize_url(form_data.ws_url)
         if form_data.ws_url
-        else ws_root() + f"/{device_id}/ws"
+        else str(request.url_for("websocket_endpoint", device_id=device_id))
     )
     device.api_key = form_data.api_key or ""
     device.notes = form_data.notes or ""
@@ -991,7 +993,6 @@ def updateapp(
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
             "user": user,
-            "server_root": server_root(),
             "form": {},  # Empty form data for GET request
         },
     )
@@ -1746,8 +1747,10 @@ async def import_device_config_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device_config["img_url"] = f"{server_root()}/{device_id}/next"
-        device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
+        device_config["img_url"] = str(request.url_for("next_app", device_id=device_id))
+        device_config["ws_url"] = str(
+            request.url_for("websocket_endpoint", device_id=device_id)
+        )
         user.devices[device_config["id"]] = Device(**device_config)
         db.save_user(db_conn, user)
         flash(request, _("Device configuration imported successfully"))
@@ -1798,8 +1801,12 @@ async def import_user_config(
         # Regenerate img_url and ws_url with new server root for all devices
         if "devices" in user_config:
             for device_id, device_data in user_config["devices"].items():
-                device_data["img_url"] = f"{server_root()}/{device_id}/next"
-                device_data["ws_url"] = f"{ws_root()}/{device_id}/ws"
+                device_data["img_url"] = str(
+                    request.url_for("next_app", device_id=device_id)
+                )
+                device_data["ws_url"] = str(
+                    request.url_for("websocket_endpoint", device_id=device_id)
+                )
 
         logging.info(f"Attempting to import user config: {user_config.keys()}")
         try:
@@ -1869,8 +1876,10 @@ async def import_device_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device_config["img_url"] = f"{server_root()}/{device_id}/next"
-        device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
+        device_config["img_url"] = str(request.url_for("next_app", device_id=device_id))
+        device_config["ws_url"] = str(
+            request.url_for("websocket_endpoint", device_id=device_id)
+        )
         device = Device(**device_config)
         user.devices[device.id] = device
         db.save_user(db_conn, user)
