@@ -246,7 +246,9 @@ def _get_app_to_display(
                 and app.iname == device.interstitial_app
             ):
                 # Check if we're at an odd index (interstitial position)
-                is_interstitial_app = (last_app_index is not None and last_app_index % 2 == 1)
+                is_interstitial_app = (
+                    last_app_index is not None and last_app_index % 2 == 1
+                )
 
             # Calculate new index if advancing
             new_index = last_app_index
@@ -298,22 +300,25 @@ def _next_app_logic(
         last_app_index = db.get_last_app_index(db_conn, device_id)
         if last_app_index is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    
+
     # Advance the index to get the next app
     user = db.get_user_by_device_id(db_conn, device_id)
     device = user.devices.get(device_id)
     apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
     expanded_apps_list = create_expanded_apps_list(device, apps_list)
-    
+
     # Calculate the next index
     if last_app_index + 1 < len(expanded_apps_list):
         next_index = last_app_index + 1
     else:
         next_index = 0  # Reset to beginning of list
-    
+
+    # Check if we're at an interstitial position (odd index)
+    is_interstitial_position = next_index % 2 == 1
+
     # Get the app at the next index (without advancing further)
-    app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = (
-        _get_app_to_display(db_conn, device_id, next_index, advance_index=False)
+    app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
+        db_conn, device_id, next_index, advance_index=False
     )
 
     if app is None:
@@ -332,7 +337,7 @@ def _next_app_logic(
         # Current app is disabled or has inactive schedule - skip it
         # Pass next_index directly since it already points to the next app
         return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
-    
+
     # If the app is the interstitial app but we're NOT at an interstitial position,
     # check if it's enabled for regular rotation
     if (
@@ -343,6 +348,26 @@ def _next_app_logic(
     ):
         # Interstitial app at regular position is disabled - skip it
         return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+
+    # NEW: Skip interstitial app if the previous regular app was skipped
+    # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
+    # then we should skip this interstitial app too to avoid showing it in isolation
+    if is_interstitial_position:
+        # We're at an interstitial position (odd index)
+        # Check if the previous regular app (at next_index - 1) would be skipped
+        prev_index = next_index - 1
+        if prev_index >= 0 and prev_index < len(expanded_apps_list):
+            prev_app = expanded_apps_list[prev_index]
+            # Check if the previous app would be skipped
+            if prev_app.iname in device.apps:
+                prev_app_obj = device.apps[prev_app.iname]
+                if not prev_app_obj.enabled or not db.get_is_app_schedule_active(
+                    prev_app_obj, device
+                ):
+                    # Previous app would be skipped - skip this interstitial too
+                    return _next_app_logic(
+                        db_conn, device_id, next_index, recursion_depth + 1
+                    )
 
     if (
         not possibly_render(db_conn, user, device_id, app, logger)
