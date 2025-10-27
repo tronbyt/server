@@ -66,11 +66,11 @@ logger = logging.getLogger(__name__)
 def create_expanded_apps_list(device: Device, apps_list: list) -> list:
     """
     Create an expanded apps list with interstitial apps inserted between regular apps.
-    
+
     Args:
         device: The device containing interstitial app settings
         apps_list: List of regular apps sorted by order
-        
+
     Returns:
         List of apps with interstitial apps inserted after each regular app (except the last)
     """
