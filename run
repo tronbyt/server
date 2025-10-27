@@ -4,10 +4,15 @@ set -euo pipefail
 # Run startup tasks that should only be executed once
 python3 -c 'from tronbyt_server.startup import run_once; run_once()'
 
+# Set uvicorn log level based on LOG_LEVEL env var (default to info)
+UVICORN_LOG_LEVEL="${LOG_LEVEL:-info}"
+UVICORN_LOG_LEVEL=$(echo "$UVICORN_LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
+
 if [ "${PRODUCTION:-1}" = "1" ]; then
     # PRODUCTION
-    exec uvicorn --host=0.0.0.0 --port=8000 --workers="${WEB_CONCURRENCY:-2}" tronbyt_server.main:app
+    # --proxy-headers: Trust X-Forwarded-* headers from reverse proxies for proper HTTPS URL generation
+    exec uvicorn --host=0.0.0.0 --port=8000 --workers="${WEB_CONCURRENCY:-2}" --log-level="$UVICORN_LOG_LEVEL" --proxy-headers tronbyt_server.main:app
 else
     # DEVELOPMENT
-    exec uvicorn --host=0.0.0.0 --port=8000 --reload tronbyt_server.main:app
+    exec uvicorn --host=0.0.0.0 --port=8000 --reload --log-level="$UVICORN_LOG_LEVEL" --proxy-headers tronbyt_server.main:app
 fi

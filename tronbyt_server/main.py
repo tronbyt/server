@@ -7,12 +7,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
+from typing import AsyncGenerator
+
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from tronbyt_server import db
 from tronbyt_server.config import get_settings
@@ -23,9 +24,6 @@ from tronbyt_server.dependencies import (
 )
 from tronbyt_server.routers import api, auth, manager, websockets
 from tronbyt_server.templates import templates
-
-
-from typing import AsyncGenerator
 
 
 def backup_database(db_file: str, logger: logging.Logger) -> None:
@@ -89,10 +87,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
-
-# Add ProxyHeadersMiddleware to trust X-Forwarded-* headers from reverse proxies
-# This ensures proper HTTPS URL generation when behind nginx/Apache
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)
 
