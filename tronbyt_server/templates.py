@@ -23,7 +23,7 @@ def timeago(seconds: int) -> str:
     )
 
 
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates = Jinja2Templates(directory=Path(__file__).parent.resolve() / "templates")
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 templates.env.globals["_"] = _
 templates.env.globals["config"] = get_settings()
