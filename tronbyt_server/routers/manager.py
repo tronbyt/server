@@ -290,9 +290,28 @@ def _next_app_logic(
         logger.warning("Maximum recursion depth exceeded, sending default image")
         return send_default_image(device)
 
-    # Use helper function to get the app to display, advancing the index
-    app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app = (
-        _get_app_to_display(db_conn, device_id, last_app_index, advance_index=True)
+    # For /next endpoint: advance the index FIRST, then get the app to display
+    # This ensures we return the NEXT app, not the current one
+    if last_app_index is None:
+        last_app_index = db.get_last_app_index(db_conn, device_id)
+        if last_app_index is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    
+    # Advance the index to get the next app
+    user = db.get_user_by_device_id(db_conn, device_id)
+    device = user.devices.get(device_id)
+    apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
+    expanded_apps_list = create_expanded_apps_list(device, apps_list)
+    
+    # Calculate the next index
+    if last_app_index + 1 < len(expanded_apps_list):
+        next_index = last_app_index + 1
+    else:
+        next_index = 0  # Reset to beginning of list
+    
+    # Get the app at the next index (without advancing further)
+    app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = (
+        _get_app_to_display(db_conn, device_id, next_index, advance_index=False)
     )
 
     if app is None:
@@ -308,20 +327,16 @@ def _next_app_logic(
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
         # Current app is disabled or has inactive schedule - skip it
-        # Pass new_index + 1 to skip to the next app in the sequence
-        if new_index is None:
-            return send_default_image(device)
-        return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
+        # Pass next_index directly since it already points to the next app
+        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     if (
         not possibly_render(db_conn, user, device_id, app, logger)
         or app.empty_last_render
     ):
         # App failed to render or had empty render - skip it
-        # Pass new_index + 1 to skip to the next app in the sequence
-        if new_index is None:
-            return send_default_image(device)
-        return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
+        # Pass next_index directly since it already points to the next app
+        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
@@ -331,15 +346,13 @@ def _next_app_logic(
     if webp_path.exists() and webp_path.stat().st_size > 0:
         # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
-        if new_index is not None:
-            db.save_last_app_index(db_conn, device_id, new_index)
+        # Save the next_index as the new last_app_index
+        db.save_last_app_index(db_conn, device_id, next_index)
         return response
 
     # WebP file doesn't exist or is empty - skip this app
-    # Pass new_index + 1 to skip to the next app in the sequence
-    if new_index is None:
-        return send_default_image(device)
-    return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
+    # Pass next_index directly since it already points to the next app
+    return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
 
 @router.get("/", name="index")
