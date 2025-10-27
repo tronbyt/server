@@ -309,6 +309,8 @@ def _next_app_logic(
     ):
         # Current app is disabled or has inactive schedule - skip it
         # Pass new_index + 1 to skip to the next app in the sequence
+        if new_index is None:
+            return send_default_image(device)
         return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
 
     if (
@@ -317,6 +319,8 @@ def _next_app_logic(
     ):
         # App failed to render or had empty render - skip it
         # Pass new_index + 1 to skip to the next app in the sequence
+        if new_index is None:
+            return send_default_image(device)
         return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
 
     if app.pushed:
@@ -327,11 +331,14 @@ def _next_app_logic(
     if webp_path.exists() and webp_path.stat().st_size > 0:
         # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
-        db.save_last_app_index(db_conn, device_id, new_index)
+        if new_index is not None:
+            db.save_last_app_index(db_conn, device_id, new_index)
         return response
 
     # WebP file doesn't exist or is empty - skip this app
     # Pass new_index + 1 to skip to the next app in the sequence
+    if new_index is None:
+        return send_default_image(device)
     return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
 
 
