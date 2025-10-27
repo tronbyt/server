@@ -122,11 +122,11 @@ def reset_admin_password(db_path: str, username: str, new_password: str) -> bool
         return False
 
 
-def main():
+def main() -> None:
     # Default database path (relative to script location)
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
-    db_path = project_root / "users" / "usersdb.sqlite"
+    db_path = str(project_root / "users" / "usersdb.sqlite")
     username = "admin"
 
     print("=" * 60)
