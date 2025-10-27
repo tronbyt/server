@@ -467,9 +467,9 @@ def percent_to_ui_scale(percent: int) -> int:
         return 0
     elif percent <= 3:
         return 1
-    elif percent <= 12:
+    elif percent <= 5:
         return 2
-    elif percent <= 20:
+    elif percent <= 12:
         return 3
     elif percent <= 35:
         return 4
@@ -481,8 +481,8 @@ def ui_scale_to_percent(scale_value: int) -> int:
     lookup = {
         0: 0,
         1: 3,
-        2: 12,
-        3: 20,
+        2: 5,
+        3: 12,
         4: 35,
         5: 100,
     }
