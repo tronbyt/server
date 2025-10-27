@@ -233,7 +233,7 @@ def _next_app_logic(
     ):
         # Simply increment index to try next app instead of same app
         return _next_app_logic(
-            db_conn, device_id, last_app_index + 1, recursion_depth + 1
+            db_conn, device_id, last_app_index, recursion_depth + 1
         )
 
     if (
@@ -242,7 +242,7 @@ def _next_app_logic(
     ):
         # Simply increment index to try next app instead of same app
         return _next_app_logic(
-            db_conn, device_id, last_app_index + 1, recursion_depth + 1
+            db_conn, device_id, last_app_index, recursion_depth + 1
         )
 
     if app.pushed:
@@ -255,7 +255,7 @@ def _next_app_logic(
         db.save_last_app_index(db_conn, device_id, last_app_index)
         return response
 
-    return _next_app_logic(db_conn, device_id, last_app_index + 1, recursion_depth + 1)
+    return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
 
 
 @router.get("/", name="index")
