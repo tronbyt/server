@@ -10,9 +10,9 @@ UVICORN_LOG_LEVEL=$(echo "$UVICORN_LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
 if [ "${PRODUCTION:-1}" = "1" ]; then
     # PRODUCTION
-    # --proxy-headers: Trust X-Forwarded-* headers from reverse proxies for proper HTTPS URL generation
-    exec uvicorn --host=0.0.0.0 --port=8000 --workers="${WEB_CONCURRENCY:-2}" --log-level="$UVICORN_LOG_LEVEL" --proxy-headers tronbyt_server.main:app
+    # --forwarded-allow-ips='*': Trust X-Forwarded-* headers from any proxy (use specific IPs for better security)
+    exec uvicorn --host=0.0.0.0 --port=8000 --workers="${WEB_CONCURRENCY:-2}" --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app
 else
     # DEVELOPMENT
-    exec uvicorn --host=0.0.0.0 --port=8000 --reload --log-level="$UVICORN_LOG_LEVEL" --proxy-headers tronbyt_server.main:app
+    exec uvicorn --host=0.0.0.0 --port=8000 --reload --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app
 fi
