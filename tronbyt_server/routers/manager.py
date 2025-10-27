@@ -63,7 +63,7 @@ router = APIRouter(tags=["manager"])
 logger = logging.getLogger(__name__)
 
 
-def create_expanded_apps_list(device: Device, apps_list: list) -> list:
+def create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]:
     """
     Create an expanded apps list with interstitial apps inserted between regular apps.
 

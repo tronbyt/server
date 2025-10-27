@@ -59,7 +59,11 @@ strict = true
 show_error_codes = true
 warn_unused_ignores = true
 ignore_missing_imports = true
-# Silence library-specific false positives
+
+# Disable error categories for known library typing limitations:
+# - "misc": False positives from Pydantic BaseModel and FastAPI decorators
+#   These are library issues, not code issues (e.g., "Class cannot subclass BaseModel (has type Any)")
+# - "no-any-return": Some library functions return Any where it's unavoidable
 disable_error_code = ["misc", "no-any-return"]
 
 [dependency-groups]

@@ -132,8 +132,7 @@ class RedisWaiter(Waiter):
         # from being delivered to the consumer. This is useful for simple notification
         # use-cases, but may hide connection/debugging issues. Consider making this
         # configurable if you need to debug subscription events.
-        # redis 7.x has type stubs but mypy in CI doesn't recognize them
-        self._pubsub = redis_client.pubsub(ignore_subscribe_messages=True)  # type: ignore[no-untyped-call]
+        self._pubsub = redis_client.pubsub(ignore_subscribe_messages=True)
         self._device_id = device_id
         self._pubsub.subscribe(self._device_id)
 
@@ -156,8 +155,7 @@ class RedisSyncManager(SyncManager):
     """A synchronization manager that uses Redis Pub/Sub."""
 
     def __init__(self, redis_url: str) -> None:
-        # redis 7.x has type stubs but mypy in CI doesn't recognize them
-        self._redis = redis.from_url(redis_url)  # type: ignore[no-untyped-call]
+        self._redis = redis.from_url(redis_url)
 
     def get_waiter(self, device_id: str) -> Waiter:
         """Get a waiter for a given device ID."""
