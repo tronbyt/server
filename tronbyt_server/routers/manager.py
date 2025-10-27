@@ -279,7 +279,7 @@ def _next_app_logic(
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
         for ephemeral_file in sorted(pushed_dir.glob("__*")):
-            print(f"Found pushed image {ephemeral_file}")
+            logger.debug(f"Found pushed image {ephemeral_file}")
             response = send_image(ephemeral_file, device, None, True)
             ephemeral_file.unlink()
             return response
@@ -301,13 +301,7 @@ def _next_app_logic(
         if last_app_index is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    # Advance the index to get the next app
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    # Get the apps list from the already-fetched device
     apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
     expanded_apps_list = create_expanded_apps_list(device, apps_list)
 
@@ -365,23 +359,15 @@ def _next_app_logic(
             # Check if the previous app would be skipped
             if prev_app.iname in device.apps:
                 prev_app_obj = device.apps[prev_app.iname]
-                # Check if previous app would be skipped due to enabled/schedule status
-                if not prev_app_obj.enabled or not db.get_is_app_schedule_active(
-                    prev_app_obj, device
+                # Check if previous app would be skipped (enabled, schedule, or empty render)
+                # Note: We don't call possibly_render here as it's expensive and unnecessary
+                # since we'll discover empty renders when we try to display the app anyway
+                if (
+                    not prev_app_obj.enabled
+                    or not db.get_is_app_schedule_active(prev_app_obj, device)
+                    or prev_app_obj.empty_last_render
                 ):
                     # Previous app would be skipped - skip this interstitial too
-                    return _next_app_logic(
-                        db_conn, device_id, next_index, recursion_depth + 1
-                    )
-                # Check if previous app would be skipped due to empty output
-                # We need to actually try to render it to check
-                if not possibly_render(db_conn, user, device_id, prev_app_obj, logger):
-                    # Previous app failed to render - skip this interstitial too
-                    return _next_app_logic(
-                        db_conn, device_id, next_index, recursion_depth + 1
-                    )
-                if prev_app_obj.empty_last_render:
-                    # Previous app had empty render - skip this interstitial too
                     return _next_app_logic(
                         db_conn, device_id, next_index, recursion_depth + 1
                     )
@@ -2115,7 +2101,7 @@ def currentwebp(
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
         for ephemeral_file in sorted(pushed_dir.glob("__*")):
-            print(f"Found pushed image {ephemeral_file}")
+            logger.debug(f"Found pushed image {ephemeral_file}")
             response = send_image(ephemeral_file, device, None, True)
             ephemeral_file.unlink()
             return response
