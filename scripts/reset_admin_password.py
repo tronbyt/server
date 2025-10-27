@@ -123,8 +123,10 @@ def reset_admin_password(db_path: str, username: str, new_password: str) -> bool
 
 
 def main():
-    # Default database path (relative to working directory)
-    db_path = "users/usersdb.sqlite"
+    # Default database path (relative to script location)
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+    db_path = project_root / "users" / "usersdb.sqlite"
     username = "admin"
 
     print("=" * 60)

@@ -54,9 +54,7 @@
     saveBtn.className = 'w3-button w3-green config-management-btn';
     saveBtn.textContent = '{{ _('Save') }}';
     saveBtn.onclick = function() {
-      if (confirm('{{ _('Save device settings?') }}')) {
-        form.submit();
-      }
+      form.submit();
     };
 
     // Create Delete button
@@ -432,7 +430,7 @@
   </div>
 
   <div class="button-container">
-    <button type="button" class="w3-button w3-green config-management-btn" onclick="if (confirm('{{ _('Save device settings?') }}')) { this.form.submit(); }">{{ _('Save') }}</button>
+    <button type="button" class="w3-button w3-green config-management-btn" onclick="this.form.submit();">{{ _('Save') }}</button>
     <button type="button" class="w3-button w3-red config-management-btn" onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device.id) }}'; this.form.method = 'post'; this.form.submit(); }">{{ _('Delete') }}</button>
   </div>
 </form>
