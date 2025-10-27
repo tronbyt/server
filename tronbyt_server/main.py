@@ -89,26 +89,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan)
 
 
-# Debug middleware to log proxy headers
-@app.middleware("http")
-async def log_proxy_headers(request: Request, call_next):  # type: ignore
-    """Log proxy headers for debugging."""
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info(f"Request URL: {request.url}")
-    logger.info(f"Request scheme: {request.url.scheme}")
-    logger.info(
-        f"X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', 'NOT SET')}"
-    )
-    logger.info(
-        f"X-Forwarded-Host: {request.headers.get('x-forwarded-host', 'NOT SET')}"
-    )
-    logger.info(f"X-Forwarded-For: {request.headers.get('x-forwarded-for', 'NOT SET')}")
-    response = await call_next(request)
-    return response
-
-
 app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)
 
 # Babel configuration
