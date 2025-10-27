@@ -63,6 +63,38 @@ router = APIRouter(tags=["manager"])
 logger = logging.getLogger(__name__)
 
 
+def create_expanded_apps_list(device: Device, apps_list: list) -> list:
+    """
+    Create an expanded apps list with interstitial apps inserted between regular apps.
+    
+    Args:
+        device: The device containing interstitial app settings
+        apps_list: List of regular apps sorted by order
+        
+    Returns:
+        List of apps with interstitial apps inserted after each regular app (except the last)
+    """
+    expanded_apps_list = []
+    interstitial_app_iname = device.interstitial_app
+    interstitial_enabled = device.interstitial_enabled
+
+    for i, regular_app in enumerate(apps_list):
+        # Add the regular app
+        expanded_apps_list.append(regular_app)
+
+        # Add interstitial app after each regular app (except the last one)
+        if (
+            interstitial_enabled
+            and interstitial_app_iname
+            and interstitial_app_iname in device.apps
+            and i < len(apps_list) - 1
+        ):
+            interstitial_app = device.apps[interstitial_app_iname]
+            expanded_apps_list.append(interstitial_app)
+
+    return expanded_apps_list
+
+
 def parse_time_input(time_str: str) -> str:
     """
     Parse time input in various formats and return as HH:MM string.
@@ -187,38 +219,24 @@ def _next_app_logic(
             is_night_mode_app = True
         else:
             # Create expanded apps list with interstitial apps inserted
-            expanded_apps_list = []
-            interstitial_app_iname = device.interstitial_app
-            interstitial_enabled = device.interstitial_enabled
-
-            for i, regular_app in enumerate(apps_list):
-                # Add the regular app
-                expanded_apps_list.append(regular_app)
-
-                # Add interstitial app after each regular app (except the last one)
-                if (
-                    interstitial_enabled
-                    and interstitial_app_iname
-                    and interstitial_app_iname in device.apps
-                    and i < len(apps_list) - 1
-                ):
-                    interstitial_app = device.apps[interstitial_app_iname]
-                    expanded_apps_list.append(interstitial_app)
+            expanded_apps_list = create_expanded_apps_list(device, apps_list)
 
             # Use the expanded list for cycling
+            # last_app_index points to the previously displayed app
+            # We increment it to get the next app in the rotation
             if last_app_index + 1 < len(expanded_apps_list):
                 app = expanded_apps_list[last_app_index + 1]
-                last_app_index += 1
+                last_app_index += 1  # Now last_app_index points to the current app we're trying to display
             else:
                 app = expanded_apps_list[0]
-                last_app_index = 0
+                last_app_index = 0  # Reset to beginning of list
 
             # Check if this is an interstitial app
             if (
-                interstitial_enabled
-                and interstitial_app_iname
-                and interstitial_app_iname in device.apps
-                and app.iname == interstitial_app_iname
+                device.interstitial_enabled
+                and device.interstitial_app
+                and device.interstitial_app in device.apps
+                and app.iname == device.interstitial_app
             ):
                 is_interstitial_app = True
 
@@ -231,7 +249,9 @@ def _next_app_logic(
         and not is_interstitial_app
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
-        # Simply increment index to try next app instead of same app
+        # Current app is disabled or has inactive schedule - skip it
+        # last_app_index currently points to this disabled app
+        # Pass last_app_index + 1 to skip to the next app in the sequence
         return _next_app_logic(
             db_conn, device_id, last_app_index + 1, recursion_depth + 1
         )
@@ -240,7 +260,9 @@ def _next_app_logic(
         not possibly_render(db_conn, user, device_id, app, logger)
         or app.empty_last_render
     ):
-        # Simply increment index to try next app instead of same app
+        # App failed to render or had empty render - skip it
+        # last_app_index currently points to this failed app
+        # Pass last_app_index + 1 to skip to the next app in the sequence
         return _next_app_logic(
             db_conn, device_id, last_app_index + 1, recursion_depth + 1
         )
@@ -251,10 +273,14 @@ def _next_app_logic(
         webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
 
     if webp_path.exists() and webp_path.stat().st_size > 0:
+        # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
         db.save_last_app_index(db_conn, device_id, last_app_index)
         return response
 
+    # WebP file doesn't exist or is empty - skip this app
+    # last_app_index currently points to this app with missing file
+    # Pass last_app_index + 1 to skip to the next app in the sequence
     return _next_app_logic(db_conn, device_id, last_app_index + 1, recursion_depth + 1)
 
 
@@ -1999,23 +2025,7 @@ def currentwebp(
             is_night_mode_app = True
         else:
             # Create expanded apps list with interstitial apps inserted
-            expanded_apps_list = []
-            interstitial_app_iname = device.interstitial_app
-            interstitial_enabled = device.interstitial_enabled
-
-            for i, regular_app in enumerate(apps_list):
-                # Add the regular app
-                expanded_apps_list.append(regular_app)
-
-                # Add interstitial app after each regular app (except the last one)
-                if (
-                    interstitial_enabled
-                    and interstitial_app_iname
-                    and interstitial_app_iname in device.apps
-                    and i < len(apps_list) - 1
-                ):
-                    interstitial_app = device.apps[interstitial_app_iname]
-                    expanded_apps_list.append(interstitial_app)
+            expanded_apps_list = create_expanded_apps_list(device, apps_list)
 
             # Get current app index (don't advance it for /currentapp)
             current_app_index = db.get_last_app_index(db_conn, device_id) or 0
@@ -2024,7 +2034,7 @@ def currentwebp(
             # it might be from the old system (before interstitial apps)
             if current_app_index >= len(expanded_apps_list):
                 # If interstitial is enabled, the old index might be valid for the original apps_list
-                if interstitial_enabled and current_app_index < len(apps_list):
+                if device.interstitial_enabled and current_app_index < len(apps_list):
                     # Use the original apps_list for backward compatibility
                     app = apps_list[current_app_index]
                 else:
@@ -2035,10 +2045,10 @@ def currentwebp(
 
             # Check if this is an interstitial app
             if (
-                interstitial_enabled
-                and interstitial_app_iname
-                and interstitial_app_iname in device.apps
-                and app.iname == interstitial_app_iname
+                device.interstitial_enabled
+                and device.interstitial_app
+                and device.interstitial_app in device.apps
+                and app.iname == device.interstitial_app
             ):
                 is_interstitial_app = True
 
