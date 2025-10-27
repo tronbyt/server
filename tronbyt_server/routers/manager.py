@@ -303,7 +303,11 @@ def _next_app_logic(
 
     # Advance the index to get the next app
     user = db.get_user_by_device_id(db_conn, device_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
     expanded_apps_list = create_expanded_apps_list(device, apps_list)
 
