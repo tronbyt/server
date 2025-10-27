@@ -318,7 +318,7 @@ def _next_app_logic(
         return send_default_image(device)
 
     # For pinned apps, always display them regardless of enabled/schedule status
-    # For interstitial apps, always display them regardless of enabled/schedule status
+    # For interstitial apps, check if they're enabled when reached in normal rotation
     # For other apps, check if they should be displayed
     if (
         not is_pinned_app
@@ -327,6 +327,15 @@ def _next_app_logic(
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
         # Current app is disabled or has inactive schedule - skip it
+        # Pass next_index directly since it already points to the next app
+        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+    
+    # For interstitial apps reached in normal rotation, check if they're enabled
+    if (
+        is_interstitial_app
+        and not app.enabled
+    ):
+        # Interstitial app is disabled - skip it in normal rotation
         # Pass next_index directly since it already points to the next app
         return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
