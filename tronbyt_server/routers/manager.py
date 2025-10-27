@@ -156,6 +156,95 @@ def parse_time_input(time_str: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def _get_app_to_display(
+    db_conn: sqlite3.Connection,
+    device_id: DeviceID,
+    last_app_index: int | None = None,
+    advance_index: bool = False,
+) -> tuple[App | None, int | None, bool, bool, bool]:
+    """
+    Determine which app to display based on current state.
+    
+    Returns:
+        tuple: (app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app)
+        If no app should be displayed, returns (None, None, False, False, False)
+    """
+    user = db.get_user_by_device_id(db_conn, device_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    # if no apps return None
+    if not device.apps:
+        return None, None, False, False, False
+
+    pinned_app_iname = device.pinned_app
+    is_pinned_app = False
+    is_night_mode_app = False
+    is_interstitial_app = False
+    
+    if pinned_app_iname and pinned_app_iname in device.apps:
+        logger.debug(f"Using pinned app: {pinned_app_iname}")
+        app = device.apps[pinned_app_iname]
+        is_pinned_app = True
+        # For pinned apps, we don't update last_app_index since we're not cycling
+        return app, last_app_index, is_pinned_app, is_night_mode_app, is_interstitial_app
+    else:
+        # Normal app selection logic
+        apps_list = sorted(
+            [app for app in device.apps.values()],
+            key=lambda x: x.order,
+        )
+        is_night_mode_app = False
+        if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
+            app = device.apps[device.night_mode_app]
+            is_night_mode_app = True
+            return app, last_app_index, is_pinned_app, is_night_mode_app, is_interstitial_app
+        else:
+            # Create expanded apps list with interstitial apps inserted
+            expanded_apps_list = create_expanded_apps_list(device, apps_list)
+
+            if last_app_index is None:
+                last_app_index = db.get_last_app_index(db_conn, device_id)
+                if last_app_index is None:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+            # Handle compatibility: if the index is too large for the expanded list,
+            # it might be from the old system (before interstitial apps)
+            if last_app_index >= len(expanded_apps_list):
+                # If interstitial is enabled, the old index might be valid for the original apps_list
+                if device.interstitial_enabled and last_app_index < len(apps_list):
+                    # Use the original apps_list for backward compatibility
+                    app = apps_list[last_app_index]
+                else:
+                    # Reset to 0 if index is completely invalid
+                    app = expanded_apps_list[0]
+                    last_app_index = 0
+            else:
+                app = expanded_apps_list[last_app_index]
+
+            # Check if this is an interstitial app
+            if (
+                device.interstitial_enabled
+                and device.interstitial_app
+                and device.interstitial_app in device.apps
+                and app.iname == device.interstitial_app
+            ):
+                is_interstitial_app = True
+
+            # Calculate new index if advancing
+            new_index = last_app_index
+            if advance_index:
+                if last_app_index + 1 < len(expanded_apps_list):
+                    new_index = last_app_index + 1
+                else:
+                    new_index = 0  # Reset to beginning of list
+
+            return app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app
+
+
 def _next_app_logic(
     db_conn: sqlite3.Connection,
     device_id: DeviceID,
@@ -189,56 +278,13 @@ def _next_app_logic(
         logger.warning("Maximum recursion depth exceeded, sending default image")
         return send_default_image(device)
 
-    if last_app_index is None:
-        last_app_index = db.get_last_app_index(db_conn, device_id)
-        if last_app_index is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    # Use helper function to get the app to display, advancing the index
+    app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
+        db_conn, device_id, last_app_index, advance_index=True
+    )
 
-    # if no apps return default image
-    if not device.apps:
+    if app is None:
         return send_default_image(device)
-
-    pinned_app_iname = device.pinned_app
-    is_pinned_app = False
-    is_night_mode_app = False
-    is_interstitial_app = False
-    if pinned_app_iname and pinned_app_iname in device.apps:
-        logger.debug(f"Using pinned app: {pinned_app_iname}")
-        app = device.apps[pinned_app_iname]
-        is_pinned_app = True
-        # For pinned apps, we don't update last_app_index since we're not cycling
-    else:
-        # Normal app selection logic
-        apps_list = sorted(
-            [app for app in device.apps.values()],
-            key=lambda x: x.order,
-        )
-        is_night_mode_app = False
-        if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
-            app = device.apps[device.night_mode_app]
-            is_night_mode_app = True
-        else:
-            # Create expanded apps list with interstitial apps inserted
-            expanded_apps_list = create_expanded_apps_list(device, apps_list)
-
-            # Use the expanded list for cycling
-            # last_app_index points to the previously displayed app
-            # We increment it to get the next app in the rotation
-            if last_app_index + 1 < len(expanded_apps_list):
-                app = expanded_apps_list[last_app_index + 1]
-                last_app_index += 1  # Now last_app_index points to the current app we're trying to display
-            else:
-                app = expanded_apps_list[0]
-                last_app_index = 0  # Reset to beginning of list
-
-            # Check if this is an interstitial app
-            if (
-                device.interstitial_enabled
-                and device.interstitial_app
-                and device.interstitial_app in device.apps
-                and app.iname == device.interstitial_app
-            ):
-                is_interstitial_app = True
 
     # For pinned apps, always display them regardless of enabled/schedule status
     # For interstitial apps, always display them regardless of enabled/schedule status
@@ -250,10 +296,9 @@ def _next_app_logic(
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
         # Current app is disabled or has inactive schedule - skip it
-        # last_app_index currently points to this disabled app
-        # Pass last_app_index + 1 to skip to the next app in the sequence
+        # Pass new_index + 1 to skip to the next app in the sequence
         return _next_app_logic(
-            db_conn, device_id, last_app_index + 1, recursion_depth + 1
+            db_conn, device_id, new_index + 1, recursion_depth + 1
         )
 
     if (
@@ -261,10 +306,9 @@ def _next_app_logic(
         or app.empty_last_render
     ):
         # App failed to render or had empty render - skip it
-        # last_app_index currently points to this failed app
-        # Pass last_app_index + 1 to skip to the next app in the sequence
+        # Pass new_index + 1 to skip to the next app in the sequence
         return _next_app_logic(
-            db_conn, device_id, last_app_index + 1, recursion_depth + 1
+            db_conn, device_id, new_index + 1, recursion_depth + 1
         )
 
     if app.pushed:
@@ -275,13 +319,12 @@ def _next_app_logic(
     if webp_path.exists() and webp_path.stat().st_size > 0:
         # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
-        db.save_last_app_index(db_conn, device_id, last_app_index)
+        db.save_last_app_index(db_conn, device_id, new_index)
         return response
 
     # WebP file doesn't exist or is empty - skip this app
-    # last_app_index currently points to this app with missing file
-    # Pass last_app_index + 1 to skip to the next app in the sequence
-    return _next_app_logic(db_conn, device_id, last_app_index + 1, recursion_depth + 1)
+    # Pass new_index + 1 to skip to the next app in the sequence
+    return _next_app_logic(db_conn, device_id, new_index + 1, recursion_depth + 1)
 
 
 @router.get("/", name="index")
@@ -1999,58 +2042,13 @@ def currentwebp(
         logger.debug("Brightness is 0, returning default image")
         return send_default_image(device)
 
-    # if no apps return default image
-    if not device.apps:
+    # Use helper function to get the app to display, without advancing the index
+    app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
+        db_conn, device_id, advance_index=False
+    )
+
+    if app is None:
         return send_default_image(device)
-
-    # Check for pinned app first - this short-circuits all other app selection logic
-    pinned_app_iname = device.pinned_app
-    is_pinned_app = False
-    is_night_mode_app = False
-    is_interstitial_app = False
-    if pinned_app_iname and pinned_app_iname in device.apps:
-        logger.debug(f"Using pinned app: {pinned_app_iname}")
-        app = device.apps[pinned_app_iname]
-        is_pinned_app = True
-        # For pinned apps, we don't update last_app_index since we're not cycling
-    else:
-        # Normal app selection logic
-        apps_list = sorted(
-            [app for app in device.apps.values()],
-            key=lambda x: x.order,
-        )
-        is_night_mode_app = False
-        if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
-            app = device.apps[device.night_mode_app]
-            is_night_mode_app = True
-        else:
-            # Create expanded apps list with interstitial apps inserted
-            expanded_apps_list = create_expanded_apps_list(device, apps_list)
-
-            # Get current app index (don't advance it for /currentapp)
-            current_app_index = db.get_last_app_index(db_conn, device_id) or 0
-
-            # Handle compatibility: if the index is too large for the expanded list,
-            # it might be from the old system (before interstitial apps)
-            if current_app_index >= len(expanded_apps_list):
-                # If interstitial is enabled, the old index might be valid for the original apps_list
-                if device.interstitial_enabled and current_app_index < len(apps_list):
-                    # Use the original apps_list for backward compatibility
-                    app = apps_list[current_app_index]
-                else:
-                    # Reset to 0 if index is completely invalid
-                    app = expanded_apps_list[0]
-            else:
-                app = expanded_apps_list[current_app_index]
-
-            # Check if this is an interstitial app
-            if (
-                device.interstitial_enabled
-                and device.interstitial_app
-                and device.interstitial_app in device.apps
-                and app.iname == device.interstitial_app
-            ):
-                is_interstitial_app = True
 
     # For pinned apps, always display them regardless of enabled/schedule status
     # For interstitial apps, always display them regardless of enabled/schedule status
