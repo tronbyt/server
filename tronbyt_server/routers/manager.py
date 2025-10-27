@@ -365,10 +365,23 @@ def _next_app_logic(
             # Check if the previous app would be skipped
             if prev_app.iname in device.apps:
                 prev_app_obj = device.apps[prev_app.iname]
+                # Check if previous app would be skipped due to enabled/schedule status
                 if not prev_app_obj.enabled or not db.get_is_app_schedule_active(
                     prev_app_obj, device
                 ):
                     # Previous app would be skipped - skip this interstitial too
+                    return _next_app_logic(
+                        db_conn, device_id, next_index, recursion_depth + 1
+                    )
+                # Check if previous app would be skipped due to empty output
+                # We need to actually try to render it to check
+                if not possibly_render(db_conn, user, device_id, prev_app_obj, logger):
+                    # Previous app failed to render - skip this interstitial too
+                    return _next_app_logic(
+                        db_conn, device_id, next_index, recursion_depth + 1
+                    )
+                if prev_app_obj.empty_last_render:
+                    # Previous app had empty render - skip this interstitial too
                     return _next_app_logic(
                         db_conn, device_id, next_index, recursion_depth + 1
                     )
