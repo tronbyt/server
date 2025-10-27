@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
 from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
+from tronbyt_server.routers.manager import parse_time_input
 from tronbyt_server.utils import push_new_image, render_app
 from tronbyt_server.models import App, Device, DeviceID, User
 
@@ -30,6 +31,16 @@ MAX_DOTS_DIMENSION = 256
 
 class DeviceUpdate(BaseModel):
     brightness: int | None = None
+    intervalSec: int | None = None
+    nightModeEnabled: bool | None = None
+    nightModeApp: str | None = None
+    nightModeBrightness: int | None = None
+    nightModeStartTime: str | None = None
+    nightModeEndTime: str | None = None
+    dimModeStartTime: str | None = None
+    dimModeBrightness: int | None = None
+    pinnedApp: str | None = None
+    # Legacy Tidbyt field
     autoDim: bool | None = None
 
 
@@ -40,6 +51,11 @@ class PushData(BaseModel):
 
 
 class PatchDeviceData(BaseModel):
+    enabled: bool | None = None
+    pinned: bool | None = None
+    renderIntervalMin: int | None = None
+    displayTimeSec: int | None = None
+    # Legacy fields
     set_enabled: bool | None = None
     set_pinned: bool | None = None
 
@@ -54,9 +70,39 @@ class PushAppData(BaseModel):
 def get_device_payload(device: Device) -> dict[str, Any]:
     return {
         "id": device.id,
+        "type": device.type,
         "displayName": device.name,
+        "notes": device.notes,
+        "intervalSec": device.default_interval,
         "brightness": db.get_device_brightness_8bit(device),
+        "nightMode": {
+            "enabled": device.night_mode_enabled,
+            "app": device.night_mode_app,
+            "startTime": device.night_start,
+            "endTime": device.night_end,
+            "brightness": device.night_brightness,
+        },
+        "dimMode": {
+            "startTime": device.dim_time,
+            "brightness": device.dim_brightness,
+        },
+        "pinnedApp": device.pinned_app,
+        # Legacy Tidbyt field
         "autoDim": device.night_mode_enabled,
+    }
+
+
+def get_app_payload(device: Device, app: App) -> dict[str, Any]:
+    return {
+        "id": app.iname,
+        "appID": app.name,
+        "enabled": app.enabled,
+        "pinned": device.pinned_app == app.iname,
+        "pushed": app.pushed,
+        "renderIntervalMin": app.uinterval,
+        "displayTimeSec": app.display_time,
+        "lastRenderAt": app.last_render,
+        "isInactive": app.empty_last_render,
     }
 
 
@@ -170,6 +216,52 @@ def update_device(
         device.brightness = data.brightness
     if data.autoDim is not None:
         device.night_mode_enabled = data.autoDim
+    if data.intervalSec is not None:
+        if data.intervalSec < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Interval must be greater than 0",
+            )
+        device.default_interval = data.intervalSec
+    if data.nightModeEnabled is not None:
+        device.night_mode_enabled = data.nightModeEnabled
+    if data.nightModeApp is not None:
+        if data.nightModeApp and data.nightModeApp not in device.apps:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Night mode app not found",
+            )
+        device.night_mode_app = data.nightModeApp
+    if data.nightModeBrightness is not None:
+        if not 0 <= data.nightModeBrightness <= 255:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Night mode brightness must be between 0 and 255",
+            )
+        device.night_brightness = data.nightModeBrightness
+    if data.nightModeStartTime is not None:
+        device.night_start = parse_time_input(data.nightModeStartTime)
+    if data.nightModeEndTime is not None:
+        device.night_end = parse_time_input(data.nightModeEndTime)
+    if data.dimModeStartTime is not None:
+        if data.dimModeStartTime == "":
+            device.dim_time = None
+        else:
+            device.dim_time = parse_time_input(data.dimModeStartTime)
+    if data.dimModeBrightness is not None:
+        if not 0 <= data.dimModeBrightness <= 255:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Dim brightness must be between 0 and 255",
+            )
+        device.dim_brightness = data.dimModeBrightness
+    if data.pinnedApp is not None:
+        if data.pinnedApp and data.pinnedApp not in device.apps:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pinned app not found",
+            )
+        device.pinned_app = data.pinnedApp
 
     user.devices[device_id] = device
     db.save_user(db_conn, user)
@@ -238,11 +330,30 @@ def list_installations(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     apps = device.apps
-    installations = [
-        {"id": installation_id, "appID": app_data.name}
-        for installation_id, app_data in apps.items()
-    ]
+    installations = [get_app_payload(device, app) for app in apps.values()]
     return JSONResponse(content={"installations": installations})
+
+
+@router.get("/devices/{device_id}/installations/{installation_id}")
+def get_installation(
+    device_id: DeviceID,
+    installation_id: str,
+    auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
+) -> dict[str, Any]:
+    _, device = auth
+    if not device or device.id != device_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
+
+    installation_id = secure_filename(installation_id)
+    apps = device.apps
+    app = apps.get(installation_id)
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Installation not found"
+        )
+    return get_app_payload(device, app)
 
 
 @router.patch("/devices/{device_id}/installations/{installation_id}")
@@ -269,40 +380,48 @@ def handle_patch_device_app(
             status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
         )
 
-    # Handle the set_enabled command
-    if data.set_enabled is not None:
-        if data.set_enabled:
-            app.enabled = True
+    if data.set_enabled is not None and data.enabled is None:
+        data.enabled = data.set_enabled
+    if data.set_pinned is not None and data.pinned is None:
+        data.pinned = data.set_pinned
+
+    # Handle the enabled command
+    if data.enabled is not None:
+        app.enabled = data.enabled
+        if app.enabled:
             app.last_render = 0
-            if db.save_app(db_conn, device_id, app):
-                return Response("App Enabled.", status_code=status.HTTP_200_OK)
         else:
-            app.enabled = False
             webp_path = db.get_device_webp_dir(device.id)
             file_path = webp_path / f"{app.name}-{installation_id}.webp"
             if file_path.is_file():
                 file_path.unlink()
-            if db.save_app(db_conn, device_id, app):
-                return Response("App disabled.", status_code=status.HTTP_200_OK)
 
-    if data.set_pinned is not None:
-        if data.set_pinned:
+    if data.pinned is not None:
+        if data.pinned:
             device.pinned_app = installation_id
-            message = "App pinned."
         elif device.pinned_app == installation_id:
             device.pinned_app = None
-            message = "App unpinned."
-        else:
-            return Response("App is not pinned.", status_code=status.HTTP_200_OK)
 
-        user.devices[device_id] = device
-        if db.save_user(db_conn, user):
-            return Response(message, status_code=status.HTTP_200_OK)
+    if data.renderIntervalMin is not None:
+        if data.renderIntervalMin < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Render interval must be greater than or equal to 0",
+            )
+        app.uinterval = data.renderIntervalMin
 
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail="Couldn't complete the operation",
-    )
+    if data.displayTimeSec is not None:
+        if data.displayTimeSec < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Display time must be greater than or equal to 0",
+            )
+        app.display_time = data.displayTimeSec
+
+    device.apps[app.iname] = app
+    user.devices[device_id] = device
+    db.save_user(db_conn, user)
+    return JSONResponse(content=get_app_payload(device, app))
 
 
 @router.delete("/devices/{device_id}/installations/{installation_id}")
