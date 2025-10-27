@@ -39,7 +39,7 @@ jobs:
       - name: Build
         run: pdm build
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
           path: dist
@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Fetch Release Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v5
         with:
           path: dist
           pattern: release-artifacts
