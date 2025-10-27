@@ -5,7 +5,7 @@ import json
 import logging
 import sqlite3
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, WebSocket, status, Response
 from fastapi.responses import FileResponse
@@ -167,7 +167,7 @@ async def _wait_for_acknowledgment(
     dwell_time: int,
     db_conn: sqlite3.Connection,
     loop: asyncio.AbstractEventLoop,
-    waiter,
+    waiter: Any,  # Waiter (using Any to avoid mypy issues with abstract base class)
     websocket: WebSocket,
     last_brightness: int,
 ) -> tuple[Response, int]:
@@ -190,7 +190,9 @@ async def _wait_for_acknowledgment(
 
     while time_waited < extended_timeout:
         # Create a task to wait on the sync manager waiter (for cross-thread/worker notifications)
-        waiter_task = loop.run_in_executor(None, waiter.wait, poll_interval)
+        waiter_task = asyncio.ensure_future(
+            loop.run_in_executor(None, waiter.wait, poll_interval)
+        )
 
         # Create a task to wait on the displaying event (for device acknowledgments)
         display_task = asyncio.create_task(ack.displaying_event.wait())
