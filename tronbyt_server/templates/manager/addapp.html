@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/addapp-simple.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/addapp-simple.css') }}">
 <h1>{% block title %}{{ _('Add App') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
@@ -61,7 +61,7 @@
   // Optimized sorting function
   function sortItems(items, sortTypeParam = null) {
     const currentSortType = sortTypeParam || sortType;
-    
+
     // Parse date function for newest sort
     const parseDate = (dateStr) => {
       if (!dateStr) return new Date(0);
@@ -75,7 +75,7 @@
       }
       return new Date(dateStr);
     };
-    
+
     // Create a copy to avoid mutating the original array
     const itemsCopy = [...items];
     const sortedItems = itemsCopy.sort((a, b) => {
@@ -104,8 +104,8 @@
           return nameA.localeCompare(nameB);
       }
     });
-    
-    
+
+
     return sortedItems;
   }
 
@@ -121,18 +121,18 @@
   // Robust filtering system that handles all combinations
   function applyFilters() {
     if (isInitialLoad || isProcessing) return;
-    
+
     isProcessing = true;
-    
+
     // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
     requestAnimationFrame(() => {
       try {
         const grids = document.querySelectorAll('.app-grid');
-        
+
         grids.forEach(grid => {
           if (!grid) return;
           const searchId = grid.id.replace('_app_grid', '_search');
-          
+
           // Get current filter values
           const searchInput = document.getElementById(searchId);
           const currentSearchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -142,7 +142,7 @@
 
           // Get all app items from the grid
           const allItems = Array.from(grid.getElementsByClassName('app-item'));
-          
+
           // Filter items based on all criteria
           const filteredItems = allItems.filter(item => {
             const isInstalled = item.getAttribute('data-installed') === 'true';
@@ -154,7 +154,7 @@
             if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
               return false;
             }
-            
+
             // Apply hide filters
             if (currentHideInstalled && isInstalled) return false;
             if (currentHideBroken && isBroken) return false;
@@ -169,13 +169,13 @@
           requestAnimationFrame(() => {
             // Batch DOM operations for better performance
             const fragment = document.createDocumentFragment();
-            
+
             // Add sorted items to fragment
             sortedItems.forEach((item, index) => {
               fragment.appendChild(item);
               item.style.display = 'block';
             });
-            
+
             // Append all at once to reduce reflows
             grid.appendChild(fragment);
 
@@ -202,10 +202,10 @@
   // Update virtual scrolling based on current state
   function updateVirtualScrolling(grid, sortedItems, hasSearchFilter) {
     if (!grid._virtualScrolling) return;
-    
+
     const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
     const shouldUseVirtualScrolling = sortedItems.length > ITEMS_PER_PAGE && !hasSearchFilter;
-    
+
     if (shouldUseVirtualScrolling) {
       // Hide items beyond the first page
       sortedItems.forEach((item, index) => {
@@ -213,7 +213,7 @@
           item.style.display = 'none';
         }
       });
-      
+
       // Update virtual scrolling state
       grid._virtualScrolling.visibleEnd = Math.min(ITEMS_PER_PAGE, sortedItems.length);
       grid._virtualScrolling.isLoading = false;
@@ -248,6 +248,14 @@
           if (img.dataset.src) {
             img.src = img.dataset.src;
             img.removeAttribute('data-src');
+            // Add loaded class when image loads
+            img.onload = function() {
+              img.classList.add('loaded');
+            };
+            // Also add loaded class immediately for cached images
+            if (img.complete) {
+              img.classList.add('loaded');
+            }
             observer.unobserve(img);
           } else {
             console.warn('Image source is empty or undefined.');
@@ -268,16 +276,16 @@
   function setupVirtualScrolling() {
     const grids = document.querySelectorAll('.app-grid');
     const ITEMS_PER_PAGE = 50; // Load 50 items at a time
-    
+
     grids.forEach(grid => {
       if (!grid) return;
       const items = Array.from(grid.getElementsByClassName('app-item'));
       if (!items || items.length <= ITEMS_PER_PAGE) return; // Skip if list is small
-      
+
       let visibleStart = 0;
       let visibleEnd = ITEMS_PER_PAGE;
       let isLoading = false;
-      
+
       // Store reference to this grid's virtual scrolling state
       grid._virtualScrolling = {
         visibleStart,
@@ -286,13 +294,13 @@
         items,
         ITEMS_PER_PAGE
       };
-      
+
       // Initially hide items beyond the first page only for system sort and large lists
       if (items && items.length > ITEMS_PER_PAGE) {
         // Check if we should apply virtual scrolling initially
-        const shouldApplyVirtualScrolling = sortType === 'system' || 
+        const shouldApplyVirtualScrolling = sortType === 'system' ||
           (document.getElementById('system_search') && !document.getElementById('system_search').value.trim());
-        
+
         if (shouldApplyVirtualScrolling) {
           items.forEach((item, index) => {
             if (!item) return;
@@ -302,15 +310,15 @@
           });
         }
       }
-      
+
       // Function to load more items
       function loadMoreItems() {
         if (isLoading || visibleEnd >= items.length) return;
-        
+
         isLoading = true;
         const nextStart = visibleEnd;
         const nextEnd = Math.min(visibleEnd + ITEMS_PER_PAGE, items.length);
-        
+
         // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
         requestAnimationFrame(() => {
           for (let i = nextStart; i < nextEnd; i++) {
@@ -320,30 +328,30 @@
           }
           visibleEnd = nextEnd;
           isLoading = false;
-          
+
           // Update the stored state
           grid._virtualScrolling.visibleEnd = visibleEnd;
           grid._virtualScrolling.isLoading = isLoading;
-          
+
           // Re-observe the new last item
           updateObserver();
         });
       }
-      
+
       // Function to load more items from filtered results
       function loadMoreFilteredItems() {
         if (!grid._virtualScrolling || grid._virtualScrolling.isLoading) return;
-        
+
         const filteredItems = grid._virtualScrolling.items;
         const currentVisibleEnd = grid._virtualScrolling.visibleEnd;
         const ITEMS_PER_PAGE = grid._virtualScrolling.ITEMS_PER_PAGE;
-        
+
         if (currentVisibleEnd >= filteredItems.length) return;
-        
+
         grid._virtualScrolling.isLoading = true;
         const nextStart = currentVisibleEnd;
         const nextEnd = Math.min(currentVisibleEnd + ITEMS_PER_PAGE, filteredItems.length);
-        
+
         // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
         requestAnimationFrame(() => {
           for (let i = nextStart; i < nextEnd; i++) {
@@ -353,30 +361,30 @@
           }
           grid._virtualScrolling.visibleEnd = nextEnd;
           grid._virtualScrolling.isLoading = false;
-          
+
           // Re-observe the new last item
           updateObserver();
         });
       }
-      
+
       // Function to update the observer
       function updateObserver() {
         if (visibleEnd >= items.length) {
           paginationObserver.disconnect();
           return;
         }
-        
+
         // Observe the last few visible items to ensure we catch scroll events
         const observeStart = Math.max(0, visibleEnd - 3);
         const observeEnd = Math.min(visibleEnd, items.length);
-        
+
         for (let i = observeStart; i < observeEnd; i++) {
           if (items[i] && items[i].style.display !== 'none') {
             paginationObserver.observe(items[i]);
           }
         }
       }
-      
+
       // Set up intersection observer for pagination
       const paginationObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -392,7 +400,7 @@
       }, {
         rootMargin: '200px 0px' // Increased margin to trigger earlier
       });
-      
+
       // Also observe the grid container for scroll events
       const gridObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -400,7 +408,7 @@
             // Check if we're near the bottom and need to load more
             const rect = entry.boundingClientRect;
             const viewportHeight = window.innerHeight;
-            
+
             // If the grid is visible and we're near the bottom, load more
             if (rect.bottom < viewportHeight + 300) {
               // Check if we have filtered items (filters are active)
@@ -415,11 +423,11 @@
       }, {
         rootMargin: '300px 0px'
       });
-      
+
       // Initial setup
       updateObserver();
       gridObserver.observe(grid);
-      
+
       // Also listen for scroll events as a fallback
       let scrollTimeout;
       window.addEventListener('scroll', () => {
@@ -427,7 +435,7 @@
         scrollTimeout = setTimeout(() => {
           const rect = grid.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
-          
+
           // If grid is visible and we're near the bottom, load more
           if (rect.top < viewportHeight && rect.bottom > 0 && rect.bottom < viewportHeight + 500) {
             // Check if we have filtered items (filters are active)
@@ -442,7 +450,7 @@
     });
   }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('manager.uploadapp', device_id=device['id']) }}">{{
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}">{{
   _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
@@ -462,7 +470,7 @@
       <div class="filter-sort-controls-inner">
 
         <input type="search" id="{{ search_id }}" placeholder="{{ _('Search apps') }}"
-          onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')" 
+          onkeyup="searchApps('{{ search_id }}', '{{ grid_id }}')"
           oninput="searchApps('{{ search_id }}', '{{ grid_id }}')" />
 
         <label class="control-label">
@@ -497,23 +505,23 @@
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
-        
+
         <!-- Skeleton loader for images -->
         <div class="app-img">
           <div class="skeleton-loader"></div>
           {% if 'preview' in app %}
-          <img data-src="{{ url_for('manager.app_preview', filename=app['preview']) }}" 
-               alt="{{ app['name'] }}" 
+          <img data-src="{{ url_for('app_preview', filename=app['preview']) }}"
+               alt="{{ app['name'] }}"
                class="lazy-image"
                {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
           {% else %}
-          <img data-src="{{ url_for('static', filename='images/not_found.jpg') }}" 
-               alt="{{ app['name'] }}" 
+          <img data-src="{{ url_for('static', path='images/not_found.jpg') }}"
+               alt="{{ app['name'] }}"
                class="lazy-image"
                {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
           {% endif %}
         </div>
-        
+
         <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ app['name'] }} - {{ app['summary'] }}</p>
         {% if 'author' in app %}
         <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app['author'] }}</p>
@@ -525,7 +533,7 @@
         </div>
         {% endif %}
         {% if is_custom_apps %}
-        <a href="{{ url_for('manager.deleteupload', filename=app['path'].split('/')[-1], device_id=device['id']) }}"
+        <a href="{{ url_for('deleteupload', filename=app['path'].split('/')[-1], device_id=device.id) }}"
            class="delete-upload-btn"
            onclick="event.stopPropagation(); return confirm('{{ _('Delete this uploaded app?') }}');">
           🗑️ {{ _('Delete') }}
@@ -573,13 +581,13 @@
     setTimeout(() => {
       document.body.classList.add('content-loaded');
       isInitialLoad = false;
-      
+
       // Initialize virtual scrolling first
       setupVirtualScrolling();
-      
+
       // Initialize lazy loading
       setupLazyLoading();
-      
+
       // Apply initial filters and sorting based on current state
       applyFilters();
     }, 100);
@@ -596,11 +604,11 @@
 
       // Remove selection from all items
       document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
-      
+
       // Add selection to clicked item
       appItem.classList.add('selected');
       document.getElementById('selected_app').value = appItem.getAttribute('data-value');
-      
+
       // Open the form submission in a new tab
       const form = document.getElementById('main_form');
       form.target = '_blank';
@@ -642,7 +650,7 @@
       return;
     }
 
-    fetch("{{ url_for('manager.mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+    fetch("{{ url_for('mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
       method: 'POST'
     })
     .then(response => response.json())
@@ -670,7 +678,7 @@
       return;
     }
 
-    fetch("{{ url_for('manager.unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+    fetch("{{ url_for('unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
       method: 'POST'
     })
     .then(response => response.json())

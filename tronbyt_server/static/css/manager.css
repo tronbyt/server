@@ -301,9 +301,8 @@ button.action.w3-button.w3-red {
 
 .app-preview .app-img {
   margin-bottom: 8px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: inline-block;
+  position: relative;
 }
 
 .app-preview .app-img img {
@@ -312,6 +311,35 @@ button.action.w3-button.w3-red {
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   object-fit: cover;
+  display: block;
+}
+
+.inactive-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 130px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+.inactive-badge-overlay {
+  background-color: #6b7280;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .inactive-badge-overlay {
+  background-color: #9ca3af;
+  color: #0f172a;
 }
 
 .app-render-info {
@@ -376,6 +404,11 @@ button.action.w3-button.w3-red {
   color: white;
 }
 
+.status-badge.inactive {
+  background-color: #f97316;
+  color: white;
+}
+
 /* Dark mode status badges */
 [data-theme="dark"] .status-badge.pinned {
   background-color: #fbbf24;
@@ -389,6 +422,11 @@ button.action.w3-button.w3-red {
 
 [data-theme="dark"] .status-badge.disabled {
   background-color: #9ca3af;
+  color: #0f172a;
+}
+
+[data-theme="dark"] .status-badge.inactive {
+  background-color: #fb923c;
   color: #0f172a;
 }
 
@@ -740,6 +778,16 @@ button.action.w3-button {
   object-fit: cover;
 }
 
+.apps-grid-view .inactive-overlay {
+  width: 180px;
+  height: 90px;
+}
+
+.apps-grid-view .inactive-badge-overlay {
+  font-size: 0.8em;
+  padding: 4px 8px;
+}
+
 .apps-grid-view .app-info {
   flex: 1;
   order: 2;
@@ -761,6 +809,13 @@ button.action.w3-button {
   line-height: 1.2;
   margin: 0;
   word-break: break-word;
+}
+
+.apps-grid-view .app-status {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 
 .apps-grid-view .app-details {
@@ -820,20 +875,30 @@ button.action.w3-button {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
   }
-  
+
   .apps-grid-view .app-card {
     min-height: 240px;
   }
-  
+
   .apps-grid-view .app-preview .app-img img {
     width: 140px;
     height: 70px;
   }
-  
+
+  .apps-grid-view .inactive-overlay {
+    width: 140px;
+    height: 70px;
+  }
+
+  .apps-grid-view .inactive-badge-overlay {
+    font-size: 0.7em;
+    padding: 3px 6px;
+  }
+
   .apps-grid-view .app-header h3 {
     font-size: 0.9em;
   }
-  
+
   .apps-grid-view .app-actions .w3-button,
   .apps-grid-view .app-actions .action.w3-button,
   .apps-grid-view a.action.w3-button,
@@ -855,25 +920,35 @@ button.action.w3-button {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 8px;
   }
-  
+
   .apps-grid-view .app-card {
     min-height: 200px;
   }
-  
+
   .apps-grid-view .app-preview .app-img img {
     width: 100px;
     height: 50px;
   }
-  
+
+  .apps-grid-view .inactive-overlay {
+    width: 100px;
+    height: 50px;
+  }
+
+  .apps-grid-view .inactive-badge-overlay {
+    font-size: 0.6em;
+    padding: 2px 4px;
+  }
+
   .apps-grid-view .app-header h3 {
     font-size: 0.8em;
   }
-  
+
   .apps-grid-view .app-details p {
     font-size: 0.7em;
     margin: 2px 0;
   }
-  
+
   .apps-grid-view .app-actions .w3-button,
   .apps-grid-view .app-actions .action.w3-button,
   .apps-grid-view a.action.w3-button,
@@ -908,7 +983,7 @@ button.action.w3-button {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .view-toggle-container {
     order: 1;
     display: flex;
@@ -916,14 +991,14 @@ button.action.w3-button {
     justify-content: center;
     gap: 4px;
   }
-  
+
   .instruction-text {
     order: 2;
     font-size: 0.8em;
     margin-top: 4px;
     text-align: center;
   }
-  
+
   .view-toggle-btn {
     padding: 6px 12px !important;
     min-width: 70px !important;
@@ -945,6 +1020,16 @@ button.action.w3-button {
   .app-preview .app-img img {
     width: 200px;
     height: 100px;
+  }
+
+  .inactive-overlay {
+    width: 200px;
+    height: 100px;
+  }
+
+  .inactive-badge-overlay {
+    font-size: 0.8em;
+    padding: 4px 8px;
   }
 
   .app-info {

@@ -2,7 +2,7 @@
 {% block header %}
 {% endblock %}
 {% block content %}
-{% if g.user['username'] == "admin" %}
+{% if user.username == "admin" %}
 <h1>{{ _('System Administration') }}</h1>
 
 <h2>{{ _('System Apps Repository') }}</h2>
@@ -22,7 +22,7 @@
                     {{ _('Branch') }}: {{ system_repo_info.branch }}
                 </div>
                 <div style="color: #888; font-size: 0.9em;">
-                    {{ _('Commit') }}: 
+                    {{ _('Commit') }}:
                     <a href="{{ system_repo_info.commit_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
                         {{ system_repo_info.commit_hash[:8] }}
                     </a>
@@ -32,20 +32,20 @@
             <div style="margin-top: 8px; color: #888;">{{ _('No system repository configured.') }}</div>
             {% endif %}
         </div>
-        <form method="post" action="{{ url_for('manager.refresh_system_repo') }}" style="margin-left: 15px;">
+        <form method="post" action="{{ url_for('refresh_system_repo') }}" style="margin-left: 15px;">
             <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh system apps repository?') }}');">
                 🔄 {{ _('Refresh') }}
             </button>
         </form>
     </div>
-    
+
     <div style="border-top: 1px solid #333; padding-top: 15px;">
         <strong>{{ _('Change Repository') }}</strong>
-        <form method="post" action="{{ url_for('manager.set_system_repo') }}" style="margin-top: 10px;">
+        <form method="post" action="{{ url_for('set_system_repo') }}" style="margin-top: 10px;">
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label for="app_repo_url" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Repository URL') }}</label>
-                    <input name="app_repo_url" id="app_repo_url" required value="{{ user['system_repo_url'] }}" style="width: 100%; padding: 8px;">
+                    <input name="app_repo_url" id="app_repo_url" required value="{{ user.system_repo_url }}" style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
                     {{ _('Save') }}
@@ -75,13 +75,13 @@
             <div style="margin-top: 8px; color: #888;">{{ _('No firmware version information available') }}</div>
             {% endif %}
         </div>
-        <form method="post" action="{{ url_for('manager.update_firmware') }}" style="margin-left: 15px;" onsubmit="this.querySelector('button').innerHTML='{{ _('Updating...') }}'; this.querySelector('button').disabled=true;">
+        <form method="post" action="{{ url_for('update_firmware') }}" style="margin-left: 15px;" onsubmit="this.querySelector('button').innerHTML='{{ _('Updating...') }}'; this.querySelector('button').disabled=true;">
             <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Check for firmware updates and download if available?') }}');">
                 {% if firmware_version %}{{ _('Update') }}{% else %}{{ _('Download') }}{% endif %}
             </button>
         </form>
     </div>
-    
+
     <div style="border-top: 1px solid #333; padding-top: 15px;">
         <p style="color: #888; font-size: 0.8em; margin: 0;">
             ℹ️ {{ _('Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.') }}
@@ -97,11 +97,11 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
         <div style="flex: 1;">
             <strong>{{ _('Current Repository') }}</strong>
-            {% if user['app_repo_url'] %}
+            {% if user.app_repo_url %}
             <div style="margin-top: 8px;">
                 <div style="margin-bottom: 5px;">
-                    <a href="{{ user['app_repo_url'] }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
-                        {{ user['app_repo_url'] }}
+                    <a href="{{ user.app_repo_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
+                        {{ user.app_repo_url }}
                     </a>
                 </div>
                 <div style="color: #888; font-size: 0.9em;">
@@ -112,14 +112,14 @@
             <div style="margin-top: 8px; color: #888;">{{ _('No custom repository configured.') }}</div>
             {% endif %}
         </div>
-        {% if user['app_repo_url'] %}
+        {% if user.app_repo_url %}
         <div style="margin-left: 15px; display: flex; gap: 8px;">
-            <form method="post" action="{{ url_for('manager.refresh_user_repo') }}">
+            <form method="post" action="{{ url_for('refresh_user_repo') }}">
                 <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh custom apps repository?') }}');">
                     🔄 {{ _('Refresh') }}
                 </button>
             </form>
-            <form method="post" action="{{ url_for('manager.set_user_repo') }}" onsubmit="return confirm('{{ _('Remove custom repository? This will delete the repo and break any apps using it.') }}');">
+            <form method="post" action="{{ url_for('set_user_repo') }}" onsubmit="return confirm('{{ _('Remove custom repository? This will delete the repo and break any apps using it.') }}');">
                 <input type="hidden" name="app_repo_url" value="">
                 <button type="submit" class="w3-button w3-red" style="padding: 8px 16px; font-size: 14px;">
                     🗑️ {{ _('Remove') }}
@@ -128,14 +128,14 @@
         </div>
         {% endif %}
     </div>
-    
+
     <div style="border-top: 1px solid #333; padding-top: 15px;">
         <strong>{{ _('Change Repository') }}</strong>
-        <form method="post" action="{{ url_for('manager.set_user_repo') }}" style="margin-top: 10px;">
+        <form method="post" action="{{ url_for('set_user_repo') }}" style="margin-top: 10px;">
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label for="app_repo_url" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Repository URL') }}</label>
-                    <input name="app_repo_url" id="app_repo_url" required value="{{ user['app_repo_url'] }}" style="width: 100%; padding: 8px;">
+                    <input name="app_repo_url" id="app_repo_url" required value="{{ user.app_repo_url }}" style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
                     {{ _('Save') }}
@@ -167,24 +167,22 @@
             </div>
         </form>
     </div>
-    
+
     <div style="border-top: 1px solid #333; padding-top: 15px;">
-        <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <form method="post" action="{{ url_for('set_api_key') }}" style="display: flex; gap: 10px; align-items: flex-end;">
             <div style="flex: 1;">
                 <label for="api_key" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('User API Key') }}</label>
-                <input type="text" name="api_key" id="api_key" required value="{{ user.get('api_key', '') }}" style="width: 100%; padding: 8px;">
+                <input type="text" name="api_key" id="api_key" required value="{{ user.api_key or '' }}" style="width: 100%; padding: 8px;">
             </div>
-            <form method="post" action="{{ url_for('manager.set_api_key') }}" style="display: inline;">
-                <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Update API key?') }}');">
-                    {{ _('Save') }}
-                </button>
-            </form>
-            <form method="post" action="{{ url_for('manager.generate_api_key') }}" style="display: inline; margin-left: 5px;">
-                <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Generate a new API key? This will replace your current API key.') }}');">
-                    🔄 {{ _('Generate New') }}
-                </button>
-            </form>
-        </div>
+            <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Update API key?') }}');">
+                {{ _('Save') }}
+            </button>
+        </form>
+        <form method="post" action="{{ url_for('generate_api_key') }}" style="margin-top: 10px;">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Generate a new API key? This will replace your current API key.') }}');">
+                🔄 {{ _('Generate New') }}
+            </button>
+        </form>
     </div>
 </div>
 
@@ -192,7 +190,7 @@
 
 <div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
     <p style="color: #888; font-size: 0.9em; margin-bottom: 20px;">{{ _('Use the export and import features to backup your user account or to move your devices to a new server. The export function creates a JSON file with all your settings, devices, and apps. You can then import this file on another server to restore your configuration. Note that your password is not included in the export for security reasons, so you will need to remember your password when importing to a new server.') }}</p>
-    
+
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
         <div style="flex: 1;">
             <strong>{{ _('Export Configuration') }}</strong>
@@ -200,17 +198,17 @@
                 {{ _('Download your entire user configuration as a JSON file.') }}
             </div>
         </div>
-        <a href="{{ url_for('manager.export_user_config') }}" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px; margin-left: 15px;">
+        <a href="{{ url_for('export_user_config') }}" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px; margin-left: 15px;">
             📥 {{ _('Export') }}
         </a>
     </div>
-    
+
     <div style="border-top: 1px solid #333; padding-top: 15px;">
         <strong>{{ _('Import Configuration') }}</strong>
         <div style="margin-top: 8px; color: #888; font-size: 0.9em; margin-bottom: 10px;">
             {{ _('Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password.') }}
         </div>
-        <form method="post" action="{{ url_for('manager.import_user_config') }}" enctype="multipart/form-data">
+        <form method="post" action="{{ url_for('import_user_config') }}" enctype="multipart/form-data">
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <div style="flex: 1;">
                     <label for="file" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ _('Select JSON File') }}</label>

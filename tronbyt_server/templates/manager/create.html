@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/update-simple.css') }}">
-<script src="{{ url_for('static', filename='js/location.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', path='css/update-simple.css') }}">
+<script src="{{ url_for('static', path='js/location.js') }}"></script>
 <div class="header-container">
   <h1 class="page-title">{% block title %}{{ _('New Tronbyt Device') }}{% endblock %}</h1>
 </div>
@@ -24,7 +24,7 @@
 <form method="post" id="create-device-form">
   <div class="device-settings-section">
     <h2>{{ _('Basic Information') }}</h2>
-    
+
     <div class="device-settings-row">
       <div>
         <label for="name" class="device-settings-label">{{ _('Name') }}</label>
@@ -48,7 +48,7 @@
 
   <div class="device-settings-section">
     <h2>{{ _('Connection URLs') }}</h2>
-    
+
     <div class="device-settings-row">
       <div>
         <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
@@ -65,7 +65,7 @@
 
   <div class="device-settings-section">
     <h2>{{ _('Display Settings') }}</h2>
-    
+
     <table class="device-settings-table">
       <tr>
         <td>
@@ -89,7 +89,7 @@
 
   <div class="device-settings-section">
     <h2>{{ _('Location & Notes') }}</h2>
-    
+
     <div class="device-settings-row">
       <div>
         <label for="location_search" class="device-settings-label">{{ _('Location') }}</label>
@@ -108,11 +108,12 @@
   <input type="hidden" name="api_key" id="api_key">
 
   <div class="device-settings-section">
-    <div class="config-management-container">
-      <input type="submit" class="w3-button w3-green config-management-btn" value="{{ _('Save') }}">
-      <a href="{{ url_for('manager.import_device') }}" class="w3-button w3-orange config-management-btn">
+    <div class="config-management-container" style="display:flex;align-items:center;gap:8px;">
+      <button type="submit" class="w3-button w3-green config-management-btn">{{ _('Save') }}</button>
+      <button type="button" class="w3-button w3-orange config-management-btn"
+              onclick="window.location.href='{{ url_for('import_device') }}';">
         {{ _('Import Configuration') }}
-      </a>
+      </button>
     </div>
   </div>
 </form>

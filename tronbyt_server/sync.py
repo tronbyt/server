@@ -1,12 +1,12 @@
 """Synchronization primitives for Tronbyt Server."""
 
+import logging
 import os
 from abc import ABC, abstractmethod
 from multiprocessing import Manager
-from typing import Any, cast, Dict, Optional
+from typing import Any, cast
 
 import redis
-from flask import current_app
 from threading import Lock
 
 # Type alias for multiprocessing.Condition, which is not a class
@@ -42,6 +42,11 @@ class SyncManager(ABC):
         """Notify waiters for a given device ID."""
         raise NotImplementedError
 
+    @abstractmethod
+    def shutdown(self) -> None:
+        """Shut down the sync manager."""
+        raise NotImplementedError
+
 
 class MultiprocessingWaiter(Waiter):
     """A waiter that uses multiprocessing primitives."""
@@ -59,7 +64,8 @@ class MultiprocessingWaiter(Waiter):
     def wait(self, timeout: int) -> None:
         """Wait for a notification."""
         with self._condition:
-            self._condition.wait(timeout=timeout)
+            if not self._manager._shutdown_event.is_set():
+                self._condition.wait(timeout=timeout)
 
     def close(self) -> None:
         """Clean up the waiter."""
@@ -71,12 +77,13 @@ class MultiprocessingSyncManager(SyncManager):
 
     def __init__(self) -> None:
         manager = Manager()
-        self._conditions: Dict[str, "ConditionType"] = cast(
-            Dict[str, "ConditionType"], manager.dict()
+        self._conditions: dict[str, "ConditionType"] = cast(
+            dict[str, "ConditionType"], manager.dict()
         )
-        self._waiter_counts: Dict[str, int] = cast(Dict[str, int], manager.dict())
+        self._waiter_counts: dict[str, int] = cast(dict[str, int], manager.dict())
         self._lock = manager.Lock()
         self._manager = manager
+        self._shutdown_event = manager.Event()
 
     def _release_condition(self, device_id: str) -> None:
         """Decrement waiter count and clean up condition if no waiters are left."""
@@ -99,7 +106,7 @@ class MultiprocessingSyncManager(SyncManager):
 
     def notify(self, device_id: str) -> None:
         """Notify waiters for a given device ID."""
-        condition: Optional["ConditionType"] = None
+        condition: "ConditionType" | None = None
         with self._lock:
             if device_id in self._conditions:
                 condition = self._conditions[device_id]
@@ -107,6 +114,14 @@ class MultiprocessingSyncManager(SyncManager):
         if condition:
             with condition:
                 condition.notify_all()
+
+    def shutdown(self) -> None:
+        """Shut down the sync manager."""
+        self._shutdown_event.set()
+        with self._lock:
+            for condition in self._conditions.values():
+                with condition:
+                    condition.notify_all()
 
 
 class RedisWaiter(Waiter):
@@ -152,12 +167,16 @@ class RedisSyncManager(SyncManager):
         """Notify waiters for a given device ID."""
         self._redis.publish(device_id, NOTIFY_MESSAGE)
 
+    def shutdown(self) -> None:
+        """Shut down the sync manager."""
+        self._redis.close()
 
-_sync_manager: Optional[SyncManager] = None
+
+_sync_manager: SyncManager | None = None
 _sync_manager_lock = Lock()
 
 
-def get_sync_manager() -> SyncManager:
+def get_sync_manager(logger: logging.Logger) -> SyncManager:
     """Get the synchronization manager for the application."""
     global _sync_manager
     if _sync_manager is None:
@@ -165,10 +184,10 @@ def get_sync_manager() -> SyncManager:
             if _sync_manager is None:  # Double-checked locking
                 redis_url = os.getenv("REDIS_URL")
                 if redis_url:
-                    current_app.logger.info("Using Redis for synchronization")
+                    logger.info("Using Redis for synchronization")
                     _sync_manager = RedisSyncManager(redis_url)
                 else:
-                    current_app.logger.info("Using multiprocessing for synchronization")
+                    logger.info("Using multiprocessing for synchronization")
                     _sync_manager = MultiprocessingSyncManager()
     assert _sync_manager is not None
     return _sync_manager

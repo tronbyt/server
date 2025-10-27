@@ -1,10 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 
+# Run startup tasks that should only be executed once
+python3 -c 'from tronbyt_server.startup import run_once; run_once()'
+
+# Set uvicorn log level based on LOG_LEVEL env var (default to info)
+UVICORN_LOG_LEVEL="${LOG_LEVEL:-info}"
+UVICORN_LOG_LEVEL=$(echo "$UVICORN_LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
+
 if [ "${PRODUCTION:-1}" = "1" ]; then
     # PRODUCTION
-    exec python3 -m gunicorn --config gunicorn.conf.py "tronbyt_server:create_app()"
+    # --forwarded-allow-ips='*': Trust X-Forwarded-* headers from any proxy (use specific IPs for better security)
+    exec uvicorn --host=0.0.0.0 --port=8000 --workers="${WEB_CONCURRENCY:-2}" --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app
 else
     # DEVELOPMENT
-    FLASK_APP=tronbyt_server FLASK_DEBUG=1 exec flask run --host=0.0.0.0 --port=8000
+    exec uvicorn --host=0.0.0.0 --port=8000 --reload --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app
 fi

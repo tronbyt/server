@@ -9,9 +9,9 @@
   'other': 'Other'
 } %}
 {% block header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/firmware-simple.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/firmware-simple.css') }}">
 <div class="header-container">
-  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device['name'] }} - {{ device_type_names.get(device['type'], device['type']) }}{% endblock %}</h1>
+  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device.name }} - {{ device_type_names.get(device.type, device.type) }}{% endblock %}</h1>
 </div>
 {% endblock %}
 {% block content %}
@@ -20,9 +20,9 @@
     <div>
         <strong>{{ _('Firmware Image Version') }}:</strong> {{ firmware_version }}
     </div>
-    {% if g.user.username == 'admin' %}
+    {% if user.username == 'admin' %}
     <div>
-        <a href="{{ url_for('auth.edit') }}#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
+        <a href="{{ url_for('edit') }}#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
             {{ _('Manage Firmware') }}
         </a>
     </div>
@@ -33,7 +33,7 @@
 <form method="post" id="firmware-form">
   <div class="device-settings-section">
     <h2>{{ _('Firmware Generation') }}</h2>
-    
+
     <div class="device-settings-section-divider">
       <h3>{{ _('Download ESP Flasher') }}</h3>
       <p>{{ _('Download ESP Flasher here') }} <a href="https://github.com/Jason2866/ESP_Flasher/releases" target="_blank">ESP Flasher</a></p>
@@ -46,11 +46,11 @@
       </i></p>
     </div>
 
-    <input type="hidden" name="id" id="id" value="{{ device['id'] }}">
+    <input type="hidden" name="id" id="id" value="{{ device.id }}">
 
     <div class="device-settings-section-divider">
       <h3>{{ _('Connection Settings') }}</h3>
-      
+
       <table class="device-settings-table">
         <tr>
           <td>
@@ -58,8 +58,8 @@
           </td>
           <td>
             <div class="connection-type-container">
-              <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
               <label><input type="radio" name="url_variant" id="variant_ws" value="ws"> WebSocket</label>
+              <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
               <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
             </div>
           </td>
@@ -69,7 +69,7 @@
             <label for="img_url" class="device-settings-label">{{ _('Image URL') }}</label>
           </td>
           <td>
-            <input name="img_url" id="img_url" value="{{ device['img_url'] }}" class="device-settings-input">
+            <input name="img_url" id="img_url" value="{{ device.img_url }}" class="device-settings-input">
           </td>
         </tr>
       </table>
@@ -77,7 +77,7 @@
 
     <div class="device-settings-section-divider">
       <h3>{{ _('WiFi Configuration') }}</h3>
-      
+
       <table class="device-settings-table">
         <tr>
           <td>
@@ -95,13 +95,13 @@
             <input name="wifi_password" id="wifi_password" required class="device-settings-input">
           </td>
         </tr>
-        {% if device.get('type') == 'tidbyt_gen1' %}
+        {% if device.type == 'tidbyt_gen1' %}
         <tr>
           <td>
             <label for="swap_colors" class="device-settings-label">{{ _('Swap Colors?') }}</label>
           </td>
           <td>
-            <input type="checkbox" name="swap_colors" id="swap_colors" {% if request.form.get('swap_colors') %} checked {% endif %}>
+            <input type="checkbox" name="swap_colors" id="swap_colors">
           </td>
         </tr>
         {% endif %}
@@ -123,8 +123,8 @@
         const httpRadio = document.getElementById('variant_http');
         const wsRadio = document.getElementById('variant_ws');
         const customRadio = document.getElementById('variant_custom');
-        const httpVal = "{{ device['img_url'] }}";
-        const wsVal = "{{ device['ws_url'] }}";
+        const httpVal = "{{ device.img_url }}";
+        const wsVal = "{{ device.ws_url }}";
 
         function updateUrl() {
             if (httpRadio.checked || wsRadio.checked) {
@@ -141,7 +141,7 @@
         });
 
         // Initialize
-        httpRadio.checked = true;
+        wsRadio.checked = true;
         updateUrl();
     })();
 </script>

@@ -7,7 +7,7 @@
     (function () {
       var storedTheme = localStorage.getItem('theme_preference');
       // Get server preference if user is logged in, otherwise default to 'system'
-      var serverProvidedTheme = "{% if g.user and g.user.theme_preference %}{{ g.user.theme_preference }}{% else %}system{% endif %}";
+      var serverProvidedTheme = "{% if user and user.theme_preference %}{{ user.theme_preference }}{% else %}system{% endif %}";
       var themeToApply = storedTheme || serverProvidedTheme;
 
       if (themeToApply === 'system') {
@@ -21,31 +21,31 @@
   </script>
 </head>
 <title>{% if self.title() %}{% block title %}{% endblock %} - {% endif %}{{ _('Tronbyt Manager') }}</title>
-<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/w3.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/partials.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/fontawesome.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/brands.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/solid.min.css') }}">
+<link rel="icon" href="{{ url_for('static', path='favicon.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/w3.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/common.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/partials.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/fontawesome.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/brands.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/solid.min.css') }}">
 <nav>
   <button class="hamburger" id="hamburgerButton">
     <span></span>
     <span></span>
     <span></span>
   </button>
-  <h1 class="w3-sans-serif"><a href="{{ url_for('manager.index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
+  <h1 class="w3-sans-serif"><a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
   <ul>
-    {% if g.user %}
-    <li><a href="{{ url_for('manager.index') }}">{{ _('Home') }}</a></li>
-    {% if g.user['username'] == 'admin' %}
-    <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
+    {% if user %}
+    <li><a href="{{ url_for('index') }}">{{ _('Home') }}</a></li>
+    {% if user.username == 'admin' %}
+    <li><a href="{{ url_for('register') }}">{{ _('Create User') }}</a></li>
     {% endif %}
-    <li><a href="{{ url_for('auth.edit') }}">{{ g.user['username'] }}</a></li>
-    <li><a href="{{ url_for('auth.logout') }}">{{ _('Log Out') }}</a></li>
-    {% if g.user %}
+    <li><a href="{{ url_for('edit') }}">{{ user.username }}</a></li>
+    <li><a href="{{ url_for('logout') }}">{{ _('Log Out') }}</a></li>
+    {% if user %}
     <li class="theme-toggle-container">
       <div class="theme-toggle">
         <label for="theme-select">{{ _('Theme:') }}</label>
@@ -58,9 +58,9 @@
     </li>
     {% endif %}
     {% else %}
-    <li><a href="{{ url_for('auth.login') }}">{{ _('Log In') }}</a></li>
-    {% if config.get('ENABLE_USER_REGISTRATION') == '1' %}
-    <li><a href="{{ url_for('auth.register') }}">{{ _('Create User') }}</a></li>
+    <li><a href="{{ url_for('login') }}">{{ _('Log In') }}</a></li>
+    {% if config.ENABLE_USER_REGISTRATION == '1' %}
+    <li><a href="{{ url_for('register') }}">{{ _('Create User') }}</a></li>
     {% endif %}
     {% endif %}
   </ul>
@@ -72,18 +72,18 @@
 <!-- Mobile Menu -->
 <div class="mobile-menu" id="mobileMenu">
   <div class="mobile-menu-header">
-    <h1><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
+    <h1><a href="{{ url_for('index') }}" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ _('Tronbyt Manager') }}</a></h1>
     <button class="mobile-menu-close" id="mobileMenuClose">&times;</button>
   </div>
   <ul>
-    {% if g.user %}
-    <li><a href="{{ url_for('manager.index') }}" onclick="closeMobileMenu()">{{ _('Home') }}</a></li>
-    {% if g.user['username'] == 'admin' %}
-    <li><a href="{{ url_for('auth.register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    {% if user %}
+    <li><a href="{{ url_for('index') }}" onclick="closeMobileMenu()">{{ _('Home') }}</a></li>
+    {% if user.username == 'admin' %}
+    <li><a href="{{ url_for('register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
     {% endif %}
-    <li><a href="{{ url_for('auth.edit') }}" onclick="closeMobileMenu()">{{ g.user['username'] }}</a></li>
-    <li><a href="{{ url_for('auth.logout') }}" onclick="closeMobileMenu()">{{ _('Log Out') }}</a></li>
-    {% if g.user %}
+    <li><a href="{{ url_for('edit') }}" onclick="closeMobileMenu()">{{ user.username }}</a></li>
+    <li><a href="{{ url_for('logout') }}" onclick="closeMobileMenu()">{{ _('Log Out') }}</a></li>
+    {% if user %}
     <li class="theme-toggle-container">
       <div class="theme-toggle">
         <label for="mobile-theme-select">{{ _('Theme:') }}</label>
@@ -96,9 +96,9 @@
     </li>
     {% endif %}
     {% else %}
-    <li><a href="{{ url_for('auth.login') }}" onclick="closeMobileMenu()">{{ _('Log In') }}</a></li>
-    {% if config.get('ENABLE_USER_REGISTRATION') == '1' %}
-    <li><a href="{{ url_for('auth.register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    <li><a href="{{ url_for('login') }}" onclick="closeMobileMenu()">{{ _('Log In') }}</a></li>
+    {% if config.ENABLE_USER_REGISTRATION == '1' %}
+    <li><a href="{{ url_for('register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
     {% endif %}
     {% endif %}
   </ul>
@@ -107,15 +107,21 @@
   <header>
     {% block header %}{% endblock %}
   </header>
-  {% for message in get_flashed_messages() %}
-  <div class="flash">{{ message }}</div>
-  {% endfor %}
+  {% with messages = get_flashed_messages(request) %}
+  {% if messages %}
+    <div class="flash">
+      {% for message in messages %}
+        <div>{{ message.message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% endwith %}
   {% block content %}{% endblock %}
 </section>
 
 <script>
-  {% if g.user and g.user.theme_preference %}
-  window.currentUserThemePreference = "{{ g.user.theme_preference }}";
+  {% if user and user.theme_preference %}
+  window.currentUserThemePreference = "{{ user.theme_preference }}";
   {% else %}
   window.currentUserThemePreference = "system"; // Default for guests or if not set
   {% endif %}
@@ -128,7 +134,7 @@
       const mobileMenu = document.getElementById('mobileMenu');
       const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
       const hamburger = document.querySelector('.hamburger');
-      
+
       mobileMenu.classList.add('active');
       mobileMenuOverlay.classList.add('active');
       hamburger.classList.add('active');
@@ -142,7 +148,7 @@
       const mobileMenu = document.getElementById('mobileMenu');
       const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
       const hamburger = document.querySelector('.hamburger');
-      
+
       mobileMenu.classList.remove('active');
       mobileMenuOverlay.classList.remove('active');
       hamburger.classList.remove('active');
@@ -200,4 +206,4 @@
     });
   });
 </script>
-<script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/theme.js') }}" defer></script>
