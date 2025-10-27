@@ -167,10 +167,13 @@ async def _wait_for_acknowledgment(
     dwell_time: int,
     db_conn: sqlite3.Connection,
     loop: asyncio.AbstractEventLoop,
-) -> Response:
+    waiter,
+    websocket: WebSocket,
+    last_brightness: int,
+) -> tuple[Response, int]:
     """Wait for device to acknowledge displaying the image, with timeout and ephemeral push detection.
 
-    Returns the next Response to send.
+    Returns tuple of (next Response to send, updated last_brightness).
     """
     poll_interval = 1  # Check every second
     time_waited = 0
@@ -186,7 +189,37 @@ async def _wait_for_acknowledgment(
         extended_timeout = max(25, int(dwell_time * 2))
 
     while time_waited < extended_timeout:
-        # First check if there's an ephemeral push waiting
+        # Create a task to wait on the sync manager waiter (for cross-thread/worker notifications)
+        waiter_task = loop.run_in_executor(None, waiter.wait, poll_interval)
+
+        # Create a task to wait on the displaying event (for device acknowledgments)
+        display_task = asyncio.create_task(ack.displaying_event.wait())
+
+        # Wait for either the waiter notification, display ack, or timeout
+        done, pending = await asyncio.wait(
+            {waiter_task, display_task},
+            timeout=poll_interval,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+
+        # Cancel any pending tasks
+        for task in pending:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        # Check what triggered the wakeup
+        if display_task in done:
+            # Got displaying acknowledgment, render next image
+            logger.debug(f"[{device_id}] Device acknowledged display")
+            response = await loop.run_in_executor(
+                None, _next_app_logic, db_conn, device_id
+            )
+            return (response, last_brightness)
+
+        # Check if there's an ephemeral push waiting (this is common when woken by waiter)
         pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
         ephemeral_exists = await loop.run_in_executor(
             None, lambda: pushed_dir.is_dir() and any(pushed_dir.glob("__*"))
@@ -204,19 +237,51 @@ async def _wait_for_acknowledgment(
                 logger.debug(
                     f"[{device_id}] Ephemeral push rendered, will send immediately"
                 )
-                return response
+                return (response, last_brightness)
             except Exception as e:
                 logger.error(f"Error rendering ephemeral push: {e}")
                 # Continue waiting if render failed
 
-        # Wait for displaying event with timeout
-        try:
-            await asyncio.wait_for(ack.displaying_event.wait(), timeout=poll_interval)
-            # Got displaying acknowledgment, render next image
-            return await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
-        except asyncio.TimeoutError:
-            # No acknowledgment yet, continue waiting
-            time_waited += poll_interval
+        # If woken by waiter but no ephemeral files, check for brightness changes
+        # and send immediately if changed, then render next image
+        if waiter_task in done and time_waited > 0:
+            logger.debug(
+                f"[{device_id}] Woken by push notification, checking for updates"
+            )
+
+            # Check if brightness has changed and send update immediately
+            user = await loop.run_in_executor(
+                None, db.get_user_by_device_id, db_conn, device_id
+            )
+            if user:
+                device = user.devices.get(device_id)
+                if device:
+                    new_brightness = db.get_device_brightness_8bit(device)
+                    if new_brightness != last_brightness:
+                        logger.info(
+                            f"[{device_id}] Brightness changed to {new_brightness}, sending immediately"
+                        )
+                        try:
+                            await websocket.send_text(
+                                json.dumps({"brightness": new_brightness})
+                            )
+                            last_brightness = (
+                                new_brightness  # Update tracked brightness
+                            )
+                            ack.brightness_to_send = None  # Clear pending brightness
+                        except Exception as e:
+                            logger.error(
+                                f"[{device_id}] Failed to send brightness: {e}"
+                            )
+
+            # Then render and send next image
+            response = await loop.run_in_executor(
+                None, _next_app_logic, db_conn, device_id
+            )
+            return (response, last_brightness)
+
+        # Update time waited
+        time_waited += poll_interval
 
     # Timeout reached without acknowledgment
     if not ack.displaying_event.is_set():
@@ -226,7 +291,8 @@ async def _wait_for_acknowledgment(
         )
 
     # Render next image after timeout
-    return await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
+    response = await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
+    return (response, last_brightness)
 
 
 async def sender(
@@ -257,8 +323,15 @@ async def sender(
 
             # Wait for device acknowledgment with timeout and ephemeral push detection
             # This will check for ephemeral pushes and render the next image when ready
-            response = await _wait_for_acknowledgment(
-                device_id, ack, dwell_time, db_conn, loop
+            response, last_brightness = await _wait_for_acknowledgment(
+                device_id,
+                ack,
+                dwell_time,
+                db_conn,
+                loop,
+                waiter,
+                websocket,
+                last_brightness,
             )
 
     except asyncio.CancelledError:

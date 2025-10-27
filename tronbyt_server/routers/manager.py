@@ -414,6 +414,7 @@ async def update_brightness(
     # Send brightness command directly to active websocket connection (if any)
     # This doesn't interrupt the natural flow of rotation
     from tronbyt_server.routers.websockets import send_brightness_update
+    from tronbyt_server.sync import get_sync_manager
 
     sent = await send_brightness_update(device_id, new_brightness_8bit)
 
@@ -422,9 +423,12 @@ async def update_brightness(
             f"[{device_id}] Sent brightness update immediately: {new_brightness_8bit}"
         )
     else:
+        # Connection not in this worker's _active_connections - notify via SyncManager
+        # This will wake up the correct worker and brightness will be sent with next image
         logger.info(
-            f"[{device_id}] No active websocket, brightness will apply to next connection"
+            f"[{device_id}] No active websocket in this worker, notifying via SyncManager"
         )
+        get_sync_manager(logger).notify(device_id)
 
     return Response(status_code=status.HTTP_200_OK)
 
