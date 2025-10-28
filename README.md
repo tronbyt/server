@@ -93,15 +93,11 @@ That said, the recommended installation method uses Docker Compose with a config
 
 #### Unraid
 
-1. Copy the `unraid_tronbyt-server.xml` file from the repository to `/config/plugins/dockerMan/templates-user` on your Unraid system.
+1. Install via Unraid App Store by searching for `tronbyt-server`
 
-2. In the Unraid web UI, navigate to Docker > Add Container.
+2. Configure the environment variables as needed (refer to the Docker section for details).
 
-3. Select the "tronbyt-server" template from the user templates.
-
-4. Configure the environment variables as needed (refer to the Docker section for details).
-
-5. Start the container.
+3. Start the container.
 
 ### Running the Application
 
