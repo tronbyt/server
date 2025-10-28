@@ -7,15 +7,8 @@ services:
     url: ghcr.io/tronbyt/server:latest
   plan: free
   envVars:
-  - key: SERVER_HOSTNAME
-    fromService:
-      name: tronbyt-server
-      type: web
-      envVarKey: RENDER_EXTERNAL_HOSTNAME
   - key: SERVER_PORT
     value: 443
-  - key: SERVER_PROTOCOL
-    value: https
   - key: ADMIN_PASSWORD
     value: pezzward
 version: "1"

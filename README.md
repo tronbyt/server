@@ -56,7 +56,7 @@ It's rather easy to develop additional clients for Tronbyt Server: just pull ima
 It is possible to just start the server on the default ports in the background with a one-liner:
 
 ```sh
-docker run -d -e SERVER_HOSTNAME=<YOUR_SETTING_HERE> -e SERVER_PORT=8000 -e PRODUCTION=1 -p 8000:8000 ghcr.io/tronbyt/server
+docker run -d -e -e SERVER_PORT=8000 -e PRODUCTION=1 -p 8000:8000 ghcr.io/tronbyt/server
 ```
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:
@@ -68,8 +68,6 @@ That said, the recommended installation method uses Docker Compose with a config
    ```sh
    curl https://raw.githubusercontent.com/tronbyt/server/refs/heads/main/.env.example > .env
    ```
-
-3. Set the `SERVER_HOSTNAME_OR_IP` value in the `.env` file. IP addresses will work too.
 
 #### Bare metal
 
@@ -154,7 +152,6 @@ When enabled, a "Create User" link will appear on the login page and in the navi
 
 ### Notes
 
-- Ensure that the `SERVER_HOSTNAME_OR_IP` value is set in the `.env` file if you are not running the application locally. An IP address will also work here.
 - To update your containers to the latest version simply run `docker compose pull && docker compose up -d`.
 - To update your native installation, run `brew upgrade tronbyt-server` and `brew services restart tronbyt-server`.
 

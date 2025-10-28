@@ -14,13 +14,8 @@
   <TemplateURL/>
   <Icon/>
   <ExtraParams>--init --restart unless-stopped</ExtraParams>
-  
+
   <Environment>
-    <Variable>
-      <Name>SERVER_HOSTNAME</Name>
-      <Value></Value>
-      <Mode/>
-    </Variable>
     <Variable>
       <Name>SERVER_PORT</Name>
       <Value></Value>
