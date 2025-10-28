@@ -9,7 +9,6 @@ services:
       - users:/app/users
       - data:/app/data
     environment:
-      - SERVER_PORT
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
@@ -28,8 +27,6 @@ services:
       - "${SERVER_PORT}:${SERVER_PORT}/udp"
       - "80:80" # Always open 80/443 for the HTTP-01 challenge
       - "443:443"
-    environment:
-      - SERVER_PORT
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/data

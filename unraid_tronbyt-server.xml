@@ -17,11 +17,6 @@
 
   <Environment>
     <Variable>
-      <Name>SERVER_PORT</Name>
-      <Value></Value>
-      <Mode/>
-    </Variable>
-    <Variable>
       <Name>SYSTEM_APPS_REPO</Name>
       <Value></Value>
       <Mode/>

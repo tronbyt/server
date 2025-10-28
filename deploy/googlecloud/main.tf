@@ -71,11 +71,6 @@ resource "google_compute_instance" "default" {
   # The startup script to provision the instance
   metadata_startup_script = file("${path.module}/startup.sh")
 
-  # Pass variables to the startup script
-  metadata = {
-    server_port = "8000"
-  }
-
   # Allow the instance to have full access to cloud APIs, including storage
   service_account {
     scopes = ["cloud-platform"]

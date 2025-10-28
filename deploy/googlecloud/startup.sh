@@ -74,11 +74,8 @@ chown -R 1000:1000 ./users ./data ./redis_data
 # --- Create .env file ---
 # These variables are passed in as metadata from Terraform
 echo "Creating .env file..."
-# Query the metadata server to get the instance's external IP and port
-SERVER_PORT=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/server_port" -H "Metadata-Flavor: Google")
 
 cat <<EOF > .env
-SERVER_PORT=${SERVER_PORT}
 SYSTEM_APPS_REPO=https://github.com/tidbyt/community
 PRODUCTION=1
 ENABLE_USER_REGISTRATION=0

@@ -12,7 +12,6 @@ services:
       - ./data:/app/data # for development
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:
-      - SERVER_PORT
       - PYTHONUNBUFFERED=1
       - SYSTEM_APPS_REPO
       - PRODUCTION
