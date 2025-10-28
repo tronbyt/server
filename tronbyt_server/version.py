@@ -27,7 +27,7 @@ def get_version_info() -> dict[str, str | None]:
         version_file = Path(__file__).parent / "version.json"
 
         if not version_file.exists():
-            logger.warn(
+            logger.warning(
                 f"Version file not found at {version_file}, using default version 'dev'"
             )
             return default_info
