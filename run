@@ -8,11 +8,15 @@ python3 -c 'from tronbyt_server.startup import run_once; run_once()'
 UVICORN_LOG_LEVEL="${LOG_LEVEL:-info}"
 UVICORN_LOG_LEVEL=$(echo "$UVICORN_LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
+# Set port from TRONBYT_PORT environment variable (default to 8000)
+PORT="${TRONBYT_PORT:-${PORT:-8000}}"
+HOST="${TRONBYT_HOST:-0.0.0.0}"
+
 if [ "${PRODUCTION:-1}" = "1" ]; then
     # PRODUCTION
     # --forwarded-allow-ips='*': Trust X-Forwarded-* headers from any proxy (use specific IPs for better security)
-    exec uvicorn --host=0.0.0.0 --port=8000 --workers="${WEB_CONCURRENCY:-2}" --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app
+    exec uvicorn --host="$HOST" --port="$PORT" --workers="${WEB_CONCURRENCY:-2}" --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app "$@"
 else
     # DEVELOPMENT
-    exec uvicorn --host=0.0.0.0 --port=8000 --reload --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app
+    exec uvicorn --host="$HOST" --port="$PORT" --reload --log-level="$UVICORN_LOG_LEVEL" --forwarded-allow-ips='*' tronbyt_server.main:app "$@"
 fi
