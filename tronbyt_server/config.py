@@ -14,9 +14,6 @@ class Settings(BaseSettings):
     )
 
     SECRET_KEY: str = "lksdj;as987q3908475ukjhfgklauy983475iuhdfkjghairutyh"
-    SERVER_PROTOCOL: str = "http"
-    SERVER_HOSTNAME: str = "localhost"
-    SERVER_PORT: str = "8000"
     USERS_DIR: str = "users"
     DATA_DIR: str = "data"
     PRODUCTION: str = "1"
