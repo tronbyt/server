@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ENABLE_USER_REGISTRATION: str = "0"
     LOG_LEVEL: str = "WARNING"
     SYSTEM_APPS_REPO: str = "https://github.com/tronbyt/apps.git"
+    LIBPIXLET_PATH: str | None = None
     REDIS_URL: str | None = None
 
 

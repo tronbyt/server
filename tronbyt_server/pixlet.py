@@ -2,7 +2,6 @@
 
 import ctypes
 import json
-import os
 import platform
 from logging import Logger
 from pathlib import Path
@@ -31,7 +30,7 @@ _LIBPIXLET_PATH_MACOS_INTEL = Path("/usr/local/lib/libpixlet.dylib")
 
 
 def load_pixlet_library(logger: Logger) -> None:
-    libpixlet_path_str = os.getenv("LIBPIXLET_PATH")
+    libpixlet_path_str = get_settings().LIBPIXLET_PATH
     if libpixlet_path_str:
         libpixlet_path = Path(libpixlet_path_str)
     else:

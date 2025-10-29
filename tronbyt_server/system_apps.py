@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from tronbyt_server.config import get_settings
 from tronbyt_server.models import AppMetadata
 
 
@@ -35,9 +36,7 @@ def get_system_repo_info(base_path: Path) -> dict[str, Optional[str]]:
         dict with keys: 'commit_hash', 'commit_url', 'repo_url', 'branch'
     """
     system_apps_path = base_path / "system-apps"
-    system_apps_url = os.getenv(
-        "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
-    )
+    system_apps_url = get_settings().SYSTEM_APPS_REPO
 
     # Parse the repo URL and branch
     if "@" in system_apps_url and ".git@" in system_apps_url:
@@ -255,9 +254,7 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
     2. Calls generate_apps_json() to process the apps
     """
     system_apps_path = base_path / "system-apps"
-    system_apps_url = os.getenv(
-        "SYSTEM_APPS_REPO", "https://github.com/tronbyt/apps.git"
-    )
+    system_apps_url = get_settings().SYSTEM_APPS_REPO
 
     # Check if the URL contains a branch specification
     if "@" in system_apps_url and ".git@" in system_apps_url:
@@ -272,17 +269,24 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
 
     # If running as root, add the system-apps directory to the safe.directory list
     if os.geteuid() == 0:  # Check if the script is running as root
-        git_command(
-            [
-                "git",
-                "config",
-                "--global",
-                "--add",
-                "safe.directory",
-                str(system_apps_path),
-            ],
-            check=True,
+        # Check if the directory is already in the safe.directory list
+        result = git_command(
+            ["git", "config", "--global", "--get-all", "safe.directory"],
+            capture_output=True,
         )
+        safe_dirs = result.stdout.decode().strip().splitlines()
+        if str(system_apps_path) not in safe_dirs:
+            git_command(
+                [
+                    "git",
+                    "config",
+                    "--global",
+                    "--add",
+                    "safe.directory",
+                    str(system_apps_path),
+                ],
+                check=True,
+            )
 
     if git_dir.is_dir():  # Check if it's actually a directory
         logger.info(f"{system_apps_path} git repo found, updating {system_apps_repo}")
