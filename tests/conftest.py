@@ -10,7 +10,6 @@ import shutil
 from tronbyt_server.main import app as fastapi_app
 from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
-from tronbyt_server import db
 
 settings = get_settings()
 
@@ -28,16 +27,14 @@ def db_connection(
     settings.USERS_DIR = str(tmp_path / "users")
     settings.ENABLE_USER_REGISTRATION = "1"
 
-    conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
-    db.init_db(conn)
-    yield conn
-    conn.close()
+    with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
+        yield conn
 
 
 @pytest.fixture(scope="session")
 def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
-    def get_db_override():
-        yield db_connection
+    def get_db_override() -> sqlite3.Connection:
+        return db_connection
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
 
@@ -49,23 +46,12 @@ def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
 @pytest.fixture(autouse=True)
 def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
     yield
-    # Rollback any pending transactions to release locks
-    try:
-        db_connection.rollback()
-    except Exception:
-        pass
-    # Close any open cursors by committing
-    try:
-        db_connection.commit()
-    except Exception:
-        pass
     cursor = db_connection.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = [row[0] for row in cursor.fetchall()]
     for table in tables:
         if table != "sqlite_sequence":
             cursor.execute(f'DELETE FROM "{table}"')
-    cursor.close()
     db_connection.commit()
 
 

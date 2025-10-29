@@ -66,3 +66,6 @@ def test_websocket_success_connection_and_data(
             json_data = message["text"]
             assert "status" in json_data
             assert "message" in json_data
+
+        # Explicitly close the websocket to ensure cleanup
+        websocket.close()
