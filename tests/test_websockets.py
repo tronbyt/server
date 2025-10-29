@@ -46,6 +46,7 @@ def test_websocket_success_connection_and_data(
 ) -> None:
     """Test successful websocket connection and receiving data."""
     import json
+
     device_id = list(device_user_ws.devices.keys())[0]
 
     with auth_client.websocket_connect(f"/{device_id}/ws") as websocket:
@@ -61,7 +62,7 @@ def test_websocket_success_connection_and_data(
             except Exception:
                 # Connection closed or error - that's okay, we got what we needed
                 break
-                
+
             if "text" in message:
                 try:
                     data = json.loads(message["text"])
@@ -86,6 +87,6 @@ def test_websocket_success_connection_and_data(
 
         assert dwell_seen, "Expected dwell_secs JSON message"
         assert image_or_error_seen, "Expected image bytes or error JSON message"
-        
+
         # Close the websocket - this should cause server-side tasks to cancel
         websocket.close()
