@@ -10,7 +10,12 @@ UVICORN_LOG_LEVEL=$(echo "$UVICORN_LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
 # Set port from TRONBYT_PORT environment variable (default to 8000)
 PORT="${TRONBYT_PORT:-${PORT:-8000}}"
-HOST="${TRONBYT_HOST:-0.0.0.0}"
+# Validate that PORT contains just an integer (a TCP port number). If not, ignore the value.
+if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
+    echo "Warning: Invalid PORT value ${PORT}. Falling back to default port 8000." >&2
+    PORT="8000"
+fi
+HOST="${TRONBYT_HOST:-::}"
 
 if [ "${PRODUCTION:-1}" = "1" ]; then
     # PRODUCTION
