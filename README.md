@@ -20,8 +20,6 @@ Of course, there are also some drawbacks:
 - Apps which rely on Tidbyt's cloud services for storing secrets (such as OAuth credentials) are not yet supported.
 - Tools which use `pixlet push` to push images to a device are incompatible unless they have been updated to accept alternative URLs.
 
-Some community projects like [TidbytAssistant](https://github.com/savdagod/TidbytAssistant) have already been updated to work with Tronbyt.
-
 ## Getting Started
 
 You can run Tronbyt-server on the free tier at Render.com.  Here is a [video walkthrough](https://youtu.be/2WfVaeX7BTk). Default admin password for render.com deploys is "pezzward"
