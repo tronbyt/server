@@ -325,10 +325,7 @@ def get_device_timezone(device: Device) -> ZoneInfo:
             return ZoneInfo(device.timezone)
         except Exception:
             pass
-    # mypy doesn't understand that get_localzone() returns ZoneInfo-compatible
-    local_tz = get_localzone()
-    assert isinstance(local_tz, ZoneInfo), "get_localzone() must return ZoneInfo"
-    return local_tz
+    return get_localzone()
 
 
 def get_device_timezone_str(device: Device) -> str:
@@ -470,9 +467,9 @@ def percent_to_ui_scale(percent: int) -> int:
         return 0
     elif percent <= 3:
         return 1
-    elif percent <= 12:
+    elif percent <= 5:
         return 2
-    elif percent <= 20:
+    elif percent <= 12:
         return 3
     elif percent <= 35:
         return 4
@@ -484,8 +481,8 @@ def ui_scale_to_percent(scale_value: int) -> int:
     lookup = {
         0: 0,
         1: 3,
-        2: 12,
-        3: 20,
+        2: 5,
+        3: 12,
         4: 35,
         5: 100,
     }
@@ -827,10 +824,6 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
     if recurrence_end_date:
         if current_time.date() > recurrence_end_date:
             return False
-
-    # Default recurrence_interval to 1 if not set
-    if recurrence_interval is None:
-        recurrence_interval = 1
 
     current_date = current_time.date()
 

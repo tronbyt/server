@@ -73,7 +73,7 @@ def get_user_and_device_from_api_key(
     raise InvalidCredentialsException
 
 
-@manager.user_loader()
+@manager.user_loader()  # type: ignore
 def load_user(username: str) -> User | None:
     """Load a user from the database."""
     with next(get_db(settings=get_settings())) as db_conn:

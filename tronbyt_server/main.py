@@ -6,6 +6,7 @@ import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -22,9 +23,6 @@ from tronbyt_server.dependencies import (
 )
 from tronbyt_server.routers import api, auth, manager, websockets
 from tronbyt_server.templates import templates
-
-
-from typing import AsyncGenerator
 
 
 def backup_database(db_file: str, logger: logging.Logger) -> None:

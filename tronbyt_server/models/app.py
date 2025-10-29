@@ -40,7 +40,7 @@ class RecurrencePattern(BaseModel):
     )
 
 
-RecurrenceType = Literal["daily", "weekly", "monthly", "yearly", None]
+RecurrenceType = Literal["daily", "weekly", "monthly", "yearly"]
 
 
 class App(BaseModel):
@@ -68,12 +68,12 @@ class App(BaseModel):
     use_custom_recurrence: bool = (
         False  # Flag to enable custom recurrence instead of legacy
     )
-    recurrence_type: RecurrenceType | None = Field(
-        default=None,
+    recurrence_type: RecurrenceType = Field(
+        default="daily",
         description='"daily", "weekly", "monthly", "yearly"',
     )
-    recurrence_interval: int | None = None  # Every X weeks/months/years
-    recurrence_pattern: RecurrencePattern | None = None
+    recurrence_interval: int = 1  # Every X weeks/months/years
+    recurrence_pattern: RecurrencePattern = Field(default_factory=RecurrencePattern)
     recurrence_start_date: Annotated[
         date | None, BeforeValidator(parse_date_optional)
     ] = None  # ISO date string for calculating cycles (YYYY-MM-DD)
