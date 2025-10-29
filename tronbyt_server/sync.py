@@ -1,13 +1,14 @@
 """Synchronization primitives for Tronbyt Server."""
 
 import logging
-import os
 from abc import ABC, abstractmethod
 from multiprocessing import Manager
 from typing import Any, cast
 
 import redis
 from threading import Lock
+
+from tronbyt_server.config import get_settings
 
 # Type alias for multiprocessing.Condition, which is not a class
 ConditionType = Any
@@ -182,7 +183,8 @@ def get_sync_manager(logger: logging.Logger) -> SyncManager:
     if _sync_manager is None:
         with _sync_manager_lock:
             if _sync_manager is None:  # Double-checked locking
-                redis_url = os.getenv("REDIS_URL")
+                settings = get_settings()
+                redis_url = settings.REDIS_URL
                 if redis_url:
                     logger.info("Using Redis for synchronization")
                     _sync_manager = RedisSyncManager(redis_url)

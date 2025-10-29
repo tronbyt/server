@@ -9,6 +9,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
 
+from tronbyt_server.config import get_settings
+
 pixlet_render_app: (
     Callable[[bytes, bytes, int, int, int, int, int, int, int, bytes | None], Any]
     | None
@@ -120,7 +122,8 @@ def initialize_pixlet_library(logger: Logger) -> None:
 
         load_pixlet_library(logger)
 
-        redis_url = os.getenv("REDIS_URL")
+        settings = get_settings()
+        redis_url = settings.REDIS_URL
         if redis_url and pixlet_init_redis_cache:
             logger.info(f"Using Redis cache at {redis_url}")
             pixlet_init_redis_cache(redis_url.encode("utf-8"))
