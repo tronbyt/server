@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import AsyncGenerator, Iterator
+from typing import Iterator
 import sqlite3
-from contextlib import asynccontextmanager
 
 import pytest
 from fastapi import FastAPI
@@ -14,21 +13,6 @@ from tronbyt_server.config import get_settings
 from tronbyt_server import db
 
 settings = get_settings()
-
-
-@asynccontextmanager
-async def test_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Test-safe lifespan that skips shutdown to avoid hanging."""
-    import logging
-
-    logging.basicConfig(level=get_settings().LOG_LEVEL)
-
-    settings_obj = get_settings()
-    db_connection = next(get_db(settings=settings_obj))
-    with db_connection:
-        db.init_db(db_connection)
-    yield
-    # Skip shutdown - this prevents hanging on multiprocessing cleanup
 
 
 @pytest.fixture(scope="session")
@@ -44,37 +28,44 @@ def db_connection(
     settings.USERS_DIR = str(tmp_path / "users")
     settings.ENABLE_USER_REGISTRATION = "1"
 
-    with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
-        yield conn
+    conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
+    db.init_db(conn)
+    yield conn
+    conn.close()
 
 
 @pytest.fixture(scope="session")
 def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
-    def get_db_override() -> sqlite3.Connection:
-        return db_connection
+    def get_db_override():
+        yield db_connection
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
-
-    # Override lifespan with test-safe version that skips shutdown
-    original_lifespan = fastapi_app.router.lifespan_context
-    fastapi_app.router.lifespan_context = test_lifespan
 
     yield fastapi_app
 
     fastapi_app.dependency_overrides.clear()
-    # Restore original lifespan
-    fastapi_app.router.lifespan_context = original_lifespan
 
 
 @pytest.fixture(autouse=True)
 def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
     yield
+    # Rollback any pending transactions to release locks
+    try:
+        db_connection.rollback()
+    except Exception:
+        pass
+    # Close any open cursors by committing
+    try:
+        db_connection.commit()
+    except Exception:
+        pass
     cursor = db_connection.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = [row[0] for row in cursor.fetchall()]
     for table in tables:
         if table != "sqlite_sequence":
             cursor.execute(f'DELETE FROM "{table}"')
+    cursor.close()
     db_connection.commit()
 
 
