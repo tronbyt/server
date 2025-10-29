@@ -1985,7 +1985,9 @@ async def import_user_config(
         # Regenerate img_url and ws_url with new server root for all devices
         if "devices" in user_config:
             for device_id, device_data in user_config["devices"].items():
-                device_data["img_url"] = str(request.url_for("next_app", device_id=device_id))
+                device_data["img_url"] = str(
+                    request.url_for("next_app", device_id=device_id)
+                )
                 device_data["ws_url"] = str(
                     request.url_for("websocket_endpoint", device_id=device_id)
                 )
