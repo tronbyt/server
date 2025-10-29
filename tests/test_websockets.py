@@ -45,48 +45,24 @@ def test_websocket_success_connection_and_data(
     auth_client: TestClient, device_user_ws: User
 ) -> None:
     """Test successful websocket connection and receiving data."""
-    import json
-
     device_id = list(device_user_ws.devices.keys())[0]
 
     with auth_client.websocket_connect(f"/{device_id}/ws") as websocket:
-        # Collect initial frames: dwell_secs (required), optional brightness, then image or error
-        dwell_seen = False
-        image_or_error_seen = False
+        # It should send dwell time and brightness first
+        data = websocket.receive_json()
+        assert "dwell_secs" in data
+        assert isinstance(data["dwell_secs"], int)
+        data = websocket.receive_json()
+        assert "brightness" in data
+        assert isinstance(data["brightness"], int)
 
-        # Read a limited number of frames to avoid hanging
-        # The server sends: dwell_secs JSON, optional brightness JSON, then image bytes or error JSON
-        for _ in range(5):
-            try:
-                message = websocket.receive()
-            except Exception:
-                # Connection closed or error - that's okay, we got what we needed
-                break
-
-            if "text" in message:
-                try:
-                    data = json.loads(message["text"])
-                    if "dwell_secs" in data:
-                        assert isinstance(data["dwell_secs"], int)
-                        dwell_seen = True
-                    elif "brightness" in data:
-                        assert isinstance(data["brightness"], int)
-                    elif "status" in data and "message" in data:
-                        image_or_error_seen = True
-                except (json.JSONDecodeError, KeyError):
-                    pass
-            elif "bytes" in message:
-                image_data = message["bytes"]
-                assert image_data is not None
-                assert len(image_data) > 0
-                image_or_error_seen = True
-
-            # Stop once we have both required messages
-            if dwell_seen and image_or_error_seen:
-                break
-
-        assert dwell_seen, "Expected dwell_secs JSON message"
-        assert image_or_error_seen, "Expected image bytes or error JSON message"
-
-        # Close the websocket - this should cause server-side tasks to cancel
-        websocket.close()
+        # Then it should send the default image or an error message
+        message = websocket.receive()
+        if "bytes" in message:
+            image_data = message["bytes"]
+            assert image_data is not None
+            assert len(image_data) > 0
+        elif "text" in message:
+            json_data = message["text"]
+            assert "status" in json_data
+            assert "message" in json_data

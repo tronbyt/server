@@ -186,45 +186,37 @@ async def _wait_for_acknowledgment(
         extended_timeout = max(25, int(dwell_time * 2))
 
     while time_waited < extended_timeout:
-        try:
-            # First check if there's an ephemeral push waiting
-            pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
-            ephemeral_exists = await loop.run_in_executor(
-                None, lambda: pushed_dir.is_dir() and any(pushed_dir.glob("__*"))
+        # First check if there's an ephemeral push waiting
+        pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+        ephemeral_exists = await loop.run_in_executor(
+            None, lambda: pushed_dir.is_dir() and any(pushed_dir.glob("__*"))
+        )
+
+        if ephemeral_exists:
+            logger.debug(
+                f"[{device_id}] Ephemeral push detected, interrupting wait to send immediately"
             )
-
-            if ephemeral_exists:
-                logger.debug(
-                    f"[{device_id}] Ephemeral push detected, interrupting wait to send immediately"
-                )
-                # Render the next app (which will pick up the ephemeral push)
-                try:
-                    response = await loop.run_in_executor(
-                        None, _next_app_logic, db_conn, device_id
-                    )
-                    logger.debug(
-                        f"[{device_id}] Ephemeral push rendered, will send immediately"
-                    )
-                    return response
-                except Exception as e:
-                    logger.error(f"Error rendering ephemeral push: {e}")
-                    # Continue waiting if render failed
-
-            # Wait for displaying event with timeout
+            # Render the next app (which will pick up the ephemeral push)
             try:
-                await asyncio.wait_for(
-                    ack.displaying_event.wait(), timeout=poll_interval
-                )
-                # Got displaying acknowledgment, render next image
-                return await loop.run_in_executor(
+                response = await loop.run_in_executor(
                     None, _next_app_logic, db_conn, device_id
                 )
-            except asyncio.TimeoutError:
-                # No acknowledgment yet, continue waiting
-                time_waited += poll_interval
-        except asyncio.CancelledError:
-            # Task was cancelled (websocket closed), re-raise to propagate cancellation
-            raise
+                logger.debug(
+                    f"[{device_id}] Ephemeral push rendered, will send immediately"
+                )
+                return response
+            except Exception as e:
+                logger.error(f"Error rendering ephemeral push: {e}")
+                # Continue waiting if render failed
+
+        # Wait for displaying event with timeout
+        try:
+            await asyncio.wait_for(ack.displaying_event.wait(), timeout=poll_interval)
+            # Got displaying acknowledgment, render next image
+            return await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
+        except asyncio.TimeoutError:
+            # No acknowledgment yet, continue waiting
+            time_waited += poll_interval
 
     # Timeout reached without acknowledgment
     if not ack.displaying_event.is_set():
@@ -271,9 +263,6 @@ async def sender(
 
     except asyncio.CancelledError:
         pass  # Expected on disconnect
-    except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected during send for device {device_id}")
-        raise  # Re-raise to exit the task immediately
     except Exception as e:
         logger.error(f"WebSocket sender error for device {device_id}: {e}")
     finally:

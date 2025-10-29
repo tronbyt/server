@@ -1,13 +1,14 @@
 """Synchronization primitives for Tronbyt Server."""
 
 import logging
-import os
 from abc import ABC, abstractmethod
 from multiprocessing import Manager
 from typing import Any, cast
 
 import redis
 from threading import Lock
+
+from tronbyt_server.config import get_settings
 
 # Type alias for multiprocessing.Condition, which is not a class
 ConditionType = Any
@@ -132,7 +133,9 @@ class RedisWaiter(Waiter):
         # from being delivered to the consumer. This is useful for simple notification
         # use-cases, but may hide connection/debugging issues. Consider making this
         # configurable if you need to debug subscription events.
-        self._pubsub = redis_client.pubsub(ignore_subscribe_messages=True)  # type: ignore[no-untyped-call]
+        self._pubsub = redis_client.pubsub(  # type: ignore[no-untyped-call]
+            ignore_subscribe_messages=True
+        )
         self._device_id = device_id
         self._pubsub.subscribe(self._device_id)
 
@@ -180,7 +183,8 @@ def get_sync_manager(logger: logging.Logger) -> SyncManager:
     if _sync_manager is None:
         with _sync_manager_lock:
             if _sync_manager is None:  # Double-checked locking
-                redis_url = os.getenv("REDIS_URL")
+                settings = get_settings()
+                redis_url = settings.REDIS_URL
                 if redis_url:
                     logger.info("Using Redis for synchronization")
                     _sync_manager = RedisSyncManager(redis_url)
