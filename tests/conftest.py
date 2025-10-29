@@ -20,9 +20,13 @@ def patch_sync_manager_shutdown() -> Iterator[None]:
     """Patch sync manager shutdown to prevent hanging on multiprocessing cleanup."""
     # Patch shutdown methods on both SyncManager implementations
     # This prevents hanging when lifespan shutdown is called during test teardown
-    with patch("tronbyt_server.sync.MultiprocessingSyncManager.shutdown", lambda self: None), \
-         patch("tronbyt_server.sync.RedisSyncManager.shutdown", lambda self: None), \
-         patch("tronbyt_server.sync._sync_manager", None):  # Clear any cached instance
+    with (
+        patch(
+            "tronbyt_server.sync.MultiprocessingSyncManager.shutdown", lambda self: None
+        ),
+        patch("tronbyt_server.sync.RedisSyncManager.shutdown", lambda self: None),
+        patch("tronbyt_server.sync._sync_manager", None),
+    ):  # Clear any cached instance
         yield
 
 
