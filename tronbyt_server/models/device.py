@@ -115,6 +115,8 @@ class Device(BaseModel):
     apps: dict[str, App] = {}
     last_app_index: int = 0
     pinned_app: str | None = None  # iname of the pinned app, if any
+    interstitial_enabled: bool = False  # whether interstitial app feature is enabled
+    interstitial_app: str | None = None  # iname of the interstitial app, if any
 
     def supports_2x(self) -> bool:
         """

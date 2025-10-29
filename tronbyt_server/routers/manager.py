@@ -54,11 +54,45 @@ from tronbyt_server.utils import (
     render_app,
     send_default_image,
     send_image,
+    server_root,
     set_repo,
+    ws_root,
 )
 
 router = APIRouter(tags=["manager"])
 logger = logging.getLogger(__name__)
+
+
+def create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]:
+    """
+    Create an expanded apps list with interstitial apps inserted between regular apps.
+
+    Args:
+        device: The device containing interstitial app settings
+        apps_list: List of regular apps sorted by order
+
+    Returns:
+        List of apps with interstitial apps inserted after each regular app (except the last)
+    """
+    expanded_apps_list = []
+    interstitial_app_iname = device.interstitial_app
+    interstitial_enabled = device.interstitial_enabled
+
+    for i, regular_app in enumerate(apps_list):
+        # Add the regular app
+        expanded_apps_list.append(regular_app)
+
+        # Add interstitial app after each regular app (except the last one)
+        if (
+            interstitial_enabled
+            and interstitial_app_iname
+            and interstitial_app_iname in device.apps
+            and i < len(apps_list) - 1
+        ):
+            interstitial_app = device.apps[interstitial_app_iname]
+            expanded_apps_list.append(interstitial_app)
+
+    return expanded_apps_list
 
 
 def parse_time_input(time_str: str) -> str:
@@ -122,6 +156,111 @@ def parse_time_input(time_str: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def _get_app_to_display(
+    db_conn: sqlite3.Connection,
+    device_id: DeviceID,
+    last_app_index: int | None = None,
+    advance_index: bool = False,
+) -> tuple[App | None, int | None, bool, bool, bool]:
+    """
+    Determine which app to display based on current state.
+
+    Returns:
+        tuple: (app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app)
+        If no app should be displayed, returns (None, None, False, False, False)
+    """
+    user = db.get_user_by_device_id(db_conn, device_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    # if no apps return None
+    if not device.apps:
+        return None, None, False, False, False
+
+    pinned_app_iname = device.pinned_app
+    is_pinned_app = False
+    is_night_mode_app = False
+    is_interstitial_app = False
+
+    if pinned_app_iname and pinned_app_iname in device.apps:
+        logger.debug(f"Using pinned app: {pinned_app_iname}")
+        app = device.apps[pinned_app_iname]
+        is_pinned_app = True
+        # For pinned apps, we don't update last_app_index since we're not cycling
+        return (
+            app,
+            last_app_index,
+            is_pinned_app,
+            is_night_mode_app,
+            is_interstitial_app,
+        )
+    else:
+        # Normal app selection logic
+        apps_list = sorted(
+            [app for app in device.apps.values()],
+            key=lambda x: x.order,
+        )
+        is_night_mode_app = False
+        if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
+            app = device.apps[device.night_mode_app]
+            is_night_mode_app = True
+            return (
+                app,
+                last_app_index,
+                is_pinned_app,
+                is_night_mode_app,
+                is_interstitial_app,
+            )
+        else:
+            # Create expanded apps list with interstitial apps inserted
+            expanded_apps_list = create_expanded_apps_list(device, apps_list)
+
+            if last_app_index is None:
+                last_app_index = db.get_last_app_index(db_conn, device_id)
+                if last_app_index is None:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+            # Handle compatibility: if the index is too large for the expanded list,
+            # it might be from the old system (before interstitial apps)
+            if last_app_index >= len(expanded_apps_list):
+                # If interstitial is enabled, the old index might be valid for the original apps_list
+                if device.interstitial_enabled and last_app_index < len(apps_list):
+                    # Use the original apps_list for backward compatibility
+                    app = apps_list[last_app_index]
+                else:
+                    # Reset to 0 if index is completely invalid
+                    app = expanded_apps_list[0]
+                    last_app_index = 0
+            else:
+                app = expanded_apps_list[last_app_index]
+
+            # Check if this is at an interstitial position
+            # Interstitial positions are at odd indices (1, 3, 5, etc.)
+            if (
+                device.interstitial_enabled
+                and device.interstitial_app
+                and device.interstitial_app in device.apps
+                and app.iname == device.interstitial_app
+            ):
+                # Check if we're at an odd index (interstitial position)
+                is_interstitial_app = (
+                    last_app_index is not None and last_app_index % 2 == 1
+                )
+
+            # Calculate new index if advancing
+            new_index = last_app_index
+            if advance_index:
+                if last_app_index + 1 < len(expanded_apps_list):
+                    new_index = last_app_index + 1
+                else:
+                    new_index = 0  # Reset to beginning of list
+
+            return app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app
+
+
 def _next_app_logic(
     db_conn: sqlite3.Connection,
     device_id: DeviceID,
@@ -140,7 +279,7 @@ def _next_app_logic(
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
     if pushed_dir.is_dir():
         for ephemeral_file in sorted(pushed_dir.glob("__*")):
-            print(f"Found pushed image {ephemeral_file}")
+            logger.debug(f"Found pushed image {ephemeral_file}")
             response = send_image(ephemeral_file, device, None, True)
             ephemeral_file.unlink()
             return response
@@ -155,54 +294,91 @@ def _next_app_logic(
         logger.warning("Maximum recursion depth exceeded, sending default image")
         return send_default_image(device)
 
+    # For /next endpoint: advance the index FIRST, then get the app to display
+    # This ensures we return the NEXT app, not the current one
     if last_app_index is None:
         last_app_index = db.get_last_app_index(db_conn, device_id)
         if last_app_index is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    # if no apps return default image
-    if not device.apps:
+    # Get the apps list from the already-fetched device
+    apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
+    expanded_apps_list = create_expanded_apps_list(device, apps_list)
+
+    # Calculate the next index
+    if last_app_index + 1 < len(expanded_apps_list):
+        next_index = last_app_index + 1
+    else:
+        next_index = 0  # Reset to beginning of list
+
+    # Check if we're at an interstitial position (odd index)
+    is_interstitial_position = next_index % 2 == 1
+
+    # Get the app at the next index (without advancing further)
+    app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
+        db_conn, device_id, next_index, advance_index=False
+    )
+
+    if app is None:
         return send_default_image(device)
 
-    pinned_app_iname = device.pinned_app
-    is_pinned_app = False
-    is_night_mode_app = False
-    if pinned_app_iname and pinned_app_iname in device.apps:
-        logger.debug(f"Using pinned app: {pinned_app_iname}")
-        app = device.apps[pinned_app_iname]
-        is_pinned_app = True
-        # For pinned apps, we don't update last_app_index since we're not cycling
-    else:
-        # Normal app selection logic
-        apps_list = sorted(
-            [app for app in device.apps.values()],
-            key=lambda x: x.order,
-        )
-        is_night_mode_app = False
-        if db.get_night_mode_is_active(device) and device.night_mode_app in device.apps:
-            app = device.apps[device.night_mode_app]
-            is_night_mode_app = True
-        elif last_app_index + 1 < len(apps_list):
-            app = apps_list[last_app_index + 1]
-            last_app_index += 1
-        else:
-            app = apps_list[0]
-            last_app_index = 0
-
     # For pinned apps, always display them regardless of enabled/schedule status
+    # For interstitial apps at interstitial positions, always display them
+    # For interstitial apps at regular positions, check if enabled
     # For other apps, check if they should be displayed
     if (
         not is_pinned_app
         and not is_night_mode_app
+        and not is_interstitial_app  # Skip enabled check if at interstitial position
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
-        return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
+        # Current app is disabled or has inactive schedule - skip it
+        # Pass next_index directly since it already points to the next app
+        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+
+    # If the app is the interstitial app but we're NOT at an interstitial position,
+    # check if it's enabled for regular rotation
+    if (
+        app.iname == device.interstitial_app
+        and device.interstitial_app in device.apps
+        and not is_interstitial_app
+        and not app.enabled
+    ):
+        # Interstitial app at regular position is disabled - skip it
+        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+
+    # NEW: Skip interstitial app if the previous regular app was skipped
+    # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
+    # then we should skip this interstitial app too to avoid showing it in isolation
+    if is_interstitial_position:
+        # We're at an interstitial position (odd index)
+        # Check if the previous regular app (at next_index - 1) would be skipped
+        prev_index = next_index - 1
+        if prev_index >= 0 and prev_index < len(expanded_apps_list):
+            prev_app = expanded_apps_list[prev_index]
+            # Check if the previous app would be skipped
+            if prev_app.iname in device.apps:
+                prev_app_obj = device.apps[prev_app.iname]
+                # Check if previous app would be skipped (enabled, schedule, or empty render)
+                # Note: We don't call possibly_render here as it's expensive and unnecessary
+                # since we'll discover empty renders when we try to display the app anyway
+                if (
+                    not prev_app_obj.enabled
+                    or not db.get_is_app_schedule_active(prev_app_obj, device)
+                    or prev_app_obj.empty_last_render
+                ):
+                    # Previous app would be skipped - skip this interstitial too
+                    return _next_app_logic(
+                        db_conn, device_id, next_index, recursion_depth + 1
+                    )
 
     if (
         not possibly_render(db_conn, user, device_id, app, logger)
         or app.empty_last_render
     ):
-        return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
+        # App failed to render or had empty render - skip it
+        # Pass next_index directly since it already points to the next app
+        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
@@ -210,11 +386,15 @@ def _next_app_logic(
         webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
 
     if webp_path.exists() and webp_path.stat().st_size > 0:
+        # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
-        db.save_last_app_index(db_conn, device_id, last_app_index)
+        # Save the next_index as the new last_app_index
+        db.save_last_app_index(db_conn, device_id, next_index)
         return response
 
-    return _next_app_logic(db_conn, device_id, last_app_index, recursion_depth + 1)
+    # WebP file doesn't exist or is empty - skip this app
+    # Pass next_index directly since it already points to the next app
+    return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
 
 @router.get("/", name="index")
@@ -229,9 +409,7 @@ def index(
     if user.devices:
         for device in reversed(list(user.devices.values())):
             if not device.ws_url:
-                device.ws_url = str(
-                    request.url_for("websocket_endpoint", device_id=device.id)
-                )
+                device.ws_url = ws_root() + f"/{device.id}/ws"
                 user_updated = True
 
             ui_device = device.model_copy()
@@ -304,10 +482,8 @@ def create_post(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-    img_url = form_data.img_url or str(request.url_for("next_app", device_id=device_id))
-    ws_url = form_data.ws_url or str(
-        request.url_for("websocket_endpoint", device_id=device_id)
-    )
+    img_url = form_data.img_url or f"{server_root()}/{device_id}/next"
+    ws_url = form_data.ws_url or ws_root() + f"/{device_id}/ws"
     api_key = form_data.api_key or "".join(
         secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
     )
@@ -362,8 +538,8 @@ def update(
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
-    default_img_url = request.url_for("next_app", device_id=device_id)
-    default_ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
+    default_img_url = f"{server_root()}/{device_id}/next"
+    default_ws_url = ws_root() + f"/{device_id}/ws"
 
     ui_device = device.model_copy()
     if ui_device.brightness:
@@ -416,7 +592,6 @@ async def update_brightness(
     # Send brightness command directly to active websocket connection (if any)
     # This doesn't interrupt the natural flow of rotation
     from tronbyt_server.routers.websockets import send_brightness_update
-    from tronbyt_server.sync import get_sync_manager
 
     sent = await send_brightness_update(device_id, new_brightness_8bit)
 
@@ -425,12 +600,9 @@ async def update_brightness(
             f"[{device_id}] Sent brightness update immediately: {new_brightness_8bit}"
         )
     else:
-        # Connection not in this worker's _active_connections - notify via SyncManager
-        # This will wake up the correct worker and brightness will be sent with next image
         logger.info(
-            f"[{device_id}] No active websocket in this worker, notifying via SyncManager"
+            f"[{device_id}] No active websocket, brightness will apply to next connection"
         )
-        get_sync_manager(logger).notify(device_id)
 
     return Response(status_code=status.HTTP_200_OK)
 
@@ -471,6 +643,8 @@ class DeviceUpdateFormData(BaseModel):
     dim_brightness: int | None = None
     timezone: str | None = None
     location: str | None = None
+    interstitial_enabled: bool = False
+    interstitial_app: str | None = None
 
 
 @router.post("/{device_id}/update", name="update_post")
@@ -501,12 +675,12 @@ def update_post(
     device.img_url = (
         db.sanitize_url(form_data.img_url)
         if form_data.img_url
-        else str(request.url_for("next_app", device_id=device_id))
+        else f"{server_root()}/{device_id}/next"
     )
     device.ws_url = (
         db.sanitize_url(form_data.ws_url)
         if form_data.ws_url
-        else str(request.url_for("websocket_endpoint", device_id=device_id))
+        else ws_root() + f"/{device_id}/ws"
     )
     device.api_key = form_data.api_key or ""
     device.notes = form_data.notes or ""
@@ -542,6 +716,13 @@ def update_post(
 
     if form_data.dim_brightness:
         device.dim_brightness = db.ui_scale_to_percent(form_data.dim_brightness)
+
+    # Handle interstitial app settings
+    device.interstitial_enabled = form_data.interstitial_enabled
+    if form_data.interstitial_app and form_data.interstitial_app != "None":
+        device.interstitial_app = form_data.interstitial_app
+    else:
+        device.interstitial_app = None
 
     if form_data.location and form_data.location != "{}":
         try:
@@ -993,6 +1174,7 @@ def updateapp(
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
             "user": user,
+            "server_root": server_root(),
             "form": {},  # Empty form data for GET request
         },
     )
@@ -1747,10 +1929,8 @@ async def import_device_config_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device_config["img_url"] = str(request.url_for("next_app", device_id=device_id))
-        device_config["ws_url"] = str(
-            request.url_for("websocket_endpoint", device_id=device_id)
-        )
+        device_config["img_url"] = f"{server_root()}/{device_id}/next"
+        device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
         user.devices[device_config["id"]] = Device(**device_config)
         db.save_user(db_conn, user)
         flash(request, _("Device configuration imported successfully"))
@@ -1801,12 +1981,8 @@ async def import_user_config(
         # Regenerate img_url and ws_url with new server root for all devices
         if "devices" in user_config:
             for device_id, device_data in user_config["devices"].items():
-                device_data["img_url"] = str(
-                    request.url_for("next_app", device_id=device_id)
-                )
-                device_data["ws_url"] = str(
-                    request.url_for("websocket_endpoint", device_id=device_id)
-                )
+                device_data["img_url"] = f"{server_root()}/{device_id}/next"
+                device_data["ws_url"] = f"{ws_root()}/{device_id}/ws"
 
         logging.info(f"Attempting to import user config: {user_config.keys()}")
         try:
@@ -1876,10 +2052,8 @@ async def import_device_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device_config["img_url"] = str(request.url_for("next_app", device_id=device_id))
-        device_config["ws_url"] = str(
-            request.url_for("websocket_endpoint", device_id=device_id)
-        )
+        device_config["img_url"] = f"{server_root()}/{device_id}/next"
+        device_config["ws_url"] = f"{ws_root()}/{device_id}/ws"
         device = Device(**device_config)
         user.devices[device.id] = device
         db.save_user(db_conn, user)
@@ -1922,17 +2096,50 @@ def currentwebp(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    apps_list = sorted(
-        list(device.apps.values()),
-        key=lambda x: x.order,
-    )
-    if not apps_list:
+    # first check for a pushed file starting with __ and just return that and then delete it.
+    # This needs to happen before brightness check to clear any ephemeral images
+    pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+    if pushed_dir.is_dir():
+        for ephemeral_file in sorted(pushed_dir.glob("__*")):
+            logger.debug(f"Found pushed image {ephemeral_file}")
+            response = send_image(ephemeral_file, device, None, True)
+            ephemeral_file.unlink()
+            return response
+
+    # If brightness is 0, short-circuit and return default image to save processing
+    brightness = device.brightness or 50
+    if brightness == 0:
+        logger.debug("Brightness is 0, returning default image")
         return send_default_image(device)
-    current_app_index = db.get_last_app_index(db_conn, device_id) or 0
-    if current_app_index >= len(apps_list):
-        current_app_index = 0
-    current_app_iname = apps_list[current_app_index].iname
-    return appwebp(device_id, current_app_iname, db_conn)
+
+    # Use helper function to get the app to display, without advancing the index
+    app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
+        db_conn, device_id, advance_index=False
+    )
+
+    if app is None:
+        return send_default_image(device)
+
+    # For pinned apps, always display them regardless of enabled/schedule status
+    # For interstitial apps, always display them regardless of enabled/schedule status
+    # For other apps, check if they should be displayed
+    if (
+        not is_pinned_app
+        and not is_night_mode_app
+        and not is_interstitial_app
+        and (not app.enabled or not db.get_is_app_schedule_active(app, device))
+    ):
+        return send_default_image(device)
+
+    if app.pushed:
+        webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
+    else:
+        webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
+
+    if webp_path.exists() and webp_path.stat().st_size > 0:
+        return send_image(webp_path, device, app)
+    else:
+        return send_default_image(device)
 
 
 @router.get("/{device_id}/{iname}/appwebp", name="appwebp")
