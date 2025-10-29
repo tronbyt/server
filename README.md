@@ -93,7 +93,7 @@ That said, the recommended installation method uses Docker Compose with a config
 
 1. Install via Unraid App Store by searching for `tronbyt-server`
 
-2. Configure the environment variables as needed (refer to the Docker section for details).
+2. Configure the environment variables as needed. For available options, refer to the [.env.example file](https://github.com/tronbyt/server/blob/main/.env.example).
 
 3. Start the container.
 
