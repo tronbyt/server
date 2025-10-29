@@ -1180,7 +1180,6 @@ def updateapp(
             "device_id": device_id,
             "config": json.dumps(app.config, indent=4),
             "user": user,
-            "server_root": request.url_for("index").__str__().rstrip("/"),
             "form": {},  # Empty form data for GET request
         },
     )
