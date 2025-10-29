@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 from fastapi_babel import _
 
 from tronbyt_server import db
+from tronbyt_server.config import get_settings
 from tronbyt_server.flash import flash
 from tronbyt_server.models import App, Device, User
 from tronbyt_server.pixlet import render_app as pixlet_render_app
@@ -223,3 +224,28 @@ def send_image(
 def push_new_image(device_id: str, logger: logging.Logger) -> None:
     """Wake up WebSocket loops to push a new image to a given device."""
     get_sync_manager(logger).notify(device_id)
+
+
+def server_root() -> str:
+    """Get the root URL of the server."""
+    settings = get_settings()
+    protocol = settings.SERVER_PROTOCOL
+    hostname = settings.SERVER_HOSTNAME
+    port = settings.SERVER_PORT
+    url = f"{protocol}://{hostname}"
+    if (protocol == "https" and port != "443") or (protocol == "http" and port != "80"):
+        url += f":{port}"
+    return url
+
+
+def ws_root() -> str:
+    """Get the root URL for websockets."""
+    settings = get_settings()
+    server_protocol = settings.SERVER_PROTOCOL
+    protocol = "wss" if server_protocol == "https" else "ws"
+    hostname = settings.SERVER_HOSTNAME
+    port = settings.SERVER_PORT
+    url = f"{protocol}://{hostname}"
+    if (protocol == "wss" and port != "443") or (protocol == "ws" and port != "80"):
+        url += f":{port}"
+    return url
