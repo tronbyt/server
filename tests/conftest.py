@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Iterator
+from typing import AsyncGenerator, Iterator
 import sqlite3
-from unittest.mock import patch
+from contextlib import asynccontextmanager
 
 import pytest
 from fastapi import FastAPI
@@ -11,23 +11,24 @@ import shutil
 from tronbyt_server.main import app as fastapi_app
 from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
+from tronbyt_server import db
 
 settings = get_settings()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def patch_sync_manager_shutdown() -> Iterator[None]:
-    """Patch sync manager shutdown to prevent hanging on multiprocessing cleanup."""
-    # Patch shutdown methods on both SyncManager implementations
-    # This prevents hanging when lifespan shutdown is called during test teardown
-    with (
-        patch(
-            "tronbyt_server.sync.MultiprocessingSyncManager.shutdown", lambda self: None
-        ),
-        patch("tronbyt_server.sync.RedisSyncManager.shutdown", lambda self: None),
-        patch("tronbyt_server.sync._sync_manager", None),
-    ):  # Clear any cached instance
-        yield
+@asynccontextmanager
+async def test_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Test-safe lifespan that skips shutdown to avoid hanging."""
+    import logging
+
+    logging.basicConfig(level=get_settings().LOG_LEVEL)
+
+    settings_obj = get_settings()
+    db_connection = next(get_db(settings=settings_obj))
+    with db_connection:
+        db.init_db(db_connection)
+    yield
+    # Skip shutdown - this prevents hanging on multiprocessing cleanup
 
 
 @pytest.fixture(scope="session")
@@ -53,8 +54,16 @@ def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
         return db_connection
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
+
+    # Override lifespan with test-safe version that skips shutdown
+    original_lifespan = fastapi_app.router.lifespan_context
+    fastapi_app.router.lifespan_context = test_lifespan
+
     yield fastapi_app
+
     fastapi_app.dependency_overrides.clear()
+    # Restore original lifespan
+    fastapi_app.router.lifespan_context = original_lifespan
 
 
 @pytest.fixture(autouse=True)
