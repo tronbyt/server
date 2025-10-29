@@ -22,4 +22,14 @@ def run_once() -> None:
     else:
         logger.info("Skipping system apps update (dev mode)")
 
+    # One-time fix for App recurrence fields (run once, then remove)
+    try:
+        db_connection = db.get_db()
+        try:
+            db.fix_app_recurrence_fields_one_time(db_connection, logger)
+        finally:
+            db_connection.close()
+    except Exception as e:
+        logger.error(f"Failed to run one-time recurrence fields fix: {e}")
+
     logger.info("One-time startup tasks complete.")

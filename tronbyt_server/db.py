@@ -761,6 +761,81 @@ def get_all_users(db: sqlite3.Connection) -> list[User]:
     return [User(**json.loads(row[0])) for row in cursor.fetchall()]
 
 
+def fix_app_recurrence_fields_one_time(db: sqlite3.Connection, logger: logging.Logger) -> None:
+    """
+    One-time fix for App recurrence fields that are None.
+    
+    This fixes existing App objects in the database that have None values
+    for recurrence_type, recurrence_interval, and recurrence_pattern,
+    setting them to their default values.
+    
+    This should be run once and then removed.
+    """
+    try:
+        cursor = db.cursor()
+        cursor.execute("SELECT id, username, data FROM json_data")
+        rows = cursor.fetchall()
+        
+        if not rows:
+            return
+        
+        total_apps_fixed = 0
+        users_updated = 0
+        
+        for user_id, username, user_data_json in rows:
+            try:
+                user_data = json.loads(user_data_json)
+                
+                if "devices" not in user_data:
+                    continue
+                
+                user_changed = False
+                for device_id, device_data in user_data["devices"].items():
+                    if "apps" not in device_data:
+                        continue
+                    
+                    for app_iname, app_data in device_data["apps"].items():
+                        changed = False
+                        
+                        # Fix recurrence_type (default: "daily")
+                        if app_data.get("recurrence_type") is None:
+                            app_data["recurrence_type"] = "daily"
+                            changed = True
+                        
+                        # Fix recurrence_interval (default: 1)
+                        if app_data.get("recurrence_interval") is None:
+                            app_data["recurrence_interval"] = 1
+                            changed = True
+                        
+                        # Fix recurrence_pattern (default: empty dict)
+                        if app_data.get("recurrence_pattern") is None:
+                            app_data["recurrence_pattern"] = {}
+                            changed = True
+                        
+                        if changed:
+                            total_apps_fixed += 1
+                            user_changed = True
+                
+                if user_changed:
+                    cursor.execute(
+                        "UPDATE json_data SET data = ? WHERE id = ?",
+                        (json.dumps(user_data), user_id),
+                    )
+                    users_updated += 1
+                    logger.info(f"Fixed recurrence fields for user '{username}'")
+            except Exception as e:
+                logger.warning(f"Error fixing recurrence fields for user '{username}': {e}")
+                continue
+        
+        if total_apps_fixed > 0:
+            db.commit()
+            logger.info(f"One-time fix: Fixed {total_apps_fixed} app(s) across {users_updated} user(s)")
+        elif users_updated == 0:
+            logger.debug("One-time fix: No apps needed recurrence field fixes")
+    except Exception as e:
+        logger.error(f"Error running one-time recurrence fields fix: {e}")
+
+
 def has_users(db: sqlite3.Connection) -> bool:
     """Check if any users exist in the database."""
     cursor = db.cursor()
