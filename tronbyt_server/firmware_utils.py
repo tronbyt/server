@@ -89,7 +89,7 @@ def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
     """
 
     firmware_path = base_path / "firmware"
-    firmware_repo = os.getenv(
+    firmware_repo = os.environ.get(
         "FIRMWARE_REPO", "https://github.com/tronbyt/firmware-esp32"
     )
 

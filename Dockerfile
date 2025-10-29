@@ -56,4 +56,4 @@ RUN mkdir -p /app/data /app/users && \
 #USER tronbyt
 
 # start the app
-ENTRYPOINT ["./run"]
+ENTRYPOINT ["python3", "run.py"]
