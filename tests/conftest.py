@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Iterator
 import sqlite3
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
@@ -12,6 +13,17 @@ from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
 
 settings = get_settings()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def patch_sync_manager_shutdown() -> Iterator[None]:
+    """Patch sync manager shutdown to prevent hanging on multiprocessing cleanup."""
+    # Patch shutdown methods on both SyncManager implementations
+    # This prevents hanging when lifespan shutdown is called during test teardown
+    with patch("tronbyt_server.sync.MultiprocessingSyncManager.shutdown", lambda self: None), \
+         patch("tronbyt_server.sync.RedisSyncManager.shutdown", lambda self: None), \
+         patch("tronbyt_server.sync._sync_manager", None):  # Clear any cached instance
+        yield
 
 
 @pytest.fixture(scope="session")
@@ -37,9 +49,7 @@ def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
         return db_connection
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
-
     yield fastapi_app
-
     fastapi_app.dependency_overrides.clear()
 
 
