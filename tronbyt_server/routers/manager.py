@@ -63,7 +63,9 @@ router = APIRouter(tags=["manager"])
 logger = logging.getLogger(__name__)
 
 
-def create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]:
+def create_expanded_apps_list(
+    device: Device, apps_list: list[App]
+) -> list[tuple[App, bool]]:
     """
     Create an expanded apps list with interstitial apps inserted between regular apps.
 
@@ -72,15 +74,15 @@ def create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]
         apps_list: List of regular apps sorted by order
 
     Returns:
-        List of apps with interstitial apps inserted after each regular app (except the last)
+        List of tuples (app, is_interstitial) with interstitial apps inserted after each regular app (except the last)
     """
     expanded_apps_list = []
     interstitial_app_iname = device.interstitial_app
     interstitial_enabled = device.interstitial_enabled
 
     for i, regular_app in enumerate(apps_list):
-        # Add the regular app
-        expanded_apps_list.append(regular_app)
+        # Add the regular app (False = not interstitial)
+        expanded_apps_list.append((regular_app, False))
 
         # Add interstitial app after each regular app (except the last one)
         if (
@@ -90,7 +92,7 @@ def create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]
             and i < len(apps_list) - 1
         ):
             interstitial_app = device.apps[interstitial_app_iname]
-            expanded_apps_list.append(interstitial_app)
+            expanded_apps_list.append((interstitial_app, True))
 
     return expanded_apps_list
 
@@ -230,25 +232,13 @@ def _get_app_to_display(
                 if device.interstitial_enabled and last_app_index < len(apps_list):
                     # Use the original apps_list for backward compatibility
                     app = apps_list[last_app_index]
+                    is_interstitial_app = False
                 else:
                     # Reset to 0 if index is completely invalid
-                    app = expanded_apps_list[0]
+                    app, is_interstitial_app = expanded_apps_list[0]
                     last_app_index = 0
             else:
-                app = expanded_apps_list[last_app_index]
-
-            # Check if this is at an interstitial position
-            # Interstitial positions are at odd indices (1, 3, 5, etc.)
-            if (
-                device.interstitial_enabled
-                and device.interstitial_app
-                and device.interstitial_app in device.apps
-                and app.iname == device.interstitial_app
-            ):
-                # Check if we're at an odd index (interstitial position)
-                is_interstitial_app = (
-                    last_app_index is not None and last_app_index % 2 == 1
-                )
+                app, is_interstitial_app = expanded_apps_list[last_app_index]
 
             # Calculate new index if advancing
             new_index = last_app_index
@@ -311,8 +301,8 @@ def _next_app_logic(
     else:
         next_index = 0  # Reset to beginning of list
 
-    # Check if we're at an interstitial position (odd index)
-    is_interstitial_position = next_index % 2 == 1
+    # Check if we're at an interstitial position (get from tuple)
+    _, is_interstitial_position = expanded_apps_list[next_index]
 
     # Get the app at the next index (without advancing further)
     app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
@@ -351,26 +341,23 @@ def _next_app_logic(
     # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
     # then we should skip this interstitial app too to avoid showing it in isolation
     if is_interstitial_position:
-        # We're at an interstitial position (odd index)
+        # We're at an interstitial position
         # Check if the previous regular app (at next_index - 1) would be skipped
         prev_index = next_index - 1
         if prev_index >= 0 and prev_index < len(expanded_apps_list):
-            prev_app = expanded_apps_list[prev_index]
-            # Check if the previous app would be skipped
-            if prev_app.iname in device.apps:
-                prev_app_obj = device.apps[prev_app.iname]
-                # Check if previous app would be skipped (enabled, schedule, or empty render)
-                # Note: We don't call possibly_render here as it's expensive and unnecessary
-                # since we'll discover empty renders when we try to display the app anyway
-                if (
-                    not prev_app_obj.enabled
-                    or not db.get_is_app_schedule_active(prev_app_obj, device)
-                    or prev_app_obj.empty_last_render
-                ):
-                    # Previous app would be skipped - skip this interstitial too
-                    return _next_app_logic(
-                        db_conn, device_id, next_index, recursion_depth + 1
-                    )
+            prev_app, _ = expanded_apps_list[prev_index]
+            # Check if previous app would be skipped (enabled, schedule, or empty render)
+            # Note: We don't call possibly_render here as it's expensive and unnecessary
+            # since we'll discover empty renders when we try to display the app anyway
+            if (
+                not prev_app.enabled
+                or not db.get_is_app_schedule_active(prev_app, device)
+                or prev_app.empty_last_render
+            ):
+                # Previous app would be skipped - skip this interstitial too
+                return _next_app_logic(
+                    db_conn, device_id, next_index, recursion_depth + 1
+                )
 
     if (
         not possibly_render(db_conn, user, device_id, app, logger)
