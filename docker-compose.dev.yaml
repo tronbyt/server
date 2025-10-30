@@ -20,3 +20,4 @@ services:
       - ADMIN_PASSWORD
       - UVICORN_ACCESS_LOG=${UVICORN_ACCESS_LOG:-false}
       - WEB_CONCURRENCY
+      - TRONBYT_HOST=0.0.0.0
