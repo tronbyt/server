@@ -3,10 +3,14 @@ import os
 import sys
 from typing import Any
 
+import copy
 import click
 import uvicorn
+import logging
 from tronbyt_server.startup import run_once
 from uvicorn.main import main as uvicorn_cli
+from uvicorn.config import LOGGING_CONFIG
+from tronbyt_server.config import get_settings
 
 
 def main() -> None:
@@ -21,6 +25,9 @@ def main() -> None:
     """
     # Run startup tasks that should only be executed once
     run_once()
+
+    # Load settings from config.py (which handles .env files)
+    settings = get_settings()
 
     # 1. Let Uvicorn parse CLI args and env vars to establish a baseline config.
     # This captures user intent and Uvicorn's own defaults.
@@ -43,13 +50,13 @@ def main() -> None:
     except ValueError:
         port = 8000
 
-    is_production = os.environ.get("PRODUCTION", "1") == "1"
+    is_production = settings.PRODUCTION == "1"
 
     app_defaults: dict[str, Any] = {
         "app": "tronbyt_server.main:app",
         "host": os.environ.get("TRONBYT_HOST", "::"),
         "port": port,
-        "log_level": os.environ.get("LOG_LEVEL", "info").lower(),
+        "log_level": settings.LOG_LEVEL.lower(),
         "forwarded_allow_ips": "*",
         "ws_ping_interval": None,  # Our most critical default: disable pings
     }
@@ -72,6 +79,16 @@ def main() -> None:
     # The 'app' argument must be positional for uvicorn.run()
     app = config.pop("app")
 
+    # Custom logging configuration to remove logger names
+    log_config = copy.deepcopy(LOGGING_CONFIG)
+    log_config["formatters"]["default"]["fmt"] = (
+        "%(asctime)s %(levelprefix)s %(message)s"
+    )
+    log_config["formatters"]["access"]["fmt"] = (
+        '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+    )
+    config["log_config"] = log_config
+
     # Announce server startup using the final, merged configuration
     startup_message = f"Starting server on {config['host']}:{config['port']}"
 
@@ -80,7 +97,8 @@ def main() -> None:
     elif config.get("workers"):
         startup_message += f" with {config['workers']} workers"
 
-    print(startup_message)
+    logger = logging.getLogger(__name__)
+    logger.info(startup_message)
 
     uvicorn.run(app, **config)
 

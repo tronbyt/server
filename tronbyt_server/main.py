@@ -29,7 +29,6 @@ MODULE_ROOT = Path(__file__).parent.resolve()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Run startup and shutdown events."""
     # Startup
-    logging.basicConfig(level=get_settings().LOG_LEVEL)
     logger = logging.getLogger(__name__)
 
     settings = get_settings()

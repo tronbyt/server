@@ -48,7 +48,6 @@ def backup_database(db_file: str, logger: logging.Logger) -> None:
 def run_once() -> None:
     """Run tasks that should only be executed once at application startup."""
     settings = get_settings()
-    logging.basicConfig(level=settings.LOG_LEVEL)
     logger = logging.getLogger(__name__)
     logger.info("Running one-time startup tasks...")
     try:
