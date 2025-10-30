@@ -1083,3 +1083,24 @@ def save_render_messages(
     app.render_messages = messages
     if not save_app(db, device.id, app):
         logger.error("Error saving render messages: Failed to save app.")
+
+
+def vacuum(db: sqlite3.Connection) -> None:
+    page_count_row = db.execute("PRAGMA page_count").fetchone()
+    freelist_count_row = db.execute("PRAGMA freelist_count").fetchone()
+
+    if page_count_row and freelist_count_row:
+        page_count = page_count_row[0]
+        freelist_count = freelist_count_row[0]
+
+        # Avoid division by zero for empty DB
+        if page_count > 0:
+            # Run vacuum if more than 20% of pages are free, and there are at least 100 free pages.
+            fragmentation_ratio = freelist_count / page_count
+            if freelist_count > 100 and fragmentation_ratio > 0.2:
+                logger.info(
+                    f"Database is fragmented ({freelist_count} of {page_count} pages are free, "
+                    f"{fragmentation_ratio:.1%}). Vacuuming..."
+                )
+                db.execute("VACUUM")
+                logger.info("Database vacuum complete.")

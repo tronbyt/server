@@ -64,4 +64,10 @@ def run_once() -> None:
     else:
         logger.info("Skipping system apps update and database backup (dev mode)")
 
+    try:
+        with sqlite3.connect(settings.DB_FILE) as conn:
+            db.vacuum(conn)
+    except Exception as e:
+        logger.warning(f"Could not vacuum database: {e}")
+
     logger.info("One-time startup tasks complete.")
