@@ -141,7 +141,12 @@ class RedisWaiter(Waiter):
 
     def wait(self, timeout: int) -> None:
         """Wait for a notification."""
-        self._pubsub.get_message(timeout=timeout)
+        try:
+            self._pubsub.get_message(timeout=timeout)
+        except ValueError:
+            # This can happen if the pubsub connection is closed by another thread
+            # while we are waiting for a message.
+            pass
 
     def close(self) -> None:
         """Clean up the waiter."""
