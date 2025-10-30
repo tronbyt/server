@@ -1,14 +1,22 @@
 """Data models for Tronbyt Server applications."""
 
-from typing import Any, Literal
+from enum import Enum
+from typing import Any
 from pydantic import BaseModel, Field, BeforeValidator
 from datetime import time, date
 from typing import Annotated
 
 
-Weekday = Literal[
-    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
-]
+class Weekday(str, Enum):
+    """Weekday enumeration."""
+
+    MONDAY = "monday"
+    TUESDAY = "tuesday"
+    WEDNESDAY = "wednesday"
+    THURSDAY = "thursday"
+    FRIDAY = "friday"
+    SATURDAY = "saturday"
+    SUNDAY = "sunday"
 
 
 def parse_time(v: Any) -> Any:
@@ -40,7 +48,13 @@ class RecurrencePattern(BaseModel):
     )
 
 
-RecurrenceType = Literal["daily", "weekly", "monthly", "yearly"]
+class RecurrenceType(str, Enum):
+    """Recurrence type enumeration."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
 
 
 class App(BaseModel):
@@ -63,13 +77,13 @@ class App(BaseModel):
     end_time: Annotated[time | None, BeforeValidator(parse_time)] = (
         None  # Optional end time (HH:MM)
     )
-    days: list[str] = []
+    days: list[Weekday] = []
     # Custom recurrence system (opt-in)
     use_custom_recurrence: bool = (
         False  # Flag to enable custom recurrence instead of legacy
     )
     recurrence_type: RecurrenceType = Field(
-        default="daily",
+        default=RecurrenceType.DAILY,
         description='"daily", "weekly", "monthly", "yearly"',
     )
     recurrence_interval: int = 1  # Every X weeks/months/years

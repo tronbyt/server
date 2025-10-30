@@ -1581,7 +1581,7 @@ def generate_firmware_post(
         content=firmware_data,
         media_type="application/octet-stream",
         headers={
-            "Content-Disposition": f"attachment;filename=firmware_{device.type}_{device_id}.bin"
+            "Content-Disposition": f"attachment;filename=firmware_{device.type.value}_{device_id}.bin"
         },
     )
 
