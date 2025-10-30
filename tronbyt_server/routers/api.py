@@ -74,7 +74,7 @@ def get_device_payload(device: Device) -> dict[str, Any]:
         "displayName": device.name,
         "notes": device.notes,
         "intervalSec": device.default_interval,
-        "brightness": db.get_device_brightness_8bit(device),
+        "brightness": db.get_device_brightness_percent(device),
         "nightMode": {
             "enabled": device.night_mode_enabled,
             "app": device.night_mode_app,

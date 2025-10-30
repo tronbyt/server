@@ -37,10 +37,10 @@ The server sends two types of messages: JSON (text) and image data (binary).
       "dwell_secs": 10
     }
     ```
-*   **Brightness**: Sets the device's screen brightness (0-255). This is sent before the image it applies to.
+*   **Brightness**: Sets the device's screen brightness (0-100). This is sent before the image it applies to.
     ```json
     {
-      "brightness": 128
+      "brightness": 80
     }
     ```
 *   **Immediate Display**: Instructs the device to display the next image immediately, interrupting any currently displayed image. This is typically used for high-priority notifications or ephemeral apps. This message is sent *after* the corresponding image data has been sent.

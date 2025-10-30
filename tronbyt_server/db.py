@@ -446,7 +446,7 @@ def get_dim_mode_is_active(device: Device) -> bool:
 
 
 # Get the brightness percentage value to send to firmware
-def get_device_brightness_8bit(device: Device) -> int:
+def get_device_brightness_percent(device: Device) -> int:
     """Get the device brightness on an 8-bit scale."""
     # Priority: night mode > dim mode > normal brightness
     # If we're in night mode, use night_brightness if available

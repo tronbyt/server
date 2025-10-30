@@ -258,7 +258,7 @@ async def _wait_for_acknowledgment(
             if user:
                 device = user.devices.get(device_id)
                 if device:
-                    new_brightness = db.get_device_brightness_8bit(device)
+                    new_brightness = db.get_device_brightness_percent(device)
                     if new_brightness != last_brightness:
                         logger.info(
                             f"[{device_id}] Brightness changed to {new_brightness}, sending immediately"

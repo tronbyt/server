@@ -589,7 +589,7 @@ async def update_brightness(
 
     device.brightness = db.ui_scale_to_percent(brightness)
     db.save_user(db_conn, user)
-    new_brightness_8bit = db.get_device_brightness_8bit(device)
+    new_brightness_8bit = db.get_device_brightness_percent(device)
 
     # Send brightness command directly to active websocket connection (if any)
     # This doesn't interrupt the natural flow of rotation
@@ -2094,7 +2094,7 @@ def get_brightness(
     device = user.devices.get(device_id)
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    brightness_value = db.get_device_brightness_8bit(device)
+    brightness_value = db.get_device_brightness_percent(device)
     return Response(content=str(brightness_value), media_type="text/plain")
 
 

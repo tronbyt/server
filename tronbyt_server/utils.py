@@ -205,7 +205,7 @@ def send_image(
     else:
         response = FileResponse(webp_path, media_type="image/webp")
     # Use provided brightness or calculate it
-    b = brightness or db.get_device_brightness_8bit(device)
+    b = brightness or db.get_device_brightness_percent(device)
 
     # Use provided dwell_secs or calculate it
     if dwell_secs is not None:
