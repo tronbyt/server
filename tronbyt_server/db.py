@@ -20,7 +20,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
-from tronbyt_server.models import App, Device, User
+from tronbyt_server.models import App, Device, User, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -795,16 +795,12 @@ def get_is_app_schedule_active_at_time(app: App, current_time: datetime) -> bool
     else:
         # Default to legacy daily schedule system
         current_day = current_time.strftime("%A").lower()
-        active_days = app.days or [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ]
-        return isinstance(active_days, list) and current_day in active_days
+        active_days: list[Weekday] = app.days
+        if not active_days:
+            active_days = list(Weekday)  # All days active by default
+
+        active_day_values = [day.value for day in active_days]
+        return current_day in active_day_values
 
 
 def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
@@ -846,18 +842,10 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
         ):
             weekdays = recurrence_pattern.weekdays
         else:
-            weekdays = [
-                "monday",
-                "tuesday",
-                "wednesday",
-                "thursday",
-                "friday",
-                "saturday",
-                "sunday",
-            ]
+            weekdays = list(Weekday)  # All days if none specified
 
         current_weekday = current_time.strftime("%A").lower()
-        return current_weekday in weekdays
+        return current_weekday in [day.value for day in weekdays]
 
     elif recurrence_type == "monthly":
         # Every X months on specified day or weekday pattern

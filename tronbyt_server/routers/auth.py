@@ -5,7 +5,7 @@ import sqlite3
 import string
 import time
 from datetime import timedelta
-from typing import Annotated, cast, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import Response, RedirectResponse, JSONResponse
@@ -18,7 +18,7 @@ from tronbyt_server import system_apps, version
 from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
-from tronbyt_server.models import User
+from tronbyt_server.models import User, ThemePreference
 from tronbyt_server.templates import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -323,26 +323,28 @@ def logout(request: Request) -> Response:
     return response
 
 
-class ThemePreference(BaseModel):
-    """Pydantic model for theme preference."""
+class ThemePreferencePayload(BaseModel):
+    """Pydantic model for theme preference payload."""
 
     theme: str
 
 
 @router.post("/set_theme_preference")
 def set_theme_preference(
-    preference: ThemePreference,
+    preference: ThemePreferencePayload,
     user: Annotated[User, Depends(manager)],
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Set the theme preference for a user."""
-    if preference.theme not in ["light", "dark", "system"]:
+    try:
+        theme = ThemePreference(preference.theme)
+    except ValueError:
         return JSONResponse(
             content={"status": "error", "message": "Invalid theme value"},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    user.theme_preference = cast(Literal["light", "dark", "system"], preference.theme)
+    user.theme_preference = theme
     if db.save_user(db_conn, user):
         return JSONResponse(
             content={"status": "success", "message": "Theme preference updated"}

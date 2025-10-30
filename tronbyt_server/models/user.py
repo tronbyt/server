@@ -1,10 +1,17 @@
 """Data models for Tronbyt Server users."""
 
-from typing import Literal
-
+from enum import Enum
 from pydantic import BaseModel, Field
 
 from .device import Device
+
+
+class ThemePreference(str, Enum):
+    """Theme preference enumeration."""
+
+    LIGHT = "light"
+    DARK = "dark"
+    SYSTEM = "system"
 
 
 class User(BaseModel):
@@ -15,6 +22,6 @@ class User(BaseModel):
     email: str = ""
     devices: dict[str, Device] = {}
     api_key: str = ""
-    theme_preference: Literal["light", "dark", "system"] = "system"
+    theme_preference: ThemePreference = ThemePreference.SYSTEM
     system_repo_url: str = ""
     app_repo_url: str = ""

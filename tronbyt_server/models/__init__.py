@@ -8,7 +8,7 @@ from .device import (
     DeviceType,
     Location,
 )
-from .user import User
+from .user import User, ThemePreference
 
 __all__ = [
     "App",
@@ -22,4 +22,5 @@ __all__ = [
     "DEFAULT_DEVICE_TYPE",
     "DeviceType",
     "Location",
+    "ThemePreference",
 ]

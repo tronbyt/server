@@ -1,6 +1,7 @@
 """Data models and validation functions for devices in Tronbyt Server."""
 
-from typing import Annotated, Any, Literal
+from enum import Enum
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 from pydantic import (
@@ -12,18 +13,22 @@ from pydantic import (
 
 from .app import App
 
-DeviceType = Literal[
-    "tidbyt_gen1",
-    "tidbyt_gen2",
-    "pixoticker",
-    "raspberrypi",
-    "tronbyt_s3",
-    "tronbyt_s3_wide",
-    "other",
-]
-DEFAULT_DEVICE_TYPE: DeviceType = "tidbyt_gen1"
 
-TWO_X_CAPABLE_DEVICE_TYPES = ["tronbyt_s3_wide"]
+class DeviceType(str, Enum):
+    """Device type enumeration."""
+
+    TIDBYT_GEN1 = "tidbyt_gen1"
+    TIDBYT_GEN2 = "tidbyt_gen2"
+    PIXOTICKER = "pixoticker"
+    RASPBERRYPI = "raspberrypi"
+    TRONBYT_S3 = "tronbyt_s3"
+    TRONBYT_S3_WIDE = "tronbyt_s3_wide"
+    OTHER = "other"
+
+
+DEFAULT_DEVICE_TYPE: DeviceType = DeviceType.TIDBYT_GEN1
+
+TWO_X_CAPABLE_DEVICE_TYPES = [DeviceType.TRONBYT_S3_WIDE]
 
 DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
 Brightness = Annotated[

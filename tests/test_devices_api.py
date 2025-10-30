@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tronbyt_server import db
-from tronbyt_server.models import App
+from tronbyt_server.models import App, DeviceType
 from tronbyt_server.models.user import User
 from tests import utils
 
@@ -267,7 +267,7 @@ class TestDeviceEndpoint:
             empty_last_render=True,
         )
 
-        device.type = "tronbyt_s3"
+        device.type = DeviceType.TRONBYT_S3
         device.notes = "Extra info"
         device.default_interval = 42
         device.night_mode_enabled = True

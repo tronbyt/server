@@ -2,7 +2,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from tronbyt_server import db
-from tronbyt_server.models.app import App, RecurrencePattern
+from tronbyt_server.models.app import App, RecurrencePattern, RecurrenceType, Weekday
 
 
 def test_get_is_app_schedule_active() -> None:
@@ -126,7 +126,7 @@ def test_get_is_app_schedule_active() -> None:
             path="/testing",
             start_time=datetime.time(18, 0),
             end_time=datetime.time(22, 0),
-            days=["wednesday"],
+            days=[Weekday.WEDNESDAY],
         ),
         datetime.datetime(
             year=2025,
@@ -145,7 +145,7 @@ def test_get_is_app_schedule_active() -> None:
             path="/testing",
             start_time=datetime.time(18, 0),
             end_time=datetime.time(22, 0),
-            days=["monday", "tuesday"],
+            days=[Weekday.MONDAY, Weekday.TUESDAY],
         ),
         datetime.datetime(
             year=2025,
@@ -167,7 +167,7 @@ def test_daily_recurrence() -> None:
         id="daily_test",
         path="/daily_test",
         use_custom_recurrence=True,
-        recurrence_type="daily",
+        recurrence_type=RecurrenceType.DAILY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 1),
     )
@@ -211,10 +211,12 @@ def test_weekly_recurrence() -> None:
         id="weekly_test",
         path="/weekly_test",
         use_custom_recurrence=True,
-        recurrence_type="weekly",
+        recurrence_type=RecurrenceType.WEEKLY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 6),  # Monday, Jan 6, 2025
-        recurrence_pattern=RecurrencePattern(weekdays=["monday", "wednesday"]),
+        recurrence_pattern=RecurrencePattern(
+            weekdays=[Weekday.MONDAY, Weekday.WEDNESDAY]
+        ),
     )
 
     # Test first week
@@ -241,7 +243,7 @@ def test_weekly_recurrence() -> None:
 
     # Every 2 weeks (bi-weekly) on Monday
     app.recurrence_interval = 2
-    app.recurrence_pattern = RecurrencePattern(weekdays=["monday"])
+    app.recurrence_pattern = RecurrencePattern(weekdays=[Weekday.MONDAY])
 
     # Week 1: Should be active
     assert db.get_is_app_schedule_active_at_time(
@@ -268,7 +270,7 @@ def test_monthly_recurrence_day_of_month() -> None:
         id="monthly_test",
         path="/monthly_test",
         use_custom_recurrence=True,
-        recurrence_type="monthly",
+        recurrence_type=RecurrenceType.MONTHLY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 1),
         recurrence_pattern=RecurrencePattern(day_of_month=1),
@@ -319,7 +321,7 @@ def test_monthly_recurrence_day_of_week() -> None:
         id="monthly_dow_test",
         path="/monthly_dow_test",
         use_custom_recurrence=True,
-        recurrence_type="monthly",
+        recurrence_type=RecurrenceType.MONTHLY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 1),
         recurrence_pattern=RecurrencePattern(day_of_week="first_monday"),
@@ -359,7 +361,7 @@ def test_yearly_recurrence() -> None:
         id="yearly_test",
         path="/yearly_test",
         use_custom_recurrence=True,
-        recurrence_type="yearly",
+        recurrence_type=RecurrenceType.YEARLY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 9, 22),  # Today's date
     )
@@ -408,7 +410,7 @@ def test_recurrence_with_end_date() -> None:
         id="end_date_test",
         path="/end_date_test",
         use_custom_recurrence=True,
-        recurrence_type="daily",
+        recurrence_type=RecurrenceType.DAILY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 1),
         recurrence_end_date=datetime.date(2025, 1, 5),
@@ -444,11 +446,11 @@ def test_recurrence_with_time_range() -> None:
         use_custom_recurrence=True,
         start_time=datetime.time(9, 0),
         end_time=datetime.time(17, 0),
-        recurrence_type="weekly",
+        recurrence_type=RecurrenceType.WEEKLY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 6),  # Monday
         recurrence_pattern=RecurrencePattern(
-            weekdays=["monday", "wednesday", "friday"]
+            weekdays=[Weekday.MONDAY, Weekday.WEDNESDAY, Weekday.FRIDAY]
         ),
     )
 
@@ -483,7 +485,7 @@ def test_legacy_days_compatibility() -> None:
         path="/legacy_test",
         start_time=datetime.time(10, 0),
         end_time=datetime.time(16, 0),
-        days=["monday", "wednesday", "friday"],
+        days=[Weekday.MONDAY, Weekday.WEDNESDAY, Weekday.FRIDAY],
         # No recurrence_type field - should fall back to legacy behavior
     )
 
@@ -505,7 +507,7 @@ def test_edge_cases() -> None:
         id="before_start_test",
         path="/before_start_test",
         use_custom_recurrence=True,
-        recurrence_type="daily",
+        recurrence_type=RecurrenceType.DAILY,
         recurrence_interval=1,
         recurrence_start_date=datetime.date(2025, 1, 10),
     )
