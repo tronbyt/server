@@ -1,6 +1,5 @@
 """Main application file."""
 
-import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -29,8 +28,6 @@ MODULE_ROOT = Path(__file__).parent.resolve()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Run startup and shutdown events."""
     # Startup
-    logger = logging.getLogger(__name__)
-
     settings = get_settings()
 
     db_connection = next(get_db(settings=settings))
@@ -41,7 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown
     from tronbyt_server.sync import get_sync_manager
 
-    get_sync_manager(logger).shutdown()
+    get_sync_manager().shutdown()
 
 
 app = FastAPI(lifespan=lifespan)

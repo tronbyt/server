@@ -10,7 +10,10 @@ from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import get_settings
 
 
-def backup_database(db_file: str, logger: logging.Logger) -> None:
+logger = logging.getLogger(__name__)
+
+
+def backup_database(db_file: str) -> None:
     """Create a timestamped backup of the SQLite database."""
     db_path = Path(db_file)
     if not db_path.exists():
@@ -51,15 +54,15 @@ def run_once() -> None:
     logger = logging.getLogger(__name__)
     logger.info("Running one-time startup tasks...")
     try:
-        firmware_utils.update_firmware_binaries(db.get_data_dir(), logger)
+        firmware_utils.update_firmware_binaries(db.get_data_dir())
     except Exception as e:
         logger.error(f"Failed to update firmware during startup: {e}")
 
     # Backup the database before initializing (only in production)
     # Skip system apps update in dev mode
     if settings.PRODUCTION == "1":
-        system_apps.update_system_repo(db.get_data_dir(), logger)
-        backup_database(settings.DB_FILE, logger)
+        system_apps.update_system_repo(db.get_data_dir())
+        backup_database(settings.DB_FILE)
     else:
         logger.info("Skipping system apps update and database backup (dev mode)")
 

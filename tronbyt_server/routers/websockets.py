@@ -378,7 +378,7 @@ async def sender(
     ack: DeviceAcknowledgment,
 ) -> None:
     """The sender task for the websocket."""
-    waiter = get_sync_manager(logger).get_waiter(device_id)
+    waiter = get_sync_manager().get_waiter(device_id)
     loop = asyncio.get_running_loop()
     last_brightness = -1
     dwell_time = 5

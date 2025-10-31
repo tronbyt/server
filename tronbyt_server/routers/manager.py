@@ -370,10 +370,7 @@ def _next_app_logic(
                         db_conn, device_id, next_index, recursion_depth + 1
                     )
 
-    if (
-        not possibly_render(db_conn, user, device_id, app, logger)
-        or app.empty_last_render
-    ):
+    if not possibly_render(db_conn, user, device_id, app) or app.empty_last_render:
         # App failed to render or had empty render - skip it
         # Pass next_index directly since it already points to the next app
         return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
@@ -608,7 +605,7 @@ async def update_brightness(
         logger.info(
             f"[{device_id}] No active websocket in this worker, notifying via SyncManager"
         )
-        get_sync_manager(logger).notify(device_id)
+        get_sync_manager().notify(device_id)
 
     return Response(status_code=status.HTTP_200_OK)
 
@@ -946,7 +943,6 @@ async def uploadapp_post(
             default_interval=15,
         ),
         None,
-        logger,
     )
 
     return RedirectResponse(
@@ -1140,7 +1136,7 @@ def duplicate_app(
 
     # Render the duplicated app to generate its preview
     try:
-        possibly_render(db_conn, user, device_id, duplicated_app, logger)
+        possibly_render(db_conn, user, device_id, duplicated_app)
     except Exception as e:
         logger.error(f"Error rendering duplicated app {new_iname}: {e}")
         # Don't fail the duplication if rendering fails, just log it
@@ -1395,7 +1391,7 @@ def configapp(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
 
-    schema_json = get_schema(Path(app.path), logger)
+    schema_json = get_schema(Path(app.path))
     schema = json.loads(schema_json) if schema_json else None
     return templates.TemplateResponse(
         request,
@@ -1440,7 +1436,6 @@ async def configapp_post(
         webp_path,
         device,
         app,
-        logger,
     )
     if image is not None:
         app.enabled = True
@@ -1486,7 +1481,6 @@ def preview(
             webp_path=None,
             device=device,
             app=app,
-            logger=logger,
         )
         if data is None:
             raise HTTPException(
@@ -1568,7 +1562,6 @@ def generate_firmware_post(
             pw=wifi_password,
             device_type=device.type,
             swap_colors=swap_colors,
-            logger=logger,
         )
     except Exception as e:
         logger.error(f"Error generating firmware: {e}")
@@ -1605,7 +1598,9 @@ def set_user_repo(
             status_code=status.HTTP_400_BAD_REQUEST, content="Invalid repository path"
         )
 
-    if set_repo(db_conn, request, user, "app_repo_url", apps_path, app_repo_url):
+    if set_repo(request, apps_path, user.app_repo_url, app_repo_url):
+        user.app_repo_url = app_repo_url
+        db.save_user(db_conn, user)
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
@@ -1632,19 +1627,23 @@ def set_system_repo(
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     app_repo_url: str = Form(...),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Set the system app repository (admin only)."""
     if user.username != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
+    logger.info(f"Setting system app repo to {app_repo_url}")
+    if not app_repo_url:
+        app_repo_url = settings.SYSTEM_APPS_REPO
     if set_repo(
-        db_conn,
         request,
-        user,
-        "system_repo_url",
         db.get_data_dir() / "system-apps",
+        user.system_repo_url,
         app_repo_url,
     ):
-        system_apps.update_system_repo(db.get_data_dir(), logger)
+        user.system_repo_url = app_repo_url
+        db.save_user(db_conn, user)
+        system_apps.generate_apps_json(db.get_data_dir())
         return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
@@ -1658,7 +1657,7 @@ def refresh_system_repo(
     if user.username != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     # Directly update the system repo - it handles git pull internally
-    system_apps.update_system_repo(db.get_data_dir(), logger)
+    system_apps.update_system_repo(db.get_data_dir())
     flash(request, _("System repo updated successfully"))
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
@@ -1713,7 +1712,7 @@ def mark_app_broken(
         broken_apps_path.write_text("\n".join(sorted(broken_apps)) + "\n")
 
         # Regenerate the apps.json to include the broken flag (without doing git pull)
-        system_apps.generate_apps_json(db.get_data_dir(), logger)
+        system_apps.generate_apps_json(db.get_data_dir())
 
         logger.info(f"Marked {app_filename} as broken")
         return JSONResponse(
@@ -1787,7 +1786,7 @@ def unmark_app_broken(
             broken_apps_path.write_text("")
 
         # Regenerate the apps.json to remove the broken flag (without doing git pull)
-        system_apps.generate_apps_json(db.get_data_dir(), logger)
+        system_apps.generate_apps_json(db.get_data_dir())
 
         logger.info(f"Unmarked {app_filename} as broken")
         return JSONResponse(
@@ -1812,7 +1811,7 @@ def update_firmware(request: Request, user: User = Depends(manager)) -> Response
     if user.username != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     try:
-        result = firmware_utils.update_firmware_binaries(db.get_data_dir(), logger)
+        result = firmware_utils.update_firmware_binaries(db.get_data_dir())
         if result["success"]:
             if result["action"] == "updated":
                 flash(request, _("✅ {result['message']}"), "success")
@@ -1833,11 +1832,10 @@ def update_firmware(request: Request, user: User = Depends(manager)) -> Response
 def refresh_user_repo(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Refresh the user's custom app repository."""
     apps_path = db.get_users_dir() / user.username / "apps"
-    if set_repo(db_conn, request, user, "app_repo_url", apps_path, user.app_repo_url):
+    if set_repo(request, apps_path, user.app_repo_url, user.app_repo_url):
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
 
@@ -2202,7 +2200,7 @@ async def schema_handler(
         if "param" not in data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-        result = call_handler(Path(app.path), handler, data["param"], logger)
+        result = call_handler(Path(app.path), handler, data["param"])
         return Response(content=result, media_type="application/json")
     except Exception as e:
         logger.error(f"Error in schema_handler: {e}")

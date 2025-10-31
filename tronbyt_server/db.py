@@ -602,7 +602,7 @@ def get_apps_list(user: str) -> list[dict[str, Any]]:
         list_file = get_data_dir() / "system-apps.json"
         if not list_file.exists():
             logger.info("Generating apps.json file...")
-            system_apps.update_system_repo(get_data_dir(), logger)
+            system_apps.update_system_repo(get_data_dir())
             logger.debug("apps.json file generated.")
         with list_file.open("r") as f:
             app_list = json.load(f)

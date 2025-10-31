@@ -291,7 +291,7 @@ def _push_image(
     if installation_id and db_conn:
         db.add_pushed_app(db_conn, device_id, installation_id)
 
-    push_new_image(device_id, logger)
+    push_new_image(device_id)
 
 
 @router.post("/devices/{device_id}/push")
@@ -474,7 +474,7 @@ def handle_app_push(
     installation_id = data.installationID or data.installationId or ""
     app_dict = db.get_pushed_app(user, device_id, installation_id)
     app = App(**app_dict)
-    image_bytes = render_app(db_conn, app_path, data.config, None, device, app, logger)
+    image_bytes = render_app(db_conn, app_path, data.config, None, device, app)
     if image_bytes is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

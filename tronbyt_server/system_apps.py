@@ -9,15 +9,16 @@ import subprocess
 import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from tronbyt_server.config import get_settings
 from tronbyt_server.models import AppMetadata
 
+logger = logging.getLogger(__name__)
+
 
 def git_command(
     command: list[str],
-    cwd: Optional[Path] = None,
+    cwd: Path | None = None,
     check: bool = False,
     capture_output: bool = False,
 ) -> subprocess.CompletedProcess[bytes]:
@@ -29,24 +30,42 @@ def git_command(
     )
 
 
-def get_system_repo_info(base_path: Path) -> dict[str, Optional[str]]:
+def get_system_repo_info(base_path: Path) -> dict[str, str | None]:
     """Get information about the current system repo commit.
 
     Returns:
         dict with keys: 'commit_hash', 'commit_url', 'repo_url', 'branch'
     """
     system_apps_path = base_path / "system-apps"
-    system_apps_url = get_settings().SYSTEM_APPS_REPO
 
-    # Parse the repo URL and branch
-    if "@" in system_apps_url and ".git@" in system_apps_url:
-        system_apps_repo, branch_name = system_apps_url.rsplit("@", 1)
-    else:
-        system_apps_repo = system_apps_url
-        branch_name = "main"
+    repo_url = None
+    branch_name = None
+    repo_web_url = None
 
-    # Remove .git suffix for web URL
-    repo_web_url = system_apps_repo.replace(".git", "")
+    git_dir = system_apps_path / ".git"
+    if git_dir.is_dir():
+        try:
+            # Get the remote URL
+            result_url = git_command(
+                ["git", "config", "--get", "remote.origin.url"],
+                cwd=system_apps_path,
+                capture_output=True,
+            )
+            if result_url.returncode == 0:
+                repo_url = result_url.stdout.decode().strip()
+                repo_web_url = repo_url.replace(".git", "")
+
+            # Get the current branch name
+            result_branch = git_command(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=system_apps_path,
+                capture_output=True,
+            )
+            if result_branch.returncode == 0:
+                branch_name = result_branch.stdout.decode().strip()
+
+        except Exception as e:
+            logger.warning(f"Could not get git repo info from {system_apps_path}: {e}")
 
     info = {
         "commit_hash": None,
@@ -56,7 +75,6 @@ def get_system_repo_info(base_path: Path) -> dict[str, Optional[str]]:
     }
 
     # Get the current commit hash
-    git_dir = system_apps_path / ".git"
     if git_dir.is_dir():
         try:
             result = git_command(
@@ -65,14 +83,15 @@ def get_system_repo_info(base_path: Path) -> dict[str, Optional[str]]:
             if result.returncode == 0:
                 commit_hash = result.stdout.decode().strip()
                 info["commit_hash"] = commit_hash[:7]  # Short hash
-                info["commit_url"] = f"{repo_web_url}/tree/{commit_hash}"
+                if repo_web_url:
+                    info["commit_url"] = f"{repo_web_url}/tree/{commit_hash}"
         except Exception:
             pass
 
     return info
 
 
-def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
+def generate_apps_json(base_path: Path) -> None:
     """Generate the system-apps.json file from the system-apps directory.
 
     This function only processes the apps and generates the JSON file.
@@ -246,7 +265,7 @@ def generate_apps_json(base_path: Path, logger: logging.Logger) -> None:
         json.dump([a.model_dump() for a in apps_array], f, indent=4)
 
 
-def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
+def update_system_repo(base_path: Path) -> None:
     """Update the system apps repository and regenerate the apps.json file.
 
     This function:
@@ -254,14 +273,6 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
     2. Calls generate_apps_json() to process the apps
     """
     system_apps_path = base_path / "system-apps"
-    system_apps_url = get_settings().SYSTEM_APPS_REPO
-
-    # Check if the URL contains a branch specification
-    if "@" in system_apps_url and ".git@" in system_apps_url:
-        system_apps_repo, branch_name = system_apps_url.rsplit("@", 1)
-    else:
-        system_apps_repo = system_apps_url
-        branch_name = None
 
     # check for existence of .git directory
     git_dir = system_apps_path / ".git"
@@ -289,7 +300,7 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
             )
 
     if git_dir.is_dir():  # Check if it's actually a directory
-        logger.info(f"{system_apps_path} git repo found, updating {system_apps_repo}")
+        logger.info(f"{system_apps_path} git repo found, updating…")
 
         # Check if there are local changes to broken_apps.txt
         status_result = git_command(
@@ -337,6 +348,15 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
             else:
                 logger.info("Successfully re-applied local broken_apps.txt changes")
     else:
+        system_apps_url = get_settings().SYSTEM_APPS_REPO
+
+        # Check if the URL contains a branch specification
+        if "@" in system_apps_url and ".git@" in system_apps_url:
+            system_apps_repo, branch_name = system_apps_url.rsplit("@", 1)
+        else:
+            system_apps_repo = system_apps_url
+            branch_name = None
+
         logger.info(
             f"Git repo not found in {system_apps_path}, cloning {system_apps_repo}"
         )
@@ -374,10 +394,10 @@ def update_system_repo(base_path: Path, logger: logging.Logger) -> None:
             logger.info("Repo Cloned")
 
     # Now generate the apps.json file
-    generate_apps_json(base_path, logger)
+    generate_apps_json(base_path)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("system_apps")
-    update_system_repo(Path(os.getcwd()), logger)
+    update_system_repo(Path(os.getcwd()))

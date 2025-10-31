@@ -5,12 +5,12 @@ import os
 import subprocess
 import time
 import sqlite3
+import shutil
 from pathlib import Path
 from typing import Any
 
 from fastapi import Request, Response
 from fastapi.responses import FileResponse
-from werkzeug.utils import secure_filename
 from fastapi_babel import _
 
 from tronbyt_server import db
@@ -18,6 +18,9 @@ from tronbyt_server.flash import flash
 from tronbyt_server.models import App, Device, User
 from tronbyt_server.pixlet import render_app as pixlet_render_app
 from tronbyt_server.sync import get_sync_manager
+
+
+logger = logging.getLogger(__name__)
 
 
 def git_command(
@@ -43,7 +46,6 @@ def render_app(
     webp_path: Path | None,
     device: Device,
     app: App | None,
-    logger: logging.Logger,
 ) -> bytes | None:
     """Renders a pixlet app to a webp image."""
     config_data = config.copy()
@@ -79,7 +81,6 @@ def render_app(
         maxDuration=app_interval * 1000,
         timeout=30000,
         image_format=0,
-        logger=logger,
     )
     messages = (
         messages if isinstance(messages, list) else [messages] if messages else []
@@ -97,26 +98,15 @@ def render_app(
 
 
 def set_repo(
-    db_conn: sqlite3.Connection,
     request: Request,
-    user: User,
-    repo_name: str,
     apps_path: Path,
+    old_repo_url: str,
     repo_url: str,
 ) -> bool:
     """Clone or update a git repository."""
     if repo_url != "":
-        old_repo = getattr(user, repo_name, "")
-        if old_repo != repo_url:
-            repo_url = "/".join(
-                secure_filename(part) for part in repo_url.split("/")[-2:]
-            )
-            setattr(user, repo_name, repo_url)
-            db.save_user(db_conn, user)
-
+        if old_repo_url != repo_url:
             if apps_path.exists():
-                import shutil
-
                 shutil.rmtree(apps_path)
             result = git_command(
                 [
@@ -124,7 +114,7 @@ def set_repo(
                     "clone",
                     "--depth",
                     "1",
-                    f"https://blah:blah@github.com/{repo_url}",
+                    repo_url,
                     str(apps_path),
                 ]
             )
@@ -152,7 +142,6 @@ def possibly_render(
     user: User,
     device_id: str,
     app: App,
-    logger: logging.Logger,
 ) -> bool:
     """Render an app if it's time to do so."""
     if app.pushed:
@@ -172,7 +161,7 @@ def possibly_render(
         device = user.devices[device_id]
         config = app.config.copy()
         add_default_config(config, device)
-        image = render_app(db_conn, app_path, config, webp_path, device, app, logger)
+        image = render_app(db_conn, app_path, config, webp_path, device, app)
         if image is None:
             logger.error(f"Error rendering {app_basename}")
         app.empty_last_render = len(image) == 0 if image is not None else False
@@ -220,6 +209,6 @@ def send_image(
     return response
 
 
-def push_new_image(device_id: str, logger: logging.Logger) -> None:
+def push_new_image(device_id: str) -> None:
     """Wake up WebSocket loops to push a new image to a given device."""
-    get_sync_manager(logger).notify(device_id)
+    get_sync_manager().notify(device_id)
