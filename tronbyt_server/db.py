@@ -626,6 +626,7 @@ def get_apps_list(user: str) -> list[dict[str, Any]]:
         app_dict: dict[str, Any] = {
             "path": str(file),
             "id": app_name,
+            "name": app_name,  # Ensure name is always set
             "date": mod_time.strftime("%Y-%m-%d %H:%M"),
         }
         preview = get_data_dir() / "apps" / f"{app_name}.webp"
