@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -67,20 +68,22 @@ class DeviceAcknowledgment:
             self.old_firmware_detected = True
 
 
+@dataclass
+class Connection:
+    """Represents an active WebSocket connection and its associated tasks."""
+
+    websocket: WebSocket
+    ack: "DeviceAcknowledgment"
+    sender_task: asyncio.Task[None]
+    receiver_task: asyncio.Task[None]
+    cleanup_event: asyncio.Event
+
+
 class ConnectionManager:
     """Manages active WebSocket connections."""
 
     def __init__(self) -> None:
-        self._active_connections: dict[
-            str,
-            tuple[
-                WebSocket,
-                DeviceAcknowledgment,
-                asyncio.Task[None],
-                asyncio.Task[None],
-                asyncio.Event,
-            ],
-        ] = {}
+        self._active_connections: dict[str, "Connection"] = {}
 
     async def register(
         self,
@@ -93,32 +96,30 @@ class ConnectionManager:
         """Register a new connection, cleaning up any existing one."""
         if device_id in self._active_connections:
             logger.warning(f"[{device_id}] Existing connection found, cleaning up.")
-            _, _, old_sender, old_receiver, old_cleanup_event = (
-                self._active_connections[device_id]
-            )
-            old_sender.cancel()
-            old_receiver.cancel()
+            old_connection = self._active_connections[device_id]
+            old_connection.sender_task.cancel()
+            old_connection.receiver_task.cancel()
             # Wait for the old connection's finally block to complete
-            await old_cleanup_event.wait()
+            await old_connection.cleanup_event.wait()
 
-        cleanup_event = asyncio.Event()
-        self._active_connections[device_id] = (
-            websocket,
-            ack,
-            sender_task,
-            receiver_task,
-            cleanup_event,
+        connection = Connection(
+            websocket=websocket,
+            ack=ack,
+            sender_task=sender_task,
+            receiver_task=receiver_task,
+            cleanup_event=asyncio.Event(),
         )
+        self._active_connections[device_id] = connection
         logger.info(f"[{device_id}] WebSocket connection registered")
 
     def unregister(self, device_id: str, websocket: WebSocket) -> None:
         """Unregister a connection and signal that cleanup is complete."""
         if (
             device_id in self._active_connections
-            and self._active_connections[device_id][0] is websocket
+            and self._active_connections[device_id].websocket is websocket
         ):
-            _, _, _, _, cleanup_event = self._active_connections.pop(device_id)
-            cleanup_event.set()  # Signal that cleanup is done
+            connection = self._active_connections.pop(device_id)
+            connection.cleanup_event.set()  # Signal that cleanup is done
             logger.info(f"[{device_id}] WebSocket connection unregistered")
         else:
             logger.info(
@@ -128,7 +129,7 @@ class ConnectionManager:
     def get_websocket(self, device_id: str) -> WebSocket | None:
         """Get the websocket for a given device_id."""
         if device_id in self._active_connections:
-            return self._active_connections[device_id][0]
+            return self._active_connections[device_id].websocket
         return None
 
 
