@@ -3,12 +3,14 @@
 import ctypes
 import json
 import platform
-from logging import Logger
+import logging
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
 
 from tronbyt_server.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 pixlet_render_app: (
     Callable[[bytes, bytes, int, int, int, int, int, int, int, bytes | None], Any]
@@ -29,7 +31,7 @@ _LIBPIXLET_PATH_MACOS_ARM = Path("/opt/homebrew/lib/libpixlet.dylib")
 _LIBPIXLET_PATH_MACOS_INTEL = Path("/usr/local/lib/libpixlet.dylib")
 
 
-def load_pixlet_library(logger: Logger) -> None:
+def load_pixlet_library() -> None:
     libpixlet_path_str = get_settings().LIBPIXLET_PATH
     if libpixlet_path_str:
         libpixlet_path = Path(libpixlet_path_str)
@@ -113,13 +115,13 @@ _pixlet_initialized = False
 _pixlet_lock = Lock()
 
 
-def initialize_pixlet_library(logger: Logger) -> None:
+def initialize_pixlet_library() -> None:
     global _pixlet_initialized
     with _pixlet_lock:
         if _pixlet_initialized:
             return
 
-        load_pixlet_library(logger)
+        load_pixlet_library()
 
         settings = get_settings()
         redis_url = settings.REDIS_URL
@@ -150,9 +152,8 @@ def render_app(
     maxDuration: int,
     timeout: int,
     image_format: int,
-    logger: Logger,
 ) -> tuple[bytes | None, list[str]]:
-    initialize_pixlet_library(logger)
+    initialize_pixlet_library()
     if not pixlet_render_app:
         logger.debug("failed to init pixlet_library")
         return None, []
@@ -189,8 +190,8 @@ def render_app(
     return None, []
 
 
-def get_schema(path: Path, logger: Logger) -> str | None:
-    initialize_pixlet_library(logger)
+def get_schema(path: Path) -> str | None:
+    initialize_pixlet_library()
     if not pixlet_get_schema:
         return None
     ret = pixlet_get_schema(str(path).encode("utf-8"))
@@ -200,10 +201,8 @@ def get_schema(path: Path, logger: Logger) -> str | None:
     return schema
 
 
-def call_handler(
-    path: Path, handler: str, parameter: str, logger: Logger
-) -> str | None:
-    initialize_pixlet_library(logger)
+def call_handler(path: Path, handler: str, parameter: str) -> str | None:
+    initialize_pixlet_library()
     if not pixlet_call_handler:
         return None
     ret = pixlet_call_handler(

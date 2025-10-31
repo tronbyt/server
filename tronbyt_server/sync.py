@@ -15,6 +15,8 @@ ConditionType = Any
 
 NOTIFY_MESSAGE = "notify"
 
+logger = logging.getLogger(__name__)
+
 
 class Waiter(ABC):
     """Abstract base class for a waiter."""
@@ -182,7 +184,7 @@ _sync_manager: SyncManager | None = None
 _sync_manager_lock = Lock()
 
 
-def get_sync_manager(logger: logging.Logger) -> SyncManager:
+def get_sync_manager() -> SyncManager:
     """Get the synchronization manager for the application."""
     global _sync_manager
     if _sync_manager is None:

@@ -5,7 +5,7 @@ import os
 import requests
 import subprocess
 import sys
-from logging import Logger
+import logging
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -14,9 +14,16 @@ from tronbyt_server import db
 from tronbyt_server.firmware import correct_firmware_esptool
 
 
+logger = logging.getLogger(__name__)
+
+
 # firmware bin files named after env targets in firmware project.
 def generate_firmware(
-    url: str, ap: str, pw: str, device_type: str, swap_colors: bool, logger: Logger
+    url: str,
+    ap: str,
+    pw: str,
+    device_type: str,
+    swap_colors: bool,
 ) -> bytes:
     # Determine the firmware filename based on device type
     if device_type == "tidbyt_gen2":
@@ -76,7 +83,7 @@ def generate_firmware(
         return content
 
 
-def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
+def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
     """Download the latest firmware bin files from GitHub releases.
 
     Returns:
@@ -265,7 +272,7 @@ def update_firmware_binaries(base_path: Path, logger: Logger) -> dict[str, Any]:
 
 
 def update_firmware_binaries_subprocess(
-    base_path: Path, logger: Logger
+    base_path: Path,
 ) -> dict[str, Any]:
     # Run the update_firmware_binaries function in a subprocess.
     # This is a workaround for a conflict between Python's and Go's TLS implementations.
@@ -282,8 +289,7 @@ def update_firmware_binaries_subprocess(
                 "from tronbyt_server import firmware_utils; "
                 "import logging, sys, json; "
                 "from pathlib import Path;"
-                "logger = logging.getLogger('firmware_update'); "
-                "result = firmware_utils.update_firmware_binaries(Path(sys.argv[1]), logger); "
+                "result = firmware_utils.update_firmware_binaries(Path(sys.argv[1])); "
                 "print(json.dumps(result))"
             ),
             str(base_path),

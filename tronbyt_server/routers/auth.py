@@ -31,6 +31,29 @@ def _generate_api_key() -> str:
     )
 
 
+def _render_edit_template(request: Request, user: User) -> Response:
+    """Render the edit user page template with the correct context."""
+    firmware_version = None
+    system_repo_info = None
+    server_version_info = version.get_version_info()
+
+    if user and user.username == "admin":
+        firmware_version = db.get_firmware_version()
+        system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
+
+    context = {
+        "user": user,
+        "firmware_version": firmware_version,
+        "system_repo_info": system_repo_info,
+        "server_version_info": server_version_info,
+    }
+    return templates.TemplateResponse(
+        request,
+        "auth/edit.html",
+        context,
+    )
+
+
 @router.get("/register_owner")
 def get_register_owner(
     request: Request, db_conn: sqlite3.Connection = Depends(get_db)
@@ -260,27 +283,12 @@ def post_login(
 
 
 @router.get("/edit", name="edit")
-def get_edit(request: Request, user: User = Depends(manager)) -> Response:
+def get_edit(
+    request: Request,
+    user: User = Depends(manager),
+) -> Response:
     """Render the edit user page."""
-    firmware_version = None
-    system_repo_info = None
-    if user and user.username == "admin":
-        firmware_version = db.get_firmware_version()
-        system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
-
-    # Get server version info for all users
-    server_version_info = version.get_version_info()
-
-    return templates.TemplateResponse(
-        request,
-        "auth/edit.html",
-        {
-            "user": user,
-            "firmware_version": firmware_version,
-            "system_repo_info": system_repo_info,
-            "server_version_info": server_version_info,
-        },
-    )
+    return _render_edit_template(request, user)
 
 
 @router.post("/edit")
@@ -295,21 +303,13 @@ def post_edit(
     authed_user_data = db.auth_user(db_conn, user.username, old_password)
     if not isinstance(authed_user_data, User):
         flash(request, _("Bad old password."))
+        return _render_edit_template(request, user)
     else:
         authed_user = authed_user_data
         authed_user.password = generate_password_hash(password)
         db.save_user(db_conn, authed_user)
         flash(request, _("Success"))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-    firmware_version = None
-    if user and user.username == "admin":
-        firmware_version = db.get_firmware_version()
-    return templates.TemplateResponse(
-        request,
-        "auth/edit.html",
-        {"user": user, "firmware_version": firmware_version},
-    )
 
 
 @router.get("/logout", name="logout")
