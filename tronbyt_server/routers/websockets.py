@@ -472,8 +472,12 @@ async def websocket_endpoint(
     ack = DeviceAcknowledgment(device_id)
 
     # Create tasks for the new connection
-    sender_task = asyncio.create_task(sender(websocket, device_id, db_conn, ack))
-    receiver_task = asyncio.create_task(receiver(websocket, device_id, ack))
+    sender_task = asyncio.create_task(
+        sender(websocket, device_id, db_conn, ack), name=f"ws_sender_{device_id}"
+    )
+    receiver_task = asyncio.create_task(
+        receiver(websocket, device_id, ack), name=f"ws_receiver_{device_id}"
+    )
 
     # Register the new connection, which handles cleanup of any old one
     await connection_manager.register(
