@@ -505,6 +505,9 @@
         {% if app.get('is_installed', false) %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
+        {% if app.get('supports2x', false) %}
+        <div class="supports-2x-badge">2x</div>
+        {% endif %}
 
         <!-- Skeleton loader for images -->
         <div class="app-img">
