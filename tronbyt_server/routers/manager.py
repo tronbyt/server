@@ -1256,7 +1256,7 @@ def updateapp_post(
         "end_time": form_data.end_time,
         "days": form_data.days,
         "use_custom_recurrence": form_data.use_custom_recurrence,
-        "recurrence_type": cast(RecurrenceType, form_data.recurrence_type or "daily"),
+        "recurrence_type": form_data.recurrence_type or RecurrenceType.DAILY,
         "recurrence_interval": form_data.recurrence_interval or 1,
         "recurrence_pattern": recurrence_pattern,
     }
