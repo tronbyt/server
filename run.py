@@ -79,14 +79,62 @@ def main() -> None:
     # The 'app' argument must be positional for uvicorn.run()
     app = config.pop("app")
 
-    # Custom logging configuration to remove logger names
+    # Custom logging configuration
+    app_log_level_str = config.get("log_level", "info").upper()
+    app_log_level_num = logging.getLevelName(app_log_level_str)
+
+    # Uvicorn's log level should never be more verbose than INFO.
+    # Higher number means less verbose.
+    uvicorn_log_level_num = max(app_log_level_num, logging.INFO)
+    uvicorn_log_level_str = logging.getLevelName(uvicorn_log_level_num)
+
     log_config = copy.deepcopy(LOGGING_CONFIG)
+
+    # Configure formatters
     log_config["formatters"]["default"]["fmt"] = (
-        "%(asctime)s %(levelprefix)s %(message)s"
+        "%(asctime)s %(levelprefix)s [%(name)s] %(message)s"  # For tronbyt_server
     )
     log_config["formatters"]["access"]["fmt"] = (
-        '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+        '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'  # For uvicorn.access
     )
+    log_config["formatters"]["uvicorn_no_name"] = {
+        "()": "uvicorn.logging.DefaultFormatter",
+        "fmt": "%(asctime)s %(levelprefix)s %(message)s",
+        "use_colors": config.get("use_colors"),
+    }
+
+    # Configure handlers
+    log_config["handlers"]["default"]["level"] = app_log_level_str
+    log_config["handlers"]["access"]["level"] = uvicorn_log_level_str
+    log_config["handlers"]["uvicorn_error_handler"] = {
+        "formatter": "uvicorn_no_name",
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stderr",
+        "level": uvicorn_log_level_str,
+    }
+
+    # Configure loggers
+    log_config["loggers"]["tronbyt_server"] = {
+        "handlers": ["default"],
+        "level": app_log_level_str,
+        "propagate": False,
+    }
+    log_config["loggers"]["uvicorn"] = {
+        "handlers": ["uvicorn_error_handler"],
+        "level": uvicorn_log_level_str,
+        "propagate": False,
+    }
+    log_config["loggers"]["uvicorn.access"] = {
+        "handlers": ["access"],
+        "level": uvicorn_log_level_str,
+        "propagate": False,
+    }
+    log_config["loggers"]["uvicorn.error"] = {
+        "handlers": ["uvicorn_error_handler"],
+        "level": uvicorn_log_level_str,
+        "propagate": False,
+    }
+
     config["log_config"] = log_config
 
     # Announce server startup using the final, merged configuration
@@ -97,8 +145,7 @@ def main() -> None:
     elif config.get("workers"):
         startup_message += f" with {config['workers']} workers"
 
-    logger = logging.getLogger(__name__)
-    logger.info(startup_message)
+    print(startup_message)
 
     uvicorn.run(app, **config)
 
