@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 class DeviceAcknowledgment:
     """Manages device acknowledgment state for queued/displaying messages."""
 
-    def __init__(self) -> None:
+    def __init__(self, device_id: str) -> None:
+        """Initializes the DeviceAcknowledgment with a device_id."""
+        self.device_id = device_id
         self.queued_event = asyncio.Event()
         self.displaying_event = asyncio.Event()
         self.old_firmware_detected = False
@@ -47,7 +49,7 @@ class DeviceAcknowledgment:
         # If we receive queued message, device is new firmware
         if self.old_firmware_detected:
             logger.debug(
-                "Received 'queued' message - device is new firmware, resetting detection"
+                f"[{self.device_id}] Received 'queued' message - device is new firmware, resetting detection"
             )
             self.old_firmware_detected = False
 
@@ -60,7 +62,7 @@ class DeviceAcknowledgment:
         """Mark device as old firmware."""
         if not self.old_firmware_detected:
             logger.info(
-                "No 'displaying' message after timeout - marking as old firmware"
+                f"[{self.device_id}] No 'displaying' message after timeout - marking as old firmware"
             )
             self.old_firmware_detected = True
 
@@ -182,7 +184,9 @@ async def _wait_for_acknowledgment(
     if ack.old_firmware_detected:
         # Old firmware doesn't send messages, just wait for dwell_time
         extended_timeout = dwell_time
-        logger.debug(f"Using old firmware timeout of {extended_timeout}s (dwell_time)")
+        logger.debug(
+            f"[{device_id}] Using old firmware timeout of {extended_timeout}s (dwell_time)"
+        )
     else:
         # New firmware - give device full dwell time + buffer
         # Use 2x dwell time to give plenty of room for the device to display current image
@@ -241,7 +245,7 @@ async def _wait_for_acknowledgment(
                 )
                 return (response, last_brightness)
             except Exception as e:
-                logger.error(f"Error rendering ephemeral push: {e}")
+                logger.error(f"[{device_id}] Error rendering ephemeral push: {e}")
                 # Continue waiting if render failed
 
         # If woken by waiter but no ephemeral files, check for brightness changes
@@ -289,7 +293,7 @@ async def _wait_for_acknowledgment(
     if not ack.displaying_event.is_set():
         ack.mark_old_firmware()
         logger.debug(
-            f"No display confirmation received after {extended_timeout}s, assuming old firmware"
+            f"[{device_id}] No display confirmation received after {extended_timeout}s, assuming old firmware"
         )
 
     # Render next image after timeout
@@ -357,13 +361,13 @@ async def receiver(
                 if "queued" in msg_data:
                     # Device has queued/buffered the image: {"queued": counter}
                     queued_counter = msg_data.get("queued")
-                    logger.debug(f"Image queued (seq: {queued_counter})")
+                    logger.debug(f"[{device_id}] Image queued (seq: {queued_counter})")
                     ack.mark_queued(queued_counter)
 
                 elif "displaying" in msg_data or msg_data.get("status") == "displaying":
                     # Device has started displaying: {"displaying": counter} or {"status": "displaying", "counter": X}
                     display_seq = msg_data.get("displaying") or msg_data.get("counter")
-                    logger.debug(f"Image displaying (seq: {display_seq})")
+                    logger.debug(f"[{device_id}] Image displaying (seq: {display_seq})")
                     ack.mark_displaying(display_seq)
 
                 else:
@@ -371,7 +375,7 @@ async def receiver(
                     logger.warning(f"[{device_id}] Unknown message format: {message}")
 
             except (json.JSONDecodeError, ValueError) as e:
-                logger.warning(f"Failed to parse device message: {e}")
+                logger.warning(f"[{device_id}] Failed to parse device message: {e}")
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for device {device_id}")
@@ -401,7 +405,7 @@ async def websocket_endpoint(
     await websocket.accept()
 
     # Create shared acknowledgment state for sender/receiver communication
-    ack = DeviceAcknowledgment()
+    ack = DeviceAcknowledgment(device_id)
 
     # Register this connection globally so other parts of the app can send messages
     _active_connections[device_id] = (websocket, ack)
