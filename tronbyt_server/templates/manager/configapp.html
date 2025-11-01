@@ -723,7 +723,7 @@
       {% if delete_on_cancel == 1 %}
       // Delete the app via fetch, then close the tab
       fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
-        method: 'GET'
+        method: 'POST'
       }).then(() => {
         window.close();
       }).catch(() => {
@@ -852,7 +852,7 @@
       cancelButtonTop.addEventListener("click", function() {
         {% if delete_on_cancel == 1 %}
         fetch("{{ url_for('deleteapp', device_id=device.id, iname=app.iname) }}", {
-          method: 'GET'
+          method: 'POST'
         }).then(() => {
           window.close();
         }).catch(() => {

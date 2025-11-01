@@ -87,7 +87,7 @@ def test_app_create_edit_config_delete(
     assert test_app.display_time == 69
     assert test_app.notes == "69"
 
-    auth_client.get(f"/{device_id}/{app_id}/delete")
+    auth_client.post(f"/{device_id}/{app_id}/delete")
 
     user = utils.get_testuser(db_connection)
     assert app_id not in user.devices[device_id].apps
