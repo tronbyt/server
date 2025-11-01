@@ -129,6 +129,14 @@ class ConnectionManager:
                 self._active_connections.pop(device_id)
                 logger.info(f"[{device_id}] WebSocket connection unregistered")
 
+    async def get_ack(self, device_id: str) -> "DeviceAcknowledgment | None":
+        """Get the ack object for a given device_id atomically."""
+        async with self._lock:
+            connection = self._active_connections.get(device_id)
+            if connection:
+                return connection.ack
+            return None
+
     async def get_websocket(self, device_id: str) -> WebSocket | None:
         """Get the websocket for a given device_id atomically."""
         async with self._lock:
@@ -318,9 +326,17 @@ async def _wait_for_acknowledgment(
                 logger.error(f"[{device_id}] Error rendering ephemeral push: {e}")
                 # Continue waiting if render failed
 
-        # If woken by waiter but no ephemeral files, check for brightness changes
-        # and send immediately if changed, then render next image
-        if waiter_task in done and time_waited > 0:
+        was_notified = False
+        if waiter_task in done:
+            try:
+                was_notified = waiter_task.result()
+            except Exception as e:
+                logger.warning(
+                    f"[{device_id}] Unexpected error getting waiter result: {e}"
+                )
+
+        # If woken by a real notification (not timeout), check for brightness changes
+        if was_notified:
             logger.debug(
                 f"[{device_id}] Woken by push notification, checking for updates"
             )
@@ -349,12 +365,7 @@ async def _wait_for_acknowledgment(
                             logger.error(
                                 f"[{device_id}] Failed to send brightness: {e}"
                             )
-
-            # Then render and send next image
-            response = await loop.run_in_executor(
-                None, _next_app_logic, db_conn, device_id
-            )
-            return (response, last_brightness)
+            # DO NOT return here. Continue waiting for display ack.
 
         # Update time waited
         time_waited += poll_interval
@@ -418,15 +429,21 @@ async def sender(
         waiter.close()
 
 
-async def receiver(
-    websocket: WebSocket, device_id: str, ack: DeviceAcknowledgment
-) -> None:
+async def receiver(websocket: WebSocket, device_id: str) -> None:
     """The receiver task for the websocket."""
     try:
         while True:
             message = await websocket.receive_text()
             try:
                 msg_data = json.loads(message)
+
+                # Fetch the ACK object for the CURRENTLY active connection
+                ack = await connection_manager.get_ack(device_id)
+                if not ack:
+                    logger.warning(
+                        f"[{device_id}] Received message but no active connection found, ignoring."
+                    )
+                    continue
 
                 if "queued" in msg_data:
                     # Device has queued/buffered the image: {"queued": counter}
@@ -482,7 +499,7 @@ async def websocket_endpoint(
         sender(websocket, device_id, db_conn, ack), name=f"ws_sender_{device_id}"
     )
     receiver_task = asyncio.create_task(
-        receiver(websocket, device_id, ack), name=f"ws_receiver_{device_id}"
+        receiver(websocket, device_id), name=f"ws_receiver_{device_id}"
     )
 
     # Register the new connection, which handles cleanup of any old one
