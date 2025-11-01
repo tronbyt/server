@@ -111,6 +111,7 @@ class AppMetadata(BaseModel):
     fileName: str | None = None
     packageName: str | None = None
     preview: str | None = None
+    preview2x: str | None = None
     supports2x: bool = False
     recommended_interval: int = 0
     date: str = ""  # ISO date string for file modification date
