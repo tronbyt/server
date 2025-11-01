@@ -22,7 +22,7 @@ class Waiter(ABC):
     """Abstract base class for a waiter."""
 
     @abstractmethod
-    def wait(self, timeout: int) -> None:
+    def wait(self, timeout: int) -> bool:
         """Wait for a notification."""
         raise NotImplementedError
 
@@ -64,11 +64,12 @@ class MultiprocessingWaiter(Waiter):
         self._manager = manager
         self._device_id = device_id
 
-    def wait(self, timeout: int) -> None:
+    def wait(self, timeout: int) -> bool:
         """Wait for a notification."""
         with self._condition:
             if not self._manager._shutdown_event.is_set():
-                self._condition.wait(timeout=timeout)
+                return bool(self._condition.wait(timeout=timeout))
+        return False
 
     def close(self) -> None:
         """Clean up the waiter."""
@@ -141,14 +142,15 @@ class RedisWaiter(Waiter):
         self._device_id = device_id
         self._pubsub.subscribe(self._device_id)
 
-    def wait(self, timeout: int) -> None:
+    def wait(self, timeout: int) -> bool:
         """Wait for a notification."""
         try:
-            self._pubsub.get_message(timeout=timeout)
-        except ValueError:
+            message = self._pubsub.get_message(timeout=timeout)
+            return message is not None
+        except (ValueError, redis.ConnectionError):
             # This can happen if the pubsub connection is closed by another thread
             # while we are waiting for a message.
-            pass
+            return False
 
     def close(self) -> None:
         """Clean up the waiter."""
