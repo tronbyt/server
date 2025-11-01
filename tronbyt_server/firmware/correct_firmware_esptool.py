@@ -1,27 +1,27 @@
 import io
 import struct
 import sys
-from typing import Tuple
 
-from esptool.bin_image import LoadFirmwareImage
+from esptool.bin_image import ESP32FirmwareImage, LoadFirmwareImage
 
 
-def get_chip_config(device_type: str) -> Tuple[str, int]:
-    """Return chip type and flash offset based on device type."""
+def get_chip_config(device_type: str) -> str:
+    """Return chip type based on device type."""
     if device_type in ["tronbyt_s3", "matrixportal_s3", "tronbyt_s3_wide"]:
-        return "esp32s3", 0x10000  # Same offset as ESP32 for application
-    return "esp32", 0x10000  # Standard offset for ESP32
+        return "esp32s3"
+    return "esp32"
 
 
 def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
-    chip_type, flash_offset = get_chip_config(device_type)
+    chip_type = get_chip_config(device_type)
 
     try:
         image = LoadFirmwareImage(chip=chip_type, image_data=data)
-        # Set the correct load address for the firmware
-        image.flash_offset = flash_offset
     except Exception as e:
         raise ValueError(f"Error loading firmware image: {e}")
+
+    if not isinstance(image, ESP32FirmwareImage):
+        raise ValueError(f"Unsupported image type: {type(image).__name__}")
 
     if image.checksum is None or image.stored_digest is None:
         raise ValueError(
@@ -29,7 +29,6 @@ def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
         )
 
     print(f"Chip type: {chip_type}")
-    print(f"Flash offset: 0x{flash_offset:x}")
     print(f"Original checksum: {image.checksum:02x}")
     print(f"Original SHA256: {image.stored_digest.hex()}")
 
@@ -43,9 +42,11 @@ def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
     # Recalculate the SHA256
     try:
         image = LoadFirmwareImage(chip=chip_type, image_data=buffer.getvalue())
-        image.flash_offset = flash_offset
     except Exception as e:
         raise ValueError(f"Error loading new firmware image: {e}")
+
+    if not isinstance(image, ESP32FirmwareImage):
+        raise ValueError(f"Unsupported image type: {type(image).__name__}")
 
     if not image.calc_digest:
         raise ValueError(

@@ -101,7 +101,7 @@ class ConnectionManager:
             receiver_task=receiver_task,
         )
 
-        old_connection: "Connection" | None
+        old_connection: "Connection | None"
         async with self._lock:
             old_connection = self._active_connections.get(device_id)
             self._active_connections[device_id] = new_connection

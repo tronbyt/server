@@ -413,7 +413,7 @@ def get_dim_mode_is_active(device: Device) -> bool:
         # Handle legacy integer format
         if isinstance(night_end, int):
             if night_end >= 0:
-                dim_end_minutes = night_end * 60
+                dim_end_minutes = int(night_end) * 60
         else:
             try:
                 night_end_parts = night_end.split(":")

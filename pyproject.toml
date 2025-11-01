@@ -60,8 +60,19 @@ show_error_codes = true
 warn_unused_ignores = true
 ignore_missing_imports = true
 
+[tool.pyright]
+include = ["."]
+exclude = [
+    ".venv/**",
+    "data/**",
+    "**/__pycache__",
+]
+ignore = ["src/oldstuff"]
+pythonVersion = "3.14"
+
 [dependency-groups]
 dev = [
+    "pyright>=1.1.407",
     "pytest>=8.3.5",
     "mypy>=1.15.0",
     "ruff>=0.11.8",
