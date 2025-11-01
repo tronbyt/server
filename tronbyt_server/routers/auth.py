@@ -210,7 +210,7 @@ def post_register(
     )
 
 
-@router.get("/login", name="login")
+@router.get("/login")
 def login(
     request: Request,
     db_conn: sqlite3.Connection = Depends(get_db),
@@ -312,7 +312,7 @@ def post_edit(
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@router.get("/logout", name="logout")
+@router.get("/logout")
 def logout(request: Request) -> Response:
     """Log the user out."""
     flash(request, _("Logged Out"))
@@ -359,7 +359,7 @@ def set_theme_preference(
         )
 
 
-@router.post("/generate_api_key", name="generate_api_key")
+@router.post("/generate_api_key")
 def generate_api_key(
     request: Request,
     user: Annotated[User, Depends(manager)],

@@ -512,8 +512,8 @@
         <!-- Skeleton loader for images -->
         <div class="app-img">
           <div class="skeleton-loader"></div>
-          {% if 'preview' in app %}
-          <img data-src="{{ url_for('app_preview', filename=app['preview']) }}"
+          {% if app.get('preview') or app.get('preview2x') %}
+          <img data-src="{{ url_for('app_preview', filename=app.get('preview2x') or app.get('preview')) }}"
                alt="{{ app['name'] }}"
                class="lazy-image"
                {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
