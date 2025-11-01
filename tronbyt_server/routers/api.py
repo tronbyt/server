@@ -460,12 +460,11 @@ def handle_app_push(
         )
 
     app_details = db.get_app_details_by_id(user.username, data.app_id)
-    app_path_name = app_details.get("path")
-    if not app_path_name:
+    if not app_details:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Missing app path"
         )
-    app_path = Path(app_path_name)
+    app_path = Path(app_details.path)
     if not app_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="App not found"

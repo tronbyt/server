@@ -64,7 +64,7 @@ def render_app(
             user = db.get_user_by_device_id(db_conn, device.id)
             if user and app.id:
                 app_details = db.get_app_details_by_id(user.username, app.id)
-                if app_details.get("supports2x", False):
+                if app_details and app_details.supports2x:
                     magnify = 1
                     width = 128
                     height = 64

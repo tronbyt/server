@@ -787,15 +787,14 @@ def addapp(
 
     # Mark installed apps and sort so that installed apps appear first
     for app_metadata in apps_list:
-        app_metadata["is_installed"] = app_metadata["name"] in installed_app_names
+        app_metadata.is_installed = app_metadata.name in installed_app_names
 
     # Also mark installed status for custom apps
     for app_metadata in custom_apps_list:
-        if "name" in app_metadata:
-            app_metadata["is_installed"] = app_metadata["name"] in installed_app_names
+        app_metadata.is_installed = app_metadata.name in installed_app_names
 
     # Sort apps_list so that installed apps appear first
-    apps_list.sort(key=lambda app_metadata: not app_metadata["is_installed"])
+    apps_list.sort(key=lambda app_metadata: not app_metadata.is_installed)
 
     system_repo_info = system_apps.get_system_repo_info(db.get_data_dir())
 
@@ -846,18 +845,21 @@ def addapp_post(
         )
 
     app_details = db.get_app_details_by_name(user.username, name)
+    if not app_details:
+        flash(request, _("App not found."))
+        return RedirectResponse(
+            url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+        )
 
     app = App(
-        id=app_details.get("id", ""),
+        id=app_details.id or "",
         name=name,
         iname=iname,
-        path=app_details.get("path", ""),
+        path=app_details.path,
         enabled=False,
         last_render=0,
         uinterval=(
-            uinterval
-            if uinterval is not None
-            else app_details.get("recommended_interval", 0)
+            uinterval if uinterval is not None else app_details.recommended_interval
         ),
         display_time=display_time if display_time is not None else 0,
         notes=notes or "",

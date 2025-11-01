@@ -20,7 +20,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
-from tronbyt_server.models import App, Device, User, Weekday
+from tronbyt_server.models import App, AppMetadata, Device, User, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -178,13 +178,16 @@ def migrate_app_paths(db: sqlite3.Connection) -> None:
         for device in user.devices.values():
             for app in device.apps.values():
                 if not app.path or app.path.startswith("/"):
-                    app.path = get_app_details_by_name(user.username, app.name).get(
-                        "path"
-                    ) or str(
-                        Path("system-apps")
-                        / "apps"
-                        / app.name.replace("_", "")
-                        / f"{app.name}.star"
+                    app_details = get_app_details_by_name(user.username, app.name)
+                    app.path = (
+                        app_details.path
+                        if app_details
+                        else str(
+                            Path("system-apps")
+                            / "apps"
+                            / app.name.replace("_", "")
+                            / f"{app.name}.star"
+                        )
                     )
                     need_save = True
         if need_save:
@@ -595,9 +598,9 @@ def create_user_dir(user: str) -> None:
     (user_dir / "apps").mkdir(parents=True, exist_ok=True)
 
 
-def get_apps_list(user: str) -> list[dict[str, Any]]:
+def get_apps_list(user: str) -> list[AppMetadata]:
     """Get a list of apps for a user."""
-    app_list: list[dict[str, Any]] = []
+    app_list: list[AppMetadata] = []
     if user == "system" or user == "":
         list_file = get_data_dir() / "system-apps.json"
         if not list_file.exists():
@@ -605,8 +608,8 @@ def get_apps_list(user: str) -> list[dict[str, Any]]:
             system_apps.update_system_repo(get_data_dir())
             logger.debug("apps.json file generated.")
         with list_file.open("r") as f:
-            app_list = json.load(f)
-            return app_list
+            app_dicts = json.load(f)
+            return [AppMetadata(**app_dict) for app_dict in app_dicts]
 
     dir = get_users_dir() / secure_filename(user) / "apps"
     # Ensure dir is within get_users_dir to prevent path traversal
@@ -639,23 +642,23 @@ def get_apps_list(user: str) -> list[dict[str, Any]]:
                 app_dict.update(yaml_dict)
         else:
             app_dict["summary"] = "Custom App"
-        app_list.append(app_dict)
+        app_list.append(AppMetadata(**app_dict))
     return app_list
 
 
 def get_app_details(
     user: str, field: Literal["id", "name"], value: str
-) -> dict[str, Any]:
+) -> AppMetadata | None:
     """Get details for a specific app."""
     custom_apps = get_apps_list(user)
     for app in custom_apps:
-        if app.get(field) == value:
+        if getattr(app, field) == value:
             # we found it
             logger.debug(f"returning details for {app}")
             return app
         # Also check fileName if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.get("fileName") or ""
+            file_name = app.fileName or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
@@ -665,25 +668,25 @@ def get_app_details(
     # so we need to look in the system-apps directory
     apps = get_apps_list("system")
     for app in apps:
-        if app.get(field) == value:
+        if getattr(app, field) == value:
             return app
         # Also check fileName if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.get("fileName") or ""
+            file_name = app.fileName or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
                 logger.debug(f"returning details for {app} (matched by fileName)")
                 return app
-    return {}
+    return None
 
 
-def get_app_details_by_name(user: str, name: str) -> dict[str, Any]:
+def get_app_details_by_name(user: str, name: str) -> AppMetadata | None:
     """Get app details by name."""
     return get_app_details(user, "name", name)
 
 
-def get_app_details_by_id(user: str, id: str) -> dict[str, Any]:
+def get_app_details_by_id(user: str, id: str) -> AppMetadata | None:
     """Get app details by ID."""
     return get_app_details(user, "id", id)
 

@@ -500,53 +500,53 @@
 
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
-      <div class="app-item {% if app.get('broken') %}broken-app{% endif %}" data-value="{{ app['name'] }}" data-installed="{{ app.get('is_installed', false) | lower }}"
-        data-date="{{ app.get('date', '') }}" data-name="{{ app['name'] }}" data-broken="{{ app.get('broken', false) | lower }}">
-        {% if app.get('is_installed', false) %}
+      <div class="app-item {% if app.broken %}broken-app{% endif %}" data-value="{{ app.name }}" data-installed="{{ app.is_installed | lower }}"
+        data-date="{{ app.date }}" data-name="{{ app.name }}" data-broken="{{ app.broken | lower }}">
+        {% if app.is_installed %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
-        {% if app.get('supports2x', false) %}
+        {% if app.supports2x %}
         <div class="supports-2x-badge">2x</div>
         {% endif %}
 
         <!-- Skeleton loader for images -->
         <div class="app-img">
           <div class="skeleton-loader"></div>
-          {% if app.get('preview') or app.get('preview2x') %}
-          <img data-src="{{ url_for('app_preview', filename=app.get('preview2x') or app.get('preview')) }}"
-               alt="{{ app['name'] }}"
+          {% if app.preview or app.preview2x %}
+          <img data-src="{{ url_for('app_preview', filename=app.preview2x or app.preview) }}"
+               alt="{{ app.name }}"
                class="lazy-image"
-               {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+               {% if app.broken %}style="opacity: 0.4;"{% endif %}>
           {% else %}
           <img data-src="{{ url_for('static', path='images/not_found.jpg') }}"
-               alt="{{ app['name'] }}"
+               alt="{{ app.name }}"
                class="lazy-image"
-               {% if app.get('broken') %}style="opacity: 0.4;"{% endif %}>
+               {% if app.broken %}style="opacity: 0.4;"{% endif %}>
           {% endif %}
         </div>
 
-        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ app['name'] }} - {{ app['summary'] }}</p>
-        {% if 'author' in app %}
-        <p {% if app.get('broken') %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app['author'] }}</p>
+        <p {% if app.broken %}style="opacity: 0.5;"{% endif %}>{{ app.name }} - {{ app.summary }}</p>
+        {% if app.author %}
+        <p {% if app.broken %}style="opacity: 0.5;"{% endif %}>{{ _('From') }} {{ app.author }}</p>
         {% endif %}
-        {% if app.get('broken') %}
+        {% if app.broken %}
         <div style="background-color: #f44336; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 12px; text-align: center; line-height: 1.3; margin-top: 5px;">
           ❌ {{ _('BROKEN') }}<br>
-          <span style="font-size: 10px; font-weight: normal;">{{ app.get('brokenReason', 'Unknown') }}</span>
+          <span style="font-size: 10px; font-weight: normal;">{{ app.brokenReason or 'Unknown' }}</span>
         </div>
         {% endif %}
         {% if is_custom_apps %}
-        <a href="{{ url_for('deleteupload', filename=app['path'].split('/')[-1], device_id=device.id) }}"
+        <a href="{{ url_for('deleteupload', filename=app.path.split('/')[-1], device_id=device.id) }}"
            class="delete-upload-btn"
            onclick="event.stopPropagation(); return confirm('{{ _('Delete this uploaded app?') }}');">
           🗑️ {{ _('Delete') }}
         </a>
         {% endif %}
-        {% if config['PRODUCTION'] == '0' and not app.get('path', '').startswith("users/") %}
-          {% if app.get('broken') %}
-          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
+        {% if config['PRODUCTION'] == '0' and not app.path.startswith("users/") %}
+          {% if app.broken %}
+          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
           {% else %}
-          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.get('fileName', app['name']) }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
+          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
           {% endif %}
         {% endif %}
       </div>
