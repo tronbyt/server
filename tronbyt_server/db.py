@@ -178,7 +178,7 @@ def migrate_app_paths(db: sqlite3.Connection) -> None:
         for device in user.devices.values():
             for app in device.apps.values():
                 if not app.path or app.path.startswith("/"):
-                    app.path = get_app_details_by_name(db, user.username, app.name).get(
+                    app.path = get_app_details_by_name(user.username, app.name).get(
                         "path"
                     ) or str(
                         Path("system-apps")
@@ -644,7 +644,7 @@ def get_apps_list(user: str) -> list[dict[str, Any]]:
 
 
 def get_app_details(
-    db: sqlite3.Connection, user: str, field: Literal["id", "name"], value: str
+    user: str, field: Literal["id", "name"], value: str
 ) -> dict[str, Any]:
     """Get details for a specific app."""
     custom_apps = get_apps_list(user)
@@ -678,16 +678,14 @@ def get_app_details(
     return {}
 
 
-def get_app_details_by_name(
-    db: sqlite3.Connection, user: str, name: str
-) -> dict[str, Any]:
+def get_app_details_by_name(user: str, name: str) -> dict[str, Any]:
     """Get app details by name."""
-    return get_app_details(db, user, "name", name)
+    return get_app_details(user, "name", name)
 
 
-def get_app_details_by_id(db: sqlite3.Connection, user: str, id: str) -> dict[str, Any]:
+def get_app_details_by_id(user: str, id: str) -> dict[str, Any]:
     """Get app details by ID."""
-    return get_app_details(db, user, "id", id)
+    return get_app_details(user, "id", id)
 
 
 def sanitize_url(url: str) -> str:

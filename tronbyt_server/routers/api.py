@@ -459,7 +459,7 @@ def handle_app_push(
             detail="Device not found or invalid API key",
         )
 
-    app_details = db.get_app_details_by_id(db_conn, user.username, data.app_id)
+    app_details = db.get_app_details_by_id(user.username, data.app_id)
     app_path_name = app_details.get("path")
     if not app_path_name:
         raise HTTPException(

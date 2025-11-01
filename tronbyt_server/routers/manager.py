@@ -845,7 +845,7 @@ def addapp_post(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
 
-    app_details = db.get_app_details_by_name(db_conn, user.username, name)
+    app_details = db.get_app_details_by_name(user.username, name)
 
     app = App(
         id=app_details.get("id", ""),
