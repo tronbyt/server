@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     init: true
+    user: "${UID:-1000}:${GID:-${UID:-1000}}" # Use host user and group IDs for file permissions
     ports:
       - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
     volumes:

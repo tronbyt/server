@@ -52,8 +52,8 @@ RUN mkdir -p /app/data /app/users && \
     chown -R tronbyt:tronbyt /app/data /app/users && \
     chmod -R 755 /app/data /app/users
 
-# Set the user to non-root (disabled for a while to support legacy setups which ran as root)
-#USER tronbyt
+# Set the user to non-root
+USER tronbyt
 
 # start the app
 ENTRYPOINT ["python3", "run.py"]
