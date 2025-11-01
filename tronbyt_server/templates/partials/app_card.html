@@ -33,9 +33,9 @@
 
       <div class="app-details">
         <p class="app-render-info">
-          {{ _('Interval:') }} {{ app.uinterval }}min |
+          {{ _('Interval:') }} {{ app.uinterval }} min |
           {% if app.empty_last_render %}{{_('No output for ') }}{% endif %}
-          {{ _('Last:') }} {{ (app.last_render or 0)|timeago }}
+          {{ _('Last:') }} {{ (app.last_render or 0)|timeago(request.state.babel.locale) }}
         </p>
         {% if app.display_time != 0 %}
         <p>{{ _('Display Time (secs):') }} {{ app.display_time }}</p>

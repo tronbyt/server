@@ -12,7 +12,7 @@ from tronbyt_server.config import get_settings
 from tronbyt_server.flash import get_flashed_messages
 
 
-def timeago(seconds: int) -> str:
+def timeago(seconds: int, locale: str) -> str:
     """Format a timestamp as a time ago string."""
     if seconds == 0:
         return str(_("Never"))
@@ -20,6 +20,7 @@ def timeago(seconds: int) -> str:
         dt.timedelta(seconds=seconds - int(time.time())),
         granularity="second",
         add_direction=True,
+        locale=locale,
     )
 
 
