@@ -7,6 +7,7 @@ import copy
 import click
 import uvicorn
 import logging
+from logging.config import dictConfig
 from tronbyt_server.startup import run_once
 from uvicorn.main import main as uvicorn_cli
 from uvicorn.config import LOGGING_CONFIG
@@ -23,9 +24,6 @@ def main() -> None:
     3. Application-specific defaults defined in this script (e.g., disable pings)
     4. Uvicorn's built-in defaults (e.g., host='127.0.0.1')
     """
-    # Run startup tasks that should only be executed once
-    run_once()
-
     # Load settings from config.py (which handles .env files)
     settings = get_settings()
 
@@ -76,9 +74,6 @@ def main() -> None:
         ):
             config[key] = value
 
-    # The 'app' argument must be positional for uvicorn.run()
-    app = config.pop("app")
-
     # Custom logging configuration
     app_log_level_str = config.get("log_level", "info").upper()
     app_log_level_num = logging.getLevelName(app_log_level_str)
@@ -114,10 +109,9 @@ def main() -> None:
     }
 
     # Configure loggers
-    log_config["loggers"]["tronbyt_server"] = {
+    log_config["loggers"][""] = {
         "handlers": ["default"],
         "level": app_log_level_str,
-        "propagate": False,
     }
     log_config["loggers"]["uvicorn"] = {
         "handlers": ["uvicorn_error_handler"],
@@ -135,6 +129,14 @@ def main() -> None:
         "propagate": False,
     }
 
+    # Apply the logging configuration immediately
+    dictConfig(log_config)
+
+    # Run startup tasks that should only be executed once
+    run_once()
+
+    # The 'app' argument must be positional for uvicorn.run()
+    app = config.pop("app")
     config["log_config"] = log_config
 
     # Announce server startup using the final, merged configuration

@@ -118,8 +118,11 @@ def generate_apps_json(base_path: Path) -> None:
     skip_count = 0
     new_previews = 0
     num_previews = 0
+    new_previews_2x = 0
+    num_previews_2x = 0
     static_images_path = base_path / "apps"
     os.makedirs(static_images_path, exist_ok=True)
+    MAX_PREVIEW_SIZE_BYTES = 1 * 1024 * 1024  # 1MB
 
     # Get all git commit dates in a single efficient command
     git_dates = {}
@@ -221,36 +224,58 @@ def generate_apps_json(base_path: Path) -> None:
             package_name = app_dict.packageName or app_base_path.name
 
             # Check for a preview in the repo and copy it over to static previews directory
-            for image_name in [
-                f"{package_name}.webp",
-                f"{package_name}.gif",
-                f"{package_name}.png",
-                f"{app_basename}.webp",
-                f"{app_basename}.gif",
-                f"{app_basename}.png",
-                "screenshot.webp",
-                "screenshot.gif",
-                "screenshot.png",
-            ]:
-                image_path = app_base_path / image_name
-                static_image_path = (
-                    static_images_path / f"{app_basename}{image_path.suffix}"
-                )
-
-                # less than a meg only
-                if image_path.exists() and image_path.stat().st_size < 1 * 1024 * 1024:
-                    if not static_image_path.exists():
-                        logger.info(
-                            f"copying preview to static dir {static_image_path}"
-                        )
-                        new_previews += 1
-                        shutil.copy(image_path, static_image_path)
-
-                # set the preview for the app to the static preview location
-                if static_image_path.exists():
-                    num_previews += 1
-                    app_dict.preview = static_image_path.name
+            for image_name_base in [package_name, app_basename, "screenshot"]:
+                if app_dict.preview:
                     break
+                for ext in [".webp", ".gif", ".png"]:
+                    image_name = f"{image_name_base}{ext}"
+                    image_path = app_base_path / image_name
+                    static_image_path = static_images_path / f"{app_basename}{ext}"
+
+                    # less than a meg only
+                    if (
+                        image_path.exists()
+                        and image_path.stat().st_size < MAX_PREVIEW_SIZE_BYTES
+                    ):
+                        if not static_image_path.exists():
+                            logger.info(
+                                f"copying preview to static dir {static_image_path}"
+                            )
+                            new_previews += 1
+                            shutil.copy(image_path, static_image_path)
+
+                        # set the preview for the app to the static preview location
+                        if static_image_path.exists():
+                            if not app_dict.preview:
+                                num_previews += 1
+                                app_dict.preview = static_image_path.name
+
+                            # Now check for a @2x version of this found preview
+                            image_name_2x = f"{image_name_base}@2x{ext}"
+                            image_path_2x = app_base_path / image_name_2x
+                            static_image_path_2x = (
+                                static_images_path / f"{app_basename}@2x{ext}"
+                            )
+
+                            if (
+                                image_path_2x.exists()
+                                and image_path_2x.stat().st_size
+                                < MAX_PREVIEW_SIZE_BYTES
+                            ):
+                                if not static_image_path_2x.exists():
+                                    logger.info(
+                                        "copying 2x preview to static dir"
+                                        f" {static_image_path_2x}"
+                                    )
+                                    new_previews_2x += 1
+                                    shutil.copy(image_path_2x, static_image_path_2x)
+
+                            if static_image_path_2x.exists():
+                                num_previews_2x += 1
+                                app_dict.preview2x = static_image_path_2x.name
+
+                            # Found preview and checked for 2x, break from ext loop
+                            break
             count += 1
             apps_array.append(app_dict)
         except Exception as e:
@@ -260,7 +285,9 @@ def generate_apps_json(base_path: Path) -> None:
     logger.info(f"got {count} useable apps")
     logger.info(f"skipped {skip_count} secrets.star using apps")
     logger.info(f"copied {new_previews} new previews into static")
-    logger.info(f"total previews found {num_previews}")
+    logger.info(f"total previews found: {num_previews}")
+    logger.info(f"copied {new_previews_2x} new 2x previews into static")
+    logger.info(f"total 2x previews found: {num_previews_2x}")
     with (base_path / "system-apps.json").open("w") as f:
         json.dump([a.model_dump() for a in apps_array], f, indent=4)
 
