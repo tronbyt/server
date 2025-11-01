@@ -72,7 +72,7 @@ def render_app(
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
 
-    data, messages = pixlet_render_app(
+    data, messages_raw = pixlet_render_app(
         path=app_path,
         config=config_data,
         width=width,
@@ -82,14 +82,16 @@ def render_app(
         timeout=30000,
         image_format=0,
     )
-    messages = (
-        messages if isinstance(messages, list) else [messages] if messages else []
-    )
+    messages: list[str] = []
+    if isinstance(messages_raw, list):
+        messages = messages_raw
+    elif messages_raw:
+        messages = [messages_raw]
 
     if data is None:
         logger.error("Error running pixlet render")
         return None
-    if messages is not None and app is not None:
+    if messages and app is not None:
         db.save_render_messages(db_conn, device, app, messages)
 
     if len(data) > 0 and webp_path:

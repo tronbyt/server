@@ -109,7 +109,7 @@ class MultiprocessingSyncManager(SyncManager):
 
     def notify(self, device_id: str) -> None:
         """Notify waiters for a given device ID."""
-        condition: "ConditionType" | None = None
+        condition: "ConditionType | None" = None
         with self._lock:
             if device_id in self._conditions:
                 condition = self._conditions[device_id]

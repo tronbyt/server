@@ -50,7 +50,7 @@ app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)
 babel_configs = BabelConfigs(
     ROOT_DIR=MODULE_ROOT.parent,
     BABEL_DEFAULT_LOCALE="en",
-    BABEL_TRANSLATION_DIRECTORY=MODULE_ROOT / "translations",
+    BABEL_TRANSLATION_DIRECTORY=str(MODULE_ROOT / "translations"),
 )
 app.add_middleware(
     BabelMiddleware, babel_configs=babel_configs, jinja2_templates=templates

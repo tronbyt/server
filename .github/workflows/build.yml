@@ -28,11 +28,13 @@ jobs:
           sudo mv /usr/local/bin/libpixlet.so /usr/lib/libpixlet.so
           rm "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
         env:
-          PIXLET_VERSION: v0.44.0
+          PIXLET_VERSION: v0.46.0
       - name: Test with pytest
         run: pdm run -v pytest tests --doctest-modules --junitxml=junit/test-results.xml
       - name: Type check with mypy
         run: pdm run mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps --exclude dist .
+      - name: Type check with pyright
+        run: pdm run pyright
       - uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile

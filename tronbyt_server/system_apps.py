@@ -312,6 +312,7 @@ def update_system_repo(base_path: Path) -> None:
             status_result.returncode == 0 and status_result.stdout.strip()
         )
 
+        stash_returncode = 0
         if has_local_changes:
             logger.info(
                 "Local changes detected in broken_apps.txt, stashing before pull"
@@ -328,7 +329,8 @@ def update_system_repo(base_path: Path) -> None:
                 ],
                 cwd=system_apps_path,
             )
-            if stash_result.returncode != 0:
+            stash_returncode = stash_result.returncode
+            if stash_returncode != 0:
                 logger.warning("Failed to stash broken_apps.txt changes")
 
         result = git_command(["git", "pull", "--rebase=true"], cwd=system_apps_path)
@@ -338,7 +340,7 @@ def update_system_repo(base_path: Path) -> None:
             logger.info("Repo updated")
 
         # Re-apply stashed changes if we stashed them
-        if has_local_changes and stash_result.returncode == 0:
+        if has_local_changes and stash_returncode == 0:
             logger.info("Re-applying stashed broken_apps.txt changes")
             pop_result = git_command(["git", "stash", "pop"], cwd=system_apps_path)
             if pop_result.returncode != 0:
