@@ -61,6 +61,18 @@
       </td>
     </tr>
 
+    <!-- Autopin Status -->
+    <tr>
+      <td>
+        <label for="autopin">{{ _('Autopin') }}</label>
+        <small>{{ _('Automatically pin this app when it renders successfully') }}</small>
+      </td>
+      <td>
+        <input name="autopin" type="checkbox" id="autopin" class="form-control"
+               {% if app.autopin %} checked {% endif %}>
+      </td>
+    </tr>
+
     <!-- Render Interval -->
     <tr>
       <td>

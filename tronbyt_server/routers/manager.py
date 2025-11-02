@@ -368,7 +368,14 @@ def next_app_logic(
                     )
 
     if not possibly_render(db_conn, user, device_id, app) or app.empty_last_render:
-        # App failed to render or had empty render - skip it
+        # App failed to render or had empty render - skip it.
+        # If this is a pinned app we should unpin it because it's not Active
+        # pinned app is set as the app iname in the device object, we need to clear it.
+        if getattr(device, "pinned_app", None) == app.iname:
+            logger.info(f"Unpinning app {app.iname} because fail or empty render")
+            device.pinned_app = ""
+            db.save_user(db_conn, user)
+
         # Pass next_index directly since it already points to the next app
         return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
@@ -1194,6 +1201,7 @@ class AppUpdateFormData(BaseModel):
     display_time: int = 0
     notes: str | None = None
     enabled: bool = False
+    autopin: bool = False
     start_time: str | None = None
     end_time: str | None = None
     days: list[str] = []
@@ -1246,6 +1254,7 @@ def updateapp_post(
         "display_time": form_data.display_time,
         "notes": form_data.notes or "",
         "enabled": form_data.enabled,
+        "autopin": form_data.autopin,
         "start_time": form_data.start_time,
         "end_time": form_data.end_time,
         "days": form_data.days,

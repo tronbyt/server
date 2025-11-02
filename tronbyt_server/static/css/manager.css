@@ -404,6 +404,11 @@ button.action.w3-button.w3-red {
   color: white;
 }
 
+.status-badge.autopin {
+  background-color: #3b82f6;
+  color: white;
+}
+
 .status-badge.inactive {
   background-color: #f97316;
   color: white;
@@ -417,6 +422,11 @@ button.action.w3-button.w3-red {
 
 [data-theme="dark"] .status-badge.enabled {
   background-color: #34d399;
+  color: #0f172a;
+}
+
+[data-theme="dark"] .status-badge.autopin {
+  background-color: #60a5fa;
   color: #0f172a;
 }
 
