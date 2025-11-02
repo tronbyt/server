@@ -68,7 +68,7 @@
 
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="{{ url_for('update', device_id=device.id) }}">{{ _('Edit Device') }}</a>
-            {% if device.type in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide"] %}
+            {% if device.type in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide", "matrixportal_s3"] %}
                   <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
                     href="{{ url_for('generate_firmware', device_id=device.id) }}">{{ _('Firmware') }}</a>
             {% endif %}

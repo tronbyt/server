@@ -34,6 +34,8 @@ def generate_firmware(
         firmware_filename = "tronbyt-S3.bin"
     elif device_type == "tronbyt_s3_wide":
         firmware_filename = "tronbyt-s3-wide.bin"
+    elif device_type == "matrixportal_s3":
+        firmware_filename = "matrixportal-s3.bin"
     elif swap_colors:
         firmware_filename = "tidbyt-gen1_swap.bin"
     else:
