@@ -59,9 +59,12 @@ def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
 def settings_cleanup() -> Iterator[None]:
     original_enable_user_registration = settings.ENABLE_USER_REGISTRATION
     original_max_users = settings.MAX_USERS
+    original_disable_sync_manager_shutdown = settings.DISABLE_SYNC_MANAGER_SHUTDOWN
+    settings.DISABLE_SYNC_MANAGER_SHUTDOWN = True
     yield
     settings.ENABLE_USER_REGISTRATION = original_enable_user_registration
     settings.MAX_USERS = original_max_users
+    settings.DISABLE_SYNC_MANAGER_SHUTDOWN = original_disable_sync_manager_shutdown
 
 
 @pytest.fixture()

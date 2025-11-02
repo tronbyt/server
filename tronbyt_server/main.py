@@ -19,6 +19,7 @@ from tronbyt_server.dependencies import (
     get_db,
 )
 from tronbyt_server.routers import api, auth, manager, websockets
+from tronbyt_server.sync import get_sync_manager
 from tronbyt_server.templates import templates
 
 MODULE_ROOT = Path(__file__).parent.resolve()
@@ -36,9 +37,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
     # Shutdown
-    from tronbyt_server.sync import get_sync_manager
-
-    get_sync_manager().shutdown()
+    if not settings.DISABLE_SYNC_MANAGER_SHUTDOWN:
+        get_sync_manager().shutdown()
 
 
 app = FastAPI(lifespan=lifespan)

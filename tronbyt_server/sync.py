@@ -67,9 +67,12 @@ class MultiprocessingWaiter(Waiter):
     def wait(self, timeout: int) -> bool:
         """Wait for a notification."""
         with self._condition:
-            if not self._manager._shutdown_event.is_set():
-                return bool(self._condition.wait(timeout=timeout))
-        return False
+            if self._manager._shutdown_event.is_set():
+                return False
+            notified = self._condition.wait(timeout=timeout)
+            if self._manager._shutdown_event.is_set():
+                return False
+            return bool(notified)
 
     def close(self) -> None:
         """Clean up the waiter."""
@@ -126,6 +129,7 @@ class MultiprocessingSyncManager(SyncManager):
             for condition in self._conditions.values():
                 with condition:
                     condition.notify_all()
+        self._manager.shutdown()
 
 
 class RedisWaiter(Waiter):
