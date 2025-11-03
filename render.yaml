@@ -6,7 +6,4 @@ services:
   image:
     url: ghcr.io/tronbyt/server:1.5.1
   plan: free
-  envVars:
-  - key: ADMIN_PASSWORD
-    value: pezzward
 version: "1"
