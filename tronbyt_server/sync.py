@@ -50,6 +50,16 @@ class SyncManager(ABC):
         """Shut down the sync manager."""
         raise NotImplementedError
 
+    @abstractmethod
+    def __enter__(self) -> "SyncManager":
+        """Enter the context manager."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        """Exit the context manager."""
+        raise NotImplementedError
+
 
 class MultiprocessingWaiter(Waiter):
     """A waiter that uses multiprocessing primitives."""
@@ -131,6 +141,12 @@ class MultiprocessingSyncManager(SyncManager):
                     condition.notify_all()
         self._manager.shutdown()
 
+    def __enter__(self) -> "MultiprocessingSyncManager":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.shutdown()
+
 
 class RedisWaiter(Waiter):
     """A waiter that uses Redis Pub/Sub."""
@@ -184,6 +200,12 @@ class RedisSyncManager(SyncManager):
     def shutdown(self) -> None:
         """Shut down the sync manager."""
         self._redis.close()
+
+    def __enter__(self) -> "RedisSyncManager":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.shutdown()
 
 
 _sync_manager: SyncManager | None = None
