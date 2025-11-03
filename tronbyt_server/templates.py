@@ -5,6 +5,7 @@ import time
 
 from pathlib import Path
 from babel.dates import format_timedelta
+import jinja2
 from fastapi.templating import Jinja2Templates
 from fastapi_babel import _
 
@@ -24,8 +25,13 @@ def timeago(seconds: int, locale: str) -> str:
     )
 
 
-templates = Jinja2Templates(directory=Path(__file__).parent.resolve() / "templates")
-templates.env.globals["get_flashed_messages"] = get_flashed_messages
-templates.env.globals["_"] = _
-templates.env.globals["config"] = get_settings()
-templates.env.filters["timeago"] = timeago
+env = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(Path(__file__).parent.resolve() / "templates"),
+    autoescape=True,
+)
+env.globals["get_flashed_messages"] = get_flashed_messages
+env.globals["_"] = _
+env.globals["config"] = get_settings()
+env.filters["timeago"] = timeago
+
+templates = Jinja2Templates(env=env)

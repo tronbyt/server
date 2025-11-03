@@ -15,7 +15,7 @@ from starlette.websockets import WebSocketDisconnect
 import re
 from tronbyt_server import db
 from tronbyt_server.dependencies import get_db
-from tronbyt_server.routers.manager import _next_app_logic
+from tronbyt_server.routers.manager import next_app_logic
 from tronbyt_server.sync import get_sync_manager
 
 router = APIRouter(tags=["websockets"])
@@ -299,7 +299,7 @@ async def _wait_for_acknowledgment(
             # Got displaying acknowledgment, render next image
             logger.debug(f"[{device_id}] Device acknowledged display")
             response = await loop.run_in_executor(
-                None, _next_app_logic, db_conn, device_id
+                None, next_app_logic, db_conn, device_id
             )
             return (response, last_brightness)
 
@@ -316,7 +316,7 @@ async def _wait_for_acknowledgment(
             # Render the next app (which will pick up the ephemeral push)
             try:
                 response = await loop.run_in_executor(
-                    None, _next_app_logic, db_conn, device_id
+                    None, next_app_logic, db_conn, device_id
                 )
                 logger.debug(
                     f"[{device_id}] Ephemeral push rendered, will send immediately"
@@ -378,7 +378,7 @@ async def _wait_for_acknowledgment(
         )
 
     # Render next image after timeout
-    response = await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
+    response = await loop.run_in_executor(None, next_app_logic, db_conn, device_id)
     return (response, last_brightness)
 
 
@@ -396,7 +396,7 @@ async def sender(
 
     try:
         # Render the first image before entering the loop
-        response = await loop.run_in_executor(None, _next_app_logic, db_conn, device_id)
+        response = await loop.run_in_executor(None, next_app_logic, db_conn, device_id)
 
         # Main loop
         while True:

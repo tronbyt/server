@@ -264,7 +264,7 @@ class TestApiKeyIntegration:
         self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that generated API keys are unique across users"""
-        api_keys = []
+        api_keys: list[str] = []
         for i in range(5):
             username = f"user{i}"
             response = auth_client.post(

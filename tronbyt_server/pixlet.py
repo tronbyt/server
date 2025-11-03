@@ -174,10 +174,7 @@ def render_app(
     if error:
         logger.error(f"Error while rendering {path}: {error}")
     if ret.length >= 0:
-        data = ctypes.cast(
-            ret.data, ctypes.POINTER(ctypes.c_byte * ret.length)
-        ).contents
-        buf = bytes(data)
+        buf = ctypes.string_at(ret.data, ret.length)
         if pixlet_free_bytes and ret.data:
             pixlet_free_bytes(ret.data)
         messages: list[str] = []
