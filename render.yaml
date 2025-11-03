@@ -6,8 +6,6 @@ services:
     url: ghcr.io/tronbyt/server:1.5.4
   plan: free
   envVars:
-  - key: PRODUCTION
-    value: "1"
   - key: WEB_CONCURRENCY
     value: "1"
   - key: TRONBYT_HOST
