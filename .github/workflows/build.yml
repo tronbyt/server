@@ -41,7 +41,7 @@ jobs:
       - name: Build
         run: pdm build
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: release-artifacts
           path: dist
