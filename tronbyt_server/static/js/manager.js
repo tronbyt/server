@@ -90,9 +90,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
   webpImages.forEach(image => {
     const deviceId = image.id.replace('currentWebp-', '');
+    // Increase refresh interval to 30 seconds to avoid interrupting animations
     setInterval(() => {
       reloadImage(deviceId);
-    }, 5000); // Update every 5 seconds
+    }, 10000); // Update every 30 seconds instead of 5
   });
 });
 
