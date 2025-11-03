@@ -1,9 +1,7 @@
 """Main application file."""
 
-from contextlib import asynccontextmanager
 from pathlib import Path
 
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -11,37 +9,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from tronbyt_server import db
 from tronbyt_server.config import get_settings
 from tronbyt_server.dependencies import (
     NotAuthenticatedException,
     auth_exception_handler,
-    get_db,
 )
 from tronbyt_server.routers import api, auth, manager, websockets
-from tronbyt_server.sync import get_sync_manager
 from tronbyt_server.templates import templates
 
 MODULE_ROOT = Path(__file__).parent.resolve()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Run startup and shutdown events."""
-    # Startup
-    settings = get_settings()
-
-    db_connection = next(get_db(settings=settings))
-    with db_connection:
-        db.init_db(db_connection)
-
-    yield
-    # Shutdown
-    if not settings.DISABLE_SYNC_MANAGER_SHUTDOWN:
-        get_sync_manager().shutdown()
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)

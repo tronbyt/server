@@ -8,10 +8,13 @@ import click
 import uvicorn
 import logging
 from logging.config import dictConfig
-from tronbyt_server.startup import run_once
 from uvicorn.main import main as uvicorn_cli
 from uvicorn.config import LOGGING_CONFIG
 from tronbyt_server.config import get_settings
+from tronbyt_server.startup import run_once
+from tronbyt_server.sync import get_sync_manager
+
+logger = logging.getLogger("tronbyt_server.run")
 
 
 def main() -> None:
@@ -140,16 +143,19 @@ def main() -> None:
     config["log_config"] = log_config
 
     # Announce server startup using the final, merged configuration
-    startup_message = f"Starting server on {config['host']}:{config['port']}"
+    startup_message = "Starting server"
 
     if config.get("reload"):
         startup_message += " with auto-reload"
-    elif config.get("workers"):
+    if config.get("workers"):
         startup_message += f" with {config['workers']} workers"
 
-    print(startup_message)
+    logger.info(startup_message)
 
-    uvicorn.run(app, **config)
+    # The sync manager needs to be initialized in the parent process and shut down
+    # gracefully. Using a context manager is the cleanest way to ensure this.
+    with get_sync_manager():
+        uvicorn.run(app, **config)
 
 
 if __name__ == "__main__":

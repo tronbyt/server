@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import shutil
 
+from tronbyt_server import db
 from tronbyt_server.main import app as fastapi_app
 from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
@@ -28,6 +29,8 @@ def db_connection(
     settings.ENABLE_USER_REGISTRATION = "1"
 
     with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
+        # Initialize the database schema immediately after connection.
+        db.init_db(conn)
         yield conn
 
 
@@ -59,12 +62,9 @@ def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
 def settings_cleanup() -> Iterator[None]:
     original_enable_user_registration = settings.ENABLE_USER_REGISTRATION
     original_max_users = settings.MAX_USERS
-    original_disable_sync_manager_shutdown = settings.DISABLE_SYNC_MANAGER_SHUTDOWN
-    settings.DISABLE_SYNC_MANAGER_SHUTDOWN = True
     yield
     settings.ENABLE_USER_REGISTRATION = original_enable_user_registration
     settings.MAX_USERS = original_max_users
-    settings.DISABLE_SYNC_MANAGER_SHUTDOWN = original_disable_sync_manager_shutdown
 
 
 @pytest.fixture()

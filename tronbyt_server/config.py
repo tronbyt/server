@@ -25,11 +25,6 @@ class Settings(BaseSettings):
     SYSTEM_APPS_REPO: str = "https://github.com/tronbyt/apps.git"
     LIBPIXLET_PATH: str | None = None
     REDIS_URL: str | None = None
-    # This setting is only used for testing purposes.
-    # It prevents the multiprocessing.Manager from being shut down prematurely
-    # during the FastAPI TestClient's lifespan shutdown, which can lead to
-    # FileNotFoundError and AttributeError in subsequent tests due to shared state.
-    DISABLE_SYNC_MANAGER_SHUTDOWN: bool = False
 
 
 @lru_cache

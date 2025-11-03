@@ -53,6 +53,7 @@ def run_once() -> None:
     settings = get_settings()
     logger = logging.getLogger(__name__)
     logger.info("Running one-time startup tasks...")
+
     try:
         firmware_utils.update_firmware_binaries(db.get_data_dir())
     except Exception as e:
@@ -66,10 +67,12 @@ def run_once() -> None:
     else:
         logger.info("Skipping system apps update and database backup (dev mode)")
 
+    # Initialize, migrate, and vacuum database
     try:
         with sqlite3.connect(settings.DB_FILE) as conn:
+            db.init_db(conn)
             db.vacuum(conn)
     except Exception as e:
-        logger.warning(f"Could not vacuum database: {e}")
+        logger.error(f"Could not initialize or vacuum database: {e}", exc_info=True)
 
     logger.info("One-time startup tasks complete.")
