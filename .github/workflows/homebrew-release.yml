@@ -1,0 +1,20 @@
+name: Bump Homebrew formula on release
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  bump-homebrew-formula:
+    name: Bump Homebrew formula
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@main
+      - name: Bump formula
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          brew tap tronbyt/homebrew-tronbyt
+          brew bump-formula-pr tronbyt-server --strict --version=${VERSION#v} --no-browse --no-fork
