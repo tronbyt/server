@@ -84,7 +84,7 @@ def generate_apps_json(base_path: Path) -> None:
     repo = get_repo(system_apps_path)
 
     # find all the .star files in the apps_path directory
-    apps_array = []
+    apps_array: list[AppMetadata] = []
     apps = list(system_apps_path.rglob("*.star"))
     broken_apps = []
 
@@ -108,7 +108,7 @@ def generate_apps_json(base_path: Path) -> None:
     os.makedirs(static_images_path, exist_ok=True)
     MAX_PREVIEW_SIZE_BYTES = 1 * 1024 * 1024  # 1MB
 
-    git_dates = {}
+    git_dates: dict[str, datetime] = {}
     if repo:
         try:
             # Use git log with --name-only and --diff-filter to get last modification date for each file
@@ -150,7 +150,7 @@ def generate_apps_json(base_path: Path) -> None:
             app_basename = app.stem
             # Use git date if available, otherwise fall back to file modification time
             if app.name in git_dates:
-                mod_time = git_dates[app.name]
+                mod_time: datetime = git_dates[app.name]
             else:
                 mod_time = datetime.fromtimestamp(app.stat().st_mtime)
 

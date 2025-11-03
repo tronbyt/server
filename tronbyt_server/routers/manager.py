@@ -72,7 +72,7 @@ def create_expanded_apps_list(device: Device, apps_list: list[App]) -> list[App]
     Returns:
         List of apps with interstitial apps inserted after each regular app (except the last)
     """
-    expanded_apps_list = []
+    expanded_apps_list: list[App] = []
     interstitial_app_iname = device.interstitial_app
     interstitial_enabled = device.interstitial_enabled
 
@@ -244,9 +244,7 @@ def _get_app_to_display(
                 and app.iname == device.interstitial_app
             ):
                 # Check if we're at an odd index (interstitial position)
-                is_interstitial_app = (
-                    last_app_index is not None and last_app_index % 2 == 1
-                )
+                is_interstitial_app = last_app_index % 2 == 1
 
             # Calculate new index if advancing
             new_index = last_app_index
@@ -259,7 +257,7 @@ def _get_app_to_display(
             return app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app
 
 
-def _next_app_logic(
+def next_app_logic(
     db_conn: sqlite3.Connection,
     device_id: DeviceID,
     last_app_index: int | None = None,
@@ -330,9 +328,8 @@ def _next_app_logic(
         and not is_interstitial_app  # Skip enabled check if at interstitial position
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
-        # Current app is disabled or has inactive schedule - skip it
         # Pass next_index directly since it already points to the next app
-        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+        return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     # If the app is the interstitial app but we're NOT at an interstitial position,
     # check if it's enabled for regular rotation
@@ -343,7 +340,7 @@ def _next_app_logic(
         and not app.enabled
     ):
         # Interstitial app at regular position is disabled - skip it
-        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+        return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     # NEW: Skip interstitial app if the previous regular app was skipped
     # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
@@ -366,14 +363,14 @@ def _next_app_logic(
                     or prev_app_obj.empty_last_render
                 ):
                     # Previous app would be skipped - skip this interstitial too
-                    return _next_app_logic(
+                    return next_app_logic(
                         db_conn, device_id, next_index, recursion_depth + 1
                     )
 
     if not possibly_render(db_conn, user, device_id, app) or app.empty_last_render:
         # App failed to render or had empty render - skip it
         # Pass next_index directly since it already points to the next app
-        return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+        return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
@@ -389,7 +386,7 @@ def _next_app_logic(
 
     # WebP file doesn't exist or is empty - skip this app
     # Pass next_index directly since it already points to the next app
-    return _next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+    return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
 
 
 @router.get("/")
@@ -399,7 +396,7 @@ def index(
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Render the main page with a list of devices."""
-    devices = []
+    devices: list[Device] = []
     user_updated = False
     if user.devices:
         for device in reversed(list(user.devices.values())):
@@ -1929,11 +1926,10 @@ async def import_device_config_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device_config["img_url"] = str(request.url_for("next_app", device_id=device_id))
-        device_config["ws_url"] = str(
-            request.url_for("websocket_endpoint", device_id=device_id)
-        )
-        user.devices[device_config["id"]] = Device(**device_config)
+        device = Device(**cast(dict[str, Any], device_config))
+        device.img_url = str(request.url_for("next_app", device_id=device_id))
+        device.ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
+        user.devices[device.id] = device
         db.save_user(db_conn, user)
         flash(request, _("Device configuration imported successfully"))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
@@ -1968,10 +1964,11 @@ async def import_user_config(
 
     try:
         contents = await file.read()
-        user_config = json.loads(contents)
-        if not isinstance(user_config, dict):
+        user_config_raw = json.loads(contents)
+        if not isinstance(user_config_raw, dict):
             flash(request, _("Invalid JSON structure"))
             return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
+        user_config = cast(dict[str, Any], user_config_raw)
 
         # Replace all user data except username and password
         current_username = user.username
@@ -2040,14 +2037,15 @@ async def import_device_post(
 
     try:
         contents = await file.read()
-        device_config = json.loads(contents)
-        if not isinstance(device_config, dict):
+        device_config_raw = json.loads(contents)
+        if not isinstance(device_config_raw, dict):
             flash(request, _("Invalid JSON structure"))
             return RedirectResponse(
                 url="/import_device", status_code=status.HTTP_302_FOUND
             )
 
-        device_id = device_config.get("id")
+        device_config = cast(dict[str, Any], device_config_raw)
+        device_id = str(device_config.get("id", ""))
         if not device_id:
             flash(request, _("Device ID missing in config."))
             return RedirectResponse(
@@ -2058,11 +2056,9 @@ async def import_device_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device_config["img_url"] = str(request.url_for("next_app", device_id=device_id))
-        device_config["ws_url"] = str(
-            request.url_for("websocket_endpoint", device_id=device_id)
-        )
         device = Device(**device_config)
+        device.img_url = str(request.url_for("next_app", device_id=device_id))
+        device.ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
         user.devices[device.id] = device
         db.save_user(db_conn, user)
         flash(request, _("Device configuration imported successfully"))
@@ -2076,7 +2072,7 @@ async def import_device_post(
 def next_app(
     device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
 ) -> Response:
-    return _next_app_logic(db_conn, device_id)
+    return next_app_logic(db_conn, device_id)
 
 
 @router.get("/{device_id}/brightness", name="get_brightness")

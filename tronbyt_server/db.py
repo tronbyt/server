@@ -837,11 +837,7 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
             return False
 
         # Check if current weekday is in the pattern
-        if (
-            recurrence_pattern
-            and recurrence_pattern.weekdays
-            and isinstance(recurrence_pattern.weekdays, list)
-        ):
+        if recurrence_pattern and recurrence_pattern.weekdays:
             weekdays = recurrence_pattern.weekdays
         else:
             weekdays = list(Weekday)  # All days if none specified

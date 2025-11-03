@@ -77,16 +77,16 @@ class MultiprocessingWaiter(Waiter):
     def wait(self, timeout: int) -> bool:
         """Wait for a notification."""
         with self._condition:
-            if self._manager._shutdown_event.is_set():
+            if self._manager.shutdown_event.is_set():
                 return False
             notified = self._condition.wait(timeout=timeout)
-            if self._manager._shutdown_event.is_set():
+            if self._manager.shutdown_event.is_set():
                 return False
             return bool(notified)
 
     def close(self) -> None:
         """Clean up the waiter."""
-        self._manager._release_condition(self._device_id)
+        self._manager.release_condition(self._device_id)
 
 
 class MultiprocessingSyncManager(SyncManager):
@@ -100,9 +100,9 @@ class MultiprocessingSyncManager(SyncManager):
         self._waiter_counts: dict[str, int] = cast(dict[str, int], manager.dict())
         self._lock = manager.Lock()
         self._manager = manager
-        self._shutdown_event = manager.Event()
+        self.shutdown_event = manager.Event()
 
-    def _release_condition(self, device_id: str) -> None:
+    def release_condition(self, device_id: str) -> None:
         """Decrement waiter count and clean up condition if no waiters are left."""
         with self._lock:
             if device_id in self._waiter_counts:
@@ -134,7 +134,7 @@ class MultiprocessingSyncManager(SyncManager):
 
     def shutdown(self) -> None:
         """Shut down the sync manager."""
-        self._shutdown_event.set()
+        self.shutdown_event.set()
         with self._lock:
             for condition in self._conditions.values():
                 with condition:

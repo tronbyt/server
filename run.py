@@ -79,9 +79,17 @@ def main() -> None:
 
     # Custom logging configuration
     app_log_level_str = config.get("log_level", "info").upper()
-    app_log_level_num = logging.getLevelName(app_log_level_str)
 
-    # Uvicorn's log level should never be more verbose than INFO.
+    # Map string log levels to integer equivalents
+    log_level_map = logging.getLevelNamesMapping()
+    app_log_level_num = log_level_map.get(app_log_level_str)
+    if app_log_level_num is None:
+        logger.warning(
+            f"Invalid log level '{app_log_level_str}' specified. Defaulting to INFO."
+        )
+        app_log_level_num = logging.INFO
+
+    # Uvicorn's access log level should never be more verbose than INFO.
     # Higher number means less verbose.
     uvicorn_log_level_num = max(app_log_level_num, logging.INFO)
     uvicorn_log_level_str = logging.getLevelName(uvicorn_log_level_num)
@@ -93,11 +101,11 @@ def main() -> None:
         "%(asctime)s %(levelprefix)s [%(name)s] %(message)s"  # For tronbyt_server
     )
     log_config["formatters"]["access"]["fmt"] = (
-        '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'  # For uvicorn.access
+        '%(asctime)s %(levelprefix)s [access] %(client_addr)s - "%(request_line)s" %(status_code)s'  # For uvicorn.access
     )
     log_config["formatters"]["uvicorn_no_name"] = {
         "()": "uvicorn.logging.DefaultFormatter",
-        "fmt": "%(asctime)s %(levelprefix)s %(message)s",
+        "fmt": "%(asctime)s %(levelprefix)s [uvicorn] %(message)s",
         "use_colors": config.get("use_colors"),
     }
 
@@ -108,7 +116,7 @@ def main() -> None:
         "formatter": "uvicorn_no_name",
         "class": "logging.StreamHandler",
         "stream": "ext://sys.stderr",
-        "level": uvicorn_log_level_str,
+        "level": app_log_level_str,
     }
 
     # Configure loggers
@@ -118,7 +126,7 @@ def main() -> None:
     }
     log_config["loggers"]["uvicorn"] = {
         "handlers": ["uvicorn_error_handler"],
-        "level": uvicorn_log_level_str,
+        "level": app_log_level_str,
         "propagate": False,
     }
     log_config["loggers"]["uvicorn.access"] = {
@@ -128,7 +136,7 @@ def main() -> None:
     }
     log_config["loggers"]["uvicorn.error"] = {
         "handlers": ["uvicorn_error_handler"],
-        "level": uvicorn_log_level_str,
+        "level": app_log_level_str,
         "propagate": False,
     }
 

@@ -63,13 +63,15 @@ ignore_missing_imports = true
 
 [tool.pyright]
 include = ["."]
+typeCheckingMode = "standard"
 exclude = [
-    ".venv/**",
     "data/**",
     "**/__pycache__",
+    "**/.*"
 ]
-ignore = ["src/oldstuff"]
 pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
 
 [dependency-groups]
 dev = [

@@ -23,16 +23,16 @@ def update_firmware_data(data: bytes, device_type: str = "esp32") -> bytes:
     if not isinstance(image, ESP32FirmwareImage):
         raise ValueError(f"Unsupported image type: {type(image).__name__}")
 
-    if image.checksum is None or image.stored_digest is None:
-        raise ValueError(
-            "Failed to parse firmware data: did not find checksum or validation hash"
-        )
+    if image.stored_digest is None:
+        raise ValueError("Failed to parse firmware data: did not find validation hash")
 
     print(f"Chip type: {chip_type}")
     print(f"Original checksum: {image.checksum:02x}")
     print(f"Original SHA256: {image.stored_digest.hex()}")
 
     new_checksum = image.calculate_checksum()
+    if new_checksum is None:
+        raise ValueError("Failed to calculate new checksum")
     # Update the checksum directly in the buffer
     buffer = io.BytesIO(data)
     buffer.seek(-33, 2)  # Write the checksum at position 33 from the end
