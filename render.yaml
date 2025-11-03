@@ -1,10 +1,9 @@
-# v1.5.3/1.5.2 no good for render as of 2025-11-02 -tavis
 services:
 - type: web
   name: tronbyt-server
   runtime: image
   image:
-    url: ghcr.io/tronbyt/server:1.5.1
+    url: ghcr.io/tronbyt/server:1.5.4
   plan: free
   envVars:
   - key: PRODUCTION
