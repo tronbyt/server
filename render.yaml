@@ -11,4 +11,6 @@ services:
     value: "1"
   - key: WEB_CONCURRENCY
     value: "1"
+  - key: TRONBYT_HOST
+    value: "0.0.0.0"
 version: "1"
