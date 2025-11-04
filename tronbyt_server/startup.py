@@ -69,6 +69,7 @@ def run_once() -> None:
 
     # Initialize, migrate, and vacuum database
     try:
+        (Path(settings.DB_FILE).parent).mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(settings.DB_FILE) as conn:
             db.init_db(conn)
             db.vacuum(conn)
