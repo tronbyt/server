@@ -7,7 +7,7 @@
     (function () {
       var storedTheme = localStorage.getItem('theme_preference');
       // Get server preference if user is logged in, otherwise default to 'system'
-      var serverProvidedTheme = "{% if user and user.theme_preference %}{{ user.theme_preference }}{% else %}system{% endif %}";
+      var serverProvidedTheme = "{% if user %}{{ user.theme_preference.value }}{% else %}system{% endif %}";
       var themeToApply = storedTheme || serverProvidedTheme;
 
       if (themeToApply === 'system') {
@@ -120,8 +120,8 @@
 </section>
 
 <script>
-  {% if user and user.theme_preference %}
-  window.currentUserThemePreference = "{{ user.theme_preference }}";
+  {% if user %}
+  window.currentUserThemePreference = "{{ user.theme_preference.value }}";
   {% else %}
   window.currentUserThemePreference = "system"; // Default for guests or if not set
   {% endif %}

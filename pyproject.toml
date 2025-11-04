@@ -48,6 +48,7 @@ init = { composite = ["extract", "_init {args}"] }
 _update = "pybabel update -i messages.pot -d tronbyt_server/translations"
 update = { composite = ["extract", "_update"] }
 compile = "pybabel compile -d tronbyt_server/translations"
+mypy = "mypy --strict --install-types --ignore-missing-imports --exclude system-apps --exclude dist ."
 
 [tool.pdm.version]
 source = "scm"
