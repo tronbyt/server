@@ -36,6 +36,8 @@ def generate_firmware(
         firmware_filename = "tronbyt-s3-wide.bin"
     elif device_type == "matrixportal_s3":
         firmware_filename = "matrixportal-s3.bin"
+    elif device_type == "matrixportal_s3_waveshare":
+        firmware_filename = "matrixportal-s3-waveshare.bin"
     elif swap_colors:
         firmware_filename = "tidbyt-gen1_swap.bin"
     else:
@@ -176,6 +178,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
             "tronbyt-s3_firmware.bin": "tronbyt-S3.bin",
             "tronbyt-s3-wide_firmware.bin": "tronbyt-s3-wide.bin",
             "matrixportal-s3_firmware.bin": "matrixportal-s3.bin",
+            "matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
         }
 
         # Download all .bin files from the release assets
