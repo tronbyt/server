@@ -72,5 +72,5 @@ The tests require libpixlet.so. `.github/workflows/build.yml` has instructions h
 *   **Linting and Formatting:** The project uses `ruff` for linting and formatting. To check for errors, run `pdm run ruff check .`. To fix errors, run `pdm run ruff check . --fix`. Use `pdm run ruff format --diff --check` for formatting checks. When generating code, ensure that it complies to the Ruff default style documented at https://docs.astral.sh/ruff/configuration/. To format files or directories, use `pdm run ruff format`. The project also uses `pyright`, a static type checker explicitly designed for Python which helps to ensure code quality and catch errors early; to use it, run `pdm run pyright`.
 *   Use `pdm install -d` to install development dependencies.
 *   Use `pdm export -o requirements.txt` to regenerate `requirements.txt`.
-*   This project uses mypy for static type checking. Run `pdm run mypy --strict --install-types --non-interactive --ignore-missing-imports --exclude system-apps --exclude dist .` to run these checks.
+*   This project uses mypy for static type checking. Run `pdm run mypy` to run these checks.
 *   Never use plain numbers like `404` for status codes. Always use the `status` constants.

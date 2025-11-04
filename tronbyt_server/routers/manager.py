@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from random import randint
 from typing import Annotated, Any, cast
+from zoneinfo import available_timezones
 
 from fastapi import (
     APIRouter,
@@ -21,31 +22,30 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
-    status,
     UploadFile,
+    status,
 )
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi_babel import _
-from fastapi.responses import FileResponse, RedirectResponse, Response, JSONResponse
-from pydantic import BaseModel, BeforeValidator
-from werkzeug.utils import secure_filename
-from zoneinfo import available_timezones
 from markupsafe import escape
+from pydantic import BaseModel, BeforeValidator, ValidationError
+from werkzeug.utils import secure_filename
 
 from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import get_db, manager
 from tronbyt_server.flash import flash
 from tronbyt_server.models import (
-    App,
-    RecurrencePattern,
-    RecurrenceType,
-    Weekday,
     DEFAULT_DEVICE_TYPE,
+    App,
     Device,
     DeviceID,
     DeviceType,
     Location,
+    RecurrencePattern,
+    RecurrenceType,
     User,
+    Weekday,
 )
 from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
@@ -1926,7 +1926,16 @@ async def import_device_config_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device = Device(**cast(dict[str, Any], device_config))
+        try:
+            device = Device.model_validate(cast(dict[str, Any], device_config))
+        except ValidationError as e:
+            logger.error(
+                "Imported device validation for device '%s' failed: %s", device_id, e
+            )
+            flash(request, _("Invalid device configuration file"))
+            return RedirectResponse(
+                url=f"/{device_id}/import_config", status_code=status.HTTP_302_FOUND
+            )
         device.img_url = str(request.url_for("next_app", device_id=device_id))
         device.ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
         user.devices[device.id] = device
@@ -1989,14 +1998,15 @@ async def import_user_config(
 
         logging.info(f"Attempting to import user config: {user_config.keys()}")
         try:
-            new_user = User(**user_config)
+            new_user = User.model_validate(user_config)
             logging.info(
                 f"Successfully created User object with {len(new_user.devices)} devices"
             )
-        except Exception as validation_error:
+        except ValidationError as validation_error:
             logging.error(
-                f"Pydantic validation error: {validation_error}", exc_info=True
+                f"Validation error during import for user '{current_username}': {validation_error}"
             )
+            # Let outer except catch and flash a message
             raise
 
         db.save_user(db_conn, new_user)
@@ -2056,7 +2066,16 @@ async def import_device_post(
             return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
         # Regenerate URLs with current server root
-        device = Device(**device_config)
+        try:
+            device = Device.model_validate(device_config)
+        except ValidationError as e:
+            logger.error(
+                "Imported device validation for device '%s' failed: %s", device_id, e
+            )
+            flash(request, _("Invalid device configuration file"))
+            return RedirectResponse(
+                url="/import_device", status_code=status.HTTP_302_FOUND
+            )
         device.img_url = str(request.url_for("next_app", device_id=device_id))
         device.ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
         user.devices[device.id] = device

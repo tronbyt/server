@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 from fastapi import UploadFile
+from pydantic import ValidationError
 from tzlocal import get_localzone, get_localzone_name
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
@@ -520,9 +521,12 @@ def get_user(db: sqlite3.Connection, username: str) -> User | None:
         row = cursor.fetchone()
         if row:
             user_data = json.loads(row[0])
-            if "theme_preference" not in user_data:
-                user_data["theme_preference"] = "system"
-            return User(**user_data)
+            try:
+                return User.model_validate(user_data)
+            except ValidationError as e:
+                # ValidationError from pydantic -> log and return None
+                logger.error(f"User data validation failed for {username}: {e}")
+                return None
         else:
             logger.error(f"{username} not found")
             return None
@@ -609,7 +613,17 @@ def get_apps_list(user: str) -> list[AppMetadata]:
             logger.debug("apps.json file generated.")
         with list_file.open("r") as f:
             app_dicts = json.load(f)
-            return [AppMetadata(**app_dict) for app_dict in app_dicts]
+            apps: list[AppMetadata] = []
+            for app in app_dicts:
+                try:
+                    apps.append(AppMetadata.model_validate(app))
+                except ValidationError as e:
+                    logger.error(
+                        "AppMetadata validation failed for system app '%s': %s",
+                        app.get("name", "unknown"),
+                        e,
+                    )
+            return apps
 
     dir = get_users_dir() / secure_filename(user) / "apps"
     # Ensure dir is within get_users_dir to prevent path traversal
@@ -642,7 +656,12 @@ def get_apps_list(user: str) -> list[AppMetadata]:
                 app_dict.update(yaml_dict)
         else:
             app_dict["summary"] = "Custom App"
-        app_list.append(AppMetadata(**app_dict))
+        try:
+            app_list.append(AppMetadata.model_validate(app_dict))
+        except ValidationError as e:
+            logger.error(
+                "AppMetadata validation failed for user app %s: %s", app_name, e
+            )
     return app_list
 
 
@@ -760,7 +779,20 @@ def get_all_users(db: sqlite3.Connection) -> list[User]:
     """Get all users from the database."""
     cursor = db.cursor()
     cursor.execute("SELECT data FROM json_data")
-    return [User(**json.loads(row[0])) for row in cursor.fetchall()]
+    users: list[User] = []
+    for row in cursor.fetchall():
+        try:
+            user_data = json.loads(row[0])
+            try:
+                user = User.model_validate(user_data)
+                users.append(user)
+            except ValidationError as e:
+                logger.error(
+                    f"User validation failed for user '{user_data.get('username', 'unknown')}': {e}"
+                )
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding user JSON: {e}")
+    return users
 
 
 def has_users(db: sqlite3.Connection) -> bool:
@@ -1039,7 +1071,14 @@ def add_pushed_app(
     if not app_data:
         return
 
-    app = App(**app_data)
+    try:
+        app = App.model_validate(app_data)
+    except ValidationError as e:
+        logger.error(
+            f"Pushed app validation for device '{device_id}' installation '{installation_id}' failed: {e}"
+        )
+        return
+
     device.apps[installation_id] = app
     save_user(db, user)
 

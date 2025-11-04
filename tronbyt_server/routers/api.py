@@ -10,14 +10,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
 from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
+from tronbyt_server.models import App, Device, DeviceID, User
 from tronbyt_server.routers.manager import parse_time_input
 from tronbyt_server.utils import push_new_image, render_app
-from tronbyt_server.models import App, Device, DeviceID, User
 
 router = APIRouter(prefix="/v0", tags=["api"])
 logger = logging.getLogger(__name__)
@@ -472,7 +472,19 @@ def handle_app_push(
 
     installation_id = data.installationID or data.installationId or ""
     app_dict = db.get_pushed_app(user, device_id, installation_id)
-    app = App(**app_dict)
+    try:
+        app = App.model_validate(app_dict)
+    except ValidationError as e:
+        logger.error(
+            "Pushed app data for device '%s' installation '%s' failed validation: %s",
+            device_id,
+            installation_id,
+            e,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid app data"
+        )
     image_bytes = render_app(db_conn, app_path, data.config, None, device, app)
     if image_bytes is None:
         raise HTTPException(
