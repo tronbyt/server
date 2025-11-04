@@ -286,10 +286,6 @@ def next_app_logic(
         logger.debug("Brightness is 0, returning default image")
         return send_default_image(device)
 
-    if recursion_depth > len(device.apps):
-        logger.warning("Maximum recursion depth exceeded, sending default image")
-        return send_default_image(device)
-
     # For /next endpoint: advance the index FIRST, then get the app to display
     # This ensures we return the NEXT app, not the current one
     if last_app_index is None:
@@ -301,14 +297,15 @@ def next_app_logic(
     apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
     expanded_apps_list = create_expanded_apps_list(device, apps_list)
 
+    if recursion_depth > len(expanded_apps_list):
+        logger.warning("Maximum recursion depth exceeded, sending default image")
+        return send_default_image(device)
+
     # Calculate the next index
     if last_app_index + 1 < len(expanded_apps_list):
         next_index = last_app_index + 1
     else:
         next_index = 0  # Reset to beginning of list
-
-    # Check if we're at an interstitial position (odd index)
-    is_interstitial_position = next_index % 2 == 1
 
     # Get the app at the next index (without advancing further)
     app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
@@ -345,7 +342,7 @@ def next_app_logic(
     # NEW: Skip interstitial app if the previous regular app was skipped
     # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
     # then we should skip this interstitial app too to avoid showing it in isolation
-    if is_interstitial_position:
+    if is_interstitial_app:
         # We're at an interstitial position (odd index)
         # Check if the previous regular app (at next_index - 1) would be skipped
         prev_index = next_index - 1
