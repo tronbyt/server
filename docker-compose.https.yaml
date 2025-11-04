@@ -2,13 +2,14 @@ services:
   web:
     image: ghcr.io/tronbyt/server:latest
     restart: unless-stopped
-    user: "tronbyt:tronbyt"
     init: true
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
       - data:/app/data
     environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-${UID:-1000}}
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION

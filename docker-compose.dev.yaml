@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
     init: true
-    user: "${UID:-1000}:${GID:-${UID:-1000}}" # Use host user and group IDs for file permissions
     ports:
       - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
     volumes:
@@ -13,6 +12,8 @@ services:
       - ./data:/app/data # for development
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-${UID:-1000}}
       - PYTHONUNBUFFERED=1
       - SYSTEM_APPS_REPO
       - PRODUCTION

@@ -34,6 +34,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
+    gosu \
     libsharpyuv0 \
     libwebp7 \
     libwebpdemux2 \
@@ -49,11 +50,11 @@ ENV PATH="/app/.venv/bin:$PATH"
 # owned by the non-root user (newly created named volumes are owned by root,
 # if their target doesn't exist).
 RUN mkdir -p /app/data /app/users && \
-    chown -R tronbyt:tronbyt /app/data /app/users && \
     chmod -R 755 /app/data /app/users
 
-# Set the user to non-root
-USER tronbyt
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # start the app
-ENTRYPOINT ["python3", "run.py"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["python3", "run.py"]
