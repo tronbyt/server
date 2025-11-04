@@ -4,13 +4,14 @@ services:
     restart: unless-stopped
     ports:
       - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
-    user: "tronbyt:tronbyt"
     init: true
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
       - data:/app/data
     environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-${UID:-1000}}
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
