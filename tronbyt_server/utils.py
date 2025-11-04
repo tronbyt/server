@@ -181,11 +181,11 @@ def possibly_render(
             logger.error(f"Error rendering {app_basename}")
         app.empty_last_render = len(image) == 0 if image is not None else False
         # set the devices pinned_app if autopin is true.
-        if app.autopin and not app.empty_last_render and image is not None:
+        if app.autopin and image:
             device.pinned_app = app.iname
-            db.save_user(db_conn, user)
         app.last_render = now
-        db.save_app(db_conn, device_id, app)
+        device.apps[app.iname] = app
+        db.save_user(db_conn, user)
 
         return image is not None
 
