@@ -101,7 +101,6 @@ class Device(BaseModel):
     img_url: str = ""
     ws_url: str = ""
     notes: str = ""
-    fw_version: str = ""
     brightness: Brightness = 100
     night_mode_enabled: bool = False
     night_mode_app: str = ""
