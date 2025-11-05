@@ -69,8 +69,10 @@ The tests require libpixlet.so. `.github/workflows/build.yml` has instructions h
 *   **Dependency Management:** The project uses `pdm` for dependency management. To add a new dependency, use `pdm add <dependency>`.
 *   **Testing:** The project uses `pytest` for testing. All tests are located in the `tests/` directory.
 *   **Internationalization:** The project uses `fastapi-babel` for internationalization. To extract new strings for translation, use `pdm run extract`. To initialize a new language, use `pdm run init --lang <language_code>`. To update the translation files, use `pdm run update`.
-*   **Linting and Formatting:** The project uses `ruff` for linting and formatting. To check for errors, run `pdm run ruff check .`. To fix errors, run `pdm run ruff check . --fix`. Use `pdm run ruff format --diff --check` for formatting checks. When generating code, ensure that it complies to the Ruff default style documented at https://docs.astral.sh/ruff/configuration/. To format files or directories, use `pdm run ruff format`. The project also uses `pyright`, a static type checker explicitly designed for Python which helps to ensure code quality and catch errors early; to use it, run `pdm run pyright`.
+*   **Linting and Formatting:** The project uses `ruff` for linting and formatting. To check for errors, run `pdm run ruff check .`. To fix errors, run `pdm run ruff check . --fix`. Use `pdm run ruff format --diff --check` for formatting checks. When generating code, ensure that it complies to the Ruff default style documented at https://docs.astral.sh/ruff/configuration/. To format files or directories, use `pdm run ruff format`.
 *   Use `pdm install -d` to install development dependencies.
 *   Use `pdm export -o requirements.txt` to regenerate `requirements.txt`.
+*   Use `pdm update -d --update-all` to update all dependencies (regenerate `requirements.txt` if this changed `pdm.lock`).
 *   This project uses mypy for static type checking. Run `pdm run mypy` to run these checks.
+*   The project also uses `pyright`, a static type checker explicitly designed for Python which helps to ensure code quality and catch errors early; to use it, run `pdm run pyright`.
 *   Never use plain numbers like `404` for status codes. Always use the `status` constants.
