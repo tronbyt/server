@@ -23,6 +23,8 @@ class DeviceType(str, Enum):
     RASPBERRYPI = "raspberrypi"
     TRONBYT_S3 = "tronbyt_s3"
     TRONBYT_S3_WIDE = "tronbyt_s3_wide"
+    MATRIXPORTAL = "matrixportal_s3"
+    MATRIXPORTAL_S3_WAVESHARE = "matrixportal_s3_waveshare"
     OTHER = "other"
 
 

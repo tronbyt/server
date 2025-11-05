@@ -7,7 +7,12 @@ from esptool.bin_image import ESP32FirmwareImage, LoadFirmwareImage
 
 def get_chip_config(device_type: str) -> str:
     """Return chip type based on device type."""
-    if device_type in ["tronbyt_s3", "matrixportal_s3", "tronbyt_s3_wide"]:
+    if device_type in [
+        "tronbyt_s3",
+        "matrixportal_s3",
+        "matrixportal_s3_waveshare",
+        "tronbyt_s3_wide",
+    ]:
         return "esp32s3"
     return "esp32"
 

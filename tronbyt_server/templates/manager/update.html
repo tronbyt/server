@@ -92,9 +92,11 @@
         <select name="device_type" id="device_type" class="device-settings-input">
           <option value="tidbyt_gen1" {% if device.type=='tidbyt_gen1' %}selected{% endif %}>Tidbyt Gen1</option>
           <option value="tidbyt_gen2" {% if device.type=='tidbyt_gen2' %}selected{% endif %}>Tidbyt Gen2</option>
-          <option value="pixoticker" {% if device.type=='pixoticker' %}selected{% endif %}>Pixoticker</option>
           <option value="tronbyt_s3" {% if device.type=='tronbyt_s3' %}selected{% endif %}>Tronbyt S3</option>
           <option value="tronbyt_s3_wide" {% if device.type=='tronbyt_s3_wide' %}selected{% endif %}>Tronbyt S3 Wide</option>
+          <option value="matrixportal_s3" {% if device.type=='matrixportal_s3' %}selected{% endif %}>MatrixPortal S3</option>
+          <option value="matrixportal_s3_waveshare" {% if device.type=='matrixportal_s3_waveshare' %}selected{% endif %}>MatrixPortal S3 Waveshare</option>
+          <option value="pixoticker" {% if device.type=='pixoticker' %}selected{% endif %}>Pixoticker</option>
           <option value="raspberrypi" {% if device.type=='raspberrypi' %}selected{% endif %}>Raspberry Pi</option>
           <option value="other" {% if device.type=='other' %}selected{% endif %}>Other</option>
         </select>
@@ -195,7 +197,7 @@
 
   <div class="device-settings-section">
     <h2>{{ _('Interstitial App Settings') }}</h2>
-    
+
     <table class="device-settings-table">
       <tr>
         <td>
@@ -210,7 +212,7 @@
 
     <div class="device-settings-section-divider">
       <h3>{{ _('Interstitial App Configuration') }}</h3>
-      
+
       <table class="device-settings-table">
         <tr>
           <td>
