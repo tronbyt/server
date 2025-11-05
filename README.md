@@ -54,7 +54,7 @@ It's rather easy to develop additional clients for Tronbyt Server: just pull ima
 It is possible to just start the server on the default ports in the background with a one-liner:
 
 ```sh
-docker run -d -e PRODUCTION=1 -p 8000:8000 ghcr.io/tronbyt/server
+docker run -d -e PRODUCTION=1 -p 8000:8000 ghcr.io/tronbyt/server:1
 ```
 
 That said, the recommended installation method uses Docker Compose with a configuration file for your settings:
