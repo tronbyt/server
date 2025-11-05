@@ -28,6 +28,9 @@
             <span class="status-badge disabled">&#10005; {{ _('DISABLED') }}</span>
             {% endif %}
           {% endif %}
+          {% if app.autopin and (device.pinned_app == app.iname or app.enabled) %}
+          <span class="status-badge autopin">{{ _('AUTOPIN') }}</span>
+          {% endif %}
         </div>
       </div>
 

@@ -97,6 +97,7 @@ class App(BaseModel):
     config: dict[str, Any] = {}
     empty_last_render: bool = False
     render_messages: list[str] = []  # Changed from str to List[str]
+    autopin: bool = False
 
 
 class AppMetadata(BaseModel):
