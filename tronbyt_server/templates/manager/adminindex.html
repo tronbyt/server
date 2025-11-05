@@ -70,7 +70,7 @@
                 </td>
                 <td><br><div class="app-img"><img width="400" src="{{url_for('appwebp', device_id=device.id,iname=app.iname) }}" alt="{{ _('Preview') }}" ></div>
                   <br>
-                  {{ _('Last Rendered:') }} {{ app.last_render|timeago }}
+                  {{ _('Last Rendered:') }} {{ (app.last_render or 0)|timeago(request.state.babel.locale) }}
           </div>
           </li>
           </td>
