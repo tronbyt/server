@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/tronbyt/server:latest
+    image: ghcr.io/tronbyt/server:1 # latest v1.x.x release tag
     restart: unless-stopped
     init: true
     volumes:
