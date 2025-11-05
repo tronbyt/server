@@ -2,7 +2,13 @@ name: Bump Homebrew formula on release
 
 on:
   release:
-    types: [released]
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.5.5)'
+        required: true
+        type: string
 
 jobs:
   bump-homebrew-formula:
@@ -14,7 +20,7 @@ jobs:
       - name: Bump formula
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ inputs.version || github.ref_name }}
         run: |
           brew tap tronbyt/homebrew-tronbyt
           brew bump-formula-pr tronbyt-server --strict --version=${VERSION#v} --no-browse --no-fork
