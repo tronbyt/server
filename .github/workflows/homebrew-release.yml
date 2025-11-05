@@ -15,12 +15,13 @@ jobs:
     name: Bump Homebrew formula
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@main
-      - name: Bump formula
-        env:
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
-          VERSION: ${{ inputs.version || github.ref_name }}
-        run: |
-          brew tap tronbyt/homebrew-tronbyt
-          brew bump-formula-pr tronbyt-server --strict --version=${VERSION#v} --no-browse --no-fork
+      - name: Bump Homebrew formula
+        uses: dawidd6/action-homebrew-bump-formula@v5
+        with:
+          token: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
+          formula: tronbyt-server
+          tap: tronbyt/homebrew-tronbyt
+          tag: ${{ inputs.version || github.ref_name }}
+          revision: ${{ github.sha }}
+          force: false
+          no_fork: true
