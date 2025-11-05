@@ -152,6 +152,7 @@ def render_app(
     maxDuration: int,
     timeout: int,
     image_format: int,
+    supports2x: bool = False,
 ) -> tuple[bytes | None, list[str]]:
     initialize_pixlet_library()
     if not pixlet_render_app:
@@ -167,7 +168,7 @@ def render_app(
         timeout,
         image_format,
         1,
-        None,
+        json.dumps({"2x": supports2x}).encode("utf-8"),
     )
     error = c_char_p_to_string(ret.error)
     messagesJSON = c_char_p_to_string(ret.messages)
