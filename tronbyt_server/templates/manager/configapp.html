@@ -160,7 +160,7 @@
       switch (field.type) {
         case "text":
           inputElement = document.createElement("input");
-          inputElement.type = "text";
+          inputElement.type = field.secret ? "password" : "text";
           inputElement.value = config[field.id] || field.default || "";
           // Set initial config value if using default
           if (!config[field.id] && field.default) {
