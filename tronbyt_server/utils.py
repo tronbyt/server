@@ -35,7 +35,6 @@ class RepoStatus(Enum):
 def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:
     """Add default configuration values to an app's config."""
     config["$tz"] = db.get_device_timezone_str(device)
-    config["$2x"] = str(device.supports_2x()).lower()
     return config
 
 
@@ -54,33 +53,19 @@ def render_app(
     if not app_path.is_absolute():
         app_path = db.get_data_dir() / app_path
 
-    magnify = 1
-    width = 64
-    height = 32
-
-    if device.supports_2x():
-        magnify = 2
-        if app:
-            user = db.get_user_by_device_id(db_conn, device.id)
-            if user and app.id:
-                app_details = db.get_app_details_by_id(user.username, app.id)
-                if app_details and app_details.supports2x:
-                    magnify = 1
-                    width = 128
-                    height = 64
-
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
 
     data, messages_raw = pixlet_render_app(
         path=app_path,
         config=config_data,
-        width=width,
-        height=height,
-        magnify=magnify,
+        width=64,
+        height=32,
+        magnify=1,
         maxDuration=app_interval * 1000,
         timeout=30000,
         image_format=0,
+        supports2x=device.supports_2x(),
     )
     messages: list[str] = []
     if isinstance(messages_raw, list):
