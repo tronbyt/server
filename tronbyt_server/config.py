@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     SYSTEM_APPS_REPO: str = "https://github.com/tronbyt/apps.git"
     LIBPIXLET_PATH: str | None = None
     REDIS_URL: str | None = None
+    SINGLE_USER_AUTO_LOGIN: str = (
+        "0"  # Auto-login when exactly 1 user exists (private networks only)
+    )
 
 
 @lru_cache

@@ -1,6 +1,9 @@
 """FastAPI dependencies."""
 
+import ipaddress
+import logging
 import sqlite3
+from datetime import timedelta
 from typing import Generator
 
 from fastapi import Depends, Header, Request
@@ -11,6 +14,8 @@ from fastapi_login.exceptions import InvalidCredentialsException
 from tronbyt_server import db
 from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.models import Device, User
+
+logger = logging.getLogger(__name__)
 
 
 class NotAuthenticatedException(Exception):
@@ -83,13 +88,126 @@ def load_user(username: str) -> User | None:
         return None
 
 
+def is_trusted_network(client_host: str | None) -> bool:
+    """
+    Check if the client is from a trusted network (localhost or private networks).
+
+    Trusted networks include:
+    - Localhost: 127.0.0.1, ::1
+    - Private networks: 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12
+    """
+    if not client_host:
+        return False
+
+    # Check for localhost strings
+    if client_host in ("127.0.0.1", "localhost", "::1"):
+        return True
+
+    try:
+        # Parse the IP address
+        ip = ipaddress.ip_address(client_host)
+
+        # Check if it's a private network address (RFC1918)
+        # This covers: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+        if ip.is_private:
+            return True
+
+        # Also check for loopback explicitly
+        if ip.is_loopback:
+            return True
+
+    except ValueError:
+        # Invalid IP address format
+        return False
+
+    return False
+
+
+def is_auto_login_active(db_conn: sqlite3.Connection | None = None) -> bool:
+    """
+    Check if auto-login is truly active.
+
+    Auto-login is active when:
+    - SINGLE_USER_AUTO_LOGIN setting is "1"
+    - AND exactly 1 user exists in the system
+
+    Args:
+        db_conn: Optional database connection. If not provided, creates one.
+
+    Returns:
+        True if auto-login is active, False otherwise.
+    """
+    settings = get_settings()
+    if settings.SINGLE_USER_AUTO_LOGIN != "1":
+        return False
+
+    # Check user count
+    try:
+        if db_conn is None:
+            db_conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
+            should_close = True
+        else:
+            should_close = False
+
+        with db_conn:
+            users = db.get_all_users(db_conn)
+            result = len(users) == 1
+
+        if should_close:
+            db_conn.close()
+
+        return result
+    except Exception:
+        return False
+
+
 def auth_exception_handler(
     request: Request, exc: NotAuthenticatedException
 ) -> Response:
     """
     Redirect the user to the login page if not logged in.
+
+    Special case: If auto-login is active and the request is from a trusted network,
+    automatically log in the single user.
     """
-    with next(get_db(settings=get_settings())) as db_conn:
+    settings = get_settings()
+
+    with next(get_db(settings=settings)) as db_conn:
+        # No users exist - redirect to registration
         if not db.has_users(db_conn):
             return RedirectResponse(request.url_for("get_register_owner"))
+
+        # Check for single-user auto-login mode
+        if is_auto_login_active(db_conn):
+            # Only from trusted networks (localhost or private networks)
+            client_host = request.client.host if request.client else None
+
+            if is_trusted_network(client_host):
+                # Get the single user
+                users = db.get_all_users(db_conn)
+                user = users[0]
+
+                logger.warning(
+                    f"Single-user auto-login: Logging in as '{user.username}' "
+                    f"from {client_host}"
+                )
+
+                # Create access token (30 day expiration for convenience)
+                access_token = manager.create_access_token(
+                    data={"sub": user.username}, expires=timedelta(days=30)
+                )
+
+                # Redirect to home page with cookie set
+                response = RedirectResponse(request.url_for("index"), status_code=302)
+                response.set_cookie(
+                    key=manager.cookie_name,
+                    value=access_token,
+                    max_age=30 * 24 * 60 * 60,  # 30 days
+                    httponly=True,
+                    samesite="lax",
+                )
+
+                return response
+
+    # Default: redirect to login
     return RedirectResponse(request.url_for("login"))

@@ -16,7 +16,12 @@ from fastapi_babel import _
 import tronbyt_server.db as db
 from tronbyt_server import system_apps, version
 from tronbyt_server.config import Settings, get_settings
-from tronbyt_server.dependencies import get_db, manager
+from tronbyt_server.dependencies import (
+    get_db,
+    is_auto_login_active,
+    is_trusted_network,
+    manager,
+)
 from tronbyt_server.flash import flash
 from tronbyt_server.models import User, ThemePreference
 from tronbyt_server.templates import templates
@@ -71,6 +76,7 @@ def post_register_owner(
     request: Request,
     password: str = Form(...),
     db_conn: sqlite3.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle owner registration."""
     if db.has_users(db_conn):
@@ -90,7 +96,9 @@ def post_register_owner(
         )
         if db.save_user(db_conn, user, new_user=True):
             db.create_user_dir(username)
-            flash(request, _("admin user created. Please log in."))
+            # Don't show "Please log in" message if auto-login is active
+            if not is_auto_login_active(db_conn):
+                flash(request, _("admin user created. Please log in."))
             return RedirectResponse(
                 url=request.url_for("login"), status_code=status.HTTP_302_FOUND
             )
@@ -221,6 +229,16 @@ def login(
         return RedirectResponse(
             url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
         )
+
+    # If auto-login mode is active, redirect to home page
+    if is_auto_login_active(db_conn):
+        client_host = request.client.host if request.client else None
+        if is_trusted_network(client_host):
+            # Auto-login is available - redirect to home instead of showing login form
+            return RedirectResponse(
+                url=request.url_for("index"), status_code=status.HTTP_302_FOUND
+            )
+
     return templates.TemplateResponse(request, "auth/login.html", {"config": settings})
 
 

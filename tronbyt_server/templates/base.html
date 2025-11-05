@@ -41,10 +41,21 @@
     {% if user %}
     <li><a href="{{ url_for('index') }}">{{ _('Home') }}</a></li>
     {% if user.username == 'admin' %}
-    <li><a href="{{ url_for('register') }}">{{ _('Create User') }}</a></li>
+    <li>
+      <a href="{{ url_for('register') }}" {% if config.SINGLE_USER_AUTO_LOGIN == '1' %}onclick="return confirm('⚠️ WARNING: Adding a second user will DISABLE auto-login functionality.\n\nAuto-login only works when exactly 1 user exists. After creating this user, you will need to log in with a password.\n\nDo you want to continue?');"{% endif %}>
+        {{ _('Create User') }}
+      </a>
+    </li>
     {% endif %}
     <li><a href="{{ url_for('edit') }}">{{ user.username }}</a></li>
-    <li><a href="{{ url_for('logout') }}">{{ _('Log Out') }}</a></li>
+    <li>
+      <a href="{{ url_for('logout') }}" {% if is_auto_login_active() %}onclick="event.preventDefault(); alert('Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user.'); return false;"{% endif %}>
+        {% if is_auto_login_active() %}
+        <span class="auto-login-indicator" title="Auto-login mode active">⚠️</span>
+        {% endif %}
+        {{ _('Log Out') }}
+      </a>
+    </li>
     {% if user %}
     <li class="theme-toggle-container">
       <div class="theme-toggle">
@@ -79,10 +90,21 @@
     {% if user %}
     <li><a href="{{ url_for('index') }}" onclick="closeMobileMenu()">{{ _('Home') }}</a></li>
     {% if user.username == 'admin' %}
-    <li><a href="{{ url_for('register') }}" onclick="closeMobileMenu()">{{ _('Create User') }}</a></li>
+    <li>
+      <a href="{{ url_for('register') }}" onclick="{% if config.SINGLE_USER_AUTO_LOGIN == '1' %}if (!confirm('⚠️ WARNING: Adding a second user will DISABLE auto-login functionality.\n\nAuto-login only works when exactly 1 user exists. After creating this user, you will need to log in with a password.\n\nDo you want to continue?')) { return false; } {% endif %}closeMobileMenu()">
+        {{ _('Create User') }}
+      </a>
+    </li>
     {% endif %}
     <li><a href="{{ url_for('edit') }}" onclick="closeMobileMenu()">{{ user.username }}</a></li>
-    <li><a href="{{ url_for('logout') }}" onclick="closeMobileMenu()">{{ _('Log Out') }}</a></li>
+    <li>
+      <a href="{{ url_for('logout') }}" onclick="{% if is_auto_login_active() %}event.preventDefault(); alert('Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user.'); return false;{% else %}closeMobileMenu(){% endif %}">
+        {% if is_auto_login_active() %}
+        <span class="auto-login-indicator" title="Auto-login mode active">⚠️</span>
+        {% endif %}
+        {{ _('Log Out') }}
+      </a>
+    </li>
     {% if user %}
     <li class="theme-toggle-container">
       <div class="theme-toggle">
@@ -103,6 +125,7 @@
     {% endif %}
   </ul>
 </div>
+
 <section class="content">
   <header>
     {% block header %}{% endblock %}
