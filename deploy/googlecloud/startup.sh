@@ -99,6 +99,7 @@ chown -R 1000:1000 ./users ./data ./redis_data
 echo "Creating .env file..."
 
 cat <<EOF > .env
+SERVER_PORT=8000
 SYSTEM_APPS_REPO=https://github.com/tidbyt/community
 PRODUCTION=1
 ENABLE_USER_REGISTRATION=0
