@@ -148,7 +148,7 @@
             const isInstalled = item.getAttribute('data-installed') === 'true';
             const isBroken = item.getAttribute('data-broken') === 'true';
             const name = item.getAttribute('data-name').toLowerCase();
-            const author = item.getAttribute('data-author')?.toLowerCase();
+            const author = item.getAttribute('data-author' || '').toLowerCase();
             const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
 
             // Apply search filter (search name, summary, and author if search begins with @)
@@ -159,7 +159,7 @@
                 }
               } else {
                 if (!name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
-                  return false
+                  return false;
                 }
               }
             }
