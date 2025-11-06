@@ -28,11 +28,18 @@ logger = logging.getLogger(__name__)
 
 def get_db() -> sqlite3.Connection:
     """Get a database connection."""
-    return sqlite3.connect(get_settings().DB_FILE, check_same_thread=False)
+    return sqlite3.connect(
+        get_settings().DB_FILE, check_same_thread=False, timeout=10
+    )  # Set a 10-second timeout
 
 
 def init_db(db: sqlite3.Connection) -> None:
     """Initialize the database."""
+    # Enable WAL mode for better concurrency
+    row = db.execute("PRAGMA journal_mode=WAL").fetchone()
+    if not row or row[0].lower() != "wal":
+        logger.warning("Failed to enable WAL mode. Concurrency might be limited.")
+
     cursor = db.cursor()
     cursor.execute(
         """
