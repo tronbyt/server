@@ -12,10 +12,18 @@ provider "google" {
   region  = var.gcp_region
 }
 
+resource "google_project_service" "compute" {
+  project            = var.gcp_project_id
+  service            = "compute.googleapis.com"
+  disable_on_destroy = false
+}
+
 # Get a list of available zones in the specified region
 data "google_compute_zones" "available" {
   project = var.gcp_project_id
   region  = var.gcp_region
+
+  depends_on = [google_project_service.compute]
 }
 
 # A firewall rule to allow HTTP/HTTPS traffic
@@ -30,6 +38,8 @@ resource "google_compute_firewall" "default" {
 
   source_ranges = ["0.0.0.0/0"]
   target_tags   = ["tronbyt-server"]
+
+  depends_on = [google_project_service.compute]
 }
 
 # A persistent disk to store application data
@@ -39,6 +49,8 @@ resource "google_compute_disk" "default" {
   # Use the first available zone from the data source
   zone = data.google_compute_zones.available.names[0]
   size = 1 # 1 GB, can be adjusted
+
+  depends_on = [google_project_service.compute]
 }
 
 # A GCE instance
