@@ -148,11 +148,20 @@
             const isInstalled = item.getAttribute('data-installed') === 'true';
             const isBroken = item.getAttribute('data-broken') === 'true';
             const name = item.getAttribute('data-name').toLowerCase();
+            const author = item.getAttribute('data-author')?.toLowerCase();
             const summary = item.querySelector('p')?.textContent?.toLowerCase() || '';
 
-            // Apply search filter (search both name and summary)
-            if (currentSearchFilter && !name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
-              return false;
+            // Apply search filter (search name, summary, and author if search begins with @)
+            if (currentSearchFilter) {
+              if (currentSearchFilter.startsWith("@")) {
+                if (!author.includes(currentSearchFilter.substring(1))) {
+                  return false;
+                }
+              } else {
+                if (!name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
+                  return false
+                }
+              }
             }
 
             // Apply hide filters
@@ -501,7 +510,7 @@
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
       <div class="app-item {% if app.broken %}broken-app{% endif %}" data-value="{{ app.name }}" data-installed="{{ app.is_installed | lower }}"
-        data-date="{{ app.date }}" data-name="{{ app.name }}" data-broken="{{ app.broken | lower }}">
+        data-date="{{ app.date }}" data-name="{{ app.name }}" data-broken="{{ app.broken | lower }}" data-author="{{ app.author }}">
         {% if app.is_installed %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
