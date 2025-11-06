@@ -492,7 +492,7 @@
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: field.id, param: query })
+          body: JSON.stringify({ id: field.id, param: query, config: config })
         });
 
         if (!response.ok) {
@@ -546,7 +546,7 @@
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: field.id, param: sourceValue })
+          body: JSON.stringify({ id: field.id, param: sourceValue, config: config })
         });
 
         if (!response.ok) {
@@ -610,7 +610,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // locationQueryJson is the result of the Geoapify search (e.g., {name: "New York", lat: ..., lon:...})
-        body: JSON.stringify({ id: field.id, param: locationQueryJson })
+        body: JSON.stringify({ id: field.id, param: locationQueryJson, config: config })
       });
 
       if (!response.ok) {

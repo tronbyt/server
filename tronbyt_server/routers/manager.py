@@ -47,7 +47,7 @@ from tronbyt_server.models import (
     User,
     Weekday,
 )
-from tronbyt_server.pixlet import call_handler, get_schema
+from tronbyt_server.pixlet import call_handler_with_config, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (
     possibly_render,
@@ -2218,7 +2218,10 @@ async def schema_handler(
         if "param" not in data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
-        result = call_handler(Path(app.path), handler, data["param"])
+        config = data.get("config", {})
+        result = call_handler_with_config(
+            Path(app.path), config, handler, data["param"]
+        )
         return Response(content=result, media_type="application/json")
     except Exception as e:
         logger.error(f"Error in schema_handler: {e}")
