@@ -17,8 +17,9 @@ pixlet_render_app: (
     | None
 ) = None
 pixlet_get_schema: Callable[[bytes], Any] | None = None
-pixlet_call_handler: (
-    Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any] | None
+pixlet_call_handler_with_config: (
+    Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any]
+    | None
 ) = None
 pixlet_init_cache: Callable[[], None] | None = None
 pixlet_init_redis_cache: Callable[[bytes], None] | None = None
@@ -97,14 +98,15 @@ def load_pixlet_library() -> None:
     pixlet_get_schema.argtypes = [ctypes.c_char_p]
     pixlet_get_schema.restype = StringReturn
 
-    global pixlet_call_handler
-    pixlet_call_handler = pixlet_library.call_handler
-    pixlet_call_handler.argtypes = [
+    global pixlet_call_handler_with_config
+    pixlet_call_handler_with_config = pixlet_library.call_handler_with_config
+    pixlet_call_handler_with_config.argtypes = [
+        ctypes.c_char_p,
         ctypes.c_char_p,
         ctypes.c_char_p,
         ctypes.c_char_p,
     ]
-    pixlet_call_handler.restype = StringReturn
+    pixlet_call_handler_with_config.restype = StringReturn
 
     global pixlet_free_bytes
     pixlet_free_bytes = pixlet_library.free_bytes
@@ -199,12 +201,15 @@ def get_schema(path: Path) -> str | None:
     return schema
 
 
-def call_handler(path: Path, handler: str, parameter: str) -> str | None:
+def call_handler_with_config(
+    path: Path, config: dict[str, Any], handler: str, parameter: str
+) -> str | None:
     initialize_pixlet_library()
-    if not pixlet_call_handler:
+    if not pixlet_call_handler_with_config:
         return None
-    ret = pixlet_call_handler(
+    ret = pixlet_call_handler_with_config(
         ctypes.c_char_p(str(path).encode("utf-8")),
+        ctypes.c_char_p(json.dumps(config).encode("utf-8")),
         ctypes.c_char_p(handler.encode("utf-8")),
         ctypes.c_char_p(parameter.encode("utf-8")),
     )
