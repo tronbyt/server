@@ -6,6 +6,29 @@ exec > >(tee /var/log/startup-script.log|logger -t startup-script -s 2>/dev/cons
 
 echo "--- Starting GCE startup script ---"
 
+# --- Configure Swap ---
+echo "Configuring swap space..."
+SWAPFILE="/swapfile"
+SWAPSIZE_MB=1024
+
+if ! swapon --show | grep -q "${SWAPFILE}"; then
+  if [ ! -f "${SWAPFILE}" ]; then
+    echo "Creating swap file at ${SWAPFILE}..."
+    fallocate -l ${SWAPSIZE_MB}M ${SWAPFILE}
+  fi
+
+  chmod 600 ${SWAPFILE}
+  mkswap ${SWAPFILE}
+  swapon ${SWAPFILE}
+else
+  echo "Swap file ${SWAPFILE} already active."
+fi
+
+if ! grep -q "${SWAPFILE} none swap" /etc/fstab; then
+  echo "Adding swap file to /etc/fstab..."
+  echo "${SWAPFILE} none swap sw 0 0" >> /etc/fstab
+fi
+
 # --- Install Docker ---
 echo "Installing Docker..."
 apt-get update
