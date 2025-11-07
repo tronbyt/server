@@ -39,32 +39,6 @@ app.add_middleware(
 Babel(configs=babel_configs)
 
 
-@app.on_event("startup")
-async def startup_warnings() -> None:
-    """Log startup warnings for security-sensitive configuration."""
-    settings = get_settings()
-
-    # Warn if single-user auto-login is enabled
-    if settings.SINGLE_USER_AUTO_LOGIN == "1":
-        logger.warning("=" * 70)
-        logger.warning("⚠️  SINGLE-USER AUTO-LOGIN MODE IS ENABLED")
-        logger.warning("=" * 70)
-        logger.warning("Authentication is DISABLED for private network connections!")
-        logger.warning(
-            "This mode automatically logs in the single user without password."
-        )
-        logger.warning("")
-        logger.warning("SECURITY REQUIREMENTS:")
-        logger.warning("  ✓ Only works when exactly 1 user exists")
-        logger.warning("  ✓ Only works from trusted networks:")
-        logger.warning("    - Localhost (127.0.0.1, ::1)")
-        logger.warning("    - Private networks (192.168.x.x, 10.x.x.x, 172.16.x.x)")
-        logger.warning("  ✓ Public IP connections still require authentication")
-        logger.warning("")
-        logger.warning("To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file")
-        logger.warning("=" * 70)
-
-
 @app.exception_handler(NotAuthenticatedException)
 def handle_auth_exception(request: Request, exc: NotAuthenticatedException) -> Response:
     """Redirect the user to the login page if not logged in."""

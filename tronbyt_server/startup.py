@@ -67,6 +67,30 @@ def run_once() -> None:
     else:
         logger.info("Skipping system apps update and database backup (dev mode)")
 
+    # Warn if single-user auto-login is enabled
+    if settings.SINGLE_USER_AUTO_LOGIN == "1":
+        msg = """
+======================================================================
+⚠️  SINGLE-USER AUTO-LOGIN MODE IS ENABLED
+======================================================================
+Authentication is DISABLED for private network connections!
+
+This mode automatically logs in the single user without password.
+
+SECURITY REQUIREMENTS:
+  ✓ Only works when exactly 1 user exists
+  ✓ Only works from trusted networks:
+    - Localhost (127.0.0.1, ::1)
+    - Private IPv4 networks (192.168.x.x, 10.x.x.x, 172.16.x.x)
+    - IPv6 local ranges (Unique Local Addresses fc00::/7, commonly fd00::/8)
+    - IPv6 link-local (fe80::/10)
+  ✓ Public IP connections still require authentication
+
+To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
+======================================================================
+""".strip()
+        logger.warning(msg)
+
     # Initialize, migrate, and vacuum database
     try:
         (Path(settings.DB_FILE).parent).mkdir(parents=True, exist_ok=True)
