@@ -16,7 +16,7 @@ def health_check(url: str) -> bool:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python healthcheck.py <URL>")
+        print("Usage: python -m tronbyt_server.healthcheck <URL>", file=sys.stderr)
         sys.exit(1)
 
     url: str = sys.argv[1]

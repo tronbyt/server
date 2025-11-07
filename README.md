@@ -168,7 +168,7 @@ When enabled, a "Create User" link will appear on the login page and in the navi
 
     ```sh
     pdm install
-    pdm run ./run
+    pdm run start
     ```
 
 ### HTTPS (TLS)

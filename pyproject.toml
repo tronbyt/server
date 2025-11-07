@@ -42,6 +42,7 @@ excludes = [ "**/messages.pot", "**/.DS_Store", "**/.*.swp", "**/.gitignore" ]
 [tool.pdm.scripts]
 pre_build = "pybabel compile -d tronbyt_server/translations"
 test = "pytest"
+start = "python -m tronbyt_server.run"
 extract = "pybabel extract -F babel.cfg -k _l -o messages.pot ."
 _init = "pybabel init -i messages.pot -d tronbyt_server/translations -l {args}"
 init = { composite = ["extract", "_init {args}"] }
