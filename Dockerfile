@@ -57,4 +57,4 @@ RUN chmod +x /docker-entrypoint.sh
 
 # start the app
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["python3", "run.py"]
+CMD ["python3", "-m", "tronbyt_server.run"]
