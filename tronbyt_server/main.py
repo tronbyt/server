@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi_babel import Babel, BabelConfigs, BabelMiddleware
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(SessionMiddleware, secret_key=get_settings().SECRET_KEY)
 
 # Babel configuration
