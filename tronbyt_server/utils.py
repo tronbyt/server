@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import logging
+import os
 import shutil
 import sqlite3
 import time
@@ -190,13 +191,17 @@ def send_image(
     immediate: bool = False,
     brightness: int | None = None,
     dwell_secs: int | None = None,
+    stat_result: os.stat_result | None = None,
 ) -> Response:
     """Send an image as a response."""
     if immediate:
         with webp_path.open("rb") as f:
             response = Response(content=f.read(), media_type="image/webp")
     else:
-        response = FileResponse(webp_path, media_type="image/webp")
+        response = FileResponse(
+            webp_path, media_type="image/webp", stat_result=stat_result
+        )
+
     # Use provided brightness or calculate it
     b = brightness or db.get_device_brightness_percent(device)
 
@@ -206,6 +211,8 @@ def send_image(
     else:
         device_interval = device.default_interval or 5
         s = app.display_time if app and app.display_time > 0 else device_interval
+
+    response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
     response.headers["Tronbyt-Brightness"] = str(b)
     response.headers["Tronbyt-Dwell-Secs"] = str(s)
     if immediate:

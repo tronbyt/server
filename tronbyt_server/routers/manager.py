@@ -2116,7 +2116,9 @@ def get_brightness(
 
 @router.get("/{device_id}/currentapp", name="currentwebp")
 def currentwebp(
-    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
+    request: Request,
+    device_id: DeviceID,
+    db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     user = db.get_user_by_device_id(db_conn, device_id)
     if not user:
@@ -2165,8 +2167,18 @@ def currentwebp(
     else:
         webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
 
-    if webp_path.exists() and webp_path.stat().st_size > 0:
-        return send_image(webp_path, device, app)
+    try:
+        stat_result = webp_path.stat()
+    except FileNotFoundError:
+        return send_default_image(device)
+
+    if stat_result.st_size > 0:
+        response = send_image(webp_path, device, app, stat_result=stat_result)
+        etag = response.headers.get("etag")
+        if_none_match = request.headers.get("if-none-match")
+        if if_none_match and if_none_match == etag:
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+        return response
     else:
         return send_default_image(device)
 
