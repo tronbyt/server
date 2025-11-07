@@ -19,6 +19,29 @@
   filter: brightness(1.25);
 }
 
+.secret-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.secret-input-container .form-control {
+  flex: 1 1 auto;
+}
+
+.secret-toggle-button {
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.secret-toggle-button:focus-visible {
+  outline: 2px solid #2196F3;
+  outline-offset: 2px;
+}
+
 @media screen and (max-width: 600px) {
   .palette button {
     width: auto;

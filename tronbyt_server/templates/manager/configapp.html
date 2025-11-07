@@ -256,7 +256,37 @@
           }
         }
 
-        inputCell.appendChild(inputElement);
+        let elementToAppend = inputElement;
+
+        if (field.type === "text" && field.secret) {
+          const secretContainer = document.createElement("div");
+          secretContainer.className = "secret-input-container";
+
+          const toggleButton = document.createElement("button");
+          toggleButton.type = "button";
+          toggleButton.className = "secret-toggle-button";
+          toggleButton.setAttribute("aria-label", "{{ _('Toggle password visibility') }}");
+
+          const icon = document.createElement("i");
+          toggleButton.appendChild(icon);
+
+          const updateToggleIcon = () => {
+            icon.className = inputElement.type === "password" ? "fa fa-eye-slash" : "fa fa-eye";
+          };
+
+          toggleButton.addEventListener("click", () => {
+            inputElement.type = inputElement.type === "password" ? "text" : "password";
+            updateToggleIcon();
+          });
+
+          updateToggleIcon();
+
+          secretContainer.appendChild(inputElement);
+          secretContainer.appendChild(toggleButton);
+          elementToAppend = secretContainer;
+        }
+
+        inputCell.appendChild(elementToAppend);
       }
 
       row.appendChild(inputCell);
