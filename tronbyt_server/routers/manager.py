@@ -7,7 +7,7 @@ import sqlite3
 import string
 import time
 import uuid
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from pathlib import Path
 from random import randint
 from typing import Annotated, Any, cast
@@ -46,6 +46,7 @@ from tronbyt_server.models import (
     RecurrenceType,
     User,
     Weekday,
+    ProtocolType,
 )
 from tronbyt_server.pixlet import call_handler_with_config, get_schema
 from tronbyt_server.templates import templates
@@ -270,6 +271,10 @@ def next_app_logic(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
+    device.last_seen = datetime.now(timezone.utc)
+    device.info.protocol_type = ProtocolType.HTTP
+    db.save_user(db_conn, user)
+
     # first check for a pushed file starting with __ and just return that and then delete it.
     # This needs to happen before brightness check to clear any ephemeral images
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
@@ -279,6 +284,9 @@ def next_app_logic(
             response = send_image(ephemeral_file, device, None, True)
             ephemeral_file.unlink()
             return response
+
+    if not device.apps:
+        return send_default_image(device)
 
     # If brightness is 0, short-circuit and return default image to save processing
     brightness = device.brightness or 50
@@ -587,18 +595,18 @@ async def update_brightness(
 
     device.brightness = db.ui_scale_to_percent(brightness)
     db.save_user(db_conn, user)
-    new_brightness_8bit = db.get_device_brightness_percent(device)
+    new_brightness_percent = db.get_device_brightness_percent(device)
 
     # Send brightness command directly to active websocket connection (if any)
     # This doesn't interrupt the natural flow of rotation
     from tronbyt_server.routers.websockets import send_brightness_update
     from tronbyt_server.sync import get_sync_manager
 
-    sent = await send_brightness_update(device_id, new_brightness_8bit)
+    sent = await send_brightness_update(device_id, new_brightness_percent)
 
     if sent:
         logger.info(
-            f"[{device_id}] Sent brightness update immediately: {new_brightness_8bit}"
+            f"[{device_id}] Sent brightness update immediately: {new_brightness_percent}"
         )
     else:
         # Connection not in this worker's _active_connections - notify via SyncManager

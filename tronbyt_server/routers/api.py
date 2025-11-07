@@ -87,6 +87,20 @@ def get_device_payload(device: Device) -> dict[str, Any]:
             "brightness": device.dim_brightness,
         },
         "pinnedApp": device.pinned_app,
+        "interstitial": {
+            "enabled": device.interstitial_enabled,
+            "app": device.interstitial_app,
+        },
+        "lastSeen": device.last_seen.isoformat() if device.last_seen else None,
+        "info": {
+            "firmwareVersion": device.info.firmware_version,
+            "firmwareType": device.info.firmware_type,
+            "protocolVersion": device.info.protocol_version,
+            "macAddress": device.info.mac_address,
+            "protocolType": device.info.protocol_type.value
+            if device.info.protocol_type
+            else None,
+        },
         # Legacy Tidbyt field
         "autoDim": device.night_mode_enabled,
     }
@@ -208,10 +222,10 @@ def update_device(
         )
 
     if data.brightness is not None:
-        if not 0 <= data.brightness <= 255:
+        if not 0 <= data.brightness <= 100:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Brightness must be between 0 and 255",
+                detail="Brightness must be between 0 and 100",
             )
         device.brightness = data.brightness
     if data.autoDim is not None:
@@ -249,10 +263,10 @@ def update_device(
         else:
             device.dim_time = parse_time_input(data.dimModeStartTime)
     if data.dimModeBrightness is not None:
-        if not 0 <= data.dimModeBrightness <= 255:
+        if not 0 <= data.dimModeBrightness <= 100:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Dim brightness must be between 0 and 255",
+                detail="Dim brightness must be between 0 and 100",
             )
         device.dim_brightness = data.dimModeBrightness
     if data.pinnedApp is not None:

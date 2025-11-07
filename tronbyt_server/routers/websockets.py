@@ -1,25 +1,46 @@
 """Websockets router."""
 
 import asyncio
-import json
 import logging
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends, WebSocket, status, Response
 from fastapi.responses import FileResponse
+from pydantic import TypeAdapter, ValidationError
 from starlette.websockets import WebSocketDisconnect
 
 import re
 from tronbyt_server import db
 from tronbyt_server.dependencies import get_db
+from tronbyt_server.models import (
+    BrightnessMessage,
+    ClientInfoMessage,
+    ClientMessage,
+    DisplayingMessage,
+    DisplayingStatusMessage,
+    DwellSecsMessage,
+    ImmediateMessage,
+    QueuedMessage,
+    ServerMessage,
+    StatusMessage,
+    ProtocolType,
+)
 from tronbyt_server.routers.manager import next_app_logic
 from tronbyt_server.sync import get_sync_manager
 
 router = APIRouter(tags=["websockets"])
 logger = logging.getLogger(__name__)
+
+server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
+
+
+async def _send_message(websocket: WebSocket, message: ServerMessage) -> None:
+    """Send a message to the websocket."""
+    await websocket.send_text(server_message_adapter.dump_json(message).decode("utf-8"))
 
 
 class DeviceAcknowledgment:
@@ -160,7 +181,7 @@ async def send_brightness_update(device_id: str, brightness: int) -> bool:
         return False
 
     try:
-        await websocket.send_text(json.dumps({"brightness": brightness}))
+        await _send_message(websocket, BrightnessMessage(brightness=brightness))
         logger.info(f"[{device_id}] Sent brightness update: {brightness}")
         return True
     except Exception as e:
@@ -186,13 +207,7 @@ async def _send_response(
             dwell_time = int(dwell_secs)
 
         logger.debug(f"Sending dwell_secs to device: {dwell_time}s")
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "dwell_secs": dwell_time,
-                }
-            )
-        )
+        await _send_message(websocket, DwellSecsMessage(dwell_secs=dwell_time))
 
         # Update confirmation timeout now that we have the actual dwell time
         # confirmation_timeout = dwell_time
@@ -203,7 +218,7 @@ async def _send_response(
         if brightness_str:
             brightness = int(brightness_str)
             if brightness != last_brightness:
-                await websocket.send_text(json.dumps({"brightness": brightness}))
+                await _send_message(websocket, BrightnessMessage(brightness=brightness))
                 last_brightness = brightness
 
         # Send the image as a binary message FIRST
@@ -220,23 +235,16 @@ async def _send_response(
         # Then immediately interrupt and display it
         if immediate:
             logger.debug("Sending immediate display flag to device AFTER image bytes")
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "immediate": True,
-                    }
-                )
-            )
+            await _send_message(websocket, ImmediateMessage(immediate=True))
 
         dwell_time = int(response.headers.get("Tronbyt-Dwell-Secs", 5))
     else:
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "status": "error",
-                    "message": f"Error fetching image: {response.status_code}",
-                }
-            )
+        await _send_message(
+            websocket,
+            StatusMessage(
+                status="error",
+                message=f"Error fetching image: {response.status_code}",
+            ),
         )
     return dwell_time, last_brightness
 
@@ -354,8 +362,9 @@ async def _wait_for_acknowledgment(
                             f"[{device_id}] Brightness changed to {new_brightness}, sending immediately"
                         )
                         try:
-                            await websocket.send_text(
-                                json.dumps({"brightness": new_brightness})
+                            await _send_message(
+                                websocket,
+                                BrightnessMessage(brightness=new_brightness),
                             )
                             last_brightness = (
                                 new_brightness  # Update tracked brightness
@@ -403,10 +412,11 @@ async def sender(
             # Reset acknowledgment events for next image
             ack.reset()
 
-            # Send the previously rendered image
-            dwell_time, last_brightness = await _send_response(
-                websocket, response, last_brightness
-            )
+            if response is not None:
+                # Send the previously rendered image
+                dwell_time, last_brightness = await _send_response(
+                    websocket, response, last_brightness
+                )
 
             # Wait for device acknowledgment with timeout and ephemeral push detection
             # This will check for ephemeral pushes and render the next image when ready
@@ -429,13 +439,33 @@ async def sender(
         waiter.close()
 
 
-async def receiver(websocket: WebSocket, device_id: str) -> None:
+async def receiver(
+    websocket: WebSocket, device_id: str, db_conn: sqlite3.Connection
+) -> None:
     """The receiver task for the websocket."""
+    adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
     try:
         while True:
             message = await websocket.receive_text()
             try:
-                msg_data = json.loads(message)
+                parsed_message = adapter.validate_json(message)
+
+                user = db.get_user_by_device_id(db_conn, device_id)
+                if not user:
+                    logger.warning(
+                        f"[{device_id}] User not found for device, cannot process message."
+                    )
+                    continue
+
+                device = user.devices.get(device_id)
+                if not device:
+                    logger.warning(
+                        f"[{device_id}] Device not found for user, cannot process message."
+                    )
+                    continue
+
+                device.last_seen = datetime.now(timezone.utc)
+                device.info.protocol_type = ProtocolType.WS
 
                 # Fetch the ACK object for the CURRENTLY active connection
                 ack = await connection_manager.get_ack(device_id)
@@ -443,25 +473,48 @@ async def receiver(websocket: WebSocket, device_id: str) -> None:
                     logger.warning(
                         f"[{device_id}] Received message but no active connection found, ignoring."
                     )
+                    # Still save the last_seen update
+                    db.save_user(db_conn, user)
                     continue
 
-                if "queued" in msg_data:
-                    # Device has queued/buffered the image: {"queued": counter}
-                    queued_counter = msg_data.get("queued")
-                    logger.debug(f"[{device_id}] Image queued (seq: {queued_counter})")
-                    ack.mark_queued(queued_counter)
-
-                elif "displaying" in msg_data or msg_data.get("status") == "displaying":
-                    # Device has started displaying: {"displaying": counter} or {"status": "displaying", "counter": X}
-                    display_seq = msg_data.get("displaying") or msg_data.get("counter")
-                    logger.debug(f"[{device_id}] Image displaying (seq: {display_seq})")
-                    ack.mark_displaying(display_seq)
-
+                if isinstance(parsed_message, QueuedMessage):
+                    logger.debug(
+                        f"[{device_id}] Image queued (seq: {parsed_message.queued})"
+                    )
+                    ack.mark_queued(parsed_message.queued)
+                elif isinstance(parsed_message, DisplayingMessage):
+                    logger.debug(
+                        f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
+                    )
+                    ack.mark_displaying(parsed_message.displaying)
+                elif isinstance(parsed_message, DisplayingStatusMessage):
+                    logger.debug(
+                        f"[{device_id}] Image displaying (seq: {parsed_message.counter})"
+                    )
+                    ack.mark_displaying(parsed_message.counter)
+                elif isinstance(parsed_message, ClientInfoMessage):
+                    logger.debug(
+                        f"[{device_id}] Received ClientInfoMessage: {parsed_message.client_info.model_dump_json()}"
+                    )
+                    client_info = parsed_message.client_info
+                    if client_info.firmware_version is not None:
+                        device.info.firmware_version = client_info.firmware_version
+                    if client_info.firmware_type is not None:
+                        device.info.firmware_type = client_info.firmware_type
+                    if client_info.protocol_version is not None:
+                        device.info.protocol_version = client_info.protocol_version
+                    if client_info.mac_address is not None:
+                        device.info.mac_address = client_info.mac_address
+                    logger.info(
+                        f"[{device_id}] Updated device info: {device.info.model_dump_json()}"
+                    )
                 else:
-                    # Unknown message format
-                    logger.warning(f"[{device_id}] Unknown message format: {message}")
+                    # This should not happen if the models cover all cases
+                    logger.warning(f"[{device_id}] Unhandled message format: {message}")
 
-            except (json.JSONDecodeError, ValueError) as e:
+                db.save_user(db_conn, user)
+
+            except (ValueError, ValidationError) as e:
                 logger.warning(f"[{device_id}] Failed to parse device message: {e}")
 
     except WebSocketDisconnect:
@@ -499,7 +552,7 @@ async def websocket_endpoint(
         sender(websocket, device_id, db_conn, ack), name=f"ws_sender_{device_id}"
     )
     receiver_task = asyncio.create_task(
-        receiver(websocket, device_id), name=f"ws_receiver_{device_id}"
+        receiver(websocket, device_id, db_conn), name=f"ws_receiver_{device_id}"
     )
 
     # Register the new connection, which handles cleanup of any old one
