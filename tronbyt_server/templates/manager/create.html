@@ -111,10 +111,10 @@
 
   <div class="device-settings-section">
     <div class="config-management-container" style="display:flex;align-items:center;gap:8px;">
-      <button type="submit" class="w3-button w3-green config-management-btn">{{ _('Save') }}</button>
+      <button type="submit" class="w3-button w3-green config-management-btn"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
       <button type="button" class="w3-button w3-orange config-management-btn"
               onclick="window.location.href='{{ url_for('import_device') }}';">
-        {{ _('Import Configuration') }}
+        <i class="fa-solid fa-file-import" aria-hidden="true"></i> {{ _('Import Configuration') }}
       </button>
     </div>
   </div>

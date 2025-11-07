@@ -15,7 +15,7 @@
                   {% set pinned_app = device.apps.get(pinned_app_iname) if device.apps else None %}
                   {% if pinned_app %}
                     <span class="pinned-badge">
-                      &#128204; {{ _('Pinned:') }} {{ pinned_app.name }}
+                      <i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ _('Pinned:') }} {{ pinned_app.name }}
                     </span>
                   {% endif %}
                 {% endif %}
@@ -64,13 +64,13 @@
         <tr>
           <td>
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-              href="{{ url_for('addapp', device_id=device.id) }}">{{ _('Add App') }}</a>
+              href="{{ url_for('addapp', device_id=device.id) }}"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ _('Add App') }}</a>
 
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-              href="{{ url_for('update', device_id=device.id) }}">{{ _('Edit Device') }}</a>
+              href="{{ url_for('update', device_id=device.id) }}"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ _('Edit Device') }}</a>
             {% if device.type in ["tidbyt_gen1", "tidbyt_gen2", "pixoticker", "tronbyt_s3", "tronbyt_s3_wide", "matrixportal_s3", "matrixportal_s3_waveshare"] %}
                   <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                    href="{{ url_for('generate_firmware', device_id=device.id) }}">{{ _('Firmware') }}</a>
+                    href="{{ url_for('generate_firmware', device_id=device.id) }}"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ _('Firmware') }}</a>
             {% endif %}
         </tr>
       </table>

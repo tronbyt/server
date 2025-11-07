@@ -34,7 +34,7 @@
         </div>
         <form method="post" action="{{ url_for('refresh_system_repo') }}" style="margin-left: 15px;">
             <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh system apps repository?') }}');">
-                🔄 {{ _('Refresh') }}
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ _('Refresh') }}
             </button>
         </form>
     </div>
@@ -48,7 +48,7 @@
                     <input name="app_repo_url" id="app_repo_url" required value="{{ user.system_repo_url }}" style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
-                    {{ _('Save') }}
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}
                 </button>
             </div>
             <p style="color: #888; font-size: 0.8em; margin-top: 8px;">{{ _('Replacing the existing system repo will delete the previous repo and break any apps using that repo.') }}</p>
@@ -75,16 +75,17 @@
             <div style="margin-top: 8px; color: #888;">{{ _('No firmware version information available') }}</div>
             {% endif %}
         </div>
-        <form method="post" action="{{ url_for('update_firmware') }}" style="margin-left: 15px;" onsubmit="this.querySelector('button').innerHTML='{{ _('Updating...') }}'; this.querySelector('button').disabled=true;">
+        <form method="post" action="{{ url_for('update_firmware') }}" style="margin-left: 15px;" onsubmit="this.querySelector('button').disabled=true; this.querySelector('.button-label').textContent='{{ _('Updating...') }}';">
             <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Check for firmware updates and download if available?') }}');">
-                {% if firmware_version %}{{ _('Update') }}{% else %}{{ _('Download') }}{% endif %}
+                <i class="fa-solid {% if firmware_version %}fa-arrows-rotate{% else %}fa-download{% endif %}" aria-hidden="true"></i>
+                <span class="button-label">{% if firmware_version %}{{ _('Update') }}{% else %}{{ _('Download') }}{% endif %}</span>
             </button>
         </form>
     </div>
 
     <div style="border-top: 1px solid #333; padding-top: 15px;">
         <p style="color: #888; font-size: 0.8em; margin: 0;">
-            ℹ️ {{ _('Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.') }}
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ _('Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.') }}
         </p>
     </div>
 </div>
@@ -116,13 +117,13 @@
         <div style="margin-left: 15px; display: flex; gap: 8px;">
             <form method="post" action="{{ url_for('refresh_user_repo') }}">
                 <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh custom apps repository?') }}');">
-                    🔄 {{ _('Refresh') }}
+                    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ _('Refresh') }}
                 </button>
             </form>
             <form method="post" action="{{ url_for('set_user_repo') }}" onsubmit="return confirm('{{ _('Remove custom repository? This will delete the repo and break any apps using it.') }}');">
                 <input type="hidden" name="app_repo_url" value="">
                 <button type="submit" class="w3-button w3-red" style="padding: 8px 16px; font-size: 14px;">
-                    🗑️ {{ _('Remove') }}
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Remove') }}
                 </button>
             </form>
         </div>
@@ -138,7 +139,7 @@
                     <input name="app_repo_url" id="app_repo_url" required value="{{ user.app_repo_url }}" style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
-                    {{ _('Save') }}
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}
                 </button>
             </div>
             <p style="color: #888; font-size: 0.8em; margin-top: 8px;">{{ _('Replacing an existing custom repo will delete the previous repo and break any apps using that repo.') }}</p>
@@ -162,7 +163,7 @@
                     <input type="password" name="password" id="password" required style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
-                    {{ _('Save') }}
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}
                 </button>
             </div>
         </form>
@@ -175,12 +176,12 @@
                 <input type="text" name="api_key" id="api_key" required value="{{ user.api_key or '' }}" style="width: 100%; padding: 8px;">
             </div>
             <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Update API key?') }}');">
-                {{ _('Save') }}
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}
             </button>
         </form>
         <form method="post" action="{{ url_for('generate_api_key') }}" style="margin-top: 10px;">
             <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Generate a new API key? This will replace your current API key.') }}');">
-                🔄 {{ _('Generate New') }}
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ _('Generate New') }}
             </button>
         </form>
     </div>
@@ -199,7 +200,7 @@
             </div>
         </div>
         <a href="{{ url_for('export_user_config') }}" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px; margin-left: 15px;">
-            📥 {{ _('Export') }}
+            <i class="fa-solid fa-download" aria-hidden="true"></i> {{ _('Export') }}
         </a>
     </div>
 
@@ -215,7 +216,7 @@
                     <input type="file" name="file" id="file" accept=".json" required style="width: 100%; padding: 8px;">
                 </div>
                 <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
-                    📤 {{ _('Import') }}
+                    <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ _('Import') }}
                 </button>
             </div>
         </form>

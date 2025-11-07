@@ -22,7 +22,7 @@
 .secret-input-container {
   display: flex;
   gap: 0.5rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .secret-input-container .form-control {

@@ -19,7 +19,11 @@ function enableLocationSearch(inputElement, resultsElement, hiddenInputElement, 
                 if (data.features && data.features.length > 0) {
                     const listItems = data.features.map(feature => {
                         const li = document.createElement('li');
-                        li.textContent = `📍 ${feature.properties.formatted}`;
+                        const icon = document.createElement('i');
+                        icon.className = 'fa-solid fa-location-dot';
+                        icon.setAttribute('aria-hidden', 'true');
+                        li.appendChild(icon);
+                        li.appendChild(document.createTextNode(` ${feature.properties.formatted}`));
                         li.dataset.lat = feature.properties.lat;
                         li.dataset.lon = feature.properties.lon;
                         li.dataset.timezone = feature.properties.timezone?.name;
