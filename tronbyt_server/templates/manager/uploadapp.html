@@ -7,10 +7,10 @@
 {% endif %}
 <form method="POST" enctype="multipart/form-data">
     <input type="file" name=file>
-    <input type="submit" class="w3-button w3-green" value="{{ _('Upload') }}">
+    <button type="submit" class="w3-button w3-green"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ _('Upload') }}</button>
 </form>
 <h3>{{ _('Current files:') }}</h3>
 {% for filename in files %}
-<p>{{ filename }} - <a href="{{ url_for('deleteupload', filename=filename, device_id=device_id) }}">{{ _('Delete') }}</a></p>
+<p>{{ filename }} - <a href="{{ url_for('deleteupload', filename=filename, device_id=device_id) }}"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</a></p>
 {% endfor %}
 {% endblock %}

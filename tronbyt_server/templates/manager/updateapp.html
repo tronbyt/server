@@ -9,21 +9,21 @@
   <!-- Navigation Button -->
     <div class="button-group">
       <a href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=0"
-        class="w3-button" style="background-color: var(--enabled-text); color: white;">{{ _('Configure App') }}</a>
+        class="w3-button" style="background-color: var(--enabled-text); color: white;"><i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ _('Configure App') }}</a>
     </div>
 
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
-    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show App Config') }}</button>
-    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;">{{ _('Show Render Debug') }}</button>
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config') }}</span></button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug') }}</span></button>
   </div>
 
   <!-- Action Buttons -->
   <div class="action-buttons">
-    <input type="submit" form="updateForm" class="w3-button w3-green w3-round" value="{{ _('Save') }}" />
-    <input type="submit" form="updateForm" class="w3-button w3-red w3-round"
+    <button type="submit" form="updateForm" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="submit" form="updateForm" class="w3-button w3-red w3-round"
       formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
-      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}" />
+      onclick="return confirm('{{ _('Delete App?') }}');"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
   </div>
 </div>
 
@@ -364,10 +364,10 @@
 
   <!-- Action Buttons -->
   <div class="button-container">
-    <input type="submit" class="w3-button w3-green w3-round" value="{{ _('Save') }}" />
-    <input type="submit" class="w3-button w3-red w3-round"
+    <button type="submit" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="submit" class="w3-button w3-red w3-round"
       formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
-      onclick="return confirm('{{ _('Delete App?') }}');" value="{{ _('Delete') }}" />
+      onclick="return confirm('{{ _('Delete App?') }}');"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
   </div>
 </form>
 
@@ -452,14 +452,16 @@
 
   // Generic function to toggle content visibility
   function toggleContent(content, button, hideText, showText) {
+    const label = button.querySelector('.button-label');
+    const target = label || button;
     if (content.classList.contains("hidden")) {
       content.classList.remove("hidden");
       content.classList.add("visible");
-      button.textContent = hideText;
+      target.textContent = hideText;
     } else {
       content.classList.remove("visible");
       content.classList.add("hidden");
-      button.textContent = showText;
+      target.textContent = showText;
     }
   }
 

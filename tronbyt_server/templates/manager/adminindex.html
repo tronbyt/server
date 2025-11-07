@@ -5,7 +5,7 @@
 {% endblock %}
 {% block content %}
 {% if user %}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('create') }}">{{ _('New Tronbyt') }}</a>
+<br><a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('create') }}"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ _('New Tronbyt') }}</a>
 <hr>
 {% endif %}
 
@@ -29,9 +29,9 @@
               <tr>
                 <td>
                     <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                    href="{{ url_for('update', device_id=device.id) }}">{{ _('Edit') }}</a>
+                    href="{{ url_for('update', device_id=device.id) }}"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ _('Edit') }}</a>
                     <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
-                    href="{{ url_for('addapp', device_id=device.id) }}">{{ _('Add App') }}</a>
+                    href="{{ url_for('addapp', device_id=device.id) }}"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ _('Add App') }}</a>
                   </td>
               </tr>
             </table>

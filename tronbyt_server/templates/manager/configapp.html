@@ -10,19 +10,19 @@
   <!-- Navigation Button -->
   <div class="button-group">
     <a href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}"
-      class="w3-button" style="background-color: #2196F3;">{{ _('Edit App') }}</a>
+      class="w3-button" style="background-color: #2196F3;"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ _('Edit App') }}</a>
   </div>
 
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
-    <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show App Config') }}</button>
-    <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;">{{ _('Show Render Debug') }}</button>
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: #608ff3;"><i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config') }}</span></button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: #608ff3;"><i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug') }}</span></button>
   </div>
 
   <!-- Action Buttons -->
   <div class="action-buttons">
-    <button type="button" class="w3-button w3-green w3-round" id="saveButton">{{ _('Save') }}</button>
-    <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop">{{ _('Cancel') }}</button>
+    <button type="button" class="w3-button w3-green w3-round" id="saveButton"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ _('Cancel') }}</button>
   </div>
 </div>
 
@@ -70,14 +70,16 @@
 
   // Generic function to toggle content visibility
   function toggleContent(content, button, hideText, showText) {
+    const label = button.querySelector(".button-label");
+    const target = label || button;
     if (content.classList.contains("hidden")) {
       content.classList.remove("hidden");
       content.classList.add("visible");
-      button.textContent = hideText;
+      target.textContent = hideText;
     } else {
       content.classList.remove("visible");
       content.classList.add("hidden");
-      button.textContent = showText;
+      target.textContent = showText;
     }
   }
 
@@ -268,6 +270,7 @@
           toggleButton.setAttribute("aria-label", "{{ _('Toggle password visibility') }}");
 
           const icon = document.createElement("i");
+          icon.setAttribute("aria-hidden", "true");
           toggleButton.appendChild(icon);
 
           const updateToggleIcon = () => {
@@ -729,25 +732,38 @@
     const buttonContainer = document.createElement("div");
     buttonContainer.className = "button-container";
 
-    const submitButton = document.createElement("input");
+    const submitButton = document.createElement("button");
     submitButton.className = "w3-button w3-green w3-round";
     submitButton.type = "submit";
-    submitButton.value = "{{ _('Save') }}";
+    submitButton.style.minWidth = "10em";
+    const submitIcon = document.createElement("i");
+    submitIcon.className = "fa-solid fa-floppy-disk";
+    submitIcon.setAttribute("aria-hidden", "true");
+    submitButton.appendChild(submitIcon);
+    submitButton.appendChild(document.createTextNode(" {{ _('Save') }}"));
     buttonContainer.appendChild(submitButton);
 
     const resetButton = document.createElement("button");
     resetButton.className = "w3-button w3-blue w3-round";
     resetButton.type = "button";
     resetButton.id = "resetButton";
-    resetButton.textContent = "{{ _('Reset') }}";
     resetButton.style.minWidth = "10em";
+    const resetIcon = document.createElement("i");
+    resetIcon.className = "fa-solid fa-rotate-left";
+    resetIcon.setAttribute("aria-hidden", "true");
+    resetButton.appendChild(resetIcon);
+    resetButton.appendChild(document.createTextNode(" {{ _('Reset') }}"));
     buttonContainer.appendChild(resetButton);
 
     const cancelButton = document.createElement("button");
     cancelButton.id = "cancelButton";
     cancelButton.className = "w3-button w3-red w3-round";
     cancelButton.type = "button";
-    cancelButton.textContent = "{{ _('Cancel') }}";
+    const cancelIcon = document.createElement("i");
+    cancelIcon.className = "fa-solid fa-circle-xmark";
+    cancelIcon.setAttribute("aria-hidden", "true");
+    cancelButton.appendChild(cancelIcon);
+    cancelButton.appendChild(document.createTextNode(" {{ _('Cancel') }}"));
 
     cancelButton.addEventListener('click', function() {
       {% if delete_on_cancel == 1 %}

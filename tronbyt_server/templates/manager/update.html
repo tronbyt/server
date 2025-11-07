@@ -52,7 +52,7 @@
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.className = 'w3-button w3-green config-management-btn';
-    saveBtn.textContent = '{{ _('Save') }}';
+    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}';
     saveBtn.onclick = function() {
       form.submit();
     };
@@ -61,7 +61,7 @@
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'w3-button w3-red config-management-btn';
-    deleteBtn.textContent = '{{ _('Delete') }}';
+    deleteBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}';
     deleteBtn.onclick = function() {
       if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) {
         form.action = "{{ url_for('delete', device_id=device.id) }}";
@@ -116,7 +116,7 @@
               <input name="img_url" id="img_url" value="{{ device.img_url }}"
                 oninput="updateExampleCommands()">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetImgUrl()"
-                title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
+                title="{{ _('Reset to default') }}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{ _('Reset') }}</button>
             </div>
           </td>
         </tr>
@@ -128,7 +128,7 @@
             <div class="url-input-container">
               <input name="ws_url" id="ws_url" value="{{ device.ws_url }}">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetWsUrl()"
-                title="{{ _('Reset to default') }}">{{ _('Reset') }}</button>
+                title="{{ _('Reset to default') }}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{ _('Reset') }}</button>
             </div>
           </td>
         </tr>
@@ -466,17 +466,17 @@
 
     <div class="config-management-container">
       <a href="{{ url_for('export_device_config', device_id=device.id) }}" class="w3-button w3-blue config-management-btn">
-        📥 {{ _('Export Configuration') }}
+        <i class="fa-solid fa-download" aria-hidden="true"></i> {{ _('Export Configuration') }}
       </a>
       <a href="{{ url_for('import_device_config', device_id=device.id) }}" class="w3-button w3-orange config-management-btn">
-        📤 {{ _('Import Configuration') }}
+        <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ _('Import Configuration') }}
       </a>
     </div>
   </div>
 
   <div class="button-container">
-    <button type="button" class="w3-button w3-green config-management-btn" onclick="this.form.submit();">{{ _('Save') }}</button>
-    <button type="button" class="w3-button w3-red config-management-btn" onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device.id) }}'; this.form.method = 'post'; this.form.submit(); }">{{ _('Delete') }}</button>
+    <button type="button" class="w3-button w3-green config-management-btn" onclick="this.form.submit();"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="button" class="w3-button w3-red config-management-btn" onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device.id) }}'; this.form.method = 'post'; this.form.submit(); }"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
   </div>
 </form>
 {% endblock %}

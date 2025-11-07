@@ -7,7 +7,7 @@
     <label for="file">{{ _('Upload JSON File') }}</label>
     <input type="file" name="file" id="file" accept=".json">
   </div>
-  <button type="submit" class="w3-button w3-green">{{ _('Import Configuration') }}</button>
+  <button type="submit" class="w3-button w3-green"><i class="fa-solid fa-file-import" aria-hidden="true"></i> {{ _('Import Configuration') }}</button>
 </form>
-<a href="{{ url_for('index') }}" class="w3-button w3-gray">{{ _('Cancel') }}</a>
+<a href="{{ url_for('index') }}" class="w3-button w3-gray"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ _('Cancel') }}</a>
 {% endblock %}

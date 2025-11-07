@@ -459,8 +459,7 @@
     });
   }
 </script>
-<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}">{{
-  _('Upload .star file') }}</a>
+<a class="w3-button w3-purple w3-round w3-padding" href="{{ url_for('uploadapp', device_id=device.id) }}"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ _('Upload .star file') }}</a>
 <form method="post" id="main_form">
   <label for="name">{{ _('App Selection') }}</label>
 
@@ -540,7 +539,7 @@
         {% endif %}
         {% if app.broken %}
         <div style="background-color: #f44336; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 12px; text-align: center; line-height: 1.3; margin-top: 5px;">
-          ❌ {{ _('BROKEN') }}<br>
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i> {{ _('BROKEN') }}<br>
           <span style="font-size: 10px; font-weight: normal;">{{ app.brokenReason or 'Unknown' }}</span>
         </div>
         {% endif %}
@@ -548,7 +547,7 @@
         <a href="{{ url_for('deleteupload', filename=app.path.split('/')[-1], device_id=device.id) }}"
            class="delete-upload-btn"
            onclick="event.stopPropagation(); return confirm('{{ _('Delete this uploaded app?') }}');">
-          🗑️ {{ _('Delete') }}
+          <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}
         </a>
         {% endif %}
         {% if config['PRODUCTION'] == '0' and not app.path.startswith("users/") %}
@@ -583,7 +582,7 @@
   <label for="notes">{{ _('Notes') }}</label>
   <textarea name="notes" id="notes">{{ request.form['notes'] }}</textarea>
 
-  <input type="submit" value="{{ _('Configure') }}" class="w3-button w3-green" onclick="move()"></input>
+  <button type="submit" class="w3-button w3-green" onclick="move()"><i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ _('Configure') }}</button>
 </form>
 
 
