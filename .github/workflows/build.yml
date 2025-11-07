@@ -47,7 +47,7 @@ jobs:
           path: dist
 
   create-release:
-    name: Create Github Release
+    name: Create Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     needs: build-and-test
@@ -70,3 +70,13 @@ jobs:
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
               --generate-notes \
               dist/*
+      - name: Bump Homebrew formula
+        uses: dawidd6/action-homebrew-bump-formula@v5
+        with:
+          token: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
+          formula: tronbyt-server
+          tap: tronbyt/homebrew-tronbyt
+          tag: ${{ inputs.version || github.ref_name }}
+          revision: ${{ github.sha }}
+          force: false
+          no_fork: true
