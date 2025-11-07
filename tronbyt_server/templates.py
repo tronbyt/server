@@ -11,6 +11,7 @@ from fastapi_babel import _
 
 from tronbyt_server.config import get_settings
 from tronbyt_server.flash import get_flashed_messages
+from tronbyt_server.dependencies import is_auto_login_active
 
 
 def timeago(seconds: int, locale: str) -> str:
@@ -32,6 +33,7 @@ env = jinja2.Environment(
 env.globals["get_flashed_messages"] = get_flashed_messages
 env.globals["_"] = _
 env.globals["config"] = get_settings()
+env.globals["is_auto_login_active"] = is_auto_login_active
 env.filters["timeago"] = timeago
 
 templates = Jinja2Templates(env=env)

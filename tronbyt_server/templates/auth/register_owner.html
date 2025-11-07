@@ -3,6 +3,20 @@
   <h1>{% block title %}{{ _('Create Admin User') }}{% endblock %}</h1>
 {% endblock %}
 {% block content %}
+  <!-- Auto-Login Mode Warning Banner -->
+  {% if config.SINGLE_USER_AUTO_LOGIN == '1' %}
+  <div class="auto-login-warning-banner">
+    <div class="auto-login-warning-content">
+      <span class="auto-login-warning-icon">⚠️</span>
+      <strong>{{ _('SINGLE-USER AUTO-LOGIN MODE ACTIVE') }}</strong>
+      <span class="auto-login-warning-icon">⚠️</span>
+    </div>
+    <div class="auto-login-warning-subtext">
+      {{ _('Authentication is disabled for private network access') }}
+    </div>
+  </div>
+  {% endif %}
+
   <form method="post">
     <label for="password">{{ _('Password') }}</label>
     <input type="password" name="password" id="password" required>
