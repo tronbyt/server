@@ -1,5 +1,6 @@
 """Data models and validation functions for devices in Tronbyt Server."""
 
+from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any
 from zoneinfo import ZoneInfo
@@ -9,6 +10,7 @@ from pydantic import (
     Field,
     AfterValidator,
     BeforeValidator,
+    AliasChoices,
 )
 
 from .app import App
@@ -66,7 +68,7 @@ def format_time(v: Any) -> str | None:
         v (Any): The value to format.
 
     Returns:
-        Optional[str]: The formatted time string or None.
+        str | None: The formatted time string or None.
     """
     if isinstance(v, int):
         return f"{v:02d}:00"
@@ -90,6 +92,30 @@ class Location(BaseModel):
     timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
     lat: float
     lng: float
+
+
+class ProtocolType(str, Enum):
+    """Protocol type enumeration."""
+
+    HTTP = "HTTP"
+    WS = "WS"
+
+
+class DeviceInfoBase(BaseModel):
+    """Pydantic model for device information that is reported by the device."""
+
+    firmware_version: str | None = None
+    firmware_type: str | None = None
+    protocol_version: int | None = None
+    mac_address: str | None = Field(
+        default=None, validation_alias=AliasChoices("mac_address", "mac")
+    )
+
+
+class DeviceInfo(DeviceInfoBase):
+    """Pydantic model for device information that is reported by the device."""
+
+    protocol_type: ProtocolType | None = None
 
 
 class Device(BaseModel):
@@ -124,6 +150,8 @@ class Device(BaseModel):
     pinned_app: str | None = None  # iname of the pinned app, if any
     interstitial_enabled: bool = False  # whether interstitial app feature is enabled
     interstitial_app: str | None = None  # iname of the interstitial app, if any
+    last_seen: datetime | None = None
+    info: DeviceInfo = Field(default_factory=DeviceInfo)
 
     def supports_2x(self) -> bool:
         """

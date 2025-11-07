@@ -202,11 +202,11 @@ class TestDeviceEndpoint:
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
             headers={"Authorization": f"Bearer {api_key}"},
-            json={"brightness": 128, "autoDim": True},
+            json={"brightness": 50, "autoDim": True},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["brightness"] == 128
+        assert data["brightness"] == 50
         assert data["autoDim"] is True
 
     def test_patch_device_with_device_api_key(
