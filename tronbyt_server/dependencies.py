@@ -93,8 +93,12 @@ def is_trusted_network(client_host: str | None) -> bool:
     Check if the client is from a trusted network (localhost or private networks).
 
     Trusted networks include:
-    - Localhost: 127.0.0.1, ::1
-    - Private networks: 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12
+    - IPv4 localhost: 127.0.0.1
+    - IPv6 localhost: ::1
+    - IPv4 private networks: 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12
+    - IPv6 unique local addresses (ULA): fc00::/7
+    - IPv6 link-local addresses: fe80::/10
+    - (deprecated) IPv6 site-local: fec0::/10
     """
     if not client_host:
         return False
