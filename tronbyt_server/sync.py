@@ -1,11 +1,19 @@
 """Synchronization primitives for Tronbyt Server."""
 
 import logging
-from abc import ABC, abstractmethod
-from multiprocessing import Manager
-from typing import Any, cast
-
+import os
+import ast
+import base64
 import redis
+from abc import ABC, abstractmethod
+from multiprocessing import current_process
+from multiprocessing.synchronize import Event as MPEvent
+from multiprocessing.synchronize import Lock as MPLock
+from multiprocessing.managers import (
+    SyncManager,
+    DictProxy,
+)
+from typing import Any, cast
 from threading import Lock
 
 from tronbyt_server.config import get_settings
@@ -32,7 +40,7 @@ class Waiter(ABC):
         raise NotImplementedError
 
 
-class SyncManager(ABC):
+class AbstractSyncManager(ABC):
     """Abstract base class for synchronization managers."""
 
     @abstractmethod
@@ -46,12 +54,12 @@ class SyncManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def shutdown(self) -> None:
+    def _shutdown(self) -> None:
         """Shut down the sync manager."""
         raise NotImplementedError
 
     @abstractmethod
-    def __enter__(self) -> "SyncManager":
+    def __enter__(self) -> "AbstractSyncManager":
         """Enter the context manager."""
         raise NotImplementedError
 
@@ -77,10 +85,10 @@ class MultiprocessingWaiter(Waiter):
     def wait(self, timeout: int) -> bool:
         """Wait for a notification."""
         with self._condition:
-            if self._manager.shutdown_event.is_set():
+            if self._manager.is_shutdown():
                 return False
             notified = self._condition.wait(timeout=timeout)
-            if self._manager.shutdown_event.is_set():
+            if self._manager.is_shutdown():
                 return False
             return bool(notified)
 
@@ -89,18 +97,109 @@ class MultiprocessingWaiter(Waiter):
         self._manager.release_condition(self._device_id)
 
 
-class MultiprocessingSyncManager(SyncManager):
+class ServerSyncManager(SyncManager):
+    """A custom SyncManager that creates and vends singleton sync primitives."""
+
+    _init_lock = Lock()
+    _initialized = False
+
+    _conditions: DictProxy[Any, Any]
+    _waiter_counts: DictProxy[Any, Any]
+    _lock: MPLock
+    _shutdown_event: MPEvent
+
+    def _lazy_init(self) -> None:
+        """
+        Initialize the shared primitives using double-checked locking to avoid
+        acquiring the lock on every call.
+        """
+        if not self._initialized:
+            with self._init_lock:
+                if not self._initialized:
+                    self._conditions = self.dict()
+                    self._waiter_counts = self.dict()
+                    self._lock = cast(MPLock, self.Lock())
+                    self._shutdown_event = cast(MPEvent, self.Event())
+                    self._initialized = True
+
+    def get_conditions(self) -> DictProxy[Any, Any]:
+        self._lazy_init()
+        return self._conditions
+
+    def get_waiter_counts(self) -> DictProxy[Any, Any]:
+        self._lazy_init()
+        return self._waiter_counts
+
+    def get_lock(self) -> MPLock:
+        self._lazy_init()
+        return self._lock
+
+    def get_shutdown_event(self) -> MPEvent:
+        self._lazy_init()
+        return self._shutdown_event
+
+    def notify_all_and_clear(self) -> None:
+        """Notify all waiting conditions and clear them to prevent new waiters."""
+        self._lazy_init()
+        with self._lock:
+            conditions = list(self._conditions.values())
+            # Clear conditions to prevent new waiters
+            self._conditions.clear()
+            self._waiter_counts.clear()
+        for condition in conditions:
+            with condition:
+                condition.notify_all()
+
+
+class MultiprocessingSyncManager(AbstractSyncManager):
     """A synchronization manager that uses multiprocessing primitives."""
 
-    def __init__(self) -> None:
-        manager = Manager()
-        self._conditions: dict[str, "ConditionType"] = cast(
-            dict[str, "ConditionType"], manager.dict()
-        )
-        self._waiter_counts: dict[str, int] = cast(dict[str, int], manager.dict())
-        self._lock = manager.Lock()
-        self._manager = manager
-        self.shutdown_event = manager.Event()
+    _manager: "ServerSyncManager"
+
+    def __init__(self, address: Any = None, authkey: bytes | None = None) -> None:
+        if address:
+            # Client mode: connect to the server manager.
+            manager = ServerSyncManager(address=address, authkey=authkey)
+            manager.connect()
+            self._manager = manager
+            self._is_server = False
+        else:
+            # Server mode: create the manager that hosts the singletons.
+            manager = ServerSyncManager()
+            manager.start()
+            self._manager = manager
+            self._is_server = True
+            self._export_connection_details()
+
+        # Get proxies to the singleton objects.
+        self._conditions = self._manager.get_conditions()
+        self._waiter_counts = self._manager.get_waiter_counts()
+        self._lock = self._manager.get_lock()
+        self._shutdown_event = self._manager.get_shutdown_event()
+
+    def _export_connection_details(self) -> None:
+        """Set environment variables for client processes to connect."""
+        if not self._is_server:
+            return
+
+        address = self.address
+        authkey = current_process().authkey
+
+        if address and authkey:
+            os.environ["TRONBYT_MP_MANAGER_ADDR"] = repr(address)
+            os.environ["TRONBYT_MP_MANAGER_AUTHKEY"] = base64.b64encode(authkey).decode(
+                "ascii"
+            )
+
+    @property
+    def address(self) -> Any:
+        """Get the address of the manager process (server mode only)."""
+        if not self._is_server:
+            return None
+        return self._manager.address
+
+    def is_shutdown(self) -> bool:
+        return self._shutdown_event.is_set()
 
     def release_condition(self, device_id: str) -> None:
         """Decrement waiter count and clean up condition if no waiters are left."""
@@ -115,15 +214,18 @@ class MultiprocessingSyncManager(SyncManager):
         """Get a waiter for a given device ID."""
         with self._lock:
             if device_id not in self._conditions:
+                # We need to create the Condition object via the manager so it can
+                # be shared across processes.
                 self._conditions[device_id] = self._manager.Condition()
                 self._waiter_counts[device_id] = 0
             self._waiter_counts[device_id] += 1
             condition = self._conditions[device_id]
+
         return MultiprocessingWaiter(condition, self, device_id)
 
     def notify(self, device_id: str) -> None:
         """Notify waiters for a given device ID."""
-        condition: "ConditionType | None" = None
+        condition: ConditionType | None = None
         with self._lock:
             if device_id in self._conditions:
                 condition = self._conditions[device_id]
@@ -132,20 +234,18 @@ class MultiprocessingSyncManager(SyncManager):
             with condition:
                 condition.notify_all()
 
-    def shutdown(self) -> None:
+    def _shutdown(self) -> None:
         """Shut down the sync manager."""
-        self.shutdown_event.set()
-        with self._lock:
-            for condition in self._conditions.values():
-                with condition:
-                    condition.notify_all()
-        self._manager.shutdown()
+        if self._is_server:
+            self._shutdown_event.set()
+            self._manager.notify_all_and_clear()
+            self._manager.shutdown()
 
     def __enter__(self) -> "MultiprocessingSyncManager":
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        self.shutdown()
+        self._shutdown()
 
 
 class RedisWaiter(Waiter):
@@ -183,7 +283,7 @@ class RedisWaiter(Waiter):
             self._pubsub.close()
 
 
-class RedisSyncManager(SyncManager):
+class RedisSyncManager(AbstractSyncManager):
     """A synchronization manager that uses Redis Pub/Sub."""
 
     def __init__(self, redis_url: str) -> None:
@@ -197,7 +297,7 @@ class RedisSyncManager(SyncManager):
         """Notify waiters for a given device ID."""
         self._redis.publish(device_id, NOTIFY_MESSAGE)
 
-    def shutdown(self) -> None:
+    def _shutdown(self) -> None:
         """Shut down the sync manager."""
         self._redis.close()
 
@@ -205,14 +305,14 @@ class RedisSyncManager(SyncManager):
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
-        self.shutdown()
+        self._shutdown()
 
 
-_sync_manager: SyncManager | None = None
+_sync_manager: AbstractSyncManager | None = None
 _sync_manager_lock = Lock()
 
 
-def get_sync_manager() -> SyncManager:
+def get_sync_manager() -> AbstractSyncManager:
     """Get the synchronization manager for the application."""
     global _sync_manager
     if _sync_manager is None:
@@ -224,7 +324,30 @@ def get_sync_manager() -> SyncManager:
                     logger.info("Using Redis for synchronization")
                     _sync_manager = RedisSyncManager(redis_url)
                 else:
-                    logger.info("Using multiprocessing for synchronization")
-                    _sync_manager = MultiprocessingSyncManager()
+                    # Check env vars for multiprocessing client mode
+                    manager_address_str = os.environ.get("TRONBYT_MP_MANAGER_ADDR")
+                    manager_authkey_b64 = os.environ.get("TRONBYT_MP_MANAGER_AUTHKEY")
+
+                    if manager_address_str and manager_authkey_b64:
+                        # Client mode for worker processes
+
+                        logger.info("Connecting to parent sync manager...")
+                        try:
+                            address = ast.literal_eval(manager_address_str)
+                            authkey = base64.b64decode(manager_authkey_b64)
+                            _sync_manager = MultiprocessingSyncManager(
+                                address=address, authkey=authkey
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to connect to parent sync manager: {e}"
+                            )
+                            raise
+                    else:
+                        # Server mode for the main process
+                        logger.info(
+                            "Using multiprocessing for synchronization (server)"
+                        )
+                        _sync_manager = MultiprocessingSyncManager()
     assert _sync_manager is not None
     return _sync_manager
