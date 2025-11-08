@@ -3,7 +3,7 @@ services:
     image: ghcr.io/tronbyt/server:1 # latest v1.x.x release tag
     restart: unless-stopped
     ports:
-      - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
+      - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container
     init: true
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
