@@ -382,7 +382,7 @@
     <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
-  -d '{"set_enabled": true}' \
+  -d '{"enabled": true}' \
   {{ url_for('handle_patch_device_app', device_id=device_id, installation_id=app.iname) }}</pre>
   </div>
 
@@ -392,7 +392,7 @@
     <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
-  -d '{"set_enabled": false}' \
+  -d '{"enabled": false}' \
   {{ url_for('handle_patch_device_app', device_id=device_id, installation_id=app.iname) }}</pre>
   </div>
 
@@ -402,8 +402,8 @@
     <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
-  -d '{"set_pinned": true}' \
-  {{ url_for('handle_patch_device_app', device_id=device_id, installation_id=app.iname) }}</pre>
+  -d '{"pinnedApp": "{{ app.iname }}"}' \
+  {{ url_for('update_device', device_id=device_id) }}</pre>
   </div>
 
   <!-- Unpin App -->
@@ -412,8 +412,8 @@
     <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
-  -d '{"set_pinned": false}' \
-  {{ url_for('handle_patch_device_app', device_id=device_id, installation_id=app.iname) }}</pre>
+  -d '{"pinnedApp": ""}' \
+  {{ url_for('update_device', device_id=device_id) }}</pre>
   </div>
 
   <small>
