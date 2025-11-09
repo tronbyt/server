@@ -15,7 +15,7 @@ services:
       - ENABLE_USER_REGISTRATION
       - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
-      # - SINGLE_USER_AUTO_LOGIN
+
     healthcheck:
       test: ["CMD", "python3", "-m", "tronbyt_server.healthcheck", "http://localhost:8000/health"]
       interval: 1m30s
@@ -28,7 +28,7 @@ services:
       - "${SERVER_PORT}:${SERVER_PORT}"
       - "${SERVER_PORT}:${SERVER_PORT}/udp"
       - "80:80" # Always open 80/443 for the HTTP-01 challenge
-      - "443:443"
+      - "443:443" # comment this out if SERVER_PORT is already set to 443
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/data

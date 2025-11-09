@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     init: true
     ports:
-      - "${SERVER_PORT}:8000" # Map server port on the host to port 8000 in the container
+      - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container
     volumes:
       - ./tronbyt_server:/app/tronbyt_server # for development
       - ./users:/app/users # for development
