@@ -6,14 +6,14 @@ import sqlite3
 from datetime import timedelta
 from typing import Generator
 
-from fastapi import Depends, Header, Request
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from fastapi_login import LoginManager
 from fastapi_login.exceptions import InvalidCredentialsException
 
 from tronbyt_server import db
 from tronbyt_server.config import Settings, get_settings
-from tronbyt_server.models import Device, User
+from tronbyt_server.models import Device, User, DeviceID
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,32 @@ def get_db(
     db_conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
     with db_conn:
         yield db_conn
+
+
+class UserAndDevice:
+    """Container for user and device objects."""
+
+    def __init__(self, user: User, device: Device):
+        """Initialize the UserAndDevice object."""
+        self.user = user
+        self.device = device
+
+
+def get_user_and_device(
+    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
+) -> UserAndDevice:
+    """Get a user and device from a device ID."""
+    user = db.get_user_by_device_id(db_conn, device_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
+    return UserAndDevice(user, device)
 
 
 def check_for_users(
