@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     LANGUAGES: list[str] = ["en", "de"]
     MAX_USERS: int = 100
     ENABLE_USER_REGISTRATION: str = "0"
-    LOG_LEVEL: str = "WARNING"
+    LOG_LEVEL: str = "INFO"
     SYSTEM_APPS_REPO: str = "https://github.com/tronbyt/apps.git"
     LIBPIXLET_PATH: str | None = None
     REDIS_URL: str | None = None
