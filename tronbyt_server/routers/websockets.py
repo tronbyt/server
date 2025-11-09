@@ -20,14 +20,16 @@ from tronbyt_server.models import (
     BrightnessMessage,
     ClientInfoMessage,
     ClientMessage,
+    Device,
     DisplayingMessage,
     DisplayingStatusMessage,
     DwellSecsMessage,
     ImmediateMessage,
+    ProtocolType,
     QueuedMessage,
     ServerMessage,
     StatusMessage,
-    ProtocolType,
+    User,
 )
 from tronbyt_server.routers.manager import next_app_logic
 from tronbyt_server.sync import get_sync_manager
@@ -258,6 +260,8 @@ async def _wait_for_acknowledgment(
     waiter: Any,  # Waiter (using Any to avoid mypy issues with abstract base class)
     websocket: WebSocket,
     last_brightness: int,
+    user: User,
+    device: Device,
 ) -> tuple[Response, int]:
     """Wait for device to acknowledge displaying the image, with timeout and ephemeral push detection.
 
@@ -307,7 +311,7 @@ async def _wait_for_acknowledgment(
             # Got displaying acknowledgment, render next image
             logger.debug(f"[{device_id}] Device acknowledged display")
             response = await loop.run_in_executor(
-                None, next_app_logic, db_conn, device_id
+                None, next_app_logic, db_conn, user, device
             )
             return (response, last_brightness)
 
@@ -324,7 +328,7 @@ async def _wait_for_acknowledgment(
             # Render the next app (which will pick up the ephemeral push)
             try:
                 response = await loop.run_in_executor(
-                    None, next_app_logic, db_conn, device_id
+                    None, next_app_logic, db_conn, user, device
                 )
                 logger.debug(
                     f"[{device_id}] Ephemeral push rendered, will send immediately"
@@ -350,30 +354,20 @@ async def _wait_for_acknowledgment(
             )
 
             # Check if brightness has changed and send update immediately
-            user = await loop.run_in_executor(
-                None, db.get_user_by_device_id, db_conn, device_id
-            )
-            if user:
-                device = user.devices.get(device_id)
-                if device:
-                    new_brightness = db.get_device_brightness_percent(device)
-                    if new_brightness != last_brightness:
-                        logger.info(
-                            f"[{device_id}] Brightness changed to {new_brightness}, sending immediately"
-                        )
-                        try:
-                            await _send_message(
-                                websocket,
-                                BrightnessMessage(brightness=new_brightness),
-                            )
-                            last_brightness = (
-                                new_brightness  # Update tracked brightness
-                            )
-                            ack.brightness_to_send = None  # Clear pending brightness
-                        except Exception as e:
-                            logger.error(
-                                f"[{device_id}] Failed to send brightness: {e}"
-                            )
+            new_brightness = db.get_device_brightness_percent(device)
+            if new_brightness != last_brightness:
+                logger.info(
+                    f"[{device_id}] Brightness changed to {new_brightness}, sending immediately"
+                )
+                try:
+                    await _send_message(
+                        websocket,
+                        BrightnessMessage(brightness=new_brightness),
+                    )
+                    last_brightness = new_brightness  # Update tracked brightness
+                    ack.brightness_to_send = None  # Clear pending brightness
+                except Exception as e:
+                    logger.error(f"[{device_id}] Failed to send brightness: {e}")
             # DO NOT return here. Continue waiting for display ack.
 
         # Update time waited
@@ -387,7 +381,7 @@ async def _wait_for_acknowledgment(
         )
 
     # Render next image after timeout
-    response = await loop.run_in_executor(None, next_app_logic, db_conn, device_id)
+    response = await loop.run_in_executor(None, next_app_logic, db_conn, user, device)
     return (response, last_brightness)
 
 
@@ -398,6 +392,15 @@ async def sender(
     ack: DeviceAcknowledgment,
 ) -> None:
     """The sender task for the websocket."""
+    user = db.get_user_by_device_id(db_conn, device_id)
+    if not user:
+        logger.error(f"[{device_id}] User not found, sender task cannot start.")
+        return
+    device = user.devices.get(device_id)
+    if not device:
+        logger.error(f"[{device_id}] Device not found, sender task cannot start.")
+        return
+
     waiter = get_sync_manager().get_waiter(device_id)
     loop = asyncio.get_running_loop()
     last_brightness = -1
@@ -405,7 +408,9 @@ async def sender(
 
     try:
         # Render the first image before entering the loop
-        response = await loop.run_in_executor(None, next_app_logic, db_conn, device_id)
+        response = await loop.run_in_executor(
+            None, next_app_logic, db_conn, user, device
+        )
 
         # Main loop
         while True:
@@ -418,6 +423,16 @@ async def sender(
                     websocket, response, last_brightness
                 )
 
+            # Refresh user and device from DB in case of updates
+            user = db.get_user_by_device_id(db_conn, device_id)
+            if not user:
+                logger.error(f"[{device_id}] user gone, stopping websocket sender.")
+                return
+            device = user.devices.get(device_id)
+            if not device:
+                logger.error(f"[{device_id}] device gone, stopping websocket sender.")
+                return
+
             # Wait for device acknowledgment with timeout and ephemeral push detection
             # This will check for ephemeral pushes and render the next image when ready
             response, last_brightness = await _wait_for_acknowledgment(
@@ -429,6 +444,8 @@ async def sender(
                 waiter,
                 websocket,
                 last_brightness,
+                user,
+                device,
             )
 
     except asyncio.CancelledError:

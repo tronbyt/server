@@ -304,26 +304,6 @@ def delete_device_dirs(device_id: str) -> None:
         logger.error(f"Error deleting directory {dir_to_delete}: {str(e)}")
 
 
-def get_last_app_index(db: sqlite3.Connection, device_id: str) -> int | None:
-    """Get the last app index for a device."""
-    device = get_device_by_id(db, device_id)
-    if device is None:
-        return None
-    return device.last_app_index
-
-
-def save_last_app_index(db: sqlite3.Connection, device_id: str, index: int) -> None:
-    """Save the last app index for a device."""
-    user = get_user_by_device_id(db, device_id)
-    if user is None:
-        return
-    device = user.devices.get(device_id)
-    if device is None:
-        return
-    device.last_app_index = index
-    save_user(db, user)
-
-
 def get_device_timezone(device: Device) -> ZoneInfo:
     """Get timezone for a device."""
     if device.location and device.location.timezone:

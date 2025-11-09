@@ -33,7 +33,12 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import Settings, get_settings
-from tronbyt_server.dependencies import get_db, manager
+from tronbyt_server.dependencies import (
+    get_db,
+    get_user_and_device,
+    manager,
+    UserAndDevice,
+)
 from tronbyt_server.flash import flash
 from tronbyt_server.models import (
     DEFAULT_DEVICE_TYPE,
@@ -156,8 +161,7 @@ def parse_time_input(time_str: str) -> str:
 
 
 def _get_app_to_display(
-    db_conn: sqlite3.Connection,
-    device_id: DeviceID,
+    device: Device,
     last_app_index: int | None = None,
     advance_index: bool = False,
 ) -> tuple[App | None, int | None, bool, bool, bool]:
@@ -168,13 +172,6 @@ def _get_app_to_display(
         tuple: (app, new_index, is_pinned_app, is_night_mode_app, is_interstitial_app)
         If no app should be displayed, returns (None, None, False, False, False)
     """
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
     # if no apps return None
     if not device.apps:
         return None, None, False, False, False
@@ -218,9 +215,7 @@ def _get_app_to_display(
             expanded_apps_list = create_expanded_apps_list(device, apps_list)
 
             if last_app_index is None:
-                last_app_index = db.get_last_app_index(db_conn, device_id)
-                if last_app_index is None:
-                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+                last_app_index = device.last_app_index
 
             # Handle compatibility: if the index is too large for the expanded list,
             # it might be from the old system (before interstitial apps)
@@ -260,21 +255,12 @@ def _get_app_to_display(
 
 def next_app_logic(
     db_conn: sqlite3.Connection,
-    device_id: DeviceID,
+    user: User,
+    device: Device,
     last_app_index: int | None = None,
     recursion_depth: int = 0,
 ) -> Response:
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    device.last_seen = datetime.now(timezone.utc)
-    device.info.protocol_type = ProtocolType.HTTP
-    db.save_user(db_conn, user)
-
+    device_id = device.id
     # first check for a pushed file starting with __ and just return that and then delete it.
     # This needs to happen before brightness check to clear any ephemeral images
     pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
@@ -297,9 +283,7 @@ def next_app_logic(
     # For /next endpoint: advance the index FIRST, then get the app to display
     # This ensures we return the NEXT app, not the current one
     if last_app_index is None:
-        last_app_index = db.get_last_app_index(db_conn, device_id)
-        if last_app_index is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        last_app_index = device.last_app_index
 
     # Get the apps list from the already-fetched device
     apps_list = sorted([app for app in device.apps.values()], key=lambda x: x.order)
@@ -317,7 +301,7 @@ def next_app_logic(
 
     # Get the app at the next index (without advancing further)
     app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
-        db_conn, device_id, next_index, advance_index=False
+        device, next_index, advance_index=False
     )
 
     if app is None:
@@ -334,7 +318,7 @@ def next_app_logic(
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
         # Pass next_index directly since it already points to the next app
-        return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+        return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
 
     # If the app is the interstitial app but we're NOT at an interstitial position,
     # check if it's enabled for regular rotation
@@ -345,7 +329,7 @@ def next_app_logic(
         and not app.enabled
     ):
         # Interstitial app at regular position is disabled - skip it
-        return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+        return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
 
     # NEW: Skip interstitial app if the previous regular app was skipped
     # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
@@ -369,7 +353,7 @@ def next_app_logic(
                 ):
                     # Previous app would be skipped - skip this interstitial too
                     return next_app_logic(
-                        db_conn, device_id, next_index, recursion_depth + 1
+                        db_conn, user, device, next_index, recursion_depth + 1
                     )
 
     if not possibly_render(db_conn, user, device_id, app) or app.empty_last_render:
@@ -382,7 +366,7 @@ def next_app_logic(
             db.save_user(db_conn, user)
 
         # Pass next_index directly since it already points to the next app
-        return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+        return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
@@ -393,12 +377,13 @@ def next_app_logic(
         # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
         # Save the next_index as the new last_app_index
-        db.save_last_app_index(db_conn, device_id, next_index)
+        device.last_app_index = next_index
+        db.save_user(db_conn, user)
         return response
 
     # WebP file doesn't exist or is empty - skip this app
     # Pass next_index directly since it already points to the next app
-    return next_app_logic(db_conn, device_id, next_index, recursion_depth + 1)
+    return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
 
 
 @router.get("/")
@@ -2103,41 +2088,33 @@ async def import_device_post(
 
 @router.get("/{device_id}/next", name="next_app")
 def next_app(
-    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
+    deps: UserAndDevice = Depends(get_user_and_device),
+    db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    return next_app_logic(db_conn, device_id)
+    user = deps.user
+    device = deps.device
+
+    device.last_seen = datetime.now(timezone.utc)
+    device.info.protocol_type = ProtocolType.HTTP
+    db.save_user(db_conn, user)
+
+    return next_app_logic(db_conn, user, device)
 
 
 @router.get("/{device_id}/brightness", name="get_brightness")
-def get_brightness(
-    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
-) -> Response:
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    brightness_value = db.get_device_brightness_percent(device)
+def get_brightness(deps: UserAndDevice = Depends(get_user_and_device)) -> Response:
+    brightness_value = db.get_device_brightness_percent(deps.device)
     return Response(content=str(brightness_value), media_type="text/plain")
 
 
 @router.get("/{device_id}/currentapp", name="currentwebp")
 def currentwebp(
-    request: Request,
-    device_id: DeviceID,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    request: Request, deps: UserAndDevice = Depends(get_user_and_device)
 ) -> Response:
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
+    device = deps.device
     # first check for a pushed file starting with __ and just return that and then delete it.
     # This needs to happen before brightness check to clear any ephemeral images
-    pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+    pushed_dir = db.get_device_webp_dir(device.id) / "pushed"
     if pushed_dir.is_dir():
         for ephemeral_file in sorted(pushed_dir.glob("__*")):
             logger.debug(f"Found pushed image {ephemeral_file}")
@@ -2153,7 +2130,7 @@ def currentwebp(
 
     # Use helper function to get the app to display, without advancing the index
     app, _, is_pinned_app, is_night_mode_app, is_interstitial_app = _get_app_to_display(
-        db_conn, device_id, advance_index=False
+        device, advance_index=False
     )
 
     if app is None:
@@ -2171,9 +2148,9 @@ def currentwebp(
         return send_default_image(device)
 
     if app.pushed:
-        webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
+        webp_path = db.get_device_webp_dir(device.id) / "pushed" / f"{app.iname}.webp"
     else:
-        webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
+        webp_path = db.get_device_webp_dir(device.id) / f"{app.name}-{app.iname}.webp"
 
     try:
         stat_result = webp_path.stat()
@@ -2192,23 +2169,16 @@ def currentwebp(
 
 
 @router.get("/{device_id}/{iname}/appwebp", name="appwebp")
-def appwebp(
-    device_id: DeviceID, iname: str, db_conn: sqlite3.Connection = Depends(get_db)
-) -> Response:
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+def appwebp(iname: str, deps: UserAndDevice = Depends(get_user_and_device)) -> Response:
+    device = deps.device
     app = device.apps.get(iname)
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     if app.pushed:
-        webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
+        webp_path = db.get_device_webp_dir(device.id) / "pushed" / f"{app.iname}.webp"
     else:
-        webp_path = db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
+        webp_path = db.get_device_webp_dir(device.id) / f"{app.name}-{app.iname}.webp"
     if webp_path.exists() and webp_path.stat().st_size > 0:
         return send_image(webp_path, device, app)
     else:
@@ -2218,17 +2188,11 @@ def appwebp(
 @router.post("/{device_id}/{iname}/schema_handler/{handler}", name="schema_handler")
 async def schema_handler(
     request: Request,
-    device_id: DeviceID,
     iname: str,
     handler: str,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    deps: UserAndDevice = Depends(get_user_and_device),
 ) -> Response:
-    user = db.get_user_by_device_id(db_conn, device_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    device = deps.device
     app = device.apps.get(iname)
     if not app or not app.path:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
