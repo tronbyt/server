@@ -474,62 +474,77 @@ async def receiver(
                     )
                     continue
 
-                device = user.devices.get(device_id)
-                if not device:
-                    logger.warning(
-                        f"[{device_id}] Device not found for user, cannot process message."
-                    )
-                    continue
+                try:
+                    with db.db_transaction(db_conn) as cursor:
+                        db.update_device_field(
+                            cursor,
+                            user.username,
+                            device_id,
+                            "last_seen",
+                            datetime.now(timezone.utc).isoformat(),
+                        )
+                        db.update_device_field(
+                            cursor,
+                            user.username,
+                            device_id,
+                            "info.protocol_type",
+                            ProtocolType.WS.value,
+                        )
 
-                device.last_seen = datetime.now(timezone.utc)
-                device.info.protocol_type = ProtocolType.WS
+                        # Fetch the ACK object for the CURRENTLY active connection
+                        ack = await connection_manager.get_ack(device_id)
+                        if not ack:
+                            logger.warning(
+                                f"[{device_id}] Received message but no active connection found, ignoring."
+                            )
+                            # Still save the last_seen update
+                            return  # Exit the 'with' block, committing changes
 
-                # Fetch the ACK object for the CURRENTLY active connection
-                ack = await connection_manager.get_ack(device_id)
-                if not ack:
-                    logger.warning(
-                        f"[{device_id}] Received message but no active connection found, ignoring."
-                    )
-                    # Still save the last_seen update
-                    db.save_user(db_conn, user)
-                    continue
-
-                if isinstance(parsed_message, QueuedMessage):
-                    logger.debug(
-                        f"[{device_id}] Image queued (seq: {parsed_message.queued})"
-                    )
-                    ack.mark_queued(parsed_message.queued)
-                elif isinstance(parsed_message, DisplayingMessage):
-                    logger.debug(
-                        f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
-                    )
-                    ack.mark_displaying(parsed_message.displaying)
-                elif isinstance(parsed_message, DisplayingStatusMessage):
-                    logger.debug(
-                        f"[{device_id}] Image displaying (seq: {parsed_message.counter})"
-                    )
-                    ack.mark_displaying(parsed_message.counter)
-                elif isinstance(parsed_message, ClientInfoMessage):
-                    logger.debug(
-                        f"[{device_id}] Received ClientInfoMessage: {parsed_message.client_info.model_dump_json()}"
-                    )
-                    client_info = parsed_message.client_info
-                    if client_info.firmware_version is not None:
-                        device.info.firmware_version = client_info.firmware_version
-                    if client_info.firmware_type is not None:
-                        device.info.firmware_type = client_info.firmware_type
-                    if client_info.protocol_version is not None:
-                        device.info.protocol_version = client_info.protocol_version
-                    if client_info.mac_address is not None:
-                        device.info.mac_address = client_info.mac_address
-                    logger.info(
-                        f"[{device_id}] Updated device info: {device.info.model_dump_json()}"
-                    )
-                else:
-                    # This should not happen if the models cover all cases
-                    logger.warning(f"[{device_id}] Unhandled message format: {message}")
-
-                db.save_user(db_conn, user)
+                        if isinstance(parsed_message, QueuedMessage):
+                            logger.debug(
+                                f"[{device_id}] Image queued (seq: {parsed_message.queued})"
+                            )
+                            ack.mark_queued(parsed_message.queued)
+                        elif isinstance(parsed_message, DisplayingMessage):
+                            logger.debug(
+                                f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
+                            )
+                            ack.mark_displaying(parsed_message.displaying)
+                        elif isinstance(parsed_message, DisplayingStatusMessage):
+                            logger.debug(
+                                f"[{device_id}] Image displaying (seq: {parsed_message.counter})"
+                            )
+                            ack.mark_displaying(parsed_message.counter)
+                        elif isinstance(parsed_message, ClientInfoMessage):
+                            logger.debug(
+                                f"[{device_id}] Received ClientInfoMessage: {parsed_message.client_info.model_dump_json()}"
+                            )
+                            client_info = parsed_message.client_info
+                            info_updates = {
+                                "firmware_version": client_info.firmware_version,
+                                "firmware_type": client_info.firmware_type,
+                                "protocol_version": client_info.protocol_version,
+                                "mac_address": client_info.mac_address,
+                            }
+                            for field, value in info_updates.items():
+                                if value is not None:
+                                    db.update_device_field(
+                                        cursor,
+                                        user.username,
+                                        device_id,
+                                        f"info.{field}",
+                                        value,
+                                    )
+                            logger.info(
+                                f"[{device_id}] Updated device info via websocket"
+                            )
+                        else:
+                            # This should not happen if the models cover all cases
+                            logger.warning(
+                                f"[{device_id}] Unhandled message format: {message}"
+                            )
+                except sqlite3.Error as e:
+                    logger.error(f"Database error in websocket receiver: {e}")
 
             except (ValueError, ValidationError) as e:
                 logger.warning(f"[{device_id}] Failed to parse device message: {e}")
