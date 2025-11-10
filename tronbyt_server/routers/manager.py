@@ -1313,7 +1313,7 @@ def toggle_enabled(
             db.update_app_field(
                 cursor,
                 user.username,
-                device.id,
+                device_and_app.device.id,
                 app.iname,
                 "enabled",
                 new_enabled_status,
