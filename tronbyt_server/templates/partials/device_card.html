@@ -28,7 +28,27 @@
                 src="{{url_for('currentwebp', device_id=device.id) }}"
                 alt="{{ _('Preview') }}">
             </div>
-            <br>{{ _('Currently Displaying App') }}
+            <div>{{ _('Currently Displaying App') }}</div>
+            <div class="device-info-box">
+              {% if device.info.firmware_version %}
+                <div>{{ _('Firmware Version:') }} {{ device.info.firmware_version }}</div>
+              {% endif %}
+              {% if device.info.firmware_type %}
+                <div>{{ _('Firmware Type:') }} {{ device.info.firmware_type }}</div>
+              {% endif %}
+              {% if device.info.protocol_version %}
+                <div>{{ _('Protocol Version:') }} {{ device.info.protocol_version }}</div>
+              {% endif %}
+              {% if device.info.mac_address %}
+                <div>{{ _('MAC Address:') }} {{ device.info.mac_address }}</div>
+              {% endif %}
+              {% if device.info.protocol_type %}
+                <div>{{ _('Protocol Type:') }} {{ device.info.protocol_type.value }}</div>
+              {% endif %}
+              {% if device.last_seen %}
+                <div>{{ _('Last Seen:') }} {{ device.last_seen.astimezone().strftime('%Y-%m-%d %H:%M:%S') }}</div>
+              {% endif %}
+            </div>
           </td>
         </tr>
         <tr>
