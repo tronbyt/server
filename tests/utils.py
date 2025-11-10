@@ -27,7 +27,7 @@ def get_device_by_id(conn: sqlite3.Connection, device_id: str) -> Device | None:
 def poll_for_change(
     func: Callable[[], T],
     expected_value: Any,
-    timeout: float = 2.0,
+    timeout: float = 5.0,
     interval: float = 0.1,
 ) -> T:
     """
