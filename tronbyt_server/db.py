@@ -6,6 +6,7 @@ import secrets
 import shutil
 import sqlite3
 import string
+import traceback
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -553,6 +554,11 @@ def auth_user(db: sqlite3.Connection, username: str, password: str) -> User | No
 
 def save_user(db: sqlite3.Connection, user: User, new_user: bool = False) -> bool:
     """Save a user to the database."""
+
+    # Log stack trace if in debug mode
+    # if get_settings().PRODUCTION != "1":
+    logger.debug("save_user called from:\n%s", "".join(traceback.format_stack()))
+
     if not user.username:
         logger.warning("no username in user")
         return False
