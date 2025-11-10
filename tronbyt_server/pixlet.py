@@ -91,6 +91,13 @@ def load_pixlet_library() -> None:
             ("status", ctypes.c_int),
         ]
 
+    class CallHandlerReturn(ctypes.Structure):
+        _fields_ = [
+            ("data", ctypes.c_void_p),
+            ("status", ctypes.c_int),
+            ("error", ctypes.c_void_p),
+        ]
+
     pixlet_render_app.restype = RenderAppReturn
 
     global pixlet_get_schema
@@ -106,7 +113,7 @@ def load_pixlet_library() -> None:
         ctypes.c_char_p,
         ctypes.c_char_p,
     ]
-    pixlet_call_handler_with_config.restype = StringReturn
+    pixlet_call_handler_with_config.restype = CallHandlerReturn
 
     global pixlet_free_bytes
     pixlet_free_bytes = pixlet_library.free_bytes
@@ -214,6 +221,9 @@ def call_handler_with_config(
         ctypes.c_char_p(parameter.encode("utf-8")),
     )
     res = c_char_p_to_string(ret.data)
+    error = c_char_p_to_string(ret.error)
+    if error:
+        logger.error(f"Error while calling handler {handler} for {path}: {error}")
     if ret.status != 0:
         return None
     return res
