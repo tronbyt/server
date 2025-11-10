@@ -17,3 +17,4 @@ docker-compose*.yaml
 tests
 users
 __pycache__
+.claude
