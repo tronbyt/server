@@ -13,7 +13,8 @@ from fastapi_login.exceptions import InvalidCredentialsException
 
 from tronbyt_server import db
 from tronbyt_server.config import Settings, get_settings
-from tronbyt_server.models import Device, User, DeviceID
+from tronbyt_server.models import App, Device, User, DeviceID
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,34 @@ class UserAndDevice:
         """Initialize the UserAndDevice object."""
         self.user = user
         self.device = device
+
+
+class DeviceAndApp:
+    """Container for device and app objects."""
+
+    def __init__(self, device: Device, app: App):
+        """Initialize the DeviceAndApp object."""
+        self.device = device
+        self.app = app
+
+
+def get_device_and_app(
+    device_id: DeviceID,
+    iname: str,
+    user: User = Depends(manager),
+) -> DeviceAndApp:
+    """Get a device and app from a device ID and app iname."""
+    device = user.devices.get(device_id)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
+    app = device.apps.get(iname)
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
+        )
+    return DeviceAndApp(device, app)
 
 
 def get_user_and_device(

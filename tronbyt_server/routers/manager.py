@@ -34,7 +34,9 @@ from werkzeug.utils import secure_filename
 from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import (
+    DeviceAndApp,
     get_db,
+    get_device_and_app,
     get_user_and_device,
     manager,
     UserAndDevice,
@@ -988,18 +990,13 @@ def deleteupload(
 
 @router.post("/{device_id}/{iname}/delete")
 def deleteapp(
-    device_id: DeviceID,
-    iname: str,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
-
-    app = device.apps.get(iname)
-    if not app:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
+    device = device_and_app.device
+    app = device_and_app.app
+    iname = app.iname
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device.id) / "pushed" / f"{app.name}.webp"
@@ -1017,19 +1014,12 @@ def deleteapp(
 @router.post("/{device_id}/{iname}/toggle_pin")
 def toggle_pin(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        return Response(
-            status_code=status.HTTP_404_NOT_FOUND, content="Device not found"
-        )
-
-    if iname not in device.apps:
-        return Response(status_code=status.HTTP_404_NOT_FOUND, content="App not found")
+    device = device_and_app.device
+    iname = device_and_app.app.iname
 
     # Check if this app is currently pinned
     if getattr(device, "pinned_app", None) == iname:
@@ -1046,25 +1036,16 @@ def toggle_pin(
 @router.post("/{device_id}/{iname}/duplicate")
 def duplicate_app(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Duplicate an existing app on a device."""
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
-        )
-
-    if iname not in device.apps:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
-        )
+    device = device_and_app.device
+    device_id = device.id
 
     # Get the original app
-    original_app = device.apps[iname]
+    original_app = device_and_app.app
 
     # Generate a unique iname for the duplicate
     max_attempts = 10
@@ -1146,14 +1127,13 @@ def duplicate_app(
 
 @router.get("/{device_id}/{iname}/updateapp")
 def updateapp(
-    request: Request, device_id: DeviceID, iname: str, user: User = Depends(manager)
+    request: Request,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
+    user: User = Depends(manager),
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
-    app = device.apps.get(iname)
-    if not app:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
+    device = device_and_app.device
+    app = device_and_app.app
+    device_id = device.id
 
     # Set default dates if not already set
     today = date.today()
@@ -1211,20 +1191,14 @@ class AppUpdateFormData(BaseModel):
 @router.post("/{device_id}/{iname}/updateapp")
 def updateapp_post(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
     form_data: Annotated[AppUpdateFormData, Form()],
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Handle app update."""
-
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
-    app = device.apps.get(iname)
-    if not app:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
+    device = device_and_app.device
+    app = device_and_app.app
 
     recurrence_pattern = RecurrencePattern()
     if form_data.use_custom_recurrence:
@@ -1266,7 +1240,7 @@ def updateapp_post(
             "manager/updateapp.html",
             {
                 "app": temp_app,
-                "device_id": device_id,
+                "device_id": device.id,
                 "config": json.dumps(temp_app.config, indent=4),
                 "user": user,
             },
@@ -1284,17 +1258,11 @@ def updateapp_post(
 @router.post("/{device_id}/{iname}/toggle_enabled")
 def toggle_enabled(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
-    app = device.apps.get(iname)
-    if not app:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
+    app = device_and_app.app
 
     app.enabled = not app.enabled
     db.save_user(db_conn, user)
@@ -1305,9 +1273,8 @@ def toggle_enabled(
 @router.post("/{device_id}/{iname}/moveapp")
 def moveapp(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
     direction: str = Query(...),
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
@@ -1315,9 +1282,8 @@ def moveapp(
         flash(request, _("Invalid direction."))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
+    device = device_and_app.device
+    iname = device_and_app.app.iname
 
     apps_list = sorted(device.apps.values(), key=lambda x: x.order)
     current_idx = -1
@@ -1369,19 +1335,16 @@ def moveapp(
 @router.get("/{device_id}/{iname}/configapp")
 def configapp(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
     delete_on_cancel: bool = False,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
-    app = device.apps.get(iname)
+    device = device_and_app.device
+    app = device_and_app.app
     if not app or not app.path:
         flash(request, _("Error saving app, please try again."))
         return RedirectResponse(
-            url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+            url=f"/{device.id}/addapp", status_code=status.HTTP_302_FOUND
         )
 
     schema_json = get_schema(Path(app.path))
@@ -1403,16 +1366,14 @@ def configapp(
 @router.post("/{device_id}/{iname}/configapp")
 async def configapp_post(
     request: Request,
-    device_id: DeviceID,
-    iname: str,
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     config: Any = Body(...),
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
-    app = device.apps.get(iname)
+    device = device_and_app.device
+    app = device_and_app.app
+    device_id = device.id
     if not app or not app.path:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
@@ -1442,20 +1403,13 @@ async def configapp_post(
 
 @router.get("/{device_id}/{iname}/preview")
 def preview(
-    request: Request,
-    device_id: DeviceID,
-    iname: str,
-    user: User = Depends(manager),
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
     db_conn: sqlite3.Connection = Depends(get_db),
     config: str = "{}",
 ) -> Response:
-    device = user.devices.get(device_id)
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
-        )
+    device = device_and_app.device
+    app = device_and_app.app
 
-    app = device.apps.get(iname)
     if not app or not app.path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
