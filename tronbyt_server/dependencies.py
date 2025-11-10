@@ -228,7 +228,9 @@ def auth_exception_handler(
                 )
 
                 # Redirect to home page with cookie set
-                response = RedirectResponse(request.url_for("index"), status_code=302)
+                response = RedirectResponse(
+                    request.url_for("index"), status_code=status.HTTP_302_FOUND
+                )
                 response.set_cookie(
                     key=manager.cookie_name,
                     value=access_token,

@@ -1451,20 +1451,28 @@ def preview(
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
 
     app = device.apps.get(iname)
     if not app or not app.path:
-        raise HTTPException(status_code=404, detail="App not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
+        )
 
     try:
         config_data = json.loads(config)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid config JSON")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid config JSON"
+        )
 
     app_path = Path(app.path)
     if not app_path.exists():
-        raise HTTPException(status_code=404, detail="App path not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App path not found"
+        )
 
     try:
         data = render_app(
@@ -1498,7 +1506,7 @@ def adminindex(
 ) -> Response:
     """Render the admin index page."""
     if user.username != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     users = db.get_all_users(db_conn)
     return templates.TemplateResponse(
         request, "manager/adminindex.html", {"users": users, "user": user}
@@ -1513,7 +1521,7 @@ def deleteuser(
 ) -> Response:
     """Handle user deletion by an admin."""
     if user.username != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     if username != "admin":
         db.delete_user(db_conn, username)
     return RedirectResponse(url="/adminindex", status_code=status.HTTP_302_FOUND)
@@ -1525,7 +1533,9 @@ def generate_firmware(
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
 
     firmware_version = db.get_firmware_version()
     return templates.TemplateResponse(
@@ -1546,7 +1556,9 @@ def generate_firmware_post(
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
 
     try:
         firmware_data = firmware_utils.generate_firmware(
@@ -1624,7 +1636,7 @@ def set_system_repo(
 ) -> Response:
     """Set the system app repository (admin only)."""
     if user.username != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     logger.info(f"Setting system app repo to {app_repo_url}")
     if not app_repo_url:
         app_repo_url = settings.SYSTEM_APPS_REPO
@@ -1648,7 +1660,7 @@ def refresh_system_repo(
 ) -> Response:
     """Refresh the system app repository (admin only)."""
     if user.username != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     # Directly update the system repo - it handles git pull internally
     system_apps.update_system_repo(db.get_data_dir())
     flash(request, _("System repo updated successfully"))
@@ -1802,7 +1814,7 @@ def unmark_app_broken(
 def update_firmware(request: Request, user: User = Depends(manager)) -> Response:
     """Update firmware binaries (admin only)."""
     if user.username != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     try:
         result = firmware_utils.update_firmware_binaries(db.get_data_dir())
         if result["success"]:
@@ -1854,7 +1866,9 @@ def export_device_config(
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+        )
     device_json = json.dumps(device.model_dump(mode="json"), indent=4)
 
     # Create filename with device name if available
