@@ -362,8 +362,15 @@ def next_app_logic(
         # pinned app is set as the app iname in the device object, we need to clear it.
         if getattr(device, "pinned_app", None) == app.iname:
             logger.info(f"Unpinning app {app.iname} because fail or empty render")
-            device.pinned_app = ""
-            db.save_user(db_conn, user)
+            try:
+                with db.db_transaction(db_conn) as cursor:
+                    db.update_device_field(
+                        cursor, user.username, device.id, "pinned_app", ""
+                    )
+                # Keep the in-memory object in sync
+                device.pinned_app = ""
+            except sqlite3.Error as e:
+                logger.error(f"Failed to unpin app for device {device.id}: {e}")
 
         # Pass next_index directly since it already points to the next app
         return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
@@ -376,9 +383,16 @@ def next_app_logic(
     if webp_path.exists() and webp_path.stat().st_size > 0:
         # App rendered successfully - display it and save the index
         response = send_image(webp_path, device, app)
-        # Save the next_index as the new last_app_index
-        device.last_app_index = next_index
-        db.save_user(db_conn, user)
+        # Atomically save the next_index as the new last_app_index
+        try:
+            with db.db_transaction(db_conn) as cursor:
+                db.update_device_field(
+                    cursor, user.username, device.id, "last_app_index", next_index
+                )
+            # Keep the in-memory object in sync for the current request
+            device.last_app_index = next_index
+        except sqlite3.Error as e:
+            logger.error(f"Failed to update last_app_index for device {device.id}: {e}")
         return response
 
     # WebP file doesn't exist or is empty - skip this app
@@ -578,8 +592,20 @@ async def update_brightness(
             content="Brightness must be between 0 and 5",
         )
 
-    device.brightness = db.ui_scale_to_percent(brightness)
-    db.save_user(db_conn, user)
+    percent_brightness = db.ui_scale_to_percent(brightness)
+    try:
+        with db.db_transaction(db_conn) as cursor:
+            db.update_device_field(
+                cursor, user.username, device.id, "brightness", percent_brightness
+            )
+        device.brightness = percent_brightness  # keep in-memory model updated
+    except sqlite3.Error as e:
+        logger.error(f"Failed to update brightness for device {device.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error",
+        )
+
     new_brightness_percent = db.get_device_brightness_percent(device)
 
     # Send brightness command directly to active websocket connection (if any)
@@ -615,8 +641,18 @@ def update_interval(
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    device.default_interval = interval
-    db.save_user(db_conn, user)
+    try:
+        with db.db_transaction(db_conn) as cursor:
+            db.update_device_field(
+                cursor, user.username, device.id, "default_interval", interval
+            )
+        device.default_interval = interval
+    except sqlite3.Error as e:
+        logger.error(f"Failed to update interval for device {device.id}: {e}")
+        return Response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content="Database error",
+        )
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -1031,15 +1067,22 @@ def toggle_pin(
     if iname not in device.apps:
         return Response(status_code=status.HTTP_404_NOT_FOUND, content="App not found")
 
-    # Check if this app is currently pinned
-    if getattr(device, "pinned_app", None) == iname:
-        device.pinned_app = ""
-        flash(request, _("App unpinned."))
-    else:
-        device.pinned_app = iname
-        flash(request, _("App pinned."))
+    new_pinned_app = "" if getattr(device, "pinned_app", None) == iname else iname
 
-    db.save_user(db_conn, user)
+    try:
+        with db.db_transaction(db_conn) as cursor:
+            db.update_device_field(
+                cursor, user.username, device.id, "pinned_app", new_pinned_app
+            )
+        device.pinned_app = new_pinned_app
+        if new_pinned_app:
+            flash(request, _("App pinned."))
+        else:
+            flash(request, _("App unpinned."))
+    except sqlite3.Error as e:
+        logger.error(f"Failed to toggle pin for device {device.id}: {e}")
+        flash(request, _("Error updating pin status."), "error")
+
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
@@ -1296,9 +1339,23 @@ def toggle_enabled(
     if not app:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
-    app.enabled = not app.enabled
-    db.save_user(db_conn, user)
-    flash(request, _("Changes saved."))
+    new_enabled_status = not app.enabled
+    try:
+        with db.db_transaction(db_conn) as cursor:
+            db.update_app_field(
+                cursor,
+                user.username,
+                device.id,
+                app.iname,
+                "enabled",
+                new_enabled_status,
+            )
+        app.enabled = new_enabled_status
+        flash(request, _("Changes saved."))
+    except sqlite3.Error as e:
+        logger.error(f"Failed to toggle enabled for app {app.iname}: {e}")
+        flash(request, _("Error saving changes."), "error")
+
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
@@ -2108,9 +2165,30 @@ def next_app(
     user = deps.user
     device = deps.device
 
-    device.last_seen = datetime.now(timezone.utc)
-    device.info.protocol_type = ProtocolType.HTTP
-    db.save_user(db_conn, user)
+    now = datetime.now(timezone.utc)
+    try:
+        with db.db_transaction(db_conn) as cursor:
+            db.update_device_field(
+                cursor,
+                user.username,
+                device.id,
+                "last_seen",
+                now.isoformat(),
+            )
+            db.update_device_field(
+                cursor,
+                user.username,
+                device.id,
+                "info.protocol_type",
+                ProtocolType.HTTP.value,
+            )
+        # Keep in-memory object in sync
+        device.last_seen = now
+        device.info.protocol_type = ProtocolType.HTTP
+    except sqlite3.Error as e:
+        logger.error(
+            f"Failed to update device {device.id} last_seen and protocol_type: {e}"
+        )
 
     return next_app_logic(db_conn, user, device)
 

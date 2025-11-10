@@ -6,9 +6,10 @@ import secrets
 import shutil
 import sqlite3
 import string
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Generator
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -24,6 +25,20 @@ from tronbyt_server.config import get_settings
 from tronbyt_server.models import App, AppMetadata, Device, User, Weekday
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def db_transaction(
+    db_conn: sqlite3.Connection,
+) -> Generator[sqlite3.Cursor, None, None]:
+    """A context manager for database transactions."""
+    cursor = db_conn.cursor()
+    try:
+        yield cursor
+        db_conn.commit()
+    except sqlite3.Error:
+        db_conn.rollback()
+        raise
 
 
 def get_db() -> sqlite3.Connection:
@@ -971,6 +986,55 @@ def get_device_by_name(user: User, name: str) -> Device | None:
     return None
 
 
+def _update_json_field(
+    cursor: sqlite3.Cursor,
+    username: str,
+    path: str,
+    value: Any,
+) -> None:
+    """
+    Update a single field in the json_data using the provided cursor.
+    This function does NOT commit the transaction.
+    """
+    cursor.execute(
+        """
+        UPDATE json_data
+        SET data = json_set(data, ?, ?)
+        WHERE username = ?
+        """,
+        (path, value, username),
+    )
+
+
+def update_device_field(
+    cursor: sqlite3.Cursor, username: str, device_id: str, field: str, value: Any
+) -> None:
+    """
+    Update a single field for a device using the provided cursor.
+    This function does NOT commit the transaction.
+    """
+    path = f"$.devices.{device_id}.{field}"
+    _update_json_field(cursor, username, path, value)
+    logger.debug(f"Queued update for {field} for device {device_id}")
+
+
+def update_app_field(
+    cursor: sqlite3.Cursor,
+    username: str,
+    device_id: str,
+    iname: str,
+    field: str,
+    value: Any,
+) -> None:
+    """
+    Update a single field for an app using the provided cursor.
+    This function does NOT commit the transaction.
+    """
+    path = f"$.devices.{device_id}.apps.{iname}.{field}"
+    _update_json_field(cursor, username, path, value)
+    logger.debug(f"Queued update for {field} for app {iname} on device {device_id}")
+
+
 def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
     """Get the WebP directory for a device."""
     path = get_data_dir() / "webp" / secure_filename(device_id)
@@ -981,19 +1045,45 @@ def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
 
 def get_device_by_id(db: sqlite3.Connection, device_id: str) -> Device | None:
     """Get a device by ID."""
-    for user in get_all_users(db):
-        device = user.devices.get(device_id)
-        if device:
-            return device
+    cursor = db.cursor()
+    cursor.execute(
+        """
+        SELECT T2.value
+        FROM json_data AS T1, json_each(T1.data, '$.devices') AS T2
+        WHERE T2.key = ?
+        """,
+        (device_id,),
+    )
+    row = cursor.fetchone()
+    if row:
+        try:
+            device_data = json.loads(row[0])
+            return Device.model_validate(device_data)
+        except (json.JSONDecodeError, ValidationError) as e:
+            logger.error(f"Error processing device data for device {device_id}: {e}")
+            return None
     return None
 
 
 def get_user_by_device_id(db: sqlite3.Connection, device_id: str) -> User | None:
     """Get a user by device ID."""
-    for user in get_all_users(db):
-        device = user.devices.get(device_id)
-        if device:
-            return user
+    cursor = db.cursor()
+    cursor.execute(
+        """
+        SELECT T1.data
+        FROM json_data AS T1, json_each(T1.data, '$.devices') AS T2
+        WHERE T2.key = ?
+        """,
+        (device_id,),
+    )
+    row = cursor.fetchone()
+    if row:
+        try:
+            user_data = json.loads(row[0])
+            return User.model_validate(user_data)
+        except (json.JSONDecodeError, ValidationError) as e:
+            logger.error(f"Error processing user data for device {device_id}: {e}")
+            return None
     return None
 
 
@@ -1066,25 +1156,37 @@ def add_pushed_app(
         )
         return
 
-    device.apps[installation_id] = app
-    save_user(db, user)
+    save_app(db, device_id, app)
 
 
 def save_app(db: sqlite3.Connection, device_id: str, app: App) -> bool:
-    """Save an app."""
+    """Save an app atomically using json_set."""
+    if not app.iname:
+        return True  # Nothing to save if iname is missing
+
+    user = get_user_by_device_id(db, device_id)
+    if not user:
+        logger.error(f"Cannot save app: user not found for device {device_id}")
+        return False
+
     try:
-        user = get_user_by_device_id(db, device_id)
-        if not user:
-            return False
-        if not app.iname:
-            return True
-        device = user.devices.get(device_id)
-        if not device:
-            return False
-        device.apps[app.iname] = app
-        save_user(db, user)
+        with db_transaction(db) as cursor:
+            path = f"$.devices.{device_id}.apps.{app.iname}"
+            app_json = app.model_dump_json()
+
+            cursor = db.cursor()
+            cursor.execute(
+                """
+                UPDATE json_data
+                SET data = json_set(data, ?, json(?))
+                WHERE username = ?
+                """,
+                (path, app_json, user.username),
+            )
+        logger.debug(f"Atomically saved app {app.iname} for user {user.username}")
         return True
-    except Exception:
+    except sqlite3.Error as e:
+        logger.error(f"Could not save app {app.iname} for user {user.username}: {e}")
         return False
 
 
