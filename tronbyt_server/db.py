@@ -1191,12 +1191,24 @@ def save_app(db: sqlite3.Connection, device_id: str, app: App) -> bool:
 
 
 def save_render_messages(
-    db: sqlite3.Connection, device: Device, app: App, messages: list[str]
+    db: sqlite3.Connection, user: User, device: Device, app: App, messages: list[str]
 ) -> None:
     """Save render messages from pixlet."""
     app.render_messages = messages
-    if not save_app(db, device.id, app):
-        logger.error("Error saving render messages: Failed to save app.")
+    try:
+        with db_transaction(db) as cursor:
+            update_app_field(
+                cursor,
+                user.username,
+                device.id,
+                app.iname,
+                "render_messages",
+                messages,
+            )
+    except sqlite3.Error as e:
+        logger.error(
+            f"Could not save render messages for app {app.iname} for user {user.username}: {e}"
+        )
 
 
 def vacuum(db: sqlite3.Connection) -> None:

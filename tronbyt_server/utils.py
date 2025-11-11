@@ -46,6 +46,7 @@ def render_app(
     webp_path: Path | None,
     device: Device,
     app: App | None,
+    user: User,
 ) -> bytes | None:
     """Renders a pixlet app to a webp image."""
     config_data = config.copy()
@@ -78,7 +79,7 @@ def render_app(
         logger.error("Error running pixlet render")
         return None
     if messages and app is not None:
-        db.save_render_messages(db_conn, device, app, messages)
+        db.save_render_messages(db_conn, user, device, app, messages)
 
     if len(data) > 0 and webp_path:
         webp_path.write_bytes(data)
@@ -162,16 +163,45 @@ def possibly_render(
         device = user.devices[device_id]
         config = app.config.copy()
         add_default_config(config, device)
-        image = render_app(db_conn, app_path, config, webp_path, device, app)
+        image = render_app(db_conn, app_path, config, webp_path, device, app, user)
         if image is None:
             logger.error(f"Error rendering {app_basename}")
-        app.empty_last_render = len(image) == 0 if image is not None else False
-        # set the devices pinned_app if autopin is true.
-        if app.autopin and image:
-            device.pinned_app = app.iname
-        app.last_render = now
-        device.apps[app.iname] = app
-        db.save_user(db_conn, user)
+
+        empty_last_render = len(image) == 0 if image is not None else False
+        app.empty_last_render = empty_last_render
+
+        last_render = now
+        app.last_render = last_render
+
+        try:
+            with db.db_transaction(db_conn) as cursor:
+                db.update_app_field(
+                    cursor,
+                    user.username,
+                    device.id,
+                    app.iname,
+                    "empty_last_render",
+                    empty_last_render,
+                )
+                db.update_app_field(
+                    cursor,
+                    user.username,
+                    device.id,
+                    app.iname,
+                    "last_render",
+                    last_render,
+                )
+                # set the devices pinned_app if autopin is true.
+                if app.autopin and image:
+                    device.pinned_app = app.iname
+                    db.update_device_field(
+                        cursor, user.username, device.id, "pinned_app", app.iname
+                    )
+        except sqlite3.Error as e:
+            logger.error(
+                f"Database error during possibly_render for {app_basename}: {e}"
+            )
+            return False
 
         return image is not None
 
