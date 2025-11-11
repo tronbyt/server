@@ -211,7 +211,7 @@ See https://uvicorn.dev/settings for an exhaustive list of settings for Uvicorn.
 
 By default, Tronbyt Server uses an in-memory cache for HTTP requests made by applets. This requires no setup,
 but also means that the cache will start empty every time you start the container. To persist the cache across
-containe restarts, configure Redis as in the [docker-compose.redis.yaml](docker-compose.redis.yaml) example.
+containe restarts, configure Redis as in the [docker-compose.redis.yaml](docker-compose.redis.yaml) example. Test.
 
 ## Development
 
