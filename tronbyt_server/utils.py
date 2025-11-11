@@ -171,7 +171,27 @@ def possibly_render(
             device.pinned_app = app.iname
         app.last_render = now
         device.apps[app.iname] = app
-        db.save_user(db_conn, user)
+
+        # Use granular field updates to avoid overwriting concurrent changes from web interface
+        try:
+            with db.db_transaction(db_conn) as cursor:
+                db.update_app_field(
+                    cursor, user.username, device_id, app.iname, "last_render", now
+                )
+                db.update_app_field(
+                    cursor,
+                    user.username,
+                    device_id,
+                    app.iname,
+                    "empty_last_render",
+                    app.empty_last_render,
+                )
+                if app.autopin and image:
+                    db.update_device_field(
+                        cursor, user.username, device_id, "pinned_app", app.iname
+                    )
+        except Exception as e:
+            logger.error(f"Failed to update app fields for {app_basename}: {e}")
 
         return image is not None
 
