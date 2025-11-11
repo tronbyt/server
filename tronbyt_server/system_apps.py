@@ -296,18 +296,15 @@ def update_system_repo(base_path: Path) -> None:
     if repo:
         logger.info(f"{system_apps_path} git repo found, updating…")
         try:
-            # Stash local changes to broken_apps.txt if any
-            stashed = False
-            if "broken_apps.txt" in repo.untracked_files or repo.is_dirty(
-                path="broken_apps.txt"
-            ):
+            # Discard any local changes (they shouldn't exist)
+            if repo.is_dirty() or repo.untracked_files:
                 logger.info(
-                    "Local changes detected in broken_apps.txt, stashing before pull"
+                    "Local changes detected in repository, resetting to clean state"
                 )
-                repo.git.stash(
-                    "push", "-m", "Auto-stash broken_apps.txt", "broken_apps.txt"
-                )
-                stashed = True
+                # Remove untracked files
+                repo.git.clean("-fd")
+                # Reset any modified files
+                repo.git.reset("--hard")
 
             remote = get_primary_remote(repo)
             if remote:
@@ -317,16 +314,6 @@ def update_system_repo(base_path: Path) -> None:
                 logger.warning(
                     f"No remote found to pull from for repo at {system_apps_path}"
                 )
-
-            if stashed:
-                logger.info("Re-applying stashed broken_apps.txt changes")
-                try:
-                    repo.git.stash("pop")
-                    logger.info("Successfully re-applied local broken_apps.txt changes")
-                except GitCommandError:
-                    logger.warning(
-                        "Failed to re-apply stashed changes, they remain in stash"
-                    )
         except (GitCommandError, AttributeError, IndexError) as e:
             logger.error(f"Error updating repository: {e}")
     else:
@@ -352,8 +339,15 @@ def update_system_repo(base_path: Path) -> None:
             logger.info("Repo Cloned")
         except GitCommandError as e:
             logger.error(f"Error Cloning Repo: {e}")
+            return  # Exit early if clone failed
 
-    generate_apps_json(base_path)
+    # Only generate apps.json if the repo exists
+    if system_apps_path.exists() and (system_apps_path / ".git").exists():
+        generate_apps_json(base_path)
+    else:
+        logger.error(
+            f"Cannot generate apps.json: {system_apps_path} does not contain a valid git repository"
+        )
 
 
 if __name__ == "__main__":

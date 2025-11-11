@@ -977,6 +977,7 @@ async def uploadapp_post(
             default_interval=15,
         ),
         None,
+        user,
     )
 
     return RedirectResponse(
@@ -1447,6 +1448,7 @@ async def configapp_post(
         webp_path,
         device,
         app,
+        user,
     )
     if image is not None:
         app.enabled = True
@@ -1461,6 +1463,7 @@ async def configapp_post(
 @router.get("/{device_id}/{iname}/preview")
 def preview(
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
+    user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
     config: str = "{}",
 ) -> Response:
@@ -1493,6 +1496,7 @@ def preview(
             webp_path=None,
             device=device,
             app=app,
+            user=user,
         )
         if data is None:
             raise HTTPException(
