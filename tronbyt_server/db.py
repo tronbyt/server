@@ -9,7 +9,7 @@ import string
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal, Generator
+from typing import Any, Generator, Literal
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
@@ -1191,12 +1191,30 @@ def save_app(db: sqlite3.Connection, device_id: str, app: App) -> bool:
 
 
 def save_render_messages(
-    db: sqlite3.Connection, device: Device, app: App, messages: list[str]
+    db: sqlite3.Connection, user: User, device: Device, app: App, messages: list[str]
 ) -> None:
     """Save render messages from pixlet."""
     app.render_messages = messages
-    if not save_app(db, device.id, app):
-        logger.error("Error saving render messages: Failed to save app.")
+    try:
+        with db_transaction(db) as cursor:
+            path = f"$.devices.{device.id}.apps.{json.dumps(app.iname)}.render_messages"
+            sql = """
+                UPDATE json_data
+                SET data = json_set(data, ?, json(?))
+                WHERE username = ?
+            """
+            params = (path, json.dumps(messages), user.username)
+            cursor.execute(sql, params)
+            logger.debug(
+                "Saved render_messages for app %s on device %s for user %s",
+                app.iname,
+                device.id,
+                user.username,
+            )
+    except sqlite3.Error as e:
+        logger.error(
+            f"Could not save render messages for app {app.iname} for user {user.username}: {e}"
+        )
 
 
 def vacuum(db: sqlite3.Connection) -> None:
