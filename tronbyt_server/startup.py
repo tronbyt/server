@@ -3,6 +3,7 @@
 import logging
 import shutil
 import sqlite3
+
 from datetime import datetime
 from pathlib import Path
 
@@ -94,9 +95,8 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
     # Initialize, migrate, and vacuum database
     try:
         (Path(settings.DB_FILE).parent).mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(settings.DB_FILE) as conn:
-            db.init_db(conn)
-            db.vacuum(conn)
+        with db.get_session() as session:
+            db.vacuum(session)
     except Exception as e:
         logger.error(f"Could not initialize or vacuum database: {e}", exc_info=True)
 

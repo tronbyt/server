@@ -1,6 +1,7 @@
-import sqlite3
 import time
 from typing import Any, Callable, TypeVar
+
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.models.device import Device
@@ -9,19 +10,19 @@ from tronbyt_server.models.user import User
 T = TypeVar("T")
 
 
-def get_testuser(conn: sqlite3.Connection) -> User:
-    user = db.get_user(conn, "testuser")
+def get_testuser(session: Session) -> User:
+    user = db.get_user(session, "testuser")
     if not user:
         raise Exception("testuser not found")
     return user
 
 
-def get_user_by_username(conn: sqlite3.Connection, username: str) -> User | None:
-    return db.get_user(conn, username)
+def get_user_by_username(session: Session, username: str) -> User | None:
+    return db.get_user(session, username)
 
 
-def get_device_by_id(conn: sqlite3.Connection, device_id: str) -> Device | None:
-    return db.get_device_by_id(conn, device_id)
+def get_device_by_id(session: Session, device_id: str) -> Device | None:
+    return db.get_device_by_id(session, device_id)
 
 
 def poll_for_change(

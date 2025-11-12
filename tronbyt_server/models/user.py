@@ -20,7 +20,7 @@ class User(BaseModel):
     username: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
     password: str
     email: str = ""
-    devices: dict[str, Device] = {}
+    devices: list[Device] = []
     api_key: str = ""
     theme_preference: ThemePreference = ThemePreference.SYSTEM
     system_repo_url: str = ""

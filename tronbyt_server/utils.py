@@ -3,7 +3,6 @@
 import logging
 import os
 import shutil
-import sqlite3
 import time
 from enum import Enum
 from pathlib import Path
@@ -13,6 +12,8 @@ from fastapi import Request, Response
 from fastapi.responses import FileResponse
 from fastapi_babel import _
 from git import FetchInfo, GitCommandError, Repo
+
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.flash import flash
@@ -40,7 +41,7 @@ def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]
 
 
 def render_app(
-    db_conn: sqlite3.Connection,
+    session: Session,
     app_path: Path,
     config: dict[str, Any],
     webp_path: Path | None,
@@ -79,7 +80,7 @@ def render_app(
         logger.error("Error running pixlet render")
         return None
     if messages and app is not None:
-        db.save_render_messages(db_conn, user, device, app, messages)
+        db.save_render_messages(session, user, device, app, messages)
 
     if len(data) > 0 and webp_path:
         webp_path.write_bytes(data)
@@ -140,7 +141,7 @@ def set_repo(
 
 
 def possibly_render(
-    db_conn: sqlite3.Connection,
+    session: Session,
     user: User,
     device_id: str,
     app: App,
@@ -160,10 +161,13 @@ def possibly_render(
 
     if now - app.last_render > app.uinterval * 60:
         logger.info(f"{app_basename} -- RENDERING")
-        device = user.devices[device_id]
+        device = next((d for d in user.devices if d.id == device_id), None)
+        if not device:
+            logger.error(f"Device {device_id} not found for user {user.username}")
+            return False
         config = app.config.copy()
         add_default_config(config, device)
-        image = render_app(db_conn, app_path, config, webp_path, device, app, user)
+        image = render_app(session, app_path, config, webp_path, device, app, user)
         if image is None:
             logger.error(f"Error rendering {app_basename}")
 
@@ -174,30 +178,12 @@ def possibly_render(
         app.last_render = last_render
 
         try:
-            with db.db_transaction(db_conn) as cursor:
-                db.update_app_field(
-                    cursor,
-                    user.username,
-                    device.id,
-                    app.iname,
-                    "empty_last_render",
-                    empty_last_render,
-                )
-                db.update_app_field(
-                    cursor,
-                    user.username,
-                    device.id,
-                    app.iname,
-                    "last_render",
-                    last_render,
-                )
-                # set the devices pinned_app if autopin is true.
-                if app.autopin and image:
-                    device.pinned_app = app.iname
-                    db.update_device_field(
-                        cursor, user.username, device.id, "pinned_app", app.iname
-                    )
-        except sqlite3.Error as e:
+            db.save_app(session, device.id, app)  # Save app changes
+            # set the devices pinned_app if autopin is true.
+            if app.autopin and image:
+                device.pinned_app = app.iname
+                db.save_user(session, user)  # Save user to update device.pinned_app
+        except Exception as e:
             logger.error(
                 f"Database error during possibly_render for {app_basename}: {e}"
             )

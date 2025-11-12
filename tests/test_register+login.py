@@ -4,8 +4,8 @@ from tronbyt_server import db
 
 
 def test_register_login_logout(auth_client: TestClient) -> None:
-    with db.get_db() as db_conn:
-        db.delete_user(db_conn, "testuser")
+    with db.get_session() as session:
+        db.delete_user(session, "testuser")
     response = auth_client.get("/auth/register")
     assert response.status_code == 200
     response = auth_client.post(

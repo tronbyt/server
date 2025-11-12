@@ -1,13 +1,13 @@
-import sqlite3
 from pathlib import Path
 from fastapi.testclient import TestClient
 from tests import utils
 from tronbyt_server.config import get_settings
+from sqlmodel import Session
+
+settings = get_settings()
 
 
-def test_device_operations(
-    auth_client: TestClient, db_connection: sqlite3.Connection
-) -> None:
+def test_device_operations(auth_client: TestClient, db_session: Session) -> None:
     r = auth_client.get("/create")
     assert r.status_code == 200
 
@@ -23,9 +23,9 @@ def test_device_operations(
         follow_redirects=False,
     )
     assert r.status_code == 302
-    user = utils.get_testuser(db_connection)
-    device_id = list(user.devices.keys())[0]
-    assert user.devices[device_id].name == "TESTDEVICE"
+    user = utils.get_testuser(session)
+    device_id = user.devices[0].id
+    assert user.devices[0].name == "TESTDEVICE"
 
     r = auth_client.get(f"/{device_id}/firmware")
     assert r.status_code == 200

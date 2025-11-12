@@ -1,7 +1,7 @@
-import sqlite3
-
 import pytest
 from fastapi.testclient import TestClient
+
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.models import App, DeviceType
@@ -10,7 +10,7 @@ from tests import utils
 
 
 @pytest.fixture
-def device_user(auth_client: TestClient, db_connection: sqlite3.Connection) -> User:
+def device_user(auth_client: TestClient, db_session: Session) -> User:
     """Fixture to create a user with a device."""
     response = auth_client.post(
         "/create",
@@ -23,11 +23,11 @@ def device_user(auth_client: TestClient, db_connection: sqlite3.Connection) -> U
         },
     )
     assert response.status_code == 200
-    return utils.get_testuser(db_connection)
+    return utils.get_testuser(db_session)
 
 
 def _add_app_to_device(
-    db_connection: sqlite3.Connection,
+    db_session: Session,
     user: User,
     device_id: str,
     *,
@@ -40,7 +40,8 @@ def _add_app_to_device(
     last_render: int = 1234,
     empty_last_render: bool = False,
 ) -> App:
-    device = user.devices[device_id]
+    device = next((d for d in user.devices if d.id == device_id), None)
+    assert device is not None
     app = App(
         iname=iname,
         name=name,
@@ -52,8 +53,7 @@ def _add_app_to_device(
         empty_last_render=empty_last_render,
     )
     device.apps[iname] = app
-    user.devices[device_id] = device
-    db.save_user(db_connection, user)
+    db.save_user(db_session, user)
     return app
 
 
@@ -100,10 +100,10 @@ class TestDevicesEndpoint:
         assert "Invalid credentials" in response.text
 
     def test_list_devices_empty_devices(
-        self, auth_client: TestClient, db_connection: sqlite3.Connection
+        self, auth_client: TestClient, db_session: Session
     ) -> None:
         """Test listing devices when user has no devices"""
-        user = utils.get_testuser(db_connection)
+        user = utils.get_testuser(db_session)
         api_key = user.api_key
         response = auth_client.get(
             "/v0/devices", headers={"Authorization": f"Bearer {api_key}"}
@@ -121,8 +121,7 @@ class TestDeviceEndpoint:
     def test_get_device_with_user_api_key(
         self, auth_client: TestClient, device_user: User
     ) -> None:
-        """Test successful retrieval of device info"""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         api_key = device_user.api_key
         response = auth_client.get(
             f"/v0/devices/{device_id}",
@@ -137,8 +136,8 @@ class TestDeviceEndpoint:
         self, auth_client: TestClient, device_user: User
     ) -> None:
         """Test device retrieval using device-specific API key"""
-        device_id = list(device_user.devices.keys())[0]
-        device_api_key = device_user.devices[device_id].api_key
+        device_id = device_user.devices[0].id
+        device_api_key = device_user.devices[0].api_key
         response = auth_client.get(
             f"/v0/devices/{device_id}",
             headers={"Authorization": f"Bearer {device_api_key}"},
@@ -151,7 +150,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Test device retrieval for non-existent device"""
         # Create a second user to get a different API key
@@ -161,10 +160,10 @@ class TestDeviceEndpoint:
             follow_redirects=False,
         )
         assert response.status_code == 302
-        user2 = utils.get_user_by_username(db_connection, "testuser2")
+        user2 = utils.get_user_by_username(db_session, "testuser2")
         assert user2 is not None
 
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         response = auth_client.get(
             f"/v0/devices/{device_id}",
             headers={"Authorization": f"Bearer {user2.api_key}"},
@@ -186,7 +185,7 @@ class TestDeviceEndpoint:
         self, auth_client: TestClient, device_user: User
     ) -> None:
         """Test device retrieval with wrong API key"""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         response = auth_client.get(
             f"/v0/devices/{device_id}",
             headers={"Authorization": "Bearer wrong_key"},
@@ -197,7 +196,7 @@ class TestDeviceEndpoint:
         self, auth_client: TestClient, device_user: User
     ) -> None:
         """Test device update with user API key"""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         api_key = device_user.api_key
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
@@ -213,8 +212,8 @@ class TestDeviceEndpoint:
         self, auth_client: TestClient, device_user: User
     ) -> None:
         """Test device update with device-specific API key"""
-        device_id = list(device_user.devices.keys())[0]
-        device_api_key = device_user.devices[device_id].api_key
+        device_id = device_user.devices[0].id
+        device_api_key = device_user.devices[0].api_key
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
             headers={"Authorization": f"Bearer {device_api_key}"},
@@ -228,7 +227,7 @@ class TestDeviceEndpoint:
         self, auth_client: TestClient, device_user: User
     ) -> None:
         """Test device update with invalid brightness value"""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         api_key = device_user.api_key
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
@@ -241,7 +240,7 @@ class TestDeviceEndpoint:
         self, auth_client: TestClient, device_user: User
     ) -> None:
         """Test device update without authorization"""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         response = auth_client.patch(
             f"/v0/devices/{device_id}", json={"brightness": 100}
         )
@@ -251,14 +250,14 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Ensure device payload exposes new metadata fields."""
-        device_id = list(device_user.devices.keys())[0]
-        device = device_user.devices[device_id]
+        device_id = device_user.devices[0].id
+        device = device_user.devices[0]
 
         app = _add_app_to_device(
-            db_connection,
+            session,
             device_user,
             device_id,
             iname="night-app",
@@ -278,8 +277,7 @@ class TestDeviceEndpoint:
         device.dim_time = "05:15"
         device.dim_brightness = 22
         device.pinned_app = app.iname
-        device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(session, device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}",
@@ -305,12 +303,11 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
-        """Ensure device updates support new fields and value validation."""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         app = _add_app_to_device(
-            db_connection, device_user, device_id, iname="evening", name="Evening App"
+            session, device_user, device_id, iname="evening", name="Evening App"
         )
 
         response = auth_client.patch(
@@ -346,8 +343,7 @@ class TestDeviceEndpoint:
         auth_client: TestClient,
         device_user: User,
     ) -> None:
-        """Ensure pinnedApp validation rejects unknown installations."""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
             headers={"Authorization": f"Bearer {device_user.api_key}"},
@@ -360,15 +356,14 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Empty dimModeStartTime should clear stored dim time."""
-        device_id = list(device_user.devices.keys())[0]
-        device = device_user.devices[device_id]
+        device_id = device_user.devices[0].id
+        device = device_user.devices[0]
         device.dim_time = "04:00"
         device.dim_brightness = 40
-        device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(session, device_user)
 
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
@@ -387,12 +382,12 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Ensure installation payload includes new metadata fields."""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         app = _add_app_to_device(
-            db_connection,
+            session,
             device_user,
             device_id,
             iname="install-1",
@@ -404,10 +399,9 @@ class TestDeviceInstallationsEndpoint:
             last_render=999,
             empty_last_render=True,
         )
-        device = device_user.devices[device_id]
+        device = device_user.devices[0]
         device.pinned_app = app.iname
-        device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(session, device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}/installations",
@@ -433,12 +427,12 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Ensure single installation lookup exposes new fields."""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         app = _add_app_to_device(
-            db_connection,
+            session,
             device_user,
             device_id,
             iname="install-2",
@@ -446,10 +440,9 @@ class TestDeviceInstallationsEndpoint:
             uinterval=3,
             display_time=9,
         )
-        device = device_user.devices[device_id]
+        device = device_user.devices[0]
         device.pinned_app = app.iname
-        device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(session, device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}/installations/{app.iname}",
@@ -468,12 +461,12 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Ensure installation updates support new fields and return payload."""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         app = _add_app_to_device(
-            db_connection,
+            session,
             device_user,
             device_id,
             iname="install-3",
@@ -512,10 +505,10 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_session: Session,
     ) -> None:
         """Ensure validation rejects negative interval/time values."""
-        device_id = list(device_user.devices.keys())[0]
+        device_id = device_user.devices[0].id
         response_interval = auth_client.patch(
             f"/v0/devices/{device_id}/installations/unknown",
             headers={"Authorization": f"Bearer {device_user.api_key}"},
@@ -524,7 +517,7 @@ class TestDeviceInstallationsEndpoint:
         assert response_interval.status_code == 404
 
         app = _add_app_to_device(
-            db_connection,
+            session,
             device_user,
             device_id,
             iname="install-4",

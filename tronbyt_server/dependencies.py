@@ -2,17 +2,17 @@
 
 import ipaddress
 import logging
-import sqlite3
 from datetime import timedelta
-from typing import Generator
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, Response
 from fastapi_login import LoginManager
 from fastapi_login.exceptions import InvalidCredentialsException
 
+from sqlmodel import Session
+
 from tronbyt_server import db
-from tronbyt_server.config import Settings, get_settings
+from tronbyt_server.config import get_settings
 from tronbyt_server.models import App, Device, User, DeviceID
 
 
@@ -31,15 +31,6 @@ manager = LoginManager(
     use_cookie=True,
     not_authenticated_exception=NotAuthenticatedException,
 )
-
-
-def get_db(
-    settings: Settings = Depends(get_settings),
-) -> Generator[sqlite3.Connection, None, None]:
-    """Get a database connection."""
-    db_conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
-    with db_conn:
-        yield db_conn
 
 
 class UserAndDevice:
@@ -66,7 +57,7 @@ def get_device_and_app(
     user: User = Depends(manager),
 ) -> DeviceAndApp:
     """Get a device and app from a device ID and app iname."""
-    device = user.devices.get(device_id)
+    device = next((d for d in user.devices if d.id == device_id), None)
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
@@ -80,15 +71,15 @@ def get_device_and_app(
 
 
 def get_user_and_device(
-    device_id: DeviceID, db_conn: sqlite3.Connection = Depends(get_db)
+    device_id: DeviceID, session: Session = Depends(db.get_session)
 ) -> UserAndDevice:
     """Get a user and device from a device ID."""
-    user = db.get_user_by_device_id(db_conn, device_id)
+    user = db.get_user_by_device_id(session, device_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    device = user.devices.get(device_id)
+    device = next((d for d in user.devices if d.id == device_id), None)
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
@@ -97,10 +88,10 @@ def get_user_and_device(
 
 
 def check_for_users(
-    request: Request, db_conn: sqlite3.Connection = Depends(get_db)
+    request: Request, session: Session = Depends(db.get_session)
 ) -> None:
     """Check if there are any users in the database."""
-    if not db.has_users(db_conn):
+    if not db.has_users(session):
         if request.url.path != "/auth/register_owner":
             raise NotAuthenticatedException
 
@@ -108,7 +99,7 @@ def check_for_users(
 def get_user_and_device_from_api_key(
     device_id: str | None = None,
     authorization: str | None = Header(None, alias="Authorization"),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
 ) -> tuple[User | None, Device | None]:
     """Get a user and/or device from an API key."""
     if not authorization:
@@ -120,14 +111,18 @@ def get_user_and_device_from_api_key(
         else authorization
     )
 
-    user = db.get_user_by_api_key(db_conn, api_key)
+    user = db.get_user_by_api_key(session, api_key)
     if user:
-        device = user.devices.get(device_id) if device_id else None
+        device = (
+            next((d for d in user.devices if d.id == device_id), None)
+            if device_id
+            else None
+        )
         return user, device
 
-    device = db.get_device_by_id(db_conn, device_id) if device_id else None
+    device = db.get_device_by_id(session, device_id) if device_id else None
     if device and device.api_key == api_key:
-        user = db.get_user_by_device_id(db_conn, device.id)
+        user = db.get_user_by_device_id(session, device.id)
         return user, device
 
     raise InvalidCredentialsException
@@ -136,8 +131,8 @@ def get_user_and_device_from_api_key(
 @manager.user_loader()  # type: ignore
 def load_user(username: str) -> User | None:
     """Load a user from the database."""
-    with next(get_db(settings=get_settings())) as db_conn:
-        user = db.get_user(db_conn, username)
+    with db.get_session() as session:
+        user = db.get_user(session, username)
         if user:
             return user
         return None
@@ -182,7 +177,7 @@ def is_trusted_network(client_host: str | None) -> bool:
     return False
 
 
-def is_auto_login_active(db_conn: sqlite3.Connection | None = None) -> bool:
+def is_auto_login_active(session: Session | None = None) -> bool:
     """
     Check if auto-login is truly active.
 
@@ -191,7 +186,7 @@ def is_auto_login_active(db_conn: sqlite3.Connection | None = None) -> bool:
     - AND exactly 1 user exists in the system
 
     Args:
-        db_conn: Optional database connection. If not provided, creates one.
+        session: Optional database session. If not provided, creates one.
 
     Returns:
         True if auto-login is active, False otherwise.
@@ -202,18 +197,13 @@ def is_auto_login_active(db_conn: sqlite3.Connection | None = None) -> bool:
 
     # Check user count
     try:
-        if db_conn is None:
-            db_conn = sqlite3.connect(settings.DB_FILE, check_same_thread=False)
-            should_close = True
+        if session is None:
+            with db.get_session() as new_session:
+                users = db.get_all_users(new_session)
+                result = len(users) == 1
         else:
-            should_close = False
-
-        with db_conn:
-            users = db.get_all_users(db_conn)
+            users = db.get_all_users(session)
             result = len(users) == 1
-
-        if should_close:
-            db_conn.close()
 
         return result
     except Exception:
@@ -231,19 +221,19 @@ def auth_exception_handler(
     """
     settings = get_settings()
 
-    with next(get_db(settings=settings)) as db_conn:
+    with db.get_session() as session:
         # No users exist - redirect to registration
-        if not db.has_users(db_conn):
+        if not db.has_users(session):
             return RedirectResponse(request.url_for("get_register_owner"))
 
         # Check for single-user auto-login mode
-        if is_auto_login_active(db_conn):
+        if is_auto_login_active(session):
             # Only from trusted networks (localhost or private networks)
             client_host = request.client.host if request.client else None
 
             if is_trusted_network(client_host):
                 # Get the single user
-                users = db.get_all_users(db_conn)
+                users = db.get_all_users(session)
                 user = users[0]
 
                 logger.warning(

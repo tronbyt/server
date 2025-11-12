@@ -1,11 +1,11 @@
-import sqlite3
 from fastapi.testclient import TestClient
 from tests import utils
 from tronbyt_server import db
+from sqlmodel import Session
 
 
 def test_app_create_edit_config_delete(
-    auth_client: TestClient, db_connection: sqlite3.Connection
+    auth_client: TestClient, db_session: Session
 ) -> None:
     response = auth_client.post(
         "/create",
@@ -19,8 +19,8 @@ def test_app_create_edit_config_delete(
         follow_redirects=False,
     )
     assert response.status_code == 302
-    user = utils.get_testuser(db_connection)
-    device_id = list(user.devices.keys())[0]
+    user = utils.get_testuser(session)
+    device_id = user.devices[0].id
 
     r = auth_client.get(f"/{device_id}/addapp")
     assert r.status_code == 200
@@ -37,10 +37,11 @@ def test_app_create_edit_config_delete(
     )
     assert r.status_code == 302
 
-    user = utils.get_testuser(db_connection)
-    assert len(user.devices[device_id].apps) == 1
+    user = utils.get_testuser(session)
+    assert len(user.devices[0].apps) == 1
 
-    device_id = list(user.devices.keys())[0]
+    device = user.devices[0]
+    device_id = device.id
 
     r = auth_client.get(f"/{device_id}/addapp")
     assert r.status_code == 200
@@ -56,9 +57,9 @@ def test_app_create_edit_config_delete(
     )
     assert r.status_code == 200
 
-    user = utils.get_testuser(db_connection)
-    app_id = list(user.devices[device_id].apps.keys())[0]
-    test_app = user.devices[device_id].apps[app_id]
+    user = utils.get_testuser(session)
+    app_id = list(user.devices[0].apps.keys())[0]
+    test_app = user.devices[0].apps[app_id]
     assert test_app.name == "NOAA Tides"
 
     r = auth_client.get(f"/{device_id}/{app_id}/configapp?delete_on_cancel=true")
@@ -80,8 +81,8 @@ def test_app_create_edit_config_delete(
     )
     assert r.status_code == 302
 
-    user = utils.get_testuser(db_connection)
-    test_app = user.devices[device_id].apps[app_id]
+    user = utils.get_testuser(session)
+    test_app = user.devices[0].apps[app_id]
 
     assert test_app.uinterval == 69
     assert test_app.display_time == 69
@@ -89,7 +90,7 @@ def test_app_create_edit_config_delete(
 
     auth_client.post(f"/{device_id}/{app_id}/delete")
 
-    user = utils.get_testuser(db_connection)
-    assert app_id not in user.devices[device_id].apps
+    user = utils.get_testuser(session)
+    assert app_id not in user.devices[0].apps
 
     db.delete_device_dirs(device_id)

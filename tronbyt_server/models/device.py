@@ -151,7 +151,7 @@ class Device(BaseModel):
     interstitial_enabled: bool = False  # whether interstitial app feature is enabled
     interstitial_app: str | None = None  # iname of the interstitial app, if any
     last_seen: datetime | None = None
-    info: DeviceInfo = Field(default_factory=DeviceInfo)
+    info: dict[str, Any] = Field(default_factory=dict)
 
     def supports_2x(self) -> bool:
         """

@@ -1,7 +1,6 @@
 """Authentication router."""
 
 import secrets
-import sqlite3
 import string
 import time
 from datetime import timedelta
@@ -13,11 +12,12 @@ from pydantic import BaseModel
 from werkzeug.security import generate_password_hash
 from fastapi_babel import _
 
+from sqlmodel import Session
+
 import tronbyt_server.db as db
 from tronbyt_server import system_apps, version
 from tronbyt_server.config import Settings, get_settings
 from tronbyt_server.dependencies import (
-    get_db,
     is_auto_login_active,
     is_trusted_network,
     manager,
@@ -61,10 +61,10 @@ def _render_edit_template(request: Request, user: User) -> Response:
 
 @router.get("/register_owner")
 def get_register_owner(
-    request: Request, db_conn: sqlite3.Connection = Depends(get_db)
+    request: Request, session: Session = Depends(db.get_session)
 ) -> Response:
     """Render the owner registration page."""
-    if db.has_users(db_conn):
+    if db.has_users(session):
         return RedirectResponse(
             url=request.url_for("login"), status_code=status.HTTP_302_FOUND
         )
@@ -75,11 +75,11 @@ def get_register_owner(
 def post_register_owner(
     request: Request,
     password: str = Form(...),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle owner registration."""
-    if db.has_users(db_conn):
+    if db.has_users(session):
         return RedirectResponse(
             url=request.url_for("login"), status_code=status.HTTP_302_FOUND
         )
@@ -94,10 +94,10 @@ def post_register_owner(
             password=generate_password_hash(password),
             api_key=api_key,
         )
-        if db.save_user(db_conn, user, new_user=True):
+        if db.save_user(session, user, new_user=True):
             db.create_user_dir(username)
             # Don't show "Please log in" message if auto-login is active
-            if not is_auto_login_active(db_conn):
+            if not is_auto_login_active(session):
                 flash(request, _("admin user created. Please log in."))
             return RedirectResponse(
                 url=request.url_for("login"), status_code=status.HTTP_302_FOUND
@@ -112,11 +112,11 @@ def post_register_owner(
 def get_register(
     request: Request,
     user: User | None = Depends(manager.optional),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     settings: Settings = Depends(get_settings),
 ) -> Response:
     """Render the user registration page."""
-    if not db.has_users(db_conn):
+    if not db.has_users(session):
         return RedirectResponse(
             url="/auth/register_owner", status_code=status.HTTP_302_FOUND
         )
@@ -142,11 +142,11 @@ def post_register(
     request: Request,
     form_data: Annotated[RegisterFormData, Form()],
     user: User | None = Depends(manager.optional),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle user registration."""
-    if not db.has_users(db_conn):
+    if not db.has_users(session):
         return RedirectResponse(
             url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
         )
@@ -159,7 +159,7 @@ def post_register(
             )
 
     max_users = settings.MAX_USERS
-    if max_users > 0 and len(db.get_all_users(db_conn)) >= max_users:
+    if max_users > 0 and len(db.get_all_users(session)) >= max_users:
         flash(
             request,
             _("Maximum number of users reached. Registration is disabled."),
@@ -176,7 +176,7 @@ def post_register(
     elif not form_data.password:
         error = _("Password is required.")
         status_code = status.HTTP_400_BAD_REQUEST
-    elif db.get_user(db_conn, form_data.username):
+    elif db.get_user(session, form_data.username):
         error = _("User is already registered.")
         status_code = status.HTTP_409_CONFLICT
 
@@ -188,7 +188,7 @@ def post_register(
             email=form_data.email,
             api_key=api_key,
         )
-        if db.save_user(db_conn, new_user, new_user=True):
+        if db.save_user(session, new_user, new_user=True):
             db.create_user_dir(form_data.username)
             if user and user.username == "admin":
                 flash(
@@ -221,17 +221,17 @@ def post_register(
 @router.get("/login")
 def login(
     request: Request,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     settings: Settings = Depends(get_settings),
 ) -> Response:
     """Render the login page."""
-    if not db.has_users(db_conn):
+    if not db.has_users(session):
         return RedirectResponse(
             url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
         )
 
     # If auto-login mode is active, redirect to home page
-    if is_auto_login_active(db_conn):
+    if is_auto_login_active(session):
         client_host = request.client.host if request.client else None
         if is_trusted_network(client_host):
             # Auto-login is available - redirect to home instead of showing login form
@@ -254,16 +254,16 @@ class LoginFormData(BaseModel):
 def post_login(
     request: Request,
     form_data: Annotated[LoginFormData, Form()],
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle user login."""
-    if not db.has_users(db_conn):
+    if not db.has_users(session):
         return RedirectResponse(
             url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
         )
 
-    user_data = db.auth_user(db_conn, form_data.username, form_data.password)
+    user_data = db.auth_user(session, form_data.username, form_data.password)
     if not isinstance(user_data, User):
         flash(request, _("Incorrect username/password."))
         if not settings.PRODUCTION == "0":
@@ -315,17 +315,17 @@ def post_edit(
     old_password: str = Form(...),
     password: str = Form(...),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
 ) -> Response:
     """Handle user edit."""
-    authed_user_data = db.auth_user(db_conn, user.username, old_password)
+    authed_user_data = db.auth_user(session, user.username, old_password)
     if not isinstance(authed_user_data, User):
         flash(request, _("Bad old password."))
         return _render_edit_template(request, user)
     else:
         authed_user = authed_user_data
         authed_user.password = generate_password_hash(password)
-        db.save_user(db_conn, authed_user)
+        db.save_user(session, authed_user)
         flash(request, _("Success"))
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
@@ -351,7 +351,7 @@ class ThemePreferencePayload(BaseModel):
 def set_theme_preference(
     preference: ThemePreferencePayload,
     user: Annotated[User, Depends(manager)],
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
 ) -> Response:
     """Set the theme preference for a user."""
     try:
@@ -363,7 +363,7 @@ def set_theme_preference(
         )
 
     user.theme_preference = theme
-    if db.save_user(db_conn, user):
+    if db.save_user(session, user):
         return JSONResponse(
             content={"status": "success", "message": "Theme preference updated"}
         )
@@ -381,11 +381,11 @@ def set_theme_preference(
 def generate_api_key(
     request: Request,
     user: Annotated[User, Depends(manager)],
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
 ) -> Response:
     """Generate a new API key for the user."""
     user.api_key = _generate_api_key()
-    if db.save_user(db_conn, user):
+    if db.save_user(session, user):
         flash(request, _("New API key generated successfully."))
     else:
         flash(request, _("Failed to generate new API key."))

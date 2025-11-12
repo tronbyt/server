@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
@@ -14,8 +13,9 @@ from pydantic import TypeAdapter, ValidationError
 from starlette.websockets import WebSocketDisconnect
 
 import re
+from sqlmodel import Session
+
 from tronbyt_server import db
-from tronbyt_server.dependencies import get_db
 from tronbyt_server.models import (
     BrightnessMessage,
     ClientInfoMessage,
@@ -255,7 +255,7 @@ async def _wait_for_acknowledgment(
     device_id: str,
     ack: DeviceAcknowledgment,
     dwell_time: int,
-    db_conn: sqlite3.Connection,
+    session: Session,
     loop: asyncio.AbstractEventLoop,
     waiter: Any,  # Waiter (using Any to avoid mypy issues with abstract base class)
     websocket: WebSocket,
@@ -311,7 +311,7 @@ async def _wait_for_acknowledgment(
             # Got displaying acknowledgment, render next image
             logger.debug(f"[{device_id}] Device acknowledged display")
             response = await loop.run_in_executor(
-                None, next_app_logic, db_conn, user, device
+                None, next_app_logic, session, user, device
             )
             return (response, last_brightness)
 
@@ -328,7 +328,7 @@ async def _wait_for_acknowledgment(
             # Render the next app (which will pick up the ephemeral push)
             try:
                 response = await loop.run_in_executor(
-                    None, next_app_logic, db_conn, user, device
+                    None, next_app_logic, session, user, device
                 )
                 logger.debug(
                     f"[{device_id}] Ephemeral push rendered, will send immediately"
@@ -381,22 +381,22 @@ async def _wait_for_acknowledgment(
         )
 
     # Render next image after timeout
-    response = await loop.run_in_executor(None, next_app_logic, db_conn, user, device)
+    response = await loop.run_in_executor(None, next_app_logic, session, user, device)
     return (response, last_brightness)
 
 
 async def sender(
     websocket: WebSocket,
     device_id: str,
-    db_conn: sqlite3.Connection,
+    session: Session,
     ack: DeviceAcknowledgment,
 ) -> None:
     """The sender task for the websocket."""
-    user = db.get_user_by_device_id(db_conn, device_id)
+    user = db.get_user_by_device_id(session, device_id)
     if not user:
         logger.error(f"[{device_id}] User not found, sender task cannot start.")
         return
-    device = user.devices.get(device_id)
+    device = next((d for d in user.devices if d.id == device_id), None)
     if not device:
         logger.error(f"[{device_id}] Device not found, sender task cannot start.")
         return
@@ -409,7 +409,7 @@ async def sender(
     try:
         # Render the first image before entering the loop
         response = await loop.run_in_executor(
-            None, next_app_logic, db_conn, user, device
+            None, next_app_logic, session, user, device
         )
 
         # Main loop
@@ -424,11 +424,11 @@ async def sender(
                 )
 
             # Refresh user and device from DB in case of updates
-            user = db.get_user_by_device_id(db_conn, device_id)
+            user = db.get_user_by_device_id(session, device_id)
             if not user:
                 logger.error(f"[{device_id}] user gone, stopping websocket sender.")
                 return
-            device = user.devices.get(device_id)
+            device = next((d for d in user.devices if d.id == device_id), None)
             if not device:
                 logger.error(f"[{device_id}] device gone, stopping websocket sender.")
                 return
@@ -439,7 +439,7 @@ async def sender(
                 device_id,
                 ack,
                 dwell_time,
-                db_conn,
+                session,
                 loop,
                 waiter,
                 websocket,
@@ -456,95 +456,76 @@ async def sender(
         waiter.close()
 
 
-async def receiver(
-    websocket: WebSocket, device_id: str, db_conn: sqlite3.Connection
-) -> None:
+async def receiver(websocket: WebSocket, device_id: str, session: Session) -> None:
     """The receiver task for the websocket."""
     adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
     try:
         while True:
             message = await websocket.receive_text()
             try:
-                parsed_message = adapter.validate_json(message)
-
-                user = db.get_user_by_device_id(db_conn, device_id)
+                user = db.get_user_by_device_id(session, device_id)
                 if not user:
                     logger.warning(
                         f"[{device_id}] User not found for device, cannot process message."
                     )
                     continue
+                device = next((d for d in user.devices if d.id == device_id), None)
+                if not device:
+                    logger.warning(
+                        f"[{device_id}] Device not found for device, cannot process message."
+                    )
+                    continue
 
-                try:
-                    with db.db_transaction(db_conn) as cursor:
-                        db.update_device_field(
-                            cursor,
-                            user.username,
-                            device_id,
-                            "last_seen",
-                            datetime.now(timezone.utc).isoformat(),
-                        )
-                        db.update_device_field(
-                            cursor,
-                            user.username,
-                            device_id,
-                            "info.protocol_type",
-                            ProtocolType.WS.value,
-                        )
+                parsed_message = adapter.validate_json(message)
 
-                        # Fetch the ACK object for the CURRENTLY active connection
-                        ack = await connection_manager.get_ack(device_id)
-                        if not ack:
-                            logger.warning(
-                                f"[{device_id}] Received message but no active connection found, ignoring."
-                            )
-                            # Still save the last_seen update
-                            return  # Exit the 'with' block, committing changes
+                # Update last_seen and protocol_type directly on the device object
+                device.last_seen = datetime.now(timezone.utc)
+                device.info.protocol_type = ProtocolType.WS
 
-                        if isinstance(parsed_message, QueuedMessage):
-                            logger.debug(
-                                f"[{device_id}] Image queued (seq: {parsed_message.queued})"
-                            )
-                            ack.mark_queued(parsed_message.queued)
-                        elif isinstance(parsed_message, DisplayingMessage):
-                            logger.debug(
-                                f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
-                            )
-                            ack.mark_displaying(parsed_message.displaying)
-                        elif isinstance(parsed_message, DisplayingStatusMessage):
-                            logger.debug(
-                                f"[{device_id}] Image displaying (seq: {parsed_message.counter})"
-                            )
-                            ack.mark_displaying(parsed_message.counter)
-                        elif isinstance(parsed_message, ClientInfoMessage):
-                            logger.debug(
-                                f"[{device_id}] Received ClientInfoMessage: {parsed_message.client_info.model_dump_json()}"
-                            )
-                            client_info = parsed_message.client_info
-                            info_updates = {
-                                "firmware_version": client_info.firmware_version,
-                                "firmware_type": client_info.firmware_type,
-                                "protocol_version": client_info.protocol_version,
-                                "mac_address": client_info.mac_address,
-                            }
-                            for field, value in info_updates.items():
-                                if value is not None:
-                                    db.update_device_field(
-                                        cursor,
-                                        user.username,
-                                        device_id,
-                                        f"info.{field}",
-                                        value,
-                                    )
-                            logger.info(
-                                f"[{device_id}] Updated device info via websocket"
-                            )
-                        else:
-                            # This should not happen if the models cover all cases
-                            logger.warning(
-                                f"[{device_id}] Unhandled message format: {message}"
-                            )
-                except sqlite3.Error as e:
-                    logger.error(f"Database error in websocket receiver: {e}")
+                # Fetch the ACK object for the CURRENTLY active connection
+                ack = await connection_manager.get_ack(device_id)
+                if not ack:
+                    logger.warning(
+                        f"[{device_id}] Received message but no active connection found, ignoring."
+                    )
+                    # Still save the last_seen update
+                    db.save_user(session, user)
+                    continue
+
+                if isinstance(parsed_message, QueuedMessage):
+                    logger.debug(
+                        f"[{device_id}] Image queued (seq: {parsed_message.queued})"
+                    )
+                    ack.mark_queued(parsed_message.queued)
+                elif isinstance(parsed_message, DisplayingMessage):
+                    logger.debug(
+                        f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
+                    )
+                    ack.mark_displaying(parsed_message.displaying)
+                elif isinstance(parsed_message, DisplayingStatusMessage):
+                    logger.debug(
+                        f"[{device_id}] Image displaying (seq: {parsed_message.counter})"
+                    )
+                    ack.mark_displaying(parsed_message.counter)
+                elif isinstance(parsed_message, ClientInfoMessage):
+                    logger.debug(
+                        f"[{device_id}] Received ClientInfoMessage: {parsed_message.client_info.model_dump_json()}"
+                    )
+                    client_info = parsed_message.client_info
+                    # Update device info fields directly
+                    if client_info.firmware_version is not None:
+                        device.info.firmware_version = client_info.firmware_version
+                    if client_info.firmware_type is not None:
+                        device.info.firmware_type = client_info.firmware_type
+                    if client_info.protocol_version is not None:
+                        device.info.protocol_version = client_info.protocol_version
+                    if client_info.mac_address is not None:
+                        device.info.mac_address = client_info.mac_address
+                    logger.info(f"[{device_id}] Updated device info via websocket")
+                else:
+                    # This should not happen if the models cover all cases
+                    logger.warning(f"[{device_id}] Unhandled message format: {message}")
+                db.save_user(session, user)  # Save all changes to user and device
 
             except (ValueError, ValidationError) as e:
                 logger.warning(f"[{device_id}] Failed to parse device message: {e}")
@@ -557,19 +538,19 @@ async def receiver(
 async def websocket_endpoint(
     websocket: WebSocket,
     device_id: str,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
 ) -> None:
     """WebSocket endpoint for devices."""
     if not re.match(r"^[a-fA-F0-9]{8}$", device_id):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    user = db.get_user_by_device_id(db_conn, device_id)
+    user = db.get_user_by_device_id(session, device_id)
     if not user:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    device = user.devices.get(device_id)
+    device = next((d for d in user.devices if d.id == device_id), None)
     if not device:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -581,10 +562,10 @@ async def websocket_endpoint(
 
     # Create tasks for the new connection
     sender_task = asyncio.create_task(
-        sender(websocket, device_id, db_conn, ack), name=f"ws_sender_{device_id}"
+        sender(websocket, device_id, session, ack), name=f"ws_sender_{device_id}"
     )
     receiver_task = asyncio.create_task(
-        receiver(websocket, device_id, db_conn), name=f"ws_receiver_{device_id}"
+        receiver(websocket, device_id, session), name=f"ws_receiver_{device_id}"
     )
 
     # Register the new connection, which handles cleanup of any old one

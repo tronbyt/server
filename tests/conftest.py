@@ -1,24 +1,24 @@
 from pathlib import Path
 from typing import Iterator
-import sqlite3
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import shutil
 
+from sqlmodel import Session
+
 from tronbyt_server import db
 from tronbyt_server.main import app as fastapi_app
-from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
 
 settings = get_settings()
 
 
 @pytest.fixture(scope="session")
-def db_connection(
+def db_session(
     tmp_path_factory: pytest.TempPathFactory,
-) -> Iterator[sqlite3.Connection]:
+) -> Iterator[Session]:
     tmp_path = tmp_path_factory.mktemp("data")
     db_path = tmp_path / "testdb.sqlite"
     db_path.unlink(missing_ok=True)
@@ -28,34 +28,39 @@ def db_connection(
     settings.USERS_DIR = str(tmp_path / "users")
     settings.ENABLE_USER_REGISTRATION = "1"
 
-    with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
-        # Initialize the database schema immediately after connection.
-        db.init_db(conn)
-        yield conn
+    with db.get_session() as session:
+        yield session
 
 
 @pytest.fixture(scope="session")
-def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
-    def get_db_override() -> sqlite3.Connection:
-        return db_connection
+def app(db_session: Session) -> Iterator[FastAPI]:
+    def get_session_override() -> Session:
+        return db_session
 
-    fastapi_app.dependency_overrides[get_db] = get_db_override
+    fastapi_app.dependency_overrides[db.get_session] = get_session_override
 
     yield fastapi_app
 
     fastapi_app.dependency_overrides.clear()
 
 
+from sqlalchemy import text
+
+
 @pytest.fixture(autouse=True)
-def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
+def db_cleanup(db_session: Session) -> Iterator[None]:
     yield
-    cursor = db_connection.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [row[0] for row in cursor.fetchall()]
+    db_session.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
+    tables = [
+        row[0]
+        for row in db_session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table';")
+        ).fetchall()
+    ]
     for table in tables:
         if table != "sqlite_sequence":
-            cursor.execute(f'DELETE FROM "{table}"')
-    db_connection.commit()
+            db_session.execute(text(f'DELETE FROM "{table}"'))
+    db_session.commit()
 
 
 @pytest.fixture(autouse=True)

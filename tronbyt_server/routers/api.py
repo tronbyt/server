@@ -3,7 +3,6 @@
 import base64
 import hashlib
 import logging
-import sqlite3
 import time
 from pathlib import Path
 from typing import Any
@@ -13,8 +12,10 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ValidationError
 from werkzeug.utils import secure_filename
 
+from sqlmodel import Session
+
 from tronbyt_server import db
-from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
+from tronbyt_server.dependencies import get_user_and_device_from_api_key
 from tronbyt_server.models import App, Device, DeviceID, User
 from tronbyt_server.routers.manager import parse_time_input
 from tronbyt_server.utils import push_new_image, render_app
@@ -191,7 +192,7 @@ def list_devices(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     devices = user.devices
-    metadata = [get_device_payload(device) for device in devices.values()]
+    metadata = [get_device_payload(device) for device in devices]
     return {"devices": metadata}
 
 
@@ -212,7 +213,7 @@ def get_device(
 def update_device(
     device_id: DeviceID,
     data: DeviceUpdate,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> dict[str, Any]:
     user, device = auth
@@ -277,16 +278,20 @@ def update_device(
             )
         device.pinned_app = data.pinnedApp
 
-    user.devices[device_id] = device
-    db.save_user(db_conn, user)
-    return get_device_payload(user.devices[device_id])
+    # Find the device in the list and update it
+    for i, d in enumerate(user.devices):
+        if d.id == device_id:
+            user.devices[i] = device
+            break
+    db.save_user(session, user)
+    return get_device_payload(device)
 
 
 def _push_image(
     device_id: str,
     installation_id: str | None,
     image_bytes: bytes,
-    db_conn: sqlite3.Connection | None = None,
+    session: Session | None = None,
 ) -> None:
     device_webp_path = db.get_device_webp_dir(device_id)
     device_webp_path.mkdir(parents=True, exist_ok=True)
@@ -302,8 +307,8 @@ def _push_image(
     print(f"Writing pushed image to {file_path}")
     file_path.write_bytes(image_bytes)
 
-    if installation_id and db_conn:
-        db.add_pushed_app(db_conn, device_id, installation_id)
+    if installation_id and session:
+        db.add_pushed_app(session, device_id, installation_id)
 
     push_new_image(device_id)
 
@@ -313,7 +318,7 @@ def handle_push(
     device_id: DeviceID,
     data: PushData,
     auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
 ) -> Response:
     _, device = auth
     if not device or device.id != device_id:
@@ -330,7 +335,7 @@ def handle_push(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image data"
         )
 
-    _push_image(device_id, installation_id, image_bytes, db_conn)
+    _push_image(device_id, installation_id, image_bytes, session)
     return Response("WebP received.", status_code=status.HTTP_200_OK)
 
 
@@ -375,7 +380,7 @@ def handle_patch_device_app(
     device_id: DeviceID,
     installation_id: str,
     data: PatchDeviceData,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
     user, device = auth
@@ -433,8 +438,11 @@ def handle_patch_device_app(
         app.display_time = data.displayTimeSec
 
     device.apps[app.iname] = app
-    user.devices[device_id] = device
-    db.save_user(db_conn, user)
+    for i, d in enumerate(user.devices):
+        if d.id == device_id:
+            user.devices[i] = device
+            break
+    db.save_user(session, user)
     return JSONResponse(content=get_app_payload(device, app))
 
 
@@ -463,7 +471,7 @@ def handle_delete(
 def handle_app_push(
     device_id: DeviceID,
     data: PushAppData,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(db.get_session),
     auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
 ) -> Response:
     user, device = auth
@@ -499,7 +507,7 @@ def handle_app_push(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid app data"
         )
-    image_bytes = render_app(db_conn, app_path, data.config, None, device, app, user)
+    image_bytes = render_app(session, app_path, data.config, None, device, app, user)
     if image_bytes is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -509,9 +517,14 @@ def handle_app_push(
         return Response("Empty image, not pushing", status_code=status.HTTP_200_OK)
 
     if installation_id:
-        apps = user.devices[device_id].apps
+        device = next((d for d in user.devices if d.id == device_id), None)
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
+            )
+        apps = device.apps
         apps[installation_id] = app
-        db.save_user(db_conn, user)
+        db.save_user(session, user)
 
-    _push_image(device_id, installation_id, image_bytes, db_conn)
+    _push_image(device_id, installation_id, image_bytes, session)
     return Response("App pushed.", status_code=status.HTTP_200_OK)

@@ -2,301 +2,46 @@
 
 import json
 import logging
-import secrets
 import shutil
-import sqlite3
-import string
-from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal, Generator
+from typing import Any, Literal, Generator, cast
 from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
+import contextlib
 
 import yaml
 from fastapi import UploadFile
 from pydantic import ValidationError
 from tzlocal import get_localzone, get_localzone_name
 from werkzeug.security import check_password_hash
-from werkzeug.utils import secure_filename
+
+from sqlmodel import create_engine, Session, select
+from tronbyt_server.models_sql import (
+    User as SQLUser,
+    Device as SQLDevice,
+    App as SQLApp,
+)
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
 from tronbyt_server.models import App, AppMetadata, Device, User, Weekday
+from werkzeug.utils import secure_filename
 
 logger = logging.getLogger(__name__)
 
-
-@contextmanager
-def db_transaction(
-    db_conn: sqlite3.Connection,
-) -> Generator[sqlite3.Cursor, None, None]:
-    """A context manager for database transactions."""
-    cursor = db_conn.cursor()
-    try:
-        yield cursor
-        db_conn.commit()
-    except sqlite3.Error:
-        db_conn.rollback()
-        raise
+# Create the SQLAlchemy engine
+engine = create_engine(
+    f"sqlite:///{get_settings().DB_FILE}",
+    connect_args={"check_same_thread": False},
+    echo=False,  # Set to True to see generated SQL statements
+)
 
 
-def get_db() -> sqlite3.Connection:
-    """Get a database connection."""
-    return sqlite3.connect(
-        get_settings().DB_FILE, check_same_thread=False, timeout=10
-    )  # Set a 10-second timeout
-
-
-def init_db(db: sqlite3.Connection) -> None:
-    """Initialize the database."""
-    # Enable WAL mode for better concurrency
-    row = db.execute("PRAGMA journal_mode=WAL").fetchone()
-    if not row or row[0].lower() != "wal":
-        logger.warning("Failed to enable WAL mode. Concurrency might be limited.")
-
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS json_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            data TEXT NOT NULL
-        )
-    """
-    )
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS meta (
-            schema_version INTEGER NOT NULL
-        )
-    """
-    )
-    db.commit()
-    cursor.execute("SELECT * FROM json_data")
-    row = cursor.fetchone()
-
-    new_install = not row
-
-    cursor.execute("SELECT * FROM meta")
-    row = cursor.fetchone()
-    if row:
-        schema_version = row[0]
-    else:
-        schema_version = get_current_schema_version() if new_install else 0
-        cursor.execute(
-            "INSERT INTO meta (schema_version) VALUES (?)",
-            (schema_version,),
-        )
-
-    if schema_version < get_current_schema_version():
-        logger.info(
-            f"Schema version {schema_version} is outdated. Migrating to version {get_current_schema_version()}"
-        )
-
-        if schema_version < 1:
-            migrate_app_configs(db)
-            migrate_app_paths(db)
-            migrate_brightness_to_percent(db)
-        if schema_version < 2:
-            migrate_user_api_keys(db)
-        if schema_version < 3:
-            migrate_location_name_to_locality(db)
-        if schema_version < 4:
-            migrate_recurrence_pattern(db)
-
-        cursor.execute(
-            "UPDATE meta SET schema_version = ? WHERE schema_version = ?",
-            (get_current_schema_version(), schema_version),
-        )
-        logger.info(
-            f"Schema version {schema_version} migrated to {get_current_schema_version()}"
-        )
-
-
-def get_current_schema_version() -> int:
-    """
-    Retrieves the current schema version of the database.
-    Increment this version when making changes to the database schema.
-    Returns:
-        int: The current schema version as an integer.
-    """
-
-    return 4
-
-
-def migrate_recurrence_pattern(db: sqlite3.Connection) -> None:
-    """Migrate recurrence patterns from lists to dictionaries."""
-    logger.info("Migrating recurrence patterns")
-    cursor = db.cursor()
-    cursor.execute("SELECT username, data FROM json_data")
-    rows = cursor.fetchall()
-
-    for username, data_json in rows:
-        try:
-            user_data = json.loads(data_json)
-            need_save = False
-
-            if "devices" in user_data and isinstance(user_data["devices"], dict):
-                for device in user_data["devices"].values():
-                    if "apps" in device and isinstance(device["apps"], dict):
-                        for app in device["apps"].values():
-                            if "recurrence_pattern" in app and isinstance(
-                                app["recurrence_pattern"], list
-                            ):
-                                app[
-                                    "recurrence_pattern"
-                                ] = {}  # Convert empty list to empty dict
-                                need_save = True
-                                logger.debug(
-                                    f"Converted recurrence_pattern for app {app.get('name')} in device {device.get('name')}"
-                                )
-
-            if need_save:
-                logger.info(f"Migrating recurrence patterns for user: {username}")
-                updated_data_json = json.dumps(user_data)
-                db.cursor().execute(
-                    "UPDATE json_data SET data = ? WHERE username = ?",
-                    (updated_data_json, username),
-                )
-                db.commit()
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON for user {username}: {e}")
-        except Exception as e:
-            logger.error(f"An unexpected error occurred for user {username}: {e}")
-
-
-def migrate_app_configs(db: sqlite3.Connection) -> None:
-    """Migrate app configs from individual files to the user's JSON data."""
-    users = get_all_users(db)
-    users_dir = get_users_dir()
-    need_save = False
-    for user in users:
-        for device in user.devices.values():
-            if "" in device.apps:
-                del device.apps[""]
-                need_save = True
-            for app in device.apps.values():
-                config_path = (
-                    users_dir
-                    / user.username
-                    / "configs"
-                    / f"{app.name}-{app.iname}.json"
-                )
-                if config_path.exists():
-                    with config_path.open("r") as config_file:
-                        app.config = json.load(config_file)
-                    config_path.unlink()
-                    need_save = True
-        if need_save:
-            save_user(db, user)
-
-
-def migrate_app_paths(db: sqlite3.Connection) -> None:
-    """Populate the 'path' attribute for apps that are missing it."""
-    users = get_all_users(db)
-    need_save = False
-    for user in users:
-        for device in user.devices.values():
-            for app in device.apps.values():
-                if not app.path or app.path.startswith("/"):
-                    app_details = get_app_details_by_name(user.username, app.name)
-                    app.path = (
-                        app_details.path
-                        if app_details
-                        else str(
-                            Path("system-apps")
-                            / "apps"
-                            / app.name.replace("_", "")
-                            / f"{app.name}.star"
-                        )
-                    )
-                    need_save = True
-        if need_save:
-            save_user(db, user)
-
-
-def migrate_brightness_to_percent(db: sqlite3.Connection) -> None:
-    """Migrate legacy brightness values to percentage-based values."""
-    users = get_all_users(db)
-    logger.info("Migrating brightness values to percentage-based storage")
-
-    for user in users:
-        need_save = False
-        for device in user.devices.values():
-            # Check if brightness is in the old 0-5 scale
-            if device.brightness <= 5:
-                old_value = device.brightness
-                device.brightness = ui_scale_to_percent(old_value)
-                need_save = True
-                logger.debug(
-                    f"Converted brightness from {old_value} to {device.brightness}%"
-                )
-
-            if device.night_brightness <= 5:
-                old_value = device.night_brightness
-                device.night_brightness = ui_scale_to_percent(old_value)
-                need_save = True
-                logger.debug(
-                    f"Converted night_brightness from {old_value} to {device.night_brightness}%"
-                )
-
-        if need_save:
-            logger.info(f"Migrating brightness for user: {user.username}")
-            save_user(db, user)
-
-
-def migrate_location_name_to_locality(db: sqlite3.Connection) -> None:
-    """
-    Migrates location data from old 'name' format to new 'locality' format.
-    This function iterates through all users and their devices, converting
-    location data that uses the old 'name' key to use the new 'locality' key.
-
-    Steps:
-    1. Retrieve all users.
-    2. Iterate through each user's devices.
-    3. Check if location data exists and uses the old 'name' format.
-    4. Convert 'name' to 'locality' in the location data.
-    5. Save the user data if any changes were made.
-    """
-    users = get_all_users(db)
-    logger.info("Migrating location data from 'name' to 'locality' format")
-
-    for user in users:
-        need_save = False
-        for device in user.devices.values():
-            location = device.location
-            if location and location.name:
-                # Convert old 'name' format to new 'locality' format
-                location.locality = location.name
-                location.name = None
-                need_save = True
-                logger.debug(
-                    f"Converted location name '{location.name}' to locality for device {device.id}"
-                )
-
-        if need_save:
-            save_user(db, user)
-
-
-def migrate_user_api_keys(db: sqlite3.Connection) -> None:
-    """Generate API keys for users who don't have them."""
-    users = get_all_users(db)
-    logger.info("Migrating users to add API keys")
-
-    for user in users:
-        if not user.api_key:
-            user.api_key = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
-            )
-            logger.info(f"Generated API key for user: {user.username}")
-            save_user(db, user)
-
-
-def close_db(db: sqlite3.Connection) -> None:
-    """Close the database connection."""
-    db.close()
+@contextlib.contextmanager
+def get_session() -> Generator[Session, Any, None]:
+    with Session(engine) as session:
+        yield session
 
 
 def delete_device_dirs(device_id: str) -> None:
@@ -457,14 +202,14 @@ def get_device_brightness_percent(device: Device) -> int:
     # Priority: night mode > dim mode > normal brightness
     # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
-        return device.night_brightness if device.night_brightness is not None else 1
+        return device.night_brightness
     # If we're in dim mode (but not night mode), use dim_brightness
     elif get_dim_mode_is_active(device):
         if device.dim_brightness is not None:
             return device.dim_brightness
-        return device.brightness if device.brightness is not None else 50
+        return device.brightness
     else:
-        return device.brightness if device.brightness is not None else 50
+        return device.brightness
 
 
 def percent_to_ui_scale(percent: int) -> int:
@@ -513,31 +258,30 @@ def get_users_dir() -> Path:
     return Path(get_settings().USERS_DIR).absolute()
 
 
-def get_user(db: sqlite3.Connection, username: str) -> User | None:
+def get_user(db: Session, username: str) -> User | None:
     """Get a user from the database."""
-    try:
-        cursor = db.cursor()
-        cursor.execute(
-            "SELECT data FROM json_data WHERE username = ?", (str(username),)
-        )
-        row = cursor.fetchone()
-        if row:
-            user_data = json.loads(row[0])
-            try:
-                return User.model_validate(user_data)
-            except ValidationError as e:
-                # ValidationError from pydantic -> log and return None
-                logger.error(f"User data validation failed for {username}: {e}")
-                return None
-        else:
-            logger.error(f"{username} not found")
+    statement = select(SQLUser).where(SQLUser.username == username)
+    user_sql = db.exec(statement).first()
+
+    if user_sql:
+        user_data = user_sql.model_dump()
+        user_data["devices"] = []
+        for device_sql in user_sql.devices:
+            device_data = device_sql.model_dump()
+            device_data["apps"] = {}
+            for app_sql in device_sql.apps:
+                device_data["apps"][app_sql.iname] = app_sql.model_dump()
+            user_data["devices"].append(device_data)
+
+        try:
+            return User.model_validate(user_data)
+        except ValidationError as e:
+            logger.error(f"User data validation failed for {username}: {e}")
             return None
-    except Exception as e:
-        logger.error(f"problem with get_user: {e}")
-        return None
+    return None
 
 
-def auth_user(db: sqlite3.Connection, username: str, password: str) -> User | None:
+def auth_user(db: Session, username: str, password: str) -> User | None:
     """Authenticate a user."""
     user = get_user(db, username)
     if user:
@@ -551,50 +295,85 @@ def auth_user(db: sqlite3.Connection, username: str, password: str) -> User | No
     return None
 
 
-def save_user(db: sqlite3.Connection, user: User, new_user: bool = False) -> bool:
+def save_user(db: Session, user: User, new_user: bool = False) -> bool:
     """Save a user to the database."""
     if not user.username:
         logger.warning("no username in user")
         return False
-    username = user.username
+
     try:
-        cursor = db.cursor()
         if new_user:
-            cursor.execute(
-                "INSERT INTO json_data (data, username) VALUES (?, ?)",
-                (user.model_dump_json(), str(username)),
-            )
-            create_user_dir(username)
+            # Create new SQLUser and its children
+            user_sql = SQLUser(**user.model_dump(exclude={"devices"}))
+            user_sql.devices = [SQLDevice.model_validate(d) for d in user.devices]
+            db.add(user_sql)
+            create_user_dir(user.username)
         else:
-            cursor.execute(
-                "UPDATE json_data SET data = ? WHERE username = ?",
-                (user.model_dump_json(), str(username)),
-            )
+            # Update existing user
+            statement = select(SQLUser).where(SQLUser.username == user.username)
+            user_sql = db.exec(statement).one()
+
+            # Update user fields
+            user_data = user.model_dump(exclude={"devices"})
+            for key, value in user_data.items():
+                setattr(user_sql, key, value)
+
+            # Update devices and apps
+            # This is a simple approach: clear and re-add.
+            # For performance-critical apps, a more granular update would be better.
+            for device_sql in user_sql.devices:
+                for app_sql in device_sql.apps:
+                    db.delete(app_sql)
+                db.delete(device_sql)
+
+            for device in user.devices:
+                device_sql = SQLDevice.model_validate(device)
+                device_sql.user_id = user_sql.id
+                db.add(device_sql)
+
         db.commit()
+        db.refresh(user_sql)
         return True
     except Exception as e:
-        logger.error(f"couldn't save {user}: {e}")
+        logger.error(f"couldn't save {user.username}: {e}")
+        db.rollback()
         return False
 
 
-def delete_user(db: sqlite3.Connection, username: str) -> bool:
+def delete_user(db: Session, username: str) -> bool:
     """Delete a user from the database."""
     try:
-        db.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
-        db.commit()
-        # Securely delete the user's directory, preventing path traversal
-        user_dir = get_users_dir() / secure_filename(username)
-        try:
-            user_dir.relative_to(get_users_dir())
-        except ValueError:
-            logger.warning("Security warning: Attempted path traversal in username")
+        statement = select(SQLUser).where(SQLUser.username == username)
+        user_sql = db.exec(statement).one_or_none()
+
+        if user_sql:
+            # Manually delete related objects for now
+            for device_sql in user_sql.devices:
+                for app_sql in device_sql.apps:
+                    db.delete(app_sql)
+                db.delete(device_sql)
+
+            db.delete(user_sql)
+            db.commit()
+
+            # Securely delete the user's directory
+            user_dir = get_users_dir() / secure_filename(username)
+            try:
+                user_dir.relative_to(get_users_dir())
+            except ValueError:
+                logger.warning("Security warning: Attempted path traversal in username")
+                return False
+            if user_dir.exists():
+                shutil.rmtree(user_dir)
+
+            logger.info(f"User {username} deleted successfully")
+            return True
+        else:
+            logger.error(f"User {username} not found for deletion.")
             return False
-        if user_dir.exists():
-            shutil.rmtree(user_dir)
-        logger.info(f"User {username} deleted successfully")
-        return True
     except Exception as e:
         logger.error(f"Error deleting user {username}: {e}")
+        db.rollback()
         return False
 
 
@@ -777,31 +556,32 @@ def delete_user_upload(user: User, filename: str) -> bool:
         return False
 
 
-def get_all_users(db: sqlite3.Connection) -> list[User]:
+def get_all_users(db: Session) -> list[User]:
     """Get all users from the database."""
-    cursor = db.cursor()
-    cursor.execute("SELECT data FROM json_data")
-    users: list[User] = []
-    for row in cursor.fetchall():
+    users_sql = db.exec(select(SQLUser)).all()
+    users = []
+    for user_sql in users_sql:
+        user_data = user_sql.model_dump()
+        user_data["devices"] = []
+        for device_sql in user_sql.devices:
+            device_data = device_sql.model_dump()
+            device_data["apps"] = {}
+            for app_sql in device_sql.apps:
+                device_data["apps"][app_sql.iname] = app_sql.model_dump()
+            user_data["devices"].append(device_data)
+
         try:
-            user_data = json.loads(row[0])
-            try:
-                user = User.model_validate(user_data)
-                users.append(user)
-            except ValidationError as e:
-                logger.error(
-                    f"User validation failed for user '{user_data.get('username', 'unknown')}': {e}"
-                )
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding user JSON: {e}")
+            users.append(User.model_validate(user_data))
+        except ValidationError as e:
+            logger.error(
+                f"User validation failed for user '{user_data.get('username', 'unknown')}': {e}"
+            )
     return users
 
 
-def has_users(db: sqlite3.Connection) -> bool:
+def has_users(db: Session) -> bool:
     """Check if any users exist in the database."""
-    cursor = db.cursor()
-    cursor.execute("SELECT 1 FROM json_data LIMIT 1")
-    return cursor.fetchone() is not None
+    return db.exec(select(SQLUser)).first() is not None
 
 
 def get_is_app_schedule_active(app: App, device: Device) -> bool:
@@ -980,59 +760,10 @@ def _matches_monthly_weekday_pattern(target_date: date, pattern: str) -> bool:
 
 def get_device_by_name(user: User, name: str) -> Device | None:
     """Get a device by name."""
-    for device in user.devices.values():
+    for device in user.devices:
         if device.name == name:
             return device
     return None
-
-
-def _update_json_field(
-    cursor: sqlite3.Cursor,
-    username: str,
-    path: str,
-    value: Any,
-) -> None:
-    """
-    Update a single field in the json_data using the provided cursor.
-    This function does NOT commit the transaction.
-    """
-    cursor.execute(
-        """
-        UPDATE json_data
-        SET data = json_set(data, ?, ?)
-        WHERE username = ?
-        """,
-        (path, value, username),
-    )
-
-
-def update_device_field(
-    cursor: sqlite3.Cursor, username: str, device_id: str, field: str, value: Any
-) -> None:
-    """
-    Update a single field for a device using the provided cursor.
-    This function does NOT commit the transaction.
-    """
-    path = f"$.devices.{device_id}.{field}"
-    _update_json_field(cursor, username, path, value)
-    logger.debug(f"Queued update for {field} for device {device_id}")
-
-
-def update_app_field(
-    cursor: sqlite3.Cursor,
-    username: str,
-    device_id: str,
-    iname: str,
-    field: str,
-    value: Any,
-) -> None:
-    """
-    Update a single field for an app using the provided cursor.
-    This function does NOT commit the transaction.
-    """
-    path = f"$.devices.{device_id}.apps.{iname}.{field}"
-    _update_json_field(cursor, username, path, value)
-    logger.debug(f"Queued update for {field} for app {iname} on device {device_id}")
 
 
 def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
@@ -1043,43 +774,32 @@ def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
     return path
 
 
-def get_device_by_id(db: sqlite3.Connection, device_id: str) -> Device | None:
+def get_device_by_id(db: Session, device_id: str) -> Device | None:
     """Get a device by ID."""
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        SELECT T2.value
-        FROM json_data AS T1, json_each(T1.data, '$.devices') AS T2
-        WHERE T2.key = ?
-        """,
-        (device_id,),
-    )
-    row = cursor.fetchone()
-    if row:
+    device_sql = db.get(SQLDevice, device_id)
+    if device_sql:
+        device_data = device_sql.model_dump()
+        device_data["apps"] = {app.iname: app.model_dump() for app in device_sql.apps}
         try:
-            device_data = json.loads(row[0])
             return Device.model_validate(device_data)
-        except (json.JSONDecodeError, ValidationError) as e:
+        except ValidationError as e:
             logger.error(f"Error processing device data for device {device_id}: {e}")
             return None
     return None
 
 
-def get_user_by_device_id(db: sqlite3.Connection, device_id: str) -> User | None:
+def get_user_by_device_id(db: Session, device_id: str) -> User | None:
     """Get a user by device ID."""
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        SELECT T1.data
-        FROM json_data AS T1, json_each(T1.data, '$.devices') AS T2
-        WHERE T2.key = ?
-        """,
-        (device_id,),
-    )
-    row = cursor.fetchone()
-    if row:
+    device_sql = db.get(SQLDevice, device_id)
+    if device_sql and device_sql.user:
+        user_sql = device_sql.user
+        user_data = user_sql.model_dump()
+        user_data["devices"] = []
+        for dev_sql in user_sql.devices:
+            device_data = dev_sql.model_dump()
+            device_data["apps"] = {app.iname: app.model_dump() for app in dev_sql.apps}
+            user_data["devices"].append(device_data)
         try:
-            user_data = json.loads(row[0])
             return User.model_validate(user_data)
         except (json.JSONDecodeError, ValidationError) as e:
             logger.error(f"Error processing user data for device {device_id}: {e}")
@@ -1099,17 +819,30 @@ def get_firmware_version() -> str | None:
     return None
 
 
-def get_user_by_api_key(db: sqlite3.Connection, api_key: str) -> User | None:
+def get_user_by_api_key(db: Session, api_key: str) -> User | None:
     """Get a user by API key."""
-    for user in get_all_users(db):
-        if user.api_key == api_key:
-            return user
+    statement = select(SQLUser).where(SQLUser.api_key == api_key)
+    user_sql = db.exec(statement).first()
+    if user_sql:
+        user_data = user_sql.model_dump()
+        user_data["devices"] = []
+        for device_sql in user_sql.devices:
+            device_data = device_sql.model_dump()
+            device_data["apps"] = {}
+            for app_sql in device_sql.apps:
+                device_data["apps"][app_sql.iname] = app_sql.model_dump()
+            user_data["devices"].append(device_data)
+        try:
+            return User.model_validate(user_data)
+        except ValidationError as e:
+            logger.error(f"User validation failed for user with api_key {api_key}: {e}")
+            return None
     return None
 
 
 def get_pushed_app(user: User, device_id: str, installation_id: str) -> dict[str, Any]:
     """Get a pushed app."""
-    device = user.devices.get(device_id)
+    device = next((d for d in user.devices if d.id == device_id), None)
     if not device:
         return {}
 
@@ -1132,15 +865,13 @@ def get_pushed_app(user: User, device_id: str, installation_id: str) -> dict[str
     return app
 
 
-def add_pushed_app(
-    db: sqlite3.Connection, device_id: str, installation_id: str
-) -> None:
+def add_pushed_app(db: Session, device_id: str, installation_id: str) -> None:
     """Add a pushed app to a device."""
     user = get_user_by_device_id(db, device_id)
     if not user:
         raise ValueError("User not found")
 
-    device = user.devices.get(device_id)
+    device = next((d for d in user.devices if d.id == device_id), None)
     if not device:
         raise ValueError("Device not found")
 
@@ -1159,65 +890,77 @@ def add_pushed_app(
     save_app(db, device_id, app)
 
 
-def save_app(db: sqlite3.Connection, device_id: str, app: App) -> bool:
-    """Save an app atomically using json_set."""
+def save_app(db: Session, device_id: str, app: App) -> bool:
+    """Save an app atomically."""
     if not app.iname:
         return True  # Nothing to save if iname is missing
 
-    user = get_user_by_device_id(db, device_id)
-    if not user:
-        logger.error(f"Cannot save app: user not found for device {device_id}")
-        return False
-
     try:
-        with db_transaction(db) as cursor:
-            path = f"$.devices.{device_id}.apps.{app.iname}"
-            app_json = app.model_dump_json()
+        device_sql = db.get(SQLDevice, device_id)
+        if not device_sql:
+            logger.error(f"Cannot save app: device not found for id {device_id}")
+            return False
 
-            cursor = db.cursor()
-            cursor.execute(
-                """
-                UPDATE json_data
-                SET data = json_set(data, ?, json(?))
-                WHERE username = ?
-                """,
-                (path, app_json, user.username),
-            )
-        logger.debug(f"Atomically saved app {app.iname} for user {user.username}")
+        # Check if app already exists
+        app_sql = next((a for a in device_sql.apps if a.iname == app.iname), None)
+
+        if app_sql:
+            # Update existing app
+            app_data = app.model_dump()
+            for key, value in app_data.items():
+                setattr(app_sql, key, value)
+        else:
+            # Create new app
+            app_sql = SQLApp.model_validate(app)
+            app_sql.device_id = device_id
+            db.add(app_sql)
+
+        db.commit()
+        db.refresh(app_sql)
+        logger.debug(f"Atomically saved app {app.iname} for device {device_id}")
         return True
-    except sqlite3.Error as e:
-        logger.error(f"Could not save app {app.iname} for user {user.username}: {e}")
+    except Exception as e:
+        logger.error(f"Could not save app {app.iname} for device {device_id}: {e}")
+        db.rollback()
         return False
 
 
 def save_render_messages(
-    db: sqlite3.Connection, user: User, device: Device, app: App, messages: list[str]
+    db: Session, user: User, device: Device, app: App, messages: list[str]
 ) -> None:
     """Save render messages from pixlet."""
-    app.render_messages = messages
     try:
-        with db_transaction(db) as cursor:
-            update_app_field(
-                cursor,
-                user.username,
-                device.id,
-                app.iname,
-                "render_messages",
-                messages,
+        # Find the SQLApp instance
+        statement = select(SQLApp).where(
+            SQLApp.iname == app.iname, SQLApp.device_id == device.id
+        )
+        app_sql = db.exec(statement).first()
+
+        if app_sql:
+            app_sql.render_messages = messages
+            db.add(app_sql)
+            db.commit()
+            db.refresh(app_sql)
+        else:
+            logger.warning(
+                f"App {app.iname} not found for device {device.id} to save render messages."
             )
-    except sqlite3.Error as e:
+    except Exception as e:
         logger.error(
             f"Could not save render messages for app {app.iname} for user {user.username}: {e}"
         )
+        db.rollback()
 
 
-def vacuum(db: sqlite3.Connection) -> None:
-    page_count_row = db.execute("PRAGMA page_count").fetchone()
-    freelist_count_row = db.execute("PRAGMA freelist_count").fetchone()
+def vacuum(db: Session) -> None:
+    import sqlalchemy as sa
 
-    if page_count_row and freelist_count_row:
-        page_count = page_count_row[0]
-        freelist_count = freelist_count_row[0]
+    page_count_row = db.scalar(sa.text("PRAGMA page_count"))
+    freelist_count_row = db.scalar(sa.text("PRAGMA freelist_count"))
+
+    if page_count_row is not None and freelist_count_row is not None:
+        page_count = cast(int, page_count_row)
+        freelist_count = cast(int, freelist_count_row)
 
         # Avoid division by zero for empty DB
         if page_count > 0:
@@ -1228,5 +971,6 @@ def vacuum(db: sqlite3.Connection) -> None:
                     f"Database is fragmented ({freelist_count} of {page_count} pages are free, "
                     f"{fragmentation_ratio:.1%}). Vacuuming..."
                 )
-                db.execute("VACUUM")
+                db.execute(sa.text("VACUUM"))
+                db.commit()
                 logger.info("Database vacuum complete.")
