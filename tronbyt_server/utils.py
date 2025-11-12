@@ -13,6 +13,7 @@ from fastapi import Request, Response
 from fastapi.responses import FileResponse
 from fastapi_babel import _
 from git import FetchInfo, GitCommandError, Repo
+from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
 from tronbyt_server.flash import flash
@@ -241,6 +242,28 @@ def send_image(
     return response
 
 
-def push_new_image(device_id: str) -> None:
-    """Wake up WebSocket loops to push a new image to a given device."""
+def push_image(
+    device_id: str,
+    installation_id: str | None,
+    image_bytes: bytes,
+    db_conn: sqlite3.Connection | None = None,
+) -> None:
+    """Save a pushed image and notify the device."""
+    device_webp_path = db.get_device_webp_dir(device_id)
+    device_webp_path.mkdir(parents=True, exist_ok=True)
+    pushed_path = device_webp_path / "pushed"
+    pushed_path.mkdir(exist_ok=True)
+
+    if installation_id:
+        filename = f"{secure_filename(installation_id)}.webp"
+    else:
+        filename = f"__{time.monotonic_ns()}.webp"
+    file_path = pushed_path / filename
+
+    file_path.write_bytes(image_bytes)
+
+    if installation_id and db_conn:
+        db.add_pushed_app(db_conn, device_id, installation_id)
+
+    # Wake up WebSocket loops to push a new image to a given device.
     get_sync_manager().notify(device_id)
