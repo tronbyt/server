@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tronbyt_server import db
-from tronbyt_server.models import App, DeviceType
+from tronbyt_server.models import App, DeviceType, Brightness
 from tronbyt_server.models.user import User
 from tests import utils
 
@@ -274,9 +274,9 @@ class TestDeviceEndpoint:
         device.night_mode_app = app.iname
         device.night_start = "21:30"
         device.night_end = "06:00"
-        device.night_brightness = 64
+        device.night_brightness = Brightness(64)
         device.dim_time = "05:15"
-        device.dim_brightness = 22
+        device.dim_brightness = Brightness(22)
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
         db.save_user(db_connection, device_user)
@@ -366,7 +366,7 @@ class TestDeviceEndpoint:
         device_id = list(device_user.devices.keys())[0]
         device = device_user.devices[device_id]
         device.dim_time = "04:00"
-        device.dim_brightness = 40
+        device.dim_brightness = Brightness(40)
         device_user.devices[device_id] = device
         db.save_user(db_connection, device_user)
 

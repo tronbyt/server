@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
 from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
-from tronbyt_server.models import App, Device, DeviceID, User
+from tronbyt_server.models import App, Device, DeviceID, User, Brightness
 from tronbyt_server.routers.manager import parse_time_input
 from tronbyt_server.utils import push_new_image, render_app
 
@@ -80,11 +80,13 @@ def get_device_payload(device: Device) -> dict[str, Any]:
             "app": device.night_mode_app,
             "startTime": device.night_start,
             "endTime": device.night_end,
-            "brightness": device.night_brightness,
+            "brightness": device.night_brightness.as_percent,
         },
         "dimMode": {
             "startTime": device.dim_time,
-            "brightness": device.dim_brightness,
+            "brightness": device.dim_brightness.as_percent
+            if device.dim_brightness
+            else None,
         },
         "pinnedApp": device.pinned_app,
         "interstitial": {
@@ -227,7 +229,7 @@ def update_device(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Brightness must be between 0 and 100",
             )
-        device.brightness = data.brightness
+        device.brightness = Brightness(data.brightness)
     if data.autoDim is not None:
         device.night_mode_enabled = data.autoDim
     if data.intervalSec is not None:
@@ -247,12 +249,12 @@ def update_device(
             )
         device.night_mode_app = data.nightModeApp
     if data.nightModeBrightness is not None:
-        if not 0 <= data.nightModeBrightness <= 255:
+        if not 0 <= data.nightModeBrightness <= 100:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Night mode brightness must be between 0 and 255",
+                detail="Night mode brightness must be between 0 and 100",
             )
-        device.night_brightness = data.nightModeBrightness
+        device.night_brightness = Brightness(data.nightModeBrightness)
     if data.nightModeStartTime is not None:
         device.night_start = parse_time_input(data.nightModeStartTime)
     if data.nightModeEndTime is not None:
@@ -268,7 +270,7 @@ def update_device(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Dim brightness must be between 0 and 100",
             )
-        device.dim_brightness = data.dimModeBrightness
+        device.dim_brightness = Brightness(data.dimModeBrightness)
     if data.pinnedApp is not None:
         if data.pinnedApp and data.pinnedApp not in device.apps:
             raise HTTPException(
