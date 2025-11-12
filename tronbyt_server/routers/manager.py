@@ -54,6 +54,7 @@ from tronbyt_server.models import (
     User,
     Weekday,
     ProtocolType,
+    Brightness,
 )
 from tronbyt_server.pixlet import call_handler_with_config, get_schema
 from tronbyt_server.templates import templates
@@ -277,8 +278,8 @@ def next_app_logic(
         return send_default_image(device)
 
     # If brightness is 0, short-circuit and return default image to save processing
-    brightness = device.brightness or 50
-    if brightness == 0:
+    brightness = device.brightness or Brightness(50)
+    if brightness.as_percent == 0:
         logger.debug("Brightness is 0, returning default image")
         return send_default_image(device)
 
@@ -406,35 +407,9 @@ def next_app_logic(
 def index(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
 ) -> Response:
     """Render the main page with a list of devices."""
-    devices: list[Device] = []
-    user_updated = False
-    if user.devices:
-        for device in reversed(list(user.devices.values())):
-            if not device.ws_url:
-                device.ws_url = str(
-                    request.url_for("websocket_endpoint", device_id=device.id)
-                )
-                user_updated = True
-
-            ui_device = device.model_copy()
-            if ui_device.brightness:
-                ui_device.brightness = db.percent_to_ui_scale(ui_device.brightness)
-            if ui_device.night_brightness:
-                ui_device.night_brightness = db.percent_to_ui_scale(
-                    ui_device.night_brightness
-                )
-            if ui_device.dim_brightness is not None:
-                ui_device.dim_brightness = db.percent_to_ui_scale(
-                    ui_device.dim_brightness
-                )
-            devices.append(ui_device)
-
-        if user_updated:
-            db.save_user(db_conn, user)
-
+    devices = reversed(list(user.devices.values()))
     return templates.TemplateResponse(
         request, "manager/index.html", {"devices": devices, "user": user}
     )
@@ -501,7 +476,7 @@ def create_post(
         secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
     )
 
-    percent_brightness = db.ui_scale_to_percent(form_data.brightness)
+    percent_brightness = Brightness.from_ui_scale(form_data.brightness)
 
     device = Device(
         id=device_id,
@@ -511,7 +486,7 @@ def create_post(
         ws_url=ws_url,
         api_key=api_key,
         brightness=percent_brightness,
-        night_brightness=0,
+        night_brightness=Brightness(0),
         dim_brightness=None,
         default_interval=10,
         notes=form_data.notes or "",
@@ -545,38 +520,25 @@ def create_post(
 
 @router.get("/{device_id}/update")
 def update(
-    request: Request, device_id: DeviceID, user: User = Depends(manager)
+    request: Request,
+    deps: UserAndDevice = Depends(get_user_and_device),
 ) -> Response:
-    device = user.devices.get(device_id)
+    device = deps.device
     if not device:
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
-    default_img_url = request.url_for("next_app", device_id=device_id)
-    default_ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
-
-    ui_device = device.model_copy()
-    if ui_device.brightness:
-        ui_device.brightness = db.percent_to_ui_scale(ui_device.brightness)
-    if ui_device.night_brightness:
-        ui_device.night_brightness = db.percent_to_ui_scale(ui_device.night_brightness)
-    if ui_device.dim_brightness is not None:
-        ui_device.dim_brightness = db.percent_to_ui_scale(ui_device.dim_brightness)
-
-    # Convert legacy integer time format to HH:MM for display
-    if ui_device.night_start and isinstance(ui_device.night_start, int):
-        ui_device.night_start = f"{ui_device.night_start:02d}:00"
-    if ui_device.night_end and isinstance(ui_device.night_end, int):
-        ui_device.night_end = f"{ui_device.night_end:02d}:00"
+    default_img_url = request.url_for("next_app", device_id=device.id)
+    default_ws_url = str(request.url_for("websocket_endpoint", device_id=device.id))
 
     return templates.TemplateResponse(
         request,
         "manager/update.html",
         {
-            "device": ui_device,
+            "device": device,
             "available_timezones": available_timezones(),
             "default_img_url": default_img_url,
             "default_ws_url": default_ws_url,
-            "user": user,
+            "user": deps.user,
         },
     )
 
@@ -600,13 +562,17 @@ async def update_brightness(
             content="Brightness must be between 0 and 5",
         )
 
-    percent_brightness = db.ui_scale_to_percent(brightness)
+    device_brightness = Brightness.from_ui_scale(brightness)
     try:
         with db.db_transaction(db_conn) as cursor:
             db.update_device_field(
-                cursor, user.username, device.id, "brightness", percent_brightness
+                cursor,
+                user.username,
+                device.id,
+                "brightness",
+                device_brightness.as_percent,
             )
-        device.brightness = percent_brightness  # keep in-memory model updated
+        device.brightness = device_brightness  # keep in-memory model updated
     except sqlite3.Error as e:
         logger.error(f"Failed to update brightness for device {device.id}: {e}")
         raise HTTPException(
@@ -725,8 +691,8 @@ def update_post(
     )
     device.api_key = form_data.api_key or ""
     device.notes = form_data.notes or ""
-    device.brightness = db.ui_scale_to_percent(form_data.brightness)
-    device.night_brightness = db.ui_scale_to_percent(form_data.night_brightness)
+    device.brightness = Brightness.from_ui_scale(form_data.brightness)
+    device.night_brightness = Brightness.from_ui_scale(form_data.night_brightness)
     device.default_interval = form_data.default_interval
     device.night_mode_enabled = form_data.night_mode_enabled
     device.night_mode_app = form_data.night_mode_app or ""
@@ -756,7 +722,7 @@ def update_post(
         device.dim_time = None
 
     if form_data.dim_brightness is not None:
-        device.dim_brightness = db.ui_scale_to_percent(form_data.dim_brightness)
+        device.dim_brightness = Brightness.from_ui_scale(form_data.dim_brightness)
 
     # Handle interstitial app settings
     device.interstitial_enabled = form_data.interstitial_enabled
@@ -977,8 +943,8 @@ async def uploadapp_post(
         preview,
         Device(
             id="aaaaaaaa",
-            brightness=100,
-            night_brightness=0,
+            brightness=Brightness(100),
+            night_brightness=Brightness(0),
             dim_brightness=None,
             default_interval=15,
         ),

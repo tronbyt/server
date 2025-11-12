@@ -54,19 +54,19 @@
         <tr>
           <td>
             <label>{{ _('Brightness') }}</label> =
-            <span id="brightnessValue-{{ device.id }}">{{device.brightness }}</span>
+            <span id="brightnessValue-{{ device.id }}">{{device.brightness.as_ui_scale }}</span>
             <div class="brightness-panel" id="brightness-panel-{{ device.id }}">
-              <button type="button" class="brightness-btn {% if device.brightness == 0 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness.as_ui_scale == 0 %}active{% endif %}"
                       data-brightness="0" onclick="setBrightness('{{ device.id }}', 0)">0</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 1 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness.as_ui_scale == 1 %}active{% endif %}"
                       data-brightness="1" onclick="setBrightness('{{ device.id }}', 1)">1</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 2 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness.as_ui_scale == 2 %}active{% endif %}"
                       data-brightness="2" onclick="setBrightness('{{ device.id }}', 2)">2</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 3 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness.as_ui_scale == 3 %}active{% endif %}"
                       data-brightness="3" onclick="setBrightness('{{ device.id }}', 3)">3</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 4 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness.as_ui_scale == 4 %}active{% endif %}"
                       data-brightness="4" onclick="setBrightness('{{ device.id }}', 4)">4</button>
-              <button type="button" class="brightness-btn {% if device.brightness == 5 %}active{% endif %}"
+              <button type="button" class="brightness-btn {% if device.brightness.as_ui_scale == 5 %}active{% endif %}"
                       data-brightness="5" onclick="setBrightness('{{ device.id }}', 5)">5</button>
             </div>
           </td>

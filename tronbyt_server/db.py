@@ -22,7 +22,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
-from tronbyt_server.models import App, AppMetadata, Device, User, Weekday
+from tronbyt_server.models import App, AppMetadata, Device, User, Weekday, Brightness
 
 logger = logging.getLogger(__name__)
 
@@ -226,20 +226,20 @@ def migrate_brightness_to_percent(db: sqlite3.Connection) -> None:
         need_save = False
         for device in user.devices.values():
             # Check if brightness is in the old 0-5 scale
-            if device.brightness <= 5:
-                old_value = device.brightness
-                device.brightness = ui_scale_to_percent(old_value)
+            if device.brightness.as_percent <= 5:
+                old_value = device.brightness.as_percent
+                device.brightness = Brightness.from_ui_scale(old_value)
                 need_save = True
                 logger.debug(
-                    f"Converted brightness from {old_value} to {device.brightness}%"
+                    f"Converted brightness from {old_value} to {device.brightness.as_percent}%"
                 )
 
-            if device.night_brightness <= 5:
-                old_value = device.night_brightness
-                device.night_brightness = ui_scale_to_percent(old_value)
+            if device.night_brightness.as_percent <= 5:
+                old_value = device.night_brightness.as_percent
+                device.night_brightness = Brightness.from_ui_scale(old_value)
                 need_save = True
                 logger.debug(
-                    f"Converted night_brightness from {old_value} to {device.night_brightness}%"
+                    f"Converted night_brightness from {old_value} to {device.night_brightness.as_percent}%"
                 )
 
         if need_save:
@@ -457,50 +457,18 @@ def get_device_brightness_percent(device: Device) -> int:
     # Priority: night mode > dim mode > normal brightness
     # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
-        return device.night_brightness if device.night_brightness is not None else 1
+        return (
+            device.night_brightness.as_percent
+            if device.night_brightness is not None
+            else 1
+        )
     # If we're in dim mode (but not night mode), use dim_brightness
     elif get_dim_mode_is_active(device):
         if device.dim_brightness is not None:
-            return device.dim_brightness
-        return device.brightness if device.brightness is not None else 50
+            return device.dim_brightness.as_percent
+        return device.brightness.as_percent if device.brightness is not None else 50
     else:
-        return device.brightness if device.brightness is not None else 50
-
-
-def percent_to_ui_scale(percent: int) -> int:
-    """Convert percentage brightness to UI scale."""
-    if percent == 0:
-        return 0
-    elif percent <= 3:
-        return 1
-    elif percent <= 5:
-        return 2
-    elif percent <= 12:
-        return 3
-    elif percent <= 35:
-        return 4
-    else:
-        return 5
-
-
-def ui_scale_to_percent(scale_value: int) -> int:
-    lookup = {
-        0: 0,
-        1: 3,
-        2: 5,
-        3: 12,
-        4: 35,
-        5: 100,
-    }
-    # Handle legacy brightness if needed
-    if scale_value in lookup:
-        return lookup[scale_value]
-    return 20  # Default to level 3 (20%)
-
-
-# For API compatibility - map from 8bit values to 0-5 scale
-def brightness_map_8bit_to_levels(brightness: int) -> int:
-    return percent_to_ui_scale(brightness)
+        return device.brightness.as_percent if device.brightness is not None else 50
 
 
 def get_data_dir() -> Path:

@@ -2,8 +2,9 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 from zoneinfo import ZoneInfo
+import functools
 
 from pydantic import (
     BaseModel,
@@ -11,7 +12,9 @@ from pydantic import (
     AfterValidator,
     BeforeValidator,
     AliasChoices,
+    GetCoreSchemaHandler,
 )
+from pydantic_core import core_schema
 
 from .app import App
 
@@ -35,10 +38,101 @@ DEFAULT_DEVICE_TYPE: DeviceType = DeviceType.TIDBYT_GEN1
 TWO_X_CAPABLE_DEVICE_TYPES = [DeviceType.TRONBYT_S3_WIDE]
 
 DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
-Brightness = Annotated[
-    int,
-    Field(ge=0, le=100, description="Percentage-based brightness (0-100)"),
-]
+
+
+@functools.total_ordering
+class Brightness:
+    """A type for representing brightness, handling conversions between percentage, 8-bit, and UI scale."""
+
+    def __init__(self, value: int):
+        if not 0 <= value <= 100:
+            raise ValueError("Brightness must be a percentage between 0 and 100")
+        self.value = value
+
+    @property
+    def as_percent(self) -> int:
+        """Return brightness as a percentage (0-100)."""
+        return self.value
+
+    @property
+    def as_8bit(self) -> int:
+        """Return brightness as an 8-bit value (0-255)."""
+        return (self.value * 255 + 50) // 100
+
+    @property
+    def as_ui_scale(self) -> int:
+        """Return brightness on a UI scale (0-5)."""
+        if self.value == 0:
+            return 0
+        elif self.value <= 3:
+            return 1
+        elif self.value <= 5:
+            return 2
+        elif self.value <= 12:
+            return 3
+        elif self.value <= 35:
+            return 4
+        else:
+            return 5
+
+    @classmethod
+    def from_ui_scale(cls, ui_value: int) -> Self:
+        """Create a Brightness object from a UI scale value (0-5)."""
+        lookup = {
+            0: 0,
+            1: 3,
+            2: 5,
+            3: 12,
+            4: 35,
+            5: 100,
+        }
+        percent = lookup.get(ui_value, 20)  # Default to 20%
+        return cls(percent)
+
+    def __int__(self) -> int:
+        return self.value
+
+    def __repr__(self) -> str:
+        return f"Brightness({self.value}%)"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Brightness):
+            return self.value == other.value
+        if isinstance(other, int):
+            return self.value == other
+        return NotImplemented
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, Brightness):
+            return self.value < other.value
+        if isinstance(other, int):
+            return self.value < other
+        return NotImplemented
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """Pydantic custom schema for validation and serialization."""
+        from_int_schema = core_schema.chain_schema(
+            [
+                core_schema.int_schema(ge=0, le=100),
+                core_schema.no_info_plain_validator_function(cls),
+            ]
+        )
+
+        return core_schema.json_or_python_schema(
+            json_schema=from_int_schema,
+            python_schema=core_schema.union_schema(
+                [
+                    core_schema.is_instance_schema(cls),
+                    from_int_schema,
+                ]
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda instance: instance.value
+            ),
+        )
 
 
 def validate_timezone(tz: str | None) -> str | None:
@@ -128,7 +222,7 @@ class Device(BaseModel):
     img_url: str = ""
     ws_url: str = ""
     notes: str = ""
-    brightness: Brightness = 100
+    brightness: Brightness = Brightness(100)
     night_mode_enabled: bool = False
     night_mode_app: str = ""
     night_start: Annotated[str | None, BeforeValidator(format_time)] = (
@@ -137,7 +231,7 @@ class Device(BaseModel):
     night_end: Annotated[str | None, BeforeValidator(format_time)] = (
         None  # Time in HH:MM format or legacy int (hour only)
     )
-    night_brightness: Brightness = 0
+    night_brightness: Brightness = Brightness(0)
     dim_time: str | None = None  # Time in HH:MM format when dimming should start
     dim_brightness: Brightness | None = None
     default_interval: int = Field(
