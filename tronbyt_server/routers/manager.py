@@ -426,6 +426,10 @@ def index(
                 ui_device.night_brightness = db.percent_to_ui_scale(
                     ui_device.night_brightness
                 )
+            if ui_device.dim_brightness is not None:
+                ui_device.dim_brightness = db.percent_to_ui_scale(
+                    ui_device.dim_brightness
+                )
             devices.append(ui_device)
 
         if user_updated:
@@ -555,6 +559,8 @@ def update(
         ui_device.brightness = db.percent_to_ui_scale(ui_device.brightness)
     if ui_device.night_brightness:
         ui_device.night_brightness = db.percent_to_ui_scale(ui_device.night_brightness)
+    if ui_device.dim_brightness is not None:
+        ui_device.dim_brightness = db.percent_to_ui_scale(ui_device.dim_brightness)
 
     # Convert legacy integer time format to HH:MM for display
     if ui_device.night_start and isinstance(ui_device.night_start, int):
@@ -749,7 +755,7 @@ def update_post(
         # Remove dim_time if the field is empty
         device.dim_time = None
 
-    if form_data.dim_brightness:
+    if form_data.dim_brightness is not None:
         device.dim_brightness = db.ui_scale_to_percent(form_data.dim_brightness)
 
     # Handle interstitial app settings
