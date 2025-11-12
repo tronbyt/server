@@ -59,6 +59,7 @@ from tronbyt_server.pixlet import call_handler_with_config, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (
     possibly_render,
+    push_image,
     render_app,
     send_default_image,
     send_image,
@@ -1507,6 +1508,57 @@ def preview(
         return Response(content=data, media_type="image/webp")
     except Exception as e:
         logger.error(f"Error in preview: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating preview",
+        )
+
+
+@router.post("/{device_id}/{iname}/preview")
+def push_preview(
+    device_and_app: DeviceAndApp = Depends(get_device_and_app),
+    user: User = Depends(manager),
+    db_conn: sqlite3.Connection = Depends(get_db),
+) -> Response:
+    device = device_and_app.device
+    app = device_and_app.app
+
+    if not app.path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
+        )
+
+    app_path = Path(app.path)
+    if not app_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="App path not found"
+        )
+
+    try:
+        # Render the app to get the image bytes directly
+        image_bytes = render_app(
+            db_conn=db_conn,
+            app_path=app_path,
+            config=app.config,
+            webp_path=None,
+            device=device,
+            app=app,
+            user=user,
+        )
+        if image_bytes is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error running pixlet render",
+            )
+
+        # Use push_image to save the temporary preview and notify the device
+        push_image(device.id, None, image_bytes)
+
+        return Response(status_code=status.HTTP_200_OK)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in push_preview: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error generating preview",

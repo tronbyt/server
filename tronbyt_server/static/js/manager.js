@@ -316,6 +316,29 @@ function deleteApp(deviceId, iname) {
     });
 }
 
+// AJAX function to preview an app
+function previewApp(deviceId, iname) {
+  fetch(`/${deviceId}/${iname}/preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to preview app');
+        alert('Failed to preview app. Please try again.');
+      } else {
+        console.log('App previewed successfully');
+        // Optionally, provide some feedback to the user
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while previewing the app. Please try again.');
+    });
+}
+
 // Cookie utility functions
 function setCookie(name, value, days = 365) {
   const expires = new Date();

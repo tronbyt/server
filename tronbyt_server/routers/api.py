@@ -4,7 +4,6 @@ import base64
 import hashlib
 import logging
 import sqlite3
-import time
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +16,7 @@ from tronbyt_server import db
 from tronbyt_server.dependencies import get_db, get_user_and_device_from_api_key
 from tronbyt_server.models import App, Device, DeviceID, User
 from tronbyt_server.routers.manager import parse_time_input
-from tronbyt_server.utils import push_new_image, render_app
+from tronbyt_server.utils import push_image, render_app
 
 router = APIRouter(prefix="/v0", tags=["api"])
 logger = logging.getLogger(__name__)
@@ -282,32 +281,6 @@ def update_device(
     return get_device_payload(user.devices[device_id])
 
 
-def _push_image(
-    device_id: str,
-    installation_id: str | None,
-    image_bytes: bytes,
-    db_conn: sqlite3.Connection | None = None,
-) -> None:
-    device_webp_path = db.get_device_webp_dir(device_id)
-    device_webp_path.mkdir(parents=True, exist_ok=True)
-    pushed_path = device_webp_path / "pushed"
-    pushed_path.mkdir(exist_ok=True)
-
-    if installation_id:
-        filename = f"{secure_filename(installation_id)}.webp"
-    else:
-        filename = f"__{time.monotonic_ns()}.webp"
-    file_path = pushed_path / filename
-
-    print(f"Writing pushed image to {file_path}")
-    file_path.write_bytes(image_bytes)
-
-    if installation_id and db_conn:
-        db.add_pushed_app(db_conn, device_id, installation_id)
-
-    push_new_image(device_id)
-
-
 @router.post("/devices/{device_id}/push")
 def handle_push(
     device_id: DeviceID,
@@ -330,7 +303,7 @@ def handle_push(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image data"
         )
 
-    _push_image(device_id, installation_id, image_bytes, db_conn)
+    push_image(device_id, installation_id, image_bytes, db_conn)
     return Response("WebP received.", status_code=status.HTTP_200_OK)
 
 
@@ -513,5 +486,5 @@ def handle_app_push(
         apps[installation_id] = app
         db.save_user(db_conn, user)
 
-    _push_image(device_id, installation_id, image_bytes, db_conn)
+    push_image(device_id, installation_id, image_bytes, db_conn)
     return Response("App pushed.", status_code=status.HTTP_200_OK)
