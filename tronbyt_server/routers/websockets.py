@@ -48,12 +48,10 @@ async def _send_message(websocket: WebSocket, message: ServerMessage) -> None:
 class DeviceAcknowledgment:
     """Manages device acknowledgment state for queued/displaying messages."""
 
-    def __init__(self, device_id: str) -> None:
-        """Initializes the DeviceAcknowledgment with a device_id."""
-        self.device_id = device_id
+    def __init__(self) -> None:
+        """Initializes the DeviceAcknowledgment."""
         self.queued_event = asyncio.Event()
         self.displaying_event = asyncio.Event()
-        self.old_firmware_detected = False
         self.queued_counter: int | None = None
         self.displaying_counter: int | None = None
         self.brightness_to_send: int | None = None  # If set, send this brightness value
@@ -70,25 +68,11 @@ class DeviceAcknowledgment:
         """Mark image as queued by device."""
         self.queued_counter = counter
         self.queued_event.set()
-        # If we receive queued message, device is new firmware
-        if self.old_firmware_detected:
-            logger.debug(
-                f"[{self.device_id}] Received 'queued' message - device is new firmware, resetting detection"
-            )
-            self.old_firmware_detected = False
 
     def mark_displaying(self, counter: int) -> None:
         """Mark image as displaying by device."""
         self.displaying_counter = counter
         self.displaying_event.set()
-
-    def mark_old_firmware(self) -> None:
-        """Mark device as old firmware."""
-        if not self.old_firmware_detected:
-            logger.info(
-                f"[{self.device_id}] No 'displaying' message after timeout - marking as old firmware"
-            )
-            self.old_firmware_detected = True
 
 
 @dataclass
@@ -252,7 +236,6 @@ async def _send_response(
 
 
 async def _wait_for_acknowledgment(
-    device_id: str,
     ack: DeviceAcknowledgment,
     dwell_time: int,
     db_conn: sqlite3.Connection,
@@ -271,11 +254,11 @@ async def _wait_for_acknowledgment(
     time_waited = 0
 
     # Determine timeout based on firmware type
-    if ack.old_firmware_detected:
+    if device.info.protocol_version is None:
         # Old firmware doesn't send messages, just wait for dwell_time
         extended_timeout = dwell_time
         logger.debug(
-            f"[{device_id}] Using old firmware timeout of {extended_timeout}s (dwell_time)"
+            f"[{device.id}] Using old firmware timeout of {extended_timeout}s (dwell_time)"
         )
     else:
         # New firmware - give device full dwell time + buffer
@@ -309,21 +292,21 @@ async def _wait_for_acknowledgment(
         # Check what triggered the wakeup
         if display_task in done:
             # Got displaying acknowledgment, render next image
-            logger.debug(f"[{device_id}] Device acknowledged display")
+            logger.debug(f"[{device.id}] Device acknowledged display")
             response = await loop.run_in_executor(
                 None, next_app_logic, db_conn, user, device
             )
             return (response, last_brightness)
 
         # Check if there's an ephemeral push waiting (this is common when woken by waiter)
-        pushed_dir = db.get_device_webp_dir(device_id) / "pushed"
+        pushed_dir = db.get_device_webp_dir(device.id) / "pushed"
         ephemeral_exists = await loop.run_in_executor(
             None, lambda: pushed_dir.is_dir() and any(pushed_dir.glob("__*"))
         )
 
         if ephemeral_exists:
             logger.debug(
-                f"[{device_id}] Ephemeral push detected, interrupting wait to send immediately"
+                f"[{device.id}] Ephemeral push detected, interrupting wait to send immediately"
             )
             # Render the next app (which will pick up the ephemeral push)
             try:
@@ -331,11 +314,11 @@ async def _wait_for_acknowledgment(
                     None, next_app_logic, db_conn, user, device
                 )
                 logger.debug(
-                    f"[{device_id}] Ephemeral push rendered, will send immediately"
+                    f"[{device.id}] Ephemeral push rendered, will send immediately"
                 )
                 return (response, last_brightness)
             except Exception as e:
-                logger.error(f"[{device_id}] Error rendering ephemeral push: {e}")
+                logger.error(f"[{device.id}] Error rendering ephemeral push: {e}")
                 # Continue waiting if render failed
 
         was_notified = False
@@ -344,20 +327,20 @@ async def _wait_for_acknowledgment(
                 was_notified = waiter_task.result()
             except Exception as e:
                 logger.warning(
-                    f"[{device_id}] Unexpected error getting waiter result: {e}"
+                    f"[{device.id}] Unexpected error getting waiter result: {e}"
                 )
 
         # If woken by a real notification (not timeout), check for brightness changes
         if was_notified:
             logger.debug(
-                f"[{device_id}] Woken by push notification, checking for updates"
+                f"[{device.id}] Woken by push notification, checking for updates"
             )
 
             # Check if brightness has changed and send update immediately
             new_brightness = db.get_device_brightness_percent(device)
             if new_brightness != last_brightness:
                 logger.info(
-                    f"[{device_id}] Brightness changed to {new_brightness}, sending immediately"
+                    f"[{device.id}] Brightness changed to {new_brightness}, sending immediately"
                 )
                 try:
                     await _send_message(
@@ -367,17 +350,16 @@ async def _wait_for_acknowledgment(
                     last_brightness = new_brightness  # Update tracked brightness
                     ack.brightness_to_send = None  # Clear pending brightness
                 except Exception as e:
-                    logger.error(f"[{device_id}] Failed to send brightness: {e}")
+                    logger.error(f"[{device.id}] Failed to send brightness: {e}")
             # DO NOT return here. Continue waiting for display ack.
 
         # Update time waited
         time_waited += poll_interval
 
     # Timeout reached without acknowledgment
-    if not ack.displaying_event.is_set():
-        ack.mark_old_firmware()
+    if not ack.displaying_event.is_set() and device.info.protocol_version is not None:
         logger.debug(
-            f"[{device_id}] No display confirmation received after {extended_timeout}s, assuming old firmware"
+            f"[{device.id}] No display confirmation received after {extended_timeout}s"
         )
 
     # Render next image after timeout
@@ -436,7 +418,6 @@ async def sender(
             # Wait for device acknowledgment with timeout and ephemeral push detection
             # This will check for ephemeral pushes and render the next image when ready
             response, last_brightness = await _wait_for_acknowledgment(
-                device_id,
                 ack,
                 dwell_time,
                 db_conn,
@@ -505,6 +486,21 @@ async def receiver(
                                 f"[{device_id}] Image queued (seq: {parsed_message.queued})"
                             )
                             ack.mark_queued(parsed_message.queued)
+
+                            # If we get a queued message, it's a new firmware device.
+                            # Update protocol version if not set.
+                            device = user.devices.get(device_id)
+                            if device and device.info.protocol_version is None:
+                                logger.info(
+                                    f"[{device_id}] First 'queued' message, setting protocol_version to 1"
+                                )
+                                db.update_device_field(
+                                    cursor,
+                                    user.username,
+                                    device_id,
+                                    "info.protocol_version",
+                                    1,
+                                )
                         elif isinstance(parsed_message, DisplayingMessage):
                             logger.debug(
                                 f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
@@ -577,7 +573,7 @@ async def websocket_endpoint(
     await websocket.accept()
 
     # Create shared acknowledgment state for sender/receiver communication
-    ack = DeviceAcknowledgment(device_id)
+    ack = DeviceAcknowledgment()
 
     # Create tasks for the new connection
     sender_task = asyncio.create_task(
