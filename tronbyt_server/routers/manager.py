@@ -856,6 +856,24 @@ def addapp_post(
             url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
         )
 
+    logger.info(
+        f"Adding app {name}: uinterval from form={uinterval}, recommended_interval={app_details.recommended_interval}"
+    )
+
+    # Use recommended_interval if:
+    # 1. uinterval is None (not provided), OR
+    # 2. uinterval is 10 (the default) AND recommended_interval is different from 10
+    #    (this includes 0, which should be respected)
+    if uinterval is None:
+        final_uinterval = app_details.recommended_interval
+    elif uinterval == 10 and app_details.recommended_interval != 10:
+        # User likely didn't change the default, use recommended interval instead
+        # This works even if recommended_interval is 0
+        final_uinterval = app_details.recommended_interval
+    else:
+        # User explicitly set a value, or recommended_interval is also 10
+        final_uinterval = uinterval
+
     app = App(
         id=app_details.id or "",
         name=name,
@@ -863,13 +881,13 @@ def addapp_post(
         path=app_details.path,
         enabled=False,
         last_render=0,
-        uinterval=(
-            uinterval if uinterval is not None else app_details.recommended_interval
-        ),
+        uinterval=final_uinterval,
         display_time=display_time if display_time is not None else 0,
         notes=notes or "",
         order=len(device.apps),
     )
+
+    logger.info(f"Created app with uinterval={app.uinterval}")
 
     device.apps[iname] = app
     db.save_user(db_conn, user)

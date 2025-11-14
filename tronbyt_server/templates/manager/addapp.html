@@ -509,7 +509,7 @@
     <div id="{{ grid_id }}" class="app-grid">
       {% for app in app_list %}
       <div class="app-item {% if app.broken %}broken-app{% endif %}" data-value="{{ app.name }}" data-installed="{{ app.is_installed | lower }}"
-        data-date="{{ app.date }}" data-name="{{ app.name }}" data-broken="{{ app.broken | lower }}" data-author="{{ app.author }}">
+        data-date="{{ app.date }}" data-name="{{ app.name }}" data-broken="{{ app.broken | lower }}" data-author="{{ app.author }}" data-recommended-interval="{{ app.recommended_interval }}">
         {% if app.is_installed %}
         <div class="installed-badge">{{ _('Installed') }}</div>
         {% endif %}
@@ -619,6 +619,15 @@
       // Add selection to clicked item
       appItem.classList.add('selected');
       document.getElementById('selected_app').value = appItem.getAttribute('data-value');
+
+      // Set the recommended interval from the app's metadata for display purposes
+      const recommendedInterval = appItem.getAttribute('data-recommended-interval');
+      if (recommendedInterval && recommendedInterval !== '0') {
+        document.getElementById('uinterval').value = recommendedInterval;
+      } else {
+        // Fallback to 10 if no recommended interval is set
+        document.getElementById('uinterval').value = 10;
+      }
 
       // Open the form submission in a new tab
       const form = document.getElementById('main_form');
