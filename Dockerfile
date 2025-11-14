@@ -11,7 +11,7 @@ RUN pdm install --check --prod --no-editable && pdm build --no-sdist --no-wheel
 
 # Ignore hadolint findings about version pinning
 # hadolint global ignore=DL3007,DL3008,DL3013
-FROM ghcr.io/tronbyt/pixlet:0.47.2 AS pixlet
+FROM ghcr.io/tronbyt/pixlet:0.47.3 AS pixlet
 
 # build runtime image
 FROM debian:trixie-slim AS runtime
