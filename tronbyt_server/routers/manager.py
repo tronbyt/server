@@ -1027,7 +1027,7 @@ def deleteapp(
     iname = app.iname
 
     if app.pushed:
-        webp_path = db.get_device_webp_dir(device.id) / "pushed" / f"{app.name}.webp"
+        webp_path = db.get_device_webp_dir(device.id) / "pushed" / f"{app.iname}.webp"
     else:
         webp_path = db.get_device_webp_dir(device.id) / f"{app.name}-{app.iname}.webp"
 
