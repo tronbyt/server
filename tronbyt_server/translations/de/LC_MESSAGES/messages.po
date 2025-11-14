@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-11-10 23:11+0100\n"
+"POT-Creation-Date: 2025-11-14 15:49+0100\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -22,23 +22,23 @@ msgstr ""
 msgid "Never"
 msgstr "Nie"
 
-#: tronbyt_server/utils.py:131
+#: tronbyt_server/utils.py:133
 msgid "Repo Cloned"
 msgstr "Repo geklont"
 
-#: tronbyt_server/utils.py:132
+#: tronbyt_server/utils.py:134
 msgid "Repo Updated"
 msgstr "Repo aktualisiert"
 
-#: tronbyt_server/utils.py:133
+#: tronbyt_server/utils.py:135
 msgid "Repo removed"
 msgstr "Repo entfernt"
 
-#: tronbyt_server/utils.py:134
+#: tronbyt_server/utils.py:136
 msgid "Error Cloning or Updating Repo"
 msgstr "Fehler beim Klonen oder Aktualisieren des Repos"
 
-#: tronbyt_server/utils.py:135
+#: tronbyt_server/utils.py:137
 msgid "No Changes to Repo"
 msgstr "Keine Änderungen am Repo"
 
@@ -108,201 +108,201 @@ msgstr "Neuer API-Schlüssel erfolgreich generiert."
 msgid "Failed to generate new API key."
 msgstr "Neuer API-Schlüssel konnte nicht generiert werden."
 
-#: tronbyt_server/routers/manager.py:468
+#: tronbyt_server/routers/manager.py:448
 msgid "Unique name is required."
 msgstr "Ein eindeutiger Name ist erforderlich."
 
-#: tronbyt_server/routers/manager.py:484
+#: tronbyt_server/routers/manager.py:464
 msgid "Could not generate a unique device ID."
 msgstr "Konnte keine eindeutige Geräte-ID generieren."
 
-#: tronbyt_server/routers/manager.py:531 tronbyt_server/routers/manager.py:777
+#: tronbyt_server/routers/manager.py:511 tronbyt_server/routers/manager.py:750
 msgid "Invalid location"
 msgstr "Ungültiger Standort"
 
-#: tronbyt_server/routers/manager.py:533 tronbyt_server/routers/manager.py:779
+#: tronbyt_server/routers/manager.py:513 tronbyt_server/routers/manager.py:752
 #, python-brace-format
 msgid "Location JSON error {error}"
 msgstr "Standort JSON-Fehler {error}"
 
-#: tronbyt_server/routers/manager.py:701
+#: tronbyt_server/routers/manager.py:674
 msgid "Id and Name is required."
 msgstr "ID und Name sind erforderlich."
 
-#: tronbyt_server/routers/manager.py:733
+#: tronbyt_server/routers/manager.py:706
 #, python-brace-format
 msgid "Invalid night start time: {error}"
 msgstr "Ungültige Nacht-Startzeit: {error}"
 
-#: tronbyt_server/routers/manager.py:739
+#: tronbyt_server/routers/manager.py:712
 #, python-brace-format
 msgid "Invalid night end time: {error}"
 msgstr "Ungültige Nacht-Endzeit: {error}"
 
-#: tronbyt_server/routers/manager.py:747
+#: tronbyt_server/routers/manager.py:720
 #, python-brace-format
 msgid "Invalid dim time: {error}"
 msgstr "Ungültige Dimm-Zeit: {error}"
 
-#: tronbyt_server/routers/manager.py:863
+#: tronbyt_server/routers/manager.py:836
 msgid "App name required."
 msgstr "App-Name erforderlich."
 
-#: tronbyt_server/routers/manager.py:874 tronbyt_server/routers/manager.py:1100
+#: tronbyt_server/routers/manager.py:847 tronbyt_server/routers/manager.py:1092
 msgid "Could not generate a unique installation ID."
 msgstr "Konnte keine eindeutige Installations-ID generieren."
 
-#: tronbyt_server/routers/manager.py:881 tronbyt_server/routers/manager.py:1353
+#: tronbyt_server/routers/manager.py:854 tronbyt_server/routers/manager.py:1345
 msgid "App not found."
 msgstr "App nicht gefunden."
 
-#: tronbyt_server/routers/manager.py:934
+#: tronbyt_server/routers/manager.py:925
 msgid "No file"
 msgstr "Keine Datei"
 
-#: tronbyt_server/routers/manager.py:948
+#: tronbyt_server/routers/manager.py:939
 msgid "Invalid file path"
 msgstr "Ungültiger Dateipfad"
 
-#: tronbyt_server/routers/manager.py:957
+#: tronbyt_server/routers/manager.py:948
 msgid "File type not allowed"
 msgstr "Dateityp nicht erlaubt"
 
-#: tronbyt_server/routers/manager.py:965
+#: tronbyt_server/routers/manager.py:956
 msgid "Upload Successful"
 msgstr "Upload erfolgreich"
 
-#: tronbyt_server/routers/manager.py:1015
+#: tronbyt_server/routers/manager.py:1007
 #, python-brace-format
 msgid "Cannot delete {filename} because it is installed on a device."
 msgstr "Kann {filename} nicht löschen, da es auf einem Gerät installiert ist."
 
-#: tronbyt_server/routers/manager.py:1069
+#: tronbyt_server/routers/manager.py:1061
 msgid "App pinned."
 msgstr "App angeheftet."
 
-#: tronbyt_server/routers/manager.py:1071
+#: tronbyt_server/routers/manager.py:1063
 msgid "App unpinned."
 msgstr "App entpinnt."
 
-#: tronbyt_server/routers/manager.py:1074
+#: tronbyt_server/routers/manager.py:1066
 msgid "Error updating pin status."
 msgstr "Fehler beim Aktualisieren des Pin-Status."
 
-#: tronbyt_server/routers/manager.py:1167
+#: tronbyt_server/routers/manager.py:1159
 msgid "App duplicated successfully."
 msgstr "App erfolgreich dupliziert."
 
-#: tronbyt_server/routers/manager.py:1279
+#: tronbyt_server/routers/manager.py:1271
 msgid "Name is required."
 msgstr "Name ist erforderlich."
 
-#: tronbyt_server/routers/manager.py:1322
+#: tronbyt_server/routers/manager.py:1314
 msgid "Changes saved."
 msgstr "Änderungen gespeichert."
 
-#: tronbyt_server/routers/manager.py:1325
+#: tronbyt_server/routers/manager.py:1317
 msgid "Error saving changes."
 msgstr "Fehler beim Speichern der Änderungen"
 
-#: tronbyt_server/routers/manager.py:1339
+#: tronbyt_server/routers/manager.py:1331
 msgid "Invalid direction."
 msgstr "Ungültige Richtung."
 
-#: tronbyt_server/routers/manager.py:1402
+#: tronbyt_server/routers/manager.py:1394
 msgid "Error saving app, please try again."
 msgstr "Fehler beim Speichern der App, bitte erneut versuchen."
 
-#: tronbyt_server/routers/manager.py:1456
+#: tronbyt_server/routers/manager.py:1449
 msgid "Error Rendering App"
 msgstr "Fehler beim Rendern der App"
 
-#: tronbyt_server/routers/manager.py:1633
+#: tronbyt_server/routers/manager.py:1679
 msgid "API Key cannot be empty."
 msgstr "API-Schlüssel darf nicht leer sein."
 
-#: tronbyt_server/routers/manager.py:1677
+#: tronbyt_server/routers/manager.py:1723
 msgid "System repo updated successfully"
 msgstr "System-Repo erfolgreich aktualisiert"
 
-#: tronbyt_server/routers/manager.py:1833
+#: tronbyt_server/routers/manager.py:1879
 #, python-brace-format
 msgid "✅ {result['message']}"
 msgstr "✅ {result['message']}"
 
-#: tronbyt_server/routers/manager.py:1835
+#: tronbyt_server/routers/manager.py:1881
 #, python-brace-format
 msgid "ℹ️ {result['message']}"
 msgstr "ℹ️ {result['message']}"
 
-#: tronbyt_server/routers/manager.py:1837
+#: tronbyt_server/routers/manager.py:1883
 #, python-brace-format
 msgid "❌ {result['message']}"
 msgstr "❌ {result['message']}"
 
-#: tronbyt_server/routers/manager.py:1840
+#: tronbyt_server/routers/manager.py:1886
 #, python-brace-format
 msgid "❌ Firmware update failed: {str(e)}"
 msgstr "❌ Firmware-Update fehlgeschlagen: {str(e)}"
 
-#: tronbyt_server/routers/manager.py:1921
-#: tronbyt_server/routers/manager.py:1992
-#: tronbyt_server/routers/manager.py:2066
+#: tronbyt_server/routers/manager.py:1967
+#: tronbyt_server/routers/manager.py:2038
+#: tronbyt_server/routers/manager.py:2112
 msgid "No selected file"
 msgstr "Keine Datei ausgewählt"
 
-#: tronbyt_server/routers/manager.py:1927
-#: tronbyt_server/routers/manager.py:1995
-#: tronbyt_server/routers/manager.py:2069
+#: tronbyt_server/routers/manager.py:1973
+#: tronbyt_server/routers/manager.py:2041
+#: tronbyt_server/routers/manager.py:2115
 msgid "Invalid file type. Please upload a JSON file."
 msgstr "Ungültiger Dateityp. Bitte eine JSON-Datei hochladen."
 
-#: tronbyt_server/routers/manager.py:1937
-#: tronbyt_server/routers/manager.py:2002
-#: tronbyt_server/routers/manager.py:2076
+#: tronbyt_server/routers/manager.py:1983
+#: tronbyt_server/routers/manager.py:2048
+#: tronbyt_server/routers/manager.py:2122
 msgid "Invalid JSON structure"
 msgstr "Ungültige JSON-Struktur"
 
-#: tronbyt_server/routers/manager.py:1943
+#: tronbyt_server/routers/manager.py:1989
 msgid "Invalid config file: missing device ID"
 msgstr "Ungültige Konfigurationsdatei: Geräte-ID fehlt"
 
-#: tronbyt_server/routers/manager.py:1949
+#: tronbyt_server/routers/manager.py:1995
 msgid "Not the same device id. Import skipped."
 msgstr "Nicht die gleiche Geräte-ID. Import übersprungen."
 
-#: tronbyt_server/routers/manager.py:1959
-#: tronbyt_server/routers/manager.py:2099
+#: tronbyt_server/routers/manager.py:2005
+#: tronbyt_server/routers/manager.py:2145
 msgid "Invalid device configuration file"
 msgstr "Ungültige Gerätekonfigurationsdatei"
 
-#: tronbyt_server/routers/manager.py:1967
-#: tronbyt_server/routers/manager.py:2107
+#: tronbyt_server/routers/manager.py:2013
+#: tronbyt_server/routers/manager.py:2153
 msgid "Device configuration imported successfully"
 msgstr "Gerätekonfiguration erfolgreich importiert"
 
-#: tronbyt_server/routers/manager.py:1970
-#: tronbyt_server/routers/manager.py:2041
-#: tronbyt_server/routers/manager.py:2110
+#: tronbyt_server/routers/manager.py:2016
+#: tronbyt_server/routers/manager.py:2087
+#: tronbyt_server/routers/manager.py:2156
 #, python-brace-format
 msgid "Error parsing JSON file: {error}"
 msgstr "Fehler beim Parsen der JSON-Datei: {error}"
 
-#: tronbyt_server/routers/manager.py:1976
-#: tronbyt_server/routers/manager.py:2045
+#: tronbyt_server/routers/manager.py:2022
+#: tronbyt_server/routers/manager.py:2091
 #, python-brace-format
 msgid "Error importing config: {error}"
 msgstr "Fehler beim Importieren der Konfiguration: {error}"
 
-#: tronbyt_server/routers/manager.py:2037
+#: tronbyt_server/routers/manager.py:2083
 msgid "User configuration imported successfully"
 msgstr "Benutzerkonfiguration erfolgreich importiert"
 
-#: tronbyt_server/routers/manager.py:2084
+#: tronbyt_server/routers/manager.py:2130
 msgid "Device ID missing in config."
 msgstr "Geräte-ID fehlt in der Konfiguration."
 
-#: tronbyt_server/routers/manager.py:2089
+#: tronbyt_server/routers/manager.py:2135
 msgid "Device already exists. Import skipped."
 msgstr "Gerät existiert bereits. Import übersprungen."
 
@@ -429,7 +429,7 @@ msgstr "Repository-URL"
 #: tronbyt_server/templates/auth/edit.html:166
 #: tronbyt_server/templates/auth/edit.html:179
 #: tronbyt_server/templates/manager/configapp.html:24
-#: tronbyt_server/templates/manager/configapp.html:743
+#: tronbyt_server/templates/manager/configapp.html:756
 #: tronbyt_server/templates/manager/create.html:114
 #: tronbyt_server/templates/manager/update.html:55
 #: tronbyt_server/templates/manager/update.html:478
@@ -673,7 +673,7 @@ msgstr "Benutzer anlegen"
 
 #: tronbyt_server/templates/manager/addapp.html:4
 #: tronbyt_server/templates/manager/adminindex.html:34
-#: tronbyt_server/templates/partials/device_card.html:89
+#: tronbyt_server/templates/partials/device_card.html:94
 msgid "Add App"
 msgstr "App hinzufügen"
 
@@ -744,7 +744,7 @@ msgstr "Hochgeladene App löschen?"
 #: tronbyt_server/templates/manager/updateapp.html:26
 #: tronbyt_server/templates/manager/updateapp.html:370
 #: tronbyt_server/templates/manager/uploadapp.html:14
-#: tronbyt_server/templates/partials/app_card.html:61
+#: tronbyt_server/templates/partials/app_card.html:63
 msgid "Delete"
 msgstr "Löschen"
 
@@ -838,9 +838,10 @@ msgstr "Anzeigedauer (Sekunden):"
 
 #: tronbyt_server/templates/manager/adminindex.html:71
 #: tronbyt_server/templates/manager/configapp.html:456
-#: tronbyt_server/templates/manager/configapp.html:923
+#: tronbyt_server/templates/manager/configapp.html:936
 #: tronbyt_server/templates/manager/updateapp.html:44
 #: tronbyt_server/templates/partials/app_card.html:8
+#: tronbyt_server/templates/partials/app_card.html:59
 #: tronbyt_server/templates/partials/device_card.html:29
 msgid "Preview"
 msgstr "Vorschau"
@@ -872,7 +873,7 @@ msgid "Show Render Debug"
 msgstr "Debug-Ausgabe anzeigen"
 
 #: tronbyt_server/templates/manager/configapp.html:25
-#: tronbyt_server/templates/manager/configapp.html:766
+#: tronbyt_server/templates/manager/configapp.html:779
 #: tronbyt_server/templates/manager/import_config.html:12
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -901,23 +902,29 @@ msgstr "Standort eingeben"
 msgid "Upload Image"
 msgstr "Bild hochladen"
 
-#: tronbyt_server/templates/manager/configapp.html:477
-msgid "Please upload a valid image file (PNG, JPEG, GIF, or SVG)."
-msgstr "Bitte ein gültiges Bild hochladen (PNG, JPEG, GIF oder SVG)"
+#: tronbyt_server/templates/manager/configapp.html:469
+msgid "Please upload a valid image file (PNG, JPEG, GIF, SVG, or WebP)."
+msgstr "Bitte ein gültiges Bild hochladen (PNG, JPEG, GIF, SVG oder WebP)"
 
-#: tronbyt_server/templates/manager/configapp.html:492
+#: tronbyt_server/templates/manager/configapp.html:477
+msgid "File size exceeds 500KB limit. Please upload a smaller image."
+msgstr ""
+"Die Dateigröße überschreitet das 500KB-Limit. Bitte laden Sie ein "
+"kleineres Bild hoch."
+
+#: tronbyt_server/templates/manager/configapp.html:505
 msgid "Start typing..."
 msgstr "Bitte eingeben…"
 
-#: tronbyt_server/templates/manager/configapp.html:686
+#: tronbyt_server/templates/manager/configapp.html:699
 msgid "No options available for this location"
 msgstr "Keine Optionen für diesen Standort verfügbar"
 
-#: tronbyt_server/templates/manager/configapp.html:699
+#: tronbyt_server/templates/manager/configapp.html:712
 msgid "Error loading options"
 msgstr "Fehler beim Laden der Optionen"
 
-#: tronbyt_server/templates/manager/configapp.html:755
+#: tronbyt_server/templates/manager/configapp.html:768
 #: tronbyt_server/templates/manager/update.html:119
 #: tronbyt_server/templates/manager/update.html:131
 msgid "Reset"
@@ -1066,7 +1073,7 @@ msgid "Upload JSON File"
 msgstr "JSON-Datei hochladen"
 
 #: tronbyt_server/templates/manager/update.html:6
-#: tronbyt_server/templates/partials/device_card.html:92
+#: tronbyt_server/templates/partials/device_card.html:97
 msgid "Edit Device"
 msgstr "Gerät bearbeiten"
 
@@ -1093,7 +1100,7 @@ msgid "Websocket URL"
 msgstr "Websocket URL"
 
 #: tronbyt_server/templates/manager/update.html:156
-#: tronbyt_server/templates/partials/device_card.html:78
+#: tronbyt_server/templates/partials/device_card.html:83
 msgid "App Cycle Time (Seconds)"
 msgstr "App-Zykluszeit (Sekunden)"
 
@@ -1102,7 +1109,7 @@ msgid "Brightness Settings"
 msgstr "Helligkeitseinstellungen"
 
 #: tronbyt_server/templates/manager/update.html:174
-#: tronbyt_server/templates/partials/device_card.html:58
+#: tronbyt_server/templates/partials/device_card.html:63
 msgid "Brightness"
 msgstr "Helligkeit"
 
@@ -1566,31 +1573,31 @@ msgstr "Keine Ausgabe für "
 msgid "Last:"
 msgstr "Zuletzt:"
 
-#: tronbyt_server/templates/partials/app_card.html:59
+#: tronbyt_server/templates/partials/app_card.html:61
 msgid "Duplicate"
 msgstr "Duplizieren"
 
-#: tronbyt_server/templates/partials/app_card.html:68
+#: tronbyt_server/templates/partials/app_card.html:70
 msgid "Top"
 msgstr "Nach oben"
 
-#: tronbyt_server/templates/partials/app_card.html:71
+#: tronbyt_server/templates/partials/app_card.html:73
 msgid "Bottom"
 msgstr "Nach unten"
 
-#: tronbyt_server/templates/partials/app_card.html:74
+#: tronbyt_server/templates/partials/app_card.html:76
 msgid "Unpin"
 msgstr "Entpinnen"
 
-#: tronbyt_server/templates/partials/app_card.html:77
+#: tronbyt_server/templates/partials/app_card.html:79
 msgid "Pin"
 msgstr "Anheften"
 
-#: tronbyt_server/templates/partials/app_card.html:80
+#: tronbyt_server/templates/partials/app_card.html:82
 msgid "Disable"
 msgstr "Deaktivieren"
 
-#: tronbyt_server/templates/partials/app_card.html:83
+#: tronbyt_server/templates/partials/app_card.html:85
 msgid "Enable"
 msgstr "Aktivieren"
 
@@ -1602,62 +1609,66 @@ msgstr "Angeheftet:"
 msgid "Currently Displaying App"
 msgstr "Derzeit angezeigte App"
 
-#: tronbyt_server/templates/partials/device_card.html:35
+#: tronbyt_server/templates/partials/device_card.html:34
+msgid "Device Info"
+msgstr "Geräteinformationen"
+
+#: tronbyt_server/templates/partials/device_card.html:39
 msgid "Firmware Version:"
 msgstr "Firmware-Version:"
 
-#: tronbyt_server/templates/partials/device_card.html:38
+#: tronbyt_server/templates/partials/device_card.html:42
 msgid "Firmware Type:"
 msgstr "Firmware-Typ:"
 
-#: tronbyt_server/templates/partials/device_card.html:41
+#: tronbyt_server/templates/partials/device_card.html:45
 msgid "Protocol Version:"
 msgstr "Protokoll-Version:"
 
-#: tronbyt_server/templates/partials/device_card.html:44
+#: tronbyt_server/templates/partials/device_card.html:48
 msgid "MAC Address:"
 msgstr "MAC-Adresse:"
 
-#: tronbyt_server/templates/partials/device_card.html:47
+#: tronbyt_server/templates/partials/device_card.html:51
 msgid "Protocol Type:"
 msgstr "Protokoll-Typ:"
 
-#: tronbyt_server/templates/partials/device_card.html:50
+#: tronbyt_server/templates/partials/device_card.html:54
 msgid "Last Seen:"
 msgstr "Zuletzt gesehen:"
 
-#: tronbyt_server/templates/partials/device_card.html:95
+#: tronbyt_server/templates/partials/device_card.html:100
 msgid "Firmware"
 msgstr "Firmware"
 
-#: tronbyt_server/templates/partials/device_card.html:103
+#: tronbyt_server/templates/partials/device_card.html:108
 msgid "View:"
 msgstr "Ansicht:"
 
-#: tronbyt_server/templates/partials/device_card.html:105
+#: tronbyt_server/templates/partials/device_card.html:110
 msgid "List View"
 msgstr "Listenansicht"
 
-#: tronbyt_server/templates/partials/device_card.html:106
+#: tronbyt_server/templates/partials/device_card.html:111
 msgid "List"
 msgstr "Liste"
 
-#: tronbyt_server/templates/partials/device_card.html:109
+#: tronbyt_server/templates/partials/device_card.html:114
 msgid "Grid View"
 msgstr "Rasteransicht"
 
-#: tronbyt_server/templates/partials/device_card.html:110
+#: tronbyt_server/templates/partials/device_card.html:115
 msgid "Grid"
 msgstr "Raster"
 
-#: tronbyt_server/templates/partials/device_card.html:113
+#: tronbyt_server/templates/partials/device_card.html:118
 msgid "Collapsed View"
 msgstr "Eingeklappte Ansicht"
 
-#: tronbyt_server/templates/partials/device_card.html:114
+#: tronbyt_server/templates/partials/device_card.html:119
 msgid "Collapsed"
 msgstr "Eingeklappt"
 
-#: tronbyt_server/templates/partials/device_card.html:118
+#: tronbyt_server/templates/partials/device_card.html:123
 msgid "Drag apps to reorder"
 msgstr "Apps zum Neuanordnen ziehen"

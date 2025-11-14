@@ -1086,3 +1086,50 @@ button.action.w3-button {
     box-sizing: border-box;
   }
 }
+
+.device-info-toggle {
+  background-color: #f1f1f1;
+  color: #333;
+  cursor: pointer;
+  padding: 10px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  font-size: 0.9375rem;
+  transition: 0.4s;
+}
+
+.device-info-toggle:focus-visible {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5);
+}
+
+.device-info-toggle:hover {
+  background-color: #ddd;
+}
+
+.device-info-content {
+  padding: 0 15px;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out, padding-top 0.2s ease-out, padding-bottom 0.2s ease-out;
+  max-height: 0;
+}
+
+.device-info-content.is-expanded {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.device-info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.device-info-table td:first-child {
+  font-weight: bold;
+}
+
+.device-info-table td {
+  padding: 4px;
+  text-align: left;
+  font-size: 0.9em;
+}

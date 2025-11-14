@@ -30,24 +30,31 @@
             </div>
             <div>{{ _('Currently Displaying App') }}</div>
             <div class="device-info-box">
-              {% if device.info.firmware_version %}
-                <div>{{ _('Firmware Version:') }} {{ device.info.firmware_version }}</div>
-              {% endif %}
-              {% if device.info.firmware_type %}
-                <div>{{ _('Firmware Type:') }} {{ device.info.firmware_type }}</div>
-              {% endif %}
-              {% if device.info.protocol_version %}
-                <div>{{ _('Protocol Version:') }} {{ device.info.protocol_version }}</div>
-              {% endif %}
-              {% if device.info.mac_address %}
-                <div>{{ _('MAC Address:') }} {{ device.info.mac_address }}</div>
-              {% endif %}
-              {% if device.info.protocol_type %}
-                <div>{{ _('Protocol Type:') }} {{ device.info.protocol_type.value }}</div>
-              {% endif %}
-              {% if device.last_seen %}
-                <div>{{ _('Last Seen:') }} {{ device.last_seen.astimezone().strftime('%Y-%m-%d %H:%M:%S') }}</div>
-              {% endif %}
+              <button class="device-info-toggle" aria-expanded="false" aria-controls="device-info-content-{{ device.id }}">
+                <i class="fas fa-chevron-down"></i> {{ _('Device Info') }}
+              </button>
+              <div id="device-info-content-{{ device.id }}" class="device-info-content">
+                <table class="device-info-table">
+                  {% if device.info.firmware_version %}
+                  <tr><td>{{ _('Firmware Version:') }}</td><td>{{ device.info.firmware_version }}</td></tr>
+                  {% endif %}
+                  {% if device.info.firmware_type %}
+                  <tr><td>{{ _('Firmware Type:') }}</td><td>{{ device.info.firmware_type }}</td></tr>
+                  {% endif %}
+                  {% if device.info.protocol_version %}
+                  <tr><td>{{ _('Protocol Version:') }}</td><td>{{ device.info.protocol_version }}</td></tr>
+                  {% endif %}
+                  {% if device.info.mac_address %}
+                  <tr><td>{{ _('MAC Address:') }}</td><td>{{ device.info.mac_address }}</td></tr>
+                  {% endif %}
+                  {% if device.info.protocol_type %}
+                  <tr><td>{{ _('Protocol Type:') }}</td><td>{{ device.info.protocol_type.value }}</td></tr>
+                  {% endif %}
+                  {% if device.last_seen %}
+                  <tr><td>{{ _('Last Seen:') }}</td><td>{{ device.last_seen.astimezone().strftime('%Y-%m-%d %H:%M:%S') }}</td></tr>
+                  {% endif %}
+                </table>
+              </div>
             </div>
           </td>
         </tr>

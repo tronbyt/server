@@ -403,6 +403,7 @@ let draggedIname = null;
 document.addEventListener('DOMContentLoaded', function() {
   initializeDragAndDrop();
   initializeViewToggles();
+  initializeDeviceInfoToggles();
 
   const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
   webpImages.forEach(image => {
@@ -423,6 +424,12 @@ function initializeViewToggles() {
   appLists.forEach(list => {
     const deviceId = list.id.replace('appsList-', '');
     restoreDevicePreferences(deviceId);
+  });
+}
+
+function initializeDeviceInfoToggles() {
+  document.querySelectorAll('.device-info-toggle').forEach(button => {
+    button.addEventListener('click', () => toggleDeviceInfo(button));
   });
 }
 
@@ -902,4 +909,28 @@ function handleDropZoneDrop(e) {
 
   // Clean up
   zone.classList.remove('active');
+}
+
+function toggleDeviceInfo(button) {
+  const content = document.getElementById(button.getAttribute('aria-controls'));
+  if (!content) {
+    return;
+  }
+  const icon = button.querySelector('i');
+  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+  button.setAttribute('aria-expanded', !isExpanded);
+  content.classList.toggle('is-expanded');
+
+  if (!isExpanded) {
+    content.style.maxHeight = content.scrollHeight + "px";
+    if (icon) {
+      icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+    }
+  } else {
+    content.style.maxHeight = '0px';
+    if (icon) {
+      icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+    }
+  }
 }
