@@ -1075,29 +1075,28 @@ def get_user_by_api_key(db: sqlite3.Connection, api_key: str) -> User | None:
     return None
 
 
-def get_pushed_app(user: User, device_id: str, installation_id: str) -> dict[str, Any]:
+def get_pushed_app(user: User, device_id: str, installation_id: str) -> App | None:
     """Get a pushed app."""
     device = user.devices.get(device_id)
     if not device:
-        return {}
+        return None
 
     apps = device.apps
     if installation_id in apps:
-        return apps[installation_id].model_dump()
+        return apps[installation_id]
 
-    app = {
-        "id": installation_id,
-        "path": f"pushed/{installation_id}",
-        "iname": installation_id,
-        "name": "pushed",
-        "uinterval": 10,
-        "display_time": 0,
-        "notes": "",
-        "enabled": True,
-        "pushed": True,
-        "order": len(apps),
-    }
-    return app
+    return App(
+        id=installation_id,
+        path=f"pushed/{installation_id}",
+        iname=installation_id,
+        name="pushed",
+        uinterval=10,
+        display_time=0,
+        notes="",
+        enabled=True,
+        pushed=True,
+        order=len(apps),
+    )
 
 
 def add_pushed_app(
@@ -1112,16 +1111,8 @@ def add_pushed_app(
     if not device:
         raise ValueError("Device not found")
 
-    app_data = get_pushed_app(user, device_id, installation_id)
-    if not app_data:
-        return
-
-    try:
-        app = App.model_validate(app_data)
-    except ValidationError as e:
-        logger.error(
-            f"Pushed app validation for device '{device_id}' installation '{installation_id}' failed: {e}"
-        )
+    app = get_pushed_app(user, device_id, installation_id)
+    if not app:
         return
 
     save_app(db, device_id, app)

@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import db
@@ -460,15 +460,12 @@ def handle_app_push(
         )
 
     installation_id = data.installationID or data.installationId or ""
-    app_dict = db.get_pushed_app(user, device_id, installation_id)
-    try:
-        app = App.model_validate(app_dict)
-    except ValidationError as e:
+    app = db.get_pushed_app(user, device_id, installation_id)
+    if not app:
         logger.error(
-            "Pushed app data for device '%s' installation '%s' failed validation: %s",
+            "Pushed app data for device '%s' installation '%s' not found",
             device_id,
             installation_id,
-            e,
         )
 
         raise HTTPException(
