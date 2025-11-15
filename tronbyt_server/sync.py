@@ -13,15 +13,14 @@ from multiprocessing.managers import (
     SyncManager,
     DictProxy,
 )
+from multiprocessing.queues import Queue as ProcessQueue
+from queue import Empty
 from typing import Any, cast
 from threading import Lock
 
 from tronbyt_server.config import get_settings
+from tronbyt_server.models.sync import SyncPayload
 
-# Type alias for multiprocessing.Condition, which is not a class
-ConditionType = Any
-
-NOTIFY_MESSAGE = "notify"
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +29,8 @@ class Waiter(ABC):
     """Abstract base class for a waiter."""
 
     @abstractmethod
-    def wait(self, timeout: int) -> bool:
-        """Wait for a notification."""
+    def wait(self, timeout: int) -> SyncPayload | None:
+        """Wait for a notification and return the payload."""
         raise NotImplementedError
 
     @abstractmethod
@@ -49,8 +48,8 @@ class AbstractSyncManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def notify(self, device_id: str) -> None:
-        """Notify waiters for a given device ID."""
+    def notify(self, device_id: str, payload: SyncPayload) -> None:
+        """Notify waiters for a given device ID with a payload."""
         raise NotImplementedError
 
     @abstractmethod
@@ -74,27 +73,24 @@ class MultiprocessingWaiter(Waiter):
 
     def __init__(
         self,
-        condition: "ConditionType",
+        queue: "ProcessQueue[Any]",
         manager: "MultiprocessingSyncManager",
         device_id: str,
     ):
-        self._condition = condition
+        self._queue = queue
         self._manager = manager
         self._device_id = device_id
 
-    def wait(self, timeout: int) -> bool:
+    def wait(self, timeout: int) -> SyncPayload | None:
         """Wait for a notification."""
-        with self._condition:
-            if self._manager.is_shutdown():
-                return False
-            notified = self._condition.wait(timeout=timeout)
-            if self._manager.is_shutdown():
-                return False
-            return bool(notified)
+        try:
+            return cast(SyncPayload, self._queue.get(timeout=timeout))
+        except Empty:
+            return None
 
     def close(self) -> None:
         """Clean up the waiter."""
-        self._manager.release_condition(self._device_id)
+        self._manager.release_queue(self._device_id)
 
 
 class ServerSyncManager(SyncManager):
@@ -103,7 +99,7 @@ class ServerSyncManager(SyncManager):
     _init_lock = Lock()
     _initialized = False
 
-    _conditions: DictProxy[Any, Any]
+    _queues: DictProxy[Any, Any]
     _waiter_counts: DictProxy[Any, Any]
     _lock: MPLock
     _shutdown_event: MPEvent
@@ -116,15 +112,15 @@ class ServerSyncManager(SyncManager):
         if not self._initialized:
             with self._init_lock:
                 if not self._initialized:
-                    self._conditions = self.dict()
+                    self._queues = self.dict()
                     self._waiter_counts = self.dict()
                     self._lock = cast(MPLock, self.Lock())
                     self._shutdown_event = cast(MPEvent, self.Event())
                     self._initialized = True
 
-    def get_conditions(self) -> DictProxy[Any, Any]:
+    def get_queues(self) -> DictProxy[Any, Any]:
         self._lazy_init()
-        return self._conditions
+        return self._queues
 
     def get_waiter_counts(self) -> DictProxy[Any, Any]:
         self._lazy_init()
@@ -138,17 +134,12 @@ class ServerSyncManager(SyncManager):
         self._lazy_init()
         return self._shutdown_event
 
-    def notify_all_and_clear(self) -> None:
-        """Notify all waiting conditions and clear them to prevent new waiters."""
+    def clear_all_queues(self) -> None:
+        """Clear all queues to prevent new waiters."""
         self._lazy_init()
         with self._lock:
-            conditions = list(self._conditions.values())
-            # Clear conditions to prevent new waiters
-            self._conditions.clear()
+            self._queues.clear()
             self._waiter_counts.clear()
-        for condition in conditions:
-            with condition:
-                condition.notify_all()
 
 
 class MultiprocessingSyncManager(AbstractSyncManager):
@@ -172,7 +163,7 @@ class MultiprocessingSyncManager(AbstractSyncManager):
             self._export_connection_details()
 
         # Get proxies to the singleton objects.
-        self._conditions = self._manager.get_conditions()
+        self._queues = self._manager.get_queues()
         self._waiter_counts = self._manager.get_waiter_counts()
         self._lock = self._manager.get_lock()
         self._shutdown_event = self._manager.get_shutdown_event()
@@ -201,44 +192,37 @@ class MultiprocessingSyncManager(AbstractSyncManager):
     def is_shutdown(self) -> bool:
         return self._shutdown_event.is_set()
 
-    def release_condition(self, device_id: str) -> None:
-        """Decrement waiter count and clean up condition if no waiters are left."""
+    def release_queue(self, device_id: str) -> None:
+        """Decrement waiter count and clean up queue if no waiters are left."""
         with self._lock:
             if device_id in self._waiter_counts:
                 self._waiter_counts[device_id] -= 1
                 if self._waiter_counts[device_id] == 0:
-                    del self._conditions[device_id]
+                    del self._queues[device_id]
                     del self._waiter_counts[device_id]
 
     def get_waiter(self, device_id: str) -> Waiter:
         """Get a waiter for a given device ID."""
         with self._lock:
-            if device_id not in self._conditions:
-                # We need to create the Condition object via the manager so it can
-                # be shared across processes.
-                self._conditions[device_id] = self._manager.Condition()
+            if device_id not in self._queues:
+                self._queues[device_id] = self._manager.Queue()
                 self._waiter_counts[device_id] = 0
             self._waiter_counts[device_id] += 1
-            condition = self._conditions[device_id]
+            queue = self._queues[device_id]
 
-        return MultiprocessingWaiter(condition, self, device_id)
+        return MultiprocessingWaiter(queue, self, device_id)
 
-    def notify(self, device_id: str) -> None:
+    def notify(self, device_id: str, payload: SyncPayload) -> None:
         """Notify waiters for a given device ID."""
-        condition: ConditionType | None = None
         with self._lock:
-            if device_id in self._conditions:
-                condition = self._conditions[device_id]
-
-        if condition:
-            with condition:
-                condition.notify_all()
+            if device_id in self._queues:
+                self._queues[device_id].put(payload)
 
     def _shutdown(self) -> None:
         """Shut down the sync manager."""
         if self._is_server:
             self._shutdown_event.set()
-            self._manager.notify_all_and_clear()
+            self._manager.clear_all_queues()
             self._manager.shutdown()
 
     def __enter__(self) -> "MultiprocessingSyncManager":
@@ -252,50 +236,49 @@ class RedisWaiter(Waiter):
     """A waiter that uses Redis Pub/Sub."""
 
     def __init__(self, redis_client: redis.Redis, device_id: str):
-        # ignore_subscribe_messages=True prevents subscription confirmation messages
-        # from being delivered to the consumer. This is useful for simple notification
-        # use-cases, but may hide connection/debugging issues. Consider making this
-        # configurable if you need to debug subscription events.
-        self._pubsub = redis_client.pubsub(  # type: ignore[no-untyped-call]
-            ignore_subscribe_messages=True
-        )
-        self._device_id = device_id
-        self._pubsub.subscribe(self._device_id)
+        # The Redis client is synchronous
+        self._redis = redis_client
+        self._list_key = f"queue:{device_id}"
 
-    def wait(self, timeout: int) -> bool:
+    def wait(self, timeout: int) -> SyncPayload | None:
         """Wait for a notification."""
         try:
-            message = self._pubsub.get_message(timeout=timeout)
-            return message is not None
-        except (ValueError, redis.ConnectionError):
-            # This can happen if the pubsub connection is closed by another thread
-            # while we are waiting for a message.
-            return False
+            # BLPOP returns a tuple (list_name, value) or None on timeout
+            result = cast(
+                tuple[bytes, bytes] | None,
+                self._redis.blpop([self._list_key], timeout=timeout),
+            )
+            if result:
+                _, payload_json = result
+                return SyncPayload.model_validate_json(payload_json)
+        except (ValueError, redis.ConnectionError) as e:
+            logger.error(f"Redis connection error in waiter: {e}")
+        return None
 
     def close(self) -> None:
         """Clean up the waiter."""
-        try:
-            self._pubsub.unsubscribe(self._device_id)
-        except ConnectionError:
-            # Ignore connection errors during cleanup
-            pass
-        finally:
-            self._pubsub.close()
+        pass
 
 
 class RedisSyncManager(AbstractSyncManager):
     """A synchronization manager that uses Redis Pub/Sub."""
 
     def __init__(self, redis_url: str) -> None:
-        self._redis = redis.from_url(redis_url)  # type: ignore[no-untyped-call]
+        self._redis: redis.Redis = redis.from_url(redis_url)  # type: ignore
 
     def get_waiter(self, device_id: str) -> Waiter:
         """Get a waiter for a given device ID."""
         return RedisWaiter(self._redis, device_id)
 
-    def notify(self, device_id: str) -> None:
+    def notify(self, device_id: str, payload: SyncPayload) -> None:
         """Notify waiters for a given device ID."""
-        self._redis.publish(device_id, NOTIFY_MESSAGE)
+        list_key = f"queue:{device_id}"
+
+        try:
+            self._redis.rpush(list_key, payload.model_dump_json())
+            self._redis.expire(list_key, 60)
+        except redis.ConnectionError as e:
+            logger.error(f"Redis connection error in notify: {e}")
 
     def _shutdown(self) -> None:
         """Shut down the sync manager."""

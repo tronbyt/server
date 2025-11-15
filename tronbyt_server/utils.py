@@ -18,8 +18,9 @@ from werkzeug.utils import secure_filename
 from tronbyt_server import db
 from tronbyt_server.flash import flash
 from tronbyt_server.git_utils import get_primary_remote, get_repo
-from tronbyt_server.models import App, Device, User
+from tronbyt_server.models import App, Device, User, ProtocolType
 from tronbyt_server.pixlet import render_app as pixlet_render_app
+from tronbyt_server.models.sync import SyncPayload
 from tronbyt_server.sync import get_sync_manager
 
 
@@ -242,15 +243,31 @@ def send_image(
     return response
 
 
-def push_image(
+async def push_image(
     device_id: str,
     installation_id: str | None,
     image_bytes: bytes,
     db_conn: sqlite3.Connection | None = None,
 ) -> None:
     """Save a pushed image and notify the device."""
+    if db_conn:
+        device = db.get_device_by_id(db_conn, device_id)
+        if device and device.info.protocol_type == ProtocolType.WS:
+            get_sync_manager().notify(device_id, SyncPayload(payload=image_bytes))
+
+            # If it's a permanent installation, we still need to write to disk
+            if installation_id:
+                db.add_pushed_app(db_conn, device_id, installation_id)
+                device_webp_path = db.get_device_webp_dir(device_id)
+                pushed_path = device_webp_path / "pushed"
+                pushed_path.mkdir(exist_ok=True)
+                filename = f"{secure_filename(installation_id)}.webp"
+                file_path = pushed_path / filename
+                file_path.write_bytes(image_bytes)
+            return
+
+    # Fallback to file-based push for non-websocket or unknown devices
     device_webp_path = db.get_device_webp_dir(device_id)
-    device_webp_path.mkdir(parents=True, exist_ok=True)
     pushed_path = device_webp_path / "pushed"
     pushed_path.mkdir(exist_ok=True)
 
@@ -265,5 +282,4 @@ def push_image(
     if installation_id and db_conn:
         db.add_pushed_app(db_conn, device_id, installation_id)
 
-    # Wake up WebSocket loops to push a new image to a given device.
-    get_sync_manager().notify(device_id)
+    # No notification for non-websocket devices, as it's not needed.

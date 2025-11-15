@@ -284,7 +284,7 @@ def update_device(
 
 
 @router.post("/devices/{device_id}/push")
-def handle_push(
+async def handle_push(
     device_id: DeviceID,
     data: PushData,
     auth: tuple[User | None, Device | None] = Depends(get_user_and_device_from_api_key),
@@ -305,7 +305,7 @@ def handle_push(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image data"
         )
 
-    push_image(device_id, installation_id, image_bytes, db_conn)
+    await push_image(device_id, installation_id, image_bytes, db_conn)
     return Response("WebP received.", status_code=status.HTTP_200_OK)
 
 
@@ -435,7 +435,7 @@ def handle_delete(
 
 
 @router.post("/devices/{device_id}/push_app")
-def handle_app_push(
+async def handle_app_push(
     device_id: DeviceID,
     data: PushAppData,
     db_conn: sqlite3.Connection = Depends(get_db),
@@ -485,5 +485,5 @@ def handle_app_push(
         apps[installation_id] = app
         db.save_user(db_conn, user)
 
-    push_image(device_id, installation_id, image_bytes, db_conn)
+    await push_image(device_id, installation_id, image_bytes, db_conn)
     return Response("App pushed.", status_code=status.HTTP_200_OK)
