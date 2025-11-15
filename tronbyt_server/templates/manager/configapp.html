@@ -2,6 +2,7 @@
 {% block header %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/configapp-simple.css') }}">
 <script src="{{ url_for('static', path='js/location.js') }}"></script>
+<script src="{{ url_for('static', path='js/manager.js') }}"></script>
 <h1>{% block title %}{{ _('Configuring') }} {{ app.iname }} ({{ app.name}}){% endblock %}</h1>
 {% endblock %}
 {% block content %}
@@ -768,6 +769,18 @@
     resetButton.appendChild(document.createTextNode(" {{ _('Reset') }}"));
     buttonContainer.appendChild(resetButton);
 
+    const previewButton = document.createElement("button");
+    previewButton.className = "w3-button w3-blue w3-round";
+    previewButton.type = "button";
+    previewButton.id = "previewButton";
+    previewButton.style.minWidth = "10em";
+    const previewIcon = document.createElement("i");
+    previewIcon.className = "fa-solid fa-eye";
+    previewIcon.setAttribute("aria-hidden", "true");
+    previewButton.appendChild(previewIcon);
+    previewButton.appendChild(document.createTextNode(" {{ _('Preview') }}"));
+    buttonContainer.appendChild(previewButton);
+
     const cancelButton = document.createElement("button");
     cancelButton.id = "cancelButton";
     cancelButton.className = "w3-button w3-red w3-round";
@@ -870,6 +883,10 @@
       });
 
       updateConfigAndPreview();
+    });
+
+    previewButton.addEventListener("click", (event) => {
+      previewApp('{{ device.id }}', '{{ app.iname }}', config, event.currentTarget, { previewing: '{{ _('Previewing...') }}', sent: '{{ _('Sent') }}', failed: '{{ _('Failed') }}' });
     });
 
     // Initialize toggle buttons

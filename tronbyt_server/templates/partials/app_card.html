@@ -56,7 +56,7 @@
           <a class="action w3-button w3-blue w3-round"
              href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=False"><i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ _('Configure') }}</a>
           <button class="action w3-button w3-blue w3-round"
-                  onclick="previewApp('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-play" aria-hidden="true"></i> {{ _('Preview') }}</button>
+                  onclick="previewApp('{{ device.id }}', '{{ app.iname }}', null, this, { previewing: '{{ _('Previewing...') }}', sent: '{{ _('Sent') }}', failed: '{{ _('Failed') }}' })"><i class="fa-solid fa-play" aria-hidden="true"></i> {{ _('Preview') }}</button>
           <button class="action w3-button w3-green w3-round"
                   onclick="duplicateApp('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-copy" aria-hidden="true"></i> {{ _('Duplicate') }}</button>
           <button class="action w3-button w3-red w3-round"
