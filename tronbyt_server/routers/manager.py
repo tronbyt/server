@@ -1532,7 +1532,7 @@ async def push_preview(
             )
 
         # Use push_image to save the temporary preview and notify the device
-        await push_image(device.id, None, image_bytes)
+        await push_image(device.id, None, image_bytes, db_conn)
 
         return Response(status_code=status.HTTP_200_OK)
     except HTTPException:

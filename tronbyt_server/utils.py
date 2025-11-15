@@ -247,24 +247,23 @@ async def push_image(
     device_id: str,
     installation_id: str | None,
     image_bytes: bytes,
-    db_conn: sqlite3.Connection | None = None,
+    db_conn: sqlite3.Connection,
 ) -> None:
     """Save a pushed image and notify the device."""
-    if db_conn:
-        device = db.get_device_by_id(db_conn, device_id)
-        if device and device.info.protocol_type == ProtocolType.WS:
-            get_sync_manager().notify(device_id, SyncPayload(payload=image_bytes))
+    device = db.get_device_by_id(db_conn, device_id)
+    if device and device.info.protocol_type == ProtocolType.WS:
+        get_sync_manager().notify(device_id, SyncPayload(payload=image_bytes))
 
-            # If it's a permanent installation, we still need to write to disk
-            if installation_id:
-                db.add_pushed_app(db_conn, device_id, installation_id)
-                device_webp_path = db.get_device_webp_dir(device_id)
-                pushed_path = device_webp_path / "pushed"
-                pushed_path.mkdir(exist_ok=True)
-                filename = f"{secure_filename(installation_id)}.webp"
-                file_path = pushed_path / filename
-                file_path.write_bytes(image_bytes)
-            return
+        # If it's a permanent installation, we still need to write to disk
+        if installation_id:
+            db.add_pushed_app(db_conn, device_id, installation_id)
+            device_webp_path = db.get_device_webp_dir(device_id)
+            pushed_path = device_webp_path / "pushed"
+            pushed_path.mkdir(exist_ok=True)
+            filename = f"{secure_filename(installation_id)}.webp"
+            file_path = pushed_path / filename
+            file_path.write_bytes(image_bytes)
+        return
 
     # Fallback to file-based push for non-websocket or unknown devices
     device_webp_path = db.get_device_webp_dir(device_id)
