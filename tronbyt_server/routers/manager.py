@@ -586,22 +586,12 @@ async def update_brightness(
     # Send brightness command directly to active websocket connection (if any)
     # This doesn't interrupt the natural flow of rotation
     from tronbyt_server.routers.websockets import send_brightness_update
-    from tronbyt_server.sync import get_sync_manager
 
-    sent = await send_brightness_update(device_id, new_brightness_percent)
+    await send_brightness_update(device_id, new_brightness_percent)
 
-    if sent:
-        logger.info(
-            f"[{device_id}] Sent brightness update immediately: {new_brightness_percent}"
-        )
-    else:
-        # Connection not in this worker's _active_connections - notify via SyncManager
-        # This will wake up the correct worker and brightness will be sent with next image
-        logger.info(
-            f"[{device_id}] No active websocket in this worker, notifying via SyncManager"
-        )
-        get_sync_manager().notify(device_id)
-
+    logger.info(
+        f"[{device_id}] Queued brightness update for delivery: {new_brightness_percent}"
+    )
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -1505,7 +1495,7 @@ def preview(
 
 
 @router.post("/{device_id}/{iname}/preview")
-def push_preview(
+async def push_preview(
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
@@ -1542,7 +1532,7 @@ def push_preview(
             )
 
         # Use push_image to save the temporary preview and notify the device
-        push_image(device.id, None, image_bytes)
+        await push_image(device.id, None, image_bytes)
 
         return Response(status_code=status.HTTP_200_OK)
     except HTTPException:

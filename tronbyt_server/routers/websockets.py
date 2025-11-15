@@ -32,6 +32,7 @@ from tronbyt_server.models import (
     User,
 )
 from tronbyt_server.routers.manager import next_app_logic
+from tronbyt_server.models.sync import SyncPayload
 from tronbyt_server.sync import get_sync_manager
 
 router = APIRouter(tags=["websockets"])
@@ -157,22 +158,9 @@ class ConnectionManager:
 connection_manager = ConnectionManager()
 
 
-async def send_brightness_update(device_id: str, brightness: int) -> bool:
-    """Send a brightness update to an active websocket connection.
-
-    Returns True if sent successfully, False if no active connection.
-    """
-    websocket = await connection_manager.get_websocket(device_id)
-    if not websocket:
-        return False
-
-    try:
-        await _send_message(websocket, BrightnessMessage(brightness=brightness))
-        logger.info(f"[{device_id}] Sent brightness update: {brightness}")
-        return True
-    except Exception as e:
-        logger.error(f"[{device_id}] Failed to send brightness update: {e}")
-        return False
+async def send_brightness_update(device_id: str, brightness: int) -> None:
+    """Send a brightness update to an active websocket connection."""
+    get_sync_manager().notify(device_id, SyncPayload(payload=brightness))
 
 
 async def _send_response(
@@ -298,60 +286,42 @@ async def _wait_for_acknowledgment(
             )
             return (response, last_brightness)
 
-        # Check if there's an ephemeral push waiting (this is common when woken by waiter)
-        pushed_dir = db.get_device_webp_dir(device.id) / "pushed"
-        ephemeral_exists = await loop.run_in_executor(
-            None, lambda: pushed_dir.is_dir() and any(pushed_dir.glob("__*"))
-        )
-
-        if ephemeral_exists:
-            logger.debug(
-                f"[{device.id}] Ephemeral push detected, interrupting wait to send immediately"
-            )
-            # Render the next app (which will pick up the ephemeral push)
-            try:
-                response = await loop.run_in_executor(
-                    None, next_app_logic, db_conn, user, device
-                )
-                logger.debug(
-                    f"[{device.id}] Ephemeral push rendered, will send immediately"
-                )
-                return (response, last_brightness)
-            except Exception as e:
-                logger.error(f"[{device.id}] Error rendering ephemeral push: {e}")
-                # Continue waiting if render failed
-
-        was_notified = False
+        sync_payload = None
         if waiter_task in done:
             try:
-                was_notified = waiter_task.result()
+                sync_payload = waiter_task.result()
             except Exception as e:
                 logger.warning(
                     f"[{device.id}] Unexpected error getting waiter result: {e}"
                 )
 
-        # If woken by a real notification (not timeout), check for brightness changes
-        if was_notified:
-            logger.debug(
-                f"[{device.id}] Woken by push notification, checking for updates"
-            )
-
-            # Check if brightness has changed and send update immediately
-            new_brightness = db.get_device_brightness_percent(device)
-            if new_brightness != last_brightness:
-                logger.info(
-                    f"[{device.id}] Brightness changed to {new_brightness}, sending immediately"
+        # If woken by a push notification, process the payload
+        if sync_payload:
+            if isinstance(sync_payload.payload, bytes):
+                logger.debug(
+                    f"[{device.id}] Image payload received, sending immediately"
+                )
+                # Create a response directly from the image bytes
+                response = Response(
+                    content=sync_payload.payload, media_type="image/webp"
+                )
+                # Set immediate flag so device displays it right away
+                response.headers["Tronbyt-Immediate"] = "1"
+                # Set a default dwell time, as it's an immediate push
+                response.headers["Tronbyt-Dwell-Secs"] = "5"
+                return (response, last_brightness)
+            elif isinstance(sync_payload.payload, int):
+                logger.debug(
+                    f"[{device.id}] Brightness payload received, sending immediately"
                 )
                 try:
                     await _send_message(
                         websocket,
-                        BrightnessMessage(brightness=new_brightness),
+                        BrightnessMessage(brightness=sync_payload.payload),
                     )
-                    last_brightness = new_brightness  # Update tracked brightness
-                    ack.brightness_to_send = None  # Clear pending brightness
+                    last_brightness = sync_payload.payload
                 except Exception as e:
                     logger.error(f"[{device.id}] Failed to send brightness: {e}")
-            # DO NOT return here. Continue waiting for display ack.
 
         # Update time waited
         time_waited += poll_interval
@@ -464,13 +434,6 @@ async def receiver(
                             "last_seen",
                             datetime.now(timezone.utc).isoformat(),
                         )
-                        db.update_device_field(
-                            cursor,
-                            user.username,
-                            device_id,
-                            "info.protocol_type",
-                            ProtocolType.WS.value,
-                        )
 
                         # Fetch the ACK object for the CURRENTLY active connection
                         ack = await connection_manager.get_ack(device_id)
@@ -571,6 +534,20 @@ async def websocket_endpoint(
         return
 
     await websocket.accept()
+
+    # Immediately update protocol type to WS on successful connection
+    try:
+        with db.db_transaction(db_conn) as cursor:
+            db.update_device_field(
+                cursor,
+                user.username,
+                device_id,
+                "info.protocol_type",
+                ProtocolType.WS.value,
+            )
+        logger.info(f"[{device_id}] Updated protocol_type to WS on connect")
+    except sqlite3.Error as e:
+        logger.error(f"[{device_id}] Failed to update protocol_type on connect: {e}")
 
     # Create shared acknowledgment state for sender/receiver communication
     ack = DeviceAcknowledgment()
