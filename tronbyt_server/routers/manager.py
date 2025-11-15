@@ -1499,6 +1499,7 @@ async def push_preview(
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
+    config: Any = Body(None),
 ) -> Response:
     device = device_and_app.device
     app = device_and_app.app
@@ -1514,12 +1515,15 @@ async def push_preview(
             status_code=status.HTTP_404_NOT_FOUND, detail="App path not found"
         )
 
+    # Use the provided config from the request body, or fall back to the app's saved config
+    config_to_render = config if config is not None else app.config
+
     try:
         # Render the app to get the image bytes directly
         image_bytes = render_app(
             db_conn=db_conn,
             app_path=app_path,
-            config=app.config,
+            config=config_to_render,
             webp_path=None,
             device=device,
             app=app,

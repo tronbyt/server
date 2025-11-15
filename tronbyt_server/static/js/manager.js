@@ -317,26 +317,51 @@ function deleteApp(deviceId, iname) {
 }
 
 // AJAX function to preview an app
-function previewApp(deviceId, iname) {
-  fetch(`/${deviceId}/${iname}/preview`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+function previewApp(deviceId, iname, config = null, button = null, translations = null) {
+    const url = `/${deviceId}/${iname}/preview`;
+    let options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    };
+
+    if (config) {
+        options.body = JSON.stringify(config);
     }
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to preview app');
-        alert('Failed to preview app. Please try again.');
-      } else {
-        console.log('App previewed successfully');
-        // Optionally, provide some feedback to the user
-      }
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-      alert('An error occurred while previewing the app. Please try again.');
-    });
+
+    let originalButtonContent = null;
+    if (button) {
+        originalButtonContent = button.innerHTML;
+        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> ${translations?.previewing || 'Previewing...'}`;
+        button.disabled = true;
+    }
+
+    fetch(url, options)
+        .then(response => {
+            if (button) {
+                if (response.ok) {
+                    button.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${translations?.sent || 'Sent'}`;
+                } else {
+                    button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
+                    console.error('Preview request failed with status: ' + response.status);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error sending preview request:', error);
+            if (button) {
+                button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
+            }
+        })
+        .finally(() => {
+            if (button) {
+                setTimeout(() => {
+                    button.innerHTML = originalButtonContent;
+                    button.disabled = false;
+                }, 2000);
+            }
+        });
 }
 
 // Cookie utility functions
