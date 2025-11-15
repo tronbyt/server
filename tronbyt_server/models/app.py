@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field, BeforeValidator
-from datetime import time, date
+from datetime import time, date, timedelta
 from typing import Annotated
 
 
@@ -70,6 +70,7 @@ class App(BaseModel):
     pushed: bool = False
     order: int = 0  # Order in the app list
     last_render: int = 0
+    last_render_duration: timedelta = timedelta(seconds=0)
     path: str | None = None  # Path to the app file
     start_time: Annotated[time | None, BeforeValidator(parse_time)] = (
         None  # Optional start time (HH:MM)

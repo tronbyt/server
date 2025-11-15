@@ -45,9 +45,9 @@ def poll_for_change(
     Raises:
         TimeoutError: If the timeout is reached before the condition is met.
     """
-    start_time = time.time()
+    start_time = time.monotonic()
     result = None
-    while time.time() - start_time < timeout:
+    while time.monotonic() - start_time < timeout:
         result = func()
         if result == expected_value:
             return result
