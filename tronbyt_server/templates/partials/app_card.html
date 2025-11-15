@@ -39,6 +39,9 @@
           {{ _('Interval:') }} {{ app.uinterval }} min |
           {% if app.empty_last_render %}{{_('No output for ') }}{% endif %}
           {{ _('Last:') }} {{ (app.last_render or 0)|timeago(request.state.babel.locale) }}
+          {% if app.last_render_duration %}
+          ({{ _('in') }} {{ app.last_render_duration|duration(request.state.babel.locale) }})
+          {% endif %}
         </p>
         {% if app.display_time != 0 %}
         <p>{{ _('Display Time (secs):') }} {{ app.display_time }}</p>

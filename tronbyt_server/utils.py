@@ -5,6 +5,7 @@ import os
 import shutil
 import sqlite3
 import time
+from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -165,7 +166,12 @@ def possibly_render(
         device = user.devices[device_id]
         config = app.config.copy()
         add_default_config(config, device)
+
+        start_time = time.monotonic()
         image = render_app(db_conn, app_path, config, webp_path, device, app, user)
+        end_time = time.monotonic()
+        render_duration = timedelta(seconds=end_time - start_time)
+
         if image is None:
             logger.error(f"Error rendering {app_basename}")
         app.empty_last_render = len(image) == 0 if image is not None else False
@@ -173,6 +179,7 @@ def possibly_render(
         if app.autopin and image:
             device.pinned_app = app.iname
         app.last_render = now
+        app.last_render_duration = render_duration
         device.apps[app.iname] = app
 
         # Use granular field updates to avoid overwriting concurrent changes from web interface
@@ -180,6 +187,14 @@ def possibly_render(
             with db.db_transaction(db_conn) as cursor:
                 db.update_app_field(
                     cursor, user.username, device_id, app.iname, "last_render", now
+                )
+                db.update_app_field(
+                    cursor,
+                    user.username,
+                    device_id,
+                    app.iname,
+                    "last_render_duration",
+                    render_duration.total_seconds(),
                 )
                 db.update_app_field(
                     cursor,

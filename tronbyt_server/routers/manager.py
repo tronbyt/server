@@ -1422,6 +1422,8 @@ async def configapp_post(
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
     webp_path = webp_device_path / f"{app.name}-{app.iname}.webp"
+
+    start_time = time.monotonic()
     image = render_app(
         db_conn,
         Path(app.path),
@@ -1431,9 +1433,13 @@ async def configapp_post(
         app,
         user,
     )
+    end_time = time.monotonic()
+    render_duration = timedelta(seconds=end_time - start_time)
+
     if image is not None:
         app.enabled = True
         app.last_render = int(time.time())
+        app.last_render_duration = render_duration
         db.save_app(db_conn, device_id, app)
     else:
         flash(request, _("Error Rendering App"))
