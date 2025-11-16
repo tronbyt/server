@@ -137,11 +137,20 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
     # GitHub API URL for latest release
     api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
 
+    # Optional GitHub API token
+    github_token = os.environ.get("GITHUB_TOKEN")
+
     try:
         logger.info(f"Fetching latest release info from {api_url}")
 
+        github_headers = {}
+        if github_token:
+            logger.info("Using GitHub token to fetch release info")
+            github_headers["Authorization"] = f"Bearer {github_token}"
+            github_headers["Accept"] = "application/vnd.github+json"
+
         # Fetch release information
-        response = requests.get(api_url, timeout=10)
+        response = requests.get(api_url, headers=github_headers, timeout=10)
         response.raise_for_status()
         release_data = response.json()
 
@@ -198,7 +207,7 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
                     )
 
                     try:
-                        r = requests.get(download_url, timeout=300)
+                        r = requests.get(download_url, headers=github_headers, timeout=300)
                         r.raise_for_status()
                         dest_file.write_bytes(r.content)
                         bin_files_downloaded += 1
