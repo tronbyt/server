@@ -52,6 +52,16 @@ def render_app(
     user: User,
 ) -> bytes | None:
     """Renders a pixlet app to a webp image."""
+    if app_path.suffix.lower() == ".webp":
+        if app_path.exists():
+            image_data = app_path.read_bytes()
+            if webp_path:
+                webp_path.write_bytes(image_data)
+            return image_data
+        else:
+            logger.error(f"Webp file not found at {app_path}")
+            return None
+
     config_data = config.copy()
     add_default_config(config_data, device)
 
@@ -149,17 +159,34 @@ def possibly_render(
     app: App,
 ) -> bool:
     """Render an app if it's time to do so."""
-    if app.pushed:
-        logger.debug("Pushed App -- NO RENDER")
-        return True
-    now = int(time.time())
+    if not app.path:
+        return False
+
+    app_path = Path(app.path)
     app_basename = f"{app.name}-{app.iname}"
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
     webp_path = webp_device_path / f"{app_basename}.webp"
-    if not app.path:
-        return False
-    app_path = Path(app.path)
+
+    if app_path.suffix.lower() == ".webp":
+        logger.debug(f"{app_basename} is a WebP app -- NO RENDER")
+        if not webp_path.exists():
+            # If the file doesn't exist in the device directory, copy it from the source.
+            # This can happen if the app was added before this logic was in place,
+            # or if the device's webp dir was cleared.
+            if app_path.exists():
+                shutil.copy(app_path, webp_path)
+            else:
+                logger.error(
+                    f"Source WebP file not found for app {app_basename} at {app_path}"
+                )
+                return False
+        return webp_path.exists()
+
+    if app.pushed:
+        logger.debug("Pushed App -- NO RENDER")
+        return True
+    now = int(time.time())
 
     if now - app.last_render > app.uinterval * 60:
         logger.info(f"{app_basename} -- RENDERING")
@@ -174,7 +201,7 @@ def possibly_render(
 
         if image is None:
             logger.error(f"Error rendering {app_basename}")
-        app.empty_last_render = len(image) == 0 if image is not None else False
+        app.empty_last_render = not image
         # set the devices pinned_app if autopin is true.
         if app.autopin and image:
             device.pinned_app = app.iname

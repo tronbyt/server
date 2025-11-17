@@ -3,6 +3,7 @@
 import json
 import logging
 import secrets
+import shutil
 import sqlite3
 import string
 import time
@@ -869,7 +870,9 @@ def addapp_post(
         name=name,
         iname=iname,
         path=app_details.path,
-        enabled=False,
+        enabled=Path(app_details.path).suffix.lower() == ".webp"
+        if app_details.path
+        else False,  # Enable if WebP
         last_render=0,
         uinterval=final_uinterval,
         display_time=display_time if display_time is not None else 0,
@@ -881,6 +884,14 @@ def addapp_post(
 
     device.apps[iname] = app
     db.save_user(db_conn, user)
+
+    if app.path and Path(app.path).suffix.lower() == ".webp":
+        webp_device_path = db.get_device_webp_dir(device.id)
+        dest_path = webp_device_path / f"{app.name}-{app.iname}.webp"
+        source_path = Path(app.path)
+        if source_path.exists():
+            shutil.copy(source_path, dest_path)
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
     return RedirectResponse(
         url=f"{request.url_for('configapp', device_id=device_id, iname=iname)}?delete_on_cancel=true",
@@ -944,22 +955,31 @@ async def uploadapp_post(
         )
 
     flash(request, _("Upload Successful"))
-    preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
-    render_app(
-        db_conn,
-        app_subdir,
-        {},
-        preview,
-        Device(
-            id="aaaaaaaa",
-            brightness=Brightness(100),
-            night_brightness=Brightness(0),
-            dim_brightness=None,
-            default_interval=15,
-        ),
-        None,
-        user,
-    )
+
+    file_extension = Path(filename).suffix.lower()
+    if file_extension == ".star":
+        preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
+        render_app(
+            db_conn,
+            app_subdir / filename,
+            {},
+            preview,
+            Device(
+                id="aaaaaaaa",
+                brightness=Brightness(100),
+                night_brightness=Brightness(0),
+                dim_brightness=None,
+                default_interval=15,
+            ),
+            None,
+            user,
+        )
+    elif file_extension == ".webp":
+        preview_dir = db.get_data_dir() / "apps"
+        preview_dir.mkdir(exist_ok=True)
+        preview_path = preview_dir / f"{app_name}.webp"
+        saved_file_path = app_subdir / filename
+        shutil.copy(saved_file_path, preview_path)
 
     return RedirectResponse(
         url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
