@@ -682,8 +682,8 @@ msgid "Loading apps..."
 msgstr "Lade Apps…"
 
 #: tronbyt_server/templates/manager/addapp.html:462
-msgid "Upload .star file"
-msgstr ".star-Datei hochladen"
+msgid "Upload .star or .webp file"
+msgstr ".star oder .webp Datei hochladen"
 
 #: tronbyt_server/templates/manager/addapp.html:464
 msgid "App Selection"

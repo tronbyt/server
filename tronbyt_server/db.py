@@ -604,7 +604,16 @@ def get_apps_list(user: str) -> list[AppMetadata]:
     if not dir.exists():
         return []
 
+    app_files = {}
+    # Prioritize .star files
     for file in dir.rglob("*.star"):
+        app_files[file.stem] = file
+    # Add .webp files only if a .star with the same name doesn't exist
+    for file in dir.rglob("*.webp"):
+        if file.stem not in app_files:
+            app_files[file.stem] = file
+
+    for file in sorted(app_files.values(), key=lambda f: f.name):
         app_name = file.stem
         # Get file modification time
         mod_time = datetime.fromtimestamp(file.stat().st_mtime)
@@ -614,16 +623,22 @@ def get_apps_list(user: str) -> list[AppMetadata]:
             "name": app_name,  # Ensure name is always set
             "date": mod_time.strftime("%Y-%m-%d %H:%M"),
         }
-        preview = get_data_dir() / "apps" / f"{app_name}.webp"
-        if preview.exists() and preview.stat().st_size > 0:
-            app_dict["preview"] = str(preview.name)
-        yaml_path = file.parent / "manifest.yaml"
-        if yaml_path.exists():
-            with yaml_path.open("r") as f:
-                yaml_dict = yaml.safe_load(f)
-                app_dict.update(yaml_dict)
-        else:
-            app_dict["summary"] = "Custom App"
+
+        if file.suffix.lower() == ".star":
+            preview = get_data_dir() / "apps" / f"{app_name}.webp"
+            if preview.exists() and preview.stat().st_size > 0:
+                app_dict["preview"] = str(preview.name)
+            yaml_path = file.parent / "manifest.yaml"
+            if yaml_path.exists():
+                with yaml_path.open("r") as f:
+                    yaml_dict = yaml.safe_load(f)
+                    app_dict.update(yaml_dict)
+            else:
+                app_dict["summary"] = "Custom App"
+        elif file.suffix.lower() == ".webp":
+            app_dict["summary"] = "WebP Image"
+            app_dict["preview"] = f"{app_name}.webp"
+
         try:
             app_list.append(AppMetadata.model_validate(app_dict))
         except ValidationError as e:
@@ -689,7 +704,7 @@ def sanitize_url(url: str) -> str:
 
 def allowed_file(filename: str) -> bool:
     """Check if a file is allowed."""
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ["star"]
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ["star", "webp"]
 
 
 async def save_user_app(file: UploadFile, path: Path) -> bool:
