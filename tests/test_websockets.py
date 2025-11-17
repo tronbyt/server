@@ -7,6 +7,7 @@ from starlette.websockets import WebSocketDisconnect
 from tronbyt_server.models.user import User
 from tests import utils
 from datetime import datetime
+from typing import Any
 
 
 @pytest.fixture
@@ -99,7 +100,7 @@ def test_websocket_client_messages(
         websocket.send_json({"displaying": 1})
 
         # The client can send client_info
-        client_info = {
+        client_info: dict[str, Any] = {
             "client_info": {
                 "firmware_version": "1.25.0",
                 "firmware_type": "ESP32",

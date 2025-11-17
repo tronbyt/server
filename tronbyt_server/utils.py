@@ -61,7 +61,7 @@ def render_app(
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
 
-    data, messages_raw = pixlet_render_app(
+    data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
         width=64,
@@ -72,11 +72,6 @@ def render_app(
         image_format=0,
         supports2x=device.supports_2x(),
     )
-    messages: list[str] = []
-    if isinstance(messages_raw, list):
-        messages = messages_raw
-    elif messages_raw:
-        messages = [messages_raw]
 
     if data is None:
         logger.error("Error running pixlet render")
