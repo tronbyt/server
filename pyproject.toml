@@ -65,7 +65,14 @@ ignore_missing_imports = true
 
 [tool.pyright]
 include = ["."]
-typeCheckingMode = "standard"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+strictListInference = false
+strictDictionaryInference = false
+strictSetInference = false
 exclude = [
     "data/**",
     "**/__pycache__",

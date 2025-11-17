@@ -457,18 +457,16 @@ def get_device_brightness_percent(device: Device) -> int:
     # Priority: night mode > dim mode > normal brightness
     # If we're in night mode, use night_brightness if available
     if get_night_mode_is_active(device):
-        return (
-            device.night_brightness.as_percent
-            if device.night_brightness is not None
-            else 1
-        )
+        return device.night_brightness.as_percent
     # If we're in dim mode (but not night mode), use dim_brightness
     elif get_dim_mode_is_active(device):
-        if device.dim_brightness is not None:
-            return device.dim_brightness.as_percent
-        return device.brightness.as_percent if device.brightness is not None else 50
+        return (
+            device.dim_brightness.as_percent
+            if device.dim_brightness is not None
+            else device.brightness.as_percent
+        )
     else:
-        return device.brightness.as_percent if device.brightness is not None else 50
+        return device.brightness.as_percent
 
 
 def get_data_dir() -> Path:

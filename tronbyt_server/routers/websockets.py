@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import cast
 
 from fastapi import APIRouter, Depends, WebSocket, status, Response
 from fastapi.responses import FileResponse
@@ -33,7 +33,7 @@ from tronbyt_server.models import (
 )
 from tronbyt_server.routers.manager import next_app_logic
 from tronbyt_server.models.sync import SyncPayload
-from tronbyt_server.sync import get_sync_manager
+from tronbyt_server.sync import get_sync_manager, Waiter
 
 router = APIRouter(tags=["websockets"])
 logger = logging.getLogger(__name__)
@@ -228,7 +228,7 @@ async def _wait_for_acknowledgment(
     dwell_time: int,
     db_conn: sqlite3.Connection,
     loop: asyncio.AbstractEventLoop,
-    waiter: Any,  # Waiter (using Any to avoid mypy issues with abstract base class)
+    waiter: Waiter,
     websocket: WebSocket,
     last_brightness: int,
     user: User,
@@ -255,9 +255,10 @@ async def _wait_for_acknowledgment(
 
     while time_waited < extended_timeout:
         # Create a task to wait on the sync manager waiter (for cross-thread/worker notifications)
-        waiter_task = asyncio.ensure_future(
-            loop.run_in_executor(None, waiter.wait, poll_interval)
-        )
+        async def _wait_on_waiter() -> SyncPayload | None:
+            return await loop.run_in_executor(None, waiter.wait, poll_interval)
+
+        waiter_task = asyncio.create_task(_wait_on_waiter())
 
         # Create a task to wait on the displaying event (for device acknowledgments)
         display_task = asyncio.create_task(ack.displaying_event.wait())
@@ -286,7 +287,7 @@ async def _wait_for_acknowledgment(
             )
             return (response, last_brightness)
 
-        sync_payload = None
+        sync_payload: SyncPayload | None = None
         if waiter_task in done:
             try:
                 sync_payload = waiter_task.result()
@@ -297,31 +298,30 @@ async def _wait_for_acknowledgment(
 
         # If woken by a push notification, process the payload
         if sync_payload:
-            if isinstance(sync_payload.payload, bytes):
-                logger.debug(
-                    f"[{device.id}] Image payload received, sending immediately"
-                )
-                # Create a response directly from the image bytes
-                response = Response(
-                    content=sync_payload.payload, media_type="image/webp"
-                )
-                # Set immediate flag so device displays it right away
-                response.headers["Tronbyt-Immediate"] = "1"
-                # Set a default dwell time, as it's an immediate push
-                response.headers["Tronbyt-Dwell-Secs"] = "5"
-                return (response, last_brightness)
-            elif isinstance(sync_payload.payload, int):
-                logger.debug(
-                    f"[{device.id}] Brightness payload received, sending immediately"
-                )
-                try:
-                    await _send_message(
-                        websocket,
-                        BrightnessMessage(brightness=sync_payload.payload),
+            match sync_payload.payload:
+                case bytes() as payload_bytes:
+                    logger.debug(
+                        f"[{device.id}] Image payload received, sending immediately"
                     )
-                    last_brightness = sync_payload.payload
-                except Exception as e:
-                    logger.error(f"[{device.id}] Failed to send brightness: {e}")
+                    # Create a response directly from the image bytes
+                    response = Response(content=payload_bytes, media_type="image/webp")
+                    # Set immediate flag so device displays it right away
+                    response.headers["Tronbyt-Immediate"] = "1"
+                    # Set a default dwell time, as it's an immediate push
+                    response.headers["Tronbyt-Dwell-Secs"] = "5"
+                    return (response, last_brightness)
+                case int() as payload_int:
+                    logger.debug(
+                        f"[{device.id}] Brightness payload received, sending immediately"
+                    )
+                    try:
+                        await _send_message(
+                            websocket,
+                            BrightnessMessage(brightness=payload_int),
+                        )
+                        last_brightness = payload_int
+                    except Exception as e:
+                        logger.error(f"[{device.id}] Failed to send brightness: {e}")
 
         # Update time waited
         time_waited += poll_interval
@@ -369,11 +369,10 @@ async def sender(
             # Reset acknowledgment events for next image
             ack.reset()
 
-            if response is not None:
-                # Send the previously rendered image
-                dwell_time, last_brightness = await _send_response(
-                    websocket, response, last_brightness
-                )
+            # Send the previously rendered image
+            dwell_time, last_brightness = await _send_response(
+                websocket, response, last_brightness
+            )
 
             # Refresh user and device from DB in case of updates
             user = db.get_user_by_device_id(db_conn, device_id)
@@ -444,64 +443,64 @@ async def receiver(
                             # Still save the last_seen update
                             return  # Exit the 'with' block, committing changes
 
-                        if isinstance(parsed_message, QueuedMessage):
-                            logger.debug(
-                                f"[{device_id}] Image queued (seq: {parsed_message.queued})"
-                            )
-                            ack.mark_queued(parsed_message.queued)
+                        match parsed_message:
+                            case QueuedMessage(queued=queued_seq):
+                                logger.debug(
+                                    f"[{device_id}] Image queued (seq: {queued_seq})"
+                                )
+                                ack.mark_queued(queued_seq)
 
-                            # If we get a queued message, it's a new firmware device.
-                            # Update protocol version if not set.
-                            device = user.devices.get(device_id)
-                            if device and device.info.protocol_version is None:
-                                logger.info(
-                                    f"[{device_id}] First 'queued' message, setting protocol_version to 1"
-                                )
-                                db.update_device_field(
-                                    cursor,
-                                    user.username,
-                                    device_id,
-                                    "info.protocol_version",
-                                    1,
-                                )
-                        elif isinstance(parsed_message, DisplayingMessage):
-                            logger.debug(
-                                f"[{device_id}] Image displaying (seq: {parsed_message.displaying})"
-                            )
-                            ack.mark_displaying(parsed_message.displaying)
-                        elif isinstance(parsed_message, DisplayingStatusMessage):
-                            logger.debug(
-                                f"[{device_id}] Image displaying (seq: {parsed_message.counter})"
-                            )
-                            ack.mark_displaying(parsed_message.counter)
-                        elif isinstance(parsed_message, ClientInfoMessage):
-                            logger.debug(
-                                f"[{device_id}] Received ClientInfoMessage: {parsed_message.client_info.model_dump_json()}"
-                            )
-                            client_info = parsed_message.client_info
-                            info_updates = {
-                                "firmware_version": client_info.firmware_version,
-                                "firmware_type": client_info.firmware_type,
-                                "protocol_version": client_info.protocol_version,
-                                "mac_address": client_info.mac_address,
-                            }
-                            for field, value in info_updates.items():
-                                if value is not None:
+                                # If we get a queued message, it's a new firmware device.
+                                # Update protocol version if not set.
+                                device = user.devices.get(device_id)
+                                if device and device.info.protocol_version is None:
+                                    logger.info(
+                                        f"[{device_id}] First 'queued' message, setting protocol_version to 1"
+                                    )
                                     db.update_device_field(
                                         cursor,
                                         user.username,
                                         device_id,
-                                        f"info.{field}",
-                                        value,
+                                        "info.protocol_version",
+                                        1,
                                     )
-                            logger.info(
-                                f"[{device_id}] Updated device info via websocket"
-                            )
-                        else:
-                            # This should not happen if the models cover all cases
-                            logger.warning(
-                                f"[{device_id}] Unhandled message format: {message}"
-                            )
+                            case DisplayingMessage(displaying=displaying_seq):
+                                logger.debug(
+                                    f"[{device_id}] Image displaying (seq: {displaying_seq})"
+                                )
+                                ack.mark_displaying(displaying_seq)
+                            case DisplayingStatusMessage(counter=counter_seq):
+                                logger.debug(
+                                    f"[{device_id}] Image displaying (seq: {counter_seq})"
+                                )
+                                ack.mark_displaying(counter_seq)
+                            case ClientInfoMessage(client_info=client_info):
+                                logger.debug(
+                                    f"[{device_id}] Received ClientInfoMessage: {client_info.model_dump_json()}"
+                                )
+                                info_updates = {
+                                    "firmware_version": client_info.firmware_version,
+                                    "firmware_type": client_info.firmware_type,
+                                    "protocol_version": client_info.protocol_version,
+                                    "mac_address": client_info.mac_address,
+                                }
+                                for field, value in info_updates.items():
+                                    if value is not None:
+                                        db.update_device_field(
+                                            cursor,
+                                            user.username,
+                                            device_id,
+                                            f"info.{field}",
+                                            value,
+                                        )
+                                logger.info(
+                                    f"[{device_id}] Updated device info via websocket"
+                                )
+                            case _:
+                                # This should not happen if the models cover all cases
+                                logger.warning(
+                                    f"[{device_id}] Unhandled message format: {message}"
+                                )
                 except sqlite3.Error as e:
                     logger.error(f"Database error in websocket receiver: {e}")
 
