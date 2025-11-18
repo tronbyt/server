@@ -22,3 +22,4 @@ services:
       - UVICORN_ACCESS_LOG=${UVICORN_ACCESS_LOG:-false}
       - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
+      - GITHUB_TOKEN

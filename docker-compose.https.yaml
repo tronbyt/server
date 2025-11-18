@@ -15,6 +15,7 @@ services:
       - ENABLE_USER_REGISTRATION
       - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
+      - GITHUB_TOKEN
 
     healthcheck:
       test: ["CMD", "python3", "-m", "tronbyt_server.healthcheck", "http://localhost:8000/health"]
