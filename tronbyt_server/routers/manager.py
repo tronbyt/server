@@ -638,7 +638,7 @@ class DeviceUpdateFormData(BaseModel):
     api_key: str | None = None
     notes: str | None = None
     brightness: int
-    custom_brightness_scale: str | None = None
+    custom_brightness_scale: str = ""
     night_brightness: int
     default_interval: int
     night_mode_enabled: bool = False
