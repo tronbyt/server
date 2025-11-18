@@ -22,7 +22,7 @@ from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
-from tronbyt_server.models import App, AppMetadata, Device, User, Weekday, Brightness
+from tronbyt_server.models import App, AppMetadata, Brightness, Device, User, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -604,7 +604,7 @@ def get_apps_list(user: str) -> list[AppMetadata]:
     if not dir.exists():
         return []
 
-    app_files = {}
+    app_files: dict[str, Path] = {}
     # Prioritize .star files
     for file in dir.rglob("*.star"):
         app_files[file.stem] = file
