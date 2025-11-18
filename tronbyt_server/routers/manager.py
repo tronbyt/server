@@ -483,7 +483,7 @@ def create_post(
     device = Device(
         id=device_id,
         name=form_data.name or device_id,
-        type=cast(DeviceType, form_data.device_type),
+        type=DeviceType(form_data.device_type),
         img_url=img_url,
         ws_url=ws_url,
         api_key=api_key,
@@ -564,7 +564,14 @@ async def update_brightness(
             content="Brightness must be between 0 and 5",
         )
 
-    device_brightness = Brightness.from_ui_scale(brightness)
+    # Parse custom brightness scale if device has one
+    from tronbyt_server.models import parse_custom_brightness_scale
+
+    custom_scale = None
+    if device.custom_brightness_scale:
+        custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
+
+    device_brightness = Brightness.from_ui_scale(brightness, custom_scale)
     try:
         with db.db_transaction(db_conn) as cursor:
             db.update_device_field(
@@ -671,7 +678,7 @@ def update_post(
         )
 
     device.name = form_data.name
-    device.type = cast(DeviceType, form_data.device_type)
+    device.type = DeviceType(form_data.device_type)
     device.img_url = (
         db.sanitize_url(form_data.img_url)
         if form_data.img_url
