@@ -209,7 +209,9 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
                     )
 
                     try:
-                        r = requests.get(download_url, headers=github_download_headers, timeout=300)
+                        r = requests.get(
+                            download_url, headers=github_download_headers, timeout=300
+                        )
                         r.raise_for_status()
                         dest_file.write_bytes(r.content)
                         bin_files_downloaded += 1
