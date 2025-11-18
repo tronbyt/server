@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from tronbyt_server import db
+from tronbyt_server.config import get_settings
 from tronbyt_server.firmware import correct_firmware_esptool
 
 
@@ -138,7 +139,8 @@ def update_firmware_binaries(base_path: Path) -> dict[str, Any]:
     api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
 
     # Optional GitHub API token
-    github_token = os.environ.get("GITHUB_TOKEN")
+    settings = get_settings()
+    github_token = settings.GITHUB_TOKEN
 
     try:
         logger.info(f"Fetching latest release info from {api_url}")
