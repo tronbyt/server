@@ -412,9 +412,30 @@ def index(
     user: User = Depends(manager),
 ) -> Response:
     """Render the main page with a list of devices."""
-    devices = reversed(list(user.devices.values()))
+    devices = list(reversed(list(user.devices.values())))
+
+    # Calculate UI scale values for each device using custom scales if available
+    devices_with_ui_scales = []
+    for device in devices:
+        custom_scale = None
+        if device.custom_brightness_scale:
+            custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
+
+        brightness_ui = device.brightness.to_ui_scale(custom_scale)
+        night_brightness_ui = device.night_brightness.to_ui_scale(custom_scale)
+
+        devices_with_ui_scales.append(
+            {
+                "device": device,
+                "brightness_ui": brightness_ui,
+                "night_brightness_ui": night_brightness_ui,
+            }
+        )
+
     return templates.TemplateResponse(
-        request, "manager/index.html", {"devices": devices, "user": user}
+        request,
+        "manager/index.html",
+        {"devices_with_ui_scales": devices_with_ui_scales, "user": user},
     )
 
 
@@ -533,6 +554,15 @@ def update(
     default_img_url = request.url_for("next_app", device_id=device.id)
     default_ws_url = str(request.url_for("websocket_endpoint", device_id=device.id))
 
+    # Parse custom brightness scale if device has one
+    custom_scale = None
+    if device.custom_brightness_scale:
+        custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
+
+    # Calculate UI scale values using custom scale if available
+    brightness_ui = device.brightness.to_ui_scale(custom_scale)
+    night_brightness_ui = device.night_brightness.to_ui_scale(custom_scale)
+
     return templates.TemplateResponse(
         request,
         "manager/update.html",
@@ -542,6 +572,8 @@ def update(
             "default_img_url": default_img_url,
             "default_ws_url": default_ws_url,
             "user": deps.user,
+            "brightness_ui": brightness_ui,
+            "night_brightness_ui": night_brightness_ui,
         },
     )
 

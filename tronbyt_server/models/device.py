@@ -61,19 +61,48 @@ class Brightness:
 
     @property
     def as_ui_scale(self) -> int:
-        """Return brightness on a UI scale (0-5)."""
-        if self.value == 0:
-            return 0
-        elif self.value <= 3:
-            return 1
-        elif self.value <= 5:
-            return 2
-        elif self.value <= 12:
-            return 3
-        elif self.value <= 35:
-            return 4
+        """Return brightness on a UI scale (0-5) using default scale."""
+        return self.to_ui_scale(None)
+
+    def to_ui_scale(self, custom_scale: dict[int, int] | None = None) -> int:
+        """Convert brightness percentage to UI scale (0-5).
+
+        Args:
+            custom_scale: Optional custom brightness scale mapping (0-5 to percentage)
+
+        Returns:
+            UI scale value (0-5) that best matches the current brightness percentage
+        """
+        if custom_scale is not None:
+            # Use custom scale - find the closest match
+            # Sort scale values to find the right bracket
+            scale_pairs = sorted(custom_scale.items(), key=lambda x: x[1])
+
+            # Find which bracket our value falls into
+            for i in range(len(scale_pairs)):
+                level, percent = scale_pairs[i]
+                if i == len(scale_pairs) - 1:
+                    # Last level - if we're close enough, use it
+                    return level
+                next_percent = scale_pairs[i + 1][1]
+                midpoint = (percent + next_percent) // 2
+                if self.value <= midpoint:
+                    return level
+            return scale_pairs[-1][0]  # Default to highest level
         else:
-            return 5
+            # Use default scale
+            if self.value == 0:
+                return 0
+            elif self.value <= 3:
+                return 1
+            elif self.value <= 5:
+                return 2
+            elif self.value <= 12:
+                return 3
+            elif self.value <= 35:
+                return 4
+            else:
+                return 5
 
     @classmethod
     def from_ui_scale(
