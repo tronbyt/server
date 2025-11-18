@@ -673,7 +673,7 @@ def update_post(
     if error is not None:
         flash(request, error)
         return RedirectResponse(
-            url=request.url_for("update", device_id=device.id),
+            url=request.url_for("update", device_id=device.id).path,
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -704,7 +704,7 @@ def update_post(
                 ),
             )
             return RedirectResponse(
-                url=request.url_for("update", device_id=device.id),
+                url=request.url_for("update", device_id=device.id).path,
                 status_code=status.HTTP_302_FOUND,
             )
         device.custom_brightness_scale = form_data.custom_brightness_scale
@@ -858,7 +858,7 @@ def addapp_post(
     if not name:
         flash(request, _("App name required."))
         return RedirectResponse(
-            url=request.url_for("addapp", device_id=device_id),
+            url=request.url_for("addapp", device_id=device_id).path,
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -870,7 +870,7 @@ def addapp_post(
     else:
         flash(request, _("Could not generate a unique installation ID."))
         return RedirectResponse(
-            url=request.url_for("addapp", device_id=device_id),
+            url=request.url_for("addapp", device_id=device_id).path,
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -878,7 +878,7 @@ def addapp_post(
     if not app_details:
         flash(request, _("App not found."))
         return RedirectResponse(
-            url=request.url_for("addapp", device_id=device_id),
+            url=request.url_for("addapp", device_id=device_id).path,
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -960,7 +960,7 @@ async def uploadapp_post(
     if not file.filename:
         flash(request, _("No file"))
         return RedirectResponse(
-            url=request.url_for("addapp", device_id=device_id),
+            url=request.url_for("addapp", device_id=device_id).path,
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -1018,7 +1018,7 @@ async def uploadapp_post(
         shutil.copy(saved_file_path, preview_path)
 
     return RedirectResponse(
-        url=request.url_for("addapp", device_id=device_id),
+        url=request.url_for("addapp", device_id=device_id).path,
         status_code=status.HTTP_302_FOUND,
     )
 
@@ -1059,7 +1059,7 @@ def deleteupload(
         db.delete_user_upload(user, filename)
 
     return RedirectResponse(
-        url=request.url_for("addapp", device_id=device_id),
+        url=request.url_for("addapp", device_id=device_id).path,
         status_code=status.HTTP_302_FOUND,
     )
 
@@ -1441,7 +1441,7 @@ def configapp(
     if not app or not app.path:
         flash(request, _("Error saving app, please try again."))
         return RedirectResponse(
-            url=request.url_for("addapp", device_id=device.id),
+            url=request.url_for("addapp", device_id=device.id).path,
             status_code=status.HTTP_302_FOUND,
         )
 
