@@ -56,6 +56,7 @@ from tronbyt_server.models import (
     Weekday,
     ProtocolType,
     Brightness,
+    parse_custom_brightness_scale,
 )
 from tronbyt_server.pixlet import call_handler_with_config, get_schema
 from tronbyt_server.templates import templates
@@ -565,8 +566,6 @@ async def update_brightness(
         )
 
     # Parse custom brightness scale if device has one
-    from tronbyt_server.models import parse_custom_brightness_scale
-
     custom_scale = None
     if device.custom_brightness_scale:
         custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
@@ -669,12 +668,12 @@ def update_post(
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
     error = None
-    if not form_data.name or not device_id:
-        error = _("Id and Name is required.")
+    if not form_data.name:
+        error = _("Name is required.")
     if error is not None:
         flash(request, error)
         return RedirectResponse(
-            url=f"/{device_id}/update", status_code=status.HTTP_302_FOUND
+            url=f"/{device.id}/update", status_code=status.HTTP_302_FOUND
         )
 
     device.name = form_data.name
@@ -693,8 +692,6 @@ def update_post(
     device.notes = form_data.notes or ""
 
     # Parse custom brightness scale if provided
-    from tronbyt_server.models import parse_custom_brightness_scale
-
     custom_scale = None
     if form_data.custom_brightness_scale:
         custom_scale = parse_custom_brightness_scale(form_data.custom_brightness_scale)
@@ -706,7 +703,7 @@ def update_post(
                 ),
             )
             return RedirectResponse(
-                url=f"/{device_id}/update", status_code=status.HTTP_302_FOUND
+                url=f"/{device.id}/update", status_code=status.HTTP_302_FOUND
             )
         device.custom_brightness_scale = form_data.custom_brightness_scale
     else:
