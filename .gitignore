@@ -29,3 +29,4 @@ tronbyt_server/version.json
 .terraform/
 .terraform.lock.hcl
 
+CLAUDE.md

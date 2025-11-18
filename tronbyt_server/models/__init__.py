@@ -10,6 +10,7 @@ from .device import (
     Location,
     ProtocolType,
     Brightness,
+    parse_custom_brightness_scale,
 )
 from .user import User, ThemePreference
 from .ws import (
@@ -53,4 +54,5 @@ __all__ = [
     "ServerMessage",
     "ProtocolType",
     "Brightness",
+    "parse_custom_brightness_scale",
 ]

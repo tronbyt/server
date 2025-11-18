@@ -632,6 +632,7 @@ class DeviceUpdateFormData(BaseModel):
     api_key: str | None = None
     notes: str | None = None
     brightness: int
+    custom_brightness_scale: str | None = None
     night_brightness: int
     default_interval: int
     night_mode_enabled: bool = False
@@ -683,8 +684,31 @@ def update_post(
     )
     device.api_key = form_data.api_key or ""
     device.notes = form_data.notes or ""
-    device.brightness = Brightness.from_ui_scale(form_data.brightness)
-    device.night_brightness = Brightness.from_ui_scale(form_data.night_brightness)
+
+    # Parse custom brightness scale if provided
+    from tronbyt_server.models import parse_custom_brightness_scale
+
+    custom_scale = None
+    if form_data.custom_brightness_scale:
+        custom_scale = parse_custom_brightness_scale(form_data.custom_brightness_scale)
+        if custom_scale is None:
+            flash(
+                request,
+                _(
+                    "Invalid custom brightness scale format. Use 6 comma-separated values (0-100)."
+                ),
+            )
+            return RedirectResponse(
+                url=f"/{device_id}/update", status_code=status.HTTP_302_FOUND
+            )
+        device.custom_brightness_scale = form_data.custom_brightness_scale
+    else:
+        device.custom_brightness_scale = ""
+
+    device.brightness = Brightness.from_ui_scale(form_data.brightness, custom_scale)
+    device.night_brightness = Brightness.from_ui_scale(
+        form_data.night_brightness, custom_scale
+    )
     device.default_interval = form_data.default_interval
     device.night_mode_enabled = form_data.night_mode_enabled
     device.night_mode_app = form_data.night_mode_app or ""
@@ -714,7 +738,9 @@ def update_post(
         device.dim_time = None
 
     if form_data.dim_brightness is not None:
-        device.dim_brightness = Brightness.from_ui_scale(form_data.dim_brightness)
+        device.dim_brightness = Brightness.from_ui_scale(
+            form_data.dim_brightness, custom_scale
+        )
 
     # Handle interstitial app settings
     device.interstitial_enabled = form_data.interstitial_enabled
