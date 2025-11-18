@@ -1615,10 +1615,16 @@ def generate_firmware(
         )
 
     firmware_version = db.get_firmware_version()
+    firmware_bins_available = db.check_firmware_bins_available()
     return templates.TemplateResponse(
         request,
         "manager/firmware.html",
-        {"device": device, "firmware_version": firmware_version, "user": user},
+        {
+            "device": device,
+            "firmware_version": firmware_version,
+            "firmware_bins_available": firmware_bins_available,
+            "user": user,
+        },
     )
 
 

@@ -17,6 +17,22 @@
 </div>
 {% endblock %}
 {% block content %}
+{% if not firmware_bins_available %}
+<div class="w3-panel w3-yellow w3-border w3-border-amber w3-round-large">
+    <h3><i class="fa-solid fa-triangle-exclamation"></i> {{ _('Firmware Files Not Available') }}</h3>
+    <p>{{ _('Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded.') }}</p>
+    {% if user.username == 'admin' %}
+    <p>
+        <strong>{{ _('Action Required:') }}</strong> {{ _('Please go to the') }}
+        <a href="{{ url_for('edit') }}#firmware-management" class="w3-text-blue" style="text-decoration: underline;">{{ _('Admin page') }}</a>
+        {{ _('to download the latest firmware files.') }}
+    </p>
+    {% else %}
+    <p>{{ _('Please contact your administrator to download the firmware files.') }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
 {% if firmware_version %}
 <div class="firmware-info">
     <div>

@@ -1080,6 +1080,31 @@ def get_firmware_version() -> str | None:
     return None
 
 
+def check_firmware_bins_available() -> bool:
+    """Check if any firmware bin files are available in the data directory.
+
+    Returns:
+        True if at least one firmware bin file exists, False otherwise.
+    """
+    firmware_dir = get_data_dir() / "firmware"
+    if not firmware_dir.exists():
+        return False
+
+    # Check for any of the expected firmware files
+    firmware_files = [
+        "tidbyt-gen1.bin",
+        "tidbyt-gen1_swap.bin",
+        "tidbyt-gen2.bin",
+        "pixoticker.bin",
+        "tronbyt-S3.bin",
+        "tronbyt-s3-wide.bin",
+        "matrixportal-s3.bin",
+        "matrixportal-s3-waveshare.bin",
+    ]
+
+    return any((firmware_dir / filename).exists() for filename in firmware_files)
+
+
 def get_user_by_api_key(db: sqlite3.Connection, api_key: str) -> User | None:
     """Get a user by API key."""
     for user in get_all_users(db):

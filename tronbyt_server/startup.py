@@ -55,9 +55,16 @@ def run_once() -> None:
     logger.info("Running one-time startup tasks...")
 
     try:
-        firmware_utils.update_firmware_binaries(db.get_data_dir())
+        result = firmware_utils.update_firmware_binaries_subprocess(db.get_data_dir())
+        if result["success"]:
+            if result["action"] == "updated":
+                logger.info(f"Firmware updated: {result['message']}")
+            elif result["action"] == "skipped":
+                logger.info(f"Firmware check: {result['message']}")
+        else:
+            logger.warning(f"Firmware update failed (non-fatal): {result['message']}")
     except Exception as e:
-        logger.error(f"Failed to update firmware during startup: {e}")
+        logger.warning(f"Failed to update firmware during startup (non-fatal): {e}")
 
     # Backup the database before initializing (only in production)
     # Skip system apps update in dev mode
