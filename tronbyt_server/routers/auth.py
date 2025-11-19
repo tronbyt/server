@@ -8,10 +8,10 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, status
-from fastapi.responses import Response, RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi_babel import _
 from pydantic import BaseModel
 from werkzeug.security import generate_password_hash
-from fastapi_babel import _
 
 import tronbyt_server.db as db
 from tronbyt_server import system_apps, version
@@ -23,7 +23,7 @@ from tronbyt_server.dependencies import (
     manager,
 )
 from tronbyt_server.flash import flash
-from tronbyt_server.models import User, ThemePreference
+from tronbyt_server.models import ThemePreference, User
 from tronbyt_server.templates import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -76,7 +76,6 @@ def post_register_owner(
     request: Request,
     password: str = Form(...),
     db_conn: sqlite3.Connection = Depends(get_db),
-    settings: Settings = Depends(get_settings),
 ) -> Response:
     """Handle owner registration."""
     if db.has_users(db_conn):
@@ -118,7 +117,7 @@ def get_register(
     """Render the user registration page."""
     if not db.has_users(db_conn):
         return RedirectResponse(
-            url="/auth/register_owner", status_code=status.HTTP_302_FOUND
+            url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
         )
     if settings.ENABLE_USER_REGISTRATION != "1":
         if not user or user.username != "admin":
@@ -198,7 +197,8 @@ def post_register(
                     ),
                 )
                 return RedirectResponse(
-                    url="/auth/register", status_code=status.HTTP_302_FOUND
+                    url=request.url_for("get_register"),
+                    status_code=status.HTTP_302_FOUND,
                 )
             else:
                 flash(
@@ -276,7 +276,9 @@ def post_login(
         )
 
     user = user_data
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(
+        url=request.url_for("index"), status_code=status.HTTP_302_FOUND
+    )
 
     # Set token expiration
     token_expires = timedelta(days=30) if form_data.remember else timedelta(minutes=60)
@@ -327,7 +329,9 @@ def post_edit(
         authed_user.password = generate_password_hash(password)
         db.save_user(db_conn, authed_user)
         flash(request, _("Success"))
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(
+            url=request.url_for("index"), status_code=status.HTTP_302_FOUND
+        )
 
 
 @router.get("/logout")
@@ -389,4 +393,6 @@ def generate_api_key(
         flash(request, _("New API key generated successfully."))
     else:
         flash(request, _("Failed to generate new API key."))
-    return RedirectResponse(url="/auth/edit", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(
+        url=request.url_for("get_edit"), status_code=status.HTTP_302_FOUND
+    )

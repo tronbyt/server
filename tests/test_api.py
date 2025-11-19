@@ -4,9 +4,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from . import utils
 from tronbyt_server import db
 from tronbyt_server.models.app import App
+
+from . import utils
 
 
 def test_api(auth_client: TestClient, db_connection: sqlite3.Connection) -> None:
@@ -23,7 +24,7 @@ def test_api(auth_client: TestClient, db_connection: sqlite3.Connection) -> None
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/"
+    assert response.headers["location"] == "http://testserver/"
 
     # Get user to find device_id
     user = db.get_user(db_connection, "testuser")
@@ -91,7 +92,7 @@ class TestMoveApp:
             follow_redirects=False,
         )
         assert response.status_code == 302
-        assert response.headers["location"] == "/"
+        assert response.headers["location"] == "http://testserver/"
 
         user = db.get_user(db_connection, "testuser")
         assert user

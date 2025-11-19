@@ -1,5 +1,5 @@
-from io import BytesIO
 import shutil
+from io import BytesIO
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -52,7 +52,7 @@ def test_webp_upload_and_app_creation(auth_client: TestClient) -> None:
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/"
+    assert response.headers["location"] == "http://testserver/"
 
     # 4. Check that the app is added and file is copied
     with db.get_db() as db_conn:
