@@ -22,7 +22,7 @@ def test_register_login_logout(auth_client: TestClient) -> None:
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["location"] == "/"
+    assert response.headers["location"] == "http://testserver/"
 
     response = auth_client.get("/auth/logout", follow_redirects=False)
     assert response.status_code == 302
