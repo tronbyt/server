@@ -56,6 +56,7 @@ from tronbyt_server.models import (
     Weekday,
     ProtocolType,
     Brightness,
+    parse_custom_brightness_scale,
 )
 from tronbyt_server.pixlet import call_handler_with_config, get_schema
 from tronbyt_server.templates import templates
@@ -411,9 +412,30 @@ def index(
     user: User = Depends(manager),
 ) -> Response:
     """Render the main page with a list of devices."""
-    devices = reversed(list(user.devices.values()))
+    devices = list(reversed(list(user.devices.values())))
+
+    # Calculate UI scale values for each device using custom scales if available
+    devices_with_ui_scales = []
+    for device in devices:
+        custom_scale = None
+        if device.custom_brightness_scale:
+            custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
+
+        brightness_ui = device.brightness.to_ui_scale(custom_scale)
+        night_brightness_ui = device.night_brightness.to_ui_scale(custom_scale)
+
+        devices_with_ui_scales.append(
+            {
+                "device": device,
+                "brightness_ui": brightness_ui,
+                "night_brightness_ui": night_brightness_ui,
+            }
+        )
+
     return templates.TemplateResponse(
-        request, "manager/index.html", {"devices": devices, "user": user}
+        request,
+        "manager/index.html",
+        {"devices_with_ui_scales": devices_with_ui_scales, "user": user},
     )
 
 
@@ -483,7 +505,7 @@ def create_post(
     device = Device(
         id=device_id,
         name=form_data.name or device_id,
-        type=cast(DeviceType, form_data.device_type),
+        type=DeviceType(form_data.device_type),
         img_url=img_url,
         ws_url=ws_url,
         api_key=api_key,
@@ -532,6 +554,15 @@ def update(
     default_img_url = request.url_for("next_app", device_id=device.id)
     default_ws_url = str(request.url_for("websocket_endpoint", device_id=device.id))
 
+    # Parse custom brightness scale if device has one
+    custom_scale = None
+    if device.custom_brightness_scale:
+        custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
+
+    # Calculate UI scale values using custom scale if available
+    brightness_ui = device.brightness.to_ui_scale(custom_scale)
+    night_brightness_ui = device.night_brightness.to_ui_scale(custom_scale)
+
     return templates.TemplateResponse(
         request,
         "manager/update.html",
@@ -541,6 +572,8 @@ def update(
             "default_img_url": default_img_url,
             "default_ws_url": default_ws_url,
             "user": deps.user,
+            "brightness_ui": brightness_ui,
+            "night_brightness_ui": night_brightness_ui,
         },
     )
 
@@ -564,7 +597,12 @@ async def update_brightness(
             content="Brightness must be between 0 and 5",
         )
 
-    device_brightness = Brightness.from_ui_scale(brightness)
+    # Parse custom brightness scale if device has one
+    custom_scale = None
+    if device.custom_brightness_scale:
+        custom_scale = parse_custom_brightness_scale(device.custom_brightness_scale)
+
+    device_brightness = Brightness.from_ui_scale(brightness, custom_scale)
     try:
         with db.db_transaction(db_conn) as cursor:
             db.update_device_field(
@@ -632,6 +670,7 @@ class DeviceUpdateFormData(BaseModel):
     api_key: str | None = None
     notes: str | None = None
     brightness: int
+    custom_brightness_scale: str = ""
     night_brightness: int
     default_interval: int
     night_mode_enabled: bool = False
@@ -661,16 +700,17 @@ def update_post(
         return RedirectResponse(url="/", status_code=status.HTTP_404_NOT_FOUND)
 
     error = None
-    if not form_data.name or not device_id:
-        error = _("Id and Name is required.")
+    if not form_data.name:
+        error = _("Name is required.")
     if error is not None:
         flash(request, error)
         return RedirectResponse(
-            url=f"/{device_id}/update", status_code=status.HTTP_302_FOUND
+            url=request.url_for("update", device_id=device.id).path,
+            status_code=status.HTTP_302_FOUND,
         )
 
     device.name = form_data.name
-    device.type = cast(DeviceType, form_data.device_type)
+    device.type = DeviceType(form_data.device_type)
     device.img_url = (
         db.sanitize_url(form_data.img_url)
         if form_data.img_url
@@ -683,8 +723,30 @@ def update_post(
     )
     device.api_key = form_data.api_key or ""
     device.notes = form_data.notes or ""
-    device.brightness = Brightness.from_ui_scale(form_data.brightness)
-    device.night_brightness = Brightness.from_ui_scale(form_data.night_brightness)
+
+    # Parse custom brightness scale if provided
+    custom_scale = None
+    if form_data.custom_brightness_scale:
+        custom_scale = parse_custom_brightness_scale(form_data.custom_brightness_scale)
+        if custom_scale is None:
+            flash(
+                request,
+                _(
+                    "Invalid custom brightness scale format. Use 6 comma-separated values (0-100)."
+                ),
+            )
+            return RedirectResponse(
+                url=request.url_for("update", device_id=device.id).path,
+                status_code=status.HTTP_302_FOUND,
+            )
+        device.custom_brightness_scale = form_data.custom_brightness_scale
+    else:
+        device.custom_brightness_scale = ""
+
+    device.brightness = Brightness.from_ui_scale(form_data.brightness, custom_scale)
+    device.night_brightness = Brightness.from_ui_scale(
+        form_data.night_brightness, custom_scale
+    )
     device.default_interval = form_data.default_interval
     device.night_mode_enabled = form_data.night_mode_enabled
     device.night_mode_app = form_data.night_mode_app or ""
@@ -714,7 +776,9 @@ def update_post(
         device.dim_time = None
 
     if form_data.dim_brightness is not None:
-        device.dim_brightness = Brightness.from_ui_scale(form_data.dim_brightness)
+        device.dim_brightness = Brightness.from_ui_scale(
+            form_data.dim_brightness, custom_scale
+        )
 
     # Handle interstitial app settings
     device.interstitial_enabled = form_data.interstitial_enabled
@@ -826,7 +890,8 @@ def addapp_post(
     if not name:
         flash(request, _("App name required."))
         return RedirectResponse(
-            url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+            url=request.url_for("addapp", device_id=device_id).path,
+            status_code=status.HTTP_302_FOUND,
         )
 
     max_attempts = 10
@@ -837,14 +902,16 @@ def addapp_post(
     else:
         flash(request, _("Could not generate a unique installation ID."))
         return RedirectResponse(
-            url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+            url=request.url_for("addapp", device_id=device_id).path,
+            status_code=status.HTTP_302_FOUND,
         )
 
     app_details = db.get_app_details_by_name(user.username, name)
     if not app_details:
         flash(request, _("App not found."))
         return RedirectResponse(
-            url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+            url=request.url_for("addapp", device_id=device_id).path,
+            status_code=status.HTTP_302_FOUND,
         )
 
     logger.info(
@@ -925,7 +992,8 @@ async def uploadapp_post(
     if not file.filename:
         flash(request, _("No file"))
         return RedirectResponse(
-            url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+            url=request.url_for("addapp", device_id=device_id).path,
+            status_code=status.HTTP_302_FOUND,
         )
 
     filename = secure_filename(file.filename)
@@ -982,7 +1050,8 @@ async def uploadapp_post(
         shutil.copy(saved_file_path, preview_path)
 
     return RedirectResponse(
-        url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+        url=request.url_for("addapp", device_id=device_id).path,
+        status_code=status.HTTP_302_FOUND,
     )
 
 
@@ -1022,7 +1091,8 @@ def deleteupload(
         db.delete_user_upload(user, filename)
 
     return RedirectResponse(
-        url=f"/{device_id}/addapp", status_code=status.HTTP_302_FOUND
+        url=request.url_for("addapp", device_id=device_id).path,
+        status_code=status.HTTP_302_FOUND,
     )
 
 
@@ -1403,7 +1473,8 @@ def configapp(
     if not app or not app.path:
         flash(request, _("Error saving app, please try again."))
         return RedirectResponse(
-            url=f"/{device.id}/addapp", status_code=status.HTTP_302_FOUND
+            url=request.url_for("addapp", device_id=device.id).path,
+            status_code=status.HTTP_302_FOUND,
         )
 
     schema_json = get_schema(Path(app.path))

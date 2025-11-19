@@ -15,7 +15,10 @@
 <hr>
 {% endif %}
 
-{% for device in devices %}
+{% for item in devices_with_ui_scales %}
+  {% set device = item.device %}
+  {% set brightness_ui = item.brightness_ui %}
+  {% set night_brightness_ui = item.night_brightness_ui %}
   {% include 'partials/device_card.html' %}
   {% if not loop.last %}
   <hr>

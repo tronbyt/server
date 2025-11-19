@@ -61,32 +61,76 @@ class Brightness:
 
     @property
     def as_ui_scale(self) -> int:
-        """Return brightness on a UI scale (0-5)."""
-        if self.value == 0:
-            return 0
-        elif self.value <= 3:
-            return 1
-        elif self.value <= 5:
-            return 2
-        elif self.value <= 12:
-            return 3
-        elif self.value <= 35:
-            return 4
+        """Return brightness on a UI scale (0-5) using default scale."""
+        return self.to_ui_scale(None)
+
+    def to_ui_scale(self, custom_scale: dict[int, int] | None = None) -> int:
+        """Convert brightness percentage to UI scale (0-5).
+
+        Args:
+            custom_scale: Optional custom brightness scale mapping (0-5 to percentage)
+
+        Returns:
+            UI scale value (0-5) that best matches the current brightness percentage
+        """
+        if custom_scale is not None:
+            # Use custom scale - find the closest match
+            # Sort scale values to find the right bracket
+            scale_pairs = sorted(custom_scale.items(), key=lambda x: x[1])
+
+            # Find which bracket our value falls into
+            for i in range(len(scale_pairs)):
+                level, percent = scale_pairs[i]
+                if i == len(scale_pairs) - 1:
+                    # Last level - if we're close enough, use it
+                    return level
+                next_percent = scale_pairs[i + 1][1]
+                midpoint = (percent + next_percent) // 2
+                if self.value <= midpoint:
+                    return level
+            return scale_pairs[-1][0]  # Default to highest level
         else:
-            return 5
+            # Use default scale
+            if self.value == 0:
+                return 0
+            elif self.value <= 3:
+                return 1
+            elif self.value <= 5:
+                return 2
+            elif self.value <= 12:
+                return 3
+            elif self.value <= 35:
+                return 4
+            else:
+                return 5
 
     @classmethod
-    def from_ui_scale(cls, ui_value: int) -> Self:
-        """Create a Brightness object from a UI scale value (0-5)."""
-        lookup = {
-            0: 0,
-            1: 3,
-            2: 5,
-            3: 12,
-            4: 35,
-            5: 100,
-        }
-        percent = lookup.get(ui_value, 20)  # Default to 20%
+    def from_ui_scale(
+        cls, ui_value: int, custom_scale: dict[int, int] | None = None
+    ) -> Self:
+        """Create a Brightness object from a UI scale value (0-5).
+
+        Args:
+            ui_value: The UI scale value (0-5)
+            custom_scale: Optional custom brightness scale mapping (0-5 to percentage)
+
+        Returns:
+            A Brightness object with the appropriate percentage value
+        """
+        if custom_scale is not None:
+            # Use custom scale if provided
+            percent = custom_scale.get(ui_value, 20)  # Default to 20%
+        else:
+            # Use default scale
+            lookup = {
+                0: 0,
+                1: 3,
+                2: 5,
+                3: 12,
+                4: 35,
+                5: 100,
+            }
+            percent = lookup.get(ui_value, 20)  # Default to 20%
         return cls(percent)
 
     def __int__(self) -> int:
@@ -212,6 +256,33 @@ class DeviceInfo(DeviceInfoBase):
     protocol_type: ProtocolType | None = None
 
 
+def parse_custom_brightness_scale(scale_str: str) -> dict[int, int] | None:
+    """Parse custom brightness scale string into a dictionary.
+
+    Args:
+        scale_str: Comma-separated values like "0,3,5,12,35,100"
+
+    Returns:
+        Dictionary mapping 0-5 to percentage values, or None if invalid
+    """
+    if not scale_str or not scale_str.strip():
+        return None
+
+    try:
+        values = [int(v.strip()) for v in scale_str.split(",")]
+        if len(values) != 6:
+            return None
+
+        # Validate all values are between 0-100
+        if not all(0 <= v <= 100 for v in values):
+            return None
+
+        # Create mapping
+        return {i: values[i] for i in range(6)}
+    except (ValueError, AttributeError):
+        return None
+
+
 class Device(BaseModel):
     """Pydantic model for a device."""
 
@@ -223,6 +294,7 @@ class Device(BaseModel):
     ws_url: str = ""
     notes: str = ""
     brightness: Brightness = Brightness(100)
+    custom_brightness_scale: str = ""  # Format: "0,3,5,12,35,100" for levels 0-5
     night_mode_enabled: bool = False
     night_mode_app: str = ""
     night_start: Annotated[str | None, BeforeValidator(format_time)] = (
