@@ -967,26 +967,6 @@ def get_device_by_name(user: User, name: str) -> Device | None:
     return None
 
 
-def _update_json_field(
-    cursor: sqlite3.Cursor,
-    username: str,
-    path: str,
-    value: Any,
-) -> None:
-    """
-    Update a single field in the json_data using the provided cursor.
-    This function does NOT commit the transaction.
-    """
-    cursor.execute(
-        """
-        UPDATE json_data
-        SET data = json_set(data, ?, ?)
-        WHERE username = ?
-        """,
-        (path, value, username),
-    )
-
-
 def update_device_field(
     cursor: sqlite3.Cursor, username: str, device_id: str, field: str, value: Any
 ) -> None:
@@ -994,8 +974,19 @@ def update_device_field(
     Update a single field for a device using the provided cursor.
     This function does NOT commit the transaction.
     """
-    path = f"$.devices.{device_id}.{field}"
-    _update_json_field(cursor, username, path, value)
+    if field.startswith("apps"):
+        raise ValueError("Use save_app or update_app_field to modify apps.")
+    device_path = f"$.devices.{device_id}"
+    path = f"{device_path}.{field}"
+
+    cursor.execute(
+        """
+        UPDATE json_data
+        SET data = json_set(data, ?, ?)
+        WHERE username = ? AND json_type(data, ?) IS NOT NULL
+        """,
+        (path, value, username, device_path),
+    )
     logger.debug(f"Queued update for {field} for device {device_id}")
 
 
@@ -1011,8 +1002,17 @@ def update_app_field(
     Update a single field for an app using the provided cursor.
     This function does NOT commit the transaction.
     """
-    path = f"$.devices.{device_id}.apps.{iname}.{field}"
-    _update_json_field(cursor, username, path, value)
+    app_path = f"$.devices.{device_id}.apps.{json.dumps(iname)}"
+    path = f"{app_path}.{field}"
+
+    cursor.execute(
+        """
+        UPDATE json_data
+        SET data = json_set(data, ?, ?)
+        WHERE username = ? AND json_type(data, ?) IS NOT NULL
+        """,
+        (path, value, username, app_path),
+    )
     logger.debug(f"Queued update for {field} for app {iname} on device {device_id}")
 
 
@@ -1170,17 +1170,17 @@ def save_app(db: sqlite3.Connection, device_id: str, app: App) -> bool:
 
     try:
         with db_transaction(db) as cursor:
-            path = f"$.devices.{device_id}.apps.{app.iname}"
+            device_path = f"$.devices.{device_id}"
+            path = f"{device_path}.apps.{json.dumps(app.iname)}"
             app_json = app.model_dump_json()
 
-            cursor = db.cursor()
             cursor.execute(
                 """
                 UPDATE json_data
                 SET data = json_set(data, ?, json(?))
-                WHERE username = ?
+                WHERE username = ? AND json_type(data, ?) IS NOT NULL
                 """,
-                (path, app_json, user.username),
+                (path, app_json, user.username, device_path),
             )
         logger.debug(f"Atomically saved app {app.iname} for user {user.username}")
         return True
@@ -1196,13 +1196,14 @@ def save_render_messages(
     app.render_messages = messages
     try:
         with db_transaction(db) as cursor:
-            path = f"$.devices.{device.id}.apps.{json.dumps(app.iname)}.render_messages"
+            app_path = f"$.devices.{device.id}.apps.{json.dumps(app.iname)}"
+            path = f"{app_path}.render_messages"
             sql = """
                 UPDATE json_data
                 SET data = json_set(data, ?, json(?))
-                WHERE username = ?
+                WHERE username = ? AND json_type(data, ?) IS NOT NULL
             """
-            params = (path, json.dumps(messages), user.username)
+            params = (path, json.dumps(messages), user.username, app_path)
             cursor.execute(sql, params)
             logger.debug(
                 "Saved render_messages for app %s on device %s for user %s",
