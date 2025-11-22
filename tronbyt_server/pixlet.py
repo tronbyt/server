@@ -53,6 +53,13 @@ def load_pixlet_library() -> None:
     except OSError as e:
         raise RuntimeError(f"Failed to load {libpixlet_path}: {e}")
 
+    try:
+        api_version = ctypes.c_int.in_dll(pixlet_library, "libpixletAPIVersion").value
+    except ValueError:
+        api_version = 0
+
+    logger.info(f"Libpixlet API version: {api_version}")
+
     global pixlet_init_redis_cache
     pixlet_init_redis_cache = pixlet_library.init_redis_cache
     pixlet_init_redis_cache.argtypes = [ctypes.c_char_p]
@@ -142,7 +149,7 @@ def initialize_pixlet_library() -> None:
         _pixlet_initialized = True
 
 
-def c_char_p_to_string(c_pointer: ctypes.c_char_p) -> str | None:
+def c_char_p_to_string(c_pointer: ctypes.c_char_p | None) -> str | None:
     if not c_pointer:
         return None
     data = ctypes.string_at(c_pointer)  # Extract the NUL-terminated C-String
