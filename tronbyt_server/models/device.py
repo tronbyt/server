@@ -22,20 +22,35 @@ from .app import App
 class DeviceType(str, Enum):
     """Device type enumeration."""
 
-    TIDBYT_GEN1 = "tidbyt_gen1"
-    TIDBYT_GEN2 = "tidbyt_gen2"
-    PIXOTICKER = "pixoticker"
-    RASPBERRYPI = "raspberrypi"
-    TRONBYT_S3 = "tronbyt_s3"
-    TRONBYT_S3_WIDE = "tronbyt_s3_wide"
-    MATRIXPORTAL = "matrixportal_s3"
-    MATRIXPORTAL_S3_WAVESHARE = "matrixportal_s3_waveshare"
-    OTHER = "other"
+    display_name: str
+
+    def __new__(cls, value: str, display_name: str) -> Self:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.display_name = display_name
+        return obj
+
+    TIDBYT_GEN1 = ("tidbyt_gen1", "Tidbyt Gen1")
+    TIDBYT_GEN2 = ("tidbyt_gen2", "Tidbyt Gen2")
+    PIXOTICKER = ("pixoticker", "Pixoticker")
+    RASPBERRYPI = ("raspberrypi", "Raspberry Pi")
+    RASPBERRYPI_WIDE = ("raspberrypi_wide", "Raspberry Pi Wide")
+    TRONBYT_S3 = ("tronbyt_s3", "Tronbyt S3")
+    TRONBYT_S3_WIDE = ("tronbyt_s3_wide", "Tronbyt S3 Wide")
+    MATRIXPORTAL = ("matrixportal_s3", "MatrixPortal S3")
+    MATRIXPORTAL_S3_WAVESHARE = (
+        "matrixportal_s3_waveshare",
+        "MatrixPortal S3 Waveshare",
+    )
+    OTHER = ("other", "Other")
 
 
 DEFAULT_DEVICE_TYPE: DeviceType = DeviceType.TIDBYT_GEN1
 
-TWO_X_CAPABLE_DEVICE_TYPES = [DeviceType.TRONBYT_S3_WIDE]
+TWO_X_CAPABLE_DEVICE_TYPES = (DeviceType.TRONBYT_S3_WIDE, DeviceType.RASPBERRYPI_WIDE)
+
+DEVICE_TYPE_CHOICES = {member.value: member.display_name for member in DeviceType}
+
 
 DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
 
