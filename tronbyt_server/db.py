@@ -1099,8 +1099,8 @@ def get_device_by_id(db: sqlite3.Connection, device_id: str) -> Device | None:
 
 
 def _remove_corrupt_apps(
-    user_data: dict, error: ValidationError
-) -> tuple[dict, list[str]]:
+    user_data: dict[str, Any], error: ValidationError
+) -> tuple[dict[str, Any], list[str]]:
     """Remove corrupt app entries from user data based on validation errors.
 
     Returns:
