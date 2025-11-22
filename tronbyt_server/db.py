@@ -1117,15 +1117,18 @@ def _remove_corrupt_apps(
             app_id = loc[3]
 
             # Remove the corrupt app
-            if device_id in user_data.get("devices", {}) and app_id in user_data[
-                "devices"
-            ][device_id].get("apps", {}):
-                del user_data["devices"][device_id]["apps"][app_id]
-                removed_apps.append(f"{device_id}/app:{app_id}")
-                logger.warning(
-                    f"Removed corrupt app entry {app_id} from device {device_id} "
-                    f"(missing field: {loc[-1]})"
-                )
+            devices = user_data.get("devices")
+            if isinstance(devices, dict):
+                device = devices.get(device_id)
+                if isinstance(device, dict):
+                    apps = device.get("apps")
+                    if isinstance(apps, dict) and app_id in apps:
+                        del apps[app_id]
+                        removed_apps.append(f"{device_id}/app:{app_id}")
+                        logger.warning(
+                            f"Removed corrupt app entry {app_id} from device {device_id} "
+                            f"(missing field: {loc[-1]})"
+                        )
 
     return user_data, removed_apps
 
