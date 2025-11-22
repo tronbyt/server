@@ -492,9 +492,37 @@ def get_user(db: sqlite3.Connection, username: str) -> User | None:
             try:
                 return User.model_validate(user_data)
             except ValidationError as e:
-                # ValidationError from pydantic -> log and return None
-                logger.error(f"User data validation failed for {username}: {e}")
-                return None
+                # ValidationError from pydantic -> try to recover by removing corrupt apps
+                logger.error(f"Validation error for user {username}: {e}")
+
+                try:
+                    cleaned_data, removed = _remove_corrupt_apps(user_data, e)
+
+                    if removed:
+                        # Retry validation with cleaned data
+                        user = User.model_validate(cleaned_data)
+                        # Save the cleaned data back to the database
+                        if save_user(db, user):
+                            logger.info(
+                                f"Successfully recovered user data for {username} "
+                                f"by removing {len(removed)} corrupt app(s): {', '.join(removed)}"
+                            )
+                            return user
+                        else:
+                            logger.error(
+                                f"Failed to save cleaned user data for {username}"
+                            )
+                            return None
+                    else:
+                        logger.error(
+                            f"No corrupt apps found to remove for user {username}"
+                        )
+                        return None
+                except Exception as recovery_error:
+                    logger.error(
+                        f"Failed to recover user data for {username}: {recovery_error}"
+                    )
+                    return None
         else:
             logger.error(f"{username} not found")
             return None
@@ -770,9 +798,33 @@ def get_all_users(db: sqlite3.Connection) -> list[User]:
                 user = User.model_validate(user_data)
                 users.append(user)
             except ValidationError as e:
-                logger.error(
-                    f"User validation failed for user '{user_data.get('username', 'unknown')}': {e}"
-                )
+                username = user_data.get("username", "unknown")
+                logger.error(f"Validation error for user '{username}': {e}")
+
+                # Try to recover by removing corrupt apps
+                try:
+                    cleaned_data, removed = _remove_corrupt_apps(user_data, e)
+
+                    if removed:
+                        user = User.model_validate(cleaned_data)
+                        if save_user(db, user):
+                            logger.info(
+                                f"Successfully recovered user '{username}' "
+                                f"by removing {len(removed)} corrupt app(s): {', '.join(removed)}"
+                            )
+                            users.append(user)
+                        else:
+                            logger.error(
+                                f"Failed to save cleaned user data for '{username}'"
+                            )
+                    else:
+                        logger.error(
+                            f"No corrupt apps found to remove for user '{username}'"
+                        )
+                except Exception as recovery_error:
+                    logger.error(
+                        f"Failed to recover user '{username}': {recovery_error}"
+                    )
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding user JSON: {e}")
     return users
@@ -1046,6 +1098,41 @@ def get_device_by_id(db: sqlite3.Connection, device_id: str) -> Device | None:
     return None
 
 
+def _remove_corrupt_apps(
+    user_data: dict[str, Any], error: ValidationError
+) -> tuple[dict[str, Any], list[str]]:
+    """Remove corrupt app entries from user data based on validation errors.
+
+    Returns:
+        Tuple of (cleaned_user_data, list_of_removed_app_ids)
+    """
+    removed_apps = []
+
+    # Parse validation errors to find corrupt apps
+    for err in error.errors():
+        loc = err.get("loc", ())
+        # Look for errors in the path: devices.<device_id>.apps.<app_id>.<field>
+        if len(loc) >= 4 and loc[0] == "devices" and loc[2] == "apps":
+            device_id = loc[1]
+            app_id = loc[3]
+
+            # Remove the corrupt app
+            devices = user_data.get("devices")
+            if isinstance(devices, dict):
+                device = devices.get(device_id)
+                if isinstance(device, dict):
+                    apps = device.get("apps")
+                    if isinstance(apps, dict) and app_id in apps:
+                        del apps[app_id]
+                        removed_apps.append(f"{device_id}/app:{app_id}")
+                        logger.warning(
+                            f"Removed corrupt app entry {app_id} from device {device_id} "
+                            f"(missing field: {loc[-1]})"
+                        )
+
+    return user_data, removed_apps
+
+
 def get_user_by_device_id(db: sqlite3.Connection, device_id: str) -> User | None:
     """Get a user by device ID."""
     cursor = db.cursor()
@@ -1062,9 +1149,42 @@ def get_user_by_device_id(db: sqlite3.Connection, device_id: str) -> User | None
         try:
             user_data = json.loads(row[0])
             return User.model_validate(user_data)
-        except (json.JSONDecodeError, ValidationError) as e:
+        except json.JSONDecodeError as e:
             logger.error(f"Error processing user data for device {device_id}: {e}")
             return None
+        except ValidationError as e:
+            logger.error(f"Validation error for device {device_id}: {e}")
+
+            # Try to recover by removing corrupt app entries
+            try:
+                user_data = json.loads(row[0])
+                cleaned_data, removed = _remove_corrupt_apps(user_data, e)
+
+                if removed:
+                    # Retry validation with cleaned data
+                    user = User.model_validate(cleaned_data)
+                    # Save the cleaned data back to the database
+                    if save_user(db, user):
+                        logger.info(
+                            f"Successfully recovered user data for device {device_id} "
+                            f"by removing {len(removed)} corrupt app(s): {', '.join(removed)}"
+                        )
+                        return user
+                    else:
+                        logger.error(
+                            f"Failed to save cleaned user data for device {device_id}"
+                        )
+                        return None
+                else:
+                    logger.error(
+                        f"No corrupt apps found to remove for device {device_id}"
+                    )
+                    return None
+            except Exception as recovery_error:
+                logger.error(
+                    f"Failed to recover user data for device {device_id}: {recovery_error}"
+                )
+                return None
     return None
 
 
