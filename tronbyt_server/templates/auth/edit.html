@@ -23,17 +23,24 @@
                 </div>
                 <div style="color: #888; font-size: 0.9em;">
                     {{ _('Commit') }}:
-                    <a href="{{ system_repo_info.commit_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;">
-                        {{ system_repo_info.commit_hash[:8] }}
+                    <a href="{{ system_repo_info.commit_url }}" target="_blank" style="color: #4CAF50; text-decoration: none;" title="{{ system_repo_info.commit_hash }}">
+                        {% if system_repo_info.commit_message %}
+                            {{ system_repo_info.commit_message }}
+                        {% else %}
+                            {{ system_repo_info.commit_hash[:8] }}
+                        {% endif %}
                     </a>
+                    {% if system_repo_info.commit_date %}
+                    <span style="margin-left: 8px; color: #666;">{{ system_repo_info.commit_date }}</span>
+                    {% endif %}
                 </div>
             </div>
             {% else %}
             <div style="margin-top: 8px; color: #888;">{{ _('No system repository configured.') }}</div>
             {% endif %}
         </div>
-        <form method="post" action="{{ url_for('refresh_system_repo') }}" style="margin-left: 15px;">
-            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh system apps repository?') }}');">
+        <form method="post" action="{{ url_for('refresh_system_repo') }}" style="margin-left: 15px;" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin\'></i> {{ _('Refreshing...') }}';">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
                 <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ _('Refresh') }}
             </button>
         </form>
@@ -75,10 +82,9 @@
             <div style="margin-top: 8px; color: #888;">{{ _('No firmware version information available') }}</div>
             {% endif %}
         </div>
-        <form method="post" action="{{ url_for('update_firmware') }}" style="margin-left: 15px;" onsubmit="this.querySelector('button').disabled=true; this.querySelector('.button-label').textContent='{{ _('Updating...') }}';">
-            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Check for firmware updates and download if available?') }}');">
-                <i class="fa-solid {% if firmware_version %}fa-arrows-rotate{% else %}fa-download{% endif %}" aria-hidden="true"></i>
-                <span class="button-label">{% if firmware_version %}{{ _('Update') }}{% else %}{{ _('Download') }}{% endif %}</span>
+        <form method="post" action="{{ url_for('update_firmware') }}" style="margin-left: 15px;" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin\'></i> {{ _('Updating...') }}';">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+                <i class="fa-solid {% if firmware_version %}fa-arrows-rotate{% else %}fa-download{% endif %}" aria-hidden="true"></i> {% if firmware_version %}{{ _('Update') }}{% else %}{{ _('Download') }}{% endif %}
             </button>
         </form>
     </div>
@@ -115,8 +121,8 @@
         </div>
         {% if user.app_repo_url %}
         <div style="margin-left: 15px; display: flex; gap: 8px;">
-            <form method="post" action="{{ url_for('refresh_user_repo') }}">
-                <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ _('Refresh custom apps repository?') }}');">
+            <form method="post" action="{{ url_for('refresh_user_repo') }}" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin\'></i> {{ _('Refreshing...') }}';">
+                <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
                     <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ _('Refresh') }}
                 </button>
             </form>
