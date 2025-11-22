@@ -22,7 +22,7 @@ def get_system_repo_info(base_path: Path) -> dict[str, str | None]:
     """Get information about the current system repo commit.
 
     Returns:
-        dict with keys: 'commit_hash', 'commit_url', 'repo_url', 'branch'
+        dict with keys: 'commit_hash', 'commit_url', 'repo_url', 'branch', 'commit_message', 'commit_date'
     """
     system_apps_path = base_path / "system-apps"
     repo = get_repo(system_apps_path)
@@ -32,12 +32,16 @@ def get_system_repo_info(base_path: Path) -> dict[str, str | None]:
             "commit_url": None,
             "repo_url": None,
             "branch": None,
+            "commit_message": None,
+            "commit_date": None,
         }
 
     repo_web_url = None
     branch_name = None
     commit_hash = None
     commit_url = None
+    commit_message = None
+    commit_date = None
 
     try:
         remote = get_primary_remote(repo)
@@ -56,7 +60,14 @@ def get_system_repo_info(base_path: Path) -> dict[str, str | None]:
         logger.warning(f"Could not get branch name from {system_apps_path}: {e}")
 
     try:
-        commit_hash = repo.head.commit.hexsha
+        commit = repo.head.commit
+        commit_hash = commit.hexsha
+        # Handle both str and bytes from git commit message
+        msg = commit.message
+        if isinstance(msg, bytes):
+            msg = msg.decode("utf-8", errors="replace")
+        commit_message = msg.strip().split("\n")[0]  # First line of commit message
+        commit_date = commit.committed_datetime.strftime("%Y-%m-%d %H:%M")
         if repo_web_url:
             commit_url = f"{repo_web_url}/tree/{commit_hash}"
     except ValueError:  # Handles empty repo
@@ -71,6 +82,8 @@ def get_system_repo_info(base_path: Path) -> dict[str, str | None]:
         "commit_url": commit_url,
         "repo_url": repo_web_url,
         "branch": branch_name,
+        "commit_message": commit_message,
+        "commit_date": commit_date,
     }
 
 

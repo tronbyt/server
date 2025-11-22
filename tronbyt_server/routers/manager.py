@@ -2036,14 +2036,14 @@ def update_firmware(request: Request, user: User = Depends(manager)) -> Response
         result = firmware_utils.update_firmware_binaries(db.get_data_dir())
         if result["success"]:
             if result["action"] == "updated":
-                flash(request, _("✅ {result['message']}"), "success")
+                flash(request, f"✅ {result['message']}", "success")
             elif result["action"] == "skipped":
-                flash(request, _("ℹ️ {result['message']}"), "info")
+                flash(request, f"ℹ️ {result['message']}", "info")
         else:
-            flash(request, _("❌ {result['message']}"), "error")
+            flash(request, f"❌ {result['message']}", "error")
     except Exception as e:
         logger.error(f"Error updating firmware: {e}")
-        flash(request, _("❌ Firmware update failed: {str(e)}"), "error")
+        flash(request, f"❌ {_('Firmware update failed')}: {str(e)}", "error")
     return RedirectResponse(
         url=str(request.url_for("edit")) + "#firmware-management",
         status_code=status.HTTP_302_FOUND,
