@@ -1,19 +1,8 @@
 {% extends 'base.html' %}
-{% set device_type_names = {
-  'tidbyt_gen1': 'Tidbyt Gen1',
-  'tidbyt_gen2': 'Tidbyt Gen2',
-  'pixoticker': 'Pixoticker',
-  'tronbyt_s3': 'Tronbyt S3',
-  'tronbyt_s3_wide': 'Tronbyt S3 Wide',
-  'matrixportal_s3': 'MatrixPortal S3',
-  'matrixportal_s3_waveshare': 'MatrixPortal S3 Waveshare',
-  'raspberrypi': 'Raspberry Pi',
-  'other': 'Other'
-} %}
 {% block header %}
 <link rel="stylesheet" href="{{ url_for('static', path='css/firmware-simple.css') }}">
 <div class="header-container">
-  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device.name }} - {{ device_type_names.get(device.type, device.type) }}{% endblock %}</h1>
+  <h1 class="page-title">{% block title %}{{ _('Generate Firmware for') }} {{ device.name }} - {{ device_type_choices.get(device.type.value, device.type.value) }}{% endblock %}</h1>
 </div>
 {% endblock %}
 {% block content %}

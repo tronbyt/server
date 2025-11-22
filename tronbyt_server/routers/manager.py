@@ -45,6 +45,7 @@ from tronbyt_server.dependencies import (
 from tronbyt_server.flash import flash
 from tronbyt_server.models import (
     DEFAULT_DEVICE_TYPE,
+    DEVICE_TYPE_CHOICES,
     App,
     Brightness,
     Device,
@@ -442,14 +443,22 @@ def index(
 @router.get("/create")
 def create(request: Request, user: User = Depends(manager)) -> Response:
     """Render the device creation page."""
-    return templates.TemplateResponse(request, "manager/create.html", {"user": user})
+    return templates.TemplateResponse(
+        request,
+        "manager/create.html",
+        {
+            "user": user,
+            "device_type_choices": DEVICE_TYPE_CHOICES,
+            "default_device_type": DEFAULT_DEVICE_TYPE.value,
+        },
+    )
 
 
 class DeviceCreateFormData(BaseModel):
     """Represents the form data for creating a device."""
 
     name: str | None = None
-    device_type: str = DEFAULT_DEVICE_TYPE
+    device_type: DeviceType = DEFAULT_DEVICE_TYPE
     img_url: str | None = None
     ws_url: str | None = None
     api_key: str | None = None
@@ -474,7 +483,12 @@ def create_post(
         return templates.TemplateResponse(
             request,
             "manager/create.html",
-            {"user": user},
+            {
+                "user": user,
+                "device_type_choices": DEVICE_TYPE_CHOICES,
+                "default_device_type": DEFAULT_DEVICE_TYPE.value,
+                "form": form_data,  # Pass submitted data
+            },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -500,16 +514,16 @@ def create_post(
         secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
     )
 
-    percent_brightness = Brightness.from_ui_scale(form_data.brightness)
+    brightness = Brightness.from_ui_scale(form_data.brightness)
 
     device = Device(
         id=device_id,
         name=form_data.name or device_id,
-        type=DeviceType(form_data.device_type),
+        type=form_data.device_type,
         img_url=img_url,
         ws_url=ws_url,
         api_key=api_key,
-        brightness=percent_brightness,
+        brightness=brightness,
         night_brightness=Brightness(0),
         dim_brightness=None,
         default_interval=10,
@@ -578,6 +592,7 @@ def update(
             "user": deps.user,
             "brightness_ui": brightness_ui,
             "night_brightness_ui": night_brightness_ui,
+            "device_type_choices": DEVICE_TYPE_CHOICES,
         },
     )
 
@@ -668,7 +683,7 @@ class DeviceUpdateFormData(BaseModel):
     """Represents the form data for updating a device."""
 
     name: str
-    device_type: str
+    device_type: DeviceType
     img_url: str | None = None
     ws_url: str | None = None
     api_key: str | None = None
@@ -716,7 +731,7 @@ def update_post(
         )
 
     device.name = form_data.name
-    device.type = DeviceType(form_data.device_type)
+    device.type = form_data.device_type
     device.img_url = (
         db.sanitize_url(form_data.img_url)
         if form_data.img_url
@@ -1744,6 +1759,7 @@ def generate_firmware(
             "firmware_version": firmware_version,
             "firmware_bins_available": firmware_bins_available,
             "user": user,
+            "device_type_choices": DEVICE_TYPE_CHOICES,
         },
     )
 
