@@ -133,6 +133,8 @@ _pixlet_lock = Lock()
 
 def initialize_pixlet_library() -> None:
     global _pixlet_initialized
+    if _pixlet_initialized:
+        return
     with _pixlet_lock:
         if _pixlet_initialized:
             return
