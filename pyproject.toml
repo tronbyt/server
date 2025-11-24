@@ -23,6 +23,7 @@ dependencies = [
     "httpx>=0.28.1",
     "itsdangerous>=2.2.0",
     "gitpython>=3.1.45",
+    "sqlmodel>=0.0.25",
 ]
 requires-python = ">=3.13"
 readme = "README.md"
