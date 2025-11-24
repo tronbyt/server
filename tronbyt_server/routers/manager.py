@@ -59,7 +59,7 @@ from tronbyt_server.models import (
     Weekday,
     parse_custom_brightness_scale,
 )
-from tronbyt_server.pixlet import call_handler_with_config, get_schema
+from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (
     possibly_render,
@@ -1534,7 +1534,7 @@ def configapp(
             status_code=status.HTTP_302_FOUND,
         )
 
-    schema_json = get_schema(Path(app.path))
+    schema_json = get_schema(Path(app.path), 64, 32, device.supports_2x())
     schema = json.loads(schema_json) if schema_json else None
     return templates.TemplateResponse(
         request,
@@ -2503,8 +2503,14 @@ async def schema_handler(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
         config = data.get("config", {})
-        result = call_handler_with_config(
-            Path(app.path), config, handler, data["param"]
+        result = call_handler(
+            Path(app.path),
+            config,
+            handler,
+            data["param"],
+            64,
+            32,
+            device.supports_2x(),
         )
         return Response(content=result, media_type="application/json")
     except Exception as e:
