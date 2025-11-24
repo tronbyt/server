@@ -10,6 +10,7 @@ from .models import (
     DeviceDB,
     LocationDB,
     RecurrencePatternDB,
+    SystemSettingsDB,
     UserDB,
     brightness_from_percent,
     brightness_to_percent,
@@ -23,6 +24,7 @@ __all__ = [
     "engine",
     "get_session",
     # Models
+    "SystemSettingsDB",
     "UserDB",
     "DeviceDB",
     "LocationDB",
