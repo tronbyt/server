@@ -101,10 +101,9 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
     # Initialize, migrate, and vacuum database
     try:
         (Path(settings.DB_FILE).parent).mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(settings.DB_FILE) as conn:
-            db.init_db(conn)
-            db.vacuum(conn)
+        db.init_db()
+        # Vacuum will be handled separately if needed
     except Exception as e:
-        logger.error(f"Could not initialize or vacuum database: {e}", exc_info=True)
+        logger.error(f"Could not initialize database: {e}", exc_info=True)
 
     logger.info("One-time startup tasks complete.")

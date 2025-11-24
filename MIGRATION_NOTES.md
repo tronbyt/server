@@ -79,11 +79,74 @@ Location: `tronbyt_server/db_models/`
 - Includes validation and backup features
 - Safe to run on production database
 
-⏳ **Phase 3: Next Steps - Update Code**
-- Run actual migration (or test on copy first)
-- Update `db.py` functions to use SQLModel queries
-- Update routers to use new database models
-- Remove old JSON manipulation code
+✅ **Phase 3: COMPLETE - Code Updated to Use SQLModel**
+
+### What We Did:
+
+#### 1. Created Comprehensive CRUD Operations (`tronbyt_server/db_models/operations.py`)
+- **User operations**: `get_user_by_username`, `get_user_by_api_key`, `get_all_users_db`, `has_users`, `create_user`, `update_user`, `delete_user`
+- **Device operations**: `get_device_by_id`, `get_devices_by_user_id`, `get_user_by_device_id`, `create_device`, `update_device`, `delete_device`
+- **App operations**: `get_app_by_id`, `get_app_by_device_and_iname`, `get_apps_by_device`, `create_app`, `update_app`, `delete_app`
+- **Location operations**: `get_location_by_device`, `create_location`, `update_location`, `delete_location`
+- **Recurrence pattern operations**: Complete CRUD for app recurrence patterns
+- **Conversion helpers**: `load_user_full`, `load_device_full`, `load_app_full` - Load complete objects with all relationships
+- **Save helpers**: `save_user_full`, `save_device_full`, `save_app_full` - Save complete objects with all nested data
+
+#### 2. Updated Dependencies (`tronbyt_server/dependencies.py`)
+- Changed `get_db()` to return `Session` instead of `sqlite3.Connection`
+- Updated all dependency functions to use `Session`:
+  - `get_user_and_device`
+  - `check_for_users`
+  - `get_user_and_device_from_api_key`
+  - `load_user`
+  - `is_auto_login_active`
+  - `auth_exception_handler`
+
+#### 3. Refactored Database Functions (`tronbyt_server/db.py`)
+- **Updated all user functions**:
+  - `get_user(session, username)` - Now uses SQLModel queries
+  - `auth_user(session, username, password)` - Updated to use Session
+  - `save_user(session, user, new_user)` - Saves complete user with all devices and apps
+  - `delete_user(session, username)` - Deletes user and cascades to devices/apps
+  - `get_all_users(session)` - Loads all users with full relationship data
+  - `has_users(session)` - Quick check for user existence
+  - `get_user_by_api_key(session, api_key)` - API key lookup
+
+- **Updated all device functions**:
+  - `get_device_by_id(session, device_id)` - Loads device with apps and location
+  - `get_user_by_device_id(session, device_id)` - Finds user by device
+
+- **Updated all app functions**:
+  - `save_app(session, device_id, app)` - Saves app with recurrence pattern
+  - `save_render_messages(session, user, device, app, messages)` - Updates render messages
+  - `add_pushed_app(session, device_id, installation_id)` - Handles pushed apps
+
+- **Updated initialization**:
+  - `init_db()` - Now creates SQLModel tables instead of JSON tables
+  - Removed old JSON migration code
+
+#### 4. Updated Routers
+- **auth.py**: Changed all `sqlite3.Connection` type hints to `Session`
+- All router endpoints now use the new SQLModel-based functions
+
+#### 5. Updated Startup
+- `startup.py`: Updated to call `init_db()` without parameters
+
+### Key Changes:
+
+1. **No More JSON Manipulation**: All database operations now use proper SQL queries through SQLModel
+2. **Proper Relationships**: Users → Devices → Apps → Recurrence Patterns are properly linked with foreign keys
+3. **Type Safety**: SQLModel provides full type checking for database operations
+4. **Better Performance**: Direct SQL queries are faster than JSON manipulation
+5. **Data Integrity**: Foreign key constraints ensure referential integrity
+6. **Cleaner Code**: Separation of concerns with operations in `db_models/operations.py`
+
+### Migration Path:
+
+Users who ran Phase 2 migration will automatically benefit from Phase 3 changes:
+1. Phase 2 migrated data from `json_data` table to proper SQL tables
+2. Phase 3 updated the code to use those SQL tables
+3. No additional data migration needed - just code changes
 
 ## Testing Phase 1
 
