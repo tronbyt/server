@@ -2480,7 +2480,9 @@ def appwebp(iname: str, deps: UserAndDevice = Depends(get_user_and_device)) -> R
     if webp_path.exists() and webp_path.stat().st_size > 0:
         return send_image(webp_path, device, app)
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        resp = send_default_image(device)
+        resp.status_code = status.HTTP_404_NOT_FOUND
+        return resp
 
 
 @router.post("/{device_id}/{iname}/schema_handler/{handler}", name="schema_handler")
