@@ -4,10 +4,9 @@ import json
 import logging
 import secrets
 import shutil
-import sqlite3
 import string
 from contextlib import contextmanager
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time as dt_time
 from pathlib import Path
 from typing import Any, Generator, Literal
 from urllib.parse import quote, unquote
@@ -16,13 +15,18 @@ from zoneinfo import ZoneInfo
 import yaml
 from fastapi import UploadFile
 from pydantic import ValidationError
+from sqlmodel import Session, select
 from tzlocal import get_localzone, get_localzone_name
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
-from tronbyt_server.models import App, AppMetadata, Brightness, Device, User, Weekday
+from tronbyt_server.db_models import operations as db_ops
+from tronbyt_server.db_models.models import AppDB, DeviceDB, LocationDB, RecurrencePatternDB, UserDB
+from tronbyt_server.models import App, AppMetadata, Brightness, Device, User, Weekday, RecurrencePattern, Location, RecurrenceType
+from tronbyt_server.models.user import ThemePreference
+from tronbyt_server.models.device import DeviceType
 
 logger = logging.getLogger(__name__)
 
@@ -48,70 +52,23 @@ def get_db() -> sqlite3.Connection:
     )  # Set a 10-second timeout
 
 
-def init_db(db: sqlite3.Connection) -> None:
-    """Initialize the database."""
+def init_db() -> None:
+    """Initialize the database with SQLModel tables."""
+    from tronbyt_server.db_models import create_db_and_tables, engine
+    import sqlite3
+
     # Enable WAL mode for better concurrency
-    row = db.execute("PRAGMA journal_mode=WAL").fetchone()
-    if not row or row[0].lower() != "wal":
-        logger.warning("Failed to enable WAL mode. Concurrency might be limited.")
+    conn = sqlite3.connect(get_settings().DB_FILE, check_same_thread=False)
+    try:
+        row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+        if not row or row[0].lower() != "wal":
+            logger.warning("Failed to enable WAL mode. Concurrency might be limited.")
+    finally:
+        conn.close()
 
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS json_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            data TEXT NOT NULL
-        )
-    """
-    )
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS meta (
-            schema_version INTEGER NOT NULL
-        )
-    """
-    )
-    db.commit()
-    cursor.execute("SELECT * FROM json_data")
-    row = cursor.fetchone()
-
-    new_install = not row
-
-    cursor.execute("SELECT * FROM meta")
-    row = cursor.fetchone()
-    if row:
-        schema_version = row[0]
-    else:
-        schema_version = get_current_schema_version() if new_install else 0
-        cursor.execute(
-            "INSERT INTO meta (schema_version) VALUES (?)",
-            (schema_version,),
-        )
-
-    if schema_version < get_current_schema_version():
-        logger.info(
-            f"Schema version {schema_version} is outdated. Migrating to version {get_current_schema_version()}"
-        )
-
-        if schema_version < 1:
-            migrate_app_configs(db)
-            migrate_app_paths(db)
-            migrate_brightness_to_percent(db)
-        if schema_version < 2:
-            migrate_user_api_keys(db)
-        if schema_version < 3:
-            migrate_location_name_to_locality(db)
-        if schema_version < 4:
-            migrate_recurrence_pattern(db)
-
-        cursor.execute(
-            "UPDATE meta SET schema_version = ? WHERE schema_version = ?",
-            (get_current_schema_version(), schema_version),
-        )
-        logger.info(
-            f"Schema version {schema_version} migrated to {get_current_schema_version()}"
-        )
+    # Create all SQLModel tables
+    create_db_and_tables()
+    logger.info("SQLModel database tables initialized")
 
 
 def get_current_schema_version() -> int:
@@ -479,50 +436,12 @@ def get_users_dir() -> Path:
     return Path(get_settings().USERS_DIR).absolute()
 
 
-def get_user(db: sqlite3.Connection, username: str) -> User | None:
+def get_user(session: Session, username: str) -> User | None:
     """Get a user from the database."""
     try:
-        cursor = db.cursor()
-        cursor.execute(
-            "SELECT data FROM json_data WHERE username = ?", (str(username),)
-        )
-        row = cursor.fetchone()
-        if row:
-            user_data = json.loads(row[0])
-            try:
-                return User.model_validate(user_data)
-            except ValidationError as e:
-                # ValidationError from pydantic -> try to recover by removing corrupt apps
-                logger.error(f"Validation error for user {username}: {e}")
-
-                try:
-                    cleaned_data, removed = _remove_corrupt_apps(user_data, e)
-
-                    if removed:
-                        # Retry validation with cleaned data
-                        user = User.model_validate(cleaned_data)
-                        # Save the cleaned data back to the database
-                        if save_user(db, user):
-                            logger.info(
-                                f"Successfully recovered user data for {username} "
-                                f"by removing {len(removed)} corrupt app(s): {', '.join(removed)}"
-                            )
-                            return user
-                        else:
-                            logger.error(
-                                f"Failed to save cleaned user data for {username}"
-                            )
-                            return None
-                    else:
-                        logger.error(
-                            f"No corrupt apps found to remove for user {username}"
-                        )
-                        return None
-                except Exception as recovery_error:
-                    logger.error(
-                        f"Failed to recover user data for {username}: {recovery_error}"
-                    )
-                    return None
+        user_db = db_ops.get_user_by_username(session, username)
+        if user_db:
+            return db_ops.load_user_full(session, user_db)
         else:
             logger.error(f"{username} not found")
             return None
@@ -531,9 +450,9 @@ def get_user(db: sqlite3.Connection, username: str) -> User | None:
         return None
 
 
-def auth_user(db: sqlite3.Connection, username: str, password: str) -> User | None:
+def auth_user(session: Session, username: str, password: str) -> User | None:
     """Authenticate a user."""
-    user = get_user(db, username)
+    user = get_user(session, username)
     if user:
         password_hash = user.password
         if password_hash and check_password_hash(password_hash, password):
@@ -545,37 +464,27 @@ def auth_user(db: sqlite3.Connection, username: str, password: str) -> User | No
     return None
 
 
-def save_user(db: sqlite3.Connection, user: User, new_user: bool = False) -> bool:
+def save_user(session: Session, user: User, new_user: bool = False) -> bool:
     """Save a user to the database."""
     if not user.username:
         logger.warning("no username in user")
         return False
-    username = user.username
     try:
-        cursor = db.cursor()
+        db_ops.save_user_full(session, user, new_user=new_user)
         if new_user:
-            cursor.execute(
-                "INSERT INTO json_data (data, username) VALUES (?, ?)",
-                (user.model_dump_json(), str(username)),
-            )
-            create_user_dir(username)
-        else:
-            cursor.execute(
-                "UPDATE json_data SET data = ? WHERE username = ?",
-                (user.model_dump_json(), str(username)),
-            )
-        db.commit()
+            create_user_dir(user.username)
         return True
     except Exception as e:
         logger.error(f"couldn't save {user}: {e}")
         return False
 
 
-def delete_user(db: sqlite3.Connection, username: str) -> bool:
+def delete_user(session: Session, username: str) -> bool:
     """Delete a user from the database."""
     try:
-        db.cursor().execute("DELETE FROM json_data WHERE username = ?", (username,))
-        db.commit()
+        if not db_ops.delete_user(session, username):
+            return False
+
         # Securely delete the user's directory, preventing path traversal
         user_dir = get_users_dir() / secure_filename(username)
         try:
@@ -786,55 +695,22 @@ def delete_user_upload(user: User, filename: str) -> bool:
         return False
 
 
-def get_all_users(db: sqlite3.Connection) -> list[User]:
+def get_all_users(session: Session) -> list[User]:
     """Get all users from the database."""
-    cursor = db.cursor()
-    cursor.execute("SELECT data FROM json_data")
+    users_db = db_ops.get_all_users_db(session)
     users: list[User] = []
-    for row in cursor.fetchall():
+    for user_db in users_db:
         try:
-            user_data = json.loads(row[0])
-            try:
-                user = User.model_validate(user_data)
-                users.append(user)
-            except ValidationError as e:
-                username = user_data.get("username", "unknown")
-                logger.error(f"Validation error for user '{username}': {e}")
-
-                # Try to recover by removing corrupt apps
-                try:
-                    cleaned_data, removed = _remove_corrupt_apps(user_data, e)
-
-                    if removed:
-                        user = User.model_validate(cleaned_data)
-                        if save_user(db, user):
-                            logger.info(
-                                f"Successfully recovered user '{username}' "
-                                f"by removing {len(removed)} corrupt app(s): {', '.join(removed)}"
-                            )
-                            users.append(user)
-                        else:
-                            logger.error(
-                                f"Failed to save cleaned user data for '{username}'"
-                            )
-                    else:
-                        logger.error(
-                            f"No corrupt apps found to remove for user '{username}'"
-                        )
-                except Exception as recovery_error:
-                    logger.error(
-                        f"Failed to recover user '{username}': {recovery_error}"
-                    )
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding user JSON: {e}")
+            user = db_ops.load_user_full(session, user_db)
+            users.append(user)
+        except Exception as e:
+            logger.error(f"Error loading user '{user_db.username}': {e}")
     return users
 
 
-def has_users(db: sqlite3.Connection) -> bool:
+def has_users(session: Session) -> bool:
     """Check if any users exist in the database."""
-    cursor = db.cursor()
-    cursor.execute("SELECT 1 FROM json_data LIMIT 1")
-    return cursor.fetchone() is not None
+    return db_ops.has_users(session)
 
 
 def get_is_app_schedule_active(app: App, device: Device) -> bool:
@@ -1080,25 +956,11 @@ def get_device_webp_dir(device_id: str, create: bool = True) -> Path:
     return path
 
 
-def get_device_by_id(db: sqlite3.Connection, device_id: str) -> Device | None:
+def get_device_by_id(session: Session, device_id: str) -> Device | None:
     """Get a device by ID."""
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        SELECT T2.value
-        FROM json_data AS T1, json_each(T1.data, '$.devices') AS T2
-        WHERE T2.key = ?
-        """,
-        (device_id,),
-    )
-    row = cursor.fetchone()
-    if row:
-        try:
-            device_data = json.loads(row[0])
-            return Device.model_validate(device_data)
-        except (json.JSONDecodeError, ValidationError) as e:
-            logger.error(f"Error processing device data for device {device_id}: {e}")
-            return None
+    device_db = db_ops.get_device_by_id(session, device_id)
+    if device_db:
+        return db_ops.load_device_full(session, device_db)
     return None
 
 
@@ -1137,58 +999,11 @@ def _remove_corrupt_apps(
     return user_data, removed_apps
 
 
-def get_user_by_device_id(db: sqlite3.Connection, device_id: str) -> User | None:
+def get_user_by_device_id(session: Session, device_id: str) -> User | None:
     """Get a user by device ID."""
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        SELECT T1.data
-        FROM json_data AS T1, json_each(T1.data, '$.devices') AS T2
-        WHERE T2.key = ?
-        """,
-        (device_id,),
-    )
-    row = cursor.fetchone()
-    if row:
-        try:
-            user_data = json.loads(row[0])
-            return User.model_validate(user_data)
-        except json.JSONDecodeError as e:
-            logger.error(f"Error processing user data for device {device_id}: {e}")
-            return None
-        except ValidationError as e:
-            logger.error(f"Validation error for device {device_id}: {e}")
-
-            # Try to recover by removing corrupt app entries
-            try:
-                user_data = json.loads(row[0])
-                cleaned_data, removed = _remove_corrupt_apps(user_data, e)
-
-                if removed:
-                    # Retry validation with cleaned data
-                    user = User.model_validate(cleaned_data)
-                    # Save the cleaned data back to the database
-                    if save_user(db, user):
-                        logger.info(
-                            f"Successfully recovered user data for device {device_id} "
-                            f"by removing {len(removed)} corrupt app(s): {', '.join(removed)}"
-                        )
-                        return user
-                    else:
-                        logger.error(
-                            f"Failed to save cleaned user data for device {device_id}"
-                        )
-                        return None
-                else:
-                    logger.error(
-                        f"No corrupt apps found to remove for device {device_id}"
-                    )
-                    return None
-            except Exception as recovery_error:
-                logger.error(
-                    f"Failed to recover user data for device {device_id}: {recovery_error}"
-                )
-                return None
+    user_db = db_ops.get_user_by_device_id(session, device_id)
+    if user_db:
+        return db_ops.load_user_full(session, user_db)
     return None
 
 
@@ -1231,11 +1046,11 @@ def check_firmware_bins_available() -> bool:
     return any((firmware_dir / filename).exists() for filename in firmware_files)
 
 
-def get_user_by_api_key(db: sqlite3.Connection, api_key: str) -> User | None:
+def get_user_by_api_key(session: Session, api_key: str) -> User | None:
     """Get a user by API key."""
-    for user in get_all_users(db):
-        if user.api_key == api_key:
-            return user
+    user_db = db_ops.get_user_by_api_key(session, api_key)
+    if user_db:
+        return db_ops.load_user_full(session, user_db)
     return None
 
 
@@ -1264,10 +1079,10 @@ def get_pushed_app(user: User, device_id: str, installation_id: str) -> App | No
 
 
 def add_pushed_app(
-    db: sqlite3.Connection, device_id: str, installation_id: str
+    session: Session, device_id: str, installation_id: str
 ) -> None:
     """Add a pushed app to a device."""
-    user = get_user_by_device_id(db, device_id)
+    user = get_user_by_device_id(session, device_id)
     if not user:
         raise ValueError("User not found")
 
@@ -1279,63 +1094,44 @@ def add_pushed_app(
     if not app:
         return
 
-    save_app(db, device_id, app)
+    save_app(session, device_id, app)
 
 
-def save_app(db: sqlite3.Connection, device_id: str, app: App) -> bool:
-    """Save an app atomically using json_set."""
+def save_app(session: Session, device_id: str, app: App) -> bool:
+    """Save an app to the database."""
     if not app.iname:
         return True  # Nothing to save if iname is missing
 
-    user = get_user_by_device_id(db, device_id)
-    if not user:
-        logger.error(f"Cannot save app: user not found for device {device_id}")
-        return False
-
     try:
-        with db_transaction(db) as cursor:
-            device_path = f"$.devices.{device_id}"
-            path = f"{device_path}.apps.{json.dumps(app.iname)}"
-            app_json = app.model_dump_json()
-
-            cursor.execute(
-                """
-                UPDATE json_data
-                SET data = json_set(data, ?, json(?))
-                WHERE username = ? AND json_type(data, ?) IS NOT NULL
-                """,
-                (path, app_json, user.username, device_path),
-            )
-        logger.debug(f"Atomically saved app {app.iname} for user {user.username}")
+        db_ops.save_app_full(session, device_id, app)
+        logger.debug(f"Saved app {app.iname} for device {device_id}")
         return True
-    except sqlite3.Error as e:
-        logger.error(f"Could not save app {app.iname} for user {user.username}: {e}")
+    except Exception as e:
+        logger.error(f"Could not save app {app.iname} for device {device_id}: {e}")
         return False
 
 
 def save_render_messages(
-    db: sqlite3.Connection, user: User, device: Device, app: App, messages: list[str]
+    session: Session, user: User, device: Device, app: App, messages: list[str]
 ) -> None:
     """Save render messages from pixlet."""
     app.render_messages = messages
     try:
-        with db_transaction(db) as cursor:
-            app_path = f"$.devices.{device.id}.apps.{json.dumps(app.iname)}"
-            path = f"{app_path}.render_messages"
-            sql = """
-                UPDATE json_data
-                SET data = json_set(data, ?, json(?))
-                WHERE username = ? AND json_type(data, ?) IS NOT NULL
-            """
-            params = (path, json.dumps(messages), user.username, app_path)
-            cursor.execute(sql, params)
+        # Get the app from database and update render_messages
+        app_db = db_ops.get_app_by_device_and_iname(session, device.id, app.iname)
+        if app_db:
+            app_db.render_messages = messages
+            session.add(app_db)
+            session.commit()
             logger.debug(
                 "Saved render_messages for app %s on device %s for user %s",
                 app.iname,
                 device.id,
                 user.username,
             )
-    except sqlite3.Error as e:
+        else:
+            logger.warning(f"App {app.iname} not found in database, cannot save render messages")
+    except Exception as e:
         logger.error(
             f"Could not save render messages for app {app.iname} for user {user.username}: {e}"
         )
