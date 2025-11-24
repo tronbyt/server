@@ -22,6 +22,20 @@ from tronbyt_server.models.user import ThemePreference
 
 
 # ============================================================================
+# System Settings
+# ============================================================================
+
+
+class SystemSettingsDB(SQLModel, table=True):
+    """SQLModel for system-wide settings (singleton table)."""
+
+    __tablename__ = "system_settings"  # type: ignore
+
+    id: int = Field(default=1, primary_key=True)  # Always 1 (singleton)
+    system_repo_url: str = ""
+
+
+# ============================================================================
 # User Models
 # ============================================================================
 
@@ -37,7 +51,6 @@ class UserDB(SQLModel, table=True):
     email: str = ""
     api_key: str = Field(default="", index=True)
     theme_preference: str = ThemePreference.SYSTEM.value
-    system_repo_url: str = ""
     app_repo_url: str = ""
 
     # Relationships

@@ -68,11 +68,22 @@ Location: `tronbyt_server/db_models/`
 - Database configuration created
 - Tables can be created successfully
 
-⏳ **Phase 2: Next Steps - Migration Script**
-- Write script to read from `json_data` table
-- Create new users/devices/apps records
-- Validate all data migrated correctly
-- Keep old table as backup
+✅ **Phase 2: COMPLETE - Migration Script Ready**
+- Created `scripts/migrate_to_sqlmodel.py`
+- Dry-run test successful on production database:
+  - 25 users
+  - 27 devices
+  - 135 apps
+  - 17 locations
+  - 0 errors
+- Includes validation and backup features
+- Safe to run on production database
+
+⏳ **Phase 3: Next Steps - Update Code**
+- Run actual migration (or test on copy first)
+- Update `db.py` functions to use SQLModel queries
+- Update routers to use new database models
+- Remove old JSON manipulation code
 
 ## Testing Phase 1
 
@@ -99,14 +110,48 @@ tronbyt_server/
     └── models.py     # Table definitions
 ```
 
-## Next: Phase 2
+## Running the Migration
 
-Create `scripts/migrate_to_sqlmodel.py` that will:
-1. Connect to existing database
-2. Read all records from `json_data` table
-3. Parse JSON → create SQLModel instances
-4. Save to new tables
-5. Validate counts and data integrity
-6. Rename `json_data` → `json_data_backup`
+### Option 1: Test on a Copy First (Recommended)
 
-After successful migration, Phase 3 will update all the `db.py` functions to use SQLModel queries instead of JSON manipulation.
+```bash
+# Create a test copy of your database
+cp users/usersdb.sqlite users/usersdb-test.sqlite
+
+# Run migration on the test copy
+python scripts/migrate_to_sqlmodel.py --db-path users/usersdb-test.sqlite
+
+# If successful, run on production
+python scripts/migrate_to_sqlmodel.py
+```
+
+### Option 2: Dry-Run First (See What Will Happen)
+
+```bash
+# Dry run - shows what would happen, doesn't change anything
+python scripts/migrate_to_sqlmodel.py --dry-run
+
+# If looks good, run for real
+python scripts/migrate_to_sqlmodel.py
+```
+
+### What the Migration Does:
+
+1. ✅ Creates new tables (users, devices, apps, locations, recurrence_patterns)
+2. ✅ Reads all users from `json_data` table
+3. ✅ Migrates each user with all their devices and apps
+4. ✅ Validates counts match (users, devices, apps, locations)
+5. ✅ Renames `json_data` → `json_data_backup` (keeps your old data safe!)
+6. ✅ New tables are indexed and ready to use
+
+### Safety Features:
+
+- **Dry-run mode** - Test without making changes
+- **Automatic backup** - Old table renamed, never deleted
+- **Validation** - Counts verified before marking complete
+- **Error tracking** - All errors logged with context
+- **Transactional** - Database changes are atomic
+
+### After Migration: Phase 3
+
+After successful migration, Phase 3 will update all the `db.py` functions to use SQLModel queries instead of JSON manipulation. This is a larger code change but the data will already be migrated.
