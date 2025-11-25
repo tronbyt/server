@@ -50,7 +50,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 # owned by the non-root user (newly created named volumes are owned by root,
 # if their target doesn't exist).
 RUN mkdir -p /app/data /app/users && \
-    chmod -R 755 /app/data /app/users
+    chmod -R 755 /app/data /app/users && \
+    chown -R tronbyt:tronbyt /app
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

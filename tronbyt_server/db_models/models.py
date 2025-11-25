@@ -143,23 +143,6 @@ class DeviceDB(SQLModel, table=True):
 # ============================================================================
 
 
-class RecurrencePatternDB(SQLModel, table=True):
-    """SQLModel for RecurrencePattern table."""
-
-    __tablename__ = "recurrence_patterns"  # type: ignore
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    day_of_month: Optional[int] = None
-    day_of_week: Optional[str] = None
-    weekdays: list[str] = Field(default_factory=list, sa_column=Column(JSON))
-
-    # Foreign key - Optional to allow cascade delete
-    app_id: Optional[int] = Field(default=None, foreign_key="apps.id")
-
-    # Relationship
-    app: "AppDB" = Relationship(back_populates="recurrence_pattern")
-
-
 class AppDB(SQLModel, table=True):
     """SQLModel for App table."""
 
@@ -195,16 +178,13 @@ class AppDB(SQLModel, table=True):
     empty_last_render: bool = False
     render_messages: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     autopin: bool = False
+    recurrence_pattern: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
 
     # Foreign key
     device_id: str = Field(foreign_key="devices.id", index=True)
 
     # Relationships
     device: DeviceDB = Relationship(back_populates="apps")
-    recurrence_pattern: Optional["RecurrencePatternDB"] = Relationship(
-        back_populates="app",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
 
 
 # ============================================================================

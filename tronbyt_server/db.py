@@ -24,7 +24,7 @@ from werkzeug.utils import secure_filename
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
 from tronbyt_server.db_models import operations as db_ops
-from tronbyt_server.db_models.models import AppDB, DeviceDB, LocationDB, RecurrencePatternDB, UserDB
+from tronbyt_server.db_models.models import AppDB, DeviceDB, LocationDB, UserDB
 from tronbyt_server.models import App, AppMetadata, Brightness, Device, User, Weekday, RecurrencePattern, Location, RecurrenceType
 from tronbyt_server.models.user import ThemePreference
 from tronbyt_server.models.device import DeviceType
@@ -34,16 +34,25 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def db_transaction(
-    db_conn: sqlite3.Connection,
-) -> Generator[sqlite3.Cursor, None, None]:
-    """A context manager for database transactions."""
-    cursor = db_conn.cursor()
-    try:
-        yield cursor
-        db_conn.commit()
-    except sqlite3.Error:
-        db_conn.rollback()
-        raise
+    session: Session | sqlite3.Connection,
+) -> Generator[Session | sqlite3.Cursor, None, None]:
+    """A context manager for database transactions.
+
+    For SQLModel Session: just yields the session (transactions handled automatically)
+    For sqlite3.Connection: yields a cursor with manual commit/rollback
+    """
+    if isinstance(session, Session):
+        # SQLModel sessions handle transactions automatically
+        yield session
+    else:
+        # Legacy sqlite3 connection handling
+        cursor = session.cursor()
+        try:
+            yield cursor
+            session.commit()
+        except sqlite3.Error:
+            session.rollback()
+            raise
 
 
 def get_db() -> sqlite3.Connection:
@@ -145,8 +154,9 @@ def init_db() -> None:
     except ImportError:
         logger.warning("Alembic not installed, skipping migrations")
     except Exception as e:
-        logger.error(f"Error running Alembic migrations: {e}")
-        # Don't fail startup if migrations fail
+        logger.warning(f"Could not run Alembic migrations (non-fatal): {e}")
+        logger.info("Database tables were already initialized, continuing startup")
+        # Don't fail startup if migrations fail - tables are already created
         pass
 
 
@@ -979,30 +989,53 @@ def get_device_by_name(user: User, name: str) -> Device | None:
 
 
 def update_device_field(
-    cursor: sqlite3.Cursor, username: str, device_id: str, field: str, value: Any
+    session: Session | sqlite3.Cursor, username: str, device_id: str, field: str, value: Any
 ) -> None:
     """
-    Update a single field for a device using the provided cursor.
-    This function does NOT commit the transaction.
+    Update a single field for a device.
+    Works with both SQLModel Session and legacy sqlite3 Cursor.
     """
-    if field.startswith("apps"):
-        raise ValueError("Use save_app or update_app_field to modify apps.")
-    device_path = f"$.devices.{device_id}"
-    path = f"{device_path}.{field}"
+    if isinstance(session, Session):
+        # SQLModel approach
+        device_db = db_ops.get_device_by_id(session, device_id)
+        if device_db:
+            # Convert string datetime to datetime object if needed
+            if field == "last_seen" and isinstance(value, str):
+                value = datetime.fromisoformat(value)
 
-    cursor.execute(
-        """
-        UPDATE json_data
-        SET data = json_set(data, ?, ?)
-        WHERE username = ? AND json_type(data, ?) IS NOT NULL
-        """,
-        (path, value, username, device_path),
-    )
-    logger.debug(f"Queued update for {field} for device {device_id}")
+            # Handle nested fields like "info.protocol_type"
+            if "." in field:
+                parts = field.split(".", 1)
+                if parts[0] == "info" and isinstance(device_db.info, dict):
+                    device_db.info[parts[1]] = value
+                else:
+                    setattr(device_db, field, value)
+            else:
+                setattr(device_db, field, value)
+            session.add(device_db)
+            session.commit()
+            logger.debug(f"Updated {field} for device {device_id}")
+    else:
+        # Legacy JSON approach
+        cursor = session
+        if field.startswith("apps"):
+            raise ValueError("Use save_app or update_app_field to modify apps.")
+        device_path = f"$.devices.{device_id}"
+        path = f"{device_path}.{field}"
+
+        cursor.execute(
+            """
+            UPDATE json_data
+            SET data = json_set(data, ?, ?)
+            WHERE username = ? AND json_type(data, ?) IS NOT NULL
+            """,
+            (path, value, username, device_path),
+        )
+        logger.debug(f"Queued update for {field} for device {device_id}")
 
 
 def update_app_field(
-    cursor: sqlite3.Cursor,
+    session: Session | sqlite3.Cursor,
     username: str,
     device_id: str,
     iname: str,
@@ -1010,21 +1043,32 @@ def update_app_field(
     value: Any,
 ) -> None:
     """
-    Update a single field for an app using the provided cursor.
-    This function does NOT commit the transaction.
+    Update a single field for an app.
+    Works with both SQLModel Session and legacy sqlite3 Cursor.
     """
-    app_path = f"$.devices.{device_id}.apps.{json.dumps(iname)}"
-    path = f"{app_path}.{field}"
+    if isinstance(session, Session):
+        # SQLModel approach
+        app_db = db_ops.get_app_by_device_and_iname(session, device_id, iname)
+        if app_db:
+            setattr(app_db, field, value)
+            session.add(app_db)
+            session.commit()
+            logger.debug(f"Updated {field} for app {iname} on device {device_id}")
+    else:
+        # Legacy JSON approach
+        cursor = session
+        app_path = f"$.devices.{device_id}.apps.{json.dumps(iname)}"
+        path = f"{app_path}.{field}"
 
-    cursor.execute(
-        """
-        UPDATE json_data
-        SET data = json_set(data, ?, ?)
-        WHERE username = ? AND json_type(data, ?) IS NOT NULL
-        """,
-        (path, value, username, app_path),
-    )
-    logger.debug(f"Queued update for {field} for app {iname} on device {device_id}")
+        cursor.execute(
+            """
+            UPDATE json_data
+            SET data = json_set(data, ?, ?)
+            WHERE username = ? AND json_type(data, ?) IS NOT NULL
+            """,
+            (path, value, username, app_path),
+        )
+        logger.debug(f"Queued update for {field} for app {iname} on device {device_id}")
 
 
 def get_device_webp_dir(device_id: str, create: bool = True) -> Path:

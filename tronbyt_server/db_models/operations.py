@@ -14,7 +14,6 @@ from tronbyt_server.db_models.models import (
     AppDB,
     DeviceDB,
     LocationDB,
-    RecurrencePatternDB,
     SystemSettingsDB,
     UserDB,
 )
@@ -121,8 +120,12 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
     device_db = get_device_by_id(session, device.id)
 
     # Helper to convert time to string
-    def time_to_str(t: dt_time | None) -> str | None:
-        return f"{t.hour:02d}:{t.minute:02d}" if t else None
+    def time_to_str(t: dt_time | str | None) -> str | None:
+        if t is None:
+            return None
+        if isinstance(t, str):
+            return t  # Already a string
+        return f"{t.hour:02d}:{t.minute:02d}"
 
     # Convert device.info to dict if it's a Pydantic model
     device_info = device.info
@@ -223,8 +226,21 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
     app_db = get_app_by_device_and_iname(session, device_id, app.iname)
 
     # Helper to convert time to string
-    def time_to_str(t: dt_time | None) -> str | None:
-        return f"{t.hour:02d}:{t.minute:02d}" if t else None
+    def time_to_str(t: dt_time | str | None) -> str | None:
+        if t is None:
+            return None
+        if isinstance(t, str):
+            return t  # Already a string
+        return f"{t.hour:02d}:{t.minute:02d}"
+
+    # Convert recurrence pattern to dict if it exists
+    recurrence_pattern_dict = None
+    if app.recurrence_pattern:
+        recurrence_pattern_dict = {
+            "day_of_month": app.recurrence_pattern.day_of_month,
+            "day_of_week": app.recurrence_pattern.day_of_week,
+            "weekdays": [wd.value for wd in app.recurrence_pattern.weekdays] if app.recurrence_pattern.weekdays else [],
+        }
 
     app_data = {
         "device_id": device_id,
@@ -251,6 +267,7 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
         "empty_last_render": app.empty_last_render,
         "render_messages": app.render_messages,
         "autopin": app.autopin,
+        "recurrence_pattern": recurrence_pattern_dict,
     }
 
     if app_db:
@@ -267,28 +284,8 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
     session.commit()
     session.refresh(app_db)
 
-    # Save recurrence pattern if it exists
-    if app.recurrence_pattern:
-        pattern_db = get_recurrence_pattern_by_app(session, app_db.id)
-        pattern_data = {
-            "app_id": app_db.id,
-            "day_of_month": app.recurrence_pattern.day_of_month,
-            "day_of_week": app.recurrence_pattern.day_of_week,
-            "weekdays": [wd.value for wd in app.recurrence_pattern.weekdays] if app.recurrence_pattern.weekdays else [],
-        }
-        if pattern_db:
-            for key, value in pattern_data.items():
-                if key != "id":
-                    setattr(pattern_db, key, value)
-            session.add(pattern_db)
-        else:
-            pattern_db = RecurrencePatternDB(**pattern_data)
-            session.add(pattern_db)
-        session.commit()
-    else:
-        # Delete recurrence pattern if it exists but shouldn't
-        delete_recurrence_pattern(session, app_db.id)
-
+    # Recurrence pattern is now stored as JSON on the app itself
+    # No need for separate operations
     return app_db
 
 
@@ -432,9 +429,6 @@ def delete_app_by_iname(session: Session, device_id: str, iname: str) -> bool:
     if not app:
         return False
 
-    # Delete recurrence pattern first if it exists (due to foreign key constraint)
-    delete_recurrence_pattern(session, app.id)
-
     session.delete(app)
     session.commit()
     return True
@@ -477,51 +471,6 @@ def delete_location(session: Session, device_id: str) -> bool:
         return False
 
     session.delete(location)
-    session.commit()
-    return True
-
-
-# ============================================================================
-# RecurrencePattern Operations
-# ============================================================================
-
-
-def get_recurrence_pattern_by_app(
-    session: Session, app_id: int
-) -> RecurrencePatternDB | None:
-    """Get the recurrence pattern for an app."""
-    statement = select(RecurrencePatternDB).where(RecurrencePatternDB.app_id == app_id)
-    return session.exec(statement).first()
-
-
-def create_recurrence_pattern(
-    session: Session, app_id: int, pattern_data: dict[str, Any]
-) -> RecurrencePatternDB:
-    """Create a recurrence pattern for an app."""
-    pattern = RecurrencePatternDB(app_id=app_id, **pattern_data)
-    session.add(pattern)
-    session.commit()
-    session.refresh(pattern)
-    return pattern
-
-
-def update_recurrence_pattern(
-    session: Session, pattern: RecurrencePatternDB
-) -> RecurrencePatternDB:
-    """Update an existing recurrence pattern."""
-    session.add(pattern)
-    session.commit()
-    session.refresh(pattern)
-    return pattern
-
-
-def delete_recurrence_pattern(session: Session, app_id: int) -> bool:
-    """Delete the recurrence pattern for an app."""
-    pattern = get_recurrence_pattern_by_app(session, app_id)
-    if not pattern:
-        return False
-
-    session.delete(pattern)
     session.commit()
     return True
 
@@ -606,31 +555,7 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
             lng=location_db.lng,
         )
 
-    # Parse time strings to time objects
-    night_start = None
-    if device_db.night_start:
-        try:
-            hour, minute = map(int, device_db.night_start.split(":"))
-            night_start = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
-    night_end = None
-    if device_db.night_end:
-        try:
-            hour, minute = map(int, device_db.night_end.split(":"))
-            night_end = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
-    dim_time = None
-    if device_db.dim_time:
-        try:
-            hour, minute = map(int, device_db.dim_time.split(":"))
-            dim_time = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
+    # Time fields are stored as strings in DB and Device model expects strings
     return Device(
         id=device_db.id,
         name=device_db.name,
@@ -645,9 +570,9 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
         dim_brightness=Brightness(device_db.dim_brightness) if device_db.dim_brightness is not None else None,
         night_mode_enabled=device_db.night_mode_enabled,
         night_mode_app=device_db.night_mode_app,
-        night_start=night_start,
-        night_end=night_end,
-        dim_time=dim_time,
+        night_start=device_db.night_start,
+        night_end=device_db.night_end,
+        dim_time=device_db.dim_time,
         default_interval=device_db.default_interval,
         timezone=device_db.timezone,
         last_app_index=device_db.last_app_index,
@@ -666,64 +591,49 @@ def load_app_full(session: Session, app_db: AppDB) -> App:
     from datetime import timedelta, time as dt_time
     from tronbyt_server.models.app import RecurrenceType, Weekday
 
-    # Parse time strings
-    start_time = None
-    if app_db.start_time:
-        try:
-            hour, minute = map(int, app_db.start_time.split(":"))
-            start_time = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
-    end_time = None
-    if app_db.end_time:
-        try:
-            hour, minute = map(int, app_db.end_time.split(":"))
-            end_time = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
+    # Time fields are stored as strings in DB and App model expects strings
     # Convert days list to Weekday enums
     days = [Weekday(day) for day in app_db.days] if app_db.days else []
 
-    # Load recurrence pattern if it exists
-    recurrence_pattern = None
-    recurrence_pattern_db = get_recurrence_pattern_by_app(session, app_db.id)
-    if recurrence_pattern_db:
-        weekdays = [Weekday(wd) for wd in recurrence_pattern_db.weekdays] if recurrence_pattern_db.weekdays else []
-        recurrence_pattern = RecurrencePattern(
-            day_of_month=recurrence_pattern_db.day_of_month,
-            day_of_week=recurrence_pattern_db.day_of_week,
+    # Load recurrence pattern from JSON if it exists
+    app_kwargs = {
+        "id": str(app_db.id),
+        "iname": app_db.iname,
+        "name": app_db.name,
+        "uinterval": app_db.uinterval,
+        "display_time": app_db.display_time,
+        "notes": app_db.notes,
+        "enabled": app_db.enabled,
+        "pushed": app_db.pushed,
+        "order": app_db.order,
+        "last_render": app_db.last_render,
+        "last_render_duration": timedelta(seconds=app_db.last_render_duration),
+        "path": app_db.path,
+        "start_time": app_db.start_time,
+        "end_time": app_db.end_time,
+        "days": days,
+        "use_custom_recurrence": app_db.use_custom_recurrence,
+        "recurrence_type": RecurrenceType(app_db.recurrence_type),
+        "recurrence_interval": app_db.recurrence_interval,
+        "recurrence_start_date": app_db.recurrence_start_date,
+        "recurrence_end_date": app_db.recurrence_end_date,
+        "config": app_db.config,
+        "empty_last_render": app_db.empty_last_render,
+        "render_messages": app_db.render_messages,
+        "autopin": app_db.autopin,
+    }
+
+    # Only add recurrence_pattern if it exists (otherwise let App use its default factory)
+    if app_db.recurrence_pattern:
+        rp = app_db.recurrence_pattern
+        weekdays = [Weekday(wd) for wd in rp.get("weekdays", [])]
+        app_kwargs["recurrence_pattern"] = RecurrencePattern(
+            day_of_month=rp.get("day_of_month"),
+            day_of_week=rp.get("day_of_week"),
             weekdays=weekdays,
         )
 
-    return App(
-        id=str(app_db.id),
-        iname=app_db.iname,
-        name=app_db.name,
-        uinterval=app_db.uinterval,
-        display_time=app_db.display_time,
-        notes=app_db.notes,
-        enabled=app_db.enabled,
-        pushed=app_db.pushed,
-        order=app_db.order,
-        last_render=app_db.last_render,
-        last_render_duration=timedelta(seconds=app_db.last_render_duration),
-        path=app_db.path,
-        start_time=start_time,
-        end_time=end_time,
-        days=days,
-        use_custom_recurrence=app_db.use_custom_recurrence,
-        recurrence_type=RecurrenceType(app_db.recurrence_type),
-        recurrence_interval=app_db.recurrence_interval,
-        recurrence_start_date=app_db.recurrence_start_date,
-        recurrence_end_date=app_db.recurrence_end_date,
-        config=app_db.config,
-        empty_last_render=app_db.empty_last_render,
-        render_messages=app_db.render_messages,
-        recurrence_pattern=recurrence_pattern,
-        autopin=app_db.autopin,
-    )
+    return App(**app_kwargs)
 
 
 def user_db_to_model(user_db: UserDB, devices: list[DeviceDB]) -> User:
@@ -771,31 +681,7 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
             lng=device_db.location.lng,
         )
 
-    # Parse time strings to time objects
-    night_start = None
-    if device_db.night_start:
-        try:
-            hour, minute = map(int, device_db.night_start.split(":"))
-            night_start = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
-    night_end = None
-    if device_db.night_end:
-        try:
-            hour, minute = map(int, device_db.night_end.split(":"))
-            night_end = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
-    dim_time = None
-    if device_db.dim_time:
-        try:
-            hour, minute = map(int, device_db.dim_time.split(":"))
-            dim_time = dt_time(hour, minute)
-        except (ValueError, AttributeError):
-            pass
-
+    # Time fields are stored as strings in DB and Device model expects strings
     return Device(
         id=device_db.id,
         name=device_db.name,
@@ -810,9 +696,9 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
         dim_brightness=Brightness(device_db.dim_brightness) if device_db.dim_brightness is not None else None,
         night_mode_enabled=device_db.night_mode_enabled,
         night_mode_app=device_db.night_mode_app,
-        night_start=night_start,
-        night_end=night_end,
-        dim_time=dim_time,
+        night_start=device_db.night_start,
+        night_end=device_db.night_end,
+        dim_time=device_db.dim_time,
         default_interval=device_db.default_interval,
         timezone=device_db.timezone,
         last_app_index=device_db.last_app_index,
@@ -851,41 +737,42 @@ def app_db_to_model(app_db: AppDB) -> App:
     # Convert days list to Weekday enums
     days = [Weekday(day) for day in app_db.days] if app_db.days else []
 
-    # Convert recurrence pattern if it exists
-    recurrence_pattern = None
+    # Build app kwargs
+    app_kwargs = {
+        "id": str(app_db.id),
+        "iname": app_db.iname,
+        "name": app_db.name,
+        "uinterval": app_db.uinterval,
+        "display_time": app_db.display_time,
+        "notes": app_db.notes,
+        "enabled": app_db.enabled,
+        "pushed": app_db.pushed,
+        "order": app_db.order,
+        "last_render": app_db.last_render,
+        "last_render_duration": timedelta(seconds=app_db.last_render_duration),
+        "path": app_db.path,
+        "start_time": start_time,
+        "end_time": end_time,
+        "days": days,
+        "use_custom_recurrence": app_db.use_custom_recurrence,
+        "recurrence_type": RecurrenceType(app_db.recurrence_type),
+        "recurrence_interval": app_db.recurrence_interval,
+        "recurrence_start_date": app_db.recurrence_start_date,
+        "recurrence_end_date": app_db.recurrence_end_date,
+        "config": app_db.config,
+        "empty_last_render": app_db.empty_last_render,
+        "render_messages": app_db.render_messages,
+        "autopin": app_db.autopin,
+    }
+
+    # Only add recurrence_pattern if it exists (otherwise let App use its default factory)
     if app_db.recurrence_pattern:
         rp = app_db.recurrence_pattern
-        weekdays = [Weekday(wd) for wd in rp.weekdays] if rp.weekdays else []
-        recurrence_pattern = RecurrencePattern(
-            day_of_month=rp.day_of_month,
-            day_of_week=rp.day_of_week,
+        weekdays = [Weekday(wd) for wd in rp.get("weekdays", [])]
+        app_kwargs["recurrence_pattern"] = RecurrencePattern(
+            day_of_month=rp.get("day_of_month"),
+            day_of_week=rp.get("day_of_week"),
             weekdays=weekdays,
         )
 
-    return App(
-        id=str(app_db.id),
-        iname=app_db.iname,
-        name=app_db.name,
-        uinterval=app_db.uinterval,
-        display_time=app_db.display_time,
-        notes=app_db.notes,
-        enabled=app_db.enabled,
-        pushed=app_db.pushed,
-        order=app_db.order,
-        last_render=app_db.last_render,
-        last_render_duration=timedelta(seconds=app_db.last_render_duration),
-        path=app_db.path,
-        start_time=start_time,
-        end_time=end_time,
-        days=days,
-        use_custom_recurrence=app_db.use_custom_recurrence,
-        recurrence_type=RecurrenceType(app_db.recurrence_type),
-        recurrence_interval=app_db.recurrence_interval,
-        recurrence_start_date=app_db.recurrence_start_date,
-        recurrence_end_date=app_db.recurrence_end_date,
-        config=app_db.config,
-        empty_last_render=app_db.empty_last_render,
-        render_messages=app_db.render_messages,
-        recurrence_pattern=recurrence_pattern,
-        autopin=app_db.autopin,
-    )
+    return App(**app_kwargs)
