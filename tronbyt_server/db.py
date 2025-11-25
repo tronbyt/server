@@ -53,7 +53,7 @@ def get_db() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Initialize the database with SQLModel tables."""
+    """Initialize the database with SQLModel tables and run migrations."""
     from tronbyt_server.db_models import create_db_and_tables, engine
     import sqlite3
 
@@ -66,9 +66,28 @@ def init_db() -> None:
     finally:
         conn.close()
 
-    # Create all SQLModel tables
+    # Create all SQLModel tables (in case they don't exist)
     create_db_and_tables()
     logger.info("SQLModel database tables initialized")
+
+    # Run Alembic migrations automatically
+    try:
+        from alembic.config import Config
+        from alembic import command
+        from pathlib import Path
+
+        # Get the alembic.ini path
+        alembic_cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
+
+        # Run migrations to head
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
+    except ImportError:
+        logger.warning("Alembic not installed, skipping migrations")
+    except Exception as e:
+        logger.error(f"Error running Alembic migrations: {e}")
+        # Don't fail startup if migrations fail
+        pass
 
 
 def get_current_schema_version() -> int:
