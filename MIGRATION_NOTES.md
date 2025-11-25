@@ -148,6 +148,99 @@ Users who ran Phase 2 migration will automatically benefit from Phase 3 changes:
 2. Phase 3 updated the code to use those SQL tables
 3. No additional data migration needed - just code changes
 
+---
+
+✅ **Phase 4: COMPLETE - Alembic Integration for Future Migrations**
+
+### What We Did:
+
+#### 1. Added Alembic Dependency
+- Added `alembic>=1.14.0` to `pyproject.toml`
+- Alembic is the standard migration tool for SQLAlchemy/SQLModel projects
+
+#### 2. Initialized Alembic Configuration
+- Created `alembic.ini` - Main Alembic configuration file
+- Created `alembic/env.py` - Environment configuration that integrates with SQLModel
+- Created `alembic/script.py.mako` - Template for generating migration files
+- Created `alembic/versions/` - Directory for migration files
+
+#### 3. Created Initial Migration
+- `alembic/versions/001_initial_sqlmodel_schema.py` - Defines the current schema
+- This migration creates all tables: users, devices, apps, locations, recurrence_patterns
+- Includes both upgrade (create tables) and downgrade (drop tables) operations
+
+#### 4. Integrated Alembic into Startup
+- Updated `init_db()` to automatically run Alembic migrations on startup
+- Migrations are applied to "head" (latest version) automatically
+- Gracefully handles case where Alembic is not installed
+
+### How to Use Alembic:
+
+#### Creating New Migrations
+
+When you modify models in `tronbyt_server/db_models/models.py`:
+
+```bash
+# Auto-generate a migration (recommended)
+alembic revision --autogenerate -m "add user preferences table"
+
+# Or create an empty migration file to edit manually
+alembic revision -m "custom migration"
+```
+
+#### Running Migrations Manually
+
+```bash
+# Upgrade to latest version
+alembic upgrade head
+
+# Upgrade to specific version
+alembic upgrade <revision_id>
+
+# Downgrade one version
+alembic downgrade -1
+
+# Show current version
+alembic current
+
+# Show migration history
+alembic history --verbose
+```
+
+#### Migration Files
+
+- Migration files are stored in `alembic/versions/`
+- Each migration has `upgrade()` and `downgrade()` functions
+- Migrations are automatically applied on application startup via `init_db()`
+
+### Benefits of Alembic:
+
+✅ **Version Control for Schema** - Track database schema changes over time
+✅ **Reproducible Deployments** - Apply same migrations across environments
+✅ **Rollback Capability** - Downgrade to previous schema versions
+✅ **Auto-generation** - Alembic can detect model changes and generate migrations
+✅ **Team Collaboration** - Share schema changes through version control
+
+### Future Schema Changes:
+
+When you need to modify the database schema:
+
+1. **Modify the models** in `tronbyt_server/db_models/models.py`
+2. **Generate migration**: `alembic revision --autogenerate -m "description"`
+3. **Review the migration** file in `alembic/versions/`
+4. **Test the migration**: `alembic upgrade head`
+5. **Commit** both the model changes and migration file
+
+The migration will be automatically applied on next server startup.
+
+### SQLite Considerations:
+
+- Alembic is configured with `render_as_batch=True` for SQLite compatibility
+- SQLite has limited ALTER TABLE support, so some changes require table recreation
+- Alembic handles this automatically in batch mode
+
+---
+
 ## Testing Phase 1
 
 ```python

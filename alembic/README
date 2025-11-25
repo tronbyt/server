@@ -1,0 +1,39 @@
+Generic single-database configuration with SQLModel support.
+
+This directory contains Alembic migrations for the Tronbyt Server database.
+
+## Creating a New Migration
+
+After modifying models in `tronbyt_server/db_models/models.py`:
+
+```bash
+# Auto-generate a migration (recommended)
+alembic revision --autogenerate -m "description of changes"
+
+# Or create an empty migration
+alembic revision -m "description of changes"
+```
+
+## Running Migrations
+
+```bash
+# Upgrade to the latest version
+alembic upgrade head
+
+# Upgrade to a specific version
+alembic upgrade <revision>
+
+# Downgrade one version
+alembic downgrade -1
+
+# See current version
+alembic current
+
+# See migration history
+alembic history
+```
+
+## Migration Files
+
+Migration files are stored in `alembic/versions/` and are automatically
+applied when the application starts via `init_db()`.
