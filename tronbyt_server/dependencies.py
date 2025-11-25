@@ -240,7 +240,7 @@ def auth_exception_handler(
     try:
         # No users exist - redirect to registration
         if not db.has_users(session):
-            return RedirectResponse(request.url_for("get_register_owner"))
+            return RedirectResponse(request.url_for("register_owner"))
 
         # Check for single-user auto-login mode
         if is_auto_login_active(session):

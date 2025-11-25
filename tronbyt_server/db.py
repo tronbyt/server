@@ -4,6 +4,7 @@ import json
 import logging
 import secrets
 import shutil
+import sqlite3
 import string
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, time as dt_time
@@ -63,6 +64,52 @@ def init_db() -> None:
         row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
         if not row or row[0].lower() != "wal":
             logger.warning("Failed to enable WAL mode. Concurrency might be limited.")
+
+        # Check if we have an old database with json_data table
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='json_data'")
+        has_json_data = cursor.fetchone() is not None
+
+        # Check if we have the new users table
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        has_users_table = cursor.fetchone() is not None
+
+        if has_json_data and not has_users_table:
+            logger.warning(
+                "\n" + "="*70 + "\n"
+                "OLD DATABASE FORMAT DETECTED - Running automatic migration...\n"
+                "\n"
+                "Your database uses the old JSON format. Converting to SQLModel.\n"
+                "This is a one-time operation that will:\n"
+                "  1. Create new relational tables\n"
+                "  2. Migrate all your data\n"
+                "  3. Rename json_data to json_data_backup (keeps your old data safe)\n"
+                + "="*70
+            )
+
+            # Run the migration automatically
+            try:
+                from tronbyt_server.migrations import perform_json_to_sqlmodel_migration
+
+                logger.info("Starting automatic migration...")
+                success = perform_json_to_sqlmodel_migration(get_settings().DB_FILE)
+
+                if not success:
+                    logger.error("❌ Automatic migration failed!")
+                    raise RuntimeError("Database migration failed. Please check the logs above.")
+
+                logger.info("✅ Automatic migration completed successfully!")
+                logger.info("Your data has been migrated to SQLModel format.")
+
+            except Exception as e:
+                logger.error(f"Error during automatic migration: {e}")
+                import traceback
+                traceback.print_exc()
+                raise RuntimeError("Database migration failed. See error above.")
+
+        if has_json_data and has_users_table:
+            logger.info("Both old and new tables detected - migration was completed previously")
+
     finally:
         conn.close()
 
@@ -76,8 +123,21 @@ def init_db() -> None:
         from alembic import command
         from pathlib import Path
 
-        # Get the alembic.ini path
-        alembic_cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
+        # Get paths - handle both development and container environments
+        project_root = Path(__file__).parent.parent
+        alembic_ini_path = project_root / "alembic.ini"
+        alembic_dir = project_root / "alembic"
+
+        # Check if alembic.ini exists
+        if not alembic_ini_path.exists():
+            logger.warning(f"alembic.ini not found at {alembic_ini_path}, skipping migrations")
+            return
+
+        # Create Alembic config
+        alembic_cfg = Config(str(alembic_ini_path))
+
+        # Override script_location to be absolute path
+        alembic_cfg.set_main_option("script_location", str(alembic_dir))
 
         # Run migrations to head
         command.upgrade(alembic_cfg, "head")

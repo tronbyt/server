@@ -1,4 +1,22 @@
-# SQLModel Migration - Phase 1 Complete
+# SQLModel Migration - All Phases Complete ✅
+
+## 🎉 Migration is Automatic!
+
+**Just start your server** - if you have an old database, it will automatically migrate to the new SQLModel format on startup. No manual steps required!
+
+```bash
+python -m tronbyt_server.run
+# or
+docker-compose up
+```
+
+The migration:
+- Detects old database format automatically
+- Converts JSON storage to proper SQL tables
+- Keeps your old data safe (renames to `json_data_backup`)
+- Takes just a few seconds for most databases
+
+---
 
 ## What We've Done
 
@@ -268,7 +286,31 @@ tronbyt_server/
 
 ## Running the Migration
 
-### Option 1: Test on a Copy First (Recommended)
+### ✨ AUTOMATIC MIGRATION ON STARTUP
+
+**Good news!** The migration now runs **automatically** when you start the server with an old database.
+
+When the server detects an old database format:
+1. It will display a clear message about the migration
+2. Automatically run the Phase 2 migration
+3. Migrate all your data to the new SQLModel format
+4. Rename the old `json_data` table to `json_data_backup` (keeps your data safe!)
+5. Continue with normal startup
+
+**You don't need to run any manual commands!** Just start your server:
+
+```bash
+# The migration happens automatically on startup
+python -m tronbyt_server.run
+# or
+docker-compose up
+```
+
+### Manual Migration (Optional)
+
+If you prefer to run the migration manually or want to test first:
+
+#### Option 1: Test on a Copy First (Recommended)
 
 ```bash
 # Create a test copy of your database
@@ -281,7 +323,7 @@ python scripts/migrate_to_sqlmodel.py --db-path users/usersdb-test.sqlite
 python scripts/migrate_to_sqlmodel.py
 ```
 
-### Option 2: Dry-Run First (See What Will Happen)
+#### Option 2: Dry-Run First (See What Will Happen)
 
 ```bash
 # Dry run - shows what would happen, doesn't change anything
@@ -290,6 +332,14 @@ python scripts/migrate_to_sqlmodel.py --dry-run
 # If looks good, run for real
 python scripts/migrate_to_sqlmodel.py
 ```
+
+### What Happens During Migration
+
+1. ✅ Creates new tables (users, devices, apps, locations, recurrence_patterns)
+2. ✅ Migrates all data from `json_data` table
+3. ✅ Validates that all data was migrated correctly
+4. ✅ Renames `json_data` → `json_data_backup` (keeps your old data safe!)
+5. ✅ Continues with normal startup and Alembic migrations
 
 ### What the Migration Does:
 

@@ -14,6 +14,8 @@ from random import randint
 from typing import Annotated, Any, cast
 from zoneinfo import available_timezones
 
+from sqlmodel import Session
+
 from fastapi import (
     APIRouter,
     Body,
@@ -262,7 +264,7 @@ def _get_app_to_display(
 
 
 def next_app_logic(
-    db_conn: sqlite3.Connection,
+    session: Session,
     user: User,
     device: Device,
     last_app_index: int | None = None,
@@ -326,7 +328,7 @@ def next_app_logic(
         and (not app.enabled or not db.get_is_app_schedule_active(app, device))
     ):
         # Pass next_index directly since it already points to the next app
-        return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
+        return next_app_logic(session, user, device, next_index, recursion_depth + 1)
 
     # If the app is the interstitial app but we're NOT at an interstitial position,
     # check if it's enabled for regular rotation
@@ -337,7 +339,7 @@ def next_app_logic(
         and not app.enabled
     ):
         # Interstitial app at regular position is disabled - skip it
-        return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
+        return next_app_logic(session, user, device, next_index, recursion_depth + 1)
 
     # NEW: Skip interstitial app if the previous regular app was skipped
     # If we're at an interstitial position and the previous regular app (at index-1) would be skipped,
@@ -361,17 +363,17 @@ def next_app_logic(
                 ):
                     # Previous app would be skipped - skip this interstitial too
                     return next_app_logic(
-                        db_conn, user, device, next_index, recursion_depth + 1
+                        session, user, device, next_index, recursion_depth + 1
                     )
 
-    if not possibly_render(db_conn, user, device_id, app) or app.empty_last_render:
+    if not possibly_render(session, user, device_id, app) or app.empty_last_render:
         # App failed to render or had empty render - skip it.
         # If this is a pinned app we should unpin it because it's not Active
         # pinned app is set as the app iname in the device object, we need to clear it.
         if getattr(device, "pinned_app", None) == app.iname:
             logger.info(f"Unpinning app {app.iname} because fail or empty render")
             try:
-                with db.db_transaction(db_conn) as cursor:
+                with db.db_transaction(session) as cursor:
                     db.update_device_field(
                         cursor, user.username, device.id, "pinned_app", ""
                     )
@@ -381,7 +383,7 @@ def next_app_logic(
                 logger.error(f"Failed to unpin app for device {device.id}: {e}")
 
         # Pass next_index directly since it already points to the next app
-        return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
+        return next_app_logic(session, user, device, next_index, recursion_depth + 1)
 
     if app.pushed:
         webp_path = db.get_device_webp_dir(device_id) / "pushed" / f"{app.iname}.webp"
@@ -393,7 +395,7 @@ def next_app_logic(
         response = send_image(webp_path, device, app)
         # Atomically save the next_index as the new last_app_index
         try:
-            with db.db_transaction(db_conn) as cursor:
+            with db.db_transaction(session) as cursor:
                 db.update_device_field(
                     cursor, user.username, device.id, "last_app_index", next_index
                 )
@@ -405,7 +407,7 @@ def next_app_logic(
 
     # WebP file doesn't exist or is empty - skip this app
     # Pass next_index directly since it already points to the next app
-    return next_app_logic(db_conn, user, device, next_index, recursion_depth + 1)
+    return next_app_logic(session, user, device, next_index, recursion_depth + 1)
 
 
 @router.get("/")
@@ -473,7 +475,7 @@ def create_post(
     request: Request,
     form_data: Annotated[DeviceCreateFormData, Form()],
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Handle device creation."""
     error = None
@@ -551,7 +553,7 @@ def create_post(
             flash(request, _("Location JSON error {error}").format(error=e))
 
     user.devices[device.id] = device
-    if db.save_user(db_conn, user) and not db.get_device_webp_dir(device.id).is_dir():
+    if db.save_user(session, user) and not db.get_device_webp_dir(device.id).is_dir():
         db.get_device_webp_dir(device.id).mkdir(parents=True)
 
     return RedirectResponse(
@@ -605,7 +607,7 @@ def update(
 async def update_brightness(
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     brightness: int = Form(...),
 ) -> Response:
     device = user.devices.get(device_id)
@@ -627,7 +629,7 @@ async def update_brightness(
 
     device_brightness = Brightness.from_ui_scale(brightness, custom_scale)
     try:
-        with db.db_transaction(db_conn) as cursor:
+        with db.db_transaction(session) as cursor:
             db.update_device_field(
                 cursor,
                 user.username,
@@ -661,7 +663,7 @@ async def update_brightness(
 def update_interval(
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     interval: int = Form(...),
 ) -> Response:
     device = user.devices.get(device_id)
@@ -669,7 +671,7 @@ def update_interval(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     try:
-        with db.db_transaction(db_conn) as cursor:
+        with db.db_transaction(session) as cursor:
             db.update_device_field(
                 cursor, user.username, device.id, "default_interval", interval
             )
@@ -715,7 +717,7 @@ def update_post(
     device_id: DeviceID,
     form_data: Annotated[DeviceUpdateFormData, Form()],
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Handle device update."""
 
@@ -833,7 +835,7 @@ def update_post(
         except json.JSONDecodeError as e:
             flash(request, _("Location JSON error {error}").format(error=e))
 
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
 
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
@@ -845,7 +847,7 @@ def delete(
     request: Request,
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     device = user.devices.get(device_id)
     if not device:
@@ -854,7 +856,7 @@ def delete(
         )
 
     user.devices.pop(device_id)
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
     db.delete_device_dirs(device_id)
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
@@ -913,7 +915,7 @@ def addapp_post(
     request: Request,
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     name: str = Form(...),
     uinterval: int | None = Form(None),
     display_time: int | None = Form(None),
@@ -988,7 +990,7 @@ def addapp_post(
     logger.info(f"Created app with uinterval={app.uinterval}")
 
     device.apps[iname] = app
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
 
     if app.path and Path(app.path).suffix.lower() == ".webp":
         webp_device_path = db.get_device_webp_dir(device.id)
@@ -1025,7 +1027,7 @@ async def uploadapp_post(
     request: Request,
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     file: UploadFile = File(...),
 ) -> Response:
     user_apps_path = db.get_users_dir() / user.username / "apps"
@@ -1068,7 +1070,7 @@ async def uploadapp_post(
     if file_extension == ".star":
         preview = db.get_data_dir() / "apps" / f"{app_name}.webp"
         render_app(
-            db_conn,
+            session,
             app_subdir / filename,
             {},
             preview,
@@ -1110,9 +1112,9 @@ def deleteupload(
     device_id: DeviceID,
     filename: str,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
-    if not db.get_device_by_id(db_conn, device_id):
+    if not db.get_device_by_id(session, device_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Device not found"
         )
@@ -1141,7 +1143,7 @@ def deleteapp(
     request: Request,
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     device = device_and_app.device
     app = device_and_app.app
@@ -1155,8 +1157,13 @@ def deleteapp(
     if webp_path.is_file():
         webp_path.unlink()
 
-    device.apps.pop(iname)
-    db.save_user(db_conn, user)
+    # Delete from database directly (no need to save entire user tree)
+    from tronbyt_server.db_models.operations import delete_app_by_iname
+    delete_app_by_iname(session, device.id, iname)
+
+    # Also remove from in-memory object for consistency
+    device.apps.pop(iname, None)
+
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
     )
@@ -1167,7 +1174,7 @@ def toggle_pin(
     request: Request,
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     device = device_and_app.device
     iname = device_and_app.app.iname
@@ -1175,7 +1182,7 @@ def toggle_pin(
     new_pinned_app = "" if getattr(device, "pinned_app", None) == iname else iname
 
     try:
-        with db.db_transaction(db_conn) as cursor:
+        with db.db_transaction(session) as cursor:
             db.update_device_field(
                 cursor, user.username, device.id, "pinned_app", new_pinned_app
             )
@@ -1198,7 +1205,7 @@ def duplicate_app(
     request: Request,
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Duplicate an existing app on a device."""
     device = device_and_app.device
@@ -1268,11 +1275,11 @@ def duplicate_app(
     device.apps[new_iname] = duplicated_app
 
     # Save the user data first
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
 
     # Render the duplicated app to generate its preview
     try:
-        possibly_render(db_conn, user, device_id, duplicated_app)
+        possibly_render(session, user, device_id, duplicated_app)
     except Exception as e:
         logger.error(f"Error rendering duplicated app {new_iname}: {e}")
         # Don't fail the duplication if rendering fails, just log it
@@ -1356,7 +1363,7 @@ def updateapp_post(
     form_data: Annotated[AppUpdateFormData, Form()],
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Handle app update."""
     device = device_and_app.device
@@ -1412,7 +1419,7 @@ def updateapp_post(
     for key, value in update_data.items():
         setattr(app, key, value)
 
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
 
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
@@ -1424,13 +1431,13 @@ def toggle_enabled(
     request: Request,
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     app = device_and_app.app
 
     new_enabled_status = not app.enabled
     try:
-        with db.db_transaction(db_conn) as cursor:
+        with db.db_transaction(session) as cursor:
             db.update_app_field(
                 cursor,
                 user.username,
@@ -1456,7 +1463,7 @@ def moveapp(
     direction: str = Query(...),
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     if direction not in ["up", "down", "top", "bottom"]:
         flash(request, _("Invalid direction."))
@@ -1520,7 +1527,7 @@ def moveapp(
     for i, app in enumerate(apps_list):
         app.order = i
 
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
     return Response("OK", status_code=status.HTTP_200_OK)
 
 
@@ -1561,7 +1568,7 @@ async def configapp_post(
     request: Request,
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     config: Any = Body(...),
 ) -> Response:
     device = device_and_app.device
@@ -1573,7 +1580,7 @@ async def configapp_post(
         )
 
     app.config = config
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
 
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
@@ -1581,7 +1588,7 @@ async def configapp_post(
 
     start_time = time.monotonic()
     image = render_app(
-        db_conn,
+        session,
         Path(app.path),
         config,
         webp_path,
@@ -1596,7 +1603,7 @@ async def configapp_post(
         app.enabled = True
         app.last_render = int(time.time())
         app.last_render_duration = render_duration
-        db.save_app(db_conn, device_id, app)
+        db.save_app(session, device_id, app)
     else:
         flash(request, _("Error Rendering App"))
 
@@ -1609,7 +1616,7 @@ async def configapp_post(
 def preview(
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     config: str = "{}",
 ) -> Response:
     device = device_and_app.device
@@ -1635,7 +1642,7 @@ def preview(
 
     try:
         data = render_app(
-            db_conn=db_conn,
+            session=session,
             app_path=app_path,
             config=config_data,
             webp_path=None,
@@ -1662,7 +1669,7 @@ def preview(
 async def push_preview(
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     config: Any = Body(None),
 ) -> Response:
     device = device_and_app.device
@@ -1685,7 +1692,7 @@ async def push_preview(
     try:
         # Render the app to get the image bytes directly
         image_bytes = render_app(
-            db_conn=db_conn,
+            session=session,
             app_path=app_path,
             config=config_to_render,
             webp_path=None,
@@ -1700,7 +1707,7 @@ async def push_preview(
             )
 
         # Use push_image to save the temporary preview and notify the device
-        await push_image(device.id, None, image_bytes, db_conn)
+        await push_image(device.id, None, image_bytes, session)
 
         return Response(status_code=status.HTTP_200_OK)
     except HTTPException:
@@ -1717,12 +1724,12 @@ async def push_preview(
 def adminindex(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Render the admin index page."""
     if user.username != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    users = db.get_all_users(db_conn)
+    users = db.get_all_users(session)
     return templates.TemplateResponse(
         request, "manager/adminindex.html", {"users": users, "user": user}
     )
@@ -1733,13 +1740,13 @@ def deleteuser(
     request: Request,
     username: str,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Handle user deletion by an admin."""
     if user.username != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     if username != "admin":
-        db.delete_user(db_conn, username)
+        db.delete_user(session, username)
     return RedirectResponse(
         url=request.url_for("adminindex"), status_code=status.HTTP_302_FOUND
     )
@@ -1813,7 +1820,7 @@ def generate_firmware_post(
 def set_user_repo(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     app_repo_url: str = Form(...),
 ) -> Response:
     """Set the user's custom app repository."""
@@ -1830,7 +1837,7 @@ def set_user_repo(
 
     if set_repo(request, apps_path, user.app_repo_url, app_repo_url):
         user.app_repo_url = app_repo_url
-        db.save_user(db_conn, user)
+        db.save_user(session, user)
         return RedirectResponse(
             url=request.url_for("index"), status_code=status.HTTP_302_FOUND
         )
@@ -1843,7 +1850,7 @@ def set_user_repo(
 def set_api_key(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     api_key: str = Form(...),
 ) -> Response:
     """Set the user's API key."""
@@ -1853,7 +1860,7 @@ def set_api_key(
             url=request.url_for("edit"), status_code=status.HTTP_302_FOUND
         )
     user.api_key = api_key
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
     )
@@ -1863,7 +1870,7 @@ def set_api_key(
 def set_system_repo(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     app_repo_url: str = Form(...),
     settings: Settings = Depends(get_settings),
 ) -> Response:
@@ -1880,7 +1887,7 @@ def set_system_repo(
         app_repo_url,
     ):
         user.system_repo_url = app_repo_url
-        db.save_user(db_conn, user)
+        db.save_user(session, user)
         system_apps.generate_apps_json(db.get_data_dir())
         return RedirectResponse(
             url=request.url_for("edit"), status_code=status.HTTP_302_FOUND
@@ -2146,7 +2153,7 @@ async def import_device_config_post(
     request: Request,
     device_id: DeviceID,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     file: UploadFile = File(...),
 ) -> Response:
     if not file.filename:
@@ -2197,7 +2204,7 @@ async def import_device_config_post(
         device.img_url = str(request.url_for("next_app", device_id=device_id))
         device.ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
         user.devices[device.id] = device
-        db.save_user(db_conn, user)
+        db.save_user(session, user)
         flash(request, _("Device configuration imported successfully"))
         return RedirectResponse(
             url=request.url_for("index"), status_code=status.HTTP_302_FOUND
@@ -2220,7 +2227,7 @@ async def import_device_config_post(
 async def import_user_config(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     file: UploadFile = File(...),
 ) -> Response:
     """Handle import of user configuration."""
@@ -2275,7 +2282,7 @@ async def import_user_config(
             # Let outer except catch and flash a message
             raise
 
-        db.save_user(db_conn, new_user)
+        db.save_user(session, new_user)
         flash(request, _("User configuration imported successfully"))
         return RedirectResponse(
             url=request.url_for("edit"), status_code=status.HTTP_302_FOUND
@@ -2306,7 +2313,7 @@ def import_device(request: Request, user: User = Depends(manager)) -> Response:
 async def import_device_post(
     request: Request,
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
     file: UploadFile = File(...),
 ) -> Response:
     """Handle import of a new device."""
@@ -2337,7 +2344,7 @@ async def import_device_post(
             return RedirectResponse(
                 url=request.url_for("import_device"), status_code=status.HTTP_302_FOUND
             )
-        if device_id in user.devices or db.get_device_by_id(db_conn, device_id):
+        if device_id in user.devices or db.get_device_by_id(session, device_id):
             flash(request, _("Device already exists. Import skipped."))
             return RedirectResponse(
                 url=request.url_for("index"), status_code=status.HTTP_302_FOUND
@@ -2357,7 +2364,7 @@ async def import_device_post(
         device.img_url = str(request.url_for("next_app", device_id=device_id))
         device.ws_url = str(request.url_for("websocket_endpoint", device_id=device_id))
         user.devices[device.id] = device
-        db.save_user(db_conn, user)
+        db.save_user(session, user)
         flash(request, _("Device configuration imported successfully"))
         return RedirectResponse(
             url=request.url_for("index"), status_code=status.HTTP_302_FOUND
@@ -2372,14 +2379,14 @@ async def import_device_post(
 @router.get("/{device_id}/next", name="next_app")
 def next_app(
     deps: UserAndDevice = Depends(get_user_and_device),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     user = deps.user
     device = deps.device
 
     now = datetime.now(timezone.utc)
     try:
-        with db.db_transaction(db_conn) as cursor:
+        with db.db_transaction(session) as cursor:
             db.update_device_field(
                 cursor,
                 user.username,
@@ -2402,7 +2409,7 @@ def next_app(
             f"Failed to update device {device.id} last_seen and protocol_type: {e}"
         )
 
-    return next_app_logic(db_conn, user, device)
+    return next_app_logic(session, user, device)
 
 
 @router.get("/{device_id}/brightness", name="get_brightness")
@@ -2531,7 +2538,7 @@ def reorder_apps(
     target_iname: str = Form(...),
     insert_after: bool = Form(False),
     user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> Response:
     """Reorder apps by dragging and dropping."""
     device = user.devices.get(device_id)
@@ -2590,7 +2597,7 @@ def reorder_apps(
         logger.info(f"Setting {app_iname} order to {i} (was {app_data.order})")
         app_data.order = i
 
-    db.save_user(db_conn, user)
+    db.save_user(session, user)
     logger.info("Saved user after reordering apps")
 
     return Response("OK", status_code=status.HTTP_200_OK)

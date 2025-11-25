@@ -117,7 +117,7 @@ def get_register(
     """Render the user registration page."""
     if not db.has_users(session):
         return RedirectResponse(
-            url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("register_owner"), status_code=status.HTTP_302_FOUND
         )
     if settings.ENABLE_USER_REGISTRATION != "1":
         if not user or user.username != "admin":
@@ -147,7 +147,7 @@ def post_register(
     """Handle user registration."""
     if not db.has_users(session):
         return RedirectResponse(
-            url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("register_owner"), status_code=status.HTTP_302_FOUND
         )
 
     if settings.ENABLE_USER_REGISTRATION != "1":
@@ -197,7 +197,7 @@ def post_register(
                     ),
                 )
                 return RedirectResponse(
-                    url=request.url_for("get_register"),
+                    url=request.url_for("register"),
                     status_code=status.HTTP_302_FOUND,
                 )
             else:
@@ -227,7 +227,7 @@ def login(
     """Render the login page."""
     if not db.has_users(session):
         return RedirectResponse(
-            url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("register_owner"), status_code=status.HTTP_302_FOUND
         )
 
     # If auto-login mode is active, redirect to home page
@@ -260,7 +260,7 @@ def post_login(
     """Handle user login."""
     if not db.has_users(session):
         return RedirectResponse(
-            url=request.url_for("get_register_owner"), status_code=status.HTTP_302_FOUND
+            url=request.url_for("register_owner"), status_code=status.HTTP_302_FOUND
         )
 
     user_data = db.auth_user(session, form_data.username, form_data.password)
@@ -394,5 +394,5 @@ def generate_api_key(
     else:
         flash(request, _("Failed to generate new API key."))
     return RedirectResponse(
-        url=request.url_for("get_edit"), status_code=status.HTTP_302_FOUND
+        url=request.url_for("edit"), status_code=status.HTTP_302_FOUND
     )
