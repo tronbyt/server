@@ -30,3 +30,4 @@ tronbyt_server/version.json
 .terraform.lock.hcl
 
 CLAUDE.md
+usersdb.sqlite

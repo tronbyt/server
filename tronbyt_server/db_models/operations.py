@@ -5,7 +5,7 @@ These functions replace the JSON manipulation in db.py with proper relational qu
 """
 
 import logging
-from datetime import datetime, timedelta, time as dt_time
+from datetime import date, datetime, timedelta, time as dt_time
 from typing import Any
 
 from sqlmodel import Session, select
@@ -236,11 +236,49 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
     # Convert recurrence pattern to dict if it exists
     recurrence_pattern_dict = None
     if app.recurrence_pattern:
+        # Convert weekdays to strings (handle both Weekday enums and strings)
+        weekdays_list = []
+        if app.recurrence_pattern.weekdays:
+            for wd in app.recurrence_pattern.weekdays:
+                if isinstance(wd, str):
+                    weekdays_list.append(wd)
+                else:
+                    weekdays_list.append(wd.value)
+
         recurrence_pattern_dict = {
             "day_of_month": app.recurrence_pattern.day_of_month,
             "day_of_week": app.recurrence_pattern.day_of_week,
-            "weekdays": [wd.value for wd in app.recurrence_pattern.weekdays] if app.recurrence_pattern.weekdays else [],
+            "weekdays": weekdays_list,
         }
+
+    # Convert days to strings (handle both Weekday enums and strings)
+    days_list = []
+    for day in app.days:
+        if isinstance(day, str):
+            days_list.append(day)
+        else:
+            days_list.append(day.value)
+
+    # Convert recurrence_type to string (handle both enum and string)
+    if isinstance(app.recurrence_type, str):
+        recurrence_type_str = app.recurrence_type
+    else:
+        recurrence_type_str = app.recurrence_type.value
+
+    # Convert date strings to date objects (SQLite Date type requires date objects)
+    recurrence_start_date_obj = None
+    if app.recurrence_start_date:
+        if isinstance(app.recurrence_start_date, str):
+            recurrence_start_date_obj = date.fromisoformat(app.recurrence_start_date)
+        else:
+            recurrence_start_date_obj = app.recurrence_start_date
+
+    recurrence_end_date_obj = None
+    if app.recurrence_end_date:
+        if isinstance(app.recurrence_end_date, str):
+            recurrence_end_date_obj = date.fromisoformat(app.recurrence_end_date)
+        else:
+            recurrence_end_date_obj = app.recurrence_end_date
 
     app_data = {
         "device_id": device_id,
@@ -257,12 +295,12 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
         "path": app.path,
         "start_time": time_to_str(app.start_time),
         "end_time": time_to_str(app.end_time),
-        "days": [day.value for day in app.days],
+        "days": days_list,
         "use_custom_recurrence": app.use_custom_recurrence,
-        "recurrence_type": app.recurrence_type.value,
+        "recurrence_type": recurrence_type_str,
         "recurrence_interval": app.recurrence_interval,
-        "recurrence_start_date": app.recurrence_start_date,
-        "recurrence_end_date": app.recurrence_end_date,
+        "recurrence_start_date": recurrence_start_date_obj,
+        "recurrence_end_date": recurrence_end_date_obj,
         "config": app.config,
         "empty_last_render": app.empty_last_render,
         "render_messages": app.render_messages,

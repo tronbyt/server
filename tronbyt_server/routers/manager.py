@@ -1413,7 +1413,9 @@ def updateapp_post(
     for key, value in update_data.items():
         setattr(app, key, value)
 
-    db.save_user(session, user)
+    # Save just the app directly (no need to save entire user tree)
+    from tronbyt_server.db_models.operations import save_app_full
+    save_app_full(session, device.id, app)
 
     return RedirectResponse(
         url=request.url_for("index"), status_code=status.HTTP_302_FOUND
