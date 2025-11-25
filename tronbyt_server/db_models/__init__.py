@@ -9,7 +9,6 @@ from .models import (
     AppDB,
     DeviceDB,
     LocationDB,
-    RecurrencePatternDB,
     SystemSettingsDB,
     UserDB,
     brightness_from_percent,
@@ -47,11 +46,6 @@ from .operations import (
     create_location,
     update_location,
     delete_location,
-    # RecurrencePattern operations
-    get_recurrence_pattern_by_app,
-    create_recurrence_pattern,
-    update_recurrence_pattern,
-    delete_recurrence_pattern,
     # System settings
     get_system_settings,
     update_system_settings,
@@ -79,7 +73,6 @@ __all__ = [
     "DeviceDB",
     "LocationDB",
     "AppDB",
-    "RecurrencePatternDB",
     # Helpers
     "brightness_to_percent",
     "brightness_from_percent",
@@ -114,11 +107,6 @@ __all__ = [
     "create_location",
     "update_location",
     "delete_location",
-    # Operations - RecurrencePattern
-    "get_recurrence_pattern_by_app",
-    "create_recurrence_pattern",
-    "update_recurrence_pattern",
-    "delete_recurrence_pattern",
     # Operations - System
     "get_system_settings",
     "update_system_settings",

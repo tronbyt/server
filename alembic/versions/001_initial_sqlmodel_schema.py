@@ -117,6 +117,7 @@ def upgrade() -> None:
         sa.Column('empty_last_render', sa.Boolean(), nullable=False),
         sa.Column('render_messages', sa.JSON(), nullable=False),
         sa.Column('autopin', sa.Boolean(), nullable=False),
+        sa.Column('recurrence_pattern', sa.JSON(), nullable=True),
         sa.Column('device_id', sa.String(), nullable=False),
         sa.ForeignKeyConstraint(['device_id'], ['devices.id'], ),
         sa.PrimaryKeyConstraint('id')
@@ -124,21 +125,9 @@ def upgrade() -> None:
     op.create_index(op.f('ix_apps_iname'), 'apps', ['iname'], unique=False)
     op.create_index(op.f('ix_apps_device_id'), 'apps', ['device_id'], unique=False)
 
-    # Create recurrence_patterns table
-    op.create_table('recurrence_patterns',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('day_of_month', sa.Integer(), nullable=True),
-        sa.Column('day_of_week', sa.String(), nullable=True),
-        sa.Column('weekdays', sa.JSON(), nullable=False),
-        sa.Column('app_id', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['app_id'], ['apps.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-
 
 def downgrade() -> None:
     """Drop all SQLModel tables."""
-    op.drop_table('recurrence_patterns')
     op.drop_table('apps')
     op.drop_table('locations')
     op.drop_table('devices')

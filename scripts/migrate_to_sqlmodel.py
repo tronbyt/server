@@ -40,7 +40,6 @@ from tronbyt_server.db_models import (
     AppDB,
     DeviceDB,
     LocationDB,
-    RecurrencePatternDB,
     SystemSettingsDB,
     UserDB,
     create_db_and_tables,
@@ -256,13 +255,11 @@ def migrate_app(app: App, device_id: str, session: Session, stats: MigrationStat
                     else []
                 )
 
-                pattern_db = RecurrencePatternDB(
-                    day_of_month=app.recurrence_pattern.day_of_month,
-                    day_of_week=app.recurrence_pattern.day_of_week,
-                    weekdays=weekdays_list,
-                    app_id=app_db.id,  # type: ignore
-                )
-                session.add(pattern_db)
+                app_db.recurrence_pattern = {
+                    "day_of_month": app.recurrence_pattern.day_of_month,
+                    "day_of_week": app.recurrence_pattern.day_of_week,
+                    "weekdays": weekdays_list,
+                }
                 stats.recurrence_patterns_migrated += 1
             except Exception as e:
                 error_msg = (
