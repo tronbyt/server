@@ -8,6 +8,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import cast
 
+from sqlmodel import Session
+
 from fastapi import APIRouter, Depends, WebSocket, status, Response
 from fastapi.responses import FileResponse
 from pydantic import TypeAdapter, ValidationError
@@ -226,7 +228,7 @@ async def _send_response(
 async def _wait_for_acknowledgment(
     ack: DeviceAcknowledgment,
     dwell_time: int,
-    db_conn: sqlite3.Connection,
+    session: Session,
     loop: asyncio.AbstractEventLoop,
     waiter: Waiter,
     websocket: WebSocket,
@@ -283,7 +285,7 @@ async def _wait_for_acknowledgment(
             # Got displaying acknowledgment, render next image
             logger.debug(f"[{device.id}] Device acknowledged display")
             response = await loop.run_in_executor(
-                None, next_app_logic, db_conn, user, device
+                None, next_app_logic, session, user, device
             )
             return (response, last_brightness)
 
@@ -333,18 +335,18 @@ async def _wait_for_acknowledgment(
         )
 
     # Render next image after timeout
-    response = await loop.run_in_executor(None, next_app_logic, db_conn, user, device)
+    response = await loop.run_in_executor(None, next_app_logic, session, user, device)
     return (response, last_brightness)
 
 
 async def sender(
     websocket: WebSocket,
     device_id: str,
-    db_conn: sqlite3.Connection,
+    session: Session,
     ack: DeviceAcknowledgment,
 ) -> None:
     """The sender task for the websocket."""
-    user = db.get_user_by_device_id(db_conn, device_id)
+    user = db.get_user_by_device_id(session, device_id)
     if not user:
         logger.error(f"[{device_id}] User not found, sender task cannot start.")
         return
@@ -361,7 +363,7 @@ async def sender(
     try:
         # Render the first image before entering the loop
         response = await loop.run_in_executor(
-            None, next_app_logic, db_conn, user, device
+            None, next_app_logic, session, user, device
         )
 
         # Main loop
@@ -375,7 +377,7 @@ async def sender(
             )
 
             # Refresh user and device from DB in case of updates
-            user = db.get_user_by_device_id(db_conn, device_id)
+            user = db.get_user_by_device_id(session, device_id)
             if not user:
                 logger.error(f"[{device_id}] user gone, stopping websocket sender.")
                 return
@@ -389,7 +391,7 @@ async def sender(
             response, last_brightness = await _wait_for_acknowledgment(
                 ack,
                 dwell_time,
-                db_conn,
+                session,
                 loop,
                 waiter,
                 websocket,
@@ -407,7 +409,7 @@ async def sender(
 
 
 async def receiver(
-    websocket: WebSocket, device_id: str, db_conn: sqlite3.Connection
+    websocket: WebSocket, device_id: str, session: Session
 ) -> None:
     """The receiver task for the websocket."""
     adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
@@ -417,7 +419,7 @@ async def receiver(
             try:
                 parsed_message = adapter.validate_json(message)
 
-                user = db.get_user_by_device_id(db_conn, device_id)
+                user = db.get_user_by_device_id(session, device_id)
                 if not user:
                     logger.warning(
                         f"[{device_id}] User not found for device, cannot process message."
@@ -425,7 +427,7 @@ async def receiver(
                     continue
 
                 try:
-                    with db.db_transaction(db_conn) as cursor:
+                    with db.db_transaction(session) as cursor:
                         db.update_device_field(
                             cursor,
                             user.username,
@@ -515,14 +517,14 @@ async def receiver(
 async def websocket_endpoint(
     websocket: WebSocket,
     device_id: str,
-    db_conn: sqlite3.Connection = Depends(get_db),
+    session: Session = Depends(get_db),
 ) -> None:
     """WebSocket endpoint for devices."""
     if not re.match(r"^[a-fA-F0-9]{8}$", device_id):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    user = db.get_user_by_device_id(db_conn, device_id)
+    user = db.get_user_by_device_id(session, device_id)
     if not user:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -536,7 +538,7 @@ async def websocket_endpoint(
 
     # Immediately update protocol type to WS on successful connection
     try:
-        with db.db_transaction(db_conn) as cursor:
+        with db.db_transaction(session) as cursor:
             db.update_device_field(
                 cursor,
                 user.username,
@@ -553,10 +555,10 @@ async def websocket_endpoint(
 
     # Create tasks for the new connection
     sender_task = asyncio.create_task(
-        sender(websocket, device_id, db_conn, ack), name=f"ws_sender_{device_id}"
+        sender(websocket, device_id, session, ack), name=f"ws_sender_{device_id}"
     )
     receiver_task = asyncio.create_task(
-        receiver(websocket, device_id, db_conn), name=f"ws_receiver_{device_id}"
+        receiver(websocket, device_id, session), name=f"ws_receiver_{device_id}"
     )
 
     # Register the new connection, which handles cleanup of any old one

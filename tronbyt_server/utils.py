@@ -10,6 +10,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from sqlmodel import Session
+
 from fastapi import Request, Response
 from fastapi.responses import FileResponse
 from fastapi_babel import _
@@ -43,7 +45,7 @@ def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]
 
 
 def render_app(
-    db_conn: sqlite3.Connection,
+    session: Session,
     app_path: Path,
     config: dict[str, Any],
     webp_path: Path | None,
@@ -87,7 +89,7 @@ def render_app(
         logger.error("Error running pixlet render")
         return None
     if messages and app is not None:
-        db.save_render_messages(db_conn, user, device, app, messages)
+        db.save_render_messages(session, user, device, app, messages)
 
     if len(data) > 0 and webp_path:
         webp_path.write_bytes(data)
@@ -148,7 +150,7 @@ def set_repo(
 
 
 def possibly_render(
-    db_conn: sqlite3.Connection,
+    session: Session,
     user: User,
     device_id: str,
     app: App,
@@ -190,7 +192,7 @@ def possibly_render(
         add_default_config(config, device)
 
         start_time = time.monotonic()
-        image = render_app(db_conn, app_path, config, webp_path, device, app, user)
+        image = render_app(session, app_path, config, webp_path, device, app, user)
         end_time = time.monotonic()
         render_duration = timedelta(seconds=end_time - start_time)
 
@@ -206,7 +208,7 @@ def possibly_render(
 
         # Use granular field updates to avoid overwriting concurrent changes from web interface
         try:
-            with db.db_transaction(db_conn) as cursor:
+            with db.db_transaction(session) as cursor:
                 db.update_app_field(
                     cursor, user.username, device_id, app.iname, "last_render", now
                 )

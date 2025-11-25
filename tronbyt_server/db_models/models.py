@@ -54,7 +54,10 @@ class UserDB(SQLModel, table=True):
     app_repo_url: str = ""
 
     # Relationships
-    devices: list["DeviceDB"] = Relationship(back_populates="user")
+    devices: list["DeviceDB"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 # ============================================================================
@@ -125,8 +128,14 @@ class DeviceDB(SQLModel, table=True):
 
     # Relationships
     user: UserDB = Relationship(back_populates="devices")
-    location: Optional["LocationDB"] = Relationship(back_populates="device")
-    apps: list["AppDB"] = Relationship(back_populates="device")
+    location: Optional["LocationDB"] = Relationship(
+        back_populates="device",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    apps: list["AppDB"] = Relationship(
+        back_populates="device",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 # ============================================================================
@@ -144,8 +153,8 @@ class RecurrencePatternDB(SQLModel, table=True):
     day_of_week: Optional[str] = None
     weekdays: list[str] = Field(default_factory=list, sa_column=Column(JSON))
 
-    # Foreign key
-    app_id: int = Field(foreign_key="apps.id")
+    # Foreign key - Optional to allow cascade delete
+    app_id: Optional[int] = Field(default=None, foreign_key="apps.id")
 
     # Relationship
     app: "AppDB" = Relationship(back_populates="recurrence_pattern")
@@ -193,7 +202,8 @@ class AppDB(SQLModel, table=True):
     # Relationships
     device: DeviceDB = Relationship(back_populates="apps")
     recurrence_pattern: Optional["RecurrencePatternDB"] = Relationship(
-        back_populates="app"
+        back_populates="app",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
 

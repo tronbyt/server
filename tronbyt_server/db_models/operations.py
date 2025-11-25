@@ -124,6 +124,15 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
     def time_to_str(t: dt_time | None) -> str | None:
         return f"{t.hour:02d}:{t.minute:02d}" if t else None
 
+    # Convert device.info to dict if it's a Pydantic model
+    device_info = device.info
+    if hasattr(device_info, "model_dump"):
+        device_info = device_info.model_dump()
+    elif hasattr(device_info, "dict"):
+        device_info = device_info.dict()
+    elif not isinstance(device_info, dict):
+        device_info = {}
+
     device_data = {
         "id": device.id,
         "name": device.name,
@@ -148,7 +157,7 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
         "interstitial_enabled": device.interstitial_enabled,
         "interstitial_app": device.interstitial_app,
         "last_seen": device.last_seen,
-        "info": device.info,
+        "info": device_info,
         "user_id": user_id,
     }
 
@@ -423,6 +432,9 @@ def delete_app_by_iname(session: Session, device_id: str, iname: str) -> bool:
     if not app:
         return False
 
+    # Delete recurrence pattern first if it exists (due to foreign key constraint)
+    delete_recurrence_pattern(session, app.id)
+
     session.delete(app)
     session.commit()
     return True
@@ -686,7 +698,7 @@ def load_app_full(session: Session, app_db: AppDB) -> App:
         )
 
     return App(
-        id=app_db.id,
+        id=str(app_db.id),
         iname=app_db.iname,
         name=app_db.name,
         uinterval=app_db.uinterval,
@@ -851,7 +863,7 @@ def app_db_to_model(app_db: AppDB) -> App:
         )
 
     return App(
-        id=app_db.id,
+        id=str(app_db.id),
         iname=app_db.iname,
         name=app_db.name,
         uinterval=app_db.uinterval,
