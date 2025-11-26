@@ -430,15 +430,6 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
         validation_passed = validate_migration(db_path, stats)
 
         if validation_passed and len(stats.errors) == 0:
-            # Rename old table
-            logger.info("Renaming json_data table to json_data_backup...")
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("ALTER TABLE json_data RENAME TO json_data_backup")
-            conn.commit()
-            conn.close()
-            logger.info("Old table backed up successfully")
-
             # Log summary
             logger.info("=" * 70)
             logger.info("MIGRATION SUMMARY")
@@ -461,6 +452,15 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
                 for skip in stats.skipped:
                     logger.warning(f"  - {skip}")
 
+            logger.info("✅ Migration completed successfully!")
+            logger.info("NOTE: The original json_data table has been preserved.")
+            logger.info(
+                "      You can safely roll back by reverting to an older version."
+            )
+            logger.info(
+                "      To reclaim space, you can manually drop it: DROP TABLE json_data;"
+            )
+
             return True
         else:
             if not validation_passed:
@@ -471,7 +471,7 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
                 )
                 for error in stats.errors:
                     logger.error(f"  - {error}")
-            logger.error("Keeping original json_data table - fix errors and retry")
+            logger.error("Migration failed - json_data table unchanged")
             return False
 
     except Exception as e:

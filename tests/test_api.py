@@ -120,18 +120,14 @@ class TestMoveApp:
             assert response.status_code == 302
         return device_id
 
-    def _get_sorted_apps_from_db(
-        self, device_id: str
-    ) -> list[App]:
+    def _get_sorted_apps_from_db(self, device_id: str) -> list[App]:
         """Retrieves and sorts apps by order for a given device from the DB."""
         user = utils.get_testuser()
         apps_dict = user.devices[device_id].apps
         apps_list = sorted(apps_dict.values(), key=attrgetter("order"))
         return apps_list
 
-    def test_move_app_scenarios(
-        self, auth_client: TestClient
-    ) -> None:
+    def test_move_app_scenarios(self, auth_client: TestClient) -> None:
         device_id = self._setup_device_with_apps(auth_client, 4)
 
         apps = self._get_sorted_apps_from_db(device_id)

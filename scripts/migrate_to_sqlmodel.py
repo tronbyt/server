@@ -6,7 +6,7 @@ This script:
 1. Reads all users from the json_data table
 2. Creates normalized records in users, devices, apps, locations tables
 3. Validates the migration was successful
-4. Renames json_data to json_data_backup (keeping the old data safe)
+4. Preserves the json_data table for rollback safety
 
 Usage:
     # Dry run (shows what would happen, doesn't change anything)
@@ -19,7 +19,7 @@ Usage:
     python scripts/migrate_to_sqlmodel.py --db-path /path/to/db.sqlite
 
 IMPORTANT: This script will create new tables but will NOT delete the old json_data table.
-The old table will be renamed to json_data_backup for safety.
+The old table will be preserved so you can safely roll back to an older server version.
 """
 
 import argparse
@@ -494,17 +494,15 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
 
                 if validation_passed:
                     print("\n✓ Validation passed!")
-
-                    # Rename old table to backup
-                    print("\n📦 Renaming json_data table to json_data_backup...")
-                    conn = sqlite3.connect(db_path)
-                    cursor = conn.cursor()
-                    cursor.execute("ALTER TABLE json_data RENAME TO json_data_backup")
-                    conn.commit()
-                    conn.close()
-                    print("✓ Old table backed up successfully")
+                    print("\nNOTE: The original json_data table has been preserved.")
+                    print(
+                        "      You can safely roll back by reverting to an older version."
+                    )
+                    print(
+                        "      To reclaim space, you can manually drop it: DROP TABLE json_data;"
+                    )
                 else:
-                    print("\n⚠️  Validation failed - old table NOT renamed")
+                    print("\n⚠️  Validation failed")
                     print("   You may want to investigate the mismatches")
 
         # Print summary

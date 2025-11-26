@@ -5,9 +5,7 @@ from sqlmodel import Session
 from tests.conftest import get_test_session
 
 
-def test_app_create_edit_config_delete(
-    auth_client: TestClient, db_connection
-) -> None:
+def test_app_create_edit_config_delete(auth_client: TestClient, db_connection) -> None:
     response = auth_client.post(
         "/create",
         data={

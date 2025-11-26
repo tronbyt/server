@@ -1,4 +1,3 @@
-
 import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
@@ -89,11 +88,11 @@ def test_websocket_client_messages(
 
         # After sending "queued", the protocol_version should be updated if it was None
         def get_protocol_version() -> int | None:
-            device = utils.get_device_by_id( device_id)
+            device = utils.get_device_by_id(device_id)
             return device.info.protocol_version if device else None
 
         utils.poll_for_change(get_protocol_version, 1)
-        device = utils.get_device_by_id( device_id)
+        device = utils.get_device_by_id(device_id)
         assert device is not None
         assert device.info.protocol_version == 1
 
@@ -112,7 +111,7 @@ def test_websocket_client_messages(
         websocket.send_json(client_info)
 
         def check_full_client_info_update() -> bool:
-            device = utils.get_device_by_id( device_id)
+            device = utils.get_device_by_id(device_id)
             if not device:
                 return False
             return (
@@ -125,7 +124,7 @@ def test_websocket_client_messages(
 
         utils.poll_for_change(check_full_client_info_update, True)
 
-        device = utils.get_device_by_id( device_id)
+        device = utils.get_device_by_id(device_id)
         assert device is not None
         assert isinstance(device.last_seen, datetime)
         assert device.info.firmware_version == "1.25.0"
@@ -138,7 +137,7 @@ def test_websocket_client_messages(
         websocket.send_json(partial_client_info)
 
         def check_partial_client_info_update() -> bool:
-            device = utils.get_device_by_id( device_id)
+            device = utils.get_device_by_id(device_id)
             if not device:
                 return False
             return (
@@ -150,7 +149,7 @@ def test_websocket_client_messages(
 
         utils.poll_for_change(check_partial_client_info_update, True)
 
-        device = utils.get_device_by_id( device_id)
+        device = utils.get_device_by_id(device_id)
         assert device is not None
         assert device.info.firmware_version == "1.26.0"
         assert device.info.firmware_type == "ESP32"

@@ -261,9 +261,7 @@ class TestApiKeyIntegration:
         response = auth_client.get(f"/v0/devices/{device_id}")
         assert response.status_code == 401
 
-    def test_api_key_uniqueness(
-        self, auth_client: TestClient, db_connection
-    ) -> None:
+    def test_api_key_uniqueness(self, auth_client: TestClient, db_connection) -> None:
         """Test that generated API keys are unique across users"""
         api_keys: list[str] = []
         for i in range(5):
