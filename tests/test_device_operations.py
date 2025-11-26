@@ -6,9 +6,7 @@ from sqlmodel import Session
 from tests.conftest import get_test_session
 
 
-def test_device_operations(
-    auth_client: TestClient, db_connection
-) -> None:
+def test_device_operations(auth_client: TestClient, db_connection) -> None:
     r = auth_client.get("/create")
     assert r.status_code == 200
 

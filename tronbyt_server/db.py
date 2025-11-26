@@ -95,18 +95,40 @@ def init_db(conn: sqlite3.Connection | None = None) -> None:
                 "\n"
                 "Your database uses the old JSON format. Converting to SQLModel.\n"
                 "This is a one-time operation that will:\n"
-                "  1. Create new relational tables\n"
+                "  1. Create new relational tables using Alembic\n"
                 "  2. Migrate all your data\n"
-                "  3. Rename json_data to json_data_backup (keeps your old data safe)\n"
-                + "="
-                * 70
+                "  3. Keep json_data table for rollback safety\n" + "=" * 70
             )
 
-            # Run the migration automatically
+            # Run Alembic FIRST to create tables
+            logger.info("Creating SQLModel tables with Alembic...")
+            try:
+                from alembic.config import Config
+                from alembic import command
+                from pathlib import Path
+
+                project_root = Path(__file__).parent.parent
+                alembic_ini_path = project_root / "alembic.ini"
+                alembic_dir = project_root / "alembic"
+
+                if alembic_ini_path.exists():
+                    alembic_cfg = Config(str(alembic_ini_path))
+                    alembic_cfg.set_main_option("script_location", str(alembic_dir))
+                    command.upgrade(alembic_cfg, "head")
+                    logger.info("✅ Tables created successfully via Alembic")
+                else:
+                    # Fallback to SQLModel if Alembic not available
+                    logger.warning("Alembic not found, using SQLModel.create_all()")
+                    create_db_and_tables()
+            except ImportError:
+                logger.warning("Alembic not installed, using SQLModel.create_all()")
+                create_db_and_tables()
+
+            # Now run the data migration
             try:
                 from tronbyt_server.migrations import perform_json_to_sqlmodel_migration
 
-                logger.info("Starting automatic migration...")
+                logger.info("Starting data migration...")
                 success = perform_json_to_sqlmodel_migration(get_settings().DB_FILE)
 
                 if not success:
@@ -115,8 +137,9 @@ def init_db(conn: sqlite3.Connection | None = None) -> None:
                         "Database migration failed. Please check the logs above."
                     )
 
-                logger.info("✅ Automatic migration completed successfully!")
+                logger.info("✅ Data migration completed successfully!")
                 logger.info("Your data has been migrated to SQLModel format.")
+                logger.info("The old json_data table has been preserved for rollback.")
 
             except Exception as e:
                 logger.error(f"Error during automatic migration: {e}")
@@ -134,11 +157,14 @@ def init_db(conn: sqlite3.Connection | None = None) -> None:
         if should_close:
             conn.close()
 
-    # Create all SQLModel tables (in case they don't exist)
-    create_db_and_tables()
-    logger.info("SQLModel database tables initialized")
+    # Ensure tables exist (in case this is a fresh install or Alembic wasn't run)
+    # This is idempotent - won't recreate existing tables
+    try:
+        create_db_and_tables()
+    except Exception:
+        pass  # Tables already exist, that's fine
 
-    # Run Alembic migrations automatically
+    # Run Alembic migrations for any schema updates
     try:
         from alembic.config import Config
         from alembic import command

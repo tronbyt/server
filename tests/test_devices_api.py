@@ -1,4 +1,3 @@
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -165,7 +164,7 @@ class TestDeviceEndpoint:
             follow_redirects=False,
         )
         assert response.status_code == 302
-        user2 = utils.get_user_by_username( "testuser2")
+        user2 = utils.get_user_by_username("testuser2")
         assert user2 is not None
 
         device_id = list(device_user.devices.keys())[0]

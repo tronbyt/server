@@ -45,9 +45,7 @@ def test_upload_and_delete(auth_client: TestClient) -> None:
     assert response.headers["location"] == f"/{device_id}/addapp"
 
 
-def test_upload_bad_extension(
-    auth_client: TestClient, db_connection
-) -> None:
+def test_upload_bad_extension(auth_client: TestClient, db_connection) -> None:
     files = {"file": ("report.exe", BytesIO(b"my file contents"))}
     auth_client.get("/create")
     response = auth_client.post(
