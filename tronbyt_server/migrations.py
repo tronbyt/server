@@ -216,6 +216,14 @@ def migrate_app_from_dict(
     """Migrate a single app and its recurrence pattern from raw dict data."""
     app_iname = app_data.get("iname", "unknown")
 
+    # Skip apps with invalid/missing inames
+    if not app_iname or app_iname == "unknown":
+        skip_msg = f"Skipping app with invalid iname: {app_iname}"
+        stats.skipped.append(skip_msg)
+        stats.apps_skipped += 1
+        logger.warning(skip_msg)
+        return None
+
     try:
         # Helper to convert time to string
         def time_to_str(t: Any) -> str | None:

@@ -92,7 +92,13 @@ def render_app(
         db.save_render_messages(session, user, device, app, messages)
 
     if len(data) > 0 and webp_path:
+        logger.debug(f"Saving rendered webp to: {webp_path}")
         webp_path.write_bytes(data)
+        logger.debug(f"Saved {len(data)} bytes to {webp_path}")
+    elif webp_path is None:
+        logger.warning("webp_path is None, not saving rendered image")
+    elif len(data) == 0:
+        logger.warning("Rendered data is empty, not saving")
     return data
 
 
