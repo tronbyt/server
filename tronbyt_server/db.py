@@ -428,11 +428,9 @@ def get_night_mode_is_active(device: Device) -> bool:
     # Determine if night mode is active
     if start_minutes <= end_minutes:  # Normal case (e.g., 9:00 to 17:00)
         if start_minutes <= current_time_minutes < end_minutes:
-            logger.debug("Night mode active")
             return True
     else:  # Wrapped case (e.g., 22:00 to 7:00 - overnight)
         if current_time_minutes >= start_minutes or current_time_minutes < end_minutes:
-            logger.debug("Night mode active")
             return True
 
     return False
