@@ -59,13 +59,17 @@ def get_db() -> sqlite3.Connection:
     )  # Set a 10-second timeout
 
 
-def init_db() -> None:
+def init_db(conn: sqlite3.Connection | None = None) -> None:
     """Initialize the database with SQLModel tables and run migrations."""
     from tronbyt_server.db_models import create_db_and_tables
     import sqlite3
 
     # Enable WAL mode for better concurrency
-    conn = sqlite3.connect(get_settings().DB_FILE, check_same_thread=False)
+    if conn is None:
+        conn = sqlite3.connect(get_settings().DB_FILE, check_same_thread=False)
+        should_close = True
+    else:
+        should_close = False
     try:
         row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
         if not row or row[0].lower() != "wal":
@@ -127,7 +131,8 @@ def init_db() -> None:
             )
 
     finally:
-        conn.close()
+        if should_close:
+            conn.close()
 
     # Create all SQLModel tables (in case they don't exist)
     create_db_and_tables()
@@ -335,9 +340,9 @@ def migrate_location_name_to_locality(db: sqlite3.Connection) -> None:
             save_user(db, user)
 
 
-def migrate_user_api_keys(db: sqlite3.Connection) -> None:
+def migrate_user_api_keys(session: Session) -> None:
     """Generate API keys for users who don't have them."""
-    users = get_all_users(db)
+    users = get_all_users(session)
     logger.info("Migrating users to add API keys")
 
     for user in users:
@@ -346,7 +351,7 @@ def migrate_user_api_keys(db: sqlite3.Connection) -> None:
                 secrets.choice(string.ascii_letters + string.digits) for _ in range(32)
             )
             logger.info(f"Generated API key for user: {user.username}")
-            save_user(db, user)
+            save_user(session, user)
 
 
 def close_db(db: sqlite3.Connection) -> None:

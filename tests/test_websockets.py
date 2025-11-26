@@ -1,4 +1,3 @@
-import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,10 +7,12 @@ from tronbyt_server.models.user import User
 from tests import utils
 from datetime import datetime
 from typing import Any
+from sqlmodel import Session
+from tests.conftest import get_test_session
 
 
 @pytest.fixture
-def device_user_ws(auth_client: TestClient, db_connection: sqlite3.Connection) -> User:
+def device_user_ws(auth_client: TestClient) -> User:
     """Fixture to create a user with a device for websocket tests."""
     response = auth_client.post(
         "/create",
@@ -25,7 +26,7 @@ def device_user_ws(auth_client: TestClient, db_connection: sqlite3.Connection) -
         follow_redirects=True,
     )
     assert response.status_code == 200
-    return utils.get_testuser(db_connection)
+    return utils.get_testuser()
 
 
 def test_websocket_invalid_device_id_format(auth_client: TestClient) -> None:
@@ -72,7 +73,7 @@ def test_websocket_success_connection_and_data(
 
 
 def test_websocket_client_messages(
-    auth_client: TestClient, device_user_ws: User, db_connection: sqlite3.Connection
+    auth_client: TestClient, device_user_ws: User, db_connection
 ) -> None:
     """Test that the server correctly handles client messages."""
     device_id = list(device_user_ws.devices.keys())[0]
@@ -88,11 +89,11 @@ def test_websocket_client_messages(
 
         # After sending "queued", the protocol_version should be updated if it was None
         def get_protocol_version() -> int | None:
-            device = utils.get_device_by_id(db_connection, device_id)
+            device = utils.get_device_by_id( device_id)
             return device.info.protocol_version if device else None
 
         utils.poll_for_change(get_protocol_version, 1)
-        device = utils.get_device_by_id(db_connection, device_id)
+        device = utils.get_device_by_id( device_id)
         assert device is not None
         assert device.info.protocol_version == 1
 
@@ -111,7 +112,7 @@ def test_websocket_client_messages(
         websocket.send_json(client_info)
 
         def check_full_client_info_update() -> bool:
-            device = utils.get_device_by_id(db_connection, device_id)
+            device = utils.get_device_by_id( device_id)
             if not device:
                 return False
             return (
@@ -124,7 +125,7 @@ def test_websocket_client_messages(
 
         utils.poll_for_change(check_full_client_info_update, True)
 
-        device = utils.get_device_by_id(db_connection, device_id)
+        device = utils.get_device_by_id( device_id)
         assert device is not None
         assert isinstance(device.last_seen, datetime)
         assert device.info.firmware_version == "1.25.0"
@@ -137,7 +138,7 @@ def test_websocket_client_messages(
         websocket.send_json(partial_client_info)
 
         def check_partial_client_info_update() -> bool:
-            device = utils.get_device_by_id(db_connection, device_id)
+            device = utils.get_device_by_id( device_id)
             if not device:
                 return False
             return (
@@ -149,7 +150,7 @@ def test_websocket_client_messages(
 
         utils.poll_for_change(check_partial_client_info_update, True)
 
-        device = utils.get_device_by_id(db_connection, device_id)
+        device = utils.get_device_by_id( device_id)
         assert device is not None
         assert device.info.firmware_version == "1.26.0"
         assert device.info.firmware_type == "ESP32"

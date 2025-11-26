@@ -1,4 +1,3 @@
-import sqlite3
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,10 +6,12 @@ from tronbyt_server import db
 from tronbyt_server.models import App, DeviceType, Brightness
 from tronbyt_server.models.user import User
 from tests import utils
+from sqlmodel import Session
+from tests.conftest import get_test_session
 
 
 @pytest.fixture
-def device_user(auth_client: TestClient, db_connection: sqlite3.Connection) -> User:
+def device_user(auth_client: TestClient) -> User:
     """Fixture to create a user with a device."""
     response = auth_client.post(
         "/create",
@@ -23,11 +24,10 @@ def device_user(auth_client: TestClient, db_connection: sqlite3.Connection) -> U
         },
     )
     assert response.status_code == 200
-    return utils.get_testuser(db_connection)
+    return utils.get_testuser()
 
 
 def _add_app_to_device(
-    db_connection: sqlite3.Connection,
     user: User,
     device_id: str,
     *,
@@ -53,7 +53,11 @@ def _add_app_to_device(
     )
     device.apps[iname] = app
     user.devices[device_id] = device
-    db.save_user(db_connection, user)
+    session = get_test_session()
+    try:
+        db.save_user(session, user)
+    finally:
+        session.close()
     return app
 
 
@@ -100,10 +104,10 @@ class TestDevicesEndpoint:
         assert "Invalid credentials" in response.text
 
     def test_list_devices_empty_devices(
-        self, auth_client: TestClient, db_connection: sqlite3.Connection
+        self, auth_client: TestClient, db_connection
     ) -> None:
         """Test listing devices when user has no devices"""
-        user = utils.get_testuser(db_connection)
+        user = utils.get_testuser()
         api_key = user.api_key
         response = auth_client.get(
             "/v0/devices", headers={"Authorization": f"Bearer {api_key}"}
@@ -151,7 +155,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Test device retrieval for non-existent device"""
         # Create a second user to get a different API key
@@ -161,7 +165,7 @@ class TestDeviceEndpoint:
             follow_redirects=False,
         )
         assert response.status_code == 302
-        user2 = utils.get_user_by_username(db_connection, "testuser2")
+        user2 = utils.get_user_by_username( "testuser2")
         assert user2 is not None
 
         device_id = list(device_user.devices.keys())[0]
@@ -251,7 +255,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Ensure device payload exposes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
@@ -305,7 +309,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Ensure device updates support new fields and value validation."""
         device_id = list(device_user.devices.keys())[0]
@@ -360,7 +364,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Empty dimModeStartTime should clear stored dim time."""
         device_id = list(device_user.devices.keys())[0]
@@ -387,7 +391,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Ensure installation payload includes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
@@ -433,7 +437,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Ensure single installation lookup exposes new fields."""
         device_id = list(device_user.devices.keys())[0]
@@ -468,7 +472,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Ensure installation updates support new fields and return payload."""
         device_id = list(device_user.devices.keys())[0]
@@ -512,7 +516,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection: sqlite3.Connection,
+        db_connection,
     ) -> None:
         """Ensure validation rejects negative interval/time values."""
         device_id = list(device_user.devices.keys())[0]

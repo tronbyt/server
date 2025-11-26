@@ -1,16 +1,17 @@
-import sqlite3
 from operator import attrgetter
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.models.app import App
+from tests.conftest import get_test_session
 
 from . import utils
 
 
-def test_api(auth_client: TestClient, db_connection: sqlite3.Connection) -> None:
+def test_api(auth_client: TestClient) -> None:
     # Create a device
     response = auth_client.post(
         "/create",
@@ -27,9 +28,13 @@ def test_api(auth_client: TestClient, db_connection: sqlite3.Connection) -> None
     assert response.headers["location"] == "http://testserver/"
 
     # Get user to find device_id
-    user = db.get_user(db_connection, "testuser")
-    assert user
-    device_id = list(user.devices.keys())[0]
+    session = get_test_session()
+    try:
+        user = db.get_user(session, "testuser")
+        assert user
+        device_id = list(user.devices.keys())[0]
+    finally:
+        session.close()
 
     # Push base64 image via call to push
     data = """UklGRsYAAABXRUJQVlA4TLkAAAAvP8AHABcw/wKBJH/ZERYIJEHtr/b8B34K3DbbHievrd+SlSqA3btETOGfo881kEXFGJQRa+biGiCi/xPAXywwVqenXXoCj+L90gO4ryqALawrJOwGX1iVsGnVMRX8irHyqbzGagksXy0zsmlldlEbgotNM1Nfaw04UbmahSFTi0pgml3UgIvaNDNA4JMikAFTQ16YXYhDNk1jbiaGoTEgsnO5vqJ1KwpcpWXOiQrUoqbZyc3FIEb5PAA="""
@@ -76,7 +81,6 @@ class TestMoveApp:
     def _setup_device_with_apps(
         self,
         auth_client: TestClient,
-        db_connection: sqlite3.Connection,
         num_apps: int = 4,
     ) -> str:
         """Sets up a user, device, and apps for testing."""
@@ -94,9 +98,13 @@ class TestMoveApp:
         assert response.status_code == 302
         assert response.headers["location"] == "http://testserver/"
 
-        user = db.get_user(db_connection, "testuser")
-        assert user
-        device_id = list(user.devices.keys())[0]
+        session = get_test_session()
+        try:
+            user = db.get_user(session, "testuser")
+            assert user
+            device_id = list(user.devices.keys())[0]
+        finally:
+            session.close()
 
         for i in range(1, num_apps + 1):
             response = auth_client.post(
@@ -113,20 +121,20 @@ class TestMoveApp:
         return device_id
 
     def _get_sorted_apps_from_db(
-        self, db_connection: sqlite3.Connection, device_id: str
+        self, device_id: str
     ) -> list[App]:
         """Retrieves and sorts apps by order for a given device from the DB."""
-        user = utils.get_testuser(db_connection)
+        user = utils.get_testuser()
         apps_dict = user.devices[device_id].apps
         apps_list = sorted(apps_dict.values(), key=attrgetter("order"))
         return apps_list
 
     def test_move_app_scenarios(
-        self, auth_client: TestClient, db_connection: sqlite3.Connection
+        self, auth_client: TestClient
     ) -> None:
-        device_id = self._setup_device_with_apps(auth_client, db_connection, 4)
+        device_id = self._setup_device_with_apps(auth_client, 4)
 
-        apps = self._get_sorted_apps_from_db(db_connection, device_id)
+        apps = self._get_sorted_apps_from_db(device_id)
         app1, app2, app3, app4 = (
             apps[0].iname,
             apps[1].iname,
@@ -136,32 +144,32 @@ class TestMoveApp:
 
         # Move app2 down
         auth_client.post(f"/{device_id}/{app2}/moveapp", params={"direction": "down"})
-        apps = self._get_sorted_apps_from_db(db_connection, device_id)
+        apps = self._get_sorted_apps_from_db(device_id)
         assert [app.iname for app in apps] == [app1, app3, app2, app4]
         for i, app in enumerate(apps):
             assert app.order == i
 
         # Move app2 up
         auth_client.post(f"/{device_id}/{app2}/moveapp", params={"direction": "up"})
-        apps = self._get_sorted_apps_from_db(db_connection, device_id)
+        apps = self._get_sorted_apps_from_db(device_id)
         assert [app.iname for app in apps] == [app1, app2, app3, app4]
         for i, app in enumerate(apps):
             assert app.order == i
 
         # Move app1 up (should not change order)
         auth_client.post(f"/{device_id}/{app1}/moveapp", params={"direction": "up"})
-        apps = self._get_sorted_apps_from_db(db_connection, device_id)
+        apps = self._get_sorted_apps_from_db(device_id)
         assert [app.iname for app in apps] == [app1, app2, app3, app4]
 
         # Move app4 down (should not change order)
         auth_client.post(f"/{device_id}/{app4}/moveapp", params={"direction": "down"})
-        apps = self._get_sorted_apps_from_db(db_connection, device_id)
+        apps = self._get_sorted_apps_from_db(device_id)
         assert [app.iname for app in apps] == [app1, app2, app3, app4]
 
         # Move app1 down twice
         auth_client.post(f"/{device_id}/{app1}/moveapp", params={"direction": "down"})
         auth_client.post(f"/{device_id}/{app1}/moveapp", params={"direction": "down"})
-        apps = self._get_sorted_apps_from_db(db_connection, device_id)
+        apps = self._get_sorted_apps_from_db(device_id)
         assert [app.iname for app in apps] == [app2, app3, app1, app4]
         for i, app in enumerate(apps):
             assert app.order == i
