@@ -59,7 +59,7 @@ def _render_edit_template(request: Request, user: User) -> Response:
     )
 
 
-@router.get("/register_owner")
+@router.get("/register_owner", name="register_owner")
 def get_register_owner(
     request: Request, session: Session = Depends(get_db)
 ) -> Response:
@@ -71,7 +71,7 @@ def get_register_owner(
     return templates.TemplateResponse(request, "auth/register_owner.html")
 
 
-@router.post("/register_owner")
+@router.post("/register_owner", name="register_owner")
 def post_register_owner(
     request: Request,
     password: str = Form(...),

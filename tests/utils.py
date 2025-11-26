@@ -1,27 +1,59 @@
-import sqlite3
 import time
 from typing import Any, Callable, TypeVar
+
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.models.device import Device
 from tronbyt_server.models.user import User
+from tests.conftest import get_test_session
 
 T = TypeVar("T")
 
 
-def get_testuser(conn: sqlite3.Connection) -> User:
-    user = db.get_user(conn, "testuser")
-    if not user:
-        raise Exception("testuser not found")
-    return user
+def get_testuser(session: Session | None = None) -> User:
+    if session is None:
+        session = get_test_session()
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        user = db.get_user(session, "testuser")
+        if not user:
+            raise Exception("testuser not found")
+        return user
+    finally:
+        if should_close:
+            session.close()
 
 
-def get_user_by_username(conn: sqlite3.Connection, username: str) -> User | None:
-    return db.get_user(conn, username)
+def get_user_by_username(username: str, session: Session | None = None) -> User | None:
+    if session is None:
+        session = get_test_session()
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        return db.get_user(session, username)
+    finally:
+        if should_close:
+            session.close()
 
 
-def get_device_by_id(conn: sqlite3.Connection, device_id: str) -> Device | None:
-    return db.get_device_by_id(conn, device_id)
+def get_device_by_id(device_id: str, session: Session | None = None) -> Device | None:
+    if session is None:
+        session = get_test_session()
+        should_close = True
+    else:
+        should_close = False
+
+    try:
+        return db.get_device_by_id(session, device_id)
+    finally:
+        if should_close:
+            session.close()
 
 
 def poll_for_change(

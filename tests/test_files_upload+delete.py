@@ -1,11 +1,12 @@
 from io import BytesIO
 import os
-import sqlite3
 
 from fastapi.testclient import TestClient
 
 from tronbyt_server import db
 from tronbyt_server.config import get_settings
+from sqlmodel import Session
+from tests.conftest import get_test_session
 
 settings = get_settings()
 
@@ -45,7 +46,7 @@ def test_upload_and_delete(auth_client: TestClient) -> None:
 
 
 def test_upload_bad_extension(
-    auth_client: TestClient, db_connection: sqlite3.Connection
+    auth_client: TestClient, db_connection
 ) -> None:
     files = {"file": ("report.exe", BytesIO(b"my file contents"))}
     auth_client.get("/create")
@@ -62,7 +63,7 @@ def test_upload_bad_extension(
     )
     assert response.status_code == 302
 
-    user = db.get_user(db_connection, "testuser")
+    user = db.get_user(get_test_session(), "testuser")
     assert user
     device_id = list(user.devices.keys())[0]
 

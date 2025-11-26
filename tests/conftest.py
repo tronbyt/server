@@ -1,16 +1,18 @@
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Generator
 import sqlite3
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import shutil
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.main import app as fastapi_app
 from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
+from tronbyt_server.db_models import engine
 
 settings = get_settings()
 
@@ -34,10 +36,18 @@ def db_connection(
         yield conn
 
 
+@pytest.fixture(scope="function")
+def session(db_connection: sqlite3.Connection) -> Generator[Session, None, None]:
+    """Provide a SQLModel session for tests."""
+    with Session(engine) as session:
+        yield session
+
+
 @pytest.fixture(scope="session")
 def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
-    def get_db_override() -> sqlite3.Connection:
-        return db_connection
+    def get_db_override() -> Generator[Session, None, None]:
+        with Session(engine) as session:
+            yield session
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
 
@@ -48,13 +58,31 @@ def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
 
 @pytest.fixture(autouse=True)
 def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
-    yield
+    # Clean up BEFORE test to ensure clean state
     cursor = db_connection.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [row[0] for row in cursor.fetchall()]
-    for table in tables:
-        if table != "sqlite_sequence":
+    tables_in_order = [
+        "apps",
+        "locations",
+        "devices",
+        "users",
+        "system_settings",
+    ]
+    for table in tables_in_order:
+        try:
             cursor.execute(f'DELETE FROM "{table}"')
+        except sqlite3.OperationalError:
+            # Table doesn't exist yet, skip
+            pass
+    db_connection.commit()
+
+    yield
+
+    # Clean up AFTER test as well
+    for table in tables_in_order:
+        try:
+            cursor.execute(f'DELETE FROM "{table}"')
+        except sqlite3.OperationalError:
+            pass
     db_connection.commit()
 
 
@@ -65,6 +93,11 @@ def settings_cleanup() -> Iterator[None]:
     yield
     settings.ENABLE_USER_REGISTRATION = original_enable_user_registration
     settings.MAX_USERS = original_max_users
+
+
+def get_test_session() -> Session:
+    """Helper function for tests to get a database session."""
+    return Session(engine)
 
 
 @pytest.fixture()

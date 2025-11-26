@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 from tronbyt_server import db
 from tronbyt_server.utils import possibly_render
+from sqlmodel import Session
+from tests.conftest import get_test_session
 
 
 def test_webp_upload_and_app_creation(auth_client: TestClient) -> None:

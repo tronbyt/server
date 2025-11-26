@@ -1,11 +1,15 @@
 from fastapi.testclient import TestClient
 
 from tronbyt_server import db
+from tests.conftest import get_test_session
 
 
 def test_register_login_logout(auth_client: TestClient) -> None:
-    with db.get_db() as db_conn:
-        db.delete_user(db_conn, "testuser")
+    session = get_test_session()
+    try:
+        db.delete_user(session, "testuser")
+    finally:
+        session.close()
     response = auth_client.get("/auth/register")
     assert response.status_code == 200
     response = auth_client.post(
