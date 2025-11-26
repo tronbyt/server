@@ -99,9 +99,7 @@ def get_user_and_device(
     return UserAndDevice(user, device)
 
 
-def check_for_users(
-    request: Request, session: Session = Depends(get_db)
-) -> None:
+def check_for_users(request: Request, session: Session = Depends(get_db)) -> None:
     """Check if there are any users in the database."""
     if not db.has_users(session):
         if request.url.path != "/auth/register_owner":

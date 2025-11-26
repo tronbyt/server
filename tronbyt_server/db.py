@@ -73,16 +73,20 @@ def init_db() -> None:
 
         # Check if we have an old database with json_data table
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='json_data'")
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='json_data'"
+        )
         has_json_data = cursor.fetchone() is not None
 
         # Check if we have the new users table
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        )
         has_users_table = cursor.fetchone() is not None
 
         if has_json_data and not has_users_table:
             logger.warning(
-                "\n" + "="*70 + "\n"
+                "\n" + "=" * 70 + "\n"
                 "OLD DATABASE FORMAT DETECTED - Running automatic migration...\n"
                 "\n"
                 "Your database uses the old JSON format. Converting to SQLModel.\n"
@@ -90,7 +94,8 @@ def init_db() -> None:
                 "  1. Create new relational tables\n"
                 "  2. Migrate all your data\n"
                 "  3. Rename json_data to json_data_backup (keeps your old data safe)\n"
-                + "="*70
+                + "="
+                * 70
             )
 
             # Run the migration automatically
@@ -102,7 +107,9 @@ def init_db() -> None:
 
                 if not success:
                     logger.error("❌ Automatic migration failed!")
-                    raise RuntimeError("Database migration failed. Please check the logs above.")
+                    raise RuntimeError(
+                        "Database migration failed. Please check the logs above."
+                    )
 
                 logger.info("✅ Automatic migration completed successfully!")
                 logger.info("Your data has been migrated to SQLModel format.")
@@ -110,11 +117,14 @@ def init_db() -> None:
             except Exception as e:
                 logger.error(f"Error during automatic migration: {e}")
                 import traceback
+
                 traceback.print_exc()
                 raise RuntimeError("Database migration failed. See error above.")
 
         if has_json_data and has_users_table:
-            logger.info("Both old and new tables detected - migration was completed previously")
+            logger.info(
+                "Both old and new tables detected - migration was completed previously"
+            )
 
     finally:
         conn.close()
@@ -136,7 +146,9 @@ def init_db() -> None:
 
         # Check if alembic.ini exists
         if not alembic_ini_path.exists():
-            logger.warning(f"alembic.ini not found at {alembic_ini_path}, skipping migrations")
+            logger.warning(
+                f"alembic.ini not found at {alembic_ini_path}, skipping migrations"
+            )
             return
 
         # Create Alembic config
@@ -984,7 +996,11 @@ def get_device_by_name(user: User, name: str) -> Device | None:
 
 
 def update_device_field(
-    session: Session | sqlite3.Cursor, username: str, device_id: str, field: str, value: Any
+    session: Session | sqlite3.Cursor,
+    username: str,
+    device_id: str,
+    field: str,
+    value: Any,
 ) -> None:
     """
     Update a single field for a device.
@@ -1123,7 +1139,9 @@ def get_user_by_device_id(session: Session, device_id: str) -> User | None:
     if user_db:
         try:
             user = db_ops.load_user_full(session, user_db)
-            logger.debug(f"Loaded user {user_db.username} with {len(user.devices)} devices")
+            logger.debug(
+                f"Loaded user {user_db.username} with {len(user.devices)} devices"
+            )
             device = user.devices.get(device_id)
             if device:
                 logger.debug(f"Device {device_id} has {len(device.apps)} apps")
@@ -1131,7 +1149,9 @@ def get_user_by_device_id(session: Session, device_id: str) -> User | None:
                 logger.error(f"Device {device_id} not found in user.devices")
             return user
         except Exception as e:
-            logger.error(f"Error loading user for device {device_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error loading user for device {device_id}: {e}", exc_info=True
+            )
             return None
     return None
 
@@ -1207,9 +1227,7 @@ def get_pushed_app(user: User, device_id: str, installation_id: str) -> App | No
     )
 
 
-def add_pushed_app(
-    session: Session, device_id: str, installation_id: str
-) -> None:
+def add_pushed_app(session: Session, device_id: str, installation_id: str) -> None:
     """Add a pushed app to a device."""
     user = get_user_by_device_id(session, device_id)
     if not user:
@@ -1259,7 +1277,9 @@ def save_render_messages(
                 user.username,
             )
         else:
-            logger.warning(f"App {app.iname} not found in database, cannot save render messages")
+            logger.warning(
+                f"App {app.iname} not found in database, cannot save render messages"
+            )
     except Exception as e:
         logger.error(
             f"Could not save render messages for app {app.iname} for user {user.username}: {e}"
