@@ -31,6 +31,7 @@ pixlet_render_app: (
             bool,  # output2x
             bytes | None,  # filters
             bytes | None,  # tz
+            bytes | None,  # locale
         ],
         Any,
     ]
@@ -118,6 +119,7 @@ def load_pixlet_library() -> None:
         ctypes.c_bool,  # output2x
         ctypes.c_char_p,  # filters
         ctypes.c_char_p,  # tz
+        ctypes.c_char_p,  # locale
     ]
 
     # Use c_void_p for the return type to avoid ctype's automatic copying into bytes() objects.
@@ -218,6 +220,7 @@ def render_app(
     supports2x: bool = False,
     filters: dict[str, Any] | None = None,
     tz: str | None = None,
+    locale: str | None = None,
 ) -> tuple[bytes | None, list[str]]:
     initialize_pixlet_library()
     if not pixlet_render_app:
@@ -225,6 +228,7 @@ def render_app(
         return None, []
     filters_json = json.dumps(filters).encode("utf-8") if filters else None
     tz_bytes = tz.encode("utf-8") if tz else None
+    locale_bytes = locale.encode("utf-8") if locale else None
     ret = pixlet_render_app(
         str(path).encode("utf-8"),
         json.dumps(config).encode("utf-8"),
@@ -237,6 +241,7 @@ def render_app(
         supports2x,
         filters_json,
         tz_bytes,
+        locale_bytes,
     )
     error = c_char_p_to_string(ret.error)
     messagesJSON = c_char_p_to_string(ret.messages)
@@ -253,6 +258,31 @@ def render_app(
             except Exception as e:
                 logger.error(f"Error: {e}")
         return buf, messages
+
+    match ret.length:
+        case -1:
+            logger.error(f"Invalid config for {path}")
+        case -2:
+            logger.error(f"Render failure for {path}")
+        case -3:
+            logger.error(f"Invalid filters for {path}")
+        case -4:
+            logger.error(f"Handler failure for {path}")
+        case -5:
+            logger.error(f"Invalid path for {path}")
+        case -6:
+            logger.error(f"Star suffix error for {path}")
+        case -7:
+            logger.error(f"Unknown applet for {path}")
+        case -8:
+            logger.error(f"Schema failure for {path}")
+        case -9:
+            logger.error(f"Invalid timezone for {path}")
+        case -10:
+            logger.error(f"Invalid locale for {path}")
+        case _:
+            logger.error(f"Unknown error for {path}: {ret.length}")
+
     return None, []
 
 
