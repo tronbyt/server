@@ -101,13 +101,14 @@ def test_migration_skips_invalid_apps_but_keeps_valid_data():
 
         cursor.execute(
             "INSERT INTO json_data (username, data) VALUES (?, ?)",
-            ("testuser", json.dumps(user_data))
+            ("testuser", json.dumps(user_data)),
         )
         conn.commit()
         conn.close()
 
         # Temporarily override the engine connection to use our test database
         from tronbyt_server import db_models
+
         original_engine = db_models.engine
 
         try:
@@ -204,12 +205,13 @@ def test_migration_handles_invalid_device_gracefully():
 
         cursor.execute(
             "INSERT INTO json_data (username, data) VALUES (?, ?)",
-            ("testuser", json.dumps(user_data))
+            ("testuser", json.dumps(user_data)),
         )
         conn.commit()
         conn.close()
 
         from tronbyt_server import db_models
+
         original_engine = db_models.engine
 
         try:

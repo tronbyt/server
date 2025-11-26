@@ -1153,6 +1153,7 @@ def deleteapp(
 
     # Delete from database directly (no need to save entire user tree)
     from tronbyt_server.db_models.operations import delete_app_by_iname
+
     delete_app_by_iname(session, device.id, iname)
 
     # Also remove from in-memory object for consistency
@@ -1415,6 +1416,7 @@ def updateapp_post(
 
     # Save just the app directly (no need to save entire user tree)
     from tronbyt_server.db_models.operations import save_app_full
+
     save_app_full(session, device.id, app)
 
     return RedirectResponse(

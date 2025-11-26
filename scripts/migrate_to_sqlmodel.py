@@ -46,7 +46,6 @@ project_root = script_dir.parent
 sys.path.insert(0, str(project_root))
 
 
-
 class MigrationStats:
     """Track migration statistics."""
 
@@ -111,7 +110,9 @@ def migrate_user(user: User, session: Session, stats: MigrationStats) -> UserDB 
             try:
                 migrate_device(device, user_db.id, session, stats)  # type: ignore
             except Exception as e:
-                error_msg = f"Error migrating device {device_id} for user {user.username}: {e}"
+                error_msg = (
+                    f"Error migrating device {device_id} for user {user.username}: {e}"
+                )
                 stats.errors.append(error_msg)
                 print(f"  ⚠️  {error_msg}")
 
@@ -187,7 +188,9 @@ def migrate_device(
             try:
                 migrate_app(app, device.id, session, stats)
             except Exception as e:
-                error_msg = f"Error migrating app {app_iname} on device {device.id}: {e}"
+                error_msg = (
+                    f"Error migrating app {app_iname} on device {device.id}: {e}"
+                )
                 stats.errors.append(error_msg)
                 print(f"    ⚠️  {error_msg}")
 
@@ -200,7 +203,9 @@ def migrate_device(
         return None
 
 
-def migrate_app(app: App, device_id: str, session: Session, stats: MigrationStats) -> AppDB | None:
+def migrate_app(
+    app: App, device_id: str, session: Session, stats: MigrationStats
+) -> AppDB | None:
     """Migrate a single app and its recurrence pattern."""
     try:
         # Convert time objects to HH:MM strings
@@ -346,7 +351,9 @@ def validate_migration(
             print(" ❌ MISMATCH")
             validation_passed = False
 
-        print(f"Locations: {len(new_location_count):5d} / {old_location_count:5d}", end="")
+        print(
+            f"Locations: {len(new_location_count):5d} / {old_location_count:5d}", end=""
+        )
         if len(new_location_count) == old_location_count:
             print(" ✓")
         else:
@@ -381,7 +388,9 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
     print("SQLMODEL MIGRATION SCRIPT")
     print("=" * 60)
     print(f"Database: {db_path}")
-    print(f"Mode:     {'DRY RUN (no changes will be made)' if dry_run else 'LIVE MIGRATION'}")
+    print(
+        f"Mode:     {'DRY RUN (no changes will be made)' if dry_run else 'LIVE MIGRATION'}"
+    )
     print(f"Time:     {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
@@ -394,7 +403,14 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
         cursor_clean = conn_clean.cursor()
 
         # Drop tables in reverse dependency order
-        for table in ['recurrence_patterns', 'apps', 'locations', 'devices', 'users', 'system_settings']:
+        for table in [
+            "recurrence_patterns",
+            "apps",
+            "locations",
+            "devices",
+            "users",
+            "system_settings",
+        ]:
             try:
                 cursor_clean.execute(f"DROP TABLE IF EXISTS {table}")
             except sqlite3.Error:
@@ -427,7 +443,9 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
                 try:
                     user_data = json.loads(user_json)
                     admin_system_repo_url = user_data.get("system_repo_url", "")
-                    print(f"  Found system_repo_url from admin: {admin_system_repo_url or '(empty)'}")
+                    print(
+                        f"  Found system_repo_url from admin: {admin_system_repo_url or '(empty)'}"
+                    )
                 except Exception:
                     pass
                 break
@@ -481,9 +499,7 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
                     print("\n📦 Renaming json_data table to json_data_backup...")
                     conn = sqlite3.connect(db_path)
                     cursor = conn.cursor()
-                    cursor.execute(
-                        "ALTER TABLE json_data RENAME TO json_data_backup"
-                    )
+                    cursor.execute("ALTER TABLE json_data RENAME TO json_data_backup")
                     conn.commit()
                     conn.close()
                     print("✓ Old table backed up successfully")
@@ -504,6 +520,7 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
     except Exception as e:
         print(f"\n❌ Migration failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
