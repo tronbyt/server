@@ -4,18 +4,15 @@ These models represent the relational database schema.
 They will eventually replace the JSON-based storage in db.py.
 """
 
-from datetime import date, datetime, time, timedelta
-from enum import Enum
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from sqlmodel import Column, Field, JSON, Relationship, SQLModel
 
 # Re-use enums from existing models
-from tronbyt_server.models.app import RecurrenceType, Weekday
+from tronbyt_server.models.app import RecurrenceType
 from tronbyt_server.models.device import (
     Brightness,
-    DeviceType,
-    ProtocolType,
     DEFAULT_DEVICE_TYPE,
 )
 from tronbyt_server.models.user import ThemePreference

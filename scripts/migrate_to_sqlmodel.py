@@ -28,15 +28,8 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
-
-# Add project root to path so we can import tronbyt_server
-script_dir = Path(__file__).resolve().parent
-project_root = script_dir.parent
-sys.path.insert(0, str(project_root))
-
-from sqlmodel import Session, select
-from tronbyt_server.db_models import (
+from sqlmodel import Session, select  # noqa: E402
+from tronbyt_server.db_models import (  # noqa: E402
     AppDB,
     DeviceDB,
     LocationDB,
@@ -45,7 +38,13 @@ from tronbyt_server.db_models import (
     create_db_and_tables,
     engine,
 )
-from tronbyt_server.models import App, Device, User
+from tronbyt_server.models import App, Device, User  # noqa: E402
+
+# Add project root to path so we can import tronbyt_server
+script_dir = Path(__file__).resolve().parent
+project_root = script_dir.parent
+sys.path.insert(0, str(project_root))
+
 
 
 class MigrationStats:
@@ -439,7 +438,7 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
             # Create system settings record first (check if it already exists)
             existing_settings = session.exec(select(SystemSettingsDB)).first()
             if existing_settings:
-                print(f"  ⚠️  System settings already exist, updating...")
+                print("  ⚠️  System settings already exist, updating...")
                 existing_settings.system_repo_url = admin_system_repo_url
                 session.add(existing_settings)
             else:
@@ -449,7 +448,7 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
                 )
                 session.add(system_settings)
             session.flush()  # Write to DB immediately
-            print(f"  ✓ System settings ready")
+            print("  ✓ System settings ready")
 
             for username, user_json in rows:
                 try:
