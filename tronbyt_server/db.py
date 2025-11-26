@@ -1124,7 +1124,18 @@ def get_user_by_device_id(session: Session, device_id: str) -> User | None:
     """Get a user by device ID."""
     user_db = db_ops.get_user_by_device_id(session, device_id)
     if user_db:
-        return db_ops.load_user_full(session, user_db)
+        try:
+            user = db_ops.load_user_full(session, user_db)
+            logger.debug(f"Loaded user {user_db.username} with {len(user.devices)} devices")
+            device = user.devices.get(device_id)
+            if device:
+                logger.debug(f"Device {device_id} has {len(device.apps)} apps")
+            else:
+                logger.error(f"Device {device_id} not found in user.devices")
+            return user
+        except Exception as e:
+            logger.error(f"Error loading user for device {device_id}: {e}", exc_info=True)
+            return None
     return None
 
 
