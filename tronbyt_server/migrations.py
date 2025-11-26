@@ -40,7 +40,9 @@ class MigrationStats:
         self.errors: list[str] = []  # Fatal errors only
 
 
-def migrate_user_from_dict(user_data: dict[str, Any], session: Session, stats: MigrationStats) -> UserDB | None:
+def migrate_user_from_dict(
+    user_data: dict[str, Any], session: Session, stats: MigrationStats
+) -> UserDB | None:
     """Migrate a single user and all their devices/apps from raw dict data.
 
     This function handles validation at a granular level, allowing invalid apps
@@ -108,7 +110,7 @@ def migrate_device_from_dict(
             if isinstance(dt, str):
                 try:
                     # Try ISO format first (most common)
-                    return datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                    return datetime.fromisoformat(dt.replace("Z", "+00:00"))
                 except Exception:
                     return None
             return None
@@ -241,7 +243,7 @@ def migrate_app_from_dict(
             if isinstance(dt, str):
                 try:
                     # Try ISO format first (most common)
-                    return datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                    return datetime.fromisoformat(dt.replace("Z", "+00:00"))
                 except Exception:
                     return None
             return None
@@ -253,7 +255,7 @@ def migrate_app_from_dict(
             if isinstance(d, str):
                 try:
                     # Try ISO format first
-                    parsed = datetime.fromisoformat(d.replace('Z', '+00:00'))
+                    parsed = datetime.fromisoformat(d.replace("Z", "+00:00"))
                     return parsed.date()
                 except Exception:
                     return None
@@ -298,7 +300,9 @@ def migrate_app_from_dict(
             uinterval=app_data.get("uinterval") or 0,
             display_time=app_data.get("display_time") or 15,
             notes=app_data.get("notes"),
-            enabled=app_data.get("enabled") if app_data.get("enabled") is not None else True,
+            enabled=app_data.get("enabled")
+            if app_data.get("enabled") is not None
+            else True,
             pushed=app_data.get("pushed") or False,
             order=app_data.get("order") or 0,
             last_render=parse_datetime(app_data.get("last_render")),
@@ -314,7 +318,9 @@ def migrate_app_from_dict(
             recurrence_end_date=parse_date(app_data.get("recurrence_end_date")),
             config=app_data.get("config") if app_data.get("config") is not None else {},
             empty_last_render=app_data.get("empty_last_render") or False,
-            render_messages=app_data.get("render_messages") if app_data.get("render_messages") is not None else [],
+            render_messages=app_data.get("render_messages")
+            if app_data.get("render_messages") is not None
+            else [],
             autopin=app_data.get("autopin") or False,
             device_id=device_id,
         )
@@ -440,14 +446,18 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
             logger.info(f"Devices migrated:        {stats.devices_migrated}")
             logger.info(f"Apps migrated:           {stats.apps_migrated}")
             logger.info(f"Locations migrated:      {stats.locations_migrated}")
-            logger.info(f"Recurrence patterns:     {stats.recurrence_patterns_migrated}")
+            logger.info(
+                f"Recurrence patterns:     {stats.recurrence_patterns_migrated}"
+            )
             if stats.devices_skipped > 0 or stats.apps_skipped > 0:
                 logger.info(f"Devices skipped:         {stats.devices_skipped}")
                 logger.info(f"Apps skipped:            {stats.apps_skipped}")
             logger.info("=" * 70)
 
             if len(stats.skipped) > 0:
-                logger.warning(f"⚠️  {len(stats.skipped)} incomplete records were skipped:")
+                logger.warning(
+                    f"⚠️  {len(stats.skipped)} incomplete records were skipped:"
+                )
                 for skip in stats.skipped:
                     logger.warning(f"  - {skip}")
 
@@ -456,7 +466,9 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
             if not validation_passed:
                 logger.error("❌ Validation failed - counts don't match")
             if len(stats.errors) > 0:
-                logger.error(f"❌ Migration encountered {len(stats.errors)} fatal errors:")
+                logger.error(
+                    f"❌ Migration encountered {len(stats.errors)} fatal errors:"
+                )
                 for error in stats.errors:
                     logger.error(f"  - {error}")
             logger.error("Keeping original json_data table - fix errors and retry")
@@ -465,6 +477,7 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
     except Exception as e:
         logger.error(f"Migration failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -481,22 +494,32 @@ def validate_migration(db_path: str, stats: MigrationStats) -> bool:
 
             # Check counts match
             if users_count != stats.users_migrated:
-                logger.warning(f"User count mismatch: {users_count} vs {stats.users_migrated}")
+                logger.warning(
+                    f"User count mismatch: {users_count} vs {stats.users_migrated}"
+                )
                 return False
 
             if devices_count != stats.devices_migrated:
-                logger.warning(f"Device count mismatch: {devices_count} vs {stats.devices_migrated}")
+                logger.warning(
+                    f"Device count mismatch: {devices_count} vs {stats.devices_migrated}"
+                )
                 return False
 
             if apps_count != stats.apps_migrated:
-                logger.warning(f"App count mismatch: {apps_count} vs {stats.apps_migrated}")
+                logger.warning(
+                    f"App count mismatch: {apps_count} vs {stats.apps_migrated}"
+                )
                 return False
 
             if locations_count != stats.locations_migrated:
-                logger.warning(f"Location count mismatch: {locations_count} vs {stats.locations_migrated}")
+                logger.warning(
+                    f"Location count mismatch: {locations_count} vs {stats.locations_migrated}"
+                )
                 return False
 
-            logger.info(f"✓ Validation passed: {users_count} users, {devices_count} devices, {apps_count} apps, {locations_count} locations")
+            logger.info(
+                f"✓ Validation passed: {users_count} users, {devices_count} devices, {apps_count} apps, {locations_count} locations"
+            )
             return True
 
     except Exception as e:

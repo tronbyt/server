@@ -52,8 +52,7 @@ class UserDB(SQLModel, table=True):
 
     # Relationships
     devices: list["DeviceDB"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
 
@@ -127,11 +126,11 @@ class DeviceDB(SQLModel, table=True):
     user: UserDB = Relationship(back_populates="devices")
     location: Optional["LocationDB"] = Relationship(
         back_populates="device",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
     apps: list["AppDB"] = Relationship(
         back_populates="device",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
 
 
@@ -175,7 +174,9 @@ class AppDB(SQLModel, table=True):
     empty_last_render: bool = False
     render_messages: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     autopin: bool = False
-    recurrence_pattern: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    recurrence_pattern: Optional[dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON)
+    )
 
     # Foreign key
     device_id: str = Field(foreign_key="devices.id", index=True)

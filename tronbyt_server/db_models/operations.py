@@ -79,7 +79,9 @@ def save_user_full(session: Session, user: "User", new_user: bool = False) -> Us
     """Save a complete User with all devices, apps, locations, etc."""
     # Create or update the user record
     if new_user:
-        user_db = create_user(session, user.username, user.password, user.email, user.api_key)
+        user_db = create_user(
+            session, user.username, user.password, user.email, user.api_key
+        )
     else:
         user_db = get_user_by_username(session, user.username)
         if not user_db:
@@ -143,7 +145,9 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
         "brightness": device.brightness.as_percent,
         "custom_brightness_scale": device.custom_brightness_scale,
         "night_brightness": device.night_brightness.as_percent,
-        "dim_brightness": device.dim_brightness.as_percent if device.dim_brightness is not None else None,
+        "dim_brightness": device.dim_brightness.as_percent
+        if device.dim_brightness is not None
+        else None,
         "night_mode_enabled": device.night_mode_enabled,
         "night_mode_app": device.night_mode_app,
         "night_start": time_to_str(device.night_start),
@@ -364,7 +368,9 @@ def get_user_by_device_id(session: Session, device_id: str) -> UserDB | None:
     return None
 
 
-def create_device(session: Session, user_id: int, device_data: dict[str, Any]) -> DeviceDB:
+def create_device(
+    session: Session, user_id: int, device_data: dict[str, Any]
+) -> DeviceDB:
     """Create a new device for a user."""
     device = DeviceDB(user_id=user_id, **device_data)
     session.add(device)
@@ -415,9 +421,7 @@ def get_app_by_device_and_iname(
     session: Session, device_id: str, iname: str
 ) -> AppDB | None:
     """Get an app by device ID and installation name."""
-    statement = select(AppDB).where(
-        AppDB.device_id == device_id, AppDB.iname == iname
-    )
+    statement = select(AppDB).where(AppDB.device_id == device_id, AppDB.iname == iname)
     return session.exec(statement).first()
 
 
@@ -524,7 +528,9 @@ def get_system_settings(session: Session) -> SystemSettingsDB:
     return settings
 
 
-def update_system_settings(session: Session, settings: SystemSettingsDB) -> SystemSettingsDB:
+def update_system_settings(
+    session: Session, settings: SystemSettingsDB
+) -> SystemSettingsDB:
     """Update system settings."""
     session.add(settings)
     session.commit()
@@ -599,7 +605,9 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
         brightness=Brightness(device_db.brightness),
         custom_brightness_scale=device_db.custom_brightness_scale,
         night_brightness=Brightness(device_db.night_brightness),
-        dim_brightness=Brightness(device_db.dim_brightness) if device_db.dim_brightness is not None else None,
+        dim_brightness=Brightness(device_db.dim_brightness)
+        if device_db.dim_brightness is not None
+        else None,
         night_mode_enabled=device_db.night_mode_enabled,
         night_mode_app=device_db.night_mode_app,
         night_start=device_db.night_start,
@@ -723,7 +731,9 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
         brightness=Brightness(device_db.brightness),
         custom_brightness_scale=device_db.custom_brightness_scale,
         night_brightness=Brightness(device_db.night_brightness),
-        dim_brightness=Brightness(device_db.dim_brightness) if device_db.dim_brightness is not None else None,
+        dim_brightness=Brightness(device_db.dim_brightness)
+        if device_db.dim_brightness is not None
+        else None,
         night_mode_enabled=device_db.night_mode_enabled,
         night_mode_app=device_db.night_mode_app,
         night_start=device_db.night_start,

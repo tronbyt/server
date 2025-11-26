@@ -408,9 +408,7 @@ async def sender(
         waiter.close()
 
 
-async def receiver(
-    websocket: WebSocket, device_id: str, session: Session
-) -> None:
+async def receiver(websocket: WebSocket, device_id: str, session: Session) -> None:
     """The receiver task for the websocket."""
     adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
     try:
