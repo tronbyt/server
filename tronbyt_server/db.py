@@ -7,7 +7,7 @@ import shutil
 import sqlite3
 import string
 from contextlib import contextmanager
-from datetime import date, datetime, timedelta, time as dt_time
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Generator, Literal
 from urllib.parse import quote, unquote
@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 import yaml
 from fastapi import UploadFile
 from pydantic import ValidationError
-from sqlmodel import Session, select
+from sqlmodel import Session
 from tzlocal import get_localzone, get_localzone_name
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
@@ -24,10 +24,7 @@ from werkzeug.utils import secure_filename
 from tronbyt_server import system_apps
 from tronbyt_server.config import get_settings
 from tronbyt_server.db_models import operations as db_ops
-from tronbyt_server.db_models.models import AppDB, DeviceDB, LocationDB, UserDB
-from tronbyt_server.models import App, AppMetadata, Brightness, Device, User, Weekday, RecurrencePattern, Location, RecurrenceType
-from tronbyt_server.models.user import ThemePreference
-from tronbyt_server.models.device import DeviceType
+from tronbyt_server.models import App, AppMetadata, Brightness, Device, User, Weekday
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +61,7 @@ def get_db() -> sqlite3.Connection:
 
 def init_db() -> None:
     """Initialize the database with SQLModel tables and run migrations."""
-    from tronbyt_server.db_models import create_db_and_tables, engine
+    from tronbyt_server.db_models import create_db_and_tables
     import sqlite3
 
     # Enable WAL mode for better concurrency

@@ -5,7 +5,7 @@ These functions replace the JSON manipulation in db.py with proper relational qu
 """
 
 import logging
-from datetime import date, datetime, timedelta, time as dt_time
+from datetime import date, datetime, time as dt_time, timedelta
 from typing import Any
 
 from sqlmodel import Session, select
@@ -77,8 +77,6 @@ def update_user(session: Session, user: UserDB) -> UserDB:
 
 def save_user_full(session: Session, user: "User", new_user: bool = False) -> UserDB:
     """Save a complete User with all devices, apps, locations, etc."""
-    from tronbyt_server.models import Device, App
-
     # Create or update the user record
     if new_user:
         user_db = create_user(session, user.username, user.password, user.email, user.api_key)
@@ -114,8 +112,6 @@ def save_user_full(session: Session, user: "User", new_user: bool = False) -> Us
 
 def save_device_full(session: Session, user_id: int, device: "Device") -> DeviceDB:
     """Save a complete Device with all apps and location."""
-    from datetime import time as dt_time
-
     # Check if device exists
     device_db = get_device_by_id(session, device.id)
 
@@ -220,8 +216,6 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
 
 def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
     """Save a complete App with recurrence pattern."""
-    from datetime import time as dt_time
-
     # Check if app exists
     app_db = get_app_by_device_and_iname(session, device_id, app.iname)
 
@@ -626,7 +620,6 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
 
 def load_app_full(session: Session, app_db: AppDB) -> App:
     """Load a complete App with recurrence pattern."""
-    from datetime import timedelta, time as dt_time
     from tronbyt_server.models.app import RecurrenceType, Weekday
 
     # Time fields are stored as strings in DB and App model expects strings
@@ -700,8 +693,7 @@ def user_db_to_model(user_db: UserDB, devices: list[DeviceDB]) -> User:
 
 def device_db_to_model(device_db: DeviceDB) -> Device:
     """Convert a DeviceDB to a Device Pydantic model."""
-    from tronbyt_server.models.device import Brightness, DeviceType, ProtocolType
-    from datetime import time as dt_time
+    from tronbyt_server.models.device import Brightness, DeviceType
 
     # Convert apps (would need session to load)
     # This is a placeholder - in practice, you'd pass apps or load them separately
@@ -752,7 +744,6 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
 
 def app_db_to_model(app_db: AppDB) -> App:
     """Convert an AppDB to an App Pydantic model."""
-    from datetime import timedelta, time as dt_time
     from tronbyt_server.models.app import RecurrenceType, Weekday
 
     # Parse time strings

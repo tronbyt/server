@@ -3,7 +3,6 @@
 import base64
 import hashlib
 import logging
-import sqlite3
 from pathlib import Path
 from typing import Any
 
