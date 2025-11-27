@@ -110,12 +110,12 @@ class AppMetadata(BaseModel):
     desc: str = ""
     author: str = ""
     path: str
-    fileName: str | None = None
-    packageName: str | None = None
+    file_name: str | None = Field(default=None, alias="fileName")
+    package_name: str | None = Field(default=None, alias="packageName")
     preview: str | None = None
     preview2x: str | None = None
     supports2x: bool = False
-    recommended_interval: int = 0
+    recommended_interval: int = Field(default=0, alias="recommendedInterval")
     date: str = ""  # ISO date string for file modification date
     is_installed: bool = False  # Used to mark if app is installed on any device
     uinterval: int = 0  # Update interval for the app
