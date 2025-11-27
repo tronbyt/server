@@ -206,7 +206,7 @@ def generate_apps_json(base_path: Path) -> None:
             else:
                 app_dict.summary = "System App"
 
-            package_name = app_dict.packageName or app_base_path.name
+            package_name = app_dict.package_name or app_base_path.name
 
             # Check for a preview in the repo and copy it over to static previews directory
             for image_name_base in [package_name, app_basename, "screenshot"]:

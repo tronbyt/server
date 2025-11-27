@@ -554,9 +554,9 @@
         {% endif %}
         {% if config['PRODUCTION'] == '0' and not app.path.startswith("users/") %}
           {% if app.broken %}
-          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
+          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.file_name or app.name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
           {% else %}
-          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.fileName or app.name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
+          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.file_name or app.name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
           {% endif %}
         {% endif %}
       </div>

@@ -686,13 +686,13 @@ def get_app_details(
             # we found it
             logger.debug(f"returning details for {app}")
             return app
-        # Also check fileName if looking up by name (with or without .star extension)
+        # Also check file_name if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.fileName or ""
+            file_name = app.file_name or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
-                logger.debug(f"returning details for {app} (matched by fileName)")
+                logger.debug(f"returning details for {app} (matched by file_name)")
                 return app
     # if we get here then the app is not in custom apps
     # so we need to look in the system-apps directory
@@ -700,13 +700,13 @@ def get_app_details(
     for app in apps:
         if getattr(app, field) == value:
             return app
-        # Also check fileName if looking up by name (with or without .star extension)
+        # Also check file_name if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.fileName or ""
+            file_name = app.file_name or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
-                logger.debug(f"returning details for {app} (matched by fileName)")
+                logger.debug(f"returning details for {app} (matched by file_name)")
                 return app
     return None
 
