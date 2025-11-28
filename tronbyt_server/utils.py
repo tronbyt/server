@@ -82,6 +82,7 @@ def render_app(
         supports2x=device.supports_2x(),
         filters=None,
         tz=tz,
+        locale=device.locale,
     )
 
     if data is None:

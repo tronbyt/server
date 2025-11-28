@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-11-15 20:28+0100\n"
+"POT-Creation-Date: 2025-11-28 22:25+0100\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -18,59 +18,59 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tronbyt_server/templates.py:20
+#: tronbyt_server/templates.py:21
 msgid "Never"
 msgstr "Nie"
 
-#: tronbyt_server/utils.py:135
+#: tronbyt_server/utils.py:142
 msgid "Repo Cloned"
 msgstr "Repo geklont"
 
-#: tronbyt_server/utils.py:136
+#: tronbyt_server/utils.py:143
 msgid "Repo Updated"
 msgstr "Repo aktualisiert"
 
-#: tronbyt_server/utils.py:137
+#: tronbyt_server/utils.py:144
 msgid "Repo removed"
 msgstr "Repo entfernt"
 
-#: tronbyt_server/utils.py:138
+#: tronbyt_server/utils.py:145
 msgid "Error Cloning or Updating Repo"
 msgstr "Fehler beim Klonen oder Aktualisieren des Repos"
 
-#: tronbyt_server/utils.py:139
+#: tronbyt_server/utils.py:146
 msgid "No Changes to Repo"
 msgstr "Keine Änderungen am Repo"
 
-#: tronbyt_server/routers/auth.py:88 tronbyt_server/routers/auth.py:177
+#: tronbyt_server/routers/auth.py:87 tronbyt_server/routers/auth.py:176
 msgid "Password is required."
 msgstr "Passwort ist erforderlich."
 
-#: tronbyt_server/routers/auth.py:101
+#: tronbyt_server/routers/auth.py:100
 msgid "admin user created. Please log in."
 msgstr "admin-Benutzer erstellt. Bitte anmelden."
 
-#: tronbyt_server/routers/auth.py:106
+#: tronbyt_server/routers/auth.py:105
 msgid "Could not create admin user."
 msgstr "Konnte Admin-Benutzer nicht erstellen."
 
-#: tronbyt_server/routers/auth.py:125 tronbyt_server/routers/auth.py:156
+#: tronbyt_server/routers/auth.py:124 tronbyt_server/routers/auth.py:155
 msgid "User registration is not enabled."
 msgstr "Benutzerregistrierung ist nicht aktiviert."
 
-#: tronbyt_server/routers/auth.py:165
+#: tronbyt_server/routers/auth.py:164
 msgid "Maximum number of users reached. Registration is disabled."
 msgstr "Maximale Benutzeranzahl erreicht. Registrierung ist deaktiviert."
 
-#: tronbyt_server/routers/auth.py:174
+#: tronbyt_server/routers/auth.py:173
 msgid "Username is required."
 msgstr "Benutzername ist erforderlich."
 
-#: tronbyt_server/routers/auth.py:180
+#: tronbyt_server/routers/auth.py:179
 msgid "User is already registered."
 msgstr "Benutzer ist bereits registriert."
 
-#: tronbyt_server/routers/auth.py:196
+#: tronbyt_server/routers/auth.py:195
 #, python-brace-format
 msgid "User {username} registered successfully."
 msgstr "Benutzer {username} erfolgreich registriert."
@@ -88,221 +88,207 @@ msgstr "Konnte Benutzer nicht speichern"
 msgid "Incorrect username/password."
 msgstr "Falscher Benutzername/Passwort."
 
-#: tronbyt_server/routers/auth.py:323
+#: tronbyt_server/routers/auth.py:325
 msgid "Bad old password."
 msgstr "Falsches altes Passwort."
 
-#: tronbyt_server/routers/auth.py:329
+#: tronbyt_server/routers/auth.py:331
 msgid "Success"
 msgstr "Erfolg"
 
-#: tronbyt_server/routers/auth.py:336
+#: tronbyt_server/routers/auth.py:340
 msgid "Logged Out"
 msgstr "Abgemeldet"
 
-#: tronbyt_server/routers/auth.py:389
+#: tronbyt_server/routers/auth.py:393
 msgid "New API key generated successfully."
 msgstr "Neuer API-Schlüssel erfolgreich generiert."
 
-#: tronbyt_server/routers/auth.py:391
+#: tronbyt_server/routers/auth.py:395
 msgid "Failed to generate new API key."
 msgstr "Neuer API-Schlüssel konnte nicht generiert werden."
 
-#: tronbyt_server/routers/manager.py:448
+#: tronbyt_server/routers/manager.py:481
 msgid "Unique name is required."
 msgstr "Ein eindeutiger Name ist erforderlich."
 
-#: tronbyt_server/routers/manager.py:464
+#: tronbyt_server/routers/manager.py:502
 msgid "Could not generate a unique device ID."
 msgstr "Konnte keine eindeutige Geräte-ID generieren."
 
-#: tronbyt_server/routers/manager.py:511 tronbyt_server/routers/manager.py:740
+#: tronbyt_server/routers/manager.py:549 tronbyt_server/routers/manager.py:832
 msgid "Invalid location"
 msgstr "Ungültiger Standort"
 
-#: tronbyt_server/routers/manager.py:513 tronbyt_server/routers/manager.py:742
+#: tronbyt_server/routers/manager.py:551 tronbyt_server/routers/manager.py:834
 #, python-brace-format
 msgid "Location JSON error {error}"
 msgstr "Standort JSON-Fehler {error}"
 
-#: tronbyt_server/routers/manager.py:664
-msgid "Id and Name is required."
-msgstr "ID und Name sind erforderlich."
+#: tronbyt_server/routers/manager.py:730 tronbyt_server/routers/manager.py:1398
+msgid "Name is required."
+msgstr "Name ist erforderlich."
 
-#: tronbyt_server/routers/manager.py:696
+#: tronbyt_server/routers/manager.py:761
+msgid ""
+"Invalid custom brightness scale format. Use 6 comma-separated values "
+"(0-100)."
+msgstr ""
+
+#: tronbyt_server/routers/manager.py:786
 #, python-brace-format
 msgid "Invalid night start time: {error}"
 msgstr "Ungültige Nacht-Startzeit: {error}"
 
-#: tronbyt_server/routers/manager.py:702
+#: tronbyt_server/routers/manager.py:792
 #, python-brace-format
 msgid "Invalid night end time: {error}"
 msgstr "Ungültige Nacht-Endzeit: {error}"
 
-#: tronbyt_server/routers/manager.py:710
+#: tronbyt_server/routers/manager.py:800
 #, python-brace-format
 msgid "Invalid dim time: {error}"
 msgstr "Ungültige Dimm-Zeit: {error}"
 
-#: tronbyt_server/routers/manager.py:826
+#: tronbyt_server/routers/manager.py:929
 msgid "App name required."
 msgstr "App-Name erforderlich."
 
-#: tronbyt_server/routers/manager.py:837 tronbyt_server/routers/manager.py:1082
+#: tronbyt_server/routers/manager.py:941 tronbyt_server/routers/manager.py:1217
 msgid "Could not generate a unique installation ID."
 msgstr "Konnte keine eindeutige Installations-ID generieren."
 
-#: tronbyt_server/routers/manager.py:844 tronbyt_server/routers/manager.py:1335
+#: tronbyt_server/routers/manager.py:949 tronbyt_server/routers/manager.py:1478
 msgid "App not found."
 msgstr "App nicht gefunden."
 
-#: tronbyt_server/routers/manager.py:915
+#: tronbyt_server/routers/manager.py:1033
 msgid "No file"
 msgstr "Keine Datei"
 
-#: tronbyt_server/routers/manager.py:929
+#: tronbyt_server/routers/manager.py:1048
 msgid "Invalid file path"
 msgstr "Ungültiger Dateipfad"
 
-#: tronbyt_server/routers/manager.py:938
+#: tronbyt_server/routers/manager.py:1057
 msgid "File type not allowed"
 msgstr "Dateityp nicht erlaubt"
 
-#: tronbyt_server/routers/manager.py:946
+#: tronbyt_server/routers/manager.py:1065
 msgid "Upload Successful"
 msgstr "Upload erfolgreich"
 
-#: tronbyt_server/routers/manager.py:997
+#: tronbyt_server/routers/manager.py:1126
 #, python-brace-format
 msgid "Cannot delete {filename} because it is installed on a device."
 msgstr "Kann {filename} nicht löschen, da es auf einem Gerät installiert ist."
 
-#: tronbyt_server/routers/manager.py:1051
+#: tronbyt_server/routers/manager.py:1184
 msgid "App pinned."
 msgstr "App angeheftet."
 
-#: tronbyt_server/routers/manager.py:1053
+#: tronbyt_server/routers/manager.py:1186
 msgid "App unpinned."
 msgstr "App entpinnt."
 
-#: tronbyt_server/routers/manager.py:1056
+#: tronbyt_server/routers/manager.py:1189
 msgid "Error updating pin status."
 msgstr "Fehler beim Aktualisieren des Pin-Status."
 
-#: tronbyt_server/routers/manager.py:1149
+#: tronbyt_server/routers/manager.py:1284
 msgid "App duplicated successfully."
 msgstr "App erfolgreich dupliziert."
 
-#: tronbyt_server/routers/manager.py:1261
-msgid "Name is required."
-msgstr "Name ist erforderlich."
-
-#: tronbyt_server/routers/manager.py:1304
+#: tronbyt_server/routers/manager.py:1443
 msgid "Changes saved."
 msgstr "Änderungen gespeichert."
 
-#: tronbyt_server/routers/manager.py:1307
+#: tronbyt_server/routers/manager.py:1446
 msgid "Error saving changes."
 msgstr "Fehler beim Speichern der Änderungen"
 
-#: tronbyt_server/routers/manager.py:1321
+#: tronbyt_server/routers/manager.py:1462
 msgid "Invalid direction."
 msgstr "Ungültige Richtung."
 
-#: tronbyt_server/routers/manager.py:1384
+#: tronbyt_server/routers/manager.py:1537
 msgid "Error saving app, please try again."
 msgstr "Fehler beim Speichern der App, bitte erneut versuchen."
 
-#: tronbyt_server/routers/manager.py:1445
+#: tronbyt_server/routers/manager.py:1601
 msgid "Error Rendering App"
 msgstr "Fehler beim Rendern der App"
 
-#: tronbyt_server/routers/manager.py:1679
+#: tronbyt_server/routers/manager.py:1851
 msgid "API Key cannot be empty."
 msgstr "API-Schlüssel darf nicht leer sein."
 
-#: tronbyt_server/routers/manager.py:1723
+#: tronbyt_server/routers/manager.py:1903
 msgid "System repo updated successfully"
 msgstr "System-Repo erfolgreich aktualisiert"
 
-#: tronbyt_server/routers/manager.py:1879
-#, python-brace-format
-msgid "✅ {result['message']}"
-msgstr "✅ {result['message']}"
+#: tronbyt_server/routers/manager.py:2068
+msgid "Firmware update failed"
+msgstr "Firmware-Update fehlgeschlagen"
 
-#: tronbyt_server/routers/manager.py:1881
-#, python-brace-format
-msgid "ℹ️ {result['message']}"
-msgstr "ℹ️ {result['message']}"
-
-#: tronbyt_server/routers/manager.py:1883
-#, python-brace-format
-msgid "❌ {result['message']}"
-msgstr "❌ {result['message']}"
-
-#: tronbyt_server/routers/manager.py:1886
-#, python-brace-format
-msgid "❌ Firmware update failed: {str(e)}"
-msgstr "❌ Firmware-Update fehlgeschlagen: {str(e)}"
-
-#: tronbyt_server/routers/manager.py:1967
-#: tronbyt_server/routers/manager.py:2038
-#: tronbyt_server/routers/manager.py:2112
+#: tronbyt_server/routers/manager.py:2153
+#: tronbyt_server/routers/manager.py:2228
+#: tronbyt_server/routers/manager.py:2314
 msgid "No selected file"
 msgstr "Keine Datei ausgewählt"
 
-#: tronbyt_server/routers/manager.py:1973
-#: tronbyt_server/routers/manager.py:2041
-#: tronbyt_server/routers/manager.py:2115
+#: tronbyt_server/routers/manager.py:2159
+#: tronbyt_server/routers/manager.py:2233
+#: tronbyt_server/routers/manager.py:2319
 msgid "Invalid file type. Please upload a JSON file."
 msgstr "Ungültiger Dateityp. Bitte eine JSON-Datei hochladen."
 
-#: tronbyt_server/routers/manager.py:1983
-#: tronbyt_server/routers/manager.py:2048
-#: tronbyt_server/routers/manager.py:2122
+#: tronbyt_server/routers/manager.py:2169
+#: tronbyt_server/routers/manager.py:2242
+#: tronbyt_server/routers/manager.py:2328
 msgid "Invalid JSON structure"
 msgstr "Ungültige JSON-Struktur"
 
-#: tronbyt_server/routers/manager.py:1989
+#: tronbyt_server/routers/manager.py:2175
 msgid "Invalid config file: missing device ID"
 msgstr "Ungültige Konfigurationsdatei: Geräte-ID fehlt"
 
-#: tronbyt_server/routers/manager.py:1995
+#: tronbyt_server/routers/manager.py:2181
 msgid "Not the same device id. Import skipped."
 msgstr "Nicht die gleiche Geräte-ID. Import übersprungen."
 
-#: tronbyt_server/routers/manager.py:2005
-#: tronbyt_server/routers/manager.py:2145
+#: tronbyt_server/routers/manager.py:2193
+#: tronbyt_server/routers/manager.py:2353
 msgid "Invalid device configuration file"
 msgstr "Ungültige Gerätekonfigurationsdatei"
 
-#: tronbyt_server/routers/manager.py:2013
-#: tronbyt_server/routers/manager.py:2153
+#: tronbyt_server/routers/manager.py:2201
+#: tronbyt_server/routers/manager.py:2361
 msgid "Device configuration imported successfully"
 msgstr "Gerätekonfiguration erfolgreich importiert"
 
-#: tronbyt_server/routers/manager.py:2016
-#: tronbyt_server/routers/manager.py:2087
-#: tronbyt_server/routers/manager.py:2156
+#: tronbyt_server/routers/manager.py:2206
+#: tronbyt_server/routers/manager.py:2285
+#: tronbyt_server/routers/manager.py:2366
 #, python-brace-format
 msgid "Error parsing JSON file: {error}"
 msgstr "Fehler beim Parsen der JSON-Datei: {error}"
 
-#: tronbyt_server/routers/manager.py:2022
-#: tronbyt_server/routers/manager.py:2091
+#: tronbyt_server/routers/manager.py:2212
+#: tronbyt_server/routers/manager.py:2291
 #, python-brace-format
 msgid "Error importing config: {error}"
 msgstr "Fehler beim Importieren der Konfiguration: {error}"
 
-#: tronbyt_server/routers/manager.py:2083
+#: tronbyt_server/routers/manager.py:2279
 msgid "User configuration imported successfully"
 msgstr "Benutzerkonfiguration erfolgreich importiert"
 
-#: tronbyt_server/routers/manager.py:2130
+#: tronbyt_server/routers/manager.py:2336
 msgid "Device ID missing in config."
 msgstr "Geräte-ID fehlt in der Konfiguration."
 
-#: tronbyt_server/routers/manager.py:2135
+#: tronbyt_server/routers/manager.py:2341
 msgid "Device already exists. Import skipped."
 msgstr "Gerät existiert bereits. Import übersprungen."
 
@@ -389,7 +375,7 @@ msgid "System Apps Repository"
 msgstr "System-Apps-Repository"
 
 #: tronbyt_server/templates/auth/edit.html:13
-#: tronbyt_server/templates/auth/edit.html:100
+#: tronbyt_server/templates/auth/edit.html:106
 msgid "Current Repository"
 msgstr "Aktuelles Repo"
 
@@ -401,44 +387,45 @@ msgstr "Branch"
 msgid "Commit"
 msgstr "Commit"
 
-#: tronbyt_server/templates/auth/edit.html:32
+#: tronbyt_server/templates/auth/edit.html:39
 msgid "No system repository configured."
 msgstr "Kein System-Repo konfiguriert."
 
-#: tronbyt_server/templates/auth/edit.html:36
-msgid "Refresh system apps repository?"
-msgstr "System-Apps Repo aktualisieren?"
+#: tronbyt_server/templates/auth/edit.html:42
+#: tronbyt_server/templates/auth/edit.html:124
+msgid "Refreshing..."
+msgstr "Wird aktualisiert..."
 
-#: tronbyt_server/templates/auth/edit.html:37
-#: tronbyt_server/templates/auth/edit.html:120
+#: tronbyt_server/templates/auth/edit.html:44
+#: tronbyt_server/templates/auth/edit.html:126
 msgid "Refresh"
 msgstr "Aktualisieren"
 
-#: tronbyt_server/templates/auth/edit.html:43
-#: tronbyt_server/templates/auth/edit.html:134
+#: tronbyt_server/templates/auth/edit.html:50
+#: tronbyt_server/templates/auth/edit.html:140
 msgid "Change Repository"
 msgstr "Repo ändern"
 
-#: tronbyt_server/templates/auth/edit.html:47
-#: tronbyt_server/templates/auth/edit.html:138
+#: tronbyt_server/templates/auth/edit.html:54
+#: tronbyt_server/templates/auth/edit.html:144
 msgid "Repository URL"
 msgstr "Repository-URL"
 
-#: tronbyt_server/templates/auth/edit.html:51
-#: tronbyt_server/templates/auth/edit.html:142
-#: tronbyt_server/templates/auth/edit.html:166
-#: tronbyt_server/templates/auth/edit.html:179
+#: tronbyt_server/templates/auth/edit.html:58
+#: tronbyt_server/templates/auth/edit.html:148
+#: tronbyt_server/templates/auth/edit.html:172
+#: tronbyt_server/templates/auth/edit.html:185
 #: tronbyt_server/templates/manager/configapp.html:25
 #: tronbyt_server/templates/manager/configapp.html:757
-#: tronbyt_server/templates/manager/create.html:114
+#: tronbyt_server/templates/manager/create.html:108
 #: tronbyt_server/templates/manager/update.html:55
-#: tronbyt_server/templates/manager/update.html:478
+#: tronbyt_server/templates/manager/update.html:543
 #: tronbyt_server/templates/manager/updateapp.html:23
 #: tronbyt_server/templates/manager/updateapp.html:367
 msgid "Save"
 msgstr "Speichern"
 
-#: tronbyt_server/templates/auth/edit.html:54
+#: tronbyt_server/templates/auth/edit.html:61
 msgid ""
 "Replacing the existing system repo will delete the previous repo and "
 "break any apps using that repo."
@@ -446,43 +433,39 @@ msgstr ""
 "Das Ersetzen des vorhandenen System-Repos löscht das vorherige Repo und "
 "alle Apps, die dieses Repo verwenden."
 
-#: tronbyt_server/templates/auth/edit.html:59
+#: tronbyt_server/templates/auth/edit.html:66
 msgid "Firmware Management"
 msgstr "Firmware Verwaltung"
 
-#: tronbyt_server/templates/auth/edit.html:64
+#: tronbyt_server/templates/auth/edit.html:71
 msgid "Current Firmware"
 msgstr "Aktuelle Firmware:"
 
-#: tronbyt_server/templates/auth/edit.html:68
+#: tronbyt_server/templates/auth/edit.html:75
 msgid "Version"
 msgstr "Version"
 
-#: tronbyt_server/templates/auth/edit.html:71
+#: tronbyt_server/templates/auth/edit.html:78
 msgid "Firmware is automatically updated when the server starts."
 msgstr "Firmware wird automatisch aktualisiert, wenn der Server startet."
 
-#: tronbyt_server/templates/auth/edit.html:75
+#: tronbyt_server/templates/auth/edit.html:82
 msgid "No firmware version information available"
 msgstr "Keine Firmware-Versionsinformationen verfügbar"
 
-#: tronbyt_server/templates/auth/edit.html:78
+#: tronbyt_server/templates/auth/edit.html:85
 msgid "Updating..."
 msgstr "Aktualiserung…"
 
-#: tronbyt_server/templates/auth/edit.html:79
-msgid "Check for firmware updates and download if available?"
-msgstr "Nach Firmware-Updates suchen und herunterladen, falls verfügbar?"
-
-#: tronbyt_server/templates/auth/edit.html:81
+#: tronbyt_server/templates/auth/edit.html:87
 msgid "Update"
 msgstr "Aktualisieren"
 
-#: tronbyt_server/templates/auth/edit.html:81
+#: tronbyt_server/templates/auth/edit.html:87
 msgid "Download"
 msgstr "Herunterladen"
 
-#: tronbyt_server/templates/auth/edit.html:88
+#: tronbyt_server/templates/auth/edit.html:94
 msgid ""
 "Note: This updates the firmware files available for flashing, not the "
 "firmware on existing devices. Devices must be manually reflashed to use "
@@ -492,27 +475,23 @@ msgstr ""
 "nicht die Firmware auf vorhandenen Geräten. Geräte müssen manuell neu "
 "geflasht werden, um die neue Firmware zu verwenden."
 
-#: tronbyt_server/templates/auth/edit.html:93
+#: tronbyt_server/templates/auth/edit.html:99
 msgid "User Settings"
 msgstr "Einstellungen"
 
-#: tronbyt_server/templates/auth/edit.html:95
+#: tronbyt_server/templates/auth/edit.html:101
 msgid "Custom Apps Repository"
 msgstr "Benutzerdefiniertes Apps-Repository"
 
-#: tronbyt_server/templates/auth/edit.html:109
+#: tronbyt_server/templates/auth/edit.html:115
 msgid "Custom apps repository configured"
 msgstr "Benutzerdefiniertes Apps-Repository konfiguriert"
 
-#: tronbyt_server/templates/auth/edit.html:113
+#: tronbyt_server/templates/auth/edit.html:119
 msgid "No custom repository configured."
 msgstr "Kein benutzerdefiniertes Repository konfiguriert."
 
-#: tronbyt_server/templates/auth/edit.html:119
-msgid "Refresh custom apps repository?"
-msgstr "Benutzerdefiniertes Apps-Repository aktualisieren?"
-
-#: tronbyt_server/templates/auth/edit.html:123
+#: tronbyt_server/templates/auth/edit.html:129
 msgid ""
 "Remove custom repository? This will delete the repo and break any apps "
 "using it."
@@ -520,11 +499,11 @@ msgstr ""
 "Benutzerdefiniertes Repository entfernen? Dadurch wird das Repo gelöscht "
 "und alle Apps, die es verwenden, werden unbrauchbar."
 
-#: tronbyt_server/templates/auth/edit.html:126
+#: tronbyt_server/templates/auth/edit.html:132
 msgid "Remove"
 msgstr "Löschen"
 
-#: tronbyt_server/templates/auth/edit.html:145
+#: tronbyt_server/templates/auth/edit.html:151
 msgid ""
 "Replacing an existing custom repo will delete the previous repo and break"
 " any apps using that repo."
@@ -532,45 +511,45 @@ msgstr ""
 "Das Ersetzen eines vorhandenen benutzerdefinierten Repos löscht das "
 "vorherige Repo und alle Apps, die dieses Repo verwenden."
 
-#: tronbyt_server/templates/auth/edit.html:150
+#: tronbyt_server/templates/auth/edit.html:156
 msgid "Security Settings"
 msgstr "Sicherheitseinstellungen"
 
-#: tronbyt_server/templates/auth/edit.html:154
+#: tronbyt_server/templates/auth/edit.html:160
 msgid "Change Password"
 msgstr "Passwort ändern"
 
-#: tronbyt_server/templates/auth/edit.html:158
+#: tronbyt_server/templates/auth/edit.html:164
 msgid "Old Password"
 msgstr "Altes Passwort"
 
-#: tronbyt_server/templates/auth/edit.html:162
+#: tronbyt_server/templates/auth/edit.html:168
 msgid "New Password"
 msgstr "Neues Passwort"
 
-#: tronbyt_server/templates/auth/edit.html:175
+#: tronbyt_server/templates/auth/edit.html:181
 msgid "User API Key"
 msgstr "Benutzer API-Schlüssel"
 
-#: tronbyt_server/templates/auth/edit.html:178
+#: tronbyt_server/templates/auth/edit.html:184
 msgid "Update API key?"
 msgstr "API-Schlüssel aktualisieren?"
 
-#: tronbyt_server/templates/auth/edit.html:183
+#: tronbyt_server/templates/auth/edit.html:189
 msgid "Generate a new API key? This will replace your current API key."
 msgstr ""
 "Einen neuen API-Schlüssel generieren? Dies ersetzt Ihren aktuellen API-"
 "Schlüssel."
 
-#: tronbyt_server/templates/auth/edit.html:184
+#: tronbyt_server/templates/auth/edit.html:190
 msgid "Generate New"
 msgstr "Neu generieren"
 
-#: tronbyt_server/templates/auth/edit.html:190
+#: tronbyt_server/templates/auth/edit.html:196
 msgid "Data Management"
 msgstr "Daten Verwaltung"
 
-#: tronbyt_server/templates/auth/edit.html:193
+#: tronbyt_server/templates/auth/edit.html:199
 msgid ""
 "Use the export and import features to backup your user account or to move"
 " your devices to a new server. The export function creates a JSON file "
@@ -587,27 +566,27 @@ msgstr ""
 "Sicherheitsgründen nicht im Export enthalten, daher müssen Sie sich Ihr "
 "Passwort merken, wenn Sie auf einen neuen Server importieren."
 
-#: tronbyt_server/templates/auth/edit.html:197
-#: tronbyt_server/templates/manager/update.html:469
+#: tronbyt_server/templates/auth/edit.html:203
+#: tronbyt_server/templates/manager/update.html:534
 msgid "Export Configuration"
 msgstr "Konfiguration exportieren"
 
-#: tronbyt_server/templates/auth/edit.html:199
+#: tronbyt_server/templates/auth/edit.html:205
 msgid "Download your entire user configuration as a JSON file."
 msgstr "Exportieren Sie Ihre gesamte Benutzerkonfiguration als JSON-Datei."
 
-#: tronbyt_server/templates/auth/edit.html:203
+#: tronbyt_server/templates/auth/edit.html:209
 msgid "Export"
 msgstr "Exportieren"
 
-#: tronbyt_server/templates/auth/edit.html:208
-#: tronbyt_server/templates/manager/create.html:117
+#: tronbyt_server/templates/auth/edit.html:214
+#: tronbyt_server/templates/manager/create.html:111
 #: tronbyt_server/templates/manager/import_config.html:10
-#: tronbyt_server/templates/manager/update.html:472
+#: tronbyt_server/templates/manager/update.html:537
 msgid "Import Configuration"
 msgstr "Konfiguration importieren"
 
-#: tronbyt_server/templates/auth/edit.html:210
+#: tronbyt_server/templates/auth/edit.html:216
 msgid ""
 "Import your user configuration from a JSON file. This will replace your "
 "current configuration, but preserve your username and password."
@@ -616,15 +595,15 @@ msgstr ""
 "wird Ihre aktuelle Konfiguration ersetzt, aber Ihr Benutzername und "
 "Passwort bleiben erhalten."
 
-#: tronbyt_server/templates/auth/edit.html:215
+#: tronbyt_server/templates/auth/edit.html:221
 msgid "Select JSON File"
 msgstr "JSON-Datei auswählen"
 
-#: tronbyt_server/templates/auth/edit.html:219
+#: tronbyt_server/templates/auth/edit.html:225
 msgid "Import"
 msgstr "Importieren"
 
-#: tronbyt_server/templates/auth/edit.html:228
+#: tronbyt_server/templates/auth/edit.html:234
 msgid "Server"
 msgstr "Server"
 
@@ -689,58 +668,58 @@ msgstr ".star oder .webp Datei hochladen"
 msgid "App Selection"
 msgstr "App-Auswahl"
 
-#: tronbyt_server/templates/manager/addapp.html:480
+#: tronbyt_server/templates/manager/addapp.html:482
 msgid "Search apps"
 msgstr "Apps suchen"
 
-#: tronbyt_server/templates/manager/addapp.html:487
+#: tronbyt_server/templates/manager/addapp.html:489
 msgid "Hide installed apps"
 msgstr "Installierte Apps ausblenden"
 
-#: tronbyt_server/templates/manager/addapp.html:493
+#: tronbyt_server/templates/manager/addapp.html:495
 msgid "Hide broken apps"
 msgstr "Defekte Apps ausblenden"
 
-#: tronbyt_server/templates/manager/addapp.html:497
+#: tronbyt_server/templates/manager/addapp.html:499
 msgid "Sort by:"
 msgstr "Sortieren nach:"
 
-#: tronbyt_server/templates/manager/addapp.html:499
+#: tronbyt_server/templates/manager/addapp.html:501
 msgid "Default"
 msgstr "Standard"
 
-#: tronbyt_server/templates/manager/addapp.html:500
+#: tronbyt_server/templates/manager/addapp.html:502
 msgid "Newest"
 msgstr "Neueste"
 
-#: tronbyt_server/templates/manager/addapp.html:501
+#: tronbyt_server/templates/manager/addapp.html:503
 msgid "Alphabetical (A-Z)"
 msgstr "Alphabetisch (A-Z)"
 
-#: tronbyt_server/templates/manager/addapp.html:502
+#: tronbyt_server/templates/manager/addapp.html:504
 msgid "Alphabetical (Z-A)"
 msgstr "Alphabetisch (Z-A)"
 
-#: tronbyt_server/templates/manager/addapp.html:514
+#: tronbyt_server/templates/manager/addapp.html:516
 msgid "Installed"
 msgstr "Installiert"
 
-#: tronbyt_server/templates/manager/addapp.html:538
+#: tronbyt_server/templates/manager/addapp.html:540
 msgid "From"
 msgstr "Von"
 
-#: tronbyt_server/templates/manager/addapp.html:542
+#: tronbyt_server/templates/manager/addapp.html:544
 msgid "BROKEN"
 msgstr "DEFEKT"
 
-#: tronbyt_server/templates/manager/addapp.html:549
+#: tronbyt_server/templates/manager/addapp.html:551
 msgid "Delete this uploaded app?"
 msgstr "Hochgeladene App löschen?"
 
-#: tronbyt_server/templates/manager/addapp.html:550
+#: tronbyt_server/templates/manager/addapp.html:552
 #: tronbyt_server/templates/manager/adminindex.html:18
 #: tronbyt_server/templates/manager/update.html:64
-#: tronbyt_server/templates/manager/update.html:479
+#: tronbyt_server/templates/manager/update.html:544
 #: tronbyt_server/templates/manager/updateapp.html:26
 #: tronbyt_server/templates/manager/updateapp.html:370
 #: tronbyt_server/templates/manager/uploadapp.html:14
@@ -748,45 +727,44 @@ msgstr "Hochgeladene App löschen?"
 msgid "Delete"
 msgstr "Löschen"
 
-#: tronbyt_server/templates/manager/addapp.html:555
+#: tronbyt_server/templates/manager/addapp.html:557
 msgid "Unmark Broken"
 msgstr "Als funktionierend markieren"
 
-#: tronbyt_server/templates/manager/addapp.html:557
+#: tronbyt_server/templates/manager/addapp.html:559
 msgid "Mark Broken"
 msgstr "Als defekt markieren"
 
-#: tronbyt_server/templates/manager/addapp.html:567
+#: tronbyt_server/templates/manager/addapp.html:569
 msgid "Custom Apps"
 msgstr "Benutzerdefinierte Apps"
 
-#: tronbyt_server/templates/manager/addapp.html:572
+#: tronbyt_server/templates/manager/addapp.html:574
 msgid "System Apps"
 msgstr "System-Apps"
 
-#: tronbyt_server/templates/manager/addapp.html:576
+#: tronbyt_server/templates/manager/addapp.html:578
 msgid "Render Interval (minutes)"
 msgstr "Render-Intervall (Minuten)"
 
-#: tronbyt_server/templates/manager/addapp.html:578
+#: tronbyt_server/templates/manager/addapp.html:580
 msgid "Display Time (seconds)"
 msgstr "Anzeigedauer (Sekunden)"
 
-#: tronbyt_server/templates/manager/addapp.html:582
-#: tronbyt_server/templates/manager/create.html:104
-#: tronbyt_server/templates/manager/update.html:455
+#: tronbyt_server/templates/manager/addapp.html:584
+#: tronbyt_server/templates/manager/create.html:98
+#: tronbyt_server/templates/manager/update.html:520
 #: tronbyt_server/templates/manager/updateapp.html:103
 msgid "Notes"
 msgstr "Notizen"
 
-#: tronbyt_server/templates/manager/addapp.html:585
+#: tronbyt_server/templates/manager/addapp.html:587
 #: tronbyt_server/templates/partials/app_card.html:60
 msgid "Configure"
 msgstr "Konfigurieren"
 
 #: tronbyt_server/templates/manager/adminindex.html:8
 #: tronbyt_server/templates/manager/index.html:14
-#: tronbyt_server/templates/manager/index_new.html:14
 msgid "New Tronbyt"
 msgstr "Neuer Tronbyt"
 
@@ -894,8 +872,8 @@ msgid "Toggle password visibility"
 msgstr ""
 
 #: tronbyt_server/templates/manager/configapp.html:322
-#: tronbyt_server/templates/manager/create.html:98
-#: tronbyt_server/templates/manager/update.html:364
+#: tronbyt_server/templates/manager/create.html:92
+#: tronbyt_server/templates/manager/update.html:415
 msgid "Enter a location"
 msgstr "Standort eingeben"
 
@@ -926,8 +904,8 @@ msgid "Error loading options"
 msgstr "Fehler beim Laden der Optionen"
 
 #: tronbyt_server/templates/manager/configapp.html:769
-#: tronbyt_server/templates/manager/update.html:119
-#: tronbyt_server/templates/manager/update.html:131
+#: tronbyt_server/templates/manager/update.html:113
+#: tronbyt_server/templates/manager/update.html:125
 msgid "Reset"
 msgstr "Zurücksetzen"
 
@@ -968,74 +946,104 @@ msgstr "Beschreibender Name für dieses Tronbyt-Gerät"
 msgid "Device Type"
 msgstr "Gerätetyp"
 
-#: tronbyt_server/templates/manager/create.html:52
-#: tronbyt_server/templates/manager/update.html:107
+#: tronbyt_server/templates/manager/create.html:46
+#: tronbyt_server/templates/manager/update.html:101
 msgid "Connection URLs"
 msgstr "Verbindungs-URLs"
 
-#: tronbyt_server/templates/manager/create.html:56
-#: tronbyt_server/templates/manager/firmware.html:71
-#: tronbyt_server/templates/manager/update.html:112
+#: tronbyt_server/templates/manager/create.html:50
+#: tronbyt_server/templates/manager/firmware.html:76
+#: tronbyt_server/templates/manager/update.html:106
 msgid "Image URL"
 msgstr "Bild-URL"
 
-#: tronbyt_server/templates/manager/create.html:58
-#: tronbyt_server/templates/manager/create.html:63
+#: tronbyt_server/templates/manager/create.html:52
+#: tronbyt_server/templates/manager/create.html:57
 msgid "Leave blank unless advanced user."
 msgstr "Leer lassen, es sei denn, Sie sind ein fortgeschrittener Benutzer."
 
-#: tronbyt_server/templates/manager/create.html:61
+#: tronbyt_server/templates/manager/create.html:55
 msgid "WebSocket URL"
 msgstr "Websocket URL"
 
-#: tronbyt_server/templates/manager/create.html:69
-#: tronbyt_server/templates/manager/update.html:151
+#: tronbyt_server/templates/manager/create.html:63
+#: tronbyt_server/templates/manager/update.html:145
 msgid "Display Settings"
 msgstr "Anzeigeeinstellungen"
 
-#: tronbyt_server/templates/manager/create.html:74
+#: tronbyt_server/templates/manager/create.html:68
 msgid "Brightness Level (0 - 5)"
 msgstr "Helligkeitsstufe (0 - 5)"
 
-#: tronbyt_server/templates/manager/create.html:93
+#: tronbyt_server/templates/manager/create.html:87
 msgid "Location & Notes"
 msgstr "Standort & Notizen"
 
-#: tronbyt_server/templates/manager/create.html:97
-#: tronbyt_server/templates/manager/update.html:361
+#: tronbyt_server/templates/manager/create.html:91
+#: tronbyt_server/templates/manager/update.html:412
 msgid "Location"
 msgstr "Standort"
 
-#: tronbyt_server/templates/manager/create.html:105
-#: tronbyt_server/templates/manager/update.html:458
+#: tronbyt_server/templates/manager/create.html:99
+#: tronbyt_server/templates/manager/update.html:523
 msgid "Optional notes about this device"
 msgstr "Optionale Notizen zu diesem Gerät"
 
-#: tronbyt_server/templates/manager/firmware.html:16
+#: tronbyt_server/templates/manager/firmware.html:5
 msgid "Generate Firmware for"
 msgstr "Firmware generieren für"
 
-#: tronbyt_server/templates/manager/firmware.html:23
+#: tronbyt_server/templates/manager/firmware.html:11
+msgid "Firmware Files Not Available"
+msgstr "Firmware-Dateien nicht verfügbar"
+
+#: tronbyt_server/templates/manager/firmware.html:12
+msgid ""
+"Firmware binary files have not been downloaded yet. Firmware generation "
+"will not work until the files are downloaded."
+msgstr ""
+
+#: tronbyt_server/templates/manager/firmware.html:15
+msgid "Action Required:"
+msgstr "Handlung erforderlich:"
+
+#: tronbyt_server/templates/manager/firmware.html:15
+msgid "Please go to the"
+msgstr ""
+
+#: tronbyt_server/templates/manager/firmware.html:16
+msgid "Admin page"
+msgstr ""
+
+#: tronbyt_server/templates/manager/firmware.html:17
+msgid "to download the latest firmware files."
+msgstr "um die neuesten Firmware-Dateien herunterzuladen."
+
+#: tronbyt_server/templates/manager/firmware.html:20
+msgid "Please contact your administrator to download the firmware files."
+msgstr ""
+
+#: tronbyt_server/templates/manager/firmware.html:28
 msgid "Firmware Image Version"
 msgstr "Firmware Image Version"
 
-#: tronbyt_server/templates/manager/firmware.html:28
+#: tronbyt_server/templates/manager/firmware.html:33
 msgid "Manage Firmware"
 msgstr "Firmware verwalten"
 
-#: tronbyt_server/templates/manager/firmware.html:37
+#: tronbyt_server/templates/manager/firmware.html:42
 msgid "Firmware Generation"
 msgstr "Firmware Generierung"
 
-#: tronbyt_server/templates/manager/firmware.html:40
+#: tronbyt_server/templates/manager/firmware.html:45
 msgid "Download ESP Flasher"
 msgstr "ESP Flasher hier herunterladen"
 
-#: tronbyt_server/templates/manager/firmware.html:41
+#: tronbyt_server/templates/manager/firmware.html:46
 msgid "Download ESP Flasher here"
 msgstr "ESPHome Flasher hier herunterladen"
 
-#: tronbyt_server/templates/manager/firmware.html:42
+#: tronbyt_server/templates/manager/firmware.html:47
 msgid ""
 "Connect your device to your computer with a data USB cable, run the ESP "
 "Flasher program and select your downloaded firmware file to flash your "
@@ -1046,37 +1054,37 @@ msgstr ""
 "heruntergeladene Firmware-Datei aus, um Ihr Gerät zu flashen. Verwenden "
 "Sie KEINEN webbasierten Flasher."
 
-#: tronbyt_server/templates/manager/firmware.html:43
+#: tronbyt_server/templates/manager/firmware.html:48
 msgid "macOS and Windows users may need to install a serial driver:"
 msgstr ""
 "Benutzer von macOS oder Windows müssen möglicherweise einen seriellen "
 "Treiber installieren."
 
-#: tronbyt_server/templates/manager/firmware.html:54
+#: tronbyt_server/templates/manager/firmware.html:59
 msgid "Connection Settings"
 msgstr "Verbindungseinstellungen"
 
-#: tronbyt_server/templates/manager/firmware.html:59
+#: tronbyt_server/templates/manager/firmware.html:64
 msgid "Connection Type"
 msgstr "Verbindungstyp"
 
-#: tronbyt_server/templates/manager/firmware.html:81
+#: tronbyt_server/templates/manager/firmware.html:86
 msgid "WiFi Configuration"
 msgstr "WLAN-Konfiguration"
 
-#: tronbyt_server/templates/manager/firmware.html:86
+#: tronbyt_server/templates/manager/firmware.html:91
 msgid "WiFi Network Name (SSID) 2.4Ghz Only"
 msgstr "WiFi-Netzwerkname (SSID) Nur 2.4 GHz"
 
-#: tronbyt_server/templates/manager/firmware.html:94
+#: tronbyt_server/templates/manager/firmware.html:99
 msgid "WiFi Password"
 msgstr "WiFi-Passwort"
 
-#: tronbyt_server/templates/manager/firmware.html:103
+#: tronbyt_server/templates/manager/firmware.html:108
 msgid "Swap Colors?"
 msgstr "Farben tauschen?"
 
-#: tronbyt_server/templates/manager/firmware.html:116
+#: tronbyt_server/templates/manager/firmware.html:121
 msgid "Generate Firmware File"
 msgstr "Firmware-Datei generieren"
 
@@ -1094,7 +1102,7 @@ msgid "Edit Device"
 msgstr "Gerät bearbeiten"
 
 #: tronbyt_server/templates/manager/update.html:66
-#: tronbyt_server/templates/manager/update.html:479
+#: tronbyt_server/templates/manager/update.html:544
 msgid "Delete device and ALL apps? This action cannot be undone."
 msgstr "Gerät und alle Apps löschen? Dies kann nicht rückgängig gemacht werden."
 
@@ -1106,57 +1114,86 @@ msgstr "Geräteeinstellungen"
 msgid "Device Name"
 msgstr "Gerätename"
 
-#: tronbyt_server/templates/manager/update.html:119
-#: tronbyt_server/templates/manager/update.html:131
+#: tronbyt_server/templates/manager/update.html:113
+#: tronbyt_server/templates/manager/update.html:125
 msgid "Reset to default"
 msgstr "Auf Standard zurücksetzen"
 
-#: tronbyt_server/templates/manager/update.html:125
+#: tronbyt_server/templates/manager/update.html:119
 msgid "Websocket URL"
 msgstr "Websocket URL"
 
-#: tronbyt_server/templates/manager/update.html:156
+#: tronbyt_server/templates/manager/update.html:150
 #: tronbyt_server/templates/partials/device_card.html:83
 msgid "App Cycle Time (Seconds)"
 msgstr "App-Zykluszeit (Sekunden)"
 
-#: tronbyt_server/templates/manager/update.html:169
+#: tronbyt_server/templates/manager/update.html:163
 msgid "Brightness Settings"
 msgstr "Helligkeitseinstellungen"
 
-#: tronbyt_server/templates/manager/update.html:174
+#: tronbyt_server/templates/manager/update.html:168
 #: tronbyt_server/templates/partials/device_card.html:63
 msgid "Brightness"
 msgstr "Helligkeit"
 
+#: tronbyt_server/templates/manager/update.html:190
+msgid "Custom Brightness Scale"
+msgstr "Benutzerdefinierte Helligkeitsskala"
+
+#: tronbyt_server/templates/manager/update.html:191
+msgid ""
+"Override the default brightness scale with custom values for each level "
+"(0-5)"
+msgstr ""
+
+# Recurrence/Schedule translations
 #: tronbyt_server/templates/manager/update.html:199
+msgid "Use custom brightness scale"
+msgstr "Benutzerdefinierte Helligkeitsskala verwenden"
+
+#: tronbyt_server/templates/manager/update.html:209
+msgid "Level"
+msgstr "Stufe"
+
+#: tronbyt_server/templates/manager/update.html:219
+msgid ""
+"Each value should be between 0-100. Higher levels should generally have "
+"higher values."
+msgstr ""
+
+#: tronbyt_server/templates/manager/update.html:227
+msgid "Default system scale"
+msgstr ""
+
+#: tronbyt_server/templates/manager/update.html:250
 msgid "Interstitial App Settings"
 msgstr "Interstitial-App-Einstellungen"
 
-#: tronbyt_server/templates/manager/update.html:204
+#: tronbyt_server/templates/manager/update.html:255
 msgid "Enable Interstitial App"
 msgstr "Interstitial-App aktivieren"
 
-#: tronbyt_server/templates/manager/update.html:208
+#: tronbyt_server/templates/manager/update.html:259
 msgid "Display an interstitial app between each regular app in the rotation."
 msgstr ""
 "Zeigt eine Interstitial-App zwischen jeder regulären App in der Rotation "
 "an."
 
-#: tronbyt_server/templates/manager/update.html:214
+#: tronbyt_server/templates/manager/update.html:265
 msgid "Interstitial App Configuration"
 msgstr "Interstitial-App-Konfiguration"
 
-#: tronbyt_server/templates/manager/update.html:219
+#: tronbyt_server/templates/manager/update.html:270
 msgid "Interstitial App"
 msgstr "Interstitial-App"
 
-#: tronbyt_server/templates/manager/update.html:223
-#: tronbyt_server/templates/manager/update.html:301
+#: tronbyt_server/templates/manager/update.html:274
+#: tronbyt_server/templates/manager/update.html:352
 msgid "None"
 msgstr "Keine"
 
-#: tronbyt_server/templates/manager/update.html:232
+#: tronbyt_server/templates/manager/update.html:283
 msgid ""
 "The interstitial app will display even if it is disabled in the regular "
 "rotation."
@@ -1164,35 +1201,35 @@ msgstr ""
 "Die Interstitial-App wird auch dann angezeigt, wenn sie in der regulären "
 "Rotation deaktiviert ist."
 
-#: tronbyt_server/templates/manager/update.html:240
+#: tronbyt_server/templates/manager/update.html:291
 msgid "Night Mode Settings"
 msgstr "Nachtmodus Einstellungen"
 
-#: tronbyt_server/templates/manager/update.html:245
+#: tronbyt_server/templates/manager/update.html:296
 msgid "Enable Night Mode"
 msgstr "Nachtmodus aktivieren"
 
-#: tronbyt_server/templates/manager/update.html:254
+#: tronbyt_server/templates/manager/update.html:305
 msgid "Night Mode Configuration"
 msgstr "Nachtmodus Konfiguration"
 
-#: tronbyt_server/templates/manager/update.html:259
+#: tronbyt_server/templates/manager/update.html:310
 msgid "Night Start Time"
 msgstr "Nachtmodus Startzeit"
 
-#: tronbyt_server/templates/manager/update.html:267
+#: tronbyt_server/templates/manager/update.html:318
 msgid "Night End Time"
 msgstr "Nachtmodus Endzeit"
 
-#: tronbyt_server/templates/manager/update.html:275
+#: tronbyt_server/templates/manager/update.html:326
 msgid "Night Brightness"
 msgstr "Nacht-Helligkeit"
 
-#: tronbyt_server/templates/manager/update.html:297
+#: tronbyt_server/templates/manager/update.html:348
 msgid "Night Mode App"
 msgstr "Nachtmodus-App:"
 
-#: tronbyt_server/templates/manager/update.html:310
+#: tronbyt_server/templates/manager/update.html:361
 msgid ""
 "To prevent the night mode app from displaying during the day, set it to "
 "disabled on the app edit page."
@@ -1200,15 +1237,15 @@ msgstr ""
 "Um zu verhindern, dass die Nachtmodus-App tagsüber angezeigt wird, setzen"
 " Sie sie auf der App-Bearbeitungsseite auf deaktiviert."
 
-#: tronbyt_server/templates/manager/update.html:318
+#: tronbyt_server/templates/manager/update.html:369
 msgid "Dim Mode Settings"
 msgstr "Dimm-Modus-Einstellungen"
 
-#: tronbyt_server/templates/manager/update.html:323
+#: tronbyt_server/templates/manager/update.html:374
 msgid "Dim Start Time"
 msgstr "Dimm-Startzeit"
 
-#: tronbyt_server/templates/manager/update.html:327
+#: tronbyt_server/templates/manager/update.html:378
 msgid ""
 "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set)"
 " or 6:00 AM by default."
@@ -1216,39 +1253,47 @@ msgstr ""
 "Leer lassen, um den Dimm-Modus zu deaktivieren. Der Dimm-Modus endet "
 "standardmäßig zur Nacht-Endzeit (falls festgelegt) oder um 6:00 Uhr."
 
-#: tronbyt_server/templates/manager/update.html:332
+#: tronbyt_server/templates/manager/update.html:383
 msgid "Dim Brightness"
 msgstr "Dimm-Helligkeit"
 
-#: tronbyt_server/templates/manager/update.html:356
+#: tronbyt_server/templates/manager/update.html:407
 msgid "Location & API Settings"
 msgstr "Standort & API-Einstellungen"
 
-#: tronbyt_server/templates/manager/update.html:374
+#: tronbyt_server/templates/manager/update.html:424
+msgid "Locale"
+msgstr "Gebietsschema"
+
+#: tronbyt_server/templates/manager/update.html:433
+msgid "Locale for apps (e.g. en_US, de_DE)."
+msgstr "Gebietsschema für Apps (z.B. en_US, de_DE)."
+
+#: tronbyt_server/templates/manager/update.html:439
 msgid "API Configuration"
 msgstr "API-Konfiguration"
 
-#: tronbyt_server/templates/manager/update.html:379
+#: tronbyt_server/templates/manager/update.html:444
 msgid "Device ID"
 msgstr "Geräte-ID"
 
-#: tronbyt_server/templates/manager/update.html:387
+#: tronbyt_server/templates/manager/update.html:452
 msgid "Device API Key"
 msgstr "Geräte-API-Schlüssel"
 
-#: tronbyt_server/templates/manager/update.html:396
+#: tronbyt_server/templates/manager/update.html:461
 msgid "Example curl Command"
 msgstr "Beispiel curl-Befehl"
 
-#: tronbyt_server/templates/manager/update.html:404
+#: tronbyt_server/templates/manager/update.html:469
 msgid "Example pixlet Command"
 msgstr "Beispiel pixlet-Befehl"
 
-#: tronbyt_server/templates/manager/update.html:450
+#: tronbyt_server/templates/manager/update.html:515
 msgid "Additional Settings"
 msgstr "Zusätzliche Einstellungen"
 
-#: tronbyt_server/templates/manager/update.html:465
+#: tronbyt_server/templates/manager/update.html:530
 msgid "Configuration Management"
 msgstr "Konfigurationsverwaltung"
 
@@ -1573,9 +1618,8 @@ msgid "DISABLED"
 msgstr "DEAKTIVIERT"
 
 #: tronbyt_server/templates/partials/app_card.html:32
-#, fuzzy
 msgid "AUTOPIN"
-msgstr "Entpinnen"
+msgstr "AUTO-PIN"
 
 #: tronbyt_server/templates/partials/app_card.html:39
 msgid "Interval:"
@@ -1692,3 +1736,24 @@ msgstr "Eingeklappt"
 #: tronbyt_server/templates/partials/device_card.html:123
 msgid "Drag apps to reorder"
 msgstr "Apps zum Neuanordnen ziehen"
+
+#~ msgid "Id and Name is required."
+#~ msgstr "ID und Name sind erforderlich."
+
+#~ msgid "✅ {result['message']}"
+#~ msgstr "✅ {result['message']}"
+
+#~ msgid "ℹ️ {result['message']}"
+#~ msgstr "ℹ️ {result['message']}"
+
+#~ msgid "❌ {result['message']}"
+#~ msgstr "❌ {result['message']}"
+
+#~ msgid "Refresh system apps repository?"
+#~ msgstr "System-Apps Repo aktualisieren?"
+
+#~ msgid "Check for firmware updates and download if available?"
+#~ msgstr "Nach Firmware-Updates suchen und herunterladen, falls verfügbar?"
+
+#~ msgid "Refresh custom apps repository?"
+#~ msgstr "Benutzerdefiniertes Apps-Repository aktualisieren?"

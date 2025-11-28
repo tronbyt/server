@@ -419,6 +419,20 @@
             value='{{ (request.form["location"] or device.location.model_dump() if device.location else {}) | tojson }}'>
         </td>
       </tr>
+      <tr>
+        <td>
+          <label for="locale" class="device-settings-label">{{ _('Locale') }}</label>
+        </td>
+        <td>
+          <input type="text" name="locale" id="locale" value="{{ device.locale or '' }}" class="device-settings-input" placeholder="e.g. en_US" list="locale-list">
+          <datalist id="locale-list">
+            {% for loc in available_locales %}
+            <option value="{{ loc }}"></option>
+            {% endfor %}
+          </datalist>
+          <small class="small-text">{{ _('Locale for apps (e.g. en_US, de_DE).') }}</small>
+        </td>
+      </tr>
     </table>
 
     <div class="device-settings-section-divider">
