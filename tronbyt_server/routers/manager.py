@@ -31,6 +31,7 @@ from fastapi_babel import _
 from markupsafe import escape
 from pydantic import BaseModel, BeforeValidator, ValidationError
 from werkzeug.utils import secure_filename
+from babel import localedata
 
 from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import Settings, get_settings
@@ -581,12 +582,15 @@ def update(
     brightness_ui = device.brightness.to_ui_scale(custom_scale)
     night_brightness_ui = device.night_brightness.to_ui_scale(custom_scale)
 
+    available_locales = sorted(localedata.locale_identifiers())
+
     return templates.TemplateResponse(
         request,
         "manager/update.html",
         {
             "device": device,
             "available_timezones": available_timezones(),
+            "available_locales": available_locales,
             "default_img_url": default_img_url,
             "default_ws_url": default_ws_url,
             "user": deps.user,
@@ -699,6 +703,7 @@ class DeviceUpdateFormData(BaseModel):
     dim_time: str | None = None
     dim_brightness: int | None = None
     timezone: str | None = None
+    locale: str | None = None
     location: str | None = None
     interstitial_enabled: bool = False
     interstitial_app: str | None = None
@@ -772,6 +777,7 @@ def update_post(
     device.night_mode_enabled = form_data.night_mode_enabled
     device.night_mode_app = form_data.night_mode_app or ""
     device.timezone = form_data.timezone
+    device.locale = form_data.locale or None
 
     if form_data.night_start:
         try:
