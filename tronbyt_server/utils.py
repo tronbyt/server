@@ -98,7 +98,7 @@ def render_app(
         webp_path.write_bytes(data)
         logger.debug(f"Saved {len(data)} bytes to {webp_path}")
     elif webp_path is None:
-        logger.warning("webp_path is None, not saving rendered image")
+        logger.debug("webp_path is None, not saving rendered image")
     elif len(data) == 0:
         logger.warning("Rendered data is empty, not saving")
     return data
