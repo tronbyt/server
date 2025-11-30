@@ -268,6 +268,9 @@ def migrate_app_from_dict(
             days = last_render_duration.get("days", 0)
             seconds = last_render_duration.get("seconds", 0)
             last_render_duration = days * 86400 + seconds
+        elif isinstance(last_render_duration, str):
+            # Ignore ISO 8601 duration strings like "PT0S" - just set to 0
+            last_render_duration = 0
         elif last_render_duration is None:
             last_render_duration = 0
 
