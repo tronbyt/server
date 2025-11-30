@@ -5,7 +5,7 @@ from tronbyt_server import db
 from tronbyt_server.models import App, DeviceType, Brightness
 from tronbyt_server.models.user import User
 from tests import utils
-from sqlmodel import Session
+import sqlite3
 from tests.conftest import get_test_session
 
 
@@ -21,8 +21,9 @@ def device_user(auth_client: TestClient) -> User:
             "notes": "TESTNOTES",
             "brightness": "3",
         },
+        follow_redirects=False,
     )
-    assert response.status_code == 200
+    assert response.status_code == 302  # Redirect on success
     return utils.get_testuser()
 
 
@@ -154,7 +155,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Test device retrieval for non-existent device"""
         # Create a second user to get a different API key
@@ -254,14 +255,13 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure device payload exposes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
         device = device_user.devices[device_id]
 
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="night-app",
@@ -282,7 +282,7 @@ class TestDeviceEndpoint:
         device.dim_brightness = Brightness(22)
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}",
@@ -308,12 +308,12 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure device updates support new fields and value validation."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection, device_user, device_id, iname="evening", name="Evening App"
+            device_user, device_id, iname="evening", name="Evening App"
         )
 
         response = auth_client.patch(
@@ -363,7 +363,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Empty dimModeStartTime should clear stored dim time."""
         device_id = list(device_user.devices.keys())[0]
@@ -371,7 +371,7 @@ class TestDeviceEndpoint:
         device.dim_time = "04:00"
         device.dim_brightness = Brightness(40)
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
@@ -390,12 +390,11 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure installation payload includes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-1",
@@ -410,7 +409,7 @@ class TestDeviceInstallationsEndpoint:
         device = device_user.devices[device_id]
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}/installations",
@@ -436,12 +435,11 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure single installation lookup exposes new fields."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-2",
@@ -452,7 +450,7 @@ class TestDeviceInstallationsEndpoint:
         device = device_user.devices[device_id]
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}/installations/{app.iname}",
@@ -471,12 +469,11 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure installation updates support new fields and return payload."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-3",
@@ -515,7 +512,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure validation rejects negative interval/time values."""
         device_id = list(device_user.devices.keys())[0]
@@ -527,7 +524,6 @@ class TestDeviceInstallationsEndpoint:
         assert response_interval.status_code == 404
 
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-4",

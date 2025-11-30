@@ -17,6 +17,16 @@ from tronbyt_server.models.device import (
 )
 from tronbyt_server.models.user import ThemePreference
 
+# Explicitly export SQLModel for alembic/env.py
+__all__ = [
+    "SQLModel",
+    "SystemSettingsDB",
+    "UserDB",
+    "DeviceDB",
+    "LocationDB",
+    "AppDB",
+]
+
 
 # ============================================================================
 # System Settings
@@ -26,7 +36,7 @@ from tronbyt_server.models.user import ThemePreference
 class SystemSettingsDB(SQLModel, table=True):
     """SQLModel for system-wide settings (singleton table)."""
 
-    __tablename__ = "system_settings"  # type: ignore
+    __tablename__ = "system_settings"
 
     id: int = Field(default=1, primary_key=True)  # Always 1 (singleton)
     system_repo_url: str = ""
@@ -40,7 +50,7 @@ class SystemSettingsDB(SQLModel, table=True):
 class UserDB(SQLModel, table=True):
     """SQLModel for User table."""
 
-    __tablename__ = "users"  # type: ignore
+    __tablename__ = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
@@ -64,7 +74,7 @@ class UserDB(SQLModel, table=True):
 class LocationDB(SQLModel, table=True):
     """SQLModel for Location table."""
 
-    __tablename__ = "locations"  # type: ignore
+    __tablename__ = "locations"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     locality: str = ""
@@ -84,7 +94,7 @@ class LocationDB(SQLModel, table=True):
 class DeviceDB(SQLModel, table=True):
     """SQLModel for Device table."""
 
-    __tablename__ = "devices"  # type: ignore
+    __tablename__ = "devices"
 
     id: str = Field(primary_key=True)
     name: str = ""
@@ -142,7 +152,7 @@ class DeviceDB(SQLModel, table=True):
 class AppDB(SQLModel, table=True):
     """SQLModel for App table."""
 
-    __tablename__ = "apps"  # type: ignore
+    __tablename__ = "apps"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     iname: str = Field(index=True)

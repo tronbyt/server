@@ -18,6 +18,7 @@ from tronbyt_server.db_models.models import (
     UserDB,
 )
 from tronbyt_server.models import App, Device, Location, RecurrencePattern, User
+from tronbyt_server.models.device import DeviceInfo, DeviceType
 
 logger = logging.getLogger(__name__)
 
@@ -78,14 +79,16 @@ def update_user(session: Session, user: UserDB) -> UserDB:
 def save_user_full(session: Session, user: "User", new_user: bool = False) -> UserDB:
     """Save a complete User with all devices, apps, locations, etc."""
     # Create or update the user record
+    user_db: UserDB
     if new_user:
         user_db = create_user(
             session, user.username, user.password, user.email, user.api_key
         )
     else:
-        user_db = get_user_by_username(session, user.username)
-        if not user_db:
+        user_db_maybe = get_user_by_username(session, user.username)
+        if not user_db_maybe:
             raise ValueError(f"User {user.username} not found")
+        user_db = user_db_maybe
 
         # Update user fields
         user_db.password = user.password
@@ -98,6 +101,7 @@ def save_user_full(session: Session, user: "User", new_user: bool = False) -> Us
         session.refresh(user_db)
 
     # Now save all devices
+    assert user_db.id is not None, "User ID should be set after database save"
     existing_device_ids = {d.id for d in get_devices_by_user_id(session, user_db.id)}
     current_device_ids = set(user.devices.keys())
 
@@ -126,13 +130,16 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
         return f"{t.hour:02d}:{t.minute:02d}"
 
     # Convert device.info to dict if it's a Pydantic model
-    device_info = device.info
-    if hasattr(device_info, "model_dump"):
-        device_info = device_info.model_dump()
-    elif hasattr(device_info, "dict"):
-        device_info = device_info.dict()
-    elif not isinstance(device_info, dict):
-        device_info = {}
+    device_info_obj = device.info
+    device_info_dict: dict[str, Any]
+    if hasattr(device_info_obj, "model_dump"):
+        device_info_dict = device_info_obj.model_dump()
+    elif hasattr(device_info_obj, "dict"):
+        device_info_dict = device_info_obj.dict()
+    elif isinstance(device_info_obj, dict):
+        device_info_dict = device_info_obj
+    else:
+        device_info_dict = {}
 
     device_data = {
         "id": device.id,
@@ -160,7 +167,7 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
         "interstitial_enabled": device.interstitial_enabled,
         "interstitial_app": device.interstitial_app,
         "last_seen": device.last_seen,
-        "info": device_info,
+        "info": device_info_dict,
         "user_id": user_id,
     }
 
@@ -427,7 +434,9 @@ def get_app_by_device_and_iname(
 
 def get_apps_by_device(session: Session, device_id: str) -> list[AppDB]:
     """Get all apps for a device."""
-    statement = select(AppDB).where(AppDB.device_id == device_id).order_by(AppDB.order)
+    statement = (
+        select(AppDB).where(AppDB.device_id == device_id).order_by(AppDB.order.asc())  # type: ignore[attr-defined]
+    )
     return list(session.exec(statement).all())
 
 
@@ -548,6 +557,7 @@ def load_user_full(session: Session, user_db: UserDB) -> User:
     from tronbyt_server.models.user import ThemePreference
 
     # Load all devices for this user
+    assert user_db.id is not None, "User ID should be set"
     devices_db = get_devices_by_user_id(session, user_db.id)
 
     # Convert devices to dict format, loading apps for each
@@ -569,7 +579,7 @@ def load_user_full(session: Session, user_db: UserDB) -> User:
 
 def load_device_full(session: Session, device_db: DeviceDB) -> Device:
     """Load a complete Device with all apps and location."""
-    from tronbyt_server.models.device import Brightness, DeviceType
+    from tronbyt_server.models.device import Brightness
 
     # Load all apps for this device
     apps_db = get_apps_by_device(session, device_db.id)
@@ -597,7 +607,7 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
     return Device(
         id=device_db.id,
         name=device_db.name,
-        type=DeviceType(device_db.type),
+        type=DeviceType(device_db.type),  # type: ignore[call-arg]
         api_key=device_db.api_key,
         img_url=device_db.img_url,
         ws_url=device_db.ws_url,
@@ -620,7 +630,7 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
         interstitial_enabled=device_db.interstitial_enabled,
         interstitial_app=device_db.interstitial_app,
         last_seen=device_db.last_seen,
-        info=device_db.info,
+        info=DeviceInfo(**device_db.info) if device_db.info else DeviceInfo(),
         location=location,
         apps=apps_dict,
     )
@@ -672,7 +682,7 @@ def load_app_full(session: Session, app_db: AppDB) -> App:
             weekdays=weekdays,
         )
 
-    return App(**app_kwargs)
+    return App(**app_kwargs)  # type: ignore[arg-type]
 
 
 def user_db_to_model(user_db: UserDB, devices: list[DeviceDB]) -> User:
@@ -701,11 +711,11 @@ def user_db_to_model(user_db: UserDB, devices: list[DeviceDB]) -> User:
 
 def device_db_to_model(device_db: DeviceDB) -> Device:
     """Convert a DeviceDB to a Device Pydantic model."""
-    from tronbyt_server.models.device import Brightness, DeviceType
+    from tronbyt_server.models.device import Brightness
 
     # Convert apps (would need session to load)
     # This is a placeholder - in practice, you'd pass apps or load them separately
-    apps_dict = {}
+    apps_dict: dict[str, App] = {}
 
     # Convert location if it exists
     location = None
@@ -723,7 +733,7 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
     return Device(
         id=device_db.id,
         name=device_db.name,
-        type=DeviceType(device_db.type),
+        type=DeviceType(device_db.type),  # type: ignore[call-arg]
         api_key=device_db.api_key,
         img_url=device_db.img_url,
         ws_url=device_db.ws_url,
@@ -746,7 +756,7 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
         interstitial_enabled=device_db.interstitial_enabled,
         interstitial_app=device_db.interstitial_app,
         last_seen=device_db.last_seen,
-        info=device_db.info,
+        info=DeviceInfo(**device_db.info) if device_db.info else DeviceInfo(),
         location=location,
         apps=apps_dict,  # Will be populated separately
     )
@@ -814,4 +824,4 @@ def app_db_to_model(app_db: AppDB) -> App:
             weekdays=weekdays,
         )
 
-    return App(**app_kwargs)
+    return App(**app_kwargs)  # type: ignore[arg-type]

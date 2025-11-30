@@ -19,8 +19,8 @@ from tronbyt_server.db_models import (
     SystemSettingsDB,
     UserDB,
     create_db_and_tables,
-    engine,
 )
+from tronbyt_server import db_models
 
 logger = logging.getLogger(__name__)
 
@@ -406,11 +406,13 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
         logger.info(f"Found {len(rows)} users to migrate")
 
         # Migrate data
-        with Session(engine) as session:
-            # Create system settings
-            system_settings = SystemSettingsDB(id=1, system_repo_url="")
-            session.add(system_settings)
-            session.flush()
+        with Session(db_models.engine) as session:
+            # Create system settings if it doesn't exist
+            existing_settings = session.exec(select(SystemSettingsDB)).first()
+            if not existing_settings:
+                system_settings = SystemSettingsDB(id=1, system_repo_url="")
+                session.add(system_settings)
+                session.flush()
 
             # Migrate each user
             for username, user_json in rows:
@@ -488,7 +490,7 @@ def perform_json_to_sqlmodel_migration(db_path: str) -> bool:
 def validate_migration(db_path: str, stats: MigrationStats) -> bool:
     """Validate that migration was successful."""
     try:
-        with Session(engine) as session:
+        with Session(db_models.engine) as session:
             # Count migrated records
             users_count = len(session.exec(select(UserDB)).all())
             devices_count = len(session.exec(select(DeviceDB)).all())
