@@ -2,13 +2,14 @@
 
 from pathlib import Path
 from typing import Generator
+from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
 from tronbyt_server.config import get_settings
 
 
 # Create engine - will use SQLite with the same DB file
-def get_engine() -> create_engine:
+def get_engine() -> Engine:
     """Get the database engine."""
     # Ensure the parent directory exists for the database file
     db_file = Path(get_settings().DB_FILE)

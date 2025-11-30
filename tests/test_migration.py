@@ -11,7 +11,7 @@ from tronbyt_server.db_models import AppDB, DeviceDB, UserDB
 from tronbyt_server.migrations import perform_json_to_sqlmodel_migration
 
 
-def test_migration_skips_invalid_apps_but_keeps_valid_data():
+def test_migration_skips_invalid_apps_but_keeps_valid_data() -> None:
     """Test that migration skips invalid apps while keeping valid parts of user data."""
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -165,7 +165,7 @@ def test_migration_skips_invalid_apps_but_keeps_valid_data():
             db_models.engine = original_engine
 
 
-def test_migration_handles_invalid_device_gracefully():
+def test_migration_handles_invalid_device_gracefully() -> None:
     """Test that migration can skip an invalid device while keeping the user."""
 
     with tempfile.TemporaryDirectory() as tmpdir:

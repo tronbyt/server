@@ -70,7 +70,7 @@ def test_websocket_success_connection_and_data(
 
 
 def test_websocket_client_messages(
-    auth_client: TestClient, device_user_ws: User, db_connection
+    auth_client: TestClient, device_user_ws: User, db_connection: Any
 ) -> None:
     """Test that the server correctly handles client messages."""
     device_id = list(device_user_ws.devices.keys())[0]
