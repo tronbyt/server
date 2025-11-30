@@ -17,6 +17,16 @@ from tronbyt_server.models.device import (
 )
 from tronbyt_server.models.user import ThemePreference
 
+# Explicitly export SQLModel for alembic/env.py
+__all__ = [
+    "SQLModel",
+    "SystemSettingsDB",
+    "UserDB",
+    "DeviceDB",
+    "LocationDB",
+    "AppDB",
+]
+
 
 # ============================================================================
 # System Settings
