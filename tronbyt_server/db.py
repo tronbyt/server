@@ -110,7 +110,7 @@ def init_db(conn: sqlite3.Connection | None = None) -> None:
             logger.info("Creating SQLModel tables with Alembic...")
             try:
                 from alembic.config import Config
-                from alembic import command  # type: ignore[attr-defined]
+                from alembic import command  # type: ignore
                 from pathlib import Path
 
                 project_root = Path(__file__).parent.parent
@@ -173,7 +173,7 @@ def init_db(conn: sqlite3.Connection | None = None) -> None:
     # Run Alembic migrations for any schema updates
     try:
         from alembic.config import Config
-        from alembic import command  # type: ignore[attr-defined]
+        from alembic import command  # type: ignore
         from pathlib import Path
 
         # Get paths - handle both development and container environments

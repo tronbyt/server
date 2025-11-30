@@ -71,6 +71,10 @@ disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = false
 
+[[tool.mypy.overrides]]
+module = ["alembic.*", "alembic.versions.*", "tronbyt_server.db"]
+warn_unused_ignores = false
+
 [tool.pyright]
 include = ["."]
 typeCheckingMode = "strict"

@@ -12,7 +12,7 @@ data from the old json_data table using the Phase 2 migration script.
 
 from typing import Sequence, Union
 
-from alembic import op  # type: ignore[attr-defin
+from alembic import op  # type: ignore
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
