@@ -27,6 +27,7 @@ from tronbyt_server.sync import get_sync_manager
 
 
 logger = logging.getLogger(__name__)
+MODULE_ROOT = Path(__file__).parent.resolve()
 
 
 class RepoStatus(Enum):
@@ -250,7 +251,7 @@ def possibly_render(
 
 def send_default_image(device: Device) -> Response:
     """Send the default image."""
-    return send_image(Path("tronbyt_server/static/images/default.webp"), device, None)
+    return send_image(MODULE_ROOT / "static" / "images" / "default.webp", device, None)
 
 
 def send_image(
