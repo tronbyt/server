@@ -226,7 +226,7 @@ def possibly_render(
                     device_id,
                     app.iname,
                     "last_render_duration",
-                    render_duration.total_seconds(),
+                    _format_timedelta_iso8601(render_duration),
                 )
                 db.update_app_field(
                     cursor,
@@ -247,6 +247,12 @@ def possibly_render(
 
     logger.info(f"{app_basename} -- NO RENDER")
     return True
+
+
+def _format_timedelta_iso8601(td: timedelta) -> str:
+    """Format a timedelta object to an ISO 8601 duration string (e.g., 'PT10.5S')."""
+    seconds = td.total_seconds()
+    return f"PT{seconds:g}S"
 
 
 def send_default_image(device: Device) -> Response:
