@@ -5,7 +5,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from alembic import context  # type: ignore
+from alembic import context
 
 from tronbyt_server.config import get_settings
 from tronbyt_server.db_models.models import SQLModel
