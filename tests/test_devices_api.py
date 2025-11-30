@@ -21,8 +21,9 @@ def device_user(auth_client: TestClient) -> User:
             "notes": "TESTNOTES",
             "brightness": "3",
         },
+        follow_redirects=False,
     )
-    assert response.status_code == 200
+    assert response.status_code == 302  # Redirect on success
     return utils.get_testuser()
 
 
@@ -261,7 +262,6 @@ class TestDeviceEndpoint:
         device = device_user.devices[device_id]
 
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="night-app",
@@ -282,7 +282,7 @@ class TestDeviceEndpoint:
         device.dim_brightness = Brightness(22)
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}",
@@ -313,7 +313,7 @@ class TestDeviceEndpoint:
         """Ensure device updates support new fields and value validation."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection, device_user, device_id, iname="evening", name="Evening App"
+            device_user, device_id, iname="evening", name="Evening App"
         )
 
         response = auth_client.patch(
@@ -371,7 +371,7 @@ class TestDeviceEndpoint:
         device.dim_time = "04:00"
         device.dim_brightness = Brightness(40)
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.patch(
             f"/v0/devices/{device_id}",
@@ -395,7 +395,6 @@ class TestDeviceInstallationsEndpoint:
         """Ensure installation payload includes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-1",
@@ -410,7 +409,7 @@ class TestDeviceInstallationsEndpoint:
         device = device_user.devices[device_id]
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}/installations",
@@ -441,7 +440,6 @@ class TestDeviceInstallationsEndpoint:
         """Ensure single installation lookup exposes new fields."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-2",
@@ -452,7 +450,7 @@ class TestDeviceInstallationsEndpoint:
         device = device_user.devices[device_id]
         device.pinned_app = app.iname
         device_user.devices[device_id] = device
-        db.save_user(db_connection, device_user)
+        db.save_user(get_test_session(), device_user)
 
         response = auth_client.get(
             f"/v0/devices/{device_id}/installations/{app.iname}",
@@ -476,7 +474,6 @@ class TestDeviceInstallationsEndpoint:
         """Ensure installation updates support new fields and return payload."""
         device_id = list(device_user.devices.keys())[0]
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-3",
@@ -527,7 +524,6 @@ class TestDeviceInstallationsEndpoint:
         assert response_interval.status_code == 404
 
         app = _add_app_to_device(
-            db_connection,
             device_user,
             device_id,
             iname="install-4",

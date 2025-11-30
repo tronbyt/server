@@ -137,14 +137,22 @@ def test_migration_skips_invalid_apps_but_keeps_valid_data():
                 assert device.id == "device1"
                 assert device.name == "Test Device"
 
-                # Valid apps should be migrated, invalid app should be skipped
+                # All apps should be migrated, including "invalid" app with safe defaults
                 apps = session.exec(select(AppDB)).all()
-                assert len(apps) == 2  # Only 2 valid apps
+                assert len(apps) == 3  # All 3 apps migrated with safe defaults
 
                 app_inames = {app.iname for app in apps}
                 assert "valid_app_1" in app_inames
                 assert "valid_app_2" in app_inames
-                assert "invalid_app" not in app_inames  # Invalid app was skipped
+                assert (
+                    "invalid_app" in app_inames
+                )  # "Invalid" app migrated with safe defaults
+
+                # Verify "invalid" app has safe defaults
+                invalid_app = next(app for app in apps if app.iname == "invalid_app")
+                assert invalid_app.name == ""  # None converted to empty string
+                assert invalid_app.uinterval == 0  # Missing field gets default
+                assert invalid_app.display_time == 15  # Missing field gets default
 
                 # Verify app details
                 valid_app_1 = next(app for app in apps if app.iname == "valid_app_1")
@@ -229,11 +237,19 @@ def test_migration_handles_invalid_device_gracefully():
                 users = session.exec(select(UserDB)).all()
                 assert len(users) == 1
 
-                # Only valid device should be migrated
+                # Both devices should be migrated with safe defaults
                 devices = session.exec(select(DeviceDB)).all()
-                assert len(devices) == 1
-                device = devices[0]
-                assert device.id == "valid_device"
+                assert len(devices) == 2
+
+                device_ids = {device.id for device in devices}
+                assert "valid_device" in device_ids
+                assert "invalid_device" in device_ids
+
+                # Verify invalid device has safe defaults
+                invalid_device = next(d for d in devices if d.id == "invalid_device")
+                assert invalid_device.type == "tidbyt_gen1"  # None converted to default
+                assert invalid_device.name == ""  # Missing field gets default
+                assert invalid_device.brightness == 100  # Missing field gets default
 
         finally:
             db_models.engine = original_engine

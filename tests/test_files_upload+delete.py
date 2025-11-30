@@ -2,6 +2,7 @@ from io import BytesIO
 import os
 
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.config import get_settings
@@ -11,7 +12,7 @@ from tests.conftest import get_test_session
 settings = get_settings()
 
 
-def test_upload_and_delete(auth_client: TestClient) -> None:
+def test_upload_and_delete(auth_client: TestClient, session: Session) -> None:
     files = {"file": ("report.star", BytesIO(b"my file contents"))}
     auth_client.get("/create")
     response = auth_client.post(
@@ -27,10 +28,9 @@ def test_upload_and_delete(auth_client: TestClient) -> None:
     )
     assert response.status_code == 302
 
-    with db.get_db() as db_conn:
-        user = db.get_user(db_conn, "testuser")
-        assert user
-        device_id = list(user.devices.keys())[0]
+    user = db.get_user(session, "testuser")
+    assert user
+    device_id = list(user.devices.keys())[0]
 
     response = auth_client.post(
         f"/{device_id}/uploadapp", files=files, follow_redirects=False

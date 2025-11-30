@@ -8,11 +8,10 @@ from fastapi.testclient import TestClient
 import shutil
 from sqlmodel import Session
 
-from tronbyt_server import db
+from tronbyt_server import db, db_models
 from tronbyt_server.main import app as fastapi_app
 from tronbyt_server.dependencies import get_db
 from tronbyt_server.config import get_settings
-from tronbyt_server.db_models import engine
 
 settings = get_settings()
 
@@ -21,6 +20,8 @@ settings = get_settings()
 def db_connection(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Iterator[sqlite3.Connection]:
+    from sqlmodel import create_engine as sqlmodel_create_engine
+
     tmp_path = tmp_path_factory.mktemp("data")
     db_path = tmp_path / "testdb.sqlite"
     db_path.unlink(missing_ok=True)
@@ -30,23 +31,35 @@ def db_connection(
     settings.USERS_DIR = str(tmp_path / "users")
     settings.ENABLE_USER_REGISTRATION = "1"
 
-    with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
-        # Initialize the database schema immediately after connection.
-        db.init_db(conn)
-        yield conn
+    # Recreate the engine with the test database path
+    original_engine = db_models.engine
+    db_models.engine = sqlmodel_create_engine(
+        f"sqlite:///{db_path}",
+        echo=False,
+        connect_args={"check_same_thread": False, "timeout": 10},
+    )
+
+    try:
+        with sqlite3.connect(settings.DB_FILE, check_same_thread=False) as conn:
+            # Initialize the database schema immediately after connection.
+            db.init_db(conn)
+            yield conn
+    finally:
+        # Restore original engine
+        db_models.engine = original_engine
 
 
 @pytest.fixture(scope="function")
 def session(db_connection: sqlite3.Connection) -> Generator[Session, None, None]:
     """Provide a SQLModel session for tests."""
-    with Session(engine) as session:
+    with Session(db_models.engine) as session:
         yield session
 
 
 @pytest.fixture(scope="session")
 def app(db_connection: sqlite3.Connection) -> Iterator[FastAPI]:
     def get_db_override() -> Generator[Session, None, None]:
-        with Session(engine) as session:
+        with Session(db_models.engine) as session:
             yield session
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
@@ -75,6 +88,10 @@ def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
             pass
     db_connection.commit()
 
+    # Clear SQLModel session cache to ensure it sees the deletions
+    with Session(db_models.engine) as session:
+        session.expire_all()
+
     yield
 
     # Clean up AFTER test as well
@@ -84,6 +101,10 @@ def db_cleanup(db_connection: sqlite3.Connection) -> Iterator[None]:
         except sqlite3.OperationalError:
             pass
     db_connection.commit()
+
+    # Clear SQLModel session cache again
+    with Session(db_models.engine) as session:
+        session.expire_all()
 
 
 @pytest.fixture(autouse=True)
@@ -97,7 +118,7 @@ def settings_cleanup() -> Iterator[None]:
 
 def get_test_session() -> Session:
     """Helper function for tests to get a database session."""
-    return Session(engine)
+    return Session(db_models.engine)
 
 
 @pytest.fixture()

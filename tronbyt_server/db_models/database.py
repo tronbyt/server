@@ -35,5 +35,8 @@ def create_db_and_tables() -> None:
 
 def get_session() -> Generator[Session, None, None]:
     """Get a database session for dependency injection."""
-    with Session(engine) as session:
+    # Use the global engine from db_models to support test overrides
+    from tronbyt_server import db_models
+
+    with Session(db_models.engine) as session:
         yield session

@@ -3,12 +3,15 @@ from io import BytesIO
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlmodel import Session
 
 from tronbyt_server import db
 from tronbyt_server.utils import possibly_render
 
 
-def test_webp_upload_and_app_creation(auth_client: TestClient) -> None:
+def test_webp_upload_and_app_creation(
+    auth_client: TestClient, session: Session
+) -> None:
     # 1. Create a device
     response = auth_client.post(
         "/create",
@@ -23,11 +26,10 @@ def test_webp_upload_and_app_creation(auth_client: TestClient) -> None:
     )
     assert response.status_code == 302
 
-    with db.get_db() as db_conn:
-        user = db.get_user(db_conn, "testuser")
-        assert user
-        device_id = list(user.devices.keys())[0]
-        device = user.devices[device_id]
+    user = db.get_user(session, "testuser")
+    assert user
+    device_id = list(user.devices.keys())[0]
+    device = user.devices[device_id]
 
     # 2. Upload a .webp file
     webp_content = (
@@ -55,23 +57,22 @@ def test_webp_upload_and_app_creation(auth_client: TestClient) -> None:
     assert response.headers["location"] == "http://testserver/"
 
     # 4. Check that the app is added and file is copied
-    with db.get_db() as db_conn:
-        user = db.get_user(db_conn, "testuser")
-        assert user
-        device = user.devices[device_id]
-        app = next((app for app in device.apps.values() if app.name == "test"), None)
-        assert app is not None
-        assert app.enabled is True
-        assert Path(str(app.path)).suffix == ".webp"
+    user = db.get_user(session, "testuser")
+    assert user
+    device = user.devices[device_id]
+    app = next((app for app in device.apps.values() if app.name == "test"), None)
+    assert app is not None
+    assert app.enabled is True
+    assert Path(str(app.path)).suffix == ".webp"
 
-        device_webp_path = (
-            db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
-        )
-        assert device_webp_path.exists()
-        assert device_webp_path.read_bytes() == webp_content
+    device_webp_path = (
+        db.get_device_webp_dir(device_id) / f"{app.name}-{app.iname}.webp"
+    )
+    assert device_webp_path.exists()
+    assert device_webp_path.read_bytes() == webp_content
 
-        # 5. Check that possibly_render works correctly
-        assert possibly_render(db_conn, user, device_id, app) is True
+    # 5. Check that possibly_render works correctly
+    assert possibly_render(session, user, device_id, app) is True
 
     # Cleanup
     preview_path.unlink()
