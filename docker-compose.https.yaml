@@ -4,7 +4,6 @@ services:
     restart: unless-stopped
     init: true
     volumes:
-      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
       - data:/app/data
     environment:
@@ -16,7 +15,7 @@ services:
       - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
       - GITHUB_TOKEN
-
+      - TZ=America/Tijuana # Set local timezone of Docker Container
     healthcheck:
       test: ["CMD", "python3", "-m", "tronbyt_server.healthcheck", "http://localhost:8000/health"]
       interval: 1m30s
