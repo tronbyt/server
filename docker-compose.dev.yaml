@@ -10,7 +10,6 @@ services:
       - ./tronbyt_server:/app/tronbyt_server # for development
       - ./users:/app/users # for development
       - ./data:/app/data # for development
-      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-${UID:-1000}}
@@ -23,3 +22,4 @@ services:
       - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
       - GITHUB_TOKEN
+      - TZ=America/Tijuana # Set local timezone of Docker Container
