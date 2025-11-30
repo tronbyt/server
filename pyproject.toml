@@ -41,7 +41,7 @@ excludes = [ "**/messages.pot", "**/.DS_Store", "**/.*.swp", "**/.gitignore" ]
 
 [tool.pdm.scripts]
 pre_build = "pybabel compile -d tronbyt_server/translations"
-test = "pytest"
+test = "pytest --ignore=tests/playwright"
 start = "python -m tronbyt_server.run"
 extract = "pybabel extract -F babel.cfg -k _l -o messages.pot ."
 _init = "pybabel init -i messages.pot -d tronbyt_server/translations -l {args}"
@@ -49,11 +49,15 @@ init = { composite = ["extract", "_init {args}"] }
 _update = "pybabel update -i messages.pot -d tronbyt_server/translations"
 update = { composite = ["extract", "_update"] }
 compile = "pybabel compile -d tronbyt_server/translations"
-mypy = "mypy --strict --install-types --ignore-missing-imports --exclude system-apps --exclude dist ."
+mypy = "mypy --strict --install-types --ignore-missing-imports --exclude system-apps --exclude dist --exclude tests/playwright ."
 
 [tool.pdm.version]
 source = "scm"
 fallback_version = "0.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--ignore=tests/playwright"
 
 [tool.mypy]
 disallow_untyped_defs = true
@@ -76,7 +80,8 @@ strictSetInference = false
 exclude = [
     "data/**",
     "**/__pycache__",
-    "**/.*"
+    "**/.*",
+    "tests/playwright/**"
 ]
 pythonVersion = "3.14"
 venvPath = "."
