@@ -22,7 +22,10 @@ engine = get_engine()
 
 def create_db_and_tables() -> None:
     """Create all tables in the database."""
-    SQLModel.metadata.create_all(engine)
+    # Use the global engine from this module to support test overrides
+    from tronbyt_server import db_models
+
+    SQLModel.metadata.create_all(db_models.engine)
 
 
 def get_session() -> Generator[Session, None, None]:
