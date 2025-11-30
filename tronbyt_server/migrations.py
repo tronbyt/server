@@ -262,17 +262,23 @@ def migrate_app_from_dict(
             return d
 
         # Extract last_render_duration - handle timedelta dict format
-        last_render_duration = app_data.get("last_render_duration", 0)
-        if isinstance(last_render_duration, dict):
+        # New DB model expects a timedelta object, not seconds
+        last_render_duration_seconds = app_data.get("last_render_duration", 0)
+        if isinstance(last_render_duration_seconds, dict):
             # timedelta stored as dict with days, seconds, microseconds
-            days = last_render_duration.get("days", 0)
-            seconds = last_render_duration.get("seconds", 0)
-            last_render_duration = days * 86400 + seconds
-        elif isinstance(last_render_duration, str):
+            days = last_render_duration_seconds.get("days", 0)
+            seconds = last_render_duration_seconds.get("seconds", 0)
+            last_render_duration_seconds = days * 86400 + seconds
+        elif isinstance(last_render_duration_seconds, str):
             # Ignore ISO 8601 duration strings like "PT0S" - just set to 0
-            last_render_duration = 0
-        elif last_render_duration is None:
-            last_render_duration = 0
+            last_render_duration_seconds = 0
+        elif last_render_duration_seconds is None:
+            last_render_duration_seconds = 0
+
+        # Convert seconds to timedelta for new DB model
+        from datetime import timedelta
+
+        last_render_duration = timedelta(seconds=last_render_duration_seconds)
 
         # Extract days list
         days = app_data.get("days") or []
@@ -309,7 +315,7 @@ def migrate_app_from_dict(
             pushed=app_data.get("pushed") or False,
             order=app_data.get("order") or 0,
             last_render=parse_datetime(app_data.get("last_render")),
-            last_render_duration=int(last_render_duration),
+            last_render_duration=last_render_duration,
             path=app_data.get("path"),
             start_time=time_to_str(app_data.get("start_time")),
             end_time=time_to_str(app_data.get("end_time")),
