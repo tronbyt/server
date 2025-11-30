@@ -3,7 +3,6 @@
 import logging
 import os
 import shutil
-import sqlite3
 import time
 from datetime import timedelta
 from enum import Enum
@@ -294,7 +293,7 @@ async def push_image(
     device_id: str,
     installation_id: str | None,
     image_bytes: bytes,
-    db_conn: sqlite3.Connection,
+    db_conn: Session,
 ) -> None:
     """Save a pushed image and notify the device."""
     device = db.get_device_by_id(db_conn, device_id)

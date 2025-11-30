@@ -259,7 +259,7 @@ def migrate_recurrence_pattern(db: sqlite3.Connection) -> None:
             logger.error(f"An unexpected error occurred for user {username}: {e}")
 
 
-def migrate_app_configs(db: sqlite3.Connection) -> None:
+def migrate_app_configs(db: Session) -> None:
     """Migrate app configs from individual files to the user's JSON data."""
     users = get_all_users(db)
     users_dir = get_users_dir()
@@ -285,7 +285,7 @@ def migrate_app_configs(db: sqlite3.Connection) -> None:
             save_user(db, user)
 
 
-def migrate_app_paths(db: sqlite3.Connection) -> None:
+def migrate_app_paths(db: Session) -> None:
     """Populate the 'path' attribute for apps that are missing it."""
     users = get_all_users(db)
     need_save = False
@@ -309,7 +309,7 @@ def migrate_app_paths(db: sqlite3.Connection) -> None:
             save_user(db, user)
 
 
-def migrate_brightness_to_percent(db: sqlite3.Connection) -> None:
+def migrate_brightness_to_percent(db: Session) -> None:
     """Migrate legacy brightness values to percentage-based values."""
     users = get_all_users(db)
     logger.info("Migrating brightness values to percentage-based storage")
@@ -339,7 +339,7 @@ def migrate_brightness_to_percent(db: sqlite3.Connection) -> None:
             save_user(db, user)
 
 
-def migrate_location_name_to_locality(db: sqlite3.Connection) -> None:
+def migrate_location_name_to_locality(db: Session) -> None:
     """
     Migrates location data from old 'name' format to new 'locality' format.
     This function iterates through all users and their devices, converting
