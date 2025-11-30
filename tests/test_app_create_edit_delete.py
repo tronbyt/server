@@ -1,9 +1,12 @@
 from fastapi.testclient import TestClient
 from tests import utils
 from tronbyt_server import db
+import sqlite3
 
 
-def test_app_create_edit_config_delete(auth_client: TestClient, db_connection) -> None:
+def test_app_create_edit_config_delete(
+    auth_client: TestClient, db_connection: sqlite3.Connection
+) -> None:
     response = auth_client.post(
         "/create",
         data={

@@ -8,6 +8,7 @@ from tronbyt_server import db
 from tronbyt_server.config import get_settings
 
 from tests.conftest import get_test_session
+import sqlite3
 
 settings = get_settings()
 
@@ -45,7 +46,9 @@ def test_upload_and_delete(auth_client: TestClient, session: Session) -> None:
     assert response.headers["location"] == f"/{device_id}/addapp"
 
 
-def test_upload_bad_extension(auth_client: TestClient, db_connection) -> None:
+def test_upload_bad_extension(
+    auth_client: TestClient, db_connection: sqlite3.Connection
+) -> None:
     files = {"file": ("report.exe", BytesIO(b"my file contents"))}
     auth_client.get("/create")
     response = auth_client.post(

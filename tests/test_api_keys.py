@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from tronbyt_server.models.user import User
 import tronbyt_server.db as db
 from . import utils
-
+import sqlite3
 from tests.conftest import get_test_session
 
 
@@ -12,7 +12,7 @@ class TestApiKeyGeneration:
     """Test cases for API key generation functionality"""
 
     def test_migrate_user_api_keys_generates_key_for_user_without_key(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that migrate_user_api_keys generates API key for users without one"""
         user = utils.get_testuser()
@@ -34,7 +34,7 @@ class TestApiKeyGeneration:
         )
 
     def test_migrate_user_api_keys_preserves_existing_key(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that migrate_user_api_keys doesn't overwrite existing API keys"""
         response = auth_client.post(
@@ -61,7 +61,7 @@ class TestApiKeyGeneration:
         assert user_after_migration.api_key == original_api_key
 
     def test_migrate_user_api_keys_handles_multiple_users(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that migrate_user_api_keys handles multiple users correctly"""
         auth_client.post(
@@ -94,7 +94,7 @@ class TestApiKeyGeneration:
         assert user2_after.api_key == original_key_user2
 
     def test_migrate_user_api_keys_generates_valid_key(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that migrate_user_api_keys generates a valid API key"""
         user = utils.get_testuser()
@@ -116,7 +116,7 @@ class TestApiKeyRetrieval:
     """Test cases for API key retrieval functionality"""
 
     def test_get_user_by_api_key_success(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test successful user retrieval by API key"""
         user = utils.get_testuser()
@@ -128,21 +128,21 @@ class TestApiKeyRetrieval:
         assert retrieved_user.api_key == api_key
 
     def test_get_user_by_api_key_not_found(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test user retrieval with non-existent API key"""
         retrieved_user = db.get_user_by_api_key(get_test_session(), "nonexistent_key")
         assert retrieved_user is None
 
     def test_get_user_by_api_key_empty_string(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test user retrieval with empty API key"""
         retrieved_user = db.get_user_by_api_key(get_test_session(), "")
         assert retrieved_user is None
 
     def test_get_user_by_api_key_multiple_users(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test user retrieval when multiple users exist"""
         auth_client.post(
@@ -171,7 +171,7 @@ class TestApiKeyRetrieval:
         assert retrieved_user2.username == "user2"
 
     def test_get_user_by_api_key_case_sensitive(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that API key lookup is case sensitive"""
         user = utils.get_testuser()
@@ -211,7 +211,7 @@ class TestApiKeyIntegration:
     """Integration tests for API key functionality"""
 
     def test_user_registration_creates_api_key(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test that user registration automatically creates an API key"""
         auth_client.post(
@@ -225,7 +225,7 @@ class TestApiKeyIntegration:
         assert len(user.api_key) == 32
 
     def test_api_key_authentication_flow(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test complete API key authentication flow"""
         response = auth_client.post(
@@ -261,7 +261,9 @@ class TestApiKeyIntegration:
         response = auth_client.get(f"/v0/devices/{device_id}")
         assert response.status_code == 401
 
-    def test_api_key_uniqueness(self, auth_client: TestClient, db_connection) -> None:
+    def test_api_key_uniqueness(
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
+    ) -> None:
         """Test that generated API keys are unique across users"""
         api_keys: list[str] = []
         for i in range(5):

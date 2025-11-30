@@ -5,7 +5,7 @@ from tronbyt_server import db
 from tronbyt_server.models import App, DeviceType, Brightness
 from tronbyt_server.models.user import User
 from tests import utils
-
+import sqlite3
 from tests.conftest import get_test_session
 
 
@@ -155,7 +155,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Test device retrieval for non-existent device"""
         # Create a second user to get a different API key
@@ -255,7 +255,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure device payload exposes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
@@ -308,7 +308,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure device updates support new fields and value validation."""
         device_id = list(device_user.devices.keys())[0]
@@ -363,7 +363,7 @@ class TestDeviceEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Empty dimModeStartTime should clear stored dim time."""
         device_id = list(device_user.devices.keys())[0]
@@ -390,7 +390,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure installation payload includes new metadata fields."""
         device_id = list(device_user.devices.keys())[0]
@@ -435,7 +435,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure single installation lookup exposes new fields."""
         device_id = list(device_user.devices.keys())[0]
@@ -469,7 +469,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure installation updates support new fields and return payload."""
         device_id = list(device_user.devices.keys())[0]
@@ -512,7 +512,7 @@ class TestDeviceInstallationsEndpoint:
         self,
         auth_client: TestClient,
         device_user: User,
-        db_connection,
+        db_connection: sqlite3.Connection,
     ) -> None:
         """Ensure validation rejects negative interval/time values."""
         device_id = list(device_user.devices.keys())[0]
