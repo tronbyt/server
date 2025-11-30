@@ -33,6 +33,7 @@ from fastapi_babel import _
 from markupsafe import escape
 from pydantic import BaseModel, BeforeValidator, ValidationError
 from werkzeug.utils import secure_filename
+from babel import localedata
 
 from tronbyt_server import db, firmware_utils, system_apps
 from tronbyt_server.config import Settings, get_settings
@@ -61,7 +62,7 @@ from tronbyt_server.models import (
     Weekday,
     parse_custom_brightness_scale,
 )
-from tronbyt_server.pixlet import call_handler_with_config, get_schema
+from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
 from tronbyt_server.utils import (
     possibly_render,
@@ -583,12 +584,15 @@ def update(
     brightness_ui = device.brightness.to_ui_scale(custom_scale)
     night_brightness_ui = device.night_brightness.to_ui_scale(custom_scale)
 
+    available_locales = sorted(localedata.locale_identifiers())
+
     return templates.TemplateResponse(
         request,
         "manager/update.html",
         {
             "device": device,
             "available_timezones": available_timezones(),
+            "available_locales": available_locales,
             "default_img_url": default_img_url,
             "default_ws_url": default_ws_url,
             "user": deps.user,
@@ -701,6 +705,7 @@ class DeviceUpdateFormData(BaseModel):
     dim_time: str | None = None
     dim_brightness: int | None = None
     timezone: str | None = None
+    locale: str | None = None
     location: str | None = None
     interstitial_enabled: bool = False
     interstitial_app: str | None = None
@@ -774,6 +779,7 @@ def update_post(
     device.night_mode_enabled = form_data.night_mode_enabled
     device.night_mode_app = form_data.night_mode_app or ""
     device.timezone = form_data.timezone
+    device.locale = form_data.locale or None
 
     if form_data.night_start:
         try:
@@ -1545,7 +1551,7 @@ def configapp(
             status_code=status.HTTP_302_FOUND,
         )
 
-    schema_json = get_schema(Path(app.path))
+    schema_json = get_schema(Path(app.path), 64, 32, device.supports_2x())
     schema = json.loads(schema_json) if schema_json else None
     return templates.TemplateResponse(
         request,
@@ -2514,8 +2520,14 @@ async def schema_handler(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
         config = data.get("config", {})
-        result = call_handler_with_config(
-            Path(app.path), config, handler, data["param"]
+        result = call_handler(
+            Path(app.path),
+            config,
+            handler,
+            data["param"],
+            64,
+            32,
+            device.supports_2x(),
         )
         return Response(content=result, media_type="application/json")
     except Exception as e:

@@ -325,6 +325,7 @@ class Device(BaseModel):
         15, ge=0, description="Default interval in minutes (>= 0)"
     )
     timezone: Annotated[str | None, AfterValidator(validate_timezone)] = None
+    locale: str | None = None
     location: Location | None = None
     apps: dict[str, App] = {}
     last_app_index: int = 0

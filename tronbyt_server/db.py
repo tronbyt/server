@@ -722,13 +722,13 @@ def get_app_details(
             # we found it
             logger.debug(f"returning details for {app}")
             return app
-        # Also check fileName if looking up by name (with or without .star extension)
+        # Also check file_name if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.fileName or ""
+            file_name = app.file_name or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
-                logger.debug(f"returning details for {app} (matched by fileName)")
+                logger.debug(f"returning details for {app} (matched by file_name)")
                 return app
     # if we get here then the app is not in custom apps
     # so we need to look in the system-apps directory
@@ -736,13 +736,13 @@ def get_app_details(
     for app in apps:
         if getattr(app, field) == value:
             return app
-        # Also check fileName if looking up by name (with or without .star extension)
+        # Also check file_name if looking up by name (with or without .star extension)
         if field == "name":
-            file_name = app.fileName or ""
+            file_name = app.file_name or ""
             # Check both with and without .star extension
             file_name_base = file_name.removesuffix(".star")
             if file_name == value or file_name_base == value:
-                logger.debug(f"returning details for {app} (matched by fileName)")
+                logger.debug(f"returning details for {app} (matched by file_name)")
                 return app
     return None
 
@@ -895,57 +895,61 @@ def _is_recurrence_active_at_time(app: App, current_time: datetime) -> bool:
 
     current_date = current_time.date()
 
-    if recurrence_type == "daily":
-        # Every X days
-        days_since_start = (current_date - recurrence_start_date).days
-        return days_since_start >= 0 and days_since_start % recurrence_interval == 0
+    match recurrence_type:
+        case "daily":
+            # Every X days
+            days_since_start = (current_date - recurrence_start_date).days
+            return days_since_start >= 0 and days_since_start % recurrence_interval == 0
 
-    elif recurrence_type == "weekly":
-        # Every X weeks on specified weekdays
-        weeks_since_start = (current_date - recurrence_start_date).days // 7
-        if weeks_since_start < 0 or weeks_since_start % recurrence_interval != 0:
+        case "weekly":
+            # Every X weeks on specified weekdays
+            weeks_since_start = (current_date - recurrence_start_date).days // 7
+            if weeks_since_start < 0 or weeks_since_start % recurrence_interval != 0:
+                return False
+
+            # Check if current weekday is in the pattern
+            if recurrence_pattern and recurrence_pattern.weekdays:
+                weekdays = recurrence_pattern.weekdays
+            else:
+                weekdays = list(Weekday)  # All days if none specified
+
+            current_weekday = current_time.strftime("%A").lower()
+            return current_weekday in [day.value for day in weekdays]
+
+        case "monthly":
+            # Every X months on specified day or weekday pattern
+            months_since_start = _months_between_dates(
+                recurrence_start_date, current_date
+            )
+            if months_since_start < 0 or months_since_start % recurrence_interval != 0:
+                return False
+
+            if recurrence_pattern:
+                if recurrence_pattern.day_of_month is not None:
+                    # Specific day of month (e.g., 1st, 15th)
+                    return current_date.day == recurrence_pattern.day_of_month
+                elif recurrence_pattern.day_of_week is not None:
+                    # Specific weekday pattern (e.g., "first_monday", "last_friday")
+                    return _matches_monthly_weekday_pattern(
+                        current_date, recurrence_pattern.day_of_week
+                    )
+
+            return True  # If no specific pattern, match any day in the month
+
+        case "yearly":
+            # Every X years - matches same month and day as start date
+            years_since_start = current_date.year - recurrence_start_date.year
+            if years_since_start < 0 or years_since_start % recurrence_interval != 0:
+                return False
+
+            # Match same month and day as start date
+            return (
+                current_date.month == recurrence_start_date.month
+                and current_date.day == recurrence_start_date.day
+            )
+
+        case _:  # Default case if recurrence_type is None or unrecognized
             return False
-
-        # Check if current weekday is in the pattern
-        if recurrence_pattern and recurrence_pattern.weekdays:
-            weekdays = recurrence_pattern.weekdays
-        else:
-            weekdays = list(Weekday)  # All days if none specified
-
-        current_weekday = current_time.strftime("%A").lower()
-        return current_weekday in [day.value for day in weekdays]
-
-    elif recurrence_type == "monthly":
-        # Every X months on specified day or weekday pattern
-        months_since_start = _months_between_dates(recurrence_start_date, current_date)
-        if months_since_start < 0 or months_since_start % recurrence_interval != 0:
-            return False
-
-        if recurrence_pattern:
-            if recurrence_pattern.day_of_month is not None:
-                # Specific day of month (e.g., 1st, 15th)
-                return current_date.day == recurrence_pattern.day_of_month
-            elif recurrence_pattern.day_of_week is not None:
-                # Specific weekday pattern (e.g., "first_monday", "last_friday")
-                return _matches_monthly_weekday_pattern(
-                    current_date, recurrence_pattern.day_of_week
-                )
-
-        return True  # If no specific pattern, match any day in the month
-
-    elif recurrence_type == "yearly":
-        # Every X years - matches same month and day as start date
-        years_since_start = current_date.year - recurrence_start_date.year
-        if years_since_start < 0 or years_since_start % recurrence_interval != 0:
-            return False
-
-        # Match same month and day as start date
-        return (
-            current_date.month == recurrence_start_date.month
-            and current_date.day == recurrence_start_date.day
-        )
-
-    return False
 
 
 def _months_between_dates(start_date: date, end_date: date) -> int:

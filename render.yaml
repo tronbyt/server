@@ -3,7 +3,7 @@ services:
   name: tronbyt-server
   runtime: image
   image:
-    url: ghcr.io/tronbyt/server:1.5.4
+    url: ghcr.io/tronbyt/server:1
   plan: free
   envVars:
   - key: WEB_CONCURRENCY

@@ -2,8 +2,8 @@
 
 import ctypes
 import json
-import platform
 import logging
+import platform
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
@@ -12,13 +12,47 @@ from tronbyt_server.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Corresponds to libpixlet API, incremented for breaking changes.
+# libpixlet does not guarantee forwards or backwards compatibility yet.
+EXPECTED_LIBPIXLET_API_VERSION = 1
+
+
 pixlet_render_app: (
-    Callable[[bytes, bytes, int, int, int, int, int, int, int, bytes | None], Any]
+    Callable[
+        [
+            bytes,  # path
+            bytes,  # config
+            int,  # width
+            int,  # height
+            int,  # maxDuration
+            int,  # timeout
+            int,  # imageFormat
+            int,  # silenceOutput
+            bool,  # output2x
+            bytes | None,  # filters
+            bytes | None,  # tz
+            bytes | None,  # locale
+        ],
+        Any,
+    ]
     | None
 ) = None
-pixlet_get_schema: Callable[[bytes], Any] | None = None
-pixlet_call_handler_with_config: (
-    Callable[[ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p], Any]
+pixlet_get_schema: Callable[[bytes, int, int, bool], Any] | None = (
+    None  # path, width, height, output2x
+)
+pixlet_call_handler: (
+    Callable[
+        [
+            ctypes.c_char_p,  # path
+            ctypes.c_char_p,  # config
+            int,  # width
+            int,  # height
+            bool,  # output2x
+            ctypes.c_char_p,  # handlerName
+            ctypes.c_char_p,  # parameter
+        ],
+        Any,
+    ]
     | None
 ) = None
 pixlet_init_cache: Callable[[], None] | None = None
@@ -59,6 +93,10 @@ def load_pixlet_library() -> None:
         api_version = 0
 
     logger.info(f"Libpixlet API version: {api_version}")
+    if api_version != EXPECTED_LIBPIXLET_API_VERSION:
+        raise RuntimeError(
+            f"FATAL: libpixlet API version mismatch. Expected {EXPECTED_LIBPIXLET_API_VERSION}, found {api_version}"
+        )
 
     global pixlet_init_redis_cache
     pixlet_init_redis_cache = pixlet_library.init_redis_cache
@@ -70,16 +108,18 @@ def load_pixlet_library() -> None:
     global pixlet_render_app
     pixlet_render_app = pixlet_library.render_app
     pixlet_render_app.argtypes = [
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_char_p,
+        ctypes.c_char_p,  # path
+        ctypes.c_char_p,  # config
+        ctypes.c_int,  # width
+        ctypes.c_int,  # height
+        ctypes.c_int,  # maxDuration
+        ctypes.c_int,  # timeout
+        ctypes.c_int,  # imageFormat
+        ctypes.c_int,  # silenceOutput
+        ctypes.c_bool,  # output2x
+        ctypes.c_char_p,  # filters
+        ctypes.c_char_p,  # tz
+        ctypes.c_char_p,  # locale
     ]
 
     # Use c_void_p for the return type to avoid ctype's automatic copying into bytes() objects.
@@ -109,18 +149,26 @@ def load_pixlet_library() -> None:
 
     global pixlet_get_schema
     pixlet_get_schema = pixlet_library.get_schema
-    pixlet_get_schema.argtypes = [ctypes.c_char_p]
+    pixlet_get_schema.argtypes = [
+        ctypes.c_char_p,  # path
+        ctypes.c_int,  # width
+        ctypes.c_int,  # height
+        ctypes.c_bool,  # output2x
+    ]
     pixlet_get_schema.restype = StringReturn
 
-    global pixlet_call_handler_with_config
-    pixlet_call_handler_with_config = pixlet_library.call_handler_with_config
-    pixlet_call_handler_with_config.argtypes = [
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
+    global pixlet_call_handler
+    pixlet_call_handler = pixlet_library.call_handler
+    pixlet_call_handler.argtypes = [
+        ctypes.c_char_p,  # path
+        ctypes.c_char_p,  # config
+        ctypes.c_int,  # width
+        ctypes.c_int,  # height
+        ctypes.c_bool,  # output2x
+        ctypes.c_char_p,  # handlerName
+        ctypes.c_char_p,  # parameter
     ]
-    pixlet_call_handler_with_config.restype = CallHandlerReturn
+    pixlet_call_handler.restype = CallHandlerReturn
 
     global pixlet_free_bytes
     pixlet_free_bytes = pixlet_library.free_bytes
@@ -166,27 +214,34 @@ def render_app(
     config: dict[str, Any],
     width: int,
     height: int,
-    magnify: int,
     maxDuration: int,
     timeout: int,
     image_format: int,
     supports2x: bool = False,
+    filters: dict[str, Any] | None = None,
+    tz: str | None = None,
+    locale: str | None = None,
 ) -> tuple[bytes | None, list[str]]:
     initialize_pixlet_library()
     if not pixlet_render_app:
         logger.debug("failed to init pixlet_library")
         return None, []
+    filters_json = json.dumps(filters).encode("utf-8") if filters else None
+    tz_bytes = tz.encode("utf-8") if tz else None
+    locale_bytes = locale.encode("utf-8") if locale else None
     ret = pixlet_render_app(
         str(path).encode("utf-8"),
         json.dumps(config).encode("utf-8"),
         width,
         height,
-        magnify,
         maxDuration,
         timeout,
         image_format,
         1,
-        json.dumps({"2x": supports2x}).encode("utf-8"),
+        supports2x,
+        filters_json,
+        tz_bytes,
+        locale_bytes,
     )
     error = c_char_p_to_string(ret.error)
     messagesJSON = c_char_p_to_string(ret.messages)
@@ -203,29 +258,63 @@ def render_app(
             except Exception as e:
                 logger.error(f"Error: {e}")
         return buf, messages
+
+    match ret.length:
+        case -1:
+            logger.error(f"Invalid config for {path}")
+        case -2:
+            logger.error(f"Render failure for {path}")
+        case -3:
+            logger.error(f"Invalid filters for {path}")
+        case -4:
+            logger.error(f"Handler failure for {path}")
+        case -5:
+            logger.error(f"Invalid path for {path}")
+        case -6:
+            logger.error(f"Star suffix error for {path}")
+        case -7:
+            logger.error(f"Unknown applet for {path}")
+        case -8:
+            logger.error(f"Schema failure for {path}")
+        case -9:
+            logger.error(f"Invalid timezone for {path}")
+        case -10:
+            logger.error(f"Invalid locale for {path}")
+        case _:
+            logger.error(f"Unknown error for {path}: {ret.length}")
+
     return None, []
 
 
-def get_schema(path: Path) -> str | None:
+def get_schema(path: Path, width: int, height: int, supports2x: bool) -> str | None:
     initialize_pixlet_library()
     if not pixlet_get_schema:
         return None
-    ret = pixlet_get_schema(str(path).encode("utf-8"))
+    ret = pixlet_get_schema(str(path).encode("utf-8"), width, height, supports2x)
     schema = c_char_p_to_string(ret.data)
     if ret.status != 0:
         return None
     return schema
 
 
-def call_handler_with_config(
-    path: Path, config: dict[str, Any], handler: str, parameter: str
+def call_handler(
+    path: Path,
+    config: dict[str, Any],
+    handler: str,
+    parameter: str,
+    width: int,
+    height: int,
+    supports2x: bool,
 ) -> str | None:
     initialize_pixlet_library()
-    if not pixlet_call_handler_with_config:
+    if not pixlet_call_handler:
         return None
-    ret = pixlet_call_handler_with_config(
+    ret = pixlet_call_handler(
         ctypes.c_char_p(str(path).encode("utf-8")),
         ctypes.c_char_p(json.dumps(config).encode("utf-8")),
+        width,
+        height,
+        supports2x,
         ctypes.c_char_p(handler.encode("utf-8")),
         ctypes.c_char_p(parameter.encode("utf-8")),
     )

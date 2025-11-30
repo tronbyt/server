@@ -66,23 +66,25 @@ def render_app(
 
     config_data = config.copy()
     add_default_config(config_data, device)
+    tz = config_data.get("$tz")
 
     if not app_path.is_absolute():
         app_path = db.get_data_dir() / app_path
 
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
-
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
         width=64,
         height=32,
-        magnify=1,
         maxDuration=app_interval * 1000,
         timeout=30000,
         image_format=0,
         supports2x=device.supports_2x(),
+        filters=None,
+        tz=tz,
+        locale=device.locale,
     )
 
     if data is None:
@@ -96,7 +98,7 @@ def render_app(
         webp_path.write_bytes(data)
         logger.debug(f"Saved {len(data)} bytes to {webp_path}")
     elif webp_path is None:
-        logger.warning("webp_path is None, not saving rendered image")
+        logger.debug("webp_path is None, not saving rendered image")
     elif len(data) == 0:
         logger.warning("Rendered data is empty, not saving")
     return data
