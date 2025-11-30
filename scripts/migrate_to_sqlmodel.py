@@ -452,6 +452,7 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
 
         # Migrate each user
         print("\n🔄 Migrating users...")
+        validation_passed = False
         with Session(engine) as session:
             # Create system settings record first (check if it already exists)
             existing_settings = session.exec(select(SystemSettingsDB)).first()

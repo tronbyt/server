@@ -55,10 +55,10 @@ def migrate_user_from_dict(
         user_db = UserDB(
             username=username,
             password=user_data.get("password") or "",
-            email=user_data.get("email"),
+            email=user_data.get("email") or "",
             api_key=user_data.get("api_key") or "",
             theme_preference=user_data.get("theme_preference") or "system",
-            app_repo_url=user_data.get("app_repo_url"),
+            app_repo_url=user_data.get("app_repo_url") or "",
         )
         session.add(user_db)
         session.flush()
@@ -70,7 +70,7 @@ def migrate_user_from_dict(
 
         # Migrate all devices for this user
         devices = user_data.get("devices", {})
-        for device_id, device_data in devices.items():
+        for _, device_data in devices.items():
             migrate_device_from_dict(device_data, user_db.id, session, stats)
 
         return user_db
@@ -150,15 +150,15 @@ def migrate_device_from_dict(
             name=device_data.get("name") or "",
             type=device_type,
             api_key=device_data.get("api_key") or "",
-            img_url=device_data.get("img_url"),
-            ws_url=device_data.get("ws_url"),
+            img_url=device_data.get("img_url") or "",
+            ws_url=device_data.get("ws_url") or "",
             notes=device_data.get("notes") or "",
             brightness=brightness,
-            custom_brightness_scale=device_data.get("custom_brightness_scale"),
+            custom_brightness_scale=device_data.get("custom_brightness_scale") or "",
             night_brightness=night_brightness,
             dim_brightness=dim_brightness,
             night_mode_enabled=device_data.get("night_mode_enabled", False),
-            night_mode_app=device_data.get("night_mode_app"),
+            night_mode_app=device_data.get("night_mode_app") or "",
             night_start=time_to_str(device_data.get("night_start")),
             night_end=time_to_str(device_data.get("night_end")),
             dim_time=time_to_str(device_data.get("dim_time")),
@@ -198,7 +198,7 @@ def migrate_device_from_dict(
 
         # Migrate all apps - validate each individually
         apps = device_data.get("apps", {})
-        for app_iname, app_data in apps.items():
+        for _, app_data in apps.items():
             migrate_app_from_dict(app_data, device_id, session, stats)
 
         return device_db
@@ -302,13 +302,18 @@ def migrate_app_from_dict(
             name=app_data.get("name") or "",
             uinterval=app_data.get("uinterval") or 0,
             display_time=app_data.get("display_time") or 15,
-            notes=app_data.get("notes"),
-            enabled=app_data.get("enabled")
-            if app_data.get("enabled") is not None
-            else True,
+            notes=app_data.get("notes") or "",
+            enabled=app_data.get("enabled", True),
             pushed=app_data.get("pushed") or False,
             order=app_data.get("order") or 0,
-            last_render=parse_datetime(app_data.get("last_render")),
+            last_render=int(
+                (
+                    parse_datetime(app_data.get("last_render"))
+                    or datetime.fromtimestamp(0)
+                ).timestamp()
+            )
+            if parse_datetime(app_data.get("last_render"))
+            else 0,
             last_render_duration=int(last_render_duration),
             path=app_data.get("path"),
             start_time=time_to_str(app_data.get("start_time")),
@@ -319,11 +324,9 @@ def migrate_app_from_dict(
             recurrence_interval=app_data.get("recurrence_interval") or 1,
             recurrence_start_date=parse_date(app_data.get("recurrence_start_date")),
             recurrence_end_date=parse_date(app_data.get("recurrence_end_date")),
-            config=app_data.get("config") if app_data.get("config") is not None else {},
+            config=app_data.get("config") or {},
             empty_last_render=app_data.get("empty_last_render") or False,
-            render_messages=app_data.get("render_messages")
-            if app_data.get("render_messages") is not None
-            else [],
+            render_messages=app_data.get("render_messages") or [],
             autopin=app_data.get("autopin") or False,
             device_id=device_id,
         )

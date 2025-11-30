@@ -104,7 +104,7 @@ class TestDevicesEndpoint:
         assert "Invalid credentials" in response.text
 
     def test_list_devices_empty_devices(
-        self, auth_client: TestClient, db_connection
+        self, auth_client: TestClient, db_connection: sqlite3.Connection
     ) -> None:
         """Test listing devices when user has no devices"""
         user = utils.get_testuser()
