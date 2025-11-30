@@ -1,8 +1,6 @@
 from fastapi.testclient import TestClient
 from tests import utils
 from tronbyt_server import db
-from sqlmodel import Session
-from tests.conftest import get_test_session
 
 
 def test_app_create_edit_config_delete(auth_client: TestClient, db_connection) -> None:

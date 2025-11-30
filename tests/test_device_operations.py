@@ -2,8 +2,6 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from tests import utils
 from tronbyt_server.config import get_settings
-from sqlmodel import Session
-from tests.conftest import get_test_session
 
 
 def test_device_operations(auth_client: TestClient, db_connection) -> None:

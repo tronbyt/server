@@ -5,7 +5,7 @@ from tronbyt_server import db
 from tronbyt_server.models import App, DeviceType, Brightness
 from tronbyt_server.models.user import User
 from tests import utils
-from sqlmodel import Session
+
 from tests.conftest import get_test_session
 
 

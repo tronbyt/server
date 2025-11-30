@@ -6,8 +6,6 @@ from tronbyt_server.models.user import User
 from tests import utils
 from datetime import datetime
 from typing import Any
-from sqlmodel import Session
-from tests.conftest import get_test_session
 
 
 @pytest.fixture

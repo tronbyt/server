@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from tronbyt_server import db
 from tronbyt_server.config import get_settings
-from sqlmodel import Session
+
 from tests.conftest import get_test_session
 
 settings = get_settings()
