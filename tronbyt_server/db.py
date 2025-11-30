@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import yaml
 from fastapi import UploadFile
 from pydantic import ValidationError
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session
 from tzlocal import get_localzone, get_localzone_name
 from werkzeug.security import check_password_hash
@@ -35,12 +36,17 @@ def db_transaction(
 ) -> Generator[Session | sqlite3.Cursor, None, None]:
     """A context manager for database transactions.
 
-    For SQLModel Session: just yields the session (transactions handled automatically)
+    For SQLModel Session: yields the session with explicit commit/rollback
     For sqlite3.Connection: yields a cursor with manual commit/rollback
     """
     if isinstance(session, Session):
-        # SQLModel sessions handle transactions automatically
-        yield session
+        # SQLModel sessions need explicit commit
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
     else:
         # Legacy sqlite3 connection handling
         cursor = session.cursor()
@@ -1050,12 +1056,14 @@ def update_device_field(
                 parts = field.split(".", 1)
                 if parts[0] == "info" and isinstance(device_db.info, dict):
                     device_db.info[parts[1]] = value
+                    # Mark the info column as modified so SQLAlchemy detects the change
+                    flag_modified(device_db, "info")
                 else:
                     setattr(device_db, field, value)
             else:
                 setattr(device_db, field, value)
             session.add(device_db)
-            session.commit()
+            # Commit handled by db_transaction context manager
             logger.debug(f"Updated {field} for device {device_id}")
     else:
         # Legacy JSON approach
@@ -1094,7 +1102,7 @@ def update_app_field(
         if app_db:
             setattr(app_db, field, value)
             session.add(app_db)
-            session.commit()
+            # Commit handled by db_transaction context manager
             logger.debug(f"Updated {field} for app {iname} on device {device_id}")
     else:
         # Legacy JSON approach
