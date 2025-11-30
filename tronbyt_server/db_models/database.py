@@ -1,5 +1,6 @@
 """Database configuration for SQLModel."""
 
+from pathlib import Path
 from typing import Generator
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -9,6 +10,10 @@ from tronbyt_server.config import get_settings
 # Create engine - will use SQLite with the same DB file
 def get_engine() -> create_engine:
     """Get the database engine."""
+    # Ensure the parent directory exists for the database file
+    db_file = Path(get_settings().DB_FILE)
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+
     db_url = f"sqlite:///{get_settings().DB_FILE}"
     return create_engine(
         db_url,
