@@ -14,6 +14,7 @@ from random import randint
 from typing import Annotated, Any, cast
 from zoneinfo import available_timezones
 
+import yaml
 from fastapi import (
     APIRouter,
     Body,
@@ -28,7 +29,6 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi_babel import _
-from markupsafe import escape
 from pydantic import BaseModel, BeforeValidator, ValidationError
 from werkzeug.utils import secure_filename
 from babel import localedata
@@ -1906,13 +1906,48 @@ def refresh_system_repo(
     )
 
 
-@router.post("/mark_app_broken/{app_name}")
-def mark_app_broken(
+def _find_app_manifest(app_name: str, package_name: str | None) -> Path | None:
+    """Helper to find the manifest.yaml for an app."""
+    system_apps_path = db.get_data_dir() / "system-apps"
+
+    # Try to find using package_name first
+    if package_name:
+        # Check standard structure: apps/<package_name>/manifest.yaml
+        potential_path = system_apps_path / "apps" / package_name / "manifest.yaml"
+        if potential_path.exists():
+            return potential_path
+
+        # Also check in root of system-apps just in case
+        potential_path = system_apps_path / package_name / "manifest.yaml"
+        if potential_path.exists():
+            return potential_path
+
+    # Strategy: find the .star file, then look for manifest.yaml in the same directory.
+    # app_name might be 'foo.star' or just 'foo'
+    search_name = app_name if app_name.endswith(".star") else f"{app_name}.star"
+
+    # Search recursively for the star file
+    found_star_file = None
+    for star_file in system_apps_path.rglob(search_name):
+        found_star_file = star_file
+        break
+
+    if found_star_file:
+        manifest_path = found_star_file.parent / "manifest.yaml"
+        if manifest_path.exists():
+            return manifest_path
+
+    return None
+
+
+def _set_app_broken_status(
     app_name: str,
-    user: User = Depends(manager),
-    settings: Settings = Depends(get_settings),
+    package_name: str | None,
+    is_broken: bool,
+    user: User,
+    settings: Settings,
 ) -> Response:
-    """Mark an app as broken by adding it to broken_apps.txt (development mode only)."""
+    """Helper to set the broken status of an app in its manifest."""
     # Only allow in development mode
     if settings.PRODUCTION != "0":
         return JSONResponse(
@@ -1928,125 +1963,77 @@ def mark_app_broken(
         )
 
     try:
-        # Get the broken_apps.txt path
-        broken_apps_path = db.get_data_dir() / "system-apps" / "broken_apps.txt"
+        manifest_path = _find_app_manifest(app_name, package_name)
 
-        # Read existing broken apps
-        broken_apps = []
-        if broken_apps_path.exists():
-            broken_apps = broken_apps_path.read_text().splitlines()
-
-        # Add .star extension if not present
-        app_filename = app_name if app_name.endswith(".star") else f"{app_name}.star"
-
-        # Check if already in the list
-        if app_filename in broken_apps:
+        if not manifest_path:
             return JSONResponse(
                 content={
                     "success": False,
-                    "message": "App is already marked as broken",
+                    "message": "manifest.yaml not found for this app",
+                },
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Update manifest.yaml
+        with manifest_path.open("r") as f:
+            manifest_data = yaml.safe_load(f) or {}
+
+        current_status = manifest_data.get("broken", False)
+        if bool(current_status) == is_broken:
+            return JSONResponse(
+                content={
+                    "success": False,
+                    "message": f"App is already marked as {'broken' if is_broken else 'not broken'}",
                 },
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Add to the list
-        broken_apps.append(app_filename)
+        manifest_data["broken"] = is_broken
 
-        # Write back to file
-        broken_apps_path.write_text("\n".join(sorted(broken_apps)) + "\n")
+        with manifest_path.open("w") as f:
+            yaml.dump(manifest_data, f, default_flow_style=False)
 
-        # Regenerate the apps.json to include the broken flag (without doing git pull)
+        # Regenerate the apps.json
         system_apps.generate_apps_json(db.get_data_dir())
 
-        logger.info(f"Marked {app_filename} as broken")
+        action = "Marked" if is_broken else "Unmarked"
+        logger.info(f"{action} {app_name} as broken in manifest")
         return JSONResponse(
             content={
                 "success": True,
-                "message": f"Added {escape(app_filename)} to broken_apps.txt",
+                "message": f"Updated manifest for {app_name}",
             },
             status_code=status.HTTP_200_OK,
         )
 
     except Exception as e:
-        logger.error(f"Error marking app as broken: {e}")
+        logger.error(f"Error updating app broken status: {e}")
         return JSONResponse(
             content={"success": False, "message": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@router.post("/mark_app_broken/{app_name}")
+def mark_app_broken(
+    app_name: str,
+    package_name: str | None = Query(None),
+    user: User = Depends(manager),
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    """Mark an app as broken by updating its manifest.yaml (development mode only)."""
+    return _set_app_broken_status(app_name, package_name, True, user, settings)
 
 
 @router.post("/unmark_app_broken/{app_name}")
 def unmark_app_broken(
     app_name: str,
+    package_name: str | None = Query(None),
     user: User = Depends(manager),
     settings: Settings = Depends(get_settings),
 ) -> Response:
-    """Remove an app from broken_apps.txt (development mode only)."""
-    # Only allow in development mode
-    if settings.PRODUCTION != "0":
-        return JSONResponse(
-            content={"success": False, "message": "Only available in development mode"},
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
-
-    # Only allow admin users
-    if user.username != "admin":
-        return JSONResponse(
-            content={"success": False, "message": "Admin access required"},
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
-
-    try:
-        # Get the broken_apps.txt path
-        broken_apps_path = db.get_data_dir() / "system-apps" / "broken_apps.txt"
-
-        # Read existing broken apps
-        if not broken_apps_path.exists():
-            return JSONResponse(
-                content={"success": False, "message": "No broken apps file found"},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-        broken_apps = broken_apps_path.read_text().splitlines()
-
-        # Add .star extension if not present
-        app_filename = app_name if app_name.endswith(".star") else f"{app_name}.star"
-
-        # Check if in the list
-        if app_filename not in broken_apps:
-            return JSONResponse(
-                content={"success": False, "message": "App is not marked as broken"},
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Remove from the list
-        broken_apps.remove(app_filename)
-
-        # Write back to file
-        if broken_apps:
-            broken_apps_path.write_text("\n".join(sorted(broken_apps)) + "\n")
-        else:
-            # If no broken apps left, write empty file
-            broken_apps_path.write_text("")
-
-        # Regenerate the apps.json to remove the broken flag (without doing git pull)
-        system_apps.generate_apps_json(db.get_data_dir())
-
-        logger.info(f"Unmarked {app_filename} as broken")
-        return JSONResponse(
-            content={
-                "success": True,
-                "message": f"Removed {escape(app_filename)} from broken_apps.txt",
-            },
-            status_code=status.HTTP_200_OK,
-        )
-
-    except Exception as e:
-        logger.error(f"Error unmarking app: {e}")
-        return JSONResponse(
-            content={"success": False, "message": str(e)},
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    """Remove broken status from manifest.yaml (development mode only)."""
+    return _set_app_broken_status(app_name, package_name, False, user, settings)
 
 
 @router.post("/update_firmware")
