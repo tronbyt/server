@@ -554,9 +554,9 @@
         {% endif %}
         {% if config['PRODUCTION'] == '0' and not app.path.startswith("users/") %}
           {% if app.broken %}
-          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.file_name or app.name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
+          <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ app.file_name or app.name }}', '{{ app.package_name }}', event);" style="background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Unmark Broken') }}</button>
           {% else %}
-          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.file_name or app.name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
+          <button class="mark-broken-btn" onclick="markAppAsBroken('{{ app.file_name or app.name }}', '{{ app.package_name }}', event);" style="background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ _('Mark Broken') }}</button>
           {% endif %}
         {% endif %}
       </div>
@@ -663,16 +663,21 @@
   });
 
   // Function to mark app as broken (development mode only)
-  function markAppAsBroken(appName, event) {
+  function markAppAsBroken(appName, packageName, event) {
     // Stop the event from bubbling up to the parent div
     event.stopPropagation();
     event.preventDefault();
 
-    if (!confirm("Mark '" + appName + "' as broken? This will add it to broken_apps.txt and prevent it from being installed.")) {
+    if (!confirm("Mark '" + appName + "' as broken? This will add 'broken: true' to its manifest.yaml and prevent it from being installed.")) {
       return;
     }
 
-    fetch("{{ url_for('mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+    let url = "{{ url_for('mark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName));
+    if (packageName && packageName !== 'None' && packageName !== '') {
+      url += "?package_name=" + encodeURIComponent(packageName);
+    }
+
+    fetch(url, {
       method: 'POST'
     })
     .then(response => response.json())
@@ -691,16 +696,21 @@
   }
 
   // Function to unmark app as broken (development mode only)
-  function unmarkAppAsBroken(appName, event) {
+  function unmarkAppAsBroken(appName, packageName, event) {
     // Stop the event from bubbling up to the parent div
     event.stopPropagation();
     event.preventDefault();
 
-    if (!confirm("Unmark '" + appName + "' as broken? This will remove it from broken_apps.txt and allow it to be installed.")) {
+    if (!confirm("Unmark '" + appName + "' as broken? This will set 'broken: false' in its manifest.yaml and allow it to be installed.")) {
       return;
     }
 
-    fetch("{{ url_for('unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName)), {
+    let url = "{{ url_for('unmark_app_broken', app_name='PLACEHOLDER') }}".replace('PLACEHOLDER', encodeURIComponent(appName));
+    if (packageName && packageName !== 'None' && packageName !== '') {
+      url += "?package_name=" + encodeURIComponent(packageName);
+    }
+
+    fetch(url, {
       method: 'POST'
     })
     .then(response => response.json())
