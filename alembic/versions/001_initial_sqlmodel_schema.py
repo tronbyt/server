@@ -114,7 +114,7 @@ def upgrade() -> None:
         sa.Column("pushed", sa.Boolean(), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.Column("last_render", sa.Integer(), nullable=False),
-        sa.Column("last_render_duration", sa.Integer(), nullable=False),
+        sa.Column("last_render_duration", sa.Interval(), nullable=False),
         sa.Column("path", sa.String(), nullable=True),
         sa.Column("start_time", sa.String(), nullable=True),
         sa.Column("end_time", sa.String(), nullable=True),

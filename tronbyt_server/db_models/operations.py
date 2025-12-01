@@ -5,7 +5,7 @@ These functions replace the JSON manipulation in db.py with proper relational qu
 """
 
 import logging
-from datetime import date, datetime, time as dt_time, timedelta
+from datetime import date, datetime, time as dt_time
 from typing import Any
 
 from sqlmodel import Session, select
@@ -18,7 +18,7 @@ from tronbyt_server.db_models.models import (
     UserDB,
 )
 from tronbyt_server.models import App, Device, Location, RecurrencePattern, User
-from tronbyt_server.models.device import DeviceInfo, DeviceType
+from tronbyt_server.models.device import DeviceInfo
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +90,11 @@ def save_user_full(session: Session, user: "User", new_user: bool = False) -> Us
             raise ValueError(f"User {user.username} not found")
         user_db = user_db_maybe
 
-        # Update user fields
+        # Update user fields (no conversion needed - native enum support)
         user_db.password = user.password
         user_db.email = user.email
         user_db.api_key = user.api_key
-        user_db.theme_preference = user.theme_preference.value
+        user_db.theme_preference = user.theme_preference
         user_db.app_repo_url = user.app_repo_url
         session.add(user_db)
         session.commit()
@@ -141,23 +141,24 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
     else:
         device_info_dict = {}
 
+    # No conversion needed - DB models now handle native types
     device_data = {
         "id": device.id,
         "name": device.name,
-        "type": device.type.value,
+        "type": device.type,  # Native enum support
         "api_key": device.api_key,
         "img_url": device.img_url,
         "ws_url": device.ws_url,
         "notes": device.notes,
-        "brightness": device.brightness.as_percent,
+        "brightness": device.brightness,  # Custom Brightness type handles conversion
         "custom_brightness_scale": device.custom_brightness_scale,
-        "night_brightness": device.night_brightness.as_percent,
-        "dim_brightness": device.dim_brightness.as_percent
-        if device.dim_brightness is not None
-        else None,
+        "night_brightness": device.night_brightness,  # Custom Brightness type
+        "dim_brightness": device.dim_brightness,  # Custom Brightness type (nullable)
         "night_mode_enabled": device.night_mode_enabled,
         "night_mode_app": device.night_mode_app,
-        "night_start": time_to_str(device.night_start),
+        "night_start": time_to_str(
+            device.night_start
+        ),  # Keep string conversion for now
         "night_end": time_to_str(device.night_end),
         "dim_time": time_to_str(device.dim_time),
         "default_interval": device.default_interval,
@@ -264,13 +265,7 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
         else:
             days_list.append(day.value)
 
-    # Convert recurrence_type to string (handle both enum and string)
-    if isinstance(app.recurrence_type, str):
-        recurrence_type_str = app.recurrence_type
-    else:
-        recurrence_type_str = app.recurrence_type.value
-
-    # Convert date strings to date objects (SQLite Date type requires date objects)
+    # Convert date strings to date objects if needed (keep this for string input)
     recurrence_start_date_obj = None
     if app.recurrence_start_date:
         if isinstance(app.recurrence_start_date, str):
@@ -285,6 +280,7 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
         else:
             recurrence_end_date_obj = app.recurrence_end_date
 
+    # No conversion needed for most fields - DB models handle native types
     app_data = {
         "device_id": device_id,
         "iname": app.iname,
@@ -296,13 +292,13 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
         "pushed": app.pushed,
         "order": app.order,
         "last_render": app.last_render,
-        "last_render_duration": int(app.last_render_duration.total_seconds()),
+        "last_render_duration": app.last_render_duration,  # Native timedelta support
         "path": app.path,
-        "start_time": time_to_str(app.start_time),
+        "start_time": time_to_str(app.start_time),  # Keep string conversion for now
         "end_time": time_to_str(app.end_time),
-        "days": days_list,
+        "days": days_list,  # Still need to convert Weekday enums to strings for JSON
         "use_custom_recurrence": app.use_custom_recurrence,
-        "recurrence_type": recurrence_type_str,
+        "recurrence_type": app.recurrence_type,  # Native enum support
         "recurrence_interval": app.recurrence_interval,
         "recurrence_start_date": recurrence_start_date_obj,
         "recurrence_end_date": recurrence_end_date_obj,
@@ -554,8 +550,6 @@ def update_system_settings(
 
 def load_user_full(session: Session, user_db: UserDB) -> User:
     """Load a complete User with all devices and apps."""
-    from tronbyt_server.models.user import ThemePreference
-
     # Load all devices for this user
     assert user_db.id is not None, "User ID should be set"
     devices_db = get_devices_by_user_id(session, user_db.id)
@@ -566,12 +560,13 @@ def load_user_full(session: Session, user_db: UserDB) -> User:
         device_model = load_device_full(session, device_db)
         devices_dict[device_db.id] = device_model
 
+    # No conversion needed - DB already has native enum
     return User(
         username=user_db.username,
         password=user_db.password,
         email=user_db.email,
         api_key=user_db.api_key,
-        theme_preference=ThemePreference(user_db.theme_preference),
+        theme_preference=user_db.theme_preference,  # Already a ThemePreference enum
         app_repo_url=user_db.app_repo_url,
         devices=devices_dict,
     )
@@ -579,8 +574,6 @@ def load_user_full(session: Session, user_db: UserDB) -> User:
 
 def load_device_full(session: Session, device_db: DeviceDB) -> Device:
     """Load a complete Device with all apps and location."""
-    from tronbyt_server.models.device import Brightness
-
     # Load all apps for this device
     apps_db = get_apps_by_device(session, device_db.id)
 
@@ -603,21 +596,19 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
             lng=location_db.lng,
         )
 
-    # Time fields are stored as strings in DB and Device model expects strings
+    # No conversion needed - DB models already have correct types
     return Device(
         id=device_db.id,
         name=device_db.name,
-        type=DeviceType(device_db.type),  # type: ignore[call-arg]
+        type=device_db.type,  # Already DeviceType enum
         api_key=device_db.api_key,
         img_url=device_db.img_url,
         ws_url=device_db.ws_url,
         notes=device_db.notes,
-        brightness=Brightness(device_db.brightness),
+        brightness=device_db.brightness,  # Already Brightness object
         custom_brightness_scale=device_db.custom_brightness_scale,
-        night_brightness=Brightness(device_db.night_brightness),
-        dim_brightness=Brightness(device_db.dim_brightness)
-        if device_db.dim_brightness is not None
-        else None,
+        night_brightness=device_db.night_brightness,  # Already Brightness object
+        dim_brightness=device_db.dim_brightness,  # Already Brightness object or None
         night_mode_enabled=device_db.night_mode_enabled,
         night_mode_app=device_db.night_mode_app,
         night_start=device_db.night_start,
@@ -638,13 +629,12 @@ def load_device_full(session: Session, device_db: DeviceDB) -> Device:
 
 def load_app_full(session: Session, app_db: AppDB) -> App:
     """Load a complete App with recurrence pattern."""
-    from tronbyt_server.models.app import RecurrenceType, Weekday
+    from tronbyt_server.models.app import Weekday
 
-    # Time fields are stored as strings in DB and App model expects strings
-    # Convert days list to Weekday enums
+    # Convert days list to Weekday enums (still needed for JSON field)
     days = [Weekday(day) for day in app_db.days] if app_db.days else []
 
-    # Load recurrence pattern from JSON if it exists
+    # No conversion needed for most fields - DB models already have correct types
     app_kwargs = {
         "id": str(app_db.id),
         "iname": app_db.iname,
@@ -656,13 +646,13 @@ def load_app_full(session: Session, app_db: AppDB) -> App:
         "pushed": app_db.pushed,
         "order": app_db.order,
         "last_render": app_db.last_render,
-        "last_render_duration": timedelta(seconds=app_db.last_render_duration),
+        "last_render_duration": app_db.last_render_duration,  # Already timedelta
         "path": app_db.path,
         "start_time": app_db.start_time,
         "end_time": app_db.end_time,
         "days": days,
         "use_custom_recurrence": app_db.use_custom_recurrence,
-        "recurrence_type": RecurrenceType(app_db.recurrence_type),
+        "recurrence_type": app_db.recurrence_type,  # Already RecurrenceType enum
         "recurrence_interval": app_db.recurrence_interval,
         "recurrence_start_date": app_db.recurrence_start_date,
         "recurrence_end_date": app_db.recurrence_end_date,
@@ -690,20 +680,19 @@ def user_db_to_model(user_db: UserDB, devices: list[DeviceDB]) -> User:
 
     Use load_user_full() instead if you need devices and apps loaded.
     """
-    from tronbyt_server.models.user import ThemePreference
-
     # Convert devices to dict format
     devices_dict = {}
     for device_db in devices:
         device_model = device_db_to_model(device_db)
         devices_dict[device_db.id] = device_model
 
+    # No conversion needed - DB already has native types
     return User(
         username=user_db.username,
         password=user_db.password,
         email=user_db.email,
         api_key=user_db.api_key,
-        theme_preference=ThemePreference(user_db.theme_preference),
+        theme_preference=user_db.theme_preference,  # Already ThemePreference enum
         app_repo_url=user_db.app_repo_url,
         devices=devices_dict,
     )
@@ -711,8 +700,6 @@ def user_db_to_model(user_db: UserDB, devices: list[DeviceDB]) -> User:
 
 def device_db_to_model(device_db: DeviceDB) -> Device:
     """Convert a DeviceDB to a Device Pydantic model."""
-    from tronbyt_server.models.device import Brightness
-
     # Convert apps (would need session to load)
     # This is a placeholder - in practice, you'd pass apps or load them separately
     apps_dict: dict[str, App] = {}
@@ -729,21 +716,19 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
             lng=device_db.location.lng,
         )
 
-    # Time fields are stored as strings in DB and Device model expects strings
+    # No conversion needed - DB models already have correct types
     return Device(
         id=device_db.id,
         name=device_db.name,
-        type=DeviceType(device_db.type),  # type: ignore[call-arg]
+        type=device_db.type,  # Already DeviceType enum
         api_key=device_db.api_key,
         img_url=device_db.img_url,
         ws_url=device_db.ws_url,
         notes=device_db.notes,
-        brightness=Brightness(device_db.brightness),
+        brightness=device_db.brightness,  # Already Brightness object
         custom_brightness_scale=device_db.custom_brightness_scale,
-        night_brightness=Brightness(device_db.night_brightness),
-        dim_brightness=Brightness(device_db.dim_brightness)
-        if device_db.dim_brightness is not None
-        else None,
+        night_brightness=device_db.night_brightness,  # Already Brightness object
+        dim_brightness=device_db.dim_brightness,  # Already Brightness object or None
         night_mode_enabled=device_db.night_mode_enabled,
         night_mode_app=device_db.night_mode_app,
         night_start=device_db.night_start,
@@ -764,9 +749,9 @@ def device_db_to_model(device_db: DeviceDB) -> Device:
 
 def app_db_to_model(app_db: AppDB) -> App:
     """Convert an AppDB to an App Pydantic model."""
-    from tronbyt_server.models.app import RecurrenceType, Weekday
+    from tronbyt_server.models.app import Weekday
 
-    # Parse time strings
+    # Parse time strings (App model expects time objects or strings)
     start_time = None
     if app_db.start_time:
         try:
@@ -783,10 +768,10 @@ def app_db_to_model(app_db: AppDB) -> App:
         except (ValueError, AttributeError):
             pass
 
-    # Convert days list to Weekday enums
+    # Convert days list to Weekday enums (still needed for JSON field)
     days = [Weekday(day) for day in app_db.days] if app_db.days else []
 
-    # Build app kwargs
+    # No conversion needed for most fields - DB models already have correct types
     app_kwargs = {
         "id": str(app_db.id),
         "iname": app_db.iname,
@@ -798,13 +783,13 @@ def app_db_to_model(app_db: AppDB) -> App:
         "pushed": app_db.pushed,
         "order": app_db.order,
         "last_render": app_db.last_render,
-        "last_render_duration": timedelta(seconds=app_db.last_render_duration),
+        "last_render_duration": app_db.last_render_duration,  # Already timedelta
         "path": app_db.path,
         "start_time": start_time,
         "end_time": end_time,
         "days": days,
         "use_custom_recurrence": app_db.use_custom_recurrence,
-        "recurrence_type": RecurrenceType(app_db.recurrence_type),
+        "recurrence_type": app_db.recurrence_type,  # Already RecurrenceType enum
         "recurrence_interval": app_db.recurrence_interval,
         "recurrence_start_date": app_db.recurrence_start_date,
         "recurrence_end_date": app_db.recurrence_end_date,
