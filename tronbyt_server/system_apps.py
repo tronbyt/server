@@ -196,13 +196,11 @@ def generate_apps_json(base_path: Path) -> None:
             # check for existence of yaml_path
             if yaml_path.exists():
                 with yaml_path.open("r") as f:
-                    yaml_dict = yaml.safe_load(f)
+                    yaml_dict = yaml.safe_load(f) or {}
                     # Merge YAML dict into Pydantic model
-                    app_dict = app_dict.model_copy(
-                        update={
-                            k: v for k, v in yaml_dict.items() if hasattr(app_dict, k)
-                        }
-                    )
+                    current_data = app_dict.model_dump(by_alias=True)
+                    current_data.update(yaml_dict)
+                    app_dict = AppMetadata.model_validate(current_data)
             else:
                 app_dict.summary = "System App"
 
@@ -274,7 +272,7 @@ def generate_apps_json(base_path: Path) -> None:
     logger.info(f"copied {new_previews_2x} new 2x previews into static")
     logger.info(f"total 2x previews found: {num_previews_2x}")
     with (base_path / "system-apps.json").open("w") as f:
-        json.dump([a.model_dump() for a in apps_array], f, indent=4)
+        json.dump([a.model_dump(by_alias=True) for a in apps_array], f, indent=4)
 
 
 def update_system_repo(base_path: Path) -> None:
