@@ -21,6 +21,9 @@ from tronbyt_server.db_models import (
     create_db_and_tables,
 )
 from tronbyt_server import db_models
+from tronbyt_server.models.app import RecurrenceType
+from tronbyt_server.models.device import Brightness, DeviceType
+from tronbyt_server.models.user import ThemePreference
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +55,20 @@ def migrate_user_from_dict(
 
     try:
         # Validate and create user record from user-level fields only
+        theme_pref_str = user_data.get("theme_preference") or "system"
+        theme_pref = (
+            ThemePreference(theme_pref_str)
+            if isinstance(theme_pref_str, str)
+            else ThemePreference.SYSTEM
+        )
+
         user_db = UserDB(
             username=username,
             password=user_data.get("password") or "",
-            email=user_data.get("email"),
+            email=user_data.get("email") or "",
             api_key=user_data.get("api_key") or "",
-            theme_preference=user_data.get("theme_preference") or "system",
-            app_repo_url=user_data.get("app_repo_url"),
+            theme_preference=theme_pref,
+            app_repo_url=user_data.get("app_repo_url") or "",
         )
         session.add(user_db)
         session.flush()
@@ -70,7 +80,7 @@ def migrate_user_from_dict(
 
         # Migrate all devices for this user
         devices = user_data.get("devices", {})
-        for device_id, device_data in devices.items():
+        for _device_id, device_data in devices.items():
             migrate_device_from_dict(device_data, user_db.id, session, stats)
 
         return user_db
@@ -116,23 +126,28 @@ def migrate_device_from_dict(
             return None
 
         # Extract brightness values - handle both dict and numeric formats
-        brightness = device_data.get("brightness")
-        if isinstance(brightness, dict):
-            brightness = brightness.get("as_percent", 100)
-        elif brightness is None:
-            brightness = 100
+        brightness_val = device_data.get("brightness")
+        if isinstance(brightness_val, dict):
+            brightness_val = brightness_val.get("as_percent", 100)
+        elif brightness_val is None:
+            brightness_val = 100
+        brightness = Brightness(brightness_val)
 
-        night_brightness = device_data.get("night_brightness")
-        if isinstance(night_brightness, dict):
-            night_brightness = night_brightness.get("as_percent", 10)
-        elif night_brightness is None:
-            night_brightness = 10
+        night_brightness_val = device_data.get("night_brightness")
+        if isinstance(night_brightness_val, dict):
+            night_brightness_val = night_brightness_val.get("as_percent", 10)
+        elif night_brightness_val is None:
+            night_brightness_val = 10
+        night_brightness = Brightness(night_brightness_val)
 
-        dim_brightness = device_data.get("dim_brightness")
-        if isinstance(dim_brightness, dict):
-            dim_brightness = dim_brightness.get("as_percent")
-        elif dim_brightness is not None:
+        dim_brightness_val = device_data.get("dim_brightness")
+        if isinstance(dim_brightness_val, dict):
+            dim_brightness_val = dim_brightness_val.get("as_percent")
+        elif dim_brightness_val is not None:
             pass  # Use as-is if it's already a number
+        dim_brightness = (
+            Brightness(dim_brightness_val) if dim_brightness_val is not None else None
+        )
 
         # Get device info
         device_info = device_data.get("info", {})
@@ -140,25 +155,32 @@ def migrate_device_from_dict(
             device_info = {}
 
         # Map old device type to new enum values
-        device_type = device_data.get("type") or "tidbyt"
-        if device_type == "tidbyt":
-            device_type = "tidbyt_gen1"  # Default to gen1 for old "tidbyt" entries
+        device_type_raw = device_data.get("type") or "tidbyt"
+        if device_type_raw == "tidbyt":
+            device_type_raw = "tidbyt_gen1"  # Default to gen1 for old "tidbyt" entries
 
-        # Create device record
+        # Convert to DeviceType enum by finding matching value
+        # Use next() with generator to satisfy both mypy and pyright
+        device_type = next(
+            (dt for dt in DeviceType if dt.value == device_type_raw),
+            DeviceType.TIDBYT_GEN1,
+        )
+
+        # Create device record (SQLAlchemy will convert string to enum)
         device_db = DeviceDB(
             id=device_id,
             name=device_data.get("name") or "",
             type=device_type,
             api_key=device_data.get("api_key") or "",
-            img_url=device_data.get("img_url"),
-            ws_url=device_data.get("ws_url"),
+            img_url=device_data.get("img_url") or "",
+            ws_url=device_data.get("ws_url") or "",
             notes=device_data.get("notes") or "",
             brightness=brightness,
-            custom_brightness_scale=device_data.get("custom_brightness_scale"),
+            custom_brightness_scale=device_data.get("custom_brightness_scale") or "",
             night_brightness=night_brightness,
             dim_brightness=dim_brightness,
             night_mode_enabled=device_data.get("night_mode_enabled", False),
-            night_mode_app=device_data.get("night_mode_app"),
+            night_mode_app=device_data.get("night_mode_app") or "",
             night_start=time_to_str(device_data.get("night_start")),
             night_end=time_to_str(device_data.get("night_end")),
             dim_time=time_to_str(device_data.get("dim_time")),
@@ -198,7 +220,7 @@ def migrate_device_from_dict(
 
         # Migrate all apps - validate each individually
         apps = device_data.get("apps", {})
-        for app_iname, app_data in apps.items():
+        for _app_iname, app_data in apps.items():
             migrate_app_from_dict(app_data, device_id, session, stats)
 
         return device_db
@@ -297,10 +319,15 @@ def migrate_app_from_dict(
             days = []  # Ensure it's always a list
 
         # Map old recurrence_type values to new enum
-        recurrence_type = app_data.get("recurrence_type") or "daily"
-        if recurrence_type == "never":
+        recurrence_type_str = app_data.get("recurrence_type") or "daily"
+        if recurrence_type_str == "never":
             # Old "never" value doesn't exist in new enum, map to daily
-            recurrence_type = "daily"
+            recurrence_type_str = "daily"
+        recurrence_type = RecurrenceType(recurrence_type_str)
+
+        # Convert last_render datetime to timestamp
+        last_render_dt = parse_datetime(app_data.get("last_render"))
+        last_render_ts = int(last_render_dt.timestamp()) if last_render_dt else 0
 
         # Create app record
         app_db = AppDB(
@@ -308,13 +335,13 @@ def migrate_app_from_dict(
             name=app_data.get("name") or "",
             uinterval=app_data.get("uinterval") or 0,
             display_time=app_data.get("display_time") or 15,
-            notes=app_data.get("notes"),
-            enabled=app_data.get("enabled")
+            notes=app_data.get("notes") or "",
+            enabled=bool(app_data.get("enabled"))
             if app_data.get("enabled") is not None
             else True,
             pushed=app_data.get("pushed") or False,
             order=app_data.get("order") or 0,
-            last_render=parse_datetime(app_data.get("last_render")),
+            last_render=last_render_ts,
             last_render_duration=last_render_duration,
             path=app_data.get("path"),
             start_time=time_to_str(app_data.get("start_time")),
@@ -325,11 +352,9 @@ def migrate_app_from_dict(
             recurrence_interval=app_data.get("recurrence_interval") or 1,
             recurrence_start_date=parse_date(app_data.get("recurrence_start_date")),
             recurrence_end_date=parse_date(app_data.get("recurrence_end_date")),
-            config=app_data.get("config") if app_data.get("config") is not None else {},
+            config=app_data.get("config") or {},
             empty_last_render=app_data.get("empty_last_render") or False,
-            render_messages=app_data.get("render_messages")
-            if app_data.get("render_messages") is not None
-            else [],
+            render_messages=app_data.get("render_messages") or [],
             autopin=app_data.get("autopin") or False,
             device_id=device_id,
         )

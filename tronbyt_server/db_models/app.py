@@ -1,7 +1,7 @@
 """SQLModel for app."""
 
 from datetime import date, timedelta
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 from sqlalchemy import Column, Enum as SAEnum, Interval, JSON
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class AppDB(SQLModel, table=True):
     """SQLModel for App table."""
 
-    __tablename__ = "apps"
+    __tablename__: ClassVar[Any] = "apps"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     iname: str = Field(index=True)

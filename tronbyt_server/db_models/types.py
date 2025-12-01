@@ -6,7 +6,7 @@ from sqlalchemy import TypeDecorator, Integer
 from tronbyt_server.models.device import Brightness as BrightnessModel
 
 
-class Brightness(TypeDecorator):
+class Brightness(TypeDecorator[BrightnessModel]):
     """SQLAlchemy type for Brightness objects.
 
     Stores as integer (0-100) in database, converts to/from Brightness objects in Python.

@@ -98,7 +98,7 @@ def migrate_user(user: User, session: Session, stats: MigrationStats) -> UserDB 
             password=user.password,
             email=user.email,
             api_key=user.api_key,
-            theme_preference=user.theme_preference.value,
+            theme_preference=user.theme_preference,
             app_repo_url=user.app_repo_url,
         )
         session.add(user_db)
@@ -134,17 +134,15 @@ def migrate_device(
         device_db = DeviceDB(
             id=device.id,
             name=device.name,
-            type=device.type.value,
+            type=device.type,
             api_key=device.api_key,
             img_url=device.img_url,
             ws_url=device.ws_url,
             notes=device.notes,
-            brightness=device.brightness.as_percent,
+            brightness=device.brightness,
             custom_brightness_scale=device.custom_brightness_scale,
-            night_brightness=device.night_brightness.as_percent,
-            dim_brightness=(
-                device.dim_brightness.as_percent if device.dim_brightness else None
-            ),
+            night_brightness=device.night_brightness,
+            dim_brightness=device.dim_brightness,
             night_mode_enabled=device.night_mode_enabled,
             night_mode_app=device.night_mode_app,
             night_start=device.night_start,
@@ -226,13 +224,13 @@ def migrate_app(
             pushed=app.pushed,
             order=app.order,
             last_render=app.last_render,
-            last_render_duration=int(app.last_render_duration.total_seconds()),
+            last_render_duration=app.last_render_duration,
             path=app.path,
             start_time=start_time_str,
             end_time=end_time_str,
             days=days_list,
             use_custom_recurrence=app.use_custom_recurrence,
-            recurrence_type=app.recurrence_type.value,
+            recurrence_type=app.recurrence_type,
             recurrence_interval=app.recurrence_interval,
             recurrence_start_date=app.recurrence_start_date,
             recurrence_end_date=app.recurrence_end_date,
@@ -480,6 +478,9 @@ def perform_migration(db_path: str, dry_run: bool = False) -> bool:
                     stats.errors.append(error_msg)
                     print(f"  ❌ {error_msg}")
                     continue
+
+            # Initialize validation result
+            validation_passed = False
 
             if dry_run:
                 print("\n🔍 DRY RUN - Rolling back all changes...")

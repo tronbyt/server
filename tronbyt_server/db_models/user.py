@@ -1,6 +1,6 @@
 """SQLModel for user."""
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 from sqlalchemy import Column, Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class UserDB(SQLModel, table=True):
     """SQLModel for User table."""
 
-    __tablename__ = "users"
+    __tablename__: ClassVar[Any] = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)

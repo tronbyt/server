@@ -1,7 +1,7 @@
 """SQLModel for device."""
 
 from datetime import datetime
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 from sqlalchemy import Column, Enum as SAEnum, JSON
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class DeviceDB(SQLModel, table=True):
     """SQLModel for Device table."""
 
-    __tablename__ = "devices"
+    __tablename__: ClassVar[Any] = "devices"
 
     id: str = Field(primary_key=True)
     name: str = ""

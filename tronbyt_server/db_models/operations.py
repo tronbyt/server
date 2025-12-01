@@ -134,8 +134,6 @@ def save_device_full(session: Session, user_id: int, device: "Device") -> Device
     device_info_dict: dict[str, Any]
     if hasattr(device_info_obj, "model_dump"):
         device_info_dict = device_info_obj.model_dump()
-    elif hasattr(device_info_obj, "dict"):
-        device_info_dict = device_info_obj.dict()
     elif isinstance(device_info_obj, dict):
         device_info_dict = device_info_obj
     else:
@@ -242,14 +240,11 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
     # Convert recurrence pattern to dict if it exists
     recurrence_pattern_dict = None
     if app.recurrence_pattern:
-        # Convert weekdays to strings (handle both Weekday enums and strings)
+        # Convert weekdays to strings (Weekday enums inherit from str, so they can be used directly)
         weekdays_list = []
         if app.recurrence_pattern.weekdays:
             for wd in app.recurrence_pattern.weekdays:
-                if isinstance(wd, str):
-                    weekdays_list.append(wd)
-                else:
-                    weekdays_list.append(wd.value)
+                weekdays_list.append(str(wd))
 
         recurrence_pattern_dict = {
             "day_of_month": app.recurrence_pattern.day_of_month,
@@ -257,13 +252,10 @@ def save_app_full(session: Session, device_id: str, app: "App") -> AppDB:
             "weekdays": weekdays_list,
         }
 
-    # Convert days to strings (handle both Weekday enums and strings)
+    # Convert days to strings (Weekday enums inherit from str, so they can be used directly)
     days_list = []
     for day in app.days:
-        if isinstance(day, str):
-            days_list.append(day)
-        else:
-            days_list.append(day.value)
+        days_list.append(str(day))
 
     # Convert date strings to date objects if needed (keep this for string input)
     recurrence_start_date_obj = None

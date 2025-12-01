@@ -1054,7 +1054,7 @@ def update_device_field(
             # Handle nested fields like "info.protocol_type"
             if "." in field:
                 parts = field.split(".", 1)
-                if parts[0] == "info" and isinstance(device_db.info, dict):
+                if parts[0] == "info":
                     device_db.info[parts[1]] = value
                     # Mark the info column as modified so SQLAlchemy detects the change
                     flag_modified(device_db, "info")
@@ -1135,41 +1135,6 @@ def get_device_by_id(session: Session, device_id: str) -> Device | None:
     if device_db:
         return db_ops.load_device_full(session, device_db)
     return None
-
-
-def _remove_corrupt_apps(
-    user_data: dict[str, Any], error: ValidationError
-) -> tuple[dict[str, Any], list[str]]:
-    """Remove corrupt app entries from user data based on validation errors.
-
-    Returns:
-        Tuple of (cleaned_user_data, list_of_removed_app_ids)
-    """
-    removed_apps = []
-
-    # Parse validation errors to find corrupt apps
-    for err in error.errors():
-        loc = err.get("loc", ())
-        # Look for errors in the path: devices.<device_id>.apps.<app_id>.<field>
-        if len(loc) >= 4 and loc[0] == "devices" and loc[2] == "apps":
-            device_id = loc[1]
-            app_id = loc[3]
-
-            # Remove the corrupt app
-            devices = user_data.get("devices")
-            if isinstance(devices, dict):
-                device = devices.get(device_id)
-                if isinstance(device, dict):
-                    apps = device.get("apps")
-                    if isinstance(apps, dict) and app_id in apps:
-                        del apps[app_id]
-                        removed_apps.append(f"{device_id}/app:{app_id}")
-                        logger.warning(
-                            f"Removed corrupt app entry {app_id} from device {device_id} "
-                            f"(missing field: {loc[-1]})"
-                        )
-
-    return user_data, removed_apps
 
 
 def get_user_by_device_id(session: Session, device_id: str) -> User | None:

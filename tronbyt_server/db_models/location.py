@@ -1,6 +1,6 @@
 """SQLModel for location."""
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class LocationDB(SQLModel, table=True):
     """SQLModel for Location table."""
 
-    __tablename__ = "locations"
+    __tablename__: ClassVar[Any] = "locations"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     locality: str = ""
