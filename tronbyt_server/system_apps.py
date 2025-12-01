@@ -99,16 +99,6 @@ def generate_apps_json(base_path: Path) -> None:
     # find all the .star files in the apps_path directory
     apps_array: list[AppMetadata] = []
     apps = list(system_apps_path.rglob("*.star"))
-    broken_apps = []
-
-    broken_apps_path = system_apps_path / "broken_apps.txt"
-    if broken_apps_path.exists():
-        logger.info(f"processing broken_apps file {broken_apps_path}")
-        try:
-            broken_apps = broken_apps_path.read_text().splitlines()
-            logger.info(str(broken_apps))
-        except Exception as e:
-            logger.info(f"problem reading broken_apps_txt {e}")
 
     apps.sort()
     count = 0
@@ -173,14 +163,6 @@ def generate_apps_json(base_path: Path) -> None:
                 path=str(app),
                 date=mod_time.strftime("%Y-%m-%d %H:%M"),
             )
-
-            # Check if app is broken
-            is_broken = broken_apps and app.name in broken_apps
-            if is_broken:
-                logger.info(f"marking broken app {app.name}")
-                app_dict.broken = True
-                app_dict.brokenReason = "Marked Broken"
-                skip_count += 1
 
             # Check if app uses secret.star module
             app_str = app.read_text()
