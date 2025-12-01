@@ -272,7 +272,7 @@ def generate_apps_json(base_path: Path) -> None:
     logger.info(f"copied {new_previews_2x} new 2x previews into static")
     logger.info(f"total 2x previews found: {num_previews_2x}")
     with (base_path / "system-apps.json").open("w") as f:
-        json.dump([a.model_dump() for a in apps_array], f, indent=4)
+        json.dump([a.model_dump(by_alias=True) for a in apps_array], f, indent=4)
 
 
 def update_system_repo(base_path: Path) -> None:
