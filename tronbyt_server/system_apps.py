@@ -196,13 +196,11 @@ def generate_apps_json(base_path: Path) -> None:
             # check for existence of yaml_path
             if yaml_path.exists():
                 with yaml_path.open("r") as f:
-                    yaml_dict = yaml.safe_load(f)
+                    yaml_dict = yaml.safe_load(f) or {}
                     # Merge YAML dict into Pydantic model
-                    app_dict = app_dict.model_copy(
-                        update={
-                            k: v for k, v in yaml_dict.items() if hasattr(app_dict, k)
-                        }
-                    )
+                    current_data = app_dict.model_dump(by_alias=True)
+                    current_data.update(yaml_dict)
+                    app_dict = AppMetadata.model_validate(current_data)
             else:
                 app_dict.summary = "System App"
 
