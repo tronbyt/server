@@ -23,7 +23,7 @@ jobs:
         uses: pdm-project/setup-pdm@v4
         with:
           cache: true
-          python-version: 3.14
+          python-version: 3.13
       - name: Install dependencies
         run: pdm sync -d
       - name: Lint code with Ruff
