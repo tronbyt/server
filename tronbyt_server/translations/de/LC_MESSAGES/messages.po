@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-11-28 22:25+0100\n"
+"POT-Creation-Date: 2025-12-01 18:25+0100\n"
 "PO-Revision-Date: 2025-02-20 07:59+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -22,89 +22,89 @@ msgstr ""
 msgid "Never"
 msgstr "Nie"
 
-#: tronbyt_server/utils.py:142
+#: tronbyt_server/utils.py:143
 msgid "Repo Cloned"
 msgstr "Repo geklont"
 
-#: tronbyt_server/utils.py:143
+#: tronbyt_server/utils.py:144
 msgid "Repo Updated"
 msgstr "Repo aktualisiert"
 
-#: tronbyt_server/utils.py:144
+#: tronbyt_server/utils.py:145
 msgid "Repo removed"
 msgstr "Repo entfernt"
 
-#: tronbyt_server/utils.py:145
+#: tronbyt_server/utils.py:146
 msgid "Error Cloning or Updating Repo"
 msgstr "Fehler beim Klonen oder Aktualisieren des Repos"
 
-#: tronbyt_server/utils.py:146
+#: tronbyt_server/utils.py:147
 msgid "No Changes to Repo"
 msgstr "Keine Änderungen am Repo"
 
-#: tronbyt_server/routers/auth.py:87 tronbyt_server/routers/auth.py:176
+#: tronbyt_server/routers/auth.py:92 tronbyt_server/routers/auth.py:181
 msgid "Password is required."
 msgstr "Passwort ist erforderlich."
 
-#: tronbyt_server/routers/auth.py:100
+#: tronbyt_server/routers/auth.py:105
 msgid "admin user created. Please log in."
 msgstr "admin-Benutzer erstellt. Bitte anmelden."
 
-#: tronbyt_server/routers/auth.py:105
+#: tronbyt_server/routers/auth.py:110
 msgid "Could not create admin user."
 msgstr "Konnte Admin-Benutzer nicht erstellen."
 
-#: tronbyt_server/routers/auth.py:124 tronbyt_server/routers/auth.py:155
+#: tronbyt_server/routers/auth.py:129 tronbyt_server/routers/auth.py:160
 msgid "User registration is not enabled."
 msgstr "Benutzerregistrierung ist nicht aktiviert."
 
-#: tronbyt_server/routers/auth.py:164
+#: tronbyt_server/routers/auth.py:169
 msgid "Maximum number of users reached. Registration is disabled."
 msgstr "Maximale Benutzeranzahl erreicht. Registrierung ist deaktiviert."
 
-#: tronbyt_server/routers/auth.py:173
+#: tronbyt_server/routers/auth.py:178
 msgid "Username is required."
 msgstr "Benutzername ist erforderlich."
 
-#: tronbyt_server/routers/auth.py:179
+#: tronbyt_server/routers/auth.py:184
 msgid "User is already registered."
 msgstr "Benutzer ist bereits registriert."
 
-#: tronbyt_server/routers/auth.py:195
+#: tronbyt_server/routers/auth.py:200
 #, python-brace-format
 msgid "User {username} registered successfully."
 msgstr "Benutzer {username} erfolgreich registriert."
 
-#: tronbyt_server/routers/auth.py:206
+#: tronbyt_server/routers/auth.py:211
 #, python-brace-format
 msgid "Registered as {username}."
 msgstr "Registriert als {username}."
 
-#: tronbyt_server/routers/auth.py:212
+#: tronbyt_server/routers/auth.py:217
 msgid "Couldn't Save User"
 msgstr "Konnte Benutzer nicht speichern"
 
-#: tronbyt_server/routers/auth.py:268
+#: tronbyt_server/routers/auth.py:273
 msgid "Incorrect username/password."
 msgstr "Falscher Benutzername/Passwort."
 
-#: tronbyt_server/routers/auth.py:325
+#: tronbyt_server/routers/auth.py:330
 msgid "Bad old password."
 msgstr "Falsches altes Passwort."
 
-#: tronbyt_server/routers/auth.py:331
+#: tronbyt_server/routers/auth.py:336
 msgid "Success"
 msgstr "Erfolg"
 
-#: tronbyt_server/routers/auth.py:340
+#: tronbyt_server/routers/auth.py:345
 msgid "Logged Out"
 msgstr "Abgemeldet"
 
-#: tronbyt_server/routers/auth.py:393
+#: tronbyt_server/routers/auth.py:398
 msgid "New API key generated successfully."
 msgstr "Neuer API-Schlüssel erfolgreich generiert."
 
-#: tronbyt_server/routers/auth.py:395
+#: tronbyt_server/routers/auth.py:400
 msgid "Failed to generate new API key."
 msgstr "Neuer API-Schlüssel konnte nicht generiert werden."
 
@@ -603,7 +603,11 @@ msgstr "JSON-Datei auswählen"
 msgid "Import"
 msgstr "Importieren"
 
-#: tronbyt_server/templates/auth/edit.html:234
+#: tronbyt_server/templates/auth/edit.html:236
+msgid "Update available!"
+msgstr "Update verfügbar!"
+
+#: tronbyt_server/templates/auth/edit.html:241
 msgid "Server"
 msgstr "Server"
 
@@ -1736,24 +1740,3 @@ msgstr "Eingeklappt"
 #: tronbyt_server/templates/partials/device_card.html:123
 msgid "Drag apps to reorder"
 msgstr "Apps zum Neuanordnen ziehen"
-
-#~ msgid "Id and Name is required."
-#~ msgstr "ID und Name sind erforderlich."
-
-#~ msgid "✅ {result['message']}"
-#~ msgstr "✅ {result['message']}"
-
-#~ msgid "ℹ️ {result['message']}"
-#~ msgstr "ℹ️ {result['message']}"
-
-#~ msgid "❌ {result['message']}"
-#~ msgstr "❌ {result['message']}"
-
-#~ msgid "Refresh system apps repository?"
-#~ msgstr "System-Apps Repo aktualisieren?"
-
-#~ msgid "Check for firmware updates and download if available?"
-#~ msgstr "Nach Firmware-Updates suchen und herunterladen, falls verfügbar?"
-
-#~ msgid "Refresh custom apps repository?"
-#~ msgstr "Benutzerdefiniertes Apps-Repository aktualisieren?"
