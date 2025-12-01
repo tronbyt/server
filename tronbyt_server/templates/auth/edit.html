@@ -230,7 +230,14 @@
 </div>
 
 <hr style="margin-top: 40px; border: none; border-top: 1px solid #333;">
-<div style="font-size: 12px; color: #888; text-align: center; margin-top: 20px;">
+{% if update_available %}
+<div style="text-align: center; margin-top: 20px;">
+    <a href="{{ latest_release_url }}" target="_blank" style="color: #ff5722; text-decoration: none; font-weight: bold;">
+        <i class="fa-solid fa-circle-arrow-up"></i> {{ _('Update available!') }}
+    </a>
+</div>
+{% endif %}
+<div style="font-size: 12px; color: #888; text-align: center; margin-top: {% if update_available %}5px{% else %}20px{% endif %};">
     {{ _('Server') }} {{ server_version_info.version }}{% if server_version_info.commit_hash %} (<a href="https://github.com/tronbyt/tronbyt-server/tree/{{ server_version_info.commit_hash }}" target="_blank" style="color: #4CAF50; text-decoration: none; font-family: monospace;">{{ server_version_info.commit_hash[:7] }}</a>){% endif %}
 </div>
 

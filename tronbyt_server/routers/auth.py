@@ -41,6 +41,9 @@ def _render_edit_template(request: Request, user: User) -> Response:
     firmware_version = None
     system_repo_info = None
     server_version_info = version.get_version_info()
+    update_available, latest_release_url = version.check_for_updates(
+        server_version_info
+    )
 
     if user and user.username == "admin":
         firmware_version = db.get_firmware_version()
@@ -51,6 +54,8 @@ def _render_edit_template(request: Request, user: User) -> Response:
         "firmware_version": firmware_version,
         "system_repo_info": system_repo_info,
         "server_version_info": server_version_info,
+        "update_available": update_available,
+        "latest_release_url": latest_release_url,
     }
     return templates.TemplateResponse(
         request,
