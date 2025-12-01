@@ -4,6 +4,8 @@ import json
 import logging
 from pathlib import Path
 
+import requests
+from packaging import version as pkg_version
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 logger = logging.getLogger(__name__)
@@ -77,3 +79,47 @@ def get_short_commit_hash() -> str | None:
     if commit_hash:
         return commit_hash[:7]
     return None
+
+
+def check_for_updates(version_info: VersionInfo) -> tuple[bool, str | None]:
+    """Check for updates on GitHub.
+
+    Args:
+        version_info: The current version info object.
+
+    Returns:
+        Tuple of (update_available, latest_release_url).
+    """
+    if not version_info.tag:
+        return False, None
+
+    try:
+        response = requests.get(
+            "https://api.github.com/repos/tronbyt/server/releases/latest",
+            timeout=2.0,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        latest_tag = data.get("tag_name")
+        html_url = data.get("html_url")
+
+        if not latest_tag or not html_url:
+            logger.warning("Incomplete update data from GitHub API.")
+            return False, None
+
+        # Remove 'v' prefix if present for comparison
+        clean_latest = latest_tag.lstrip("v")
+        clean_current = version_info.tag.lstrip("v")
+
+        if pkg_version.parse(clean_latest) > pkg_version.parse(clean_current):
+            return True, html_url
+
+    except (
+        requests.exceptions.RequestException,
+        ValueError,
+        pkg_version.InvalidVersion,
+    ) as e:
+        logger.warning(f"Failed to check for updates: {e}")
+
+    return False, None
