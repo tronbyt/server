@@ -302,19 +302,22 @@ def migrate_app_from_dict(
 
         last_render_duration = timedelta(seconds=last_render_duration_seconds)
 
+        # Helper to normalize weekday strings (e.g., "Weekday.MONDAY" -> "monday")
+        def normalize_weekday(day: Any) -> str:
+            if isinstance(day, str):
+                # Strip "Weekday." prefix if present and convert to lowercase
+                if day.startswith("Weekday."):
+                    return day.replace("Weekday.", "").lower()
+                return day.lower()
+            elif isinstance(day, dict) and "value" in day:
+                return normalize_weekday(day["value"])
+            else:
+                return str(day).lower()
+
         # Extract days list
         days = app_data.get("days") or []
         if isinstance(days, list):
-            # Days might be strings or objects with 'value' attribute
-            days_list = []
-            for day in days:
-                if isinstance(day, str):
-                    days_list.append(day)
-                elif isinstance(day, dict) and "value" in day:
-                    days_list.append(day["value"])
-                else:
-                    days_list.append(str(day))
-            days = days_list
+            days = [normalize_weekday(day) for day in days]
         else:
             days = []  # Ensure it's always a list
 
@@ -368,16 +371,8 @@ def migrate_app_from_dict(
             try:
                 weekdays = recurrence_pattern.get("weekdays") or []
                 if isinstance(weekdays, list):
-                    # Weekdays might be strings or objects with 'value' attribute
-                    weekdays_list = []
-                    for wd in weekdays:
-                        if isinstance(wd, str):
-                            weekdays_list.append(wd)
-                        elif isinstance(wd, dict) and "value" in wd:
-                            weekdays_list.append(wd["value"])
-                        else:
-                            weekdays_list.append(str(wd))
-                    weekdays = weekdays_list
+                    # Normalize weekdays using the same helper
+                    weekdays = [normalize_weekday(wd) for wd in weekdays]
                 else:
                     weekdays = []  # Ensure it's always a list
 
