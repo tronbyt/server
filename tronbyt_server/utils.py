@@ -72,6 +72,18 @@ def render_app(
 
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
+
+    # Determine filters
+    filters = None
+    color_filter = None
+    if app and app.color_filter:
+        color_filter = app.color_filter
+    elif device.color_filter:
+        color_filter = device.color_filter
+
+    if color_filter and color_filter != "none":
+        filters = {"color_filter": color_filter}
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
@@ -81,7 +93,7 @@ def render_app(
         timeout=30000,
         image_format=0,
         supports2x=device.supports_2x(),
-        filters=None,
+        filters=filters,
         tz=tz,
         locale=device.locale,
     )

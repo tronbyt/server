@@ -99,6 +99,7 @@ class App(BaseModel):
     empty_last_render: bool = False
     render_messages: list[str] = []  # Changed from str to List[str]
     autopin: bool = False
+    color_filter: str | None = None
 
 
 class AppMetadata(BaseModel):

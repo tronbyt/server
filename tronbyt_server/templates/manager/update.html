@@ -157,6 +157,18 @@
           </div>
         </td>
       </tr>
+      <tr>
+        <td>
+          <label for="color_filter" class="device-settings-label">{{ _('Color Filter') }}</label>
+        </td>
+        <td>
+          <select name="color_filter" id="color_filter" class="device-settings-input">
+            {% for value, name in color_filter_choices.items() %}
+              <option value="{{ value }}" {% if device.color_filter == value %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
     </table>
 
     <div class="device-settings-section-divider">

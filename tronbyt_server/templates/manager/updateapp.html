@@ -7,23 +7,30 @@
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
   <!-- Navigation Button -->
-    <div class="button-group">
-      <a href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=0"
-        class="w3-button" style="background-color: var(--enabled-text); color: white;"><i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ _('Configure App') }}</a>
-    </div>
+  <div class="button-group">
+    <a href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=0" class="w3-button"
+      style="background-color: var(--enabled-text); color: white;"><i class="fa-solid fa-sliders"
+        aria-hidden="true"></i> {{ _('Configure App') }}</a>
+  </div>
 
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
-    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config') }}</span></button>
-    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug') }}</span></button>
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i
+        class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config')
+        }}</span></button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i
+        class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug')
+        }}</span></button>
   </div>
 
   <!-- Action Buttons -->
   <div class="action-buttons">
-    <button type="submit" form="updateForm" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="submit" form="updateForm" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk"
+        aria-hidden="true"></i> {{ _('Save') }}</button>
     <button type="submit" form="updateForm" class="w3-button w3-red w3-round"
       formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
-      onclick="return confirm('{{ _('Delete App?') }}');"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
+      onclick="return confirm('{{ _('Delete App?') }}');"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{
+      _('Delete') }}</button>
   </div>
 </div>
 
@@ -39,9 +46,7 @@
 
 <!-- App Preview -->
 <div class="app-img">
-  <img id="previewImage"
-    src="{{url_for('appwebp', device_id=device_id,iname=app.iname) }}"
-    alt="{{ _('Preview') }}">
+  <img id="previewImage" src="{{url_for('appwebp', device_id=device_id,iname=app.iname) }}" alt="{{ _('Preview') }}">
 </div>
 
 <form method="post" id="updateForm">
@@ -56,8 +61,8 @@
         <small>{{ _('Enable or disable this app') }}</small>
       </td>
       <td>
-        <input name="enabled" type="checkbox" id="enabled" class="form-control"
-               {% if app.enabled %} checked {% endif %}>
+        <input name="enabled" type="checkbox" id="enabled" class="form-control" {% if app.enabled %} checked {% endif
+          %}>
       </td>
     </tr>
 
@@ -68,8 +73,8 @@
         <small>{{ _('Automatically pin this app when it renders successfully') }}</small>
       </td>
       <td>
-        <input name="autopin" type="checkbox" id="autopin" class="form-control"
-               {% if app.autopin %} checked {% endif %}>
+        <input name="autopin" type="checkbox" id="autopin" class="form-control" {% if app.autopin %} checked {% endif
+          %}>
       </td>
     </tr>
 
@@ -81,7 +86,7 @@
       </td>
       <td>
         <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
-               value="{{ form.get('uinterval') or app.uinterval }}" required>
+          value="{{ form.get('uinterval') or app.uinterval }}" required>
       </td>
     </tr>
 
@@ -93,7 +98,22 @@
       </td>
       <td>
         <input type="number" name="display_time" id="display_time" min="0" class="form-control"
-               value="{{ form.get('display_time') or app.display_time or 0 }}">
+          value="{{ form.get('display_time') or app.display_time or 0 }}">
+      </td>
+    </tr>
+
+    <!-- Color Filter -->
+    <tr>
+      <td>
+        <label for="color_filter">{{ _('Color Filter') }}</label>
+        <small>{{ _('Override device color filter') }}</small>
+      </td>
+      <td>
+        <select name="color_filter" id="color_filter" class="form-control">
+          {% for value, name in color_filter_choices.items() %}
+          <option value="{{ value }}" {% if app.color_filter==value %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
       </td>
     </tr>
 
@@ -104,8 +124,7 @@
         <small>{{ _('Optional notes about this app') }}</small>
       </td>
       <td>
-        <input name="notes" id="notes" class="form-control"
-               value="{{form.get('notes') or app.notes }}">
+        <input name="notes" id="notes" class="form-control" value="{{form.get('notes') or app.notes }}">
       </td>
     </tr>
   </table>
@@ -123,7 +142,7 @@
         </td>
         <td>
           <input type="time" name="start_time" id="start_time" class="form-control"
-                 value="{{ form.get('start_time') or app.start_time }}">
+            value="{{ form.get('start_time') or app.start_time }}">
         </td>
       </tr>
 
@@ -135,7 +154,7 @@
         </td>
         <td>
           <input type="time" name="end_time" id="end_time" class="form-control"
-                 value="{{ form.get('end_time') or app.end_time }}">
+            value="{{ form.get('end_time') or app.end_time }}">
         </td>
       </tr>
     </table>
@@ -146,25 +165,32 @@
       <small>{{ _('(none selected is ALL selected)') }}</small>
       <div style="margin-top: 10px;">
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {% endif %}> {{ _('Monday') }}
+          <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {%
+            endif %}> {{ _('Monday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {% endif %}> {{ _('Tuesday') }}
+          <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {%
+            endif %}> {{ _('Tuesday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked {% endif %}> {{ _('Wednesday') }}
+          <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked
+            {% endif %}> {{ _('Wednesday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {% endif %}> {{ _('Thursday') }}
+          <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {%
+            endif %}> {{ _('Thursday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {% endif %}> {{ _('Friday') }}
+          <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {%
+            endif %}> {{ _('Friday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {% endif %}> {{ _('Saturday') }}
+          <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {%
+            endif %}> {{ _('Saturday') }}
         </label>
         <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-          <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {% endif %}> {{ _('Sunday') }}
+          <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {%
+            endif %}> {{ _('Sunday') }}
         </label>
       </div>
     </div>
@@ -198,10 +224,14 @@
         </td>
         <td>
           <select name="recurrence_type" id="recurrence_type" class="form-control" onchange="toggleRecurrenceOptions()">
-            <option value="daily" {% if (form.get('recurrence_type') or app.recurrence_type) == 'daily' %} selected {% endif %}>{{ _('Daily') }}</option>
-            <option value="weekly" {% if (form.get('recurrence_type') or app.recurrence_type) == 'weekly' %} selected {% endif %}>{{ _('Weekly') }}</option>
-            <option value="monthly" {% if (form.get('recurrence_type') or app.recurrence_type) == 'monthly' %} selected {% endif %}>{{ _('Monthly') }}</option>
-            <option value="yearly" {% if (form.get('recurrence_type') or app.recurrence_type) == 'yearly' %} selected {% endif %}>{{ _('Yearly') }}</option>
+            <option value="daily" {% if (form.get('recurrence_type') or app.recurrence_type)=='daily' %} selected {%
+              endif %}>{{ _('Daily') }}</option>
+            <option value="weekly" {% if (form.get('recurrence_type') or app.recurrence_type)=='weekly' %} selected {%
+              endif %}>{{ _('Weekly') }}</option>
+            <option value="monthly" {% if (form.get('recurrence_type') or app.recurrence_type)=='monthly' %} selected {%
+              endif %}>{{ _('Monthly') }}</option>
+            <option value="yearly" {% if (form.get('recurrence_type') or app.recurrence_type)=='yearly' %} selected {%
+              endif %}>{{ _('Yearly') }}</option>
           </select>
         </td>
       </tr>
@@ -214,8 +244,9 @@
         </td>
         <td>
           <div style="display: flex; align-items: center; gap: 10px;">
-            <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" class="form-control"
-              value="{{ form.get('recurrence_interval') or app.recurrence_interval or 1 }}" style="width: 100px;">
+            <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52"
+              class="form-control" value="{{ form.get('recurrence_interval') or app.recurrence_interval or 1 }}"
+              style="width: 100px;">
             <span id="interval_unit">{{ _('days') }}</span>
           </div>
         </td>
@@ -297,10 +328,12 @@
           </td>
           <td>
             <select name="monthly_pattern" id="monthly_pattern" class="form-control">
-              {% set current_pattern = form.get('monthly_pattern') or (app.recurrence_pattern.day_of_month and 'day_of_month') or (app.recurrence_pattern.day_of_week and 'day_of_week') or 'day_of_month' %}
+              {% set current_pattern = form.get('monthly_pattern') or (app.recurrence_pattern.day_of_month and
+              'day_of_month') or (app.recurrence_pattern.day_of_week and 'day_of_week') or 'day_of_month' %}
               <option value="day_of_month" {% if current_pattern=='day_of_month' %} selected {% endif %}>{{ _('Day of
                 Month') }}</option>
-              <option value="day_of_week" {% if current_pattern=='day_of_week' %} selected {% endif %}>{{ _('Day of Week')
+              <option value="day_of_week" {% if current_pattern=='day_of_week' %} selected {% endif %}>{{ _('Day of
+                Week')
                 }}</option>
             </select>
           </td>
@@ -334,22 +367,31 @@
             <td>
               <div style="display: flex; gap: 10px; align-items: center;">
                 <select name="week_occurrence" id="week_occurrence" class="form-control">
-                  {% set current_occurrence = (form.get('day_of_week_pattern') or app.recurrence_pattern.day_of_week or 'first_monday').split('_')[0] %}
-                  <option value="first" {% if current_occurrence=='first' %} selected {% endif %}>{{ _('First') }}</option>
-                  <option value="second" {% if current_occurrence=='second' %} selected {% endif %}>{{ _('Second') }}</option>
-                  <option value="third" {% if current_occurrence=='third' %} selected {% endif %}>{{ _('Third') }}</option>
-                  <option value="fourth" {% if current_occurrence=='fourth' %} selected {% endif %}>{{ _('Fourth') }}</option>
+                  {% set current_occurrence = (form.get('day_of_week_pattern') or app.recurrence_pattern.day_of_week or
+                  'first_monday').split('_')[0] %}
+                  <option value="first" {% if current_occurrence=='first' %} selected {% endif %}>{{ _('First') }}
+                  </option>
+                  <option value="second" {% if current_occurrence=='second' %} selected {% endif %}>{{ _('Second') }}
+                  </option>
+                  <option value="third" {% if current_occurrence=='third' %} selected {% endif %}>{{ _('Third') }}
+                  </option>
+                  <option value="fourth" {% if current_occurrence=='fourth' %} selected {% endif %}>{{ _('Fourth') }}
+                  </option>
                   <option value="last" {% if current_occurrence=='last' %} selected {% endif %}>{{ _('Last') }}</option>
                 </select>
                 <select name="week_day" id="week_day" class="form-control">
-                  {% set current_day = (form.get('day_of_week_pattern') or app.recurrence_pattern.day_of_week or 'first_monday').split('_')[1] %}
+                  {% set current_day = (form.get('day_of_week_pattern') or app.recurrence_pattern.day_of_week or
+                  'first_monday').split('_')[1] %}
                   <option value="monday" {% if current_day=='monday' %} selected {% endif %}>{{ _('Monday') }}</option>
-                  <option value="tuesday" {% if current_day=='tuesday' %} selected {% endif %}>{{ _('Tuesday') }}</option>
+                  <option value="tuesday" {% if current_day=='tuesday' %} selected {% endif %}>{{ _('Tuesday') }}
+                  </option>
                   <option value="wednesday" {% if current_day=='wednesday' %} selected {% endif %}>{{ _('Wednesday') }}
                   </option>
-                  <option value="thursday" {% if current_day=='thursday' %} selected {% endif %}>{{ _('Thursday') }}</option>
+                  <option value="thursday" {% if current_day=='thursday' %} selected {% endif %}>{{ _('Thursday') }}
+                  </option>
                   <option value="friday" {% if current_day=='friday' %} selected {% endif %}>{{ _('Friday') }}</option>
-                  <option value="saturday" {% if current_day=='saturday' %} selected {% endif %}>{{ _('Saturday') }}</option>
+                  <option value="saturday" {% if current_day=='saturday' %} selected {% endif %}>{{ _('Saturday') }}
+                  </option>
                   <option value="sunday" {% if current_day=='sunday' %} selected {% endif %}>{{ _('Sunday') }}</option>
                 </select>
                 <!-- Hidden input to combine the values for form submission -->
@@ -364,10 +406,12 @@
 
   <!-- Action Buttons -->
   <div class="button-container">
-    <button type="submit" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="submit" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+      {{ _('Save') }}</button>
     <button type="submit" class="w3-button w3-red w3-round"
       formaction="{{ url_for('deleteapp', device_id=device_id,iname=app.iname) }}" formmethod="post"
-      onclick="return confirm('{{ _('Delete App?') }}');"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
+      onclick="return confirm('{{ _('Delete App?') }}');"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{
+      _('Delete') }}</button>
   </div>
 </form>
 
@@ -417,7 +461,8 @@
   </div>
 
   <small>
-    <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
+    <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown
+    above.') }}
   </small>
 </div>
 
