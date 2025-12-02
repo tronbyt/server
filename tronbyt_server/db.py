@@ -68,7 +68,6 @@ def get_db() -> sqlite3.Connection:
 def init_db(conn: sqlite3.Connection | None = None) -> None:
     """Initialize the database with SQLModel tables and run migrations."""
     from tronbyt_server.db_models import create_db_and_tables
-    import sqlite3
 
     # Enable WAL mode for better concurrency
     if conn is None:
