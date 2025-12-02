@@ -29,7 +29,6 @@ def test_webp_upload_and_app_creation(
     user = db.get_user(session, "testuser")
     assert user
     device_id = list(user.devices.keys())[0]
-    device = user.devices[device_id]
 
     # 2. Upload a .webp file
     webp_content = (
