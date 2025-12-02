@@ -52,9 +52,9 @@ TWO_X_CAPABLE_DEVICE_TYPES = (DeviceType.TRONBYT_S3_WIDE, DeviceType.RASPBERRYPI
 DEVICE_TYPE_CHOICES = {member.value: member.display_name for member in DeviceType}
 
 COLOR_FILTER_CHOICES = {
-    "none": "No transformation",
+    "none": "None",
     "dimmed": "Dimmed",
-    "redshift": "Redshift (~3400K)",
+    "redshift": "Redshift",
     "warm": "Warm",
     "sunset": "Sunset",
     "sepia": "Sepia",
