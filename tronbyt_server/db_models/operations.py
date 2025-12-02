@@ -753,7 +753,7 @@ def app_db_to_model(app_db: AppDB) -> App:
             logger.warning(
                 "Failed to parse start_time '%s' for AppDB(id=%s). Leaving as None.",
                 app_db.start_time,
-                getattr(app_db, "id", "<unknown>")
+                getattr(app_db, "id", "<unknown>"),
             )
 
     end_time = None
@@ -765,7 +765,7 @@ def app_db_to_model(app_db: AppDB) -> App:
             logger.warning(
                 "Failed to parse end_time '%s' for AppDB(id=%s). Leaving as None.",
                 app_db.end_time,
-                getattr(app_db, "id", "<unknown>")
+                getattr(app_db, "id", "<unknown>"),
             )
 
     # Convert days list to Weekday enums (still needed for JSON field)
