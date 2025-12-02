@@ -750,7 +750,11 @@ def app_db_to_model(app_db: AppDB) -> App:
             hour, minute = map(int, app_db.start_time.split(":"))
             start_time = dt_time(hour, minute)
         except (ValueError, AttributeError):
-            pass
+            logger.warning(
+                "Failed to parse start_time '%s' for AppDB(id=%s). Leaving as None.",
+                app_db.start_time,
+                getattr(app_db, "id", "<unknown>")
+            )
 
     end_time = None
     if app_db.end_time:
@@ -758,7 +762,11 @@ def app_db_to_model(app_db: AppDB) -> App:
             hour, minute = map(int, app_db.end_time.split(":"))
             end_time = dt_time(hour, minute)
         except (ValueError, AttributeError):
-            pass
+            logger.warning(
+                "Failed to parse end_time '%s' for AppDB(id=%s). Leaving as None.",
+                app_db.end_time,
+                getattr(app_db, "id", "<unknown>")
+            )
 
     # Convert days list to Weekday enums (still needed for JSON field)
     days = [Weekday(day) for day in app_db.days] if app_db.days else []
