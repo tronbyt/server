@@ -6,7 +6,6 @@ services:
       - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container
     init: true
     volumes:
-      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
       - users:/app/users
       - data:/app/data
     environment:
@@ -19,6 +18,7 @@ services:
       - TRONBYT_HOST=0.0.0.0
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
+      - TZ=America/Tijuana # Set local timezone of Docker Container
 
     healthcheck:
       test: ["CMD", "python3", "-m", "tronbyt_server.healthcheck", "http://localhost:8000/health"]
