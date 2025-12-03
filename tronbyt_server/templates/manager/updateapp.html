@@ -126,7 +126,7 @@
       <td>
         <select name="color_filter" id="color_filter" class="form-control">
           {% for value, name in color_filter_choices.items() %}
-          <option value="{{ value }}" {% if app.color_filter==value %}selected{% endif %}>{{ name }}</option>
+          <option value="{{ value }}" {% if app.color_filter==value %}selected{% endif %}>{{ _(name) }}</option>
           {% endfor %}
         </select>
       </td>
