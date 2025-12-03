@@ -57,6 +57,10 @@ class RecurrenceType(str, Enum):
     YEARLY = "yearly"
 
 
+def _(s: str) -> str:
+    return s
+
+
 class ColorFilter(str, Enum):
     """Color filter enumeration."""
 
@@ -74,21 +78,21 @@ class ColorFilter(str, Enum):
             return cls.NONE
         return super()._missing_(value)
 
-    INHERIT = ("inherit", "Use Device Settings")
-    NONE = ("none", "None")
-    DIMMED = ("dimmed", "Dimmed")
-    REDSHIFT = ("redshift", "Redshift")
-    WARM = ("warm", "Warm")
-    SUNSET = ("sunset", "Sunset")
-    SEPIA = ("sepia", "Sepia")
-    VINTAGE = ("vintage", "Vintage")
-    DUSK = ("dusk", "Dusk")
-    COOL = ("cool", "Cool")
-    BW = ("bw", "Black & White")
-    ICE = ("ice", "Ice")
-    MOONLIGHT = ("moonlight", "Moonlight")
-    NEON = ("neon", "Neon")
-    PASTEL = ("pastel", "Pastel")
+    INHERIT = ("inherit", _("Use Device Settings"))
+    NONE = ("none", _("None"))
+    DIMMED = ("dimmed", _("Dimmed"))
+    REDSHIFT = ("redshift", _("Redshift"))
+    WARM = ("warm", _("Warm"))
+    SUNSET = ("sunset", _("Sunset"))
+    SEPIA = ("sepia", _("Sepia"))
+    VINTAGE = ("vintage", _("Vintage"))
+    DUSK = ("dusk", _("Dusk"))
+    COOL = ("cool", _("Cool"))
+    BW = ("bw", _("Black & White"))
+    ICE = ("ice", _("Ice"))
+    MOONLIGHT = ("moonlight", _("Moonlight"))
+    NEON = ("neon", _("Neon"))
+    PASTEL = ("pastel", _("Pastel"))
 
 
 COLOR_FILTER_CHOICES = {member.value: member.display_name for member in ColorFilter}

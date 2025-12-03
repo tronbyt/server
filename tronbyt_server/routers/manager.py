@@ -1478,6 +1478,7 @@ def configapp(
             "schema": schema,
             "user": user,
             "form": {},
+            "color_filter_choices": COLOR_FILTER_CHOICES,
         },
     )
 
@@ -1511,6 +1512,33 @@ async def configapp_post(
             elif submission.monthly_pattern == "day_of_week":
                 recurrence_pattern.day_of_week = submission.day_of_week_pattern
 
+    # Parse start_time and end_time
+    def _parse_time(
+        request: Request, time_str: str | None, field_name: str
+    ) -> tuple[Any, bool]:
+        """Helper to parse time string and flash errors."""
+        if not time_str:
+            return None, False
+        try:
+            parsed_str = parse_time_input(time_str)
+            return datetime.strptime(parsed_str, "%H:%M").time(), False
+        except ValueError as e:
+            flash(
+                request,
+                _("Invalid {field_name}: {error}").format(
+                    field_name=field_name, error=e
+                ),
+            )
+            return None, True
+
+    start_time_val, st_error = _parse_time(
+        request, submission.start_time, _("start time")
+    )
+    end_time_val, et_error = _parse_time(request, submission.end_time, _("end time"))
+
+    if st_error or et_error:
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
     update_data: dict[str, Any] = {
         "name": submission.name,
         "uinterval": submission.uinterval or 0,
@@ -1518,8 +1546,8 @@ async def configapp_post(
         "notes": submission.notes or "",
         "enabled": submission.enabled,
         "autopin": submission.autopin,
-        "start_time": submission.start_time,
-        "end_time": submission.end_time,
+        "start_time": start_time_val,
+        "end_time": end_time_val,
         "days": submission.days,
         "use_custom_recurrence": submission.use_custom_recurrence,
         "recurrence_type": submission.recurrence_type or RecurrenceType.DAILY,

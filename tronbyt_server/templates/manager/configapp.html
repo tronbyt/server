@@ -9,16 +9,11 @@
 {% block content %}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
-  <!-- Navigation Button -->
-  <div class="button-group">
-      <!-- Empty for now, merged into this page -->
-  </div>
-
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
     <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config') }}</span></button>
     <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug') }}</span></button>
-    <button id="toggleApiUsageBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show API Usage') }}</span></button>
+
   </div>
 
   <!-- Action Buttons -->
@@ -36,58 +31,6 @@
 <!-- Debug Content -->
 <div id="debugContent" class="hidden">
   <pre class="flash">{{ (app.render_messages or []) | join('\n') }}</pre>
-</div>
-
-<!-- API Examples Section (Moved here but hidden) -->
-<div id="apiUsageContent" class="hidden">
-  <div class="api-section">
-    <h2>{{ _('API Usage') }}</h2>
-    <p>{{ _('Use these curl commands to control this app via the API:') }}</p>
-
-    <!-- Enable App -->
-    <div style="margin-bottom: 20px;">
-      <h3>{{ _('Enable App') }}</h3>
-      <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
-  -H "Content-Type: application/json" \
-  -d '{"enabled": true}' \
-  {{ url_for('handle_patch_device_app', device_id=device.id, installation_id=app.iname) }}</pre>
-    </div>
-
-    <!-- Disable App -->
-    <div style="margin-bottom: 20px;">
-      <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
-      <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
-  -H "Content-Type: application/json" \
-  -d '{"enabled": false}' \
-  {{ url_for('handle_patch_device_app', device_id=device.id, installation_id=app.iname) }}</pre>
-    </div>
-
-    <!-- Pin App -->
-    <div style="margin-bottom: 20px;">
-      <h3>{{ _('Pin App') }}</h3>
-      <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
-  -H "Content-Type: application/json" \
-  -d '{"pinnedApp": "{{ app.iname }}"}' \
-  {{ url_for('update_device', device_id=device.id) }}</pre>
-    </div>
-
-    <!-- Unpin App -->
-    <div style="margin-bottom: 20px;">
-      <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
-      <pre>curl -X PATCH \
-  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
-  -H "Content-Type: application/json" \
-  -d '{"pinnedApp": ""}' \
-  {{ url_for('update_device', device_id=device.id) }}</pre>
-    </div>
-
-    <small>
-      <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
-    </small>
-  </div>
 </div>
 
 <!-- App Preview -->
@@ -211,7 +154,7 @@
     <!-- Schedule Section -->
     <div class="schedule-section">
         <h2>{{ _('Schedule') }}</h2>
-    
+
         <table class="form-table">
           <!-- Start Time -->
           <tr>
@@ -224,7 +167,7 @@
                      value="{{ app.start_time }}" data-default="{{ app.start_time or '' }}">
             </td>
           </tr>
-    
+
           <!-- End Time -->
           <tr>
             <td>
@@ -237,7 +180,7 @@
             </td>
           </tr>
         </table>
-    
+
         <!-- Legacy Schedule (Default) -->
         <div id="legacy_schedule">
           <h3>{{ _('Active Days') }}</h3>
@@ -267,7 +210,7 @@
           </div>
         </div>
       </div>
-    
+
       <!-- Custom Recurrence Toggle -->
       <div style="margin: 20px 0;">
         <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
@@ -282,11 +225,11 @@
           </div>
         </label>
       </div>
-    
+
       <!-- Custom Recurrence Section -->
       <div id="custom_recurrence" class="custom-recurrence-section" style="display: none;">
         <h3>{{ _('Custom Recurrence') }}</h3>
-    
+
         <table class="form-table">
           <!-- Frequency -->
           <tr>
@@ -303,7 +246,7 @@
               </select>
             </td>
           </tr>
-    
+
           <!-- Repeat Interval -->
           <tr>
             <td>
@@ -318,7 +261,7 @@
               </div>
             </td>
           </tr>
-    
+
           <!-- Start Date -->
           <tr>
             <td>
@@ -330,7 +273,7 @@
                 value="{{ app.recurrence_start_date or '' }}">
             </td>
           </tr>
-    
+
           <!-- End Date -->
           <tr>
             <td>
@@ -343,7 +286,7 @@
             </td>
           </tr>
         </table>
-    
+
         <!-- Weekly Options -->
         <div id="weekly_options" style="display: none; margin-top: 20px;">
           <h4>{{ _('Weekly Options') }}</h4>
@@ -381,11 +324,11 @@
             </label>
           </div>
         </div>
-    
+
         <!-- Monthly Options -->
         <div id="monthly_options" style="display: none; margin-top: 20px;">
           <h4>{{ _('Monthly Options') }}</h4>
-    
+
           <table class="form-table">
             <!-- Monthly Pattern -->
             <tr>
@@ -404,7 +347,7 @@
               </td>
             </tr>
           </table>
-    
+
           <!-- Day of Month Option -->
           <div id="day_of_month_option">
             <table class="form-table">
@@ -420,7 +363,7 @@
               </tr>
             </table>
           </div>
-    
+
           <!-- Day of Week Option -->
           <div id="day_of_week_option" style="display: none;">
             <table class="form-table">
@@ -469,6 +412,62 @@
     </div>
 </form>
 
+<!-- API Examples Section -->
+<div id="apiUsageContent">
+  <div class="api-section">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <h2>{{ _('API Usage') }}</h2>
+        <button id="toggleApiUsageBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show API Usage') }}</span></button>
+    </div>
+    <div class="api-usage-details collapsed">
+        <p>{{ _('Use these curl commands to control this app via the API:') }}</p>
+
+    <!-- Enable App -->
+    <div style="margin-bottom: 20px;">
+      <h3>{{ _('Enable App') }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}' \
+  {{ url_for('handle_patch_device_app', device_id=device.id, installation_id=app.iname) }}</pre>
+    </div>
+
+    <!-- Disable App -->
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}' \
+  {{ url_for('handle_patch_device_app', device_id=device.id, installation_id=app.iname) }}</pre>
+    </div>
+
+    <!-- Pin App -->
+    <div style="margin-bottom: 20px;">
+      <h3>{{ _('Pin App') }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
+  -H "Content-Type: application/json" \
+  -d '{"pinnedApp": "{{ app.iname }}"}' \
+  {{ url_for('update_device', device_id=device.id) }}</pre>
+    </div>
+
+    <!-- Unpin App -->
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
+  -H "Content-Type: application/json" \
+  -d '{"pinnedApp": ""}' \
+  {{ url_for('update_device', device_id=device.id) }}</pre>
+    </div>
+
+    <small>
+      <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
+    </small>
+  </div>
+</div>
+
 <script>
   // Make the schema and config objects available to JavaScript
   const schema = {{ schema | tojson }};
@@ -489,39 +488,45 @@
     if (toggleConfigBtn && configContent) {
       toggleConfigBtn.addEventListener("click", function () {
         toggleContent(configContent, toggleConfigBtn,
-          "{{ _('Hide App Config') }}", "{{ _('Show App Config') }}");
+          "{{ _('Hide App Config') }}", "{{ _('Show App Config') }}", 'hidden');
       });
     }
 
     if (toggleDebugBtn && debugContent) {
       toggleDebugBtn.addEventListener("click", function () {
         toggleContent(debugContent, toggleDebugBtn,
-          "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}");
+          "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}", 'hidden');
       });
     }
 
     const toggleApiUsageBtn = document.getElementById("toggleApiUsageBtn");
-    const apiUsageContent = document.getElementById("apiUsageContent");
+    const apiUsageDetails = document.querySelector("#apiUsageContent .api-usage-details");
 
-    if (toggleApiUsageBtn && apiUsageContent) {
+    if (toggleApiUsageBtn && apiUsageDetails) {
+      // Set initial button text based on initial collapsed state
+      const label = toggleApiUsageBtn.querySelector(".button-label");
+      if (apiUsageDetails.classList.contains("collapsed")) {
+        label.textContent = "{{ _('Show API Usage') }}";
+      } else {
+        label.textContent = "{{ _('Hide API Usage') }}";
+      }
+
       toggleApiUsageBtn.addEventListener("click", function () {
-        toggleContent(apiUsageContent, toggleApiUsageBtn,
-          "{{ _('Hide API Usage') }}", "{{ _('Show API Usage') }}");
+        toggleContent(apiUsageDetails, toggleApiUsageBtn,
+          "{{ _('Hide API Usage') }}", "{{ _('Show API Usage') }}", 'collapsed');
       });
     }
   }
 
   // Generic function to toggle content visibility
-  function toggleContent(content, button, hideText, showText) {
+  function toggleContent(content, button, hideText, showText, className) {
     const label = button.querySelector(".button-label");
     const target = label || button;
-    if (content.classList.contains("hidden")) {
-      content.classList.remove("hidden");
-      content.classList.add("visible");
+    if (content.classList.contains(className)) {
+      content.classList.remove(className);
       target.textContent = hideText;
     } else {
-      content.classList.remove("visible");
-      content.classList.add("hidden");
+      content.classList.add(className);
       target.textContent = showText;
     }
   }
@@ -555,7 +560,7 @@
     const target = event.target;
     // We expect dataset.configId for schema fields
     const configId = target.dataset.configId;
-    
+
     if (!configId) {
         // Not a schema config field
         return;
@@ -786,11 +791,11 @@
   }
 
   function createLocationField(field, config) {
-    const { container, searchInput, resultsList } = createLocationSearchElements(field); 
+    const { container, searchInput, resultsList } = createLocationSearchElements(field);
 
     let initialLocationJsonString = config[field.id] || (deviceLocation !== null ? deviceLocation : undefined) || field.default || "{}";
     if (typeof initialLocationJsonString !== 'string') {
-      initialLocationJsonString = "{}"; 
+      initialLocationJsonString = "{}";
     }
 
     try {
@@ -802,7 +807,7 @@
       }
     } catch (e) {
       console.warn("Could not parse initial location", e);
-      searchInput.value = ""; 
+      searchInput.value = "";
     }
 
     const hiddenInput = document.createElement("input");
@@ -823,7 +828,7 @@
   }
 
   function createLocationBasedField(field, config) {
-    const { container, searchInput, resultsList } = createLocationSearchElements(field); 
+    const { container, searchInput, resultsList } = createLocationSearchElements(field);
 
     if (deviceLocation && typeof deviceLocation === 'string') {
       try {
@@ -831,13 +836,14 @@
         if (parsedDevLoc && parsedDevLoc.description) {
           searchInput.value = parsedDevLoc.description;
         } else {
-          searchInput.value = ""; 
+          searchInput.value = "";
         }
       } catch (e) {
-        searchInput.value = ""; 
+        console.warn("Could not parse deviceLocation for search input in createLocationBasedField:", deviceLocation, e);
+        searchInput.value = "";
       }
     } else {
-      searchInput.value = ""; 
+      searchInput.value = "";
     }
 
     const hiddenInput = document.createElement("input");
@@ -859,7 +865,7 @@
     dropdown.addEventListener("change", handleConfigUpdate);
 
     enableLocationSearch(searchInput, resultsList, hiddenInput, async locationQueryJson => {
-      const currentOptionJsonString = config[field.id]; 
+      const currentOptionJsonString = config[field.id];
       await fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString);
     });
 
@@ -902,7 +908,7 @@
     previewImage.style.maxWidth = "100%";
     previewImage.style.height = "auto";
     previewImage.style.marginTop = "10px";
-    previewImage.style.display = config[field.id] ? "inline" : "none"; 
+    previewImage.style.display = config[field.id] ? "inline" : "none";
     container.appendChild(previewImage);
 
     uploadInput.addEventListener("change", event => {
@@ -911,14 +917,14 @@
 
       if (!(file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif" || file.type === "image/svg+xml" || file.type === "image/webp")) {
         alert("{{ _('Please upload a valid image file (PNG, JPEG, GIF, SVG, or WebP).') }}");
-        uploadInput.value = ""; 
+        uploadInput.value = "";
         return;
       }
 
-      const maxSize = 500 * 1024; 
+      const maxSize = 500 * 1024;
       if (file.size > maxSize) {
         alert("{{ _('File size exceeds 500KB limit. Please upload a smaller image.') }}");
-        uploadInput.value = ""; 
+        uploadInput.value = "";
         return;
       }
 
@@ -927,7 +933,7 @@
         const base64Data = e.target.result.split(",")[1];
         hiddenInput.value = base64Data;
         previewImage.src = e.target.result;
-        previewImage.style.display = "inline"; 
+        previewImage.style.display = "inline";
         config[field.id] = base64Data;
         updateConfigAndPreview();
       };
@@ -989,7 +995,7 @@
         }
 
         const options = await response.json();
-        typeaheadResults.innerHTML = ""; 
+        typeaheadResults.innerHTML = "";
 
         options.forEach(option => {
           const listItem = document.createElement("li");
@@ -1050,7 +1056,7 @@
         const generatedInput = createFormFields(generatedFields, config);
         const formTable = document.getElementById("schemaConfigContainer");
         generatedInput.forEach(row => {
-          row.setAttribute("data-generated-field", field.id); 
+          row.setAttribute("data-generated-field", field.id);
           formTable.appendChild(row);
         });
       } catch (error) {
@@ -1060,7 +1066,7 @@
 
     sourceField.addEventListener("input", updateGeneratedFields);
 
-    updateGeneratedFields(); 
+    updateGeneratedFields();
   }
 
   function createColorPaletteButtons(field, inputElement) {
@@ -1069,6 +1075,7 @@
     div.className = 'palette';
     field.palette?.forEach(color => {
       if (!hexColorRegex.test(color)) {
+        console.warn(`Skipping invalid color from palette: ${color}`);
         return;
       }
       const btn = document.createElement('button');
@@ -1102,9 +1109,9 @@
       }
 
       const options = await response.json();
-      dropdown.innerHTML = ""; 
+      dropdown.innerHTML = "";
 
-      let selectedIndex = 0; 
+      let selectedIndex = 0;
       let currentOptionFromConfig = null;
 
       if (typeof currentOptionJsonString === 'string' && currentOptionJsonString !== 'undefined' && currentOptionJsonString !== 'null') {
@@ -1118,9 +1125,9 @@
       if (options && options.length > 0) {
         options.forEach((option, index) => {
           const opt = document.createElement("option");
-          const optionValueString = JSON.stringify(option); 
+          const optionValueString = JSON.stringify(option);
           opt.value = optionValueString;
-          opt.textContent = option.display; 
+          opt.textContent = option.display;
           dropdown.appendChild(opt);
 
           if (currentOptionFromConfig && typeof currentOptionFromConfig === 'object' && typeof option === 'object') {
@@ -1141,7 +1148,7 @@
       dropdown.dispatchEvent(new Event("change"));
     } catch (error) {
       console.error(`Error fetching options for field ${field.id}:`, error);
-      dropdown.innerHTML = ""; 
+      dropdown.innerHTML = "";
       const errOpt = document.createElement("option");
       errOpt.textContent = "{{ _('Error loading options') }}";
       errOpt.value = "";
@@ -1167,7 +1174,7 @@
     if (weekOccurrenceSelect && weekDaySelect) {
       weekOccurrenceSelect.addEventListener("change", updateDayOfWeekPattern);
       weekDaySelect.addEventListener("change", updateDayOfWeekPattern);
-      updateDayOfWeekPattern(); 
+      updateDayOfWeekPattern();
     }
   }
 
@@ -1245,7 +1252,8 @@
            window.location.href = "{{ url_for('index') }}";
         }
       }).catch(() => {
-        window.location.href = "{{ url_for('addapp', device_id=device.id) }}";
+        alert("{{ _('Error deleting app.') }}");
+        window.location.href = "{{ url_for('index') }}";
       });
   }
 
@@ -1259,7 +1267,7 @@
 
     const form = document.getElementById("dynamicForm");
     const formTable = document.getElementById("schemaConfigContainer");
-    
+
     // Generate schema fields
     const formFields = createFormFields(schema, config);
     formFields.forEach(row => {
@@ -1268,7 +1276,7 @@
 
     // Create generated fields
     createGeneratedFormFields(schema, config);
-    
+
     // Initialize toggles and recurrence
     initializeToggleButtons();
     initializeRecurrenceOptions();
@@ -1279,12 +1287,12 @@
       // Collect settings data
       const formData = new FormData(form);
       const settings = Object.fromEntries(formData.entries());
-      
+
       // Handle checkboxes manually (if unchecked, they aren't in FormData)
       settings.enabled = document.getElementById('enabled').checked;
       settings.autopin = document.getElementById('autopin').checked;
       settings.use_custom_recurrence = document.getElementById('use_custom_recurrence').checked;
-      
+
       // Handle multi-select checkboxes (days/weekdays)
       const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
       settings.days = days;
@@ -1341,13 +1349,22 @@
                 }
 
                 if (input.dataset.configId) {
-                    config[input.dataset.configId] = defaultValue;
+                    let valueToSet = defaultValue;
+                    try {
+                        // For fields like 'location', the default value is a JSON string.
+                        // We need to parse it to store it as an object in the config.
+                        const parsed = JSON.parse(defaultValue);
+                        valueToSet = parsed;
+                    } catch (e) {
+                        // Not a JSON string, use as is.
+                    }
+                    config[input.dataset.configId] = valueToSet;
                 }
             });
             updateConfigAndPreview();
         });
     }
-    
+
     // Preview Button (manual trigger)
     const previewButton = document.getElementById("previewButton");
     if(previewButton) {
@@ -1372,7 +1389,7 @@
         {% endif %}
       });
     }
-    
+
     // Bottom Cancel Button
     const cancelButton = document.getElementById("cancelButton");
     if (cancelButton) {
@@ -1388,7 +1405,7 @@
             {% endif %}
         });
     }
-    
+
     // Save Button (Top)
     const saveButtonTop = document.getElementById("saveButton");
     if(saveButtonTop) {
