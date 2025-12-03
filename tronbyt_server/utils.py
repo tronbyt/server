@@ -37,6 +37,7 @@ class RepoStatus(Enum):
     NO_CHANGE = "no_change"
 
 
+
 def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:
     """Add default configuration values to an app's config."""
     config["$tz"] = db.get_device_timezone_str(device)
@@ -73,16 +74,22 @@ def render_app(
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
 
-    # Determine filters
-    filters = None
-    color_filter = None
-    if app and app.color_filter:
-        color_filter = app.color_filter
-    elif device.color_filter:
-        color_filter = device.color_filter
+    # Determine color filter
+    # If app has a filter set and it's not INHERIT, use it.
+    # Otherwise (app filter is None or INHERIT), use device filter.
+    from tronbyt_server.models.app import ColorFilter
 
-    if color_filter and color_filter != "none":
-        filters = {"color_filter": color_filter}
+    color_filter = device.color_filter
+    if app and app.color_filter and app.color_filter != ColorFilter.INHERIT:
+        color_filter = app.color_filter
+
+    # Prepare filters for pixlet
+    # Only apply if we have a filter and it's not NONE
+    filters = (
+        {"color_filter": color_filter.value}
+        if color_filter and color_filter != ColorFilter.NONE
+        else None
+    )
 
     data, messages = pixlet_render_app(
         path=app_path,

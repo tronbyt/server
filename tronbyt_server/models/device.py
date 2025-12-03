@@ -13,10 +13,11 @@ from pydantic import (
     BeforeValidator,
     AliasChoices,
     GetCoreSchemaHandler,
+    ConfigDict,
 )
 from pydantic_core import core_schema
 
-from .app import App
+from .app import App, ColorFilter
 
 
 class DeviceType(str, Enum):
@@ -51,25 +52,18 @@ TWO_X_CAPABLE_DEVICE_TYPES = (DeviceType.TRONBYT_S3_WIDE, DeviceType.RASPBERRYPI
 
 DEVICE_TYPE_CHOICES = {member.value: member.display_name for member in DeviceType}
 
-COLOR_FILTER_CHOICES = {
-    "none": "None",
-    "dimmed": "Dimmed",
-    "redshift": "Redshift",
-    "warm": "Warm",
-    "sunset": "Sunset",
-    "sepia": "Sepia",
-    "vintage": "Vintage",
-    "dusk": "Dusk",
-    "cool": "Cool",
-    "bw": "Black & White",
-    "ice": "Ice",
-    "moonlight": "Moonlight",
-    "neon": "Neon",
-    "pastel": "Pastel",
-}
-
 
 DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
+
+
+class Device(BaseModel):
+    """Pydantic model for a device."""
+    model_config = ConfigDict(validate_assignment=True)
+
+    id: DeviceID
+    # Other fields would go here
+    info: "DeviceInfo" = Field(default_factory=lambda: DeviceInfo()) # Forward reference for DeviceInfo
+    color_filter: ColorFilter | None = None
 
 
 @functools.total_ordering
@@ -317,6 +311,7 @@ def parse_custom_brightness_scale(scale_str: str) -> dict[int, int] | None:
 
 class Device(BaseModel):
     """Pydantic model for a device."""
+    model_config = ConfigDict(validate_assignment=True)
 
     id: DeviceID
     name: str = ""
@@ -351,7 +346,7 @@ class Device(BaseModel):
     interstitial_app: str | None = None  # iname of the interstitial app, if any
     last_seen: datetime | None = None
     info: DeviceInfo = Field(default_factory=DeviceInfo)
-    color_filter: str | None = None
+    color_filter: ColorFilter | None = None
 
     def supports_2x(self) -> bool:
         """
