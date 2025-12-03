@@ -23,6 +23,8 @@ from tronbyt_server.models import App, Device, User, ProtocolType
 from tronbyt_server.pixlet import render_app as pixlet_render_app
 from tronbyt_server.models.sync import SyncPayload
 from tronbyt_server.sync import get_sync_manager
+from tronbyt_server.models.app import ColorFilter
+from tronbyt_server.db import get_night_mode_is_active
 
 
 logger = logging.getLogger(__name__)
@@ -72,12 +74,6 @@ def render_app(
 
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
-
-    # Determine color filter
-    # If app has a filter set and it's not INHERIT, use it.
-    # Otherwise (app filter is None or INHERIT), use device filter.
-    from tronbyt_server.models.app import ColorFilter
-    from tronbyt_server.db import get_night_mode_is_active
 
     # Check if night mode is active
     night_mode = get_night_mode_is_active(device)
