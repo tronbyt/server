@@ -123,7 +123,7 @@
           </td>
           <td>
             <input name="enabled" type="checkbox" id="enabled" class="form-control"
-                   {% if app.enabled %} checked {% endif %}>
+                   {% if app.enabled %} checked {% endif %} data-default="{{ 'true' if app.enabled else 'false' }}">
           </td>
         </tr>
 
@@ -135,7 +135,7 @@
           </td>
           <td>
             <input name="autopin" type="checkbox" id="autopin" class="form-control"
-                   {% if app.autopin %} checked {% endif %}>
+                   {% if app.autopin %} checked {% endif %} data-default="{{ 'true' if app.autopin else 'false' }}">
           </td>
         </tr>
 
@@ -147,7 +147,7 @@
           </td>
           <td>
             <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
-                   value="{{ app.uinterval }}" required>
+                   value="{{ app.uinterval }}" data-default="{{ app.uinterval }}" required>
           </td>
         </tr>
 
@@ -159,7 +159,7 @@
           </td>
           <td>
             <input type="number" name="display_time" id="display_time" min="0" class="form-control"
-                   value="{{ app.display_time or 0 }}">
+                   value="{{ app.display_time or 0 }}" data-default="{{ app.display_time or 0 }}">
           </td>
         </tr>
 
@@ -201,7 +201,7 @@
           </td>
           <td>
             <input name="notes" id="notes" class="form-control"
-                   value="{{ app.notes }}">
+                   value="{{ app.notes }}" data-default="{{ app.notes }}">
           </td>
         </tr>
     </table>
@@ -221,7 +221,7 @@
             </td>
             <td>
               <input type="time" name="start_time" id="start_time" class="form-control"
-                     value="{{ app.start_time }}">
+                     value="{{ app.start_time }}" data-default="{{ app.start_time or '' }}">
             </td>
           </tr>
     
@@ -233,7 +233,7 @@
             </td>
             <td>
               <input type="time" name="end_time" id="end_time" class="form-control"
-                     value="{{ app.end_time }}">
+                     value="{{ app.end_time }}" data-default="{{ app.end_time or '' }}">
             </td>
           </tr>
         </table>
@@ -244,25 +244,25 @@
           <small>{{ _('(none selected is ALL selected)') }}</small>
           <div style="margin-top: 10px;">
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {% endif %}> {{ _('Monday') }}
+              <input type="checkbox" name="days" value="monday" {% if 'monday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'monday' in app.days or not app.days else 'false' }}"> {{ _('Monday') }}
             </label>
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {% endif %}> {{ _('Tuesday') }}
+              <input type="checkbox" name="days" value="tuesday" {% if 'tuesday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'tuesday' in app.days or not app.days else 'false' }}"> {{ _('Tuesday') }}
             </label>
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked {% endif %}> {{ _('Wednesday') }}
+              <input type="checkbox" name="days" value="wednesday" {% if 'wednesday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'wednesday' in app.days or not app.days else 'false' }}"> {{ _('Wednesday') }}
             </label>
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {% endif %}> {{ _('Thursday') }}
+              <input type="checkbox" name="days" value="thursday" {% if 'thursday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'thursday' in app.days or not app.days else 'false' }}"> {{ _('Thursday') }}
             </label>
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {% endif %}> {{ _('Friday') }}
+              <input type="checkbox" name="days" value="friday" {% if 'friday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'friday' in app.days or not app.days else 'false' }}"> {{ _('Friday') }}
             </label>
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {% endif %}> {{ _('Saturday') }}
+              <input type="checkbox" name="days" value="saturday" {% if 'saturday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'saturday' in app.days or not app.days else 'false' }}"> {{ _('Saturday') }}
             </label>
             <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {% endif %}> {{ _('Sunday') }}
+              <input type="checkbox" name="days" value="sunday" {% if 'sunday' in app.days or not app.days %} checked {% endif %} data-default="{{ 'true' if 'sunday' in app.days or not app.days else 'false' }}"> {{ _('Sunday') }}
             </label>
           </div>
         </div>
@@ -272,7 +272,7 @@
       <div style="margin: 20px 0;">
         <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
           <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {% if
-            app.use_custom_recurrence %} checked {% endif %}
+            app.use_custom_recurrence %} checked {% endif %} data-default="{{ 'true' if app.use_custom_recurrence else 'false' }}"
             onchange="toggleCustomRecurrence()">
           <div>
             <strong>{{ _('Use Custom Recurrence') }}</strong>
@@ -1352,8 +1352,8 @@
     const previewButton = document.getElementById("previewButton");
     if(previewButton) {
         previewButton.addEventListener("click", (event) => {
-            // Usually updateConfigAndPreview does it, but we can force it or use the legacy previewApp logic if desired
-             updateConfigAndPreview();
+            // Use previewApp to push to device
+            previewApp('{{ device.id }}', '{{ app.iname }}', config, event.currentTarget, { previewing: '{{ _('Previewing...') }}', sent: '{{ _('Sent') }}', failed: '{{ _('Failed') }}' });
         });
     }
 
