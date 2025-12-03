@@ -1334,7 +1334,9 @@ class AppUpdateFormData(BaseModel):
     """Represents the form data for updating an app."""
 
     name: str
-    uinterval: Annotated[int | None, BeforeValidator(lambda v: None if v == "" else v)] = None
+    uinterval: Annotated[
+        int | None, BeforeValidator(lambda v: None if v == "" else v)
+    ] = None
     display_time: int = 0
     notes: str | None = None
     enabled: bool = False
