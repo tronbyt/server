@@ -403,6 +403,20 @@
               disabled on the app edit page.') }}</small>
           </td>
         </tr>
+        <tr>
+          <td>
+            <label for="night_color_filter" class="device-settings-label">{{ _('Night Color Filter') }}</label>
+            <span class="tooltip-icon" title="{{ _('Apply custom filters to the image during night mode.') }}">ⓘ</span>
+          </td>
+          <td>
+            <select name="night_color_filter" id="night_color_filter" class="device-settings-input">
+              {% for value, name in color_filter_choices.items() %}
+              <option value="{{ value }}" {% if device.night_color_filter==value %}selected{% endif %}>{{ name }}
+              </option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
       </table>
     </div>
   </div>

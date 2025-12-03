@@ -718,6 +718,7 @@ class DeviceUpdateFormData(BaseModel):
     interstitial_enabled: bool = False
     interstitial_app: str | None = None
     color_filter: ColorFilter | None = None
+    night_color_filter: ColorFilter | None = None
 
 
 @router.post("/{device_id}/update")
@@ -790,6 +791,7 @@ def update_post(
     device.timezone = form_data.timezone
     device.locale = form_data.locale or None
     device.color_filter = form_data.color_filter or None
+    device.night_color_filter = form_data.night_color_filter or None
 
     if form_data.night_start:
         try:

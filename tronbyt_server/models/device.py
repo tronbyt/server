@@ -347,6 +347,7 @@ class Device(BaseModel):
     last_seen: datetime | None = None
     info: DeviceInfo = Field(default_factory=DeviceInfo)
     color_filter: ColorFilter | None = None
+    night_color_filter: ColorFilter | None = None
 
     def supports_2x(self) -> bool:
         """
