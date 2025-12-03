@@ -56,14 +56,7 @@ DEVICE_TYPE_CHOICES = {member.value: member.display_name for member in DeviceTyp
 DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
 
 
-class Device(BaseModel):
-    """Pydantic model for a device."""
-    model_config = ConfigDict(validate_assignment=True)
 
-    id: DeviceID
-    # Other fields would go here
-    info: "DeviceInfo" = Field(default_factory=lambda: DeviceInfo()) # Forward reference for DeviceInfo
-    color_filter: ColorFilter | None = None
 
 
 @functools.total_ordering
