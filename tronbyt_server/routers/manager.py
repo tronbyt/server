@@ -47,6 +47,7 @@ from tronbyt_server.flash import flash
 from tronbyt_server.models import (
     DEFAULT_DEVICE_TYPE,
     DEVICE_TYPE_CHOICES,
+    COLOR_FILTER_CHOICES,
     App,
     Brightness,
     Device,
@@ -59,6 +60,7 @@ from tronbyt_server.models import (
     User,
     Weekday,
     parse_custom_brightness_scale,
+    ColorFilter,
 )
 from tronbyt_server.pixlet import call_handler, get_schema
 from tronbyt_server.templates import templates
@@ -596,6 +598,11 @@ def update(
             "user": deps.user,
             "brightness_ui": brightness_ui,
             "night_brightness_ui": night_brightness_ui,
+            "color_filter_choices": {
+                k: v
+                for k, v in COLOR_FILTER_CHOICES.items()
+                if k != ColorFilter.INHERIT.value
+            },
             "device_type_choices": DEVICE_TYPE_CHOICES,
         },
     )
@@ -707,6 +714,8 @@ class DeviceUpdateFormData(BaseModel):
     location: str | None = None
     interstitial_enabled: bool = False
     interstitial_app: str | None = None
+    color_filter: ColorFilter | None = None
+    night_color_filter: ColorFilter | None = None
 
 
 @router.post("/{device_id}/update")
@@ -778,6 +787,8 @@ def update_post(
     device.night_mode_app = form_data.night_mode_app or ""
     device.timezone = form_data.timezone
     device.locale = form_data.locale or None
+    device.color_filter = form_data.color_filter or None
+    device.night_color_filter = form_data.night_color_filter or None
 
     if form_data.night_start:
         try:
@@ -1314,22 +1325,18 @@ def updateapp(
             "config": json.dumps(app.config, indent=4),
             "user": user,
             "form": {},  # Empty form data for GET request
+            "color_filter_choices": COLOR_FILTER_CHOICES,
         },
     )
-
-
-def empty_str_to_none(v: Any) -> Any:
-    """Convert empty strings to None."""
-    if v == "":
-        return None
-    return v
 
 
 class AppUpdateFormData(BaseModel):
     """Represents the form data for updating an app."""
 
     name: str
-    uinterval: Annotated[int | None, BeforeValidator(empty_str_to_none)] = None
+    uinterval: Annotated[
+        int | None, BeforeValidator(lambda v: None if v == "" else v)
+    ] = None
     display_time: int = 0
     notes: str | None = None
     enabled: bool = False
@@ -1339,15 +1346,16 @@ class AppUpdateFormData(BaseModel):
     days: list[str] = []
     use_custom_recurrence: bool = False
     recurrence_type: str | None = None
-    recurrence_interval: Annotated[int | None, BeforeValidator(empty_str_to_none)] = (
+    recurrence_interval: Annotated[int | None, BeforeValidator(lambda v: v or None)] = (
         None
     )
     recurrence_start_date: str | None = None
     recurrence_end_date: str | None = None
     weekdays: list[str] = []
     monthly_pattern: str | None = None
-    day_of_month: Annotated[int | None, BeforeValidator(empty_str_to_none)] = None
+    day_of_month: Annotated[int | None, BeforeValidator(lambda v: v or None)] = None
     day_of_week_pattern: str | None = None
+    color_filter: ColorFilter | None = None
 
 
 @router.post("/{device_id}/{iname}/updateapp")
@@ -1388,6 +1396,7 @@ def updateapp_post(
         "recurrence_type": form_data.recurrence_type or RecurrenceType.DAILY,
         "recurrence_interval": form_data.recurrence_interval or 1,
         "recurrence_pattern": recurrence_pattern,
+        "color_filter": form_data.color_filter or None,
     }
     if form_data.recurrence_start_date:
         update_data["recurrence_start_date"] = form_data.recurrence_start_date

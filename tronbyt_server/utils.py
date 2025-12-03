@@ -23,6 +23,8 @@ from tronbyt_server.models import App, Device, User, ProtocolType
 from tronbyt_server.pixlet import render_app as pixlet_render_app
 from tronbyt_server.models.sync import SyncPayload
 from tronbyt_server.sync import get_sync_manager
+from tronbyt_server.models.app import ColorFilter
+from tronbyt_server.db import get_night_mode_is_active
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +74,29 @@ def render_app(
 
     device_interval = device.default_interval or 15
     app_interval = (app and app.display_time) or device_interval
+
+    # Check if night mode is active
+    night_mode = get_night_mode_is_active(device)
+
+    # Determine base device filter (night or regular)
+    device_filter = (
+        device.night_color_filter
+        if night_mode and device.night_color_filter
+        else device.color_filter
+    )
+
+    color_filter = device_filter
+    if app and app.color_filter and app.color_filter != ColorFilter.INHERIT:
+        color_filter = app.color_filter
+
+    # Prepare filters for pixlet
+    # Only apply if we have a filter and it's not NONE
+    filters = (
+        {"color_filter": color_filter.value}
+        if color_filter and color_filter != ColorFilter.NONE
+        else None
+    )
+
     data, messages = pixlet_render_app(
         path=app_path,
         config=config_data,
@@ -81,7 +106,7 @@ def render_app(
         timeout=30000,
         image_format=0,
         supports2x=device.supports_2x(),
-        filters=None,
+        filters=filters,
         tz=tz,
         locale=device.locale,
     )

@@ -1,6 +1,14 @@
 """Models for the application."""
 
-from .app import App, AppMetadata, RecurrencePattern, RecurrenceType, Weekday
+from .app import (
+    App,
+    AppMetadata,
+    RecurrencePattern,
+    RecurrenceType,
+    Weekday,
+    ColorFilter,
+    COLOR_FILTER_CHOICES,
+)
 from .device import (
     DEFAULT_DEVICE_TYPE,
     Device,
@@ -57,4 +65,6 @@ __all__ = [
     "ProtocolType",
     "Brightness",
     "parse_custom_brightness_scale",
+    "COLOR_FILTER_CHOICES",
+    "ColorFilter",
 ]

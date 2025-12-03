@@ -1,8 +1,8 @@
 """Data models for Tronbyt Server applications."""
 
 from enum import Enum
-from typing import Any
-from pydantic import BaseModel, Field, BeforeValidator
+from typing import Any, Self
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
 from datetime import time, date, timedelta
 from typing import Annotated
 
@@ -57,8 +57,47 @@ class RecurrenceType(str, Enum):
     YEARLY = "yearly"
 
 
+class ColorFilter(str, Enum):
+    """Color filter enumeration."""
+
+    display_name: str
+
+    def __new__(cls, value: str, display_name: str) -> Self:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.display_name = display_name
+        return obj
+
+    @classmethod
+    def _missing_(cls, value: object) -> Any:
+        if value == "":
+            return cls.NONE
+        return super()._missing_(value)
+
+    INHERIT = ("inherit", "Use Device Settings")
+    NONE = ("none", "None")
+    DIMMED = ("dimmed", "Dimmed")
+    REDSHIFT = ("redshift", "Redshift")
+    WARM = ("warm", "Warm")
+    SUNSET = ("sunset", "Sunset")
+    SEPIA = ("sepia", "Sepia")
+    VINTAGE = ("vintage", "Vintage")
+    DUSK = ("dusk", "Dusk")
+    COOL = ("cool", "Cool")
+    BW = ("bw", "Black & White")
+    ICE = ("ice", "Ice")
+    MOONLIGHT = ("moonlight", "Moonlight")
+    NEON = ("neon", "Neon")
+    PASTEL = ("pastel", "Pastel")
+
+
+COLOR_FILTER_CHOICES = {member.value: member.display_name for member in ColorFilter}
+
+
 class App(BaseModel):
     """Pydantic model for an app."""
+
+    model_config = ConfigDict(validate_assignment=True)
 
     id: str | None = None
     iname: str
@@ -99,6 +138,7 @@ class App(BaseModel):
     empty_last_render: bool = False
     render_messages: list[str] = []  # Changed from str to List[str]
     autopin: bool = False
+    color_filter: ColorFilter | None = ColorFilter.INHERIT
 
 
 class AppMetadata(BaseModel):

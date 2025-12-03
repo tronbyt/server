@@ -13,10 +13,11 @@ from pydantic import (
     BeforeValidator,
     AliasChoices,
     GetCoreSchemaHandler,
+    ConfigDict,
 )
 from pydantic_core import core_schema
 
-from .app import App
+from .app import App, ColorFilter
 
 
 class DeviceType(str, Enum):
@@ -301,6 +302,8 @@ def parse_custom_brightness_scale(scale_str: str) -> dict[int, int] | None:
 class Device(BaseModel):
     """Pydantic model for a device."""
 
+    model_config = ConfigDict(validate_assignment=True)
+
     id: DeviceID
     name: str = ""
     type: DeviceType = DEFAULT_DEVICE_TYPE
@@ -334,6 +337,8 @@ class Device(BaseModel):
     interstitial_app: str | None = None  # iname of the interstitial app, if any
     last_seen: datetime | None = None
     info: DeviceInfo = Field(default_factory=DeviceInfo)
+    color_filter: ColorFilter | None = None
+    night_color_filter: ColorFilter | None = None
 
     def supports_2x(self) -> bool:
         """
