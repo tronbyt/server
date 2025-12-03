@@ -1298,136 +1298,6 @@ def duplicate_app(
         )
 
 
-@router.get("/{device_id}/{iname}/updateapp")
-def updateapp(
-    request: Request,
-    device_and_app: DeviceAndApp = Depends(get_device_and_app),
-    user: User = Depends(manager),
-) -> Response:
-    device = device_and_app.device
-    app = device_and_app.app
-    device_id = device.id
-
-    # Set default dates if not already set
-    today = date.today()
-    if not app.recurrence_start_date:
-        app.recurrence_start_date = today
-    if not app.recurrence_end_date:
-        app.recurrence_end_date = today + timedelta(days=7)
-
-    return templates.TemplateResponse(
-        request,
-        "manager/updateapp.html",
-        {
-            "app": app,
-            "device": device,
-            "device_id": device_id,
-            "config": json.dumps(app.config, indent=4),
-            "user": user,
-            "form": {},  # Empty form data for GET request
-            "color_filter_choices": COLOR_FILTER_CHOICES,
-        },
-    )
-
-
-class AppUpdateFormData(BaseModel):
-    """Represents the form data for updating an app."""
-
-    name: str
-    uinterval: Annotated[
-        int | None, BeforeValidator(lambda v: None if v == "" else v)
-    ] = None
-    display_time: int = 0
-    notes: str | None = None
-    enabled: bool = False
-    autopin: bool = False
-    start_time: str | None = None
-    end_time: str | None = None
-    days: list[str] = []
-    use_custom_recurrence: bool = False
-    recurrence_type: str | None = None
-    recurrence_interval: Annotated[int | None, BeforeValidator(lambda v: v or None)] = (
-        None
-    )
-    recurrence_start_date: str | None = None
-    recurrence_end_date: str | None = None
-    weekdays: list[str] = []
-    monthly_pattern: str | None = None
-    day_of_month: Annotated[int | None, BeforeValidator(lambda v: v or None)] = None
-    day_of_week_pattern: str | None = None
-    color_filter: ColorFilter | None = None
-
-
-@router.post("/{device_id}/{iname}/updateapp")
-def updateapp_post(
-    request: Request,
-    form_data: Annotated[AppUpdateFormData, Form()],
-    device_and_app: DeviceAndApp = Depends(get_device_and_app),
-    user: User = Depends(manager),
-    db_conn: sqlite3.Connection = Depends(get_db),
-) -> Response:
-    """Handle app update."""
-    device = device_and_app.device
-    app = device_and_app.app
-
-    recurrence_pattern = RecurrencePattern()
-    if form_data.use_custom_recurrence:
-        if form_data.recurrence_type == "weekly":
-            recurrence_pattern.weekdays = [
-                cast(Weekday, day) for day in form_data.weekdays
-            ]
-        elif form_data.recurrence_type == "monthly":
-            if form_data.monthly_pattern == "day_of_month":
-                recurrence_pattern.day_of_month = form_data.day_of_month
-            elif form_data.monthly_pattern == "day_of_week":
-                recurrence_pattern.day_of_week = form_data.day_of_week_pattern
-
-    update_data: dict[str, Any] = {
-        "name": form_data.name,
-        "uinterval": form_data.uinterval or 0,
-        "display_time": form_data.display_time,
-        "notes": form_data.notes or "",
-        "enabled": form_data.enabled,
-        "autopin": form_data.autopin,
-        "start_time": form_data.start_time,
-        "end_time": form_data.end_time,
-        "days": form_data.days,
-        "use_custom_recurrence": form_data.use_custom_recurrence,
-        "recurrence_type": form_data.recurrence_type or RecurrenceType.DAILY,
-        "recurrence_interval": form_data.recurrence_interval or 1,
-        "recurrence_pattern": recurrence_pattern,
-        "color_filter": form_data.color_filter or None,
-    }
-    if form_data.recurrence_start_date:
-        update_data["recurrence_start_date"] = form_data.recurrence_start_date
-    if form_data.recurrence_end_date:
-        update_data["recurrence_end_date"] = form_data.recurrence_end_date
-
-    if not form_data.name:
-        flash(request, _("Name is required."))
-        temp_app = app.model_copy(update=update_data)
-        return templates.TemplateResponse(
-            request,
-            "manager/updateapp.html",
-            {
-                "app": temp_app,
-                "device_id": device.id,
-                "config": json.dumps(temp_app.config, indent=4),
-                "user": user,
-            },
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
-
-    for key, value in update_data.items():
-        setattr(app, key, value)
-
-    db.save_user(db_conn, user)
-
-    return RedirectResponse(
-        url=request.url_for("index"), status_code=status.HTTP_302_FOUND
-    )
-
-
 @router.post("/{device_id}/{iname}/toggle_enabled")
 def toggle_enabled(
     request: Request,
@@ -1533,6 +1403,45 @@ def moveapp(
     return Response("OK", status_code=status.HTTP_200_OK)
 
 
+def empty_str_to_none(v: Any) -> Any:
+    """Convert empty strings to None."""
+    if v == "":
+        return None
+    return v
+
+
+class AppUpdateFormData(BaseModel):
+    """Represents the form data for updating an app."""
+
+    name: str
+    uinterval: Annotated[int | None, BeforeValidator(empty_str_to_none)] = None
+    display_time: int = 0
+    notes: str | None = None
+    enabled: bool = False
+    autopin: bool = False
+    start_time: str | None = None
+    end_time: str | None = None
+    days: list[str] = []
+    use_custom_recurrence: bool = False
+    recurrence_type: str | None = None
+    recurrence_interval: Annotated[int | None, BeforeValidator(empty_str_to_none)] = (
+        None
+    )
+    recurrence_start_date: str | None = None
+    recurrence_end_date: str | None = None
+    weekdays: list[str] = []
+    monthly_pattern: str | None = None
+    day_of_month: Annotated[int | None, BeforeValidator(empty_str_to_none)] = None
+    day_of_week_pattern: str | None = None
+    color_filter: ColorFilter | None = None
+
+
+class AppConfigSubmission(AppUpdateFormData):
+    """Represents the submission data for configuring and updating an app."""
+
+    config: dict[str, Any]
+
+
 @router.get("/{device_id}/{iname}/configapp")
 def configapp(
     request: Request,
@@ -1549,6 +1458,13 @@ def configapp(
             status_code=status.HTTP_302_FOUND,
         )
 
+    # Set default dates if not already set (from updateapp logic)
+    today = date.today()
+    if not app.recurrence_start_date:
+        app.recurrence_start_date = today
+    if not app.recurrence_end_date:
+        app.recurrence_end_date = today + timedelta(days=7)
+
     schema_json = get_schema(Path(app.path), 64, 32, device.supports_2x())
     schema = json.loads(schema_json) if schema_json else None
     return templates.TemplateResponse(
@@ -1561,6 +1477,7 @@ def configapp(
             "config": app.config,
             "schema": schema,
             "user": user,
+            "form": {},
         },
     )
 
@@ -1571,7 +1488,7 @@ async def configapp_post(
     device_and_app: DeviceAndApp = Depends(get_device_and_app),
     user: User = Depends(manager),
     db_conn: sqlite3.Connection = Depends(get_db),
-    config: Any = Body(...),
+    submission: AppConfigSubmission = Body(...),
 ) -> Response:
     device = device_and_app.device
     app = device_and_app.app
@@ -1581,9 +1498,51 @@ async def configapp_post(
             url=request.url_for("index"), status_code=status.HTTP_404_NOT_FOUND
         )
 
-    app.config = config
+    # --- Update App Settings (from updateapp_post) ---
+    recurrence_pattern = RecurrencePattern()
+    if submission.use_custom_recurrence:
+        if submission.recurrence_type == "weekly":
+            recurrence_pattern.weekdays = [
+                cast(Weekday, day) for day in submission.weekdays
+            ]
+        elif submission.recurrence_type == "monthly":
+            if submission.monthly_pattern == "day_of_month":
+                recurrence_pattern.day_of_month = submission.day_of_month
+            elif submission.monthly_pattern == "day_of_week":
+                recurrence_pattern.day_of_week = submission.day_of_week_pattern
+
+    update_data: dict[str, Any] = {
+        "name": submission.name,
+        "uinterval": submission.uinterval or 0,
+        "display_time": submission.display_time,
+        "notes": submission.notes or "",
+        "enabled": submission.enabled,
+        "autopin": submission.autopin,
+        "start_time": submission.start_time,
+        "end_time": submission.end_time,
+        "days": submission.days,
+        "use_custom_recurrence": submission.use_custom_recurrence,
+        "recurrence_type": submission.recurrence_type or RecurrenceType.DAILY,
+        "recurrence_interval": submission.recurrence_interval or 1,
+        "recurrence_pattern": recurrence_pattern,
+        "color_filter": submission.color_filter or None,
+    }
+    if submission.recurrence_start_date:
+        update_data["recurrence_start_date"] = submission.recurrence_start_date
+    if submission.recurrence_end_date:
+        update_data["recurrence_end_date"] = submission.recurrence_end_date
+
+    # Update app attributes
+    for key, value in update_data.items():
+        setattr(app, key, value)
+
+    # --- Update App Config (from original configapp_post) ---
+    app.config = submission.config
+
+    # Save changes to user/db
     db.save_user(db_conn, user)
 
+    # Render app
     webp_device_path = db.get_device_webp_dir(device_id)
     webp_device_path.mkdir(parents=True, exist_ok=True)
     webp_path = webp_device_path / f"{app.name}-{app.iname}.webp"
@@ -1592,7 +1551,7 @@ async def configapp_post(
     image = render_app(
         db_conn,
         Path(app.path),
-        config,
+        app.config,
         webp_path,
         device,
         app,
@@ -1602,7 +1561,7 @@ async def configapp_post(
     render_duration = timedelta(seconds=end_time - start_time)
 
     if image is not None:
-        app.enabled = True
+        # app.enabled = True # Don't force enable, respect the form setting
         app.last_render = int(time.time())
         app.last_render_duration = render_duration
         db.save_app(db_conn, device_id, app)
