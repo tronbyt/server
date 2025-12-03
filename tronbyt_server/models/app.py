@@ -96,6 +96,7 @@ COLOR_FILTER_CHOICES = {member.value: member.display_name for member in ColorFil
 
 class App(BaseModel):
     """Pydantic model for an app."""
+
     model_config = ConfigDict(validate_assignment=True)
 
     id: str | None = None

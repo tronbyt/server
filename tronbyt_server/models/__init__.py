@@ -1,6 +1,14 @@
 """Models for the application."""
 
-from .app import App, AppMetadata, RecurrencePattern, RecurrenceType, Weekday, ColorFilter, COLOR_FILTER_CHOICES
+from .app import (
+    App,
+    AppMetadata,
+    RecurrencePattern,
+    RecurrenceType,
+    Weekday,
+    ColorFilter,
+    COLOR_FILTER_CHOICES,
+)
 from .device import (
     DEFAULT_DEVICE_TYPE,
     Device,

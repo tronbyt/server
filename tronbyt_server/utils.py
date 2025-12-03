@@ -79,7 +79,11 @@ def render_app(
     night_mode = get_night_mode_is_active(device)
 
     # Determine base device filter (night or regular)
-    device_filter = device.night_color_filter if night_mode and device.night_color_filter else device.color_filter
+    device_filter = (
+        device.night_color_filter
+        if night_mode and device.night_color_filter
+        else device.color_filter
+    )
 
     color_filter = device_filter
     if app and app.color_filter and app.color_filter != ColorFilter.INHERIT:

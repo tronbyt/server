@@ -690,9 +690,6 @@ def update_interval(
     return Response(status_code=status.HTTP_200_OK)
 
 
-
-
-
 class DeviceUpdateFormData(BaseModel):
     """Represents the form data for updating a device."""
 
@@ -1331,7 +1328,6 @@ def updateapp(
             "color_filter_choices": COLOR_FILTER_CHOICES,
         },
     )
-
 
 
 class AppUpdateFormData(BaseModel):

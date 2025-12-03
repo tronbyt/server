@@ -56,9 +56,6 @@ DEVICE_TYPE_CHOICES = {member.value: member.display_name for member in DeviceTyp
 DeviceID = Annotated[str, Field(pattern=r"^[a-fA-F0-9]{8}$")]
 
 
-
-
-
 @functools.total_ordering
 class Brightness:
     """A type for representing brightness, handling conversions between percentage, 8-bit, and UI scale."""
@@ -304,6 +301,7 @@ def parse_custom_brightness_scale(scale_str: str) -> dict[int, int] | None:
 
 class Device(BaseModel):
     """Pydantic model for a device."""
+
     model_config = ConfigDict(validate_assignment=True)
 
     id: DeviceID
