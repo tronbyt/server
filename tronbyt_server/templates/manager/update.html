@@ -44,7 +44,7 @@
   }
 
   // Move buttons to header on page load
-  document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('DOMContentLoaded', function() {
     const headerButtons = document.getElementById('header-buttons');
     const form = document.getElementById('device-form');
 
@@ -53,7 +53,7 @@
     saveBtn.type = 'button';
     saveBtn.className = 'w3-button w3-green config-management-btn';
     saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}';
-    saveBtn.onclick = function () {
+    saveBtn.onclick = function() {
       saveDeviceForm();
     };
 
@@ -62,8 +62,8 @@
     deleteBtn.type = 'button';
     deleteBtn.className = 'w3-button w3-red config-management-btn';
     deleteBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}';
-    deleteBtn.onclick = function () {
-      if (confirm('{{ _('Delete device and ALL apps ? This action cannot be undone.') }}')) {
+    deleteBtn.onclick = function() {
+      if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) {
         form.action = "{{ url_for('delete', device_id=device.id) }}";
         form.method = 'post';
         form.submit();
@@ -85,14 +85,13 @@
     <div class="device-settings-row">
       <div>
         <label for="name" class="device-settings-label">{{ _('Device Name') }}</label>
-        <input name="name" id="name" value="{{ request.form['name'] or device.name }}" required
-          class="device-settings-input">
+        <input name="name" id="name" value="{{ request.form['name'] or device.name }}" required class="device-settings-input">
       </div>
       <div>
         <label for="device_type" class="device-settings-label">{{ _('Device Type') }}</label>
         <select name="device_type" id="device_type" class="device-settings-input">
           {% for value, name in device_type_choices.items() %}
-          <option value="{{ value }}" {% if device.type.value==value %}selected{% endif %}>{{ name }}</option>
+            <option value="{{ value }}" {% if device.type.value == value %}selected{% endif %}>{{ name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -108,10 +107,10 @@
           </td>
           <td>
             <div class="url-input-container">
-              <input name="img_url" id="img_url" value="{{ device.img_url }}" oninput="updateExampleCommands()">
+              <input name="img_url" id="img_url" value="{{ device.img_url }}"
+                oninput="updateExampleCommands()">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetImgUrl()"
-                title="{{ _('Reset to default') }}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{
-                _('Reset') }}</button>
+                title="{{ _('Reset to default') }}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{ _('Reset') }}</button>
             </div>
           </td>
         </tr>
@@ -123,8 +122,7 @@
             <div class="url-input-container">
               <input name="ws_url" id="ws_url" value="{{ device.ws_url }}">
               <button type="button" class="w3-button w3-small w3-gray url-reset-btn" onclick="resetWsUrl()"
-                title="{{ _('Reset to default') }}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{
-                _('Reset') }}</button>
+                title="{{ _('Reset to default') }}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{ _('Reset') }}</button>
             </div>
           </td>
         </tr>
@@ -132,16 +130,16 @@
     </div>
   </div>
 
-  <script>
-    function resetImgUrl() {
-      document.getElementById('img_url').value = '{{ default_img_url }}';
-      updateExampleCommands(); // Update example commands if they exist
-    }
+    <script>
+      function resetImgUrl() {
+        document.getElementById('img_url').value = '{{ default_img_url }}';
+        updateExampleCommands(); // Update example commands if they exist
+      }
 
-    function resetWsUrl() {
-      document.getElementById('ws_url').value = '{{ default_ws_url }}';
-    }
-  </script>
+      function resetWsUrl() {
+        document.getElementById('ws_url').value = '{{ default_ws_url }}';
+      }
+    </script>
 
   <div class="device-settings-section">
     <h2>{{ _('Display Settings') }}</h2>
@@ -201,48 +199,47 @@
             <input type="hidden" name="brightness" id="brightness" value="{{ brightness_ui }}">
             <div class="brightness-panel" id="brightness-panel">
               <button type="button" class="brightness-btn {% if brightness_ui == 0 %}active{% endif %}"
-                data-brightness="0" onclick="setBrightnessUpdate(0)">0</button>
+                      data-brightness="0" onclick="setBrightnessUpdate(0)">0</button>
               <button type="button" class="brightness-btn {% if brightness_ui == 1 %}active{% endif %}"
-                data-brightness="1" onclick="setBrightnessUpdate(1)">1</button>
+                      data-brightness="1" onclick="setBrightnessUpdate(1)">1</button>
               <button type="button" class="brightness-btn {% if brightness_ui == 2 %}active{% endif %}"
-                data-brightness="2" onclick="setBrightnessUpdate(2)">2</button>
+                      data-brightness="2" onclick="setBrightnessUpdate(2)">2</button>
               <button type="button" class="brightness-btn {% if brightness_ui == 3 %}active{% endif %}"
-                data-brightness="3" onclick="setBrightnessUpdate(3)">3</button>
+                      data-brightness="3" onclick="setBrightnessUpdate(3)">3</button>
               <button type="button" class="brightness-btn {% if brightness_ui == 4 %}active{% endif %}"
-                data-brightness="4" onclick="setBrightnessUpdate(4)">4</button>
+                      data-brightness="4" onclick="setBrightnessUpdate(4)">4</button>
               <button type="button" class="brightness-btn {% if brightness_ui == 5 %}active{% endif %}"
-                data-brightness="5" onclick="setBrightnessUpdate(5)">5</button>
+                      data-brightness="5" onclick="setBrightnessUpdate(5)">5</button>
             </div>
           </td>
         </tr>
         <tr>
           <td>
-            <label for="use_custom_brightness_scale" class="device-settings-label">{{ _('Custom Brightness Scale')
-              }}</label>
-            <span class="tooltip-icon"
-              title="{{ _('Override the default brightness scale with custom values for each level (0-5)') }}">ⓘ</span>
+            <label for="use_custom_brightness_scale" class="device-settings-label">{{ _('Custom Brightness Scale') }}</label>
+            <span class="tooltip-icon" title="{{ _('Override the default brightness scale with custom values for each level (0-5)') }}">ⓘ</span>
           </td>
           <td>
             <div style="margin-bottom: 10px;">
               <label style="display: inline-flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" name="use_custom_brightness_scale" id="use_custom_brightness_scale" {% if
-                  device.custom_brightness_scale %}checked{% endif %} onchange="toggleCustomBrightnessInputs()">
+                <input type="checkbox" name="use_custom_brightness_scale" id="use_custom_brightness_scale"
+                       {% if device.custom_brightness_scale %}checked{% endif %}
+                       onchange="toggleCustomBrightnessInputs()">
                 <span style="margin-left: 8px;">{{ _('Use custom brightness scale') }}</span>
               </label>
             </div>
 
-            <div id="custom_brightness_inputs"
-              style="{% if not device.custom_brightness_scale %}display: none;{% endif %}">
+            <div id="custom_brightness_inputs" style="{% if not device.custom_brightness_scale %}display: none;{% endif %}">
               {% set default_scale = ['0', '3', '5', '12', '35', '100'] %}
-              {% set scale_values = device.custom_brightness_scale.split(',') if device.custom_brightness_scale else
-              default_scale %}
+              {% set scale_values = device.custom_brightness_scale.split(',') if device.custom_brightness_scale else default_scale %}
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 10px;">
                 {% for i in range(6) %}
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <label style="font-weight: bold; min-width: 60px;">{{ _('Level') }} {{ i }}:</label>
                   <input type="number" name="brightness_level_{{ i }}" id="brightness_level_{{ i }}"
-                    value="{{ scale_values[i]|trim if i < scale_values|length else default_scale[i] }}" min="0"
-                    max="100" step="1" class="device-settings-input" style="width: 80px; padding: 4px 8px;">
+                         value="{{ scale_values[i]|trim if i < scale_values|length else default_scale[i] }}"
+                         min="0" max="100" step="1"
+                         class="device-settings-input"
+                         style="width: 80px; padding: 4px 8px;">
                 </div>
                 {% endfor %}
               </div>
@@ -252,11 +249,9 @@
             </div>
 
             <!-- Hidden input to store the comma-separated scale -->
-            <input type="hidden" name="custom_brightness_scale" id="custom_brightness_scale_hidden"
-              value="{{ device.custom_brightness_scale if device.custom_brightness_scale else '' }}">
+            <input type="hidden" name="custom_brightness_scale" id="custom_brightness_scale_hidden" value="{{ device.custom_brightness_scale if device.custom_brightness_scale else '' }}">
 
-            <div
-              style="font-size: 0.85em; color: #666; margin-top: 10px; padding: 5px; background-color: #f5f5f5; border-radius: 3px;">
+            <div style="font-size: 0.85em; color: #666; margin-top: 10px; padding: 5px; background-color: #f5f5f5; border-radius: 3px;">
               <strong>{{ _('Default system scale') }}:</strong>
               <span style="display: inline-block; margin: 0 8px;"><strong>0:</strong> 0</span>
               <span style="display: inline-block; margin: 0 8px;"><strong>1:</strong> 3</span>
@@ -288,10 +283,8 @@
           <label for="interstitial_enabled" class="device-settings-label">{{ _('Enable Interstitial App') }}</label>
         </td>
         <td>
-          <input type="checkbox" name="interstitial_enabled" id="interstitial_enabled" {% if device.interstitial_enabled
-            %}checked{% endif %}>
-          <small class="small-text">{{ _('Display an interstitial app between each regular app in the rotation.')
-            }}</small>
+          <input type="checkbox" name="interstitial_enabled" id="interstitial_enabled" {% if device.interstitial_enabled %}checked{% endif %}>
+          <small class="small-text">{{ _('Display an interstitial app between each regular app in the rotation.') }}</small>
         </td>
       </tr>
     </table>
@@ -309,15 +302,13 @@
               <option value="None">{{ _('None') }}</option>
               {% if device.apps %}
               {% for app in device.apps.values() %}
-              <option value="{{ app.iname }}" {% if device.interstitial_app and device.interstitial_app==app.iname
-                %}selected{% endif %}>
+              <option value="{{ app.iname }}" {% if device.interstitial_app and device.interstitial_app == app.iname %}selected{% endif %}>
                 {{ app.iname }} {{ app.name }}
               </option>
               {% endfor %}
               {% endif %}
             </select>
-            <small class="small-text">{{ _('The interstitial app will display even if it is disabled in the regular
-              rotation.') }}</small>
+            <small class="small-text">{{ _('The interstitial app will display even if it is disabled in the regular rotation.') }}</small>
           </td>
         </tr>
       </table>
@@ -333,8 +324,7 @@
           <label for="night_mode_enabled" class="device-settings-label">{{ _('Enable Night Mode') }}</label>
         </td>
         <td>
-          <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device.night_mode_enabled
-            %}checked{% endif %}>
+          <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {% if device.night_mode_enabled %}checked{% endif %}>
         </td>
       </tr>
     </table>
@@ -348,8 +338,7 @@
             <label for="night_start" class="device-settings-label">{{ _('Night Start Time') }}</label>
           </td>
           <td>
-            <input type="time" name="night_start" id="night_start" value="{{ device.night_start or '22:00' }}"
-              class="device-settings-input">
+            <input type="time" name="night_start" id="night_start" value="{{ device.night_start or '22:00' }}" class="device-settings-input">
           </td>
         </tr>
         <tr>
@@ -357,8 +346,7 @@
             <label for="night_end" class="device-settings-label">{{ _('Night End Time') }}</label>
           </td>
           <td>
-            <input type="time" name="night_end" id="night_end" value="{{ device.night_end or '06:00' }}"
-              class="device-settings-input">
+            <input type="time" name="night_end" id="night_end" value="{{ device.night_end or '06:00' }}" class="device-settings-input">
           </td>
         </tr>
         <tr>
@@ -369,17 +357,17 @@
             <input type="hidden" name="night_brightness" id="night_brightness" value="{{ night_brightness_ui }}">
             <div class="brightness-panel" id="night-brightness-panel">
               <button type="button" class="brightness-btn {% if night_brightness_ui == 0 %}active{% endif %}"
-                data-brightness="0" onclick="setNightBrightnessUpdate(0)">0</button>
+                      data-brightness="0" onclick="setNightBrightnessUpdate(0)">0</button>
               <button type="button" class="brightness-btn {% if night_brightness_ui == 1 %}active{% endif %}"
-                data-brightness="1" onclick="setNightBrightnessUpdate(1)">1</button>
+                      data-brightness="1" onclick="setNightBrightnessUpdate(1)">1</button>
               <button type="button" class="brightness-btn {% if night_brightness_ui == 2 %}active{% endif %}"
-                data-brightness="2" onclick="setNightBrightnessUpdate(2)">2</button>
+                      data-brightness="2" onclick="setNightBrightnessUpdate(2)">2</button>
               <button type="button" class="brightness-btn {% if night_brightness_ui == 3 %}active{% endif %}"
-                data-brightness="3" onclick="setNightBrightnessUpdate(3)">3</button>
+                      data-brightness="3" onclick="setNightBrightnessUpdate(3)">3</button>
               <button type="button" class="brightness-btn {% if night_brightness_ui == 4 %}active{% endif %}"
-                data-brightness="4" onclick="setNightBrightnessUpdate(4)">4</button>
+                      data-brightness="4" onclick="setNightBrightnessUpdate(4)">4</button>
               <button type="button" class="brightness-btn {% if night_brightness_ui == 5 %}active{% endif %}"
-                data-brightness="5" onclick="setNightBrightnessUpdate(5)">5</button>
+                      data-brightness="5" onclick="setNightBrightnessUpdate(5)">5</button>
             </div>
           </td>
         </tr>
@@ -392,15 +380,13 @@
               <option value="None">{{ _('None') }}</option>
               {% if device.apps %}
               {% for app in device.apps.values() %}
-              <option value="{{ app.iname }}" {% if device.night_mode_app and device.night_mode_app==app.iname
-                %}selected{% endif %}>
+              <option value="{{ app.iname }}" {% if device.night_mode_app and device.night_mode_app==app.iname %}selected{% endif %}>
                 {{ app.iname }} {{ app.name }}
               </option>
               {% endfor %}
               {% endif %}
             </select>
-            <small class="small-text">{{ _('To prevent the night mode app from displaying during the day, set it to
-              disabled on the app edit page.') }}</small>
+            <small class="small-text">{{ _('To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.') }}</small>
           </td>
         </tr>
         <tr>
@@ -411,7 +397,7 @@
           <td>
             <select name="night_color_filter" id="night_color_filter" class="device-settings-input">
               {% for value, name in color_filter_choices.items() %}
-              <option value="{{ value }}" {% if device.night_color_filter==value %}selected{% endif %}>{{ _(name) }}
+            <option value="{{ value }}" {% if device.color_filter==value %}selected{% endif %}>{{ _(name) }}</option>
               </option>
               {% endfor %}
             </select>
@@ -430,10 +416,8 @@
           <label for="dim_time" class="device-settings-label">{{ _('Dim Start Time') }}</label>
         </td>
         <td>
-          <input type="time" name="dim_time" id="dim_time" value="{{ device.dim_time or '' }}"
-            class="device-settings-input">
-          <small class="small-text">{{ _('Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or
-            6:00 AM by default.') }}</small>
+          <input type="time" name="dim_time" id="dim_time" value="{{ device.dim_time or '' }}" class="device-settings-input">
+          <small class="small-text">{{ _('Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.') }}</small>
         </td>
       </tr>
       <tr>
@@ -441,27 +425,20 @@
           <label for="dim_brightness" class="device-settings-label">{{ _('Dim Brightness') }}</label>
         </td>
         <td>
-          <input type="hidden" name="dim_brightness" id="dim_brightness"
-            value="{{ device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2 }}">
+          <input type="hidden" name="dim_brightness" id="dim_brightness" value="{{ device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2 }}">
           <div class="brightness-panel" id="dim-brightness-panel">
-            <button type="button"
-              class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 0 %}active{% endif %}"
-              data-brightness="0" onclick="setDimBrightnessUpdate(0)">0</button>
-            <button type="button"
-              class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 1 %}active{% endif %}"
-              data-brightness="1" onclick="setDimBrightnessUpdate(1)">1</button>
-            <button type="button"
-              class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 2 %}active{% endif %}"
-              data-brightness="2" onclick="setDimBrightnessUpdate(2)">2</button>
-            <button type="button"
-              class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 3 %}active{% endif %}"
-              data-brightness="3" onclick="setDimBrightnessUpdate(3)">3</button>
-            <button type="button"
-              class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 4 %}active{% endif %}"
-              data-brightness="4" onclick="setDimBrightnessUpdate(4)">4</button>
-            <button type="button"
-              class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 5 %}active{% endif %}"
-              data-brightness="5" onclick="setDimBrightnessUpdate(5)">5</button>
+            <button type="button" class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 0 %}active{% endif %}"
+                    data-brightness="0" onclick="setDimBrightnessUpdate(0)">0</button>
+            <button type="button" class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 1 %}active{% endif %}"
+                    data-brightness="1" onclick="setDimBrightnessUpdate(1)">1</button>
+            <button type="button" class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 2 %}active{% endif %}"
+                    data-brightness="2" onclick="setDimBrightnessUpdate(2)">2</button>
+            <button type="button" class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 3 %}active{% endif %}"
+                    data-brightness="3" onclick="setDimBrightnessUpdate(3)">3</button>
+            <button type="button" class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 4 %}active{% endif %}"
+                    data-brightness="4" onclick="setDimBrightnessUpdate(4)">4</button>
+            <button type="button" class="brightness-btn {% if (device.dim_brightness.as_ui_scale if device.dim_brightness is not none else 2) == 5 %}active{% endif %}"
+                    data-brightness="5" onclick="setDimBrightnessUpdate(5)">5</button>
           </div>
         </td>
       </tr>
@@ -478,8 +455,7 @@
         </td>
         <td>
           <input type="text" id="location_search" placeholder="{{ _('Enter a location') }}"
-            value="{{ request.form['location_search'] or device.location.description if device.location else '' }}"
-            class="device-settings-input">
+            value="{{ request.form['location_search'] or device.location.description if device.location else '' }}" class="device-settings-input">
           <ul id="location_results"></ul>
           <input type="hidden" name="location" id="location"
             value='{{ (request.form["location"] or device.location.model_dump() if device.location else {}) | tojson }}'>
@@ -490,8 +466,7 @@
           <label for="locale" class="device-settings-label">{{ _('Locale') }}</label>
         </td>
         <td>
-          <input type="text" name="locale" id="locale" value="{{ device.locale or '' }}" class="device-settings-input"
-            placeholder="e.g. en_US" list="locale-list">
+          <input type="text" name="locale" id="locale" value="{{ device.locale or '' }}" class="device-settings-input" placeholder="e.g. en_US" list="locale-list">
           <datalist id="locale-list">
             {% for loc in available_locales %}
             <option value="{{ loc }}"></option>
@@ -549,34 +524,34 @@
     });
   </script>
 
-  <script>
-    function parseImageUrl(imageUrl) {
-      try {
-        const url = new URL(imageUrl);
-        const pathParts = url.pathname.split("/").filter(Boolean);
-        const deviceId = pathParts[0];
-        const server = `${url.protocol}//${url.host}`;
-        return { server, deviceId };
-      } catch (e) {
-        return { server: 'http://localhost:8000', deviceId: 'UNKNOWN' };
+    <script>
+      function parseImageUrl(imageUrl) {
+        try {
+          const url = new URL(imageUrl);
+          const pathParts = url.pathname.split("/").filter(Boolean);
+          const deviceId = pathParts[0];
+          const server = `${url.protocol}//${url.host}`;
+          return { server, deviceId };
+        } catch (e) {
+          return { server: 'http://localhost:8000', deviceId: 'UNKNOWN' };
+        }
       }
-    }
 
-    function updateExampleCommands() {
-      const apiKey = document.getElementById("api_key").value.trim();
-      const imageUrl = document.getElementById("img_url").value.trim();
-      const { server, deviceId } = parseImageUrl(imageUrl);
+      function updateExampleCommands() {
+        const apiKey = document.getElementById("api_key").value.trim();
+        const imageUrl = document.getElementById("img_url").value.trim();
+        const { server, deviceId } = parseImageUrl(imageUrl);
 
-      const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
-      document.getElementById("curl_example").value = curl;
+        const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'$(base64 -w 0 -i test.webp)'"}'`;
+        document.getElementById("curl_example").value = curl;
 
-      const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
-      document.getElementById("pixlet_example").value = pixlet;
-    }
+        const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
+        document.getElementById("pixlet_example").value = pixlet;
+      }
 
-    // Update curl command on page load
-    document.addEventListener("DOMContentLoaded", updateExampleCommands);
-  </script>
+      // Update curl command on page load
+      document.addEventListener("DOMContentLoaded", updateExampleCommands);
+    </script>
 
   <div class="device-settings-section">
     <h2>{{ _('Additional Settings') }}</h2>
@@ -587,8 +562,7 @@
           <label for="notes" class="device-settings-label">{{ _('Notes') }}</label>
         </td>
         <td>
-          <input name="notes" id="notes" value="{{ request.form['notes'] or device.notes }}" class="notes-input"
-            placeholder="{{ _('Optional notes about this device') }}">
+          <input name="notes" id="notes" value="{{ request.form['notes'] or device.notes }}" class="notes-input" placeholder="{{ _('Optional notes about this device') }}">
         </td>
       </tr>
     </table>
@@ -598,23 +572,18 @@
     <h2>{{ _('Configuration Management') }}</h2>
 
     <div class="config-management-container">
-      <a href="{{ url_for('export_device_config', device_id=device.id) }}"
-        class="w3-button w3-blue config-management-btn">
+      <a href="{{ url_for('export_device_config', device_id=device.id) }}" class="w3-button w3-blue config-management-btn">
         <i class="fa-solid fa-download" aria-hidden="true"></i> {{ _('Export Configuration') }}
       </a>
-      <a href="{{ url_for('import_device_config', device_id=device.id) }}"
-        class="w3-button w3-orange config-management-btn">
+      <a href="{{ url_for('import_device_config', device_id=device.id) }}" class="w3-button w3-orange config-management-btn">
         <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ _('Import Configuration') }}
       </a>
     </div>
   </div>
 
   <div class="button-container">
-    <button type="button" class="w3-button w3-green config-management-btn" onclick="saveDeviceForm();"><i
-        class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
-    <button type="button" class="w3-button w3-red config-management-btn"
-      onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device.id) }}'; this.form.method = 'post'; this.form.submit(); }"><i
-        class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
+    <button type="button" class="w3-button w3-green config-management-btn" onclick="saveDeviceForm();"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="button" class="w3-button w3-red config-management-btn" onclick="if (confirm('{{ _('Delete device and ALL apps? This action cannot be undone.') }}')) { this.form.action = '{{ url_for('delete', device_id=device.id) }}'; this.form.method = 'post'; this.form.submit(); }"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
   </div>
 
   <script>
