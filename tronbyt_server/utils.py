@@ -37,7 +37,6 @@ class RepoStatus(Enum):
     NO_CHANGE = "no_change"
 
 
-
 def add_default_config(config: dict[str, Any], device: Device) -> dict[str, Any]:
     """Add default configuration values to an app's config."""
     config["$tz"] = db.get_device_timezone_str(device)
