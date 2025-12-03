@@ -397,8 +397,7 @@
           <td>
             <select name="night_color_filter" id="night_color_filter" class="device-settings-input">
               {% for value, name in color_filter_choices.items() %}
-            <option value="{{ value }}" {% if device.color_filter==value %}selected{% endif %}>{{ _(name) }}</option>
-              </option>
+            <option value="{{ value }}" {% if device.night_color_filter==value %}selected{% endif %}>{{ _(name) }}</option>
               {% endfor %}
             </select>
           </td>
