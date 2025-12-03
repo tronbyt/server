@@ -15,12 +15,9 @@
 
   <!-- Toggle Buttons -->
   <div class="toggle-buttons">
-    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i
-        class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config')
-        }}</span></button>
-    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i
-        class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug')
-        }}</span></button>
+    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show App Config') }}</span></button>
+    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ _('Show Render Debug') }}</span></button>
+    <button id="toggleApiUsageBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ _('Show API Usage') }}</span></button>
   </div>
 
   <!-- Action Buttons -->
@@ -431,56 +428,56 @@
 </form>
 
 <!-- API Examples Section -->
-<div class="api-section">
-  <h2>{{ _('API Usage') }}</h2>
-  <p>{{ _('Use these curl commands to control this app via the API:') }}</p>
+<div id="apiUsageContent" class="hidden">
+  <div class="api-section">
+    <h2>{{ _('API Usage') }}</h2>
+    <p>{{ _('Use these curl commands to control this app via the API:') }}</p>
 
-  <!-- Enable App -->
-  <div style="margin-bottom: 20px;">
-    <h3>{{ _('Enable App') }}</h3>
-    <pre>curl -X PATCH \
+    <!-- Enable App -->
+    <div style="margin-bottom: 20px;">
+      <h3>{{ _('Enable App') }}</h3>
+      <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true}' \
   {{ url_for('handle_patch_device_app', device_id=device_id, installation_id=app.iname) }}</pre>
-  </div>
+    </div>
 
-  <!-- Disable App -->
-  <div style="margin-bottom: 20px;">
-    <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
-    <pre>curl -X PATCH \
+    <!-- Disable App -->
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--danger-text);">{{ _('Disable App') }}</h3>
+      <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
   {{ url_for('handle_patch_device_app', device_id=device_id, installation_id=app.iname) }}</pre>
-  </div>
+    </div>
 
-  <!-- Pin App -->
-  <div style="margin-bottom: 20px;">
-    <h3>{{ _('Pin App') }}</h3>
-    <pre>curl -X PATCH \
+    <!-- Pin App -->
+    <div style="margin-bottom: 20px;">
+      <h3>{{ _('Pin App') }}</h3>
+      <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": "{{ app.iname }}"}' \
   {{ url_for('update_device', device_id=device_id) }}</pre>
-  </div>
+    </div>
 
-  <!-- Unpin App -->
-  <div style="margin-bottom: 20px;">
-    <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
-    <pre>curl -X PATCH \
+    <!-- Unpin App -->
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--danger-text);">{{ _('Unpin App') }}</h3>
+      <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ device.api_key or 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": ""}' \
   {{ url_for('update_device', device_id=device_id) }}</pre>
+    </div>
+
+    <small>
+      <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown above.') }}
+    </small>
   </div>
-
-  <small>
-    <strong>{{ _('Note:') }}</strong> {{ _('Replace YOUR_API_KEY with your device API key if not using the one shown
-    above.') }}
-  </small>
 </div>
-
 <script>
   // Initialize page functionality when DOM is loaded
   document.addEventListener("DOMContentLoaded", function () {
@@ -506,6 +503,16 @@
       toggleDebugBtn.addEventListener("click", function () {
         toggleContent(debugContent, toggleDebugBtn,
           "{{ _('Hide Render Debug') }}", "{{ _('Show Render Debug') }}");
+      });
+    }
+
+    const toggleApiUsageBtn = document.getElementById("toggleApiUsageBtn");
+    const apiUsageContent = document.getElementById("apiUsageContent");
+
+    if (toggleApiUsageBtn && apiUsageContent) {
+      toggleApiUsageBtn.addEventListener("click", function () {
+        toggleContent(apiUsageContent, toggleApiUsageBtn,
+          "{{ _('Hide API Usage') }}", "{{ _('Show API Usage') }}");
       });
     }
   }
