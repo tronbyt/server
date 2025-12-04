@@ -18,7 +18,7 @@
 
   <!-- Action Buttons -->
   <div class="action-buttons">
-    <button type="button" class="w3-button w3-green w3-round" id="saveButton"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
+    <button type="submit" form="dynamicForm" class="w3-button w3-green w3-round" id="saveButton"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ _('Save') }}</button>
     <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ _('Cancel') }}</button>
   </div>
 </div>
@@ -1403,14 +1403,6 @@
               window.location.href = "{{ url_for('index') }}";
             }
             {% endif %}
-        });
-    }
-
-    // Save Button (Top)
-    const saveButtonTop = document.getElementById("saveButton");
-    if(saveButtonTop) {
-        saveButtonTop.addEventListener("click", () => {
-             form.dispatchEvent(new Event('submit'));
         });
     }
   });
