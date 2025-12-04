@@ -64,17 +64,22 @@ def test_app_create_edit_config_delete(
     r = auth_client.get(f"/{device_id}/{app_id}/configapp?delete_on_cancel=true")
     assert r.status_code == 200
 
+    # Retrieve current config to include in submission
+    user = utils.get_testuser(db_connection)
+    test_app = user.devices[device_id].apps[app_id]
+
     r = auth_client.post(
-        f"/{device_id}/{app_id}/updateapp",
-        data={
+        f"/{device_id}/{app_id}/configapp",
+        json={
             "iname": app_id,
             "name": "NOAA Tides",
-            "uinterval": "69",
-            "display_time": "69",
+            "uinterval": 69,
+            "display_time": 69,
             "notes": "69",
-            "enabled": "true",
-            "starttime": "",
-            "endtime": "",
+            "enabled": True,
+            "start_time": "",
+            "end_time": "",
+            "config": test_app.config,
         },
         follow_redirects=False,
     )
