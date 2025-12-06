@@ -1908,18 +1908,32 @@ def _find_app_manifest(app_name: str, package_name: str | None) -> Path | None:
 
     # Try to find using package_name first
     if package_name:
-        # Check standard structure: apps/<package_name>/manifest.yaml
-        potential_path = system_apps_path / "apps" / package_name / "manifest.yaml"
-        if potential_path.exists():
-            return potential_path
+        package_name = secure_filename(package_name)
+        if not package_name:  # If package_name becomes empty after sanitization
+            # Log a warning or simply skip this branch as it's an invalid package name
+            logger.warning(
+                "Sanitized package_name was empty, skipping manifest search by package."
+            )
+        else:
+            # Check standard structure: apps/<package_name>/manifest.yaml
+            potential_path = system_apps_path / "apps" / package_name / "manifest.yaml"
+            if potential_path.exists():
+                return potential_path
 
-        # Also check in root of system-apps just in case
-        potential_path = system_apps_path / package_name / "manifest.yaml"
-        if potential_path.exists():
-            return potential_path
+            # Also check in root of system-apps just in case
+            potential_path = system_apps_path / package_name / "manifest.yaml"
+            if potential_path.exists():
+                return potential_path
 
     # Strategy: find the .star file, then look for manifest.yaml in the same directory.
     # app_name might be 'foo.star' or just 'foo'
+    app_name = secure_filename(app_name)
+    if not app_name:  # If app_name becomes empty after sanitization
+        logger.warning(
+            "Sanitized app_name was empty, skipping manifest search by app name."
+        )
+        return None
+
     search_name = app_name if app_name.endswith(".star") else f"{app_name}.star"
 
     # Search recursively for the star file
