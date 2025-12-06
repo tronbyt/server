@@ -926,7 +926,7 @@ msgstr "Abbrechen"
 
 #: tronbyt_server/templates/manager/configapp.html:46
 msgid "App Configuration"
-msgstr "API-Konfiguration"
+msgstr "App Konfiguration"
 
 #: tronbyt_server/templates/manager/configapp.html:54
 msgid "Settings"
