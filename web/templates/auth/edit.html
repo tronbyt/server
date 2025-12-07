@@ -1,0 +1,356 @@
+{{ define "edit" }}
+{{ template "base" . }}
+{{ end }}
+
+{{ define "title" }}{{ t .Localizer "Edit User" }}{{ end }}
+
+{{ define "content" }}
+{{ if eq .User.Username "admin" }}
+<h1>{{ t .Localizer "System Administration" }}</h1>
+
+<h2>{{ t .Localizer "System Apps Repository" }}</h2>
+<div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+        <div style="flex: 1;">
+            <strong>{{ t .Localizer "Current Repository" }}</strong>
+            {{ if .SystemRepoInfo }}
+            <div style="margin-top: 8px;">
+                <div style="margin-bottom: 5px;">
+                    <a href="{{ .SystemRepoInfo.URL }}" target="_blank" style="color: var(--primary-color); text-decoration: none;" id="system-repo-url-link">
+                        {{ .SystemRepoInfo.URL }}
+                    </a>
+                </div>
+                <div style="margin-bottom: 5px; color: #888; font-size: 0.9em;" id="system-repo-branch">
+                    {{ t .Localizer "Branch" }}: {{ .SystemRepoInfo.Branch }}
+                </div>
+                <div style="color: #888; font-size: 0.9em;">
+                    {{ t .Localizer "Commit" }}:
+                    <a href="{{ .SystemRepoInfo.CommitURL }}" target="_blank" style="color: var(--primary-color); text-decoration: none;" title="{{ .SystemRepoInfo.CommitHash }}" id="system-repo-commit-link">
+                        {{ if .SystemRepoInfo.CommitMessage }}
+                            {{ .SystemRepoInfo.CommitMessage }}
+                        {{ else }}
+                            {{ substr .SystemRepoInfo.CommitHash 0 8 }}
+                        {{ end }}
+                    </a>
+                    {{ if .SystemRepoInfo.CommitDate }}
+                    <span style="margin-left: 8px; color: #666;" id="system-repo-commit-date">{{ .SystemRepoInfo.CommitDate }}</span>
+                    {{ end }}
+                </div>
+            </div>
+            {{ else }}
+            <div style="margin-top: 8px; color: #888;">{{ t .Localizer "No system repository configured." }}</div>
+            {{ end }}
+        </div>
+        <form method="post" action="/refresh_system_repo" style="margin-left: 15px;" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Refresh" }}
+            </button>
+        </form>
+    </div>
+
+    <div style="border-top: 1px solid #333; padding-top: 15px;">
+        <strong>{{ t .Localizer "Change Repository" }}</strong>
+        <form method="post" action="/set_system_repo" style="margin-top: 10px;">
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label for="app_repo_url" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "Repository URL" }}</label>
+                    <input name="app_repo_url" id="app_repo_url" required value="{{ .GlobalSystemRepoURL }}" style="width: 100%; padding: 8px;">
+                </div>
+                <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+                </button>
+            </div>
+            <p style="color: #888; font-size: 0.8em; margin-top: 8px;">{{ t .Localizer "Replacing the existing system repo will delete the previous repo and break any apps using that repo." }}</p>
+        </form>
+    </div>
+</div>
+
+<h2>{{ t .Localizer "Firmware Management" }}</h2>
+<div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+        <div style="flex: 1;">
+            <strong>{{ t .Localizer "Current Firmware" }}</strong>
+            {{ if .FirmwareVersion }}
+            <div style="margin-top: 8px;">
+                <div style="margin-bottom: 5px;" id="firmware-version">
+                    <strong>{{ t .Localizer "Version" }}:</strong> {{ .FirmwareVersion }}
+                </div>
+                <div style="color: #888; font-size: 0.9em;">
+                    {{ t .Localizer "Firmware is automatically updated when the server starts." }}
+                </div>
+            </div>
+            {{ else }}
+            <div style="margin-top: 8px; color: #888;">{{ t .Localizer "No firmware version information available" }}</div>
+            {{ end }}
+        </div>
+        <form method="post" action="/update_firmware" style="margin-left: 15px;" onsubmit="event.preventDefault(); updateFirmware(this);">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+                <i class="fa-solid {{ if .FirmwareVersion }}fa-arrows-rotate{{ else }}fa-download{{ end }}" aria-hidden="true"></i> {{ if .FirmwareVersion }}{{ t .Localizer "Update" }}{{ else }}{{ t .Localizer "Download" }}{{ end }}
+            </button>
+        </form>
+    </div>
+
+    <div style="border-top: 1px solid #333; padding-top: 15px;">
+        <p style="color: #888; font-size: 0.8em; margin: 0;">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ t .Localizer "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware." }}
+        </p>
+    </div>
+</div>
+{{ end }}
+
+<h1>{{ t .Localizer "User Settings" }}</h1>
+
+<h2>{{ t .Localizer "Theme Settings" }}</h2>
+<div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+    <form method="post" action="/set_theme_preference" style="display: flex; gap: 10px; align-items: flex-end;">
+        <div style="flex: 1;">
+            <label for="theme" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "Theme:" }}</label>
+            <select name="theme" id="theme" class="w3-select" style="width: 100%; padding: 8px;">
+                <option value="system" {{ if eq (string .User.ThemePreference) "system" }}selected{{ end }}>{{ t .Localizer "System" }}</option>
+                <option value="light" {{ if eq (string .User.ThemePreference) "light" }}selected{{ end }}>{{ t .Localizer "Light" }}</option>
+                <option value="dark" {{ if eq (string .User.ThemePreference) "dark" }}selected{{ end }}>{{ t .Localizer "Dark" }}</option>
+            </select>
+        </div>
+        <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+        </button>
+    </form>
+</div>
+
+<h2>{{ t .Localizer "Custom Apps Repository" }}</h2><div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;"><div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;"><div style="flex: 1;"><strong>{{ t .Localizer "Current Repository" }}</strong>{{ if .UserRepoInfo }}<div style="margin-top: 8px;"><div style="margin-bottom: 5px;"><a href="{{ .UserRepoInfo.URL }}" target="_blank" style="color: var(--primary-color); text-decoration: none;">{{ .UserRepoInfo.URL }}</a></div><div style="margin-bottom: 5px; color: #888; font-size: 0.9em;">{{ t .Localizer "Branch" }}: {{ .UserRepoInfo.Branch }}</div><div style="color: #888; font-size: 0.9em;">{{ t .Localizer "Commit" }}:<a href="{{ .UserRepoInfo.CommitURL }}" target="_blank" style="color: var(--primary-color); text-decoration: none;" title="{{ .UserRepoInfo.CommitHash }}">{{ if .UserRepoInfo.CommitMessage }}{{ .UserRepoInfo.CommitMessage }}{{ else }}{{ substr .UserRepoInfo.CommitHash 0 8 }}{{ end }}</a>{{ if .UserRepoInfo.CommitDate }}<span style="margin-left: 8px; color: #666;">{{ .UserRepoInfo.CommitDate }}</span>{{ end }}</div></div>{{ else }}<div style="margin-top: 8px; color: #888;">{{ t .Localizer "No custom repository configured." }}</div>{{ end }}</div>{{ if .User.AppRepoURL }}<div style="margin-left: 15px; display: flex; gap: 8px;"><form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin\'></i> {{ t .Localizer "Refreshing..." }}';"><button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Refresh" }}</button></form><form method="post" action="/set_user_repo" onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');"><input type="hidden" name="app_repo_url" value=""><button type="submit" class="w3-button w3-red" style="padding: 8px 16px; font-size: 14px;"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Remove" }}</button></form></div>{{ end }}</div><div style="border-top: 1px solid #333; padding-top: 15px;"><strong>{{ t .Localizer "Change Repository" }}</strong><form method="post" action="/set_user_repo" style="margin-top: 10px;"><div style="display: flex; gap: 10px; align-items: flex-end;"><div style="flex: 1;"><label for="user_repo_url" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "Repository URL" }}</label><input name="app_repo_url" id="user_repo_url" required value="{{ .User.AppRepoURL }}" style="width: 100%; padding: 8px;"></div><button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}</button></div><p style="color: #888; font-size: 0.8em; margin-top: 8px;">{{ t .Localizer "Replacing an existing custom repo will delete the previous repo and break any apps using that repo." }}</p></form></div></div>
+
+<h2>{{ t .Localizer "Security Settings" }}</h2>
+
+<div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+    <div style="margin-bottom: 20px;">
+        <strong>{{ t .Localizer "Change Password" }}</strong>
+        <form method="post" style="margin-top: 10px;">
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label for="old_password" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "Old Password" }}</label>
+                    <input type="password" name="old_password" id="old_password" required style="width: 100%; padding: 8px;">
+                </div>
+                <div style="flex: 1;">
+                    <label for="password" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "New Password" }}</label>
+                    <input type="password" name="password" id="password" required style="width: 100%; padding: 8px;">
+                </div>
+                <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div style="border-top: 1px solid #333; padding-top: 15px;">
+        <form method="post" action="/set_api_key" style="display: flex; gap: 10px; align-items: flex-end;">
+            <div style="flex: 1;">
+                <label for="api_key" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "User API Key" }}</label>
+                <input type="text" name="api_key" id="api_key" required value="{{ .User.APIKey }}" style="width: 100%; padding: 8px;">
+            </div>
+            <button type="submit" class="w3-button w3-green" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+            </button>
+        </form>
+        <form method="post" action="/auth/generate_api_key" style="margin-top: 10px;">
+            <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Generate New" }}
+            </button>
+        </form>
+    </div>
+
+    <!-- Passkeys Section -->
+    <div style="border-top: 1px solid #333; padding-top: 15px; margin-top: 15px;">
+        <strong>{{ t .Localizer "Sign in with Passkey" }}</strong>
+        <div style="margin-top: 10px;">
+            <ul class="w3-ul w3-hoverable" style="border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
+                {{ range .User.Credentials }}
+                <li style="display: flex; align-items: center; gap: 10px; padding: 8px;">
+                    <i class="fa-solid fa-key"></i>
+                    <span>{{ .Authenticator }} ({{ .AttestationType }})</span>
+                </li>
+                {{ else }}
+                <li style="padding: 8px; color: #888;">{{ t .Localizer "No passkeys registered." }}</li>
+                {{ end }}
+            </ul>
+            <button onclick="registerPasskey()" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+                <i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function bufferDecode(value) {
+        return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");
+    }
+
+    async function registerPasskey() {
+        try {
+            const resp = await fetch('/auth/webauthn/register/begin');
+            if (!resp.ok) throw new Error("Failed to begin registration");
+
+            const options = await resp.json();
+
+            // Fix options
+            options.publicKey.challenge = bufferDecode(options.publicKey.challenge);
+            options.publicKey.user.id = bufferDecode(options.publicKey.user.id);
+            if (options.publicKey.excludeCredentials) {
+                options.publicKey.excludeCredentials.forEach(c => {
+                    c.id = bufferDecode(c.id);
+                });
+            }
+
+            const credential = await navigator.credentials.create({ publicKey: options.publicKey });
+
+            const body = {
+                id: credential.id,
+                rawId: bufferEncode(credential.rawId),
+                type: credential.type,
+                response: {
+                    attestationObject: bufferEncode(credential.response.attestationObject),
+                    clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                }
+            };
+
+            const finishResp = await fetch('/auth/webauthn/register/finish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (finishResp.ok) {
+                location.reload();
+            } else {
+                alert("Registration failed");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error: " + e.message);
+        }
+    }
+</script>
+
+<h2>{{ t .Localizer "Data Management" }}</h2>
+<div style="border: 1px solid #333; border-radius: 4px; padding: 20px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+        <div style="flex: 1;">
+            <strong>{{ t .Localizer "Export Configuration" }}</strong>
+            <div style="margin-top: 8px; color: #888; font-size: 0.9em;">
+                {{ t .Localizer "Download your entire user configuration as a JSON file." }}
+            </div>
+        </div>
+        <a href="/export_user_config" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px; margin-left: 15px;">
+            <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export" }}
+        </a>
+    </div>
+
+    <div style="border-top: 1px solid #333; padding-top: 15px;">
+        <strong>{{ t .Localizer "Import Configuration" }}</strong>
+        <div style="margin-top: 8px; color: #888; font-size: 0.9em; margin-bottom: 10px;">
+            {{ t .Localizer "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password." }}
+        </div>
+        <form method="post" action="/import_user_config" enctype="multipart/form-data">
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label for="file" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "Select JSON File" }}</label>
+                    <input type="file" name="file" id="file" accept=".json" required style="width: 100%; padding: 8px;">
+                </div>
+                <button type="submit" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+                    <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import" }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<hr style="margin-top: 40px; border: none; border-top: 1px solid #333;">
+{{ if .UpdateAvailable }}
+<div style="text-align: center; margin-top: 20px;">
+    <a href="{{ .LatestReleaseURL }}" target="_blank" style="color: #ff5722; text-decoration: none; font-weight: bold;">
+        <i class="fa-solid fa-circle-arrow-up"></i> {{ t .Localizer "Update available!" }}
+    </a>
+</div>
+{{ end }}
+<div style="font-size: 12px; color: #888; text-align: center; margin-top: {{ if .UpdateAvailable }}5px{{ else }}20px{{ end }};">
+    {{ t .Localizer "Server" }} {{ .ServerVersion }}{{ if .CommitHash }} (<a href="https://github.com/tronbyt/server/tree/{{ .CommitHash }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-family: monospace;">{{ substr .CommitHash 0 7 }}</a>){{ end }}
+</div>
+
+<script>
+function refreshSystemRepo(form) {
+    const btn = form.querySelector('button');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ t .Localizer "Refreshing..." }}';
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.CommitHash) {
+            const branchEl = document.getElementById('system-repo-branch');
+            if (branchEl) branchEl.innerText = '{{ t .Localizer "Branch" }}: ' + data.Branch;
+            const commitLink = document.getElementById('system-repo-commit-link');
+            if (commitLink) {
+                commitLink.href = data.CommitURL;
+                commitLink.title = data.CommitHash;
+                commitLink.innerText = data.CommitMessage || data.CommitHash.substring(0, 8);
+            }
+            const dateEl = document.getElementById('system-repo-commit-date');
+            if (dateEl) dateEl.innerText = data.CommitDate;
+        }
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';
+    })
+    .catch(() => {
+        btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
+    })
+    .finally(() => {
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }, 2000);
+    });
+}
+
+function updateFirmware(form) {
+    const btn = form.querySelector('button');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ t .Localizer "Updating..." }}';
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.version) {
+            const el = document.getElementById('firmware-version');
+            if (el) el.innerHTML = '<strong>{{ t .Localizer "Version" }}:</strong> ' + data.version;
+        }
+        if (data.success) {
+             btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';
+        } else {
+             btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
+        }
+    })
+    .catch(() => {
+        btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
+    })
+    .finally(() => {
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }, 2000);
+    });
+}
+</script>
+{{ end }}

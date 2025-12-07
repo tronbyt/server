@@ -203,12 +203,12 @@ The web interface in `manager.py` already does this correctly:
 def toggle_pin(device_id: str, iname: str) -> ResponseReturnValue:
     user = g.user
     device = user["devices"][device_id]  # ✅ Gets device from user
-    
+
     if device.get("pinned_app") == iname:
         device.pop("pinned_app", None)  # ✅ Modifies device in user
     else:
         device["pinned_app"] = iname    # ✅ Modifies device in user
-    
+
     db.save_user(user)  # ✅ Saves correctly
     return redirect(url_for("manager.index"))
 ```
@@ -256,11 +256,11 @@ def update_device_property(device_id: str, property_name: str, value: Any) -> bo
     user = db.get_user_by_device_id(device_id)
     if not user:
         return False
-    
+
     device = user["devices"].get(device_id)
     if not device:
         return False
-    
+
     device[property_name] = value
     db.save_user(user)
     return True
@@ -271,4 +271,3 @@ def update_device_property(device_id: str, property_name: str, value: Any) -> bo
 Fixed the API pinning bug by ensuring we modify the device object that's part of the user's device dictionary, not a separate device object. The key was to use `user["devices"][device_id]` instead of the standalone `device` variable when making modifications that need to persist.
 
 **Status:** ✅ Fixed and tested
-

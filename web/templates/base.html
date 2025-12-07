@@ -1,0 +1,226 @@
+{{ define "base" }}<!doctype html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Inline script to set initial theme and prevent FOUC
+    (function () {
+      var storedTheme = localStorage.getItem('theme_preference');
+      // Get server preference if user is logged in, otherwise default to 'system'
+      var serverProvidedTheme = "{{ if .User }}{{ .User.ThemePreference }}{{ else }}system{{ end }}";
+      var themeToApply = storedTheme || serverProvidedTheme;
+
+      if (themeToApply === 'system') {
+        var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', systemPrefersDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', themeToApply);
+      }
+      // The full theme.js script will later synchronize the select dropdown and localStorage if needed.
+    })();
+  </script>
+</head>
+<title>{{ block "title" . }}{{ end }} - {{ t .Localizer "Tronbyt Manager" }}</title>
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/css/w3.css">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/common.css">
+<link rel="stylesheet" href="/static/css/partials.css">
+<link rel="stylesheet" href="/static/css/fontawesome.min.css">
+<link rel="stylesheet" href="/static/css/brands.min.css">
+<link rel="stylesheet" href="/static/css/solid.min.css">
+<nav>
+  <button class="hamburger" id="hamburgerButton">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <h1 class="w3-sans-serif"><a href="/" style="text-decoration: none; color: inherit;">{{ t .Localizer "Tronbyt Manager" }}</a></h1>
+  <ul>
+    {{ if .User }}
+    <li><a href="/">{{ t .Localizer "Home" }}</a></li>
+    {{ if eq .User.Username "admin" }}
+    <li>
+      <a href="/auth/register">{{ t .Localizer "Create User" }}</a>
+    </li>
+    {{ end }}
+    <li><a href="/auth/edit">{{ .User.Username }}</a></li>
+        <li>
+          <a href="/auth/logout" {{ if .IsAutoLoginActive }}onclick="event.preventDefault(); alert('{{ t .Localizer "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user." }}'); return false;"{{ end }}>
+            {{ if .IsAutoLoginActive }}
+            <span class="auto-login-indicator" title="{{ t .Localizer "Auto-login mode active" }}">⚠️</span>
+            {{ end }}
+            {{ t .Localizer "Log Out" }}
+          </a>
+        </li>
+        <li class="theme-toggle-container">
+
+      <div class="theme-toggle">
+        <label for="theme-select">{{ t .Localizer "Theme:" }}</label>
+        <select id="theme-select" name="theme">
+          <option value="light">{{ t .Localizer "Light" }}</option>
+          <option value="dark">{{ t .Localizer "Dark" }}</option>
+          <option value="system" selected>{{ t .Localizer "System" }}</option>
+        </select>
+      </div>
+    </li>
+    {{ else }}
+    <li><a href="/auth/login">{{ t .Localizer "Log In" }}</a></li>
+    {{ if eq .Config.EnableUserRegistration "1" }}
+    <li><a href="/auth/register">{{ t .Localizer "Create User" }}</a></li>
+    {{ end }}
+    {{ end }}
+  </ul>
+</nav>
+
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <h1><a href="/" onclick="closeMobileMenu()" style="text-decoration: none; color: inherit;">{{ t .Localizer "Tronbyt Manager" }}</a></h1>
+    <button class="mobile-menu-close" id="mobileMenuClose">&times;</button>
+  </div>
+  <ul>
+    {{ if .User }}
+    <li><a href="/" onclick="closeMobileMenu()">{{ t .Localizer "Home" }}</a></li>
+    {{ if eq .User.Username "admin" }}
+    <li>
+      <a href="/auth/register" onclick="closeMobileMenu()">
+        {{ t .Localizer "Create User" }}
+      </a>
+    </li>
+    {{ end }}
+    <li><a href="/auth/edit" onclick="closeMobileMenu()">{{ .User.Username }}</a></li>
+    <li>
+      <a href="/auth/logout" onclick="{{ if .IsAutoLoginActive }}event.preventDefault(); alert('{{ t .Localizer "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user." }}'); return false;{{ else }}closeMobileMenu(){{ end }}">
+        {{ if .IsAutoLoginActive }}
+        <span class="auto-login-indicator" title="{{ t .Localizer "Auto-login mode active" }}">⚠️</span>
+        {{ end }}
+        {{ t .Localizer "Log Out" }}
+      </a>
+    </li>
+    <li class="theme-toggle-container">
+      <div class="theme-toggle">
+        <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
+        <select id="mobile-theme-select" name="theme">
+          <option value="light">{{ t .Localizer "Light" }}</option>
+          <option value="dark">{{ t .Localizer "Dark" }}</option>
+          <option value="system" selected>{{ t .Localizer "System" }}</option>
+        </select>
+      </div>
+    </li>
+    {{ else }}
+    <li><a href="/auth/login" onclick="closeMobileMenu()">{{ t .Localizer "Log In" }}</a></li>
+    {{ if eq .Config.EnableUserRegistration "1" }}
+    <li><a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a></li>
+    {{ end }}
+    {{ end }}
+  </ul>
+</div>
+
+<section class="content">
+  <header>
+    {{ block "header" . }}{{ end }}
+  </header>
+  {{ if .Flashes }}
+  <div class="flash">
+    {{ range .Flashes }}
+    <div>{{ . }}</div>
+    {{ end }}
+  </div>
+  {{ end }}
+  {{ block "content" . }}{{ end }}
+</section>
+
+<script>
+  {{ if .User }}
+  window.currentUserThemePreference = "{{ .User.ThemePreference }}";
+  {{ else }}
+  window.currentUserThemePreference = "system"; // Default for guests or if not set
+  {{ end }}
+
+  // Mobile menu state management
+  let isMenuOpen = false;
+
+  function openMobileMenu() {
+    if (!isMenuOpen) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const hamburger = document.querySelector('.hamburger');
+
+      mobileMenu.classList.add('active');
+      mobileMenuOverlay.classList.add('active');
+      hamburger.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      isMenuOpen = true;
+    }
+  }
+
+  function closeMobileMenu() {
+    if (isMenuOpen) {
+      const mobileMenu = document.getElementById('mobileMenu');
+      const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+      const hamburger = document.querySelector('.hamburger');
+
+      mobileMenu.classList.remove('active');
+      mobileMenuOverlay.classList.remove('active');
+      hamburger.classList.remove('active');
+      document.body.style.overflow = '';
+      isMenuOpen = false;
+    }
+  }
+
+  function toggleMobileMenu() {
+    if (isMenuOpen) {
+      closeMobileMenu();
+    } else {
+      openMobileMenu();
+    }
+  }
+
+  // Initialize mobile menu
+  document.addEventListener('DOMContentLoaded', function() {
+    const hamburgerButton = document.getElementById('hamburgerButton');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+
+    // Hamburger button
+    if (hamburgerButton) {
+      hamburgerButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMobileMenu();
+      });
+    }
+
+    // Close button
+    if (mobileMenuClose) {
+      mobileMenuClose.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileMenu();
+      });
+    }
+
+    // Overlay click to close
+    if (mobileMenuOverlay) {
+      mobileMenuOverlay.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileMenu();
+      });
+    }
+
+    // Escape key to close
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && isMenuOpen) {
+        closeMobileMenu();
+      }
+    });
+  });
+</script>
+<script src="/static/js/manager.js" defer></script>
+<script src="/static/js/theme.js" defer></script>
+{{ end }}

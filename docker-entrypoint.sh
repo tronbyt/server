@@ -23,7 +23,7 @@ if [ "$(id -u)" = '0' ]; then
     fi
 
     # Execute the command as tronbyt user
-    exec gosu tronbyt "$@"
+    exec su-exec tronbyt "$@"
 else
     # If not running as root, just execute the command
     exec "$@"

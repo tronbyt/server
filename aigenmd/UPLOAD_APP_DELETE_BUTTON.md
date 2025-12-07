@@ -185,4 +185,3 @@ Possible future improvements:
 - Show file size next to delete button
 - Add "last uploaded" date display
 - Implement soft delete with recovery option
-

@@ -30,8 +30,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-      - name: Generate version file
-        run: ./scripts/generate_version.sh
+      - name: Calculate Version
+        id: version
+        run: |
+          VERSION="dev"
+          COMMIT=${GITHUB_SHA}
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          elif [[ $GITHUB_REF == refs/heads/* ]]; then
+            BRANCH=${GITHUB_REF#refs/heads/}
+            SHORT_HASH=$(echo $COMMIT | cut -c1-7)
+            VERSION="${BRANCH}-${SHORT_HASH}"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "commit=${COMMIT}" >> $GITHUB_OUTPUT
+          echo "date=${DATE}" >> $GITHUB_OUTPUT
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -64,6 +80,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            COMMIT=${{ steps.version.outputs.commit }}
+            BUILD_DATE=${{ steps.version.outputs.date }}
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v3
         with:

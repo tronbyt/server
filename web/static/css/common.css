@@ -1,0 +1,207 @@
+/* Common Styles - Shared across multiple pages */
+
+/* Visibility classes */
+.hidden {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.visible {
+  display: block;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+/* Layout containers */
+.flex-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.button-separator {
+  color: var(--post-about-text);
+  font-weight: bold;
+  margin: 0 5px;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Form styles */
+.form-table {
+  border-spacing: 0 15px;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.form-table td {
+  vertical-align: top;
+  padding: 5px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 0;
+}
+
+.form-table label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.form-table small {
+  color: var(--post-about-text);
+  display: block;
+  margin-top: 5px;
+}
+
+.form-table select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.form-table select option {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 4px 8px;
+}
+
+.form-table ul {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.form-table ul li {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 4px 8px;
+}
+
+.form-table div[style*="listStyleType"] {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.form-control {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  box-sizing: border-box;
+}
+
+/* App preview responsive styling removed - handled by manager.css for app cards */
+
+/* Brightness button panel styles */
+.brightness-panel {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 15px;
+  max-width: 300px;
+}
+
+.brightness-btn {
+  flex: 0 0 40px;
+  padding: 8px 4px;
+  border: 2px solid #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* Light theme - progressively brighter backgrounds */
+.brightness-btn[data-brightness="0"] { background-color: #333; color: white; border-color: #222; }
+.brightness-btn[data-brightness="1"] { background-color: #666; color: white; border-color: #555; }
+.brightness-btn[data-brightness="2"] { background-color: #888; color: white; border-color: #777; }
+.brightness-btn[data-brightness="3"] { background-color: #aaa; color: white; border-color: #999; }
+.brightness-btn[data-brightness="4"] { background-color: #ccc; color: #333; border-color: #bbb; }
+.brightness-btn[data-brightness="5"] { background-color: #eee; color: #333; border-color: #ddd; }
+
+.brightness-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.brightness-btn.active {
+  border-color: #377ba8;
+  border-width: 3px;
+  box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
+}
+
+/* Dark theme - progressively brighter backgrounds */
+[data-theme="dark"] .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
+[data-theme="dark"] .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
+[data-theme="dark"] .brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
+[data-theme="dark"] .brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
+[data-theme="dark"] .brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
+[data-theme="dark"] .brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
+
+[data-theme="dark"] .brightness-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(255,255,255,0.2);
+}
+
+[data-theme="dark"] .brightness-btn.active {
+  border-color: #5a9cd1;
+  border-width: 3px;
+  box-shadow: 0 0 8px rgba(90, 156, 209, 0.5);
+}
+
+/* Mobile responsive adjustments */
+@media screen and (max-width: 768px) {
+  .flex-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .button-group {
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+
+  .toggle-buttons {
+    justify-content: center;
+  }
+
+  .form-table {
+    font-size: 0.9em;
+  }
+
+  .form-table td {
+    padding: 8px 4px;
+  }
+
+  /* App preview responsive styling removed - handled by manager.css for app cards */
+}

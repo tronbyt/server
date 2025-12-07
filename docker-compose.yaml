@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/tronbyt/server:1 # latest v1.x.x release tag
+    image: ghcr.io/tronbyt/server:2 # latest v2.x.x release tag
     restart: unless-stopped
     ports:
       - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container
@@ -15,13 +15,12 @@ services:
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
-      - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
 
     healthcheck:
-      test: ["CMD", "python3", "-m", "tronbyt_server.healthcheck", "http://localhost:8000/health"]
+      test: ["CMD", "/app/tronbyt-server", "health"]
       interval: 1m30s
       timeout: 10s
       retries: 3

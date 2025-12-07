@@ -158,4 +158,3 @@ Possible future improvements:
 - Add "last updated" timestamp
 - Include branch name if not on main
 - Add visual indicator if version is outdated
-

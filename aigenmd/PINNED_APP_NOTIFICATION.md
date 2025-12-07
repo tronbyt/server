@@ -279,4 +279,3 @@ Added a prominent, informative badge next to the device name that shows which ap
 - Is fully internationalized
 
 Users can now see at a glance which devices have pinned apps and what those apps are, without needing to scroll through the app list!
-

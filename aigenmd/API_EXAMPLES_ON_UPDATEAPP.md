@@ -290,4 +290,3 @@ Added a comprehensive API examples section to the Update App page that provides 
 - Pinning/unpinning the app
 
 The commands include all necessary values (API key, device ID, installation ID, server URL) and are formatted for easy copy-paste usage. This makes the API more discoverable and easier to use for developers and power users.
-

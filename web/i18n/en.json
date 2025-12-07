@@ -1,0 +1,1334 @@
+{
+  "Never": {
+    "other": "Never"
+  },
+  "Repo Cloned": {
+    "other": "Repo Cloned"
+  },
+  "Repo Updated": {
+    "other": "Repo Updated"
+  },
+  "Repo removed": {
+    "other": "Repo removed"
+  },
+  "Error Cloning or Updating Repo": {
+    "other": "Error Cloning or Updating Repo"
+  },
+  "No Changes to Repo": {
+    "other": "No Changes to Repo"
+  },
+  "Use Device Settings": {
+    "other": "Use Device Settings"
+  },
+  "None": {
+    "other": "None"
+  },
+  "Dimmed": {
+    "other": "Dimmed"
+  },
+  "Redshift": {
+    "other": "Redshift"
+  },
+  "Warm": {
+    "other": "Warm"
+  },
+  "Sunset": {
+    "other": "Sunset"
+  },
+  "Sepia": {
+    "other": "Sepia"
+  },
+  "Vintage": {
+    "other": "Vintage"
+  },
+  "Dusk": {
+    "other": "Dusk"
+  },
+  "Cool": {
+    "other": "Cool"
+  },
+  "Black & White": {
+    "other": "Black & White"
+  },
+  "Ice": {
+    "other": "Ice"
+  },
+  "Moonlight": {
+    "other": "Moonlight"
+  },
+  "Neon": {
+    "other": "Neon"
+  },
+  "Pastel": {
+    "other": "Pastel"
+  },
+  "Password is required.": {
+    "other": "Password is required."
+  },
+  "admin user created. Please log in.": {
+    "other": "admin user created. Please log in."
+  },
+  "Could not create admin user.": {
+    "other": "Could not create admin user."
+  },
+  "User registration is not enabled.": {
+    "other": "User registration is not enabled."
+  },
+  "Maximum number of users reached. Registration is disabled.": {
+    "other": "Maximum number of users reached. Registration is disabled."
+  },
+  "Username is required.": {
+    "other": "Username is required."
+  },
+  "User is already registered.": {
+    "other": "User is already registered."
+  },
+  "User {username} registered successfully.": {
+    "other": "User {username} registered successfully."
+  },
+  "Registered as {username}.": {
+    "other": "Registered as {username}."
+  },
+  "Couldn't Save User": {
+    "other": "Couldn't Save User"
+  },
+  "Incorrect username/password.": {
+    "other": "Incorrect username/password."
+  },
+  "Bad old password.": {
+    "other": "Bad old password."
+  },
+  "Success": {
+    "other": "Success"
+  },
+  "Logged Out": {
+    "other": "Logged Out"
+  },
+  "New API key generated successfully.": {
+    "other": "New API key generated successfully."
+  },
+  "Failed to generate new API key.": {
+    "other": "Failed to generate new API key."
+  },
+  "Unique name is required.": {
+    "other": "Unique name is required."
+  },
+  "Could not generate a unique device ID.": {
+    "other": "Could not generate a unique device ID."
+  },
+  "Invalid location": {
+    "other": "Invalid location"
+  },
+  "Location JSON error {error}": {
+    "other": "Location JSON error {error}"
+  },
+  "Name is required.": {
+    "other": "Name is required."
+  },
+  "Invalid custom brightness scale format. Use 6 comma-separated values (0-100).": {
+    "other": "Invalid custom brightness scale format. Use 6 comma-separated values (0-100)."
+  },
+  "Invalid night start time: {error}": {
+    "other": "Invalid night start time: {error}"
+  },
+  "Invalid night end time: {error}": {
+    "other": "Invalid night end time: {error}"
+  },
+  "Invalid dim time: {error}": {
+    "other": "Invalid dim time: {error}"
+  },
+  "App name required.": {
+    "other": "App name required."
+  },
+  "Could not generate a unique installation ID.": {
+    "other": "Could not generate a unique installation ID."
+  },
+  "App not found.": {
+    "other": "App not found."
+  },
+  "No file": {
+    "other": "No file"
+  },
+  "Invalid file path": {
+    "other": "Invalid file path"
+  },
+  "File type not allowed": {
+    "other": "File type not allowed"
+  },
+  "Upload Successful": {
+    "other": "Upload Successful"
+  },
+  "Cannot delete {filename} because it is installed on a device.": {
+    "other": "Cannot delete {filename} because it is installed on a device."
+  },
+  "App pinned.": {
+    "other": "App pinned."
+  },
+  "App unpinned.": {
+    "other": "App unpinned."
+  },
+  "Error updating pin status.": {
+    "other": "Error updating pin status."
+  },
+  "App duplicated successfully.": {
+    "other": "App duplicated successfully."
+  },
+  "Changes saved.": {
+    "other": "Changes saved."
+  },
+  "Error saving changes.": {
+    "other": "Error saving changes."
+  },
+  "Invalid direction.": {
+    "other": "Invalid direction."
+  },
+  "Error saving app, please try again.": {
+    "other": "Error saving app, please try again."
+  },
+  "Error deleting app.": {
+    "other": "Error deleting app."
+  },
+  "Invalid {field_name}: {error}": {
+    "other": "Invalid {field_name}: {error}"
+  },
+  "start time": {
+    "other": "start time"
+  },
+  "end time": {
+    "other": "end time"
+  },
+  "Error Rendering App": {
+    "other": "Error Rendering App"
+  },
+  "API Key cannot be empty.": {
+    "other": "API Key cannot be empty."
+  },
+  "System repo updated successfully": {
+    "other": "System repo updated successfully"
+  },
+  "Firmware update failed": {
+    "other": "Firmware update failed"
+  },
+  "No selected file": {
+    "other": "No selected file"
+  },
+  "Invalid file type. Please upload a JSON file.": {
+    "other": "Invalid file type. Please upload a JSON file."
+  },
+  "Invalid JSON structure": {
+    "other": "Invalid JSON structure"
+  },
+  "Invalid config file: missing device ID": {
+    "other": "Invalid config file: missing device ID"
+  },
+  "Not the same device id. Import skipped.": {
+    "other": "Not the same device id. Import skipped."
+  },
+  "Invalid device configuration file": {
+    "other": "Invalid device configuration file"
+  },
+  "Device configuration imported successfully": {
+    "other": "Device configuration imported successfully"
+  },
+  "Error parsing JSON file: {error}": {
+    "other": "Error parsing JSON file: {error}"
+  },
+  "Error importing config: {error}": {
+    "other": "Error importing config: {error}"
+  },
+  "User configuration imported successfully": {
+    "other": "User configuration imported successfully"
+  },
+  "Device ID missing in config.": {
+    "other": "Device ID missing in config."
+  },
+  "Device already exists. Import skipped.": {
+    "other": "Device already exists. Import skipped."
+  },
+  "Tronbyt Manager": {
+    "other": "Tronbyt Manager"
+  },
+  "Home": {
+    "other": "Home"
+  },
+  "\u26a0\ufe0f WARNING: Adding a second user will DISABLE auto-login functionality.": {
+    "other": "\u26a0\ufe0f WARNING: Adding a second user will DISABLE auto-login functionality."
+  },
+  "Auto-login only works when exactly 1 user exists. After creating this user, you will need to log in with a password.": {
+    "other": "Auto-login only works when exactly 1 user exists. After creating this user, you will need to log in with a password."
+  },
+  "Do you want to continue?": {
+    "other": "Do you want to continue?"
+  },
+  "Create User": {
+    "other": "Create User"
+  },
+  "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user.": {
+    "other": "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user."
+  },
+  "Auto-login mode active": {
+    "other": "Auto-login mode active"
+  },
+  "Log Out": {
+    "other": "Log Out"
+  },
+  "Theme:": {
+    "other": "Theme:"
+  },
+  "Light": {
+    "other": "Light"
+  },
+  "Dark": {
+    "other": "Dark"
+  },
+  "System": {
+    "other": "System"
+  },
+  "Log In": {
+    "other": "Log In"
+  },
+  "System Administration": {
+    "other": "System Administration"
+  },
+  "System Apps Repository": {
+    "other": "System Apps Repository"
+  },
+  "Current Repository": {
+    "other": "Current Repository"
+  },
+  "Branch": {
+    "other": "Branch"
+  },
+  "Commit": {
+    "other": "Commit"
+  },
+  "No system repository configured.": {
+    "other": "No system repository configured."
+  },
+  "Refreshing...": {
+    "other": "Refreshing..."
+  },
+  "Refresh": {
+    "other": "Refresh"
+  },
+  "Change Repository": {
+    "other": "Change Repository"
+  },
+  "Repository URL": {
+    "other": "Repository URL"
+  },
+  "Scale (comma separated)": {
+    "other": "Scale (comma separated)"
+  },
+  "Tidbyt Gen1": {
+    "other": "Tidbyt Gen1"
+  },
+  "Tidbyt Gen2": {
+    "other": "Tidbyt Gen2"
+  },
+  "Pixoticker": {
+    "other": "Pixoticker"
+  },
+  "Raspberry Pi": {
+    "other": "Raspberry Pi"
+  },
+  "Raspberry Pi Wide": {
+    "other": "Raspberry Pi Wide"
+  },
+  "Tronbyt S3": {
+    "other": "Tronbyt S3"
+  },
+  "Tronbyt S3 Wide": {
+    "other": "Tronbyt S3 Wide"
+  },
+  "MatrixPortal S3": {
+    "other": "MatrixPortal S3"
+  },
+  "MatrixPortal S3 Waveshare": {
+    "other": "MatrixPortal S3 Waveshare"
+  },
+  "Other": {
+    "other": "Other"
+  },
+  "Save": {
+    "other": "Save"
+  },
+  "Replacing the existing system repo will delete the previous repo and break any apps using that repo.": {
+    "other": "Replacing the existing system repo will delete the previous repo and break any apps using that repo."
+  },
+  "Firmware Management": {
+    "other": "Firmware Management"
+  },
+  "Current Firmware": {
+    "other": "Current Firmware"
+  },
+  "Version": {
+    "other": "Version"
+  },
+  "Firmware is automatically updated when the server starts.": {
+    "other": "Firmware is automatically updated when the server starts."
+  },
+  "No firmware version information available": {
+    "other": "No firmware version information available"
+  },
+  "Updating...": {
+    "other": "Updating..."
+  },
+  "Update": {
+    "other": "Update"
+  },
+  "Download": {
+    "other": "Download"
+  },
+  "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.": {
+    "other": "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware."
+  },
+  "User Settings": {
+    "other": "User Settings"
+  },
+  "Custom Apps Repository": {
+    "other": "Custom Apps Repository"
+  },
+  "Custom apps repository configured": {
+    "other": "Custom apps repository configured"
+  },
+  "No custom repository configured.": {
+    "other": "No custom repository configured."
+  },
+  "Remove custom repository? This will delete the repo and break any apps using it.": {
+    "other": "Remove custom repository? This will delete the repo and break any apps using it."
+  },
+  "Remove": {
+    "other": "Remove"
+  },
+  "Replacing an existing custom repo will delete the previous repo and break any apps using that repo.": {
+    "other": "Replacing an existing custom repo will delete the previous repo and break any apps using that repo."
+  },
+  "Security Settings": {
+    "other": "Security Settings"
+  },
+  "Change Password": {
+    "other": "Change Password"
+  },
+  "Old Password": {
+    "other": "Old Password"
+  },
+  "New Password": {
+    "other": "New Password"
+  },
+  "User API Key": {
+    "other": "User API Key"
+  },
+  "Update API key?": {
+    "other": "Update API key?"
+  },
+  "Generate a new API key? This will replace your current API key.": {
+    "other": "Generate a new API key? This will replace your current API key."
+  },
+  "Generate New": {
+    "other": "Generate New"
+  },
+  "Data Management": {
+    "other": "Data Management"
+  },
+  "Use the export and import features to backup your user account or to move your devices to a new server. The export function creates a JSON file with all your settings, devices, and apps. You can then import this file on another server to restore your configuration. Note that your password is not included in the export for security reasons, so you will need to remember your password when importing to a new server.": {
+    "other": "Use the export and import features to backup your user account or to move your devices to a new server. The export function creates a JSON file with all your settings, devices, and apps. You can then import this file on another server to restore your configuration. Note that your password is not included in the export for security reasons, so you will need to remember your password when importing to a new server."
+  },
+  "Export Configuration": {
+    "other": "Export Configuration"
+  },
+  "Download your entire user configuration as a JSON file.": {
+    "other": "Download your entire user configuration as a JSON file."
+  },
+  "Export": {
+    "other": "Export"
+  },
+  "Import Configuration": {
+    "other": "Import Configuration"
+  },
+  "Passkeys": {
+    "other": "Passkeys"
+  },
+  "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password.": {
+    "other": "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password."
+  },
+  "Upload App": {
+    "other": "Upload App"
+  },
+  "Select File (.star or .webp)": {
+    "other": "Select File (.star or .webp)"
+  },
+  "Sign in with Passkey": {
+    "other": "Sign in with Passkey"
+  },
+  "Import": {
+    "other": "Import"
+  },
+  "Update available!": {
+    "other": "Update available!"
+  },
+  "Server": {
+    "other": "Server"
+  },
+  "Username": {
+    "other": "Username"
+  },
+  "Password": {
+    "other": "Password"
+  },
+  "Remember Me": {
+    "other": "Remember Me"
+  },
+  "Register": {
+    "other": "Register"
+  },
+  "Username (alpha-numeric only, no symbols please.)": {
+    "other": "Username (alpha-numeric only, no symbols please.)"
+  },
+  "Email Address (optional)": {
+    "other": "Email Address (optional)"
+  },
+  "Create Admin User": {
+    "other": "Create Admin User"
+  },
+  "SINGLE-USER AUTO-LOGIN MODE ACTIVE": {
+    "other": "SINGLE-USER AUTO-LOGIN MODE ACTIVE"
+  },
+  "Authentication is disabled for private network access": {
+    "other": "Authentication is disabled for private network access"
+  },
+  "Create": {
+    "other": "Create"
+  },
+  "Add App": {
+    "other": "Add App"
+  },
+  "Loading apps...": {
+    "other": "Loading apps..."
+  },
+  "Upload .star or .webp file": {
+    "other": "Upload .star or .webp file"
+  },
+  "App Selection": {
+    "other": "App Selection"
+  },
+  "Search apps": {
+    "other": "Search apps"
+  },
+  "Hide installed apps": {
+    "other": "Hide installed apps"
+  },
+  "Hide broken apps": {
+    "other": "Hide broken apps"
+  },
+  "Show broken apps": {
+    "other": "Show broken apps"
+  },
+  "Sort by:": {
+    "other": "Sort by:"
+  },
+  "Default": {
+    "other": "Default"
+  },
+  "Newest": {
+    "other": "Newest"
+  },
+  "Alphabetical (A-Z)": {
+    "other": "Alphabetical (A-Z)"
+  },
+  "Alphabetical (Z-A)": {
+    "other": "Alphabetical (Z-A)"
+  },
+  "Installed": {
+    "other": "Installed"
+  },
+  "From": {
+    "other": "From"
+  },
+  "BROKEN": {
+    "other": "BROKEN"
+  },
+  "Delete this uploaded app?": {
+    "other": "Delete this uploaded app?"
+  },
+  "Delete": {
+    "other": "Delete"
+  },
+  "Unmark Broken": {
+    "other": "Unmark Broken"
+  },
+  "Mark Broken": {
+    "other": "Mark Broken"
+  },
+  "Custom Apps": {
+    "other": "Custom Apps"
+  },
+  "System Apps": {
+    "other": "System Apps"
+  },
+  "Render Interval (minutes)": {
+    "other": "Render Interval (minutes)"
+  },
+  "Display Time (seconds)": {
+    "other": "Display Time (seconds)"
+  },
+  "Notes": {
+    "other": "Notes"
+  },
+  "Configure": {
+    "other": "Configure"
+  },
+  "New Tronbyt": {
+    "other": "New Tronbyt"
+  },
+  "Delete User?": {
+    "other": "Delete User?"
+  },
+  "Edit": {
+    "other": "Edit"
+  },
+  "Edit User": {
+    "other": "Edit User"
+  },
+  "API ID:": {
+    "other": "API ID:"
+  },
+  "Theme Settings": {
+    "other": "Theme Settings"
+  },
+  "No passkeys registered.": {
+    "other": "No passkeys registered."
+  },
+  "Register New Passkey": {
+    "other": "Register New Passkey"
+  },
+  "Select JSON File": {
+    "other": "Select JSON File"
+  },
+  "Notes:": {
+    "other": "Notes:"
+  },
+  "installation id": {
+    "other": "installation id"
+  },
+  "Enabled": {
+    "other": "Enabled"
+  },
+  "Disabled": {
+    "other": "Disabled"
+  },
+  "App:": {
+    "other": "App:"
+  },
+  "Render Interval (minutes):": {
+    "other": "Render Interval (minutes):"
+  },
+  "Display Time (secs):": {
+    "other": "Display Time (secs):"
+  },
+  "Preview": {
+    "other": "Preview"
+  },
+  "Last Rendered:": {
+    "other": "Last Rendered:"
+  },
+  "Configuring": {
+    "other": "Configuring"
+  },
+  "Show App Config": {
+    "other": "Show App Config"
+  },
+  "Show Render Debug": {
+    "other": "Show Render Debug"
+  },
+  "Cancel": {
+    "other": "Cancel"
+  },
+  "App Configuration": {
+    "other": "App Configuration"
+  },
+  "Settings": {
+    "other": "Settings"
+  },
+  "Name": {
+    "other": "Name"
+  },
+  "Enable or disable this app": {
+    "other": "Enable or disable this app"
+  },
+  "Autopin": {
+    "other": "Autopin"
+  },
+  "Automatically pin this app when it renders successfully": {
+    "other": "Automatically pin this app when it renders successfully"
+  },
+  "Render Interval Minutes": {
+    "other": "Render Interval Minutes"
+  },
+  "Update every X minutes": {
+    "other": "Update every X minutes"
+  },
+  "Display Time Seconds": {
+    "other": "Display Time Seconds"
+  },
+  "0 for device default": {
+    "other": "0 for device default"
+  },
+  "Color Filter": {
+    "other": "Color Filter"
+  },
+  "ColorFilter": {
+    "other": "ColorFilter"
+  },
+  "ColorFilterTooltip": {
+    "other": "Apply custom filters to the image:\n            None: No transformation\n            Dimmed: Darkens image uniformly while preserving hue\n            Redshift: CCT-derived chromatic adaptation matrix ~3400K target\n            Warm: Adds a subtle warm, orange/yellow hue\n            Sunset: Emulates deep pink/orange of a setting sun\n            Sepia: Adds a warm, antique brown tone mimicking aged photographs\n            Vintage: Muted, brown/green nostalgic tones\n            Dusk: Fades brightness, adds reddish cast\n            Cool: Adds a cool, blue tint\n            Black & White: Converts image to perceptual grayscale using luminance weights\n            Ice: Pale desaturation with bluish cast\n            Moonlight: Dim blue-gray, night lighting effect\n            Neon: Boosts contrast, magenta-blue cyberpunk\n            Pastel: Softens tones, gentle highlight boost"
+  },
+  "Override device color filter": {
+    "other": "Override device color filter"
+  },
+  "Optional notes about this app": {
+    "other": "Optional notes about this app"
+  },
+  "Schedule": {
+    "other": "Schedule"
+  },
+  "Start Time": {
+    "other": "Start Time"
+  },
+  "When the app should start displaying": {
+    "other": "When the app should start displaying"
+  },
+  "End Time": {
+    "other": "End Time"
+  },
+  "When the app should stop displaying": {
+    "other": "When the app should stop displaying"
+  },
+  "Active Days": {
+    "other": "Active Days"
+  },
+  "(none selected is ALL selected)": {
+    "other": "(none selected is ALL selected)"
+  },
+  "Monday": {
+    "other": "Monday"
+  },
+  "Tuesday": {
+    "other": "Tuesday"
+  },
+  "Wednesday": {
+    "other": "Wednesday"
+  },
+  "Thursday": {
+    "other": "Thursday"
+  },
+  "Friday": {
+    "other": "Friday"
+  },
+  "Saturday": {
+    "other": "Saturday"
+  },
+  "Sunday": {
+    "other": "Sunday"
+  },
+  "Use Custom Recurrence": {
+    "other": "Use Custom Recurrence"
+  },
+  "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)": {
+    "other": "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)"
+  },
+  "Custom Recurrence": {
+    "other": "Custom Recurrence"
+  },
+  "Frequency": {
+    "other": "Frequency"
+  },
+  "How often the app should run": {
+    "other": "How often the app should run"
+  },
+  "Daily": {
+    "other": "Daily"
+  },
+  "Weekly": {
+    "other": "Weekly"
+  },
+  "Monthly": {
+    "other": "Monthly"
+  },
+  "Yearly": {
+    "other": "Yearly"
+  },
+  "Repeat Every": {
+    "other": "Repeat Every"
+  },
+  "Interval between occurrences": {
+    "other": "Interval between occurrences"
+  },
+  "days": {
+    "other": "days"
+  },
+  "Start Date": {
+    "other": "Start Date"
+  },
+  "When the recurrence should begin": {
+    "other": "When the recurrence should begin"
+  },
+  "End Date (optional)": {
+    "other": "End Date (optional)"
+  },
+  "When the recurrence should stop": {
+    "other": "When the recurrence should stop"
+  },
+  "Weekly Options": {
+    "other": "Weekly Options"
+  },
+  "Monthly Options": {
+    "other": "Monthly Options"
+  },
+  "Monthly Pattern": {
+    "other": "Monthly Pattern"
+  },
+  "Choose how to specify the monthly occurrence": {
+    "other": "Choose how to specify the monthly occurrence"
+  },
+  "Day of\n                    Month": {
+    "other": "Day of\n                    Month"
+  },
+  "Day of Week": {
+    "other": "Day of Week"
+  },
+  "Day of Month": {
+    "other": "Day of Month"
+  },
+  "Which day of the month (1-31)": {
+    "other": "Which day of the month (1-31)"
+  },
+  "Day of Week Pattern": {
+    "other": "Day of Week Pattern"
+  },
+  "Which occurrence of which day": {
+    "other": "Which occurrence of which day"
+  },
+  "First": {
+    "other": "First"
+  },
+  "Second": {
+    "other": "Second"
+  },
+  "Third": {
+    "other": "Third"
+  },
+  "Fourth": {
+    "other": "Fourth"
+  },
+  "Last": {
+    "other": "Last"
+  },
+  "Reset": {
+    "other": "Reset"
+  },
+  "Delete App?": {
+    "other": "Delete App?"
+  },
+  "API Usage": {
+    "other": "API Usage"
+  },
+  "Show API Usage": {
+    "other": "Show API Usage"
+  },
+  "Use these curl commands to control this app via the API:": {
+    "other": "Use these curl commands to control this app via the API:"
+  },
+  "Enable App": {
+    "other": "Enable App"
+  },
+  "Disable App": {
+    "other": "Disable App"
+  },
+  "Pin App": {
+    "other": "Pin App"
+  },
+  "Unpin App": {
+    "other": "Unpin App"
+  },
+  "Note:": {
+    "other": "Note:"
+  },
+  "Replace YOUR_API_KEY with your device API key if not using the one shown above.": {
+    "other": "Replace YOUR_API_KEY with your device API key if not using the one shown above."
+  },
+  "Hide App Config": {
+    "other": "Hide App Config"
+  },
+  "Hide Render Debug": {
+    "other": "Hide Render Debug"
+  },
+  "Hide API Usage": {
+    "other": "Hide API Usage"
+  },
+  "Toggle password visibility": {
+    "other": "Toggle password visibility"
+  },
+  "Enter a location": {
+    "other": "Enter a location"
+  },
+  "Upload Image": {
+    "other": "Upload Image"
+  },
+  "Please upload a valid image file (PNG, JPEG, GIF, SVG, or WebP).": {
+    "other": "Please upload a valid image file (PNG, JPEG, GIF, SVG, or WebP)."
+  },
+  "File size exceeds 500KB limit. Please upload a smaller image.": {
+    "other": "File size exceeds 500KB limit. Please upload a smaller image."
+  },
+  "Start typing...": {
+    "other": "Start typing..."
+  },
+  "No options available for this location": {
+    "other": "No options available for this location"
+  },
+  "Error loading options": {
+    "other": "Error loading options"
+  },
+  "weeks": {
+    "other": "weeks"
+  },
+  "months": {
+    "other": "months"
+  },
+  "years": {
+    "other": "years"
+  },
+  "Previewing...": {
+    "other": "Previewing..."
+  },
+  "Sent": {
+    "other": "Sent"
+  },
+  "Failed": {
+    "other": "Failed"
+  },
+  "New Tronbyt Device": {
+    "other": "New Tronbyt Device"
+  },
+  "Basic Information": {
+    "other": "Basic Information"
+  },
+  "Descriptive name for this Tronbyt device": {
+    "other": "Descriptive name for this Tronbyt device"
+  },
+  "Device Type": {
+    "other": "Device Type"
+  },
+  "Connection URLs": {
+    "other": "Connection URLs"
+  },
+  "Image URL": {
+    "other": "Image URL"
+  },
+  "Leave blank unless advanced user.": {
+    "other": "Leave blank unless advanced user."
+  },
+  "WebSocket URL": {
+    "other": "WebSocket URL"
+  },
+  "Display Settings": {
+    "other": "Display Settings"
+  },
+  "Brightness Level (0 - 5)": {
+    "other": "Brightness Level (0 - 5)"
+  },
+  "Location & Notes": {
+    "other": "Location & Notes"
+  },
+  "Location": {
+    "other": "Location"
+  },
+  "Optional notes about this device": {
+    "other": "Optional notes about this device"
+  },
+  "Generate Firmware for": {
+    "other": "Generate Firmware for"
+  },
+  "Firmware Files Not Available": {
+    "other": "Firmware Files Not Available"
+  },
+  "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded.": {
+    "other": "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded."
+  },
+  "Action Required:": {
+    "other": "Action Required:"
+  },
+  "Please go to the": {
+    "other": "Please go to the"
+  },
+  "Admin page": {
+    "other": "Admin page"
+  },
+  "to download the latest firmware files.": {
+    "other": "to download the latest firmware files."
+  },
+  "Please contact your administrator to download the firmware files.": {
+    "other": "Please contact your administrator to download the firmware files."
+  },
+  "Firmware Image Version": {
+    "other": "Firmware Image Version"
+  },
+  "Manage Firmware": {
+    "other": "Manage Firmware"
+  },
+  "Firmware Generation": {
+    "other": "Firmware Generation"
+  },
+  "Download ESP Flasher": {
+    "other": "Download ESP Flasher"
+  },
+  "Download ESP Flasher here": {
+    "other": "Download ESP Flasher here"
+  },
+  "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher.": {
+    "other": "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher."
+  },
+  "macOS and Windows users may need to install a serial driver:": {
+    "other": "macOS and Windows users may need to install a serial driver:"
+  },
+  "Connection Settings": {
+    "other": "Connection Settings"
+  },
+  "Connection Type": {
+    "other": "Connection Type"
+  },
+  "WiFi Configuration": {
+    "other": "WiFi Configuration"
+  },
+  "WiFi Network Name (SSID) 2.4Ghz Only": {
+    "other": "WiFi Network Name (SSID) 2.4Ghz Only"
+  },
+  "WiFi Password": {
+    "other": "WiFi Password"
+  },
+  "Swap Colors?": {
+    "other": "Swap Colors?"
+  },
+  "Generate Firmware File": {
+    "other": "Generate Firmware File"
+  },
+  "Import Device Configuration": {
+    "other": "Import Device Configuration"
+  },
+  "Upload JSON File": {
+    "other": "Upload JSON File"
+  },
+  "Edit Device": {
+    "other": "Edit Device"
+  },
+  "Delete device and ALL apps? This action cannot be undone.": {
+    "other": "Delete device and ALL apps? This action cannot be undone."
+  },
+  "Device Settings": {
+    "other": "Device Settings"
+  },
+  "Device Name": {
+    "other": "Device Name"
+  },
+  "Reset to default": {
+    "other": "Reset to default"
+  },
+  "Websocket URL": {
+    "other": "Websocket URL"
+  },
+  "App Cycle Time (Seconds)": {
+    "other": "App Cycle Time (Seconds)"
+  },
+  "Apply custom filters to the image:\n          None: No transformation\n          Dimmed: Darkens image uniformly while preserving hue\n          Redshift: CCT-derived chromatic adaptation matrix ~3400K target\n          Warm: Adds a subtle warm, orange/yellow hue\n          Sunset: Emulates deep pink/orange of a setting sun\n          Sepia: Adds a warm, antique brown tone mimicking aged photographs\n          Vintage: Muted, brown/green nostalgic tones\n          Dusk: Fades brightness, adds reddish cast\n          Cool: Adds a cool, blue tint\n          Black & White: Converts image to perceptual grayscale using luminance weights\n          Ice: Pale desaturation with bluish cast\n          Moonlight: Dim blue-gray, night lighting effect\n          Neon: Boosts contrast, magenta-blue cyberpunk\n          Pastel: Softens tones, gentle highlight boost": {
+    "other": "Apply custom filters to the image:\n          None: No transformation\n          Dimmed: Darkens image uniformly while preserving hue\n          Redshift: CCT-derived chromatic adaptation matrix ~3400K target\n          Warm: Adds a subtle warm, orange/yellow hue\n          Sunset: Emulates deep pink/orange of a setting sun\n          Sepia: Adds a warm, antique brown tone mimicking aged photographs\n          Vintage: Muted, brown/green nostalgic tones\n          Dusk: Fades brightness, adds reddish cast\n          Cool: Adds a cool, blue tint\n          Black & White: Converts image to perceptual grayscale using luminance weights\n          Ice: Pale desaturation with bluish cast\n          Moonlight: Dim blue-gray, night lighting effect\n          Neon: Boosts contrast, magenta-blue cyberpunk\n          Pastel: Softens tones, gentle highlight boost"
+  },
+  "Brightness Settings": {
+    "other": "Brightness Settings"
+  },
+  "Brightness": {
+    "other": "Brightness"
+  },
+  "Custom Brightness Scale": {
+    "other": "Custom Brightness Scale"
+  },
+  "Override the default brightness scale with custom values for each level (0-5)": {
+    "other": "Override the default brightness scale with custom values for each level (0-5)"
+  },
+  "Use custom brightness scale": {
+    "other": "Use custom brightness scale"
+  },
+  "Level": {
+    "other": "Level"
+  },
+  "Each value should be between 0-100. Higher levels should generally have higher values.": {
+    "other": "Each value should be between 0-100. Higher levels should generally have higher values."
+  },
+  "Default system scale": {
+    "other": "Default system scale"
+  },
+  "Interstitial App Settings": {
+    "other": "Interstitial App Settings"
+  },
+  "Enable Interstitial App": {
+    "other": "Enable Interstitial App"
+  },
+  "Display an interstitial app between each regular app in the rotation.": {
+    "other": "Display an interstitial app between each regular app in the rotation."
+  },
+  "Interstitial App Configuration": {
+    "other": "Interstitial App Configuration"
+  },
+  "Interstitial App": {
+    "other": "Interstitial App"
+  },
+  "The interstitial app will display even if it is disabled in the regular rotation.": {
+    "other": "The interstitial app will display even if it is disabled in the regular rotation."
+  },
+  "Night Mode Settings": {
+    "other": "Night Mode Settings"
+  },
+  "Enable Night Mode": {
+    "other": "Enable Night Mode"
+  },
+  "Night Mode Configuration": {
+    "other": "Night Mode Configuration"
+  },
+  "Night Start Time": {
+    "other": "Night Start Time"
+  },
+  "Night End Time": {
+    "other": "Night End Time"
+  },
+  "Night Brightness": {
+    "other": "Night Brightness"
+  },
+  "Night Mode App": {
+    "other": "Night Mode App"
+  },
+  "To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.": {
+    "other": "To prevent the night mode app from displaying during the day, set it to disabled on the app edit page."
+  },
+  "Night Color Filter": {
+    "other": "Night Color Filter"
+  },
+  "Apply custom filters to the image during night mode.": {
+    "other": "Apply custom filters to the image during night mode."
+  },
+  "Dim Mode Settings": {
+    "other": "Dim Mode Settings"
+  },
+  "Dim Start Time": {
+    "other": "Dim Start Time"
+  },
+  "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
+    "other": "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default."
+  },
+  "Dim Brightness": {
+    "other": "Dim Brightness"
+  },
+  "Location & API Settings": {
+    "other": "Location & API Settings"
+  },
+  "Locale": {
+    "other": "Locale"
+  },
+  "Locale for apps (e.g. en_US, de_DE).": {
+    "other": "Locale for apps (e.g. en_US, de_DE)."
+  },
+  "API Configuration": {
+    "other": "API Configuration"
+  },
+  "Device ID": {
+    "other": "Device ID"
+  },
+  "Device API Key": {
+    "other": "Device API Key"
+  },
+  "Example curl Command": {
+    "other": "Example curl Command"
+  },
+  "Example pixlet Command": {
+    "other": "Example pixlet Command"
+  },
+  "Additional Settings": {
+    "other": "Additional Settings"
+  },
+  "Configuration Management": {
+    "other": "Configuration Management"
+  },
+  "Upload App (.star files only)": {
+    "other": "Upload App (.star files only)"
+  },
+  "Upload": {
+    "other": "Upload"
+  },
+  "Current files:": {
+    "other": "Current files:"
+  },
+  "INACTIVE": {
+    "other": "INACTIVE"
+  },
+  "PINNED": {
+    "other": "PINNED"
+  },
+  "ENABLED": {
+    "other": "ENABLED"
+  },
+  "DISABLED": {
+    "other": "DISABLED"
+  },
+  "AUTOPIN": {
+    "other": "AUTOPIN"
+  },
+  "Interval:": {
+    "other": "Interval:"
+  },
+  "No output for ": {
+    "other": "No output for "
+  },
+  "Last:": {
+    "other": "Last:"
+  },
+  "in": {
+    "other": "in"
+  },
+  "Duplicate": {
+    "other": "Duplicate"
+  },
+  "Top": {
+    "other": "Top"
+  },
+  "Bottom": {
+    "other": "Bottom"
+  },
+  "Unpin": {
+    "other": "Unpin"
+  },
+  "Pin": {
+    "other": "Pin"
+  },
+  "Disable": {
+    "other": "Disable"
+  },
+  "Enable": {
+    "other": "Enable"
+  },
+  "Pinned:": {
+    "other": "Pinned:"
+  },
+  "Currently Displaying App": {
+    "other": "Currently Displaying App"
+  },
+  "Device Info": {
+    "other": "Device Info"
+  },
+  "Firmware Version:": {
+    "other": "Firmware Version:"
+  },
+  "Firmware Type:": {
+    "other": "Firmware Type:"
+  },
+  "Protocol Version:": {
+    "other": "Protocol Version:"
+  },
+  "MAC Address:": {
+    "other": "MAC Address:"
+  },
+  "Protocol Type:": {
+    "other": "Protocol Type:"
+  },
+  "Last Seen:": {
+    "other": "Last Seen:"
+  },
+  "Firmware": {
+    "other": "Firmware"
+  },
+  "View:": {
+    "other": "View:"
+  },
+  "List View": {
+    "other": "List View"
+  },
+  "List": {
+    "other": "List"
+  },
+  "Grid View": {
+    "other": "Grid View"
+  },
+  "Grid": {
+    "other": "Grid"
+  },
+  "Collapsed View": {
+    "other": "Collapsed View"
+  },
+  "Collapsed": {
+    "other": "Collapsed"
+  },
+  "Drag apps to reorder": {
+    "other": "Drag apps to reorder"
+  },
+  "Apply custom filters to the image:": {
+    "other": "Apply custom filters to the image:"
+  },
+  "None: No transformation": {
+    "other": "None: No transformation"
+  },
+  "Dimmed: Darkens image uniformly while preserving hue": {
+    "other": "Dimmed: Darkens image uniformly while preserving hue"
+  },
+  "Redshift: CCT-derived chromatic adaptation matrix ~3400K target": {
+    "other": "Redshift: CCT-derived chromatic adaptation matrix ~3400K target"
+  },
+  "Warm: Adds a subtle warm, orange/yellow hue": {
+    "other": "Warm: Adds a subtle warm, orange/yellow hue"
+  },
+  "Sunset: Emulates deep pink/orange of a setting sun": {
+    "other": "Sunset: Emulates deep pink/orange of a setting sun"
+  },
+  "Sepia: Adds a warm, antique brown tone mimicking aged photographs": {
+    "other": "Sepia: Adds a warm, antique brown tone mimicking aged photographs"
+  },
+  "Vintage: Muted, brown/green nostalgic tones": {
+    "other": "Vintage: Muted, brown/green nostalgic tones"
+  },
+  "Dusk: Fades brightness, adds reddish cast": {
+    "other": "Dusk: Fades brightness, adds reddish cast"
+  },
+  "Cool: Adds a cool, blue tint": {
+    "other": "Cool: Adds a cool, blue tint"
+  },
+  "Black & White: Converts image to perceptual grayscale using luminance weights": {
+    "other": "Black & White: Converts image to perceptual grayscale using luminance weights"
+  },
+  "Ice: Pale desaturation with bluish cast": {
+    "other": "Ice: Pale desaturation with bluish cast"
+  },
+  "Moonlight: Dim blue-gray, night lighting effect": {
+    "other": "Moonlight: Dim blue-gray, night lighting effect"
+  },
+  "Neon: Boosts contrast, magenta-blue cyberpunk": {
+    "other": "Neon: Boosts contrast, magenta-blue cyberpunk"
+  },
+  "Pastel: Softens tones, gentle highlight boost": {
+    "other": "Pastel: Softens tones, gentle highlight boost"
+  },
+  "System Setup: Please create the 'admin' user.": {
+    "other": "System Setup: Please create the 'admin' user."
+  },
+  "System Setup: The first user must be 'admin'.": {
+    "other": "System Setup: The first user must be 'admin'."
+  },
+  "Username and password required": {
+    "other": "Username and password required"
+  },
+  "Username already exists": {
+    "other": "Username already exists"
+  },
+  "Invalid username or password": {
+    "other": "Invalid username or password"
+  },
+  "Invalid old password": {
+    "other": "Invalid old password"
+  }
+}

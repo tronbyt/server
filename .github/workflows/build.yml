@@ -14,46 +14,70 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            artifact_name: tronbyt-server-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            artifact_name: tronbyt-server-linux-arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            artifact_name: tronbyt-server-darwin-arm64
+
     steps:
       - uses: actions/checkout@v6
-      - name: Generate version file
-        run: ./scripts/generate_version.sh
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
         with:
+          go-version: '1.25'
           cache: true
-          python-version: 3.14
+
       - name: Install dependencies
-        run: pdm sync -d
-      - name: Lint code with Ruff
-        run: pdm run ruff check --output-format=github
-      - name: Check code formatting with Ruff
-        run: pdm run ruff format --diff --check
-      - name: Install pixlet
-        run: |
-          curl -LO "https://github.com/tronbyt/pixlet/releases/download/${PIXLET_VERSION}/pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
-          sudo tar -C /usr/local/bin -xvf "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
-          sudo mv /usr/local/bin/libpixlet.so /usr/lib/libpixlet.so
-          rm "pixlet_${PIXLET_VERSION}_linux_amd64.tar.gz"
-        env:
-          PIXLET_VERSION: v0.49.4
-      - name: Test with pytest
-        run: pdm run -v pytest tests --doctest-modules --junitxml=junit/test-results.xml
-      - name: Type check with mypy
-        run: pdm run mypy --non-interactive
-      - name: Type check with pyright
-        run: pdm run pyright
-      - uses: hadolint/hadolint-action@v3.3.0
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Lint
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: golangci/golangci-lint-action@v9
         with:
-          dockerfile: Dockerfile
+          version: latest
+          args: --timeout=5m
+
+      - name: Test
+        # CGO required for pixlet
+        run: CGO_ENABLED=1 go test -v ./...
+
       - name: Build
-        run: pdm build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=${GITHUB_SHA}
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          LDFLAGS="-w -s -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${DATE}'"
+          CGO_ENABLED=1 go build -v -ldflags "${LDFLAGS}" -o ${{ matrix.artifact_name }} ./cmd/server
+
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: release-artifacts
-          path: dist
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+
+      - uses: hadolint/hadolint-action@v3.3.0
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        with:
+          dockerfile: Dockerfile
 
   create-release:
     name: Create Release
@@ -64,21 +88,23 @@ jobs:
       contents: write
 
     steps:
-      - name: Fetch Release Artifacts
+      - name: Fetch All Release Artifacts
         uses: actions/download-artifact@v6
         with:
           path: dist
-          pattern: release-artifacts
+
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
         run: |
+          # Collect all artifacts and pass them to gh release create as positional arguments
           gh release create "$tag" \
               --repo="${GITHUB_REPOSITORY}" \
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
               --generate-notes \
-              dist/*
+              $(find dist -type f -print0 | xargs -0)
+
       - name: Bump Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v7
         with:

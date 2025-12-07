@@ -1,20 +1,33 @@
-.devcontainer
-.dockerignore
-.env.example
-.git
-.github
-.gitignore
+# Go
+tronbyt-server
+go.work
+
+# Python (Legacy)
+__pycache__
+.venv
 .mypy_cache
 .pytest_cache
 .ruff_cache
-.trunk
-.venv
+
+# IDE / Editor
 .vscode
-Caddyfile
-Dockerfile
-data
-docker-compose*.yaml
-tests
-users
-__pycache__
+.idea
 .claude
+
+# Git
+.git
+.gitignore
+
+# CI/CD & Config
+.github
+.devcontainer
+!.devcontainer/devcontainer.json
+.env.example
+docker-compose*.yaml
+Dockerfile
+Caddyfile
+
+# Data
+data
+users
+tests

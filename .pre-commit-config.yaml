@@ -7,9 +7,26 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: trailing-whitespace
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.3
+  - repo: local
     hooks:
-      - id: ruff-check
-        args: [--fix]
-      - id: ruff-format
+      - id: go-fmt
+        name: go fmt
+        entry: gofmt -w
+        language: system
+        types: [go]
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: go mod tidy
+        language: system
+        files: "go.mod|go.sum"
+        pass_filenames: false
+      - id: go-test
+        name: go test
+        entry: go test ./...
+        language: system
+        types: [go]
+        pass_filenames: false
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.7.2
+    hooks:
+      - id: golangci-lint
