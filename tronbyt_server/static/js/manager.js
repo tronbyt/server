@@ -425,7 +425,7 @@ let draggedDeviceId = null;
 let draggedIname = null;
 
 // Initialize drag and drop for all app cards when page loads
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
   initializeDragAndDrop();
   initializeViewToggles();
   initializeDeviceInfoToggles();
@@ -1111,28 +1111,6 @@ function toggleDeviceInfo(button) {
     content.style.maxHeight = '0px';
     if (icon) {
       icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-    }
-  }
-}
-
-function toggleDropdown(id) {
-  var x = document.getElementById(id);
-  if (x.className.indexOf("w3-show") == -1) {
-    x.className += " w3-show";
-  } else {
-    x.className = x.className.replace(" w3-show", "");
-  }
-}
-
-// Close dropdowns when clicking outside
-window.onclick = function (event) {
-  if (!event.target.closest('.w3-dropdown-click')) {
-    var dropdowns = document.getElementsByClassName("w3-dropdown-content");
-    for (var i = 0; i < dropdowns.length; i++) {
-      var openDropdown = dropdowns[i];
-      if (openDropdown.classList.contains('w3-show')) {
-        openDropdown.classList.remove('w3-show');
-      }
     }
   }
 }
