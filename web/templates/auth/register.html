@@ -1,0 +1,53 @@
+{{ define "register" }}
+{{ template "base" . }}
+{{ end }}
+
+{{ define "title" }}{{ t .Localizer "Register" }}{{ end }}
+
+{{ define "content" }}
+<h1>{{ t .Localizer "Register" }}</h1>
+
+{{ if eq .Config.SingleUserAutoLogin "1" }}
+<div class="w3-panel w3-orange w3-border w3-border-orange w3-round-large" style="margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 24px;">⚠️</span>
+        <div style="flex: 1;">
+            <strong>{{ t .Localizer "SINGLE-USER AUTO-LOGIN MODE ACTIVE" }}</strong>
+            <div style="font-size: 0.9em;">
+                {{ t .Localizer "Authentication is disabled for private network access" }}
+            </div>
+        </div>
+        <span style="font-size: 24px;">⚠️</span>
+    </div>
+</div>
+{{ end }}
+
+{{ if .Flashes }}
+<div class="w3-panel w3-red">
+    {{ range .Flashes }}
+    <p>{{ . }}</p>
+    {{ end }}
+</div>
+{{ end }}
+
+<form method="POST">
+    <label for="username">{{ t .Localizer "Username (alpha-numeric only, no symbols please.)" }}</label>
+    {{ if eq .UserCount 0 }}
+    <input class="w3-input w3-border" name="username" id="username" value="admin" readonly required>
+    {{ else }}
+    <input class="w3-input w3-border" name="username" id="username" required>
+    {{ end }}
+    <br>
+    <label for="password">{{ t .Localizer "Password" }}</label>
+    <input class="w3-input w3-border" type="password" name="password" id="password" required>
+    <br>
+    <label for="email">{{ t .Localizer "Email Address (optional)" }}</label>
+    <input class="w3-input w3-border" type="text" name="email" id="email">
+    <br>
+    {{ if eq .UserCount 0 }}
+    <button type="submit" class="w3-button w3-green"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Create Admin User" }}</button>
+    {{ else }}
+    <button type="submit" class="w3-button w3-green"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Register" }}</button>
+    {{ end }}
+</form>
+{{ end }}

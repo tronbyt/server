@@ -1,0 +1,190 @@
+/* Define :root variables for light theme (default) */
+:root {
+  --page-bg: #f5f5f5; /* Slightly darker for better contrast */
+  --page-text: #1a1a1a; /* Darker text for better contrast */
+  --content-bg: #ffffff;
+  --primary-color: #2563eb; /* Improved blue with better contrast */
+  --secondary-color: #e5e7eb; /* Better contrast than lightgray */
+  --flash-bg: #dbeafe; /* Light blue with better contrast */
+  --flash-border: #2563eb;
+  --flash-text: #1e40af; /* Darker blue text for better contrast */
+  --link-color: #2563eb;
+  --header-text-color: #2563eb;
+  --post-about-text: #6b7280; /* Better contrast than slategray */
+  --input-bg: #ffffff;
+  --input-text: #1a1a1a;
+  --input-border: #d1d5db; /* Better contrast than #ccc */
+  --button-bg: #f3f4f6; /* Slightly darker for better contrast */
+  --button-text: #1a1a1a;
+  --submit-bg: #2563eb;
+  --submit-text: #ffffff;
+  --danger-text: #dc2626; /* Better contrast red */
+  --enabled-text: #059669; /* Better contrast green */
+  --disabled-text: #dc2626; /* Consistent with danger */
+  --app-img-bg: #000000;
+  --app-img-border: #d1d5db; /* Better contrast */
+  --select-bg: #ffffff;
+  --select-text: #1a1a1a; /* Better contrast */
+  --select-border: #d1d5db;
+  --border-color: #e5e7eb; /* New variable for consistent borders */
+  --shadow-color: rgba(0, 0, 0, 0.1); /* New variable for shadows */
+}
+
+/* Define variables for dark theme */
+[data-theme="dark"] {
+  --page-bg: #0f172a; /* Darker background for better contrast */
+  --page-text: #f8fafc; /* High contrast white text */
+  --content-bg: #1e293b; /* Darker content background */
+  --primary-color: #60a5fa; /* Brighter blue for dark mode */
+  --secondary-color: #475569; /* Better contrast secondary */
+  --flash-bg: #1e3a8a; /* Dark blue background for flash messages */
+  --flash-border: #60a5fa;
+  --flash-text: #dbeafe; /* Light blue text for flash messages */
+  --link-color: #60a5fa;
+  --header-text-color: #60a5fa;
+  --post-about-text: #94a3b8; /* Better contrast gray */
+  --input-bg: #334155; /* Darker input background */
+  --input-text: #f8fafc;
+  --input-border: #64748b; /* Better contrast border */
+  --button-bg: #475569; /* Darker button background */
+  --button-text: #f8fafc;
+  --submit-bg: #2563eb; /* Keep same blue for consistency */
+  --submit-text: #ffffff;
+  --danger-text: #f87171; /* Brighter red for dark mode */
+  --enabled-text: #34d399; /* Brighter green for dark mode */
+  --disabled-text: #f87171; /* Consistent with danger */
+  --app-img-bg: #000000;
+  --app-img-border: #64748b; /* Better contrast */
+  --select-bg: #334155;
+  --select-text: #f8fafc;
+  --select-border: #64748b;
+  --border-color: #475569; /* Dark mode border color */
+  --shadow-color: rgba(0, 0, 0, 0.3); /* Darker shadows for dark mode */
+}
+
+/* Apply variables to existing styles */
+html { font-family: sans-serif; background: var(--page-bg); color: var(--page-text); padding: 1rem; }
+body { max-width: 960px; margin: 0 auto; background: var(--content-bg); color: var(--page-text); }
+h1 { font-family: sans-serif; color: var(--header-text-color); margin: 1rem 0; }
+a { color: var(--link-color); }
+hr { border: none; border-top: 1px solid var(--secondary-color); }
+nav { background: var(--secondary-color); display: flex; align-items: center; padding: 0 0.5rem; }
+nav h1 { flex: auto; margin: 0; }
+nav h1 a { text-decoration: none; padding: 0.25rem 0.5rem; color: var(--header-text-color); } /* Ensure nav h1 link uses header text color or link color */
+nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
+nav ul li a, nav ul li span, nav header .action { display: block; padding: 0.5rem; color: var(--link-color); } /* Ensure nav links use link color */
+
+.content { padding: 0 1rem 1rem; }
+.content > header { border-bottom: 1px solid var(--secondary-color); display: flex; align-items:flex-end; }
+.content > header h1 { flex: auto; margin: 1rem 0 0.25rem 0; } /* Uses h1 style */
+.flash { margin: 1em 0; padding: 1em; background: var(--flash-bg); border: 1px solid var(--flash-border); color: var(--flash-text); }
+.post > header { display: flex; align-items: flex-end; font-size: 0.85em; } /* Text color will be inherited from body */
+.post > header > div:first-of-type { flex: auto; }
+.post > header h1 { font-size: 1.5em; margin-bottom: 0; } /* Uses h1 style */
+.post .about { color: var(--post-about-text); font-style: italic; }
+.post .body { white-space: pre-line; } /* Text color will be inherited */
+.content:last-child { margin-bottom: 0; }
+.content form { margin: 1em 0; display: flex; flex-direction: column; } /* Text color will be inherited */
+.content label { font-weight: bold; margin-bottom: 0.5em; color: var(--page-text); } /* Ensure labels use page text */
+.content input, .content button, .content textarea {
+  margin-bottom: 1em;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--input-border); /* Add border for consistency */
+  padding: 0.5em; /* Add some padding */
+}
+.content button { /* Style generic buttons */
+  background: var(--button-bg);
+  color: var(--button-text);
+  border: 1px solid var(--input-border); /* Or a specific button border variable */
+}
+.content textarea { min-height: 12em; resize: vertical; }
+input.danger { color: var(--danger-text); background: transparent; border: none; } /* Make danger text inputs stand out */
+input[type=submit] {
+  align-self: start;
+  min-width: 10em;
+  background: var(--submit-bg);
+  color: var(--submit-text);
+  border: none; /* Submit buttons often don't have a border or have a matching one */
+}
+/* Use consistent classes: .text-enabled and .text-disabled */
+.text-enabled { color: var(--enabled-text); }
+.text-disabled { color: var(--disabled-text); }
+
+
+/* app-img styles with variables */
+.app-img {
+  position: relative;
+  background: var(--app-img-bg);
+  overflow: hidden;
+  border: 1px solid var(--app-img-border);
+  border-radius: 0.5rem;
+}
+.app-img img {
+  aspect-ratio: 2 / 1;
+  background: var(--app-img-bg); /* Match parent background */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -webkit-mask-image: url('/v0/dots');
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: cover;
+  mask-image: url('/v0/dots');
+  mask-repeat: no-repeat;
+  mask-size: cover;
+  width: 100%;
+  height: 100%;
+}
+.app-img.is-2x img {
+  -webkit-mask-image: url('/v0/dots?w=128&h=64&r=0.4');
+  mask-image: url('/v0/dots?w=128&h=64&r=0.4');
+}
+
+/* Skeleton loader */
+.skeleton-loader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #0009 25%, #fff3 50%, #0009 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Hide skeleton when image loads */
+.app-img img.loaded + .skeleton-loader {
+  display: none;
+}
+
+/* Theme Toggle Styles - now using variables */
+.theme-toggle-container {
+  display: inline-block;
+  list-style-type: none;
+}
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 0.5rem;
+}
+.theme-toggle label {
+  margin-right: 6px;
+  font-size: 0.9em;
+  color: var(--page-text); /* Ensure label color matches theme */
+}
+.theme-toggle select {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--select-border);
+  background-color: var(--select-bg);
+  font-size: 0.9em;
+  color: var(--select-text);
+}
+
+/* Theming is now handled by [data-theme] attribute set via JavaScript */

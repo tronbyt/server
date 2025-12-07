@@ -29,4 +29,3 @@ Feel free to:
 - Archive old documentation
 - Update files if implementations change significantly
 - Use as reference when working on related features
-

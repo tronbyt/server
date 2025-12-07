@@ -14,12 +14,9 @@ services:
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-${UID:-1000}}
-      - PYTHONUNBUFFERED=1
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
-      - UVICORN_ACCESS_LOG=${UVICORN_ACCESS_LOG:-false}
-      - WEB_CONCURRENCY
       - TRONBYT_HOST=0.0.0.0
       - GITHUB_TOKEN

@@ -1,24 +1,20 @@
 .DS_Store
-*.pyc
-!devcontainer.json
 **/*.log
-.coverage
 .env
-.pdm-python
 certs
-data
-dist
+/data/
 env
-junit
 tests/webp
-!tronbyt_server/webp/README
 users
+server
+tronbyt-server
+
+*.db
+*.db-shm
+*.db-wal
 
 # Translations
 messages.pot
-
-# Version file (generated during build)
-tronbyt_server/version.json
 
 .vscode/*
 .claude/*

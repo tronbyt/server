@@ -1,10 +1,12 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/python
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
-	"name": "Python 3",
-	"image": "mcr.microsoft.com/devcontainers/python:3.14-trixie",
+	"name": "Go",
+	"image": "mcr.microsoft.com/devcontainers/go:2-1.25-trixie",
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		8000
@@ -15,19 +17,15 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"timonwong.shellcheck",
-				"charliermarsh.ruff",
+				"golang.go",
 				"github.vscode-github-actions",
-				"ms-azuretools.vscode-docker"
+				"ms-azuretools.vscode-docker",
+				"timonwong.shellcheck"
 			],
 			"settings": {
-				"[python]": {
-					"editor.defaultFormatter": "charliermarsh.ruff",
-					"editor.formatOnSave": true,
-					"editor.codeActionsOnSave": {
-						"source.organizeImports.ruff": "explicit"
-					}
-				},
+				"go.toolsManagement.checkForUpdates": "local",
+				"go.useLanguageServer": true,
+				"go.gopath": "/go",
 				"terminal.integrated.profiles.linux": {
 					"zsh": {
 						"path": "/usr/bin/zsh"
@@ -35,7 +33,7 @@
 				},
 				"terminal.integrated.defaultProfile.linux": "zsh",
 				"editor.formatOnPaste": false,
-				"editor.formatOnSave": false,
+				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
 				"files.trimTrailingWhitespace": true
 			}

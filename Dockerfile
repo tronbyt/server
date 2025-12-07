@@ -1,60 +1,63 @@
-# syntax=docker/dockerfile:1.5
+# Build stage
+FROM golang:1.25-alpine AS builder
 
-FROM debian:trixie-slim AS builder
-
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-pdm
-ENV PDM_CHECK_UPDATE=false
-COPY . /app/
 WORKDIR /app
-RUN pdm lock --check || pdm lock
-RUN pdm install --check --prod --no-editable && pdm build --no-sdist --no-wheel
 
-# Ignore hadolint findings about version pinning
-# hadolint global ignore=DL3007,DL3008,DL3013
-FROM ghcr.io/tronbyt/pixlet:0.49.4 AS pixlet
+# Install build dependencies
+# git for go mod download
+# build-base for CGO (required by pixlet dependencies like go-libwebp)
+RUN apk add --no-cache git build-base libwebp-dev
 
-# build runtime image
-FROM debian:trixie-slim AS runtime
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+RUN go mod download
 
-# 8000 for main app
-EXPOSE 8000
+# Copy source code
+COPY . .
 
-ENV PYTHONUNBUFFERED=1 \
-    LIBPIXLET_PATH=/usr/lib/libpixlet.so
+# Version Info
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
+
+# Build the application
+# CGO_ENABLED=1 is required for pixlet/libwebp
+# -ldflags="-w -s" reduces binary size
+RUN CGO_ENABLED=1 go build -tags netgo,osusergo,musl -ldflags="-w -s -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" -o tronbyt-server ./cmd/server && \
+    CGO_ENABLED=1 go build -tags musl -ldflags="-w -s" -o migrate ./cmd/migrate
+
+# Runtime stage
+# We can use a minimal alpine image (or scratch, but alpine is safer for debugging)
+FROM alpine:latest
+
+WORKDIR /app
+
+# Install runtime dependencies
+# ca-certificates for HTTPS
+# shadow for usermod/groupmod
+# su-exec for step-down from root
+# libwebp, libwebpmux, libwebpdemux, libsharpyuv for dynamic linking
+RUN apk add --no-cache ca-certificates shadow su-exec libwebp libwebpmux libwebpdemux libsharpyuv
 
 # Create a non-root user
-RUN groupadd -r -g 1000 tronbyt && useradd -r -u 1000 -g tronbyt tronbyt
+RUN addgroup -S -g 1000 tronbyt && adduser -S -u 1000 -G tronbyt tronbyt
 
-WORKDIR /app
-
-# copy pixlet library and python dependencies
-COPY --from=pixlet --chmod=755 /lib/libpixlet.so /usr/lib/libpixlet.so
-
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates \
-    git \
-    gosu \
-    libsharpyuv0 \
-    libwebp7 \
-    libwebpdemux2 \
-    libwebpmux3 \
-    python3 \
-    tzdata \
-    tzdata-legacy && \
-    rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app /app
-ENV PATH="/app/.venv/bin:$PATH"
-
-# Create the directories for dynamic content ahead of time so that they are
-# owned by the non-root user (newly created named volumes are owned by root,
-# if their target doesn't exist).
-RUN mkdir -p /app/data /app/users && \
-    chmod -R 755 /app/data /app/users
-
+# Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# start the app
+# Copy binary from builder
+COPY --from=builder /app/tronbyt-server .
+COPY --from=builder /app/migrate .
+
+# Create data directory
+RUN mkdir -p data
+
+# Expose port
+EXPOSE 8000
+
+# Define entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["python3", "-m", "tronbyt_server.run"]
+
+# Run the server
+CMD ["./tronbyt-server", "-db", "data/tronbyt.db", "-data", "data"]

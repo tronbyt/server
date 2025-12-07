@@ -1,0 +1,162 @@
+{{ define "firmware" }}
+{{ template "base" . }}
+{{ end }}
+
+{{ define "content" }}
+<link rel="stylesheet" href="/static/css/firmware-simple.css">
+<div class="header-container">
+  <h1 class="page-title">{{ t .Localizer "Generate Firmware for" }} {{ .Device.Name }} - {{ index .DeviceTypeChoices (string .Device.Type) }}</h1>
+</div>
+
+{{ if not .FirmwareBinsAvailable }}
+<div class="w3-panel w3-yellow w3-border w3-border-amber w3-round-large">
+    <h3><i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Firmware Files Not Available" }}</h3>
+    <p>{{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}</p>
+    {{ if eq .User.Username "admin" }}
+    <p>
+        <strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }}
+        <a href="/auth/edit#firmware-management" class="w3-text-blue" style="text-decoration: underline;">{{ t .Localizer "Admin page" }}</a>
+        {{ t .Localizer "to download the latest firmware files." }}
+    </p>
+    {{ else }}
+    <p>{{ t .Localizer "Please contact your administrator to download the firmware files." }}</p>
+    {{ end }}
+</div>
+{{ end }}
+
+{{ if .FirmwareVersion }}
+<div class="firmware-info">
+    <div>
+        <strong>{{ t .Localizer "Firmware Image Version" }}:</strong> {{ .FirmwareVersion }}
+    </div>
+    {{ if eq .User.Username "admin" }}
+    <div>
+        <a href="/auth/edit#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
+            <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> {{ t .Localizer "Manage Firmware" }}
+        </a>
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+
+<form method="post" id="firmware-form">
+  <div class="device-settings-section">
+    <h2>{{ t .Localizer "Firmware Generation" }}</h2>
+
+    <div class="device-settings-section-divider">
+      <h3>{{ t .Localizer "Download ESP Flasher" }}</h3>
+      <p>{{ t .Localizer "Download ESP Flasher here" }} <a href="https://github.com/Jason2866/ESP_Flasher/releases" target="_blank">ESP Flasher</a></p>
+      <p>{{ t .Localizer "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher." }}</p>
+      <p><i>{{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}
+        <br>
+        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank">CP210x Drivers</a>
+        <br>
+        <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank">CH34x Drivers</a>
+      </i></p>
+    </div>
+
+    <input type="hidden" name="id" id="id" value="{{ .Device.ID }}">
+
+    <div class="device-settings-section-divider">
+      <h3>{{ t .Localizer "Connection Settings" }}</h3>
+
+      <table class="device-settings-table">
+        <tr>
+          <td>
+            <label class="device-settings-label">{{ t .Localizer "Connection Type" }}</label>
+          </td>
+          <td>
+            <div class="connection-type-container">
+              <label><input type="radio" name="url_variant" id="variant_ws" value="ws"> WebSocket</label>
+              <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
+              <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="img_url" class="device-settings-label">{{ t .Localizer "Image URL" }}</label>
+          </td>
+          <td>
+            <input name="img_url" id="img_url" value="{{ .Device.ImgURL }}" class="device-settings-input">
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="device-settings-section-divider">
+      <h3>{{ t .Localizer "WiFi Configuration" }}</h3>
+
+      <table class="device-settings-table">
+        <tr>
+          <td>
+            <label for="wifi_ap" class="device-settings-label">{{ t .Localizer "WiFi Network Name (SSID) 2.4Ghz Only" }}</label>
+          </td>
+          <td>
+            <input name="wifi_ap" id="wifi_ap" required class="device-settings-input">
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="wifi_password" class="device-settings-label">{{ t .Localizer "WiFi Password" }}</label>
+          </td>
+          <td>
+            <input name="wifi_password" id="wifi_password" required class="device-settings-input">
+          </td>
+        </tr>
+        {{ if eq (string .Device.Type) "tidbyt_gen1" }}
+        <tr>
+          <td>
+            <label for="swap_colors" class="device-settings-label">{{ t .Localizer "Swap Colors?" }}</label>
+          </td>
+          <td>
+            <input type="checkbox" name="swap_colors" id="swap_colors">
+          </td>
+        </tr>
+        {{ end }}
+      </table>
+    </div>
+  </div>
+
+  <div class="device-settings-section">
+    <div class="config-management-container">
+      <button class="w3-button w3-blue config-management-btn" type="submit"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Generate Firmware File" }}</button>
+    </div>
+  </div>
+</form>
+<hr>
+
+<script>
+    (function () {
+        const input = document.getElementById('img_url');
+        const httpRadio = document.getElementById('variant_http');
+        const wsRadio = document.getElementById('variant_ws');
+        const customRadio = document.getElementById('variant_custom');
+        // Resolve absolute URLs
+        const origin = window.location.origin;
+        const httpPath = "{{ .Device.ImgURL }}";
+        const wsPath = "{{ .Device.WsURL }}";
+
+        const httpVal = httpPath.startsWith("http") ? httpPath : (origin + httpPath);
+        const wsVal = wsPath.startsWith("ws") ? wsPath : (origin.replace("http", "ws") + wsPath);
+
+        function updateUrl() {
+            if (httpRadio.checked || wsRadio.checked) {
+                input.value = httpRadio.checked ? httpVal : wsVal;
+                input.readOnly = true;
+            } else if (customRadio.checked) {
+                input.value = "";
+                input.readOnly = false;
+            }
+        }
+
+        document.querySelectorAll('input[name="url_variant"]').forEach(radio => {
+            radio.addEventListener('change', updateUrl);
+        });
+
+        // Initialize
+        wsRadio.checked = true;
+        updateUrl();
+    })();
+</script>
+{{ end }}

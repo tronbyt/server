@@ -1,0 +1,1334 @@
+{
+  "Never": {
+    "other": "Nie"
+  },
+  "Repo Cloned": {
+    "other": "Repo geklont"
+  },
+  "Repo Updated": {
+    "other": "Repo aktualisiert"
+  },
+  "Repo removed": {
+    "other": "Repo entfernt"
+  },
+  "Error Cloning or Updating Repo": {
+    "other": "Fehler beim Klonen oder Aktualisieren des Repos"
+  },
+  "No Changes to Repo": {
+    "other": "Keine Änderungen am Repo"
+  },
+  "Use Device Settings": {
+    "other": "Geräteeinstellungen verwenden"
+  },
+  "None": {
+    "other": "Keine"
+  },
+  "Dimmed": {
+    "other": "Gedimmt"
+  },
+  "Redshift": {
+    "other": "Rotverschiebung"
+  },
+  "Warm": {
+    "other": "Warm"
+  },
+  "Sunset": {
+    "other": "Sonnenuntergang"
+  },
+  "Sepia": {
+    "other": "Sepia"
+  },
+  "Vintage": {
+    "other": "Vintage"
+  },
+  "Dusk": {
+    "other": "Dämmerung"
+  },
+  "Cool": {
+    "other": "Kühl"
+  },
+  "Black & White": {
+    "other": "Schwarz & Weiß"
+  },
+  "Ice": {
+    "other": "Eis"
+  },
+  "Moonlight": {
+    "other": "Mondlicht"
+  },
+  "Neon": {
+    "other": "Neon"
+  },
+  "Pastel": {
+    "other": "Pastell"
+  },
+  "Password is required.": {
+    "other": "Passwort ist erforderlich."
+  },
+  "admin user created. Please log in.": {
+    "other": "admin-Benutzer erstellt. Bitte anmelden."
+  },
+  "Could not create admin user.": {
+    "other": "Konnte Admin-Benutzer nicht erstellen."
+  },
+  "User registration is not enabled.": {
+    "other": "Benutzerregistrierung ist nicht aktiviert."
+  },
+  "Maximum number of users reached. Registration is disabled.": {
+    "other": "Maximale Benutzeranzahl erreicht. Registrierung ist deaktiviert."
+  },
+  "Username is required.": {
+    "other": "Benutzername ist erforderlich."
+  },
+  "User is already registered.": {
+    "other": "Benutzer ist bereits registriert."
+  },
+  "User {username} registered successfully.": {
+    "other": "Benutzer {username} erfolgreich registriert."
+  },
+  "Registered as {username}.": {
+    "other": "Registriert als {username}."
+  },
+  "Couldn't Save User": {
+    "other": "Konnte Benutzer nicht speichern"
+  },
+  "Incorrect username/password.": {
+    "other": "Falscher Benutzername/Passwort."
+  },
+  "Bad old password.": {
+    "other": "Falsches altes Passwort."
+  },
+  "Success": {
+    "other": "Erfolg"
+  },
+  "Logged Out": {
+    "other": "Abgemeldet"
+  },
+  "New API key generated successfully.": {
+    "other": "Neuer API-Schlüssel erfolgreich generiert."
+  },
+  "Failed to generate new API key.": {
+    "other": "Neuer API-Schlüssel konnte nicht generiert werden."
+  },
+  "Unique name is required.": {
+    "other": "Ein eindeutiger Name ist erforderlich."
+  },
+  "Could not generate a unique device ID.": {
+    "other": "Konnte keine eindeutige Geräte-ID generieren."
+  },
+  "Invalid location": {
+    "other": "Ungültiger Standort"
+  },
+  "Location JSON error {error}": {
+    "other": "Standort JSON-Fehler {error}"
+  },
+  "Name is required.": {
+    "other": "Name ist erforderlich."
+  },
+  "Invalid custom brightness scale format. Use 6 comma-separated values (0-100).": {
+    "other": "Ungültiges Format für die benutzerdefinierte Helligkeitsskala. Verwenden Sie 6 komma-getrennte Werte (0-100)."
+  },
+  "Invalid night start time: {error}": {
+    "other": "Ungültige Nacht-Startzeit: {error}"
+  },
+  "Invalid night end time: {error}": {
+    "other": "Ungültige Nacht-Endzeit: {error}"
+  },
+  "Invalid dim time: {error}": {
+    "other": "Ungültige Dimm-Zeit: {error}"
+  },
+  "App name required.": {
+    "other": "App-Name erforderlich."
+  },
+  "Could not generate a unique installation ID.": {
+    "other": "Konnte keine eindeutige Installations-ID generieren."
+  },
+  "App not found.": {
+    "other": "App nicht gefunden."
+  },
+  "No file": {
+    "other": "Keine Datei"
+  },
+  "Invalid file path": {
+    "other": "Ungültiger Dateipfad"
+  },
+  "File type not allowed": {
+    "other": "Dateityp nicht erlaubt"
+  },
+  "Upload Successful": {
+    "other": "Upload erfolgreich"
+  },
+  "Cannot delete {filename} because it is installed on a device.": {
+    "other": "Kann {filename} nicht löschen, da es auf einem Gerät installiert ist."
+  },
+  "App pinned.": {
+    "other": "App angeheftet."
+  },
+  "App unpinned.": {
+    "other": "App entpinnt."
+  },
+  "Error updating pin status.": {
+    "other": "Fehler beim Aktualisieren des Pin-Status."
+  },
+  "App duplicated successfully.": {
+    "other": "App erfolgreich dupliziert."
+  },
+  "Changes saved.": {
+    "other": "Änderungen gespeichert."
+  },
+  "Error saving changes.": {
+    "other": "Fehler beim Speichern der Änderungen"
+  },
+  "Invalid direction.": {
+    "other": "Ungültige Richtung."
+  },
+  "Error saving app, please try again.": {
+    "other": "Fehler beim Speichern der App, bitte erneut versuchen."
+  },
+  "Error deleting app.": {
+    "other": "Fehler beim Löschen der App."
+  },
+  "Invalid {field_name}: {error}": {
+    "other": "{field_name} ungültig: {error}"
+  },
+  "start time": {
+    "other": "Startzeit"
+  },
+  "end time": {
+    "other": "Endzeit"
+  },
+  "Error Rendering App": {
+    "other": "Fehler beim Rendern der App"
+  },
+  "API Key cannot be empty.": {
+    "other": "API-Schlüssel darf nicht leer sein."
+  },
+  "System repo updated successfully": {
+    "other": "System-Repo erfolgreich aktualisiert"
+  },
+  "Firmware update failed": {
+    "other": "Firmware-Update fehlgeschlagen"
+  },
+  "No selected file": {
+    "other": "Keine Datei ausgewählt"
+  },
+  "Invalid file type. Please upload a JSON file.": {
+    "other": "Ungültiger Dateityp. Bitte eine JSON-Datei hochladen."
+  },
+  "Invalid JSON structure": {
+    "other": "Ungültige JSON-Struktur"
+  },
+  "Invalid config file: missing device ID": {
+    "other": "Ungültige Konfigurationsdatei: Geräte-ID fehlt"
+  },
+  "Not the same device id. Import skipped.": {
+    "other": "Nicht die gleiche Geräte-ID. Import übersprungen."
+  },
+  "Invalid device configuration file": {
+    "other": "Ungültige Gerätekonfigurationsdatei"
+  },
+  "Device configuration imported successfully": {
+    "other": "Gerätekonfiguration erfolgreich importiert"
+  },
+  "Error parsing JSON file: {error}": {
+    "other": "Fehler beim Parsen der JSON-Datei: {error}"
+  },
+  "Error importing config: {error}": {
+    "other": "Fehler beim Importieren der Konfiguration: {error}"
+  },
+  "User configuration imported successfully": {
+    "other": "Benutzerkonfiguration erfolgreich importiert"
+  },
+  "Device ID missing in config.": {
+    "other": "Geräte-ID fehlt in der Konfiguration."
+  },
+  "Device already exists. Import skipped.": {
+    "other": "Gerät existiert bereits. Import übersprungen."
+  },
+  "Tronbyt Manager": {
+    "other": "Tronbyt Manager"
+  },
+  "Home": {
+    "other": "Home"
+  },
+  "⚠️ WARNING: Adding a second user will DISABLE auto-login functionality.": {
+    "other": "⚠️ WARNUNG: Das Hinzufügen eines zweiten Benutzers DEAKTIVIERT die Auto-Login-Funktion."
+  },
+  "Auto-login only works when exactly 1 user exists. After creating this user, you will need to log in with a password.": {
+    "other": "Auto-Login funktioniert nur, wenn genau ein Benutzer existiert. Nach dem Erstellen dieses Benutzers müssen Sie sich mit einem Passwort anmelden."
+  },
+  "Do you want to continue?": {
+    "other": "Möchten Sie fortfahren?"
+  },
+  "Create User": {
+    "other": "Benutzer anlegen"
+  },
+  "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user.": {
+    "other": "Der Auto-Login-Modus ist aktiviert. Sie können sich in diesem Modus nicht abmelden. Um den Auto-Login zu deaktivieren, setzen Sie SINGLE_USER_AUTO_LOGIN=0 in Ihrer .env-Datei oder erstellen Sie einen zweiten Benutzer."
+  },
+  "Auto-login mode active": {
+    "other": "Auto-Login-Modus aktiv"
+  },
+  "Log Out": {
+    "other": "Abmelden"
+  },
+  "Theme:": {
+    "other": "Thema:"
+  },
+  "Light": {
+    "other": "Hell"
+  },
+  "Dark": {
+    "other": "Dunkel"
+  },
+  "System": {
+    "other": "System"
+  },
+  "Log In": {
+    "other": "Anmelden"
+  },
+  "System Administration": {
+    "other": "Systemadministration"
+  },
+  "System Apps Repository": {
+    "other": "System-Apps-Repository"
+  },
+  "Current Repository": {
+    "other": "Aktuelles Repo"
+  },
+  "Branch": {
+    "other": "Branch"
+  },
+  "Commit": {
+    "other": "Commit"
+  },
+  "No system repository configured.": {
+    "other": "Kein System-Repo konfiguriert."
+  },
+  "Refreshing...": {
+    "other": "Wird aktualisiert..."
+  },
+  "Refresh": {
+    "other": "Aktualisieren"
+  },
+  "Change Repository": {
+    "other": "Repo ändern"
+  },
+  "Repository URL": {
+    "other": "Repository-URL"
+  },
+  "Scale (comma separated)": {
+    "other": "Skala (kommagetrennt)"
+  },
+  "Tidbyt Gen1": {
+    "other": "Tidbyt Gen1"
+  },
+  "Tidbyt Gen2": {
+    "other": "Tidbyt Gen2"
+  },
+  "Pixoticker": {
+    "other": "Pixoticker"
+  },
+  "Raspberry Pi": {
+    "other": "Raspberry Pi"
+  },
+  "Raspberry Pi Wide": {
+    "other": "Raspberry Pi Wide"
+  },
+  "Tronbyt S3": {
+    "other": "Tronbyt S3"
+  },
+  "Tronbyt S3 Wide": {
+    "other": "Tronbyt S3 Wide"
+  },
+  "MatrixPortal S3": {
+    "other": "MatrixPortal S3"
+  },
+  "MatrixPortal S3 Waveshare": {
+    "other": "MatrixPortal S3 Waveshare"
+  },
+  "Other": {
+    "other": "Sonstige"
+  },
+  "Save": {
+    "other": "Speichern"
+  },
+  "Replacing the existing system repo will delete the previous repo and break any apps using that repo.": {
+    "other": "Das Ersetzen des vorhandenen System-Repos löscht das vorherige Repo und alle Apps, die dieses Repo verwenden."
+  },
+  "Firmware Management": {
+    "other": "Firmware Verwaltung"
+  },
+  "Current Firmware": {
+    "other": "Aktuelle Firmware:"
+  },
+  "Version": {
+    "other": "Version"
+  },
+  "Firmware is automatically updated when the server starts.": {
+    "other": "Firmware wird automatisch aktualisiert, wenn der Server startet."
+  },
+  "No firmware version information available": {
+    "other": "Keine Firmware-Versionsinformationen verfügbar"
+  },
+  "Updating...": {
+    "other": "Aktualiserung…"
+  },
+  "Update": {
+    "other": "Aktualisieren"
+  },
+  "Download": {
+    "other": "Herunterladen"
+  },
+  "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.": {
+    "other": "Hinweis: Dies aktualisiert die zum Flashen verfügbaren Firmware-Dateien, nicht die Firmware auf vorhandenen Geräten. Geräte müssen manuell neu geflasht werden, um die neue Firmware zu verwenden."
+  },
+  "User Settings": {
+    "other": "Einstellungen"
+  },
+  "Custom Apps Repository": {
+    "other": "Benutzerdefiniertes Apps-Repository"
+  },
+  "Custom apps repository configured": {
+    "other": "Benutzerdefiniertes Apps-Repository konfiguriert"
+  },
+  "No custom repository configured.": {
+    "other": "Kein benutzerdefiniertes Repository konfiguriert."
+  },
+  "Remove custom repository? This will delete the repo and break any apps using it.": {
+    "other": "Benutzerdefiniertes Repository entfernen? Dadurch wird das Repo gelöscht und alle Apps, die es verwenden, werden unbrauchbar."
+  },
+  "Remove": {
+    "other": "Löschen"
+  },
+  "Replacing an existing custom repo will delete the previous repo and break any apps using that repo.": {
+    "other": "Das Ersetzen eines vorhandenen benutzerdefinierten Repos löscht das vorherige Repo und alle Apps, die dieses Repo verwenden."
+  },
+  "Security Settings": {
+    "other": "Sicherheitseinstellungen"
+  },
+  "Change Password": {
+    "other": "Passwort ändern"
+  },
+  "Old Password": {
+    "other": "Altes Passwort"
+  },
+  "New Password": {
+    "other": "Neues Passwort"
+  },
+  "User API Key": {
+    "other": "Benutzer API-Schlüssel"
+  },
+  "Update API key?": {
+    "other": "API-Schlüssel aktualisieren?"
+  },
+  "Generate a new API key? This will replace your current API key.": {
+    "other": "Einen neuen API-Schlüssel generieren? Dies ersetzt Ihren aktuellen API-Schlüssel."
+  },
+  "Generate New": {
+    "other": "Neu generieren"
+  },
+  "Data Management": {
+    "other": "Daten Verwaltung"
+  },
+  "Use the export and import features to backup your user account or to move your devices to a new server. The export function creates a JSON file with all your settings, devices, and apps. You can then import this file on another server to restore your configuration. Note that your password is not included in the export for security reasons, so you will need to remember your password when importing to a new server.": {
+    "other": "Verwenden Sie die Export- und Importfunktionen, um Ihr Benutzerkonto zu sichern oder Ihre Geräte auf einen neuen Server zu übertragen. Die Exportfunktion erstellt eine JSON-Datei mit allen Einstellungen, Geräten und Apps. Sie können diese Datei auf einem anderen Server importieren, um Ihre Konfiguration wiederherzustellen. Ihr Passwort ist aus Sicherheitsgründen nicht im Export enthalten, daher müssen Sie sich Ihr Passwort merken, wenn Sie auf einen neuen Server importieren."
+  },
+  "Export Configuration": {
+    "other": "Konfiguration exportieren"
+  },
+  "Download your entire user configuration as a JSON file.": {
+    "other": "Exportieren Sie Ihre gesamte Benutzerkonfiguration als JSON-Datei."
+  },
+  "Export": {
+    "other": "Exportieren"
+  },
+  "Import Configuration": {
+    "other": "Konfiguration importieren"
+  },
+  "Passkeys": {
+    "other": "Passkeys"
+  },
+  "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password.": {
+    "other": "Importieren Sie Ihre Benutzerkonfiguration aus einer JSON-Datei. Dadurch wird Ihre aktuelle Konfiguration ersetzt, aber Ihr Benutzername und Passwort bleiben erhalten."
+  },
+  "Upload App": {
+    "other": "App hochladen"
+  },
+  "Select File (.star or .webp)": {
+    "other": "Datei auswählen (.star oder .webp)"
+  },
+  "Sign in with Passkey": {
+    "other": "Mit Passkey anmelden"
+  },
+  "Import": {
+    "other": "Importieren"
+  },
+  "Update available!": {
+    "other": "Update verfügbar!"
+  },
+  "Server": {
+    "other": "Server"
+  },
+  "Username": {
+    "other": "Benutzername"
+  },
+  "Password": {
+    "other": "Passwort"
+  },
+  "Remember Me": {
+    "other": "Angemeldet bleiben"
+  },
+  "Register": {
+    "other": "Registrieren"
+  },
+  "Username (alpha-numeric only, no symbols please.)": {
+    "other": "Benutzername (nur alphanumerisch, keine Sonderzeichen.)"
+  },
+  "Email Address (optional)": {
+    "other": "E-Mail-Adresse (optional)"
+  },
+  "Create Admin User": {
+    "other": "Admin-Benutzer anlegen"
+  },
+  "SINGLE-USER AUTO-LOGIN MODE ACTIVE": {
+    "other": "EINZELBENUTZER-AUTO-LOGIN-MODUS AKTIV"
+  },
+  "Authentication is disabled for private network access": {
+    "other": "Authentifizierung für privaten Netzwerkzugriff deaktiviert"
+  },
+  "Create": {
+    "other": "Benutzer anlegen"
+  },
+  "Add App": {
+    "other": "App hinzufügen"
+  },
+  "Loading apps...": {
+    "other": "Lade Apps…"
+  },
+  "Upload .star or .webp file": {
+    "other": ".star oder .webp Datei hochladen"
+  },
+  "App Selection": {
+    "other": "App-Auswahl"
+  },
+  "Search apps": {
+    "other": "Apps suchen"
+  },
+  "Hide installed apps": {
+    "other": "Installierte Apps ausblenden"
+  },
+  "Hide broken apps": {
+    "other": "Defekte Apps ausblenden"
+  },
+  "Show broken apps": {
+    "other": "Defekte Apps anzeigen"
+  },
+  "Sort by:": {
+    "other": "Sortieren nach:"
+  },
+  "Default": {
+    "other": "Standard"
+  },
+  "Newest": {
+    "other": "Neueste"
+  },
+  "Alphabetical (A-Z)": {
+    "other": "Alphabetisch (A-Z)"
+  },
+  "Alphabetical (Z-A)": {
+    "other": "Alphabetisch (Z-A)"
+  },
+  "Installed": {
+    "other": "Installiert"
+  },
+  "From": {
+    "other": "Von"
+  },
+  "BROKEN": {
+    "other": "DEFEKT"
+  },
+  "Delete this uploaded app?": {
+    "other": "Hochgeladene App löschen?"
+  },
+  "Delete": {
+    "other": "Löschen"
+  },
+  "Unmark Broken": {
+    "other": "Als funktionierend markieren"
+  },
+  "Mark Broken": {
+    "other": "Als defekt markieren"
+  },
+  "Custom Apps": {
+    "other": "Benutzerdefinierte Apps"
+  },
+  "System Apps": {
+    "other": "System-Apps"
+  },
+  "Render Interval (minutes)": {
+    "other": "Render-Intervall (Minuten)"
+  },
+  "Display Time (seconds)": {
+    "other": "Anzeigedauer (Sekunden)"
+  },
+  "Notes": {
+    "other": "Notizen"
+  },
+  "Configure": {
+    "other": "Konfigurieren"
+  },
+  "New Tronbyt": {
+    "other": "Neuer Tronbyt"
+  },
+  "Delete User?": {
+    "other": "Benutzer löschen?"
+  },
+  "Edit": {
+    "other": "Bearbeiten"
+  },
+  "Edit User": {
+    "other": "Benutzer bearbeiten"
+  },
+  "API ID:": {
+    "other": "API-ID:"
+  },
+  "Theme Settings": {
+    "other": "Thema Einstellungen"
+  },
+  "No passkeys registered.": {
+    "other": "Keine Passkeys registriert."
+  },
+  "Register New Passkey": {
+    "other": "Neuen Passkey registrieren"
+  },
+  "Select JSON File": {
+    "other": "JSON-Datei auswählen"
+  },
+  "Notes:": {
+    "other": "Notizen:"
+  },
+  "installation id": {
+    "other": "Installations-ID"
+  },
+  "Enabled": {
+    "other": "Aktiviert"
+  },
+  "Disabled": {
+    "other": "Deaktiviert"
+  },
+  "App:": {
+    "other": "App:"
+  },
+  "Render Interval (minutes):": {
+    "other": "Render-Intervall (Minuten):"
+  },
+  "Display Time (secs):": {
+    "other": "Anzeigedauer (Sekunden):"
+  },
+  "Preview": {
+    "other": "Vorschau"
+  },
+  "Last Rendered:": {
+    "other": "Zuletzt gerendert:"
+  },
+  "Configuring": {
+    "other": "Konfigurieren"
+  },
+  "Show App Config": {
+    "other": "App-Konfiguration anzeigen"
+  },
+  "Show Render Debug": {
+    "other": "Debug-Ausgabe anzeigen"
+  },
+  "Cancel": {
+    "other": "Abbrechen"
+  },
+  "App Configuration": {
+    "other": "App Konfiguration"
+  },
+  "Settings": {
+    "other": "Einstellungen"
+  },
+  "Name": {
+    "other": "Name"
+  },
+  "Enable or disable this app": {
+    "other": "Diese App aktivieren oder deaktivieren"
+  },
+  "Autopin": {
+    "other": "Automatisch Pinnen"
+  },
+  "Automatically pin this app when it renders successfully": {
+    "other": "Diese App automatisch anheften, wenn sie erfolgreich gerendert wurde"
+  },
+  "Render Interval Minutes": {
+    "other": "Render-Intervall (Minuten)"
+  },
+  "Update every X minutes": {
+    "other": "Aktualisierung alle X Minuten"
+  },
+  "Display Time Seconds": {
+    "other": "Anzeigedauer (Sekunden)"
+  },
+  "0 for device default": {
+    "other": "Anzeigedauer Sekunden (0 für Gerätestandard)"
+  },
+  "Color Filter": {
+    "other": "Farbfilter"
+  },
+  "ColorFilter": {
+    "other": "Keine Datei"
+  },
+  "ColorFilterTooltip": {
+    "other": "Wenden Sie benutzerdefinierte Filter auf das Bild an:\n            Keine: Keine Transformation\n            Gedimmt: Verdunkelt das Bild gleichmäßig, während der Farbton erhalten bleibt\n            Rotverschiebung: CCT-abgeleitete chromatische Adaptationsmatrix ~3400K Ziel\n            Warm: Fügt einen subtilen warmen, orange/gelben Farbton hinzu\n            Sonnenuntergang: Emuliert tiefes Pink/Orange eines Sonnenuntergangs\n            Sepia: Fügt einen warmen, antiken Braunton hinzu, der gealterte Fotografien imitiert\n            Vintage: Gedämpfte, braun/grüne nostalgische Töne\n            Dämmerung: Helligkeit verblasst, fügt einen rötlichen Stich hinzu\n            Kühl: Fügt einen kühlen, bläulichen Farbton hinzu\n            Schwarz & Weiß: Konvertiert das Bild in perzeptives Graustufen unter Verwendung von Luminanzgewichten\n            Eis: Blasse Entsättigung mit bläulichem Stich\n            Mondlicht: Gedämpftes Blau-Grau, Nachtbeleuchtungseffekt\n            Neon: Erhöht den Kontrast, Magenta-Blau Cyberpunk\n            Pastell: Mildert Töne, sanfte Glanzlichterverstärkung"
+  },
+  "Override device color filter": {
+    "other": "Geräte-Farbfilter überschreiben"
+  },
+  "Optional notes about this app": {
+    "other": "Optionale Notizen zu dieser App"
+  },
+  "Schedule": {
+    "other": "Zeitplan"
+  },
+  "Start Time": {
+    "other": "Startzeit"
+  },
+  "When the app should start displaying": {
+    "other": "Wann die App mit der Anzeige beginnen soll"
+  },
+  "End Time": {
+    "other": "Endzeit"
+  },
+  "When the app should stop displaying": {
+    "other": "Wann die App die Anzeige beenden soll"
+  },
+  "Active Days": {
+    "other": "Aktive Tage"
+  },
+  "(none selected is ALL selected)": {
+    "other": "(keine Auswahl bedeutet ALLE ausgewählt)"
+  },
+  "Monday": {
+    "other": "Montag"
+  },
+  "Tuesday": {
+    "other": "Dienstag"
+  },
+  "Wednesday": {
+    "other": "Mittwoch"
+  },
+  "Thursday": {
+    "other": "Donnerstag"
+  },
+  "Friday": {
+    "other": "Freitag"
+  },
+  "Saturday": {
+    "other": "Samstag"
+  },
+  "Sunday": {
+    "other": "Sonntag"
+  },
+  "Use Custom Recurrence": {
+    "other": "Benutzerdefinierte Wiederholung verwenden"
+  },
+  "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)": {
+    "other": "Erweiterte Planungsoptionen aktivieren (zweiwöchentlich, monatlich, jährlich, etc.)"
+  },
+  "Custom Recurrence": {
+    "other": "Benutzerdefinierte Wiederholung"
+  },
+  "Frequency": {
+    "other": "Häufigkeit"
+  },
+  "How often the app should run": {
+    "other": "Wie oft die App ausgeführt werden soll"
+  },
+  "Daily": {
+    "other": "Täglich"
+  },
+  "Weekly": {
+    "other": "Wöchentlich"
+  },
+  "Monthly": {
+    "other": "Monatlich"
+  },
+  "Yearly": {
+    "other": "Jährlich"
+  },
+  "Repeat Every": {
+    "other": "Wiederhole alle"
+  },
+  "Interval between occurrences": {
+    "other": "Intervall zwischen den Vorkommen"
+  },
+  "days": {
+    "other": "Tage"
+  },
+  "Start Date": {
+    "other": "Startdatum"
+  },
+  "When the recurrence should begin": {
+    "other": "Wann die Wiederholung beginnen soll"
+  },
+  "End Date (optional)": {
+    "other": "Enddatum (optional)"
+  },
+  "When the recurrence should stop": {
+    "other": "Wann die Wiederholung enden soll"
+  },
+  "Weekly Options": {
+    "other": "Wöchentlich"
+  },
+  "Monthly Options": {
+    "other": "Monatliche"
+  },
+  "Monthly Pattern": {
+    "other": "Monatliches Muster"
+  },
+  "Choose how to specify the monthly occurrence": {
+    "other": "Wählen Sie, wie das monatliche Vorkommen festgelegt werden soll"
+  },
+  "Day of\n                    Month": {
+    "other": "Tag des Monats"
+  },
+  "Day of Week": {
+    "other": "Wochentag"
+  },
+  "Day of Month": {
+    "other": "Tag des Monats"
+  },
+  "Which day of the month (1-31)": {
+    "other": "Welcher Tag des Monats (1-31)"
+  },
+  "Day of Week Pattern": {
+    "other": "Wochentag-Muster"
+  },
+  "Which occurrence of which day": {
+    "other": "Welches Vorkommen welches Tages"
+  },
+  "First": {
+    "other": "Erste"
+  },
+  "Second": {
+    "other": "Zweite"
+  },
+  "Third": {
+    "other": "Dritte"
+  },
+  "Fourth": {
+    "other": "Vierte"
+  },
+  "Last": {
+    "other": "Letzte"
+  },
+  "Reset": {
+    "other": "Zurücksetzen"
+  },
+  "Delete App?": {
+    "other": "App löschen?"
+  },
+  "API Usage": {
+    "other": "API Nutzung"
+  },
+  "Show API Usage": {
+    "other": "API Nutzung anzeigen"
+  },
+  "Use these curl commands to control this app via the API:": {
+    "other": "Verwenden Sie diese curl-Befehle, um diese App über die API zu steuern:"
+  },
+  "Enable App": {
+    "other": "App aktivieren"
+  },
+  "Disable App": {
+    "other": "App deaktivieren"
+  },
+  "Pin App": {
+    "other": "App anpinnen"
+  },
+  "Unpin App": {
+    "other": "App entpinnen"
+  },
+  "Note:": {
+    "other": "Notizen:"
+  },
+  "Replace YOUR_API_KEY with your device API key if not using the one shown above.": {
+    "other": "Ersetzen Sie YOUR_API_KEY durch Ihren Geräte-API-Schlüssel, falls Sie nicht den oben gezeigten verwenden."
+  },
+  "Hide App Config": {
+    "other": "App-Konfiguration ausblenden"
+  },
+  "Hide Render Debug": {
+    "other": "Debug-Ausgabe ausblenden"
+  },
+  "Hide API Usage": {
+    "other": "API Nutzung ausblenden"
+  },
+  "Toggle password visibility": {
+    "other": "Passwortsichtbarkeit umschalten"
+  },
+  "Enter a location": {
+    "other": "Standort eingeben"
+  },
+  "Upload Image": {
+    "other": "Bild hochladen"
+  },
+  "Please upload a valid image file (PNG, JPEG, GIF, SVG, or WebP).": {
+    "other": "Bitte ein gültiges Bild hochladen (PNG, JPEG, GIF, SVG oder WebP)"
+  },
+  "File size exceeds 500KB limit. Please upload a smaller image.": {
+    "other": "Die Dateigröße überschreitet das 500KB-Limit. Bitte laden Sie ein kleineres Bild hoch."
+  },
+  "Start typing...": {
+    "other": "Bitte eingeben…"
+  },
+  "No options available for this location": {
+    "other": "Keine Optionen für diesen Standort verfügbar"
+  },
+  "Error loading options": {
+    "other": "Fehler beim Laden der Optionen"
+  },
+  "weeks": {
+    "other": "Wochen"
+  },
+  "months": {
+    "other": "Monate"
+  },
+  "years": {
+    "other": "Jahre"
+  },
+  "Previewing...": {
+    "other": "Vorschau…"
+  },
+  "Sent": {
+    "other": "Gesendet"
+  },
+  "Failed": {
+    "other": "Fehlgeschlagen"
+  },
+  "New Tronbyt Device": {
+    "other": "Neues Tronbyt-Gerät"
+  },
+  "Basic Information": {
+    "other": "Grundlegende Informationen"
+  },
+  "Descriptive name for this Tronbyt device": {
+    "other": "Beschreibender Name für dieses Tronbyt-Gerät"
+  },
+  "Device Type": {
+    "other": "Gerätetyp"
+  },
+  "Connection URLs": {
+    "other": "Verbindungs-URLs"
+  },
+  "Image URL": {
+    "other": "Bild-URL"
+  },
+  "Leave blank unless advanced user.": {
+    "other": "Leer lassen, es sei denn, Sie sind ein fortgeschrittener Benutzer."
+  },
+  "WebSocket URL": {
+    "other": "Websocket URL"
+  },
+  "Display Settings": {
+    "other": "Anzeigeeinstellungen"
+  },
+  "Brightness Level (0 - 5)": {
+    "other": "Helligkeitsstufe (0 - 5)"
+  },
+  "Location & Notes": {
+    "other": "Standort & Notizen"
+  },
+  "Location": {
+    "other": "Standort"
+  },
+  "Optional notes about this device": {
+    "other": "Optionale Notizen zu diesem Gerät"
+  },
+  "Generate Firmware for": {
+    "other": "Firmware generieren für"
+  },
+  "Firmware Files Not Available": {
+    "other": "Firmware-Dateien nicht verfügbar"
+  },
+  "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded.": {
+    "other": "Firmware-Binärdateien wurden noch nicht heruntergeladen. Die Firmware-Generierung funktioniert erst, wenn die Dateien heruntergeladen wurden."
+  },
+  "Action Required:": {
+    "other": "Handlung erforderlich:"
+  },
+  "Please go to the": {
+    "other": "Bitte gehen Sie zur"
+  },
+  "Admin page": {
+    "other": "Admin-Seite"
+  },
+  "to download the latest firmware files.": {
+    "other": "um die neuesten Firmware-Dateien herunterzuladen."
+  },
+  "Please contact your administrator to download the firmware files.": {
+    "other": "Bitte kontaktieren Sie Ihren Administrator, um die Firmware-Dateien herunterzuladen."
+  },
+  "Firmware Image Version": {
+    "other": "Firmware Image Version"
+  },
+  "Manage Firmware": {
+    "other": "Firmware verwalten"
+  },
+  "Firmware Generation": {
+    "other": "Firmware Generierung"
+  },
+  "Download ESP Flasher": {
+    "other": "ESP Flasher hier herunterladen"
+  },
+  "Download ESP Flasher here": {
+    "other": "ESPHome Flasher hier herunterladen"
+  },
+  "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher.": {
+    "other": "Verbinden Sie Ihr Gerät mit dem Computer mittels eines Daten-USB-Kabels, führen Sie das ESP Flasher-Programm aus und wählen Sie Ihre heruntergeladene Firmware-Datei aus, um Ihr Gerät zu flashen. Verwenden Sie KEINEN webbasierten Flasher."
+  },
+  "macOS and Windows users may need to install a serial driver:": {
+    "other": "Benutzer von macOS oder Windows müssen möglicherweise einen seriellen Treiber installieren."
+  },
+  "Connection Settings": {
+    "other": "Verbindungseinstellungen"
+  },
+  "Connection Type": {
+    "other": "Verbindungstyp"
+  },
+  "WiFi Configuration": {
+    "other": "WLAN-Konfiguration"
+  },
+  "WiFi Network Name (SSID) 2.4Ghz Only": {
+    "other": "WiFi-Netzwerkname (SSID) Nur 2.4 GHz"
+  },
+  "WiFi Password": {
+    "other": "WiFi-Passwort"
+  },
+  "Swap Colors?": {
+    "other": "Farben tauschen?"
+  },
+  "Generate Firmware File": {
+    "other": "Firmware-Datei generieren"
+  },
+  "Import Device Configuration": {
+    "other": "Gerätekonfiguration importieren"
+  },
+  "Upload JSON File": {
+    "other": "JSON-Datei hochladen"
+  },
+  "Edit Device": {
+    "other": "Gerät bearbeiten"
+  },
+  "Delete device and ALL apps? This action cannot be undone.": {
+    "other": "Gerät und alle Apps löschen? Dies kann nicht rückgängig gemacht werden."
+  },
+  "Device Settings": {
+    "other": "Geräteeinstellungen"
+  },
+  "Device Name": {
+    "other": "Gerätename"
+  },
+  "Reset to default": {
+    "other": "Auf Standard zurücksetzen"
+  },
+  "Websocket URL": {
+    "other": "Websocket URL"
+  },
+  "App Cycle Time (Seconds)": {
+    "other": "App-Zykluszeit (Sekunden)"
+  },
+  "Apply custom filters to the image:\n          None: No transformation\n          Dimmed: Darkens image uniformly while preserving hue\n          Redshift: CCT-derived chromatic adaptation matrix ~3400K target\n          Warm: Adds a subtle warm, orange/yellow hue\n          Sunset: Emulates deep pink/orange of a setting sun\n          Sepia: Adds a warm, antique brown tone mimicking aged photographs\n          Vintage: Muted, brown/green nostalgic tones\n          Dusk: Fades brightness, adds reddish cast\n          Cool: Adds a cool, blue tint\n          Black & White: Converts image to perceptual grayscale using luminance weights\n          Ice: Pale desaturation with bluish cast\n          Moonlight: Dim blue-gray, night lighting effect\n          Neon: Boosts contrast, magenta-blue cyberpunk\n          Pastel: Softens tones, gentle highlight boost": {
+    "other": ""
+  },
+  "Brightness Settings": {
+    "other": "Helligkeitseinstellungen"
+  },
+  "Brightness": {
+    "other": "Helligkeit"
+  },
+  "Custom Brightness Scale": {
+    "other": "Benutzerdefinierte Helligkeitsskala"
+  },
+  "Override the default brightness scale with custom values for each level (0-5)": {
+    "other": "Überschreibt die Standard-Helligkeitsskala mit benutzerdefinierten Werten für jede Stufe (0-5)"
+  },
+  "Use custom brightness scale": {
+    "other": "Benutzerdefinierte Helligkeitsskala verwenden"
+  },
+  "Level": {
+    "other": "Stufe"
+  },
+  "Each value should be between 0-100. Higher levels should generally have higher values.": {
+    "other": "Jeder Wert sollte zwischen 0-100 liegen. Höhere Stufen sollten im Allgemeinen höhere Werte haben."
+  },
+  "Default system scale": {
+    "other": "Standard-Systemskala"
+  },
+  "Interstitial App Settings": {
+    "other": "Interstitial-App-Einstellungen"
+  },
+  "Enable Interstitial App": {
+    "other": "Interstitial-App aktivieren"
+  },
+  "Display an interstitial app between each regular app in the rotation.": {
+    "other": "Zeigt eine Interstitial-App zwischen jeder regulären App in der Rotation an.Zeigt eine Interstitial-App zwischen jeder regulären App in der Rotation an."
+  },
+  "Interstitial App Configuration": {
+    "other": "Interstitial-App-Konfiguration"
+  },
+  "Interstitial App": {
+    "other": "Interstitial-App"
+  },
+  "The interstitial app will display even if it is disabled in the regular rotation.": {
+    "other": "Die Interstitial-App wird auch dann angezeigt, wenn sie in der regulären Rotation deaktiviert ist.Die Interstitial-App wird auch dann angezeigt, wenn sie in der regulären Rotation deaktiviert ist."
+  },
+  "Night Mode Settings": {
+    "other": "Nachtmodus Einstellungen"
+  },
+  "Enable Night Mode": {
+    "other": "Nachtmodus aktivieren"
+  },
+  "Night Mode Configuration": {
+    "other": "Nachtmodus Konfiguration"
+  },
+  "Night Start Time": {
+    "other": "Nachtmodus Startzeit"
+  },
+  "Night End Time": {
+    "other": "Nachtmodus Endzeit"
+  },
+  "Night Brightness": {
+    "other": "Nacht-Helligkeit"
+  },
+  "Night Mode App": {
+    "other": "Nachtmodus-App:"
+  },
+  "To prevent the night mode app from displaying during the day, set it to disabled on the app edit page.": {
+    "other": "Um zu verhindern, dass die Nachtmodus-App tagsüber angezeigt wird, setzen Sie sie auf der App-Bearbeitungsseite auf deaktiviert."
+  },
+  "Night Color Filter": {
+    "other": "Nacht-Farbfilter"
+  },
+  "Apply custom filters to the image during night mode.": {
+    "other": "Wendet benutzerdefinierte Filter auf das Bild während des Nachtmodus an."
+  },
+  "Dim Mode Settings": {
+    "other": "Dimm-Modus-Einstellungen"
+  },
+  "Dim Start Time": {
+    "other": "Dimm-Startzeit"
+  },
+  "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
+    "other": "Leer lassen, um den Dimm-Modus zu deaktivieren. Der Dimm-Modus endet standardmäßig zur Nacht-Endzeit (falls festgelegt) oder um 6:00 Uhr."
+  },
+  "Dim Brightness": {
+    "other": "Dimm-Helligkeit"
+  },
+  "Location & API Settings": {
+    "other": "Standort & API-Einstellungen"
+  },
+  "Locale": {
+    "other": "Gebietsschema"
+  },
+  "Locale for apps (e.g. en_US, de_DE).": {
+    "other": "Gebietsschema für Apps (z.B. en_US, de_DE)."
+  },
+  "API Configuration": {
+    "other": "API-Konfiguration"
+  },
+  "Device ID": {
+    "other": "Geräte-ID"
+  },
+  "Device API Key": {
+    "other": "Geräte-API-Schlüssel"
+  },
+  "Example curl Command": {
+    "other": "Beispiel curl-Befehl"
+  },
+  "Example pixlet Command": {
+    "other": "Beispiel pixlet-Befehl"
+  },
+  "Additional Settings": {
+    "other": "Zusätzliche Einstellungen"
+  },
+  "Configuration Management": {
+    "other": "Konfigurationsverwaltung"
+  },
+  "Upload App (.star files only)": {
+    "other": "App hochladen (nur .star-Dateien)"
+  },
+  "Upload": {
+    "other": "Hochladen"
+  },
+  "Current files:": {
+    "other": "Aktuelle Dateien:"
+  },
+  "INACTIVE": {
+    "other": "INAKTIV"
+  },
+  "PINNED": {
+    "other": "ANGEHEFTET"
+  },
+  "ENABLED": {
+    "other": "AKTIVIERT"
+  },
+  "DISABLED": {
+    "other": "DEAKTIVIERT"
+  },
+  "AUTOPIN": {
+    "other": "AUTO-PIN"
+  },
+  "Interval:": {
+    "other": "Intervall:"
+  },
+  "No output for ": {
+    "other": "Keine Ausgabe für "
+  },
+  "Last:": {
+    "other": "Zuletzt:"
+  },
+  "in": {
+    "other": "in"
+  },
+  "Duplicate": {
+    "other": "Duplizieren"
+  },
+  "Top": {
+    "other": "Nach oben"
+  },
+  "Bottom": {
+    "other": "Nach unten"
+  },
+  "Unpin": {
+    "other": "Entpinnen"
+  },
+  "Pin": {
+    "other": "Anheften"
+  },
+  "Disable": {
+    "other": "Deaktivieren"
+  },
+  "Enable": {
+    "other": "Aktivieren"
+  },
+  "Pinned:": {
+    "other": "Angeheftet:"
+  },
+  "Currently Displaying App": {
+    "other": "Derzeit angezeigte App"
+  },
+  "Device Info": {
+    "other": "Geräteinformationen"
+  },
+  "Firmware Version:": {
+    "other": "Firmware-Version:"
+  },
+  "Firmware Type:": {
+    "other": "Firmware-Typ:"
+  },
+  "Protocol Version:": {
+    "other": "Protokoll-Version:"
+  },
+  "MAC Address:": {
+    "other": "MAC-Adresse:"
+  },
+  "Protocol Type:": {
+    "other": "Protokoll-Typ:"
+  },
+  "Last Seen:": {
+    "other": "Zuletzt gesehen:"
+  },
+  "Firmware": {
+    "other": "Firmware"
+  },
+  "View:": {
+    "other": "Ansicht:"
+  },
+  "List View": {
+    "other": "Listenansicht"
+  },
+  "List": {
+    "other": "Liste"
+  },
+  "Grid View": {
+    "other": "Rasteransicht"
+  },
+  "Grid": {
+    "other": "Raster"
+  },
+  "Collapsed View": {
+    "other": "Eingeklappte Ansicht"
+  },
+  "Collapsed": {
+    "other": "Eingeklappt"
+  },
+  "Drag apps to reorder": {
+    "other": "Apps zum Neuanordnen ziehen"
+  },
+  "Apply custom filters to the image:": {
+    "other": "Wenden Sie benutzerdefinierte Filter auf das Bild an:"
+  },
+  "None: No transformation": {
+    "other": "Keine: Keine Transformation"
+  },
+  "Dimmed: Darkens image uniformly while preserving hue": {
+    "other": "Gedimmt: Verdunkelt das Bild gleichmäßig, während der Farbton erhalten bleibt"
+  },
+  "Redshift: CCT-derived chromatic adaptation matrix ~3400K target": {
+    "other": "Rotverschiebung: CCT-abgeleitete chromatische Adaptationsmatrix ~3400K Ziel"
+  },
+  "Warm: Adds a subtle warm, orange/yellow hue": {
+    "other": "Warm: Fügt einen subtilen warmen, orange/gelben Farbton hinzu"
+  },
+  "Sunset: Emulates deep pink/orange of a setting sun": {
+    "other": "Sonnenuntergang: Emuliert tiefes Pink/Orange eines Sonnenuntergangs"
+  },
+  "Sepia: Adds a warm, antique brown tone mimicking aged photographs": {
+    "other": "Sepia: Fügt einen warmen, antiken Braunton hinzu, der gealterte Fotografien imitiert"
+  },
+  "Vintage: Muted, brown/green nostalgic tones": {
+    "other": "Vintage: Gedämpfte, braun/grüne nostalgische Töne"
+  },
+  "Dusk: Fades brightness, adds reddish cast": {
+    "other": "Dämmerung: Helligkeit verblasst, fügt einen rötlichen Stich hinzu"
+  },
+  "Cool: Adds a cool, blue tint": {
+    "other": "Kühl: Fügt einen kühlen, bläulichen Farbton hinzu"
+  },
+  "Black & White: Converts image to perceptual grayscale using luminance weights": {
+    "other": "Schwarz & Weiß: Konvertiert das Bild in perzeptives Graustufen unter Verwendung von Luminanzgewichten"
+  },
+  "Ice: Pale desaturation with bluish cast": {
+    "other": "Eis: Blasse Entsättigung mit bläulichem Stich"
+  },
+  "Moonlight: Dim blue-gray, night lighting effect": {
+    "other": "Mondlicht: Gedämpftes Blau-Grau, Nachtbeleuchtungseffekt"
+  },
+  "Neon: Boosts contrast, magenta-blue cyberpunk": {
+    "other": "Neon: Erhöht den Kontrast, Magenta-Blau Cyberpunk"
+  },
+  "Pastel: Softens tones, gentle highlight boost": {
+    "other": "Pastell: Mildert Töne, sanfte Glanzlichterverstärkung"
+  },
+  "System Setup: Please create the 'admin' user.": {
+    "other": "System-Einrichtung: Bitte erstellen Sie den 'admin'-Benutzer."
+  },
+  "System Setup: The first user must be 'admin'.": {
+    "other": "System-Einrichtung: Der erste Benutzer muss 'admin' sein."
+  },
+  "Username and password required": {
+    "other": "Benutzername und Passwort sind erforderlich."
+  },
+  "Username already exists": {
+    "other": "Benutzername existiert bereits."
+  },
+  "Invalid username or password": {
+    "other": "Ungültiger Benutzername oder Passwort."
+  },
+  "Invalid old password": {
+    "other": "Ungültiges altes Passwort."
+  }
+}
