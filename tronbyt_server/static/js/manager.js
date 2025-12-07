@@ -88,45 +88,45 @@ function toggleDetails(deviceId) {
 const etags = {};
 
 function pollImageWithEtag(deviceId) {
-  const img = document.getElementById('currentWebp-' + deviceId);
-  if (!img) return;
+    const img = document.getElementById('currentWebp-' + deviceId);
+    if (!img) return;
 
-  const url = img.dataset.src;
-  const headers = new Headers();
-  if (etags[deviceId]) {
-    headers.append('If-None-Match', etags[deviceId]);
-  }
+    const url = img.dataset.src;
+    const headers = new Headers();
+    if (etags[deviceId]) {
+        headers.append('If-None-Match', etags[deviceId]);
+    }
 
-  fetch(url, { headers: headers, cache: 'no-cache' })
-    .then(response => {
-      if (response.status === 200) {
-        const newEtag = response.headers.get('ETag');
-        if (newEtag) {
-          etags[deviceId] = newEtag;
-        }
-        return response.blob();
-      } else if (response.status === 304) {
-        // Not modified, do nothing
-        return null;
-      } else {
-        // Handle other errors
-        console.error('Error fetching image for device ' + deviceId, response.status);
-        return null;
-      }
-    })
-    .then(blob => {
-      if (blob) {
-        const oldSrc = img.src;
-        // Check if oldSrc is a blob URL and revoke it to prevent memory leaks
-        if (oldSrc.startsWith('blob:')) {
-          URL.revokeObjectURL(oldSrc);
-        }
-        img.src = URL.createObjectURL(blob);
-      }
-    })
-    .catch(error => {
-      console.error('Fetch error for device ' + deviceId, error);
-    });
+    fetch(url, { headers: headers, cache: 'no-cache' })
+        .then(response => {
+            if (response.status === 200) {
+                const newEtag = response.headers.get('ETag');
+                if (newEtag) {
+                    etags[deviceId] = newEtag;
+                }
+                return response.blob();
+            } else if (response.status === 304) {
+                // Not modified, do nothing
+                return null;
+            } else {
+                // Handle other errors
+                console.error('Error fetching image for device ' + deviceId, response.status);
+                return null;
+            }
+        })
+        .then(blob => {
+            if (blob) {
+                const oldSrc = img.src;
+                // Check if oldSrc is a blob URL and revoke it to prevent memory leaks
+                if (oldSrc.startsWith('blob:')) {
+                    URL.revokeObjectURL(oldSrc);
+                }
+                img.src = URL.createObjectURL(blob);
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error for device ' + deviceId, error);
+        });
 }
 
 // AJAX function to move apps without page reload
