@@ -88,45 +88,45 @@ function toggleDetails(deviceId) {
 const etags = {};
 
 function pollImageWithEtag(deviceId) {
-    const img = document.getElementById('currentWebp-' + deviceId);
-    if (!img) return;
+  const img = document.getElementById('currentWebp-' + deviceId);
+  if (!img) return;
 
-    const url = img.dataset.src;
-    const headers = new Headers();
-    if (etags[deviceId]) {
-        headers.append('If-None-Match', etags[deviceId]);
-    }
+  const url = img.dataset.src;
+  const headers = new Headers();
+  if (etags[deviceId]) {
+    headers.append('If-None-Match', etags[deviceId]);
+  }
 
-    fetch(url, { headers: headers, cache: 'no-cache' })
-        .then(response => {
-            if (response.status === 200) {
-                const newEtag = response.headers.get('ETag');
-                if (newEtag) {
-                    etags[deviceId] = newEtag;
-                }
-                return response.blob();
-            } else if (response.status === 304) {
-                // Not modified, do nothing
-                return null;
-            } else {
-                // Handle other errors
-                console.error('Error fetching image for device ' + deviceId, response.status);
-                return null;
-            }
-        })
-        .then(blob => {
-            if (blob) {
-                const oldSrc = img.src;
-                // Check if oldSrc is a blob URL and revoke it to prevent memory leaks
-                if (oldSrc.startsWith('blob:')) {
-                    URL.revokeObjectURL(oldSrc);
-                }
-                img.src = URL.createObjectURL(blob);
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error for device ' + deviceId, error);
-        });
+  fetch(url, { headers: headers, cache: 'no-cache' })
+    .then(response => {
+      if (response.status === 200) {
+        const newEtag = response.headers.get('ETag');
+        if (newEtag) {
+          etags[deviceId] = newEtag;
+        }
+        return response.blob();
+      } else if (response.status === 304) {
+        // Not modified, do nothing
+        return null;
+      } else {
+        // Handle other errors
+        console.error('Error fetching image for device ' + deviceId, response.status);
+        return null;
+      }
+    })
+    .then(blob => {
+      if (blob) {
+        const oldSrc = img.src;
+        // Check if oldSrc is a blob URL and revoke it to prevent memory leaks
+        if (oldSrc.startsWith('blob:')) {
+          URL.revokeObjectURL(oldSrc);
+        }
+        img.src = URL.createObjectURL(blob);
+      }
+    })
+    .catch(error => {
+      console.error('Fetch error for device ' + deviceId, error);
+    });
 }
 
 // AJAX function to move apps without page reload
@@ -318,50 +318,50 @@ function deleteApp(deviceId, iname) {
 
 // AJAX function to preview an app
 function previewApp(deviceId, iname, config = null, button = null, translations = null) {
-    const url = `/${deviceId}/${iname}/preview`;
-    let options = {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
+  const url = `/${deviceId}/${iname}/preview`;
+  let options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  };
+
+  if (config) {
+    options.body = JSON.stringify(config);
+  }
+
+  let originalButtonContent = null;
+  if (button) {
+    originalButtonContent = button.innerHTML;
+    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> ${translations?.previewing || 'Previewing...'}`;
+    button.disabled = true;
+  }
+
+  fetch(url, options)
+    .then(response => {
+      if (button) {
+        if (response.ok) {
+          button.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${translations?.sent || 'Sent'}`;
+        } else {
+          button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
+          console.error('Preview request failed with status: ' + response.status);
         }
-    };
-
-    if (config) {
-        options.body = JSON.stringify(config);
-    }
-
-    let originalButtonContent = null;
-    if (button) {
-        originalButtonContent = button.innerHTML;
-        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> ${translations?.previewing || 'Previewing...'}`;
-        button.disabled = true;
-    }
-
-    fetch(url, options)
-        .then(response => {
-            if (button) {
-                if (response.ok) {
-                    button.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${translations?.sent || 'Sent'}`;
-                } else {
-                    button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
-                    console.error('Preview request failed with status: ' + response.status);
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error sending preview request:', error);
-            if (button) {
-                button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
-            }
-        })
-        .finally(() => {
-            if (button) {
-                setTimeout(() => {
-                    button.innerHTML = originalButtonContent;
-                    button.disabled = false;
-                }, 2000);
-            }
-        });
+      }
+    })
+    .catch(error => {
+      console.error('Error sending preview request:', error);
+      if (button) {
+        button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
+      }
+    })
+    .finally(() => {
+      if (button) {
+        setTimeout(() => {
+          button.innerHTML = originalButtonContent;
+          button.disabled = false;
+        }, 2000);
+      }
+    });
 }
 
 // Cookie utility functions
@@ -425,7 +425,7 @@ let draggedDeviceId = null;
 let draggedIname = null;
 
 // Initialize drag and drop for all app cards when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   initializeDragAndDrop();
   initializeViewToggles();
   initializeDeviceInfoToggles();
@@ -634,7 +634,102 @@ function addDropZones() {
       zone.addEventListener('dragenter', handleDropZoneDragEnter);
       zone.addEventListener('dragleave', handleDropZoneDragLeave);
     });
+
+    // Add event listeners to container for dropping on empty space
+    container.addEventListener('dragover', handleContainerDragOver);
+    container.addEventListener('drop', handleContainerDrop);
+    container.addEventListener('dragenter', handleContainerDragEnter);
+    container.addEventListener('dragleave', handleContainerDragLeave);
   });
+}
+
+function handleContainerDragOver(e) {
+  // If we are over an app card or drop zone, let their handlers handle it
+  if (e.target.closest('.app-card') || e.target.closest('.drop-zone')) {
+    return;
+  }
+
+  e.preventDefault();
+  const container = e.currentTarget;
+  const deviceId = container.id.replace('appsList-', '');
+
+  if (!draggedDeviceId) {
+    e.dataTransfer.dropEffect = 'none';
+    return;
+  }
+
+  if (deviceId !== draggedDeviceId) {
+    e.dataTransfer.dropEffect = 'copy';
+  } else {
+    // If same device, and we are just hovering over container (not specific card),
+    // we technically could "move" to end, but usually reordering is specific.
+    // However, for consistency let's allow "move" (which will act as append)
+    e.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function handleContainerDragEnter(e) {
+  // If we are over an app card or drop zone, let their handlers handle it
+  if (e.target.closest('.app-card') || e.target.closest('.drop-zone')) {
+    return;
+  }
+
+  e.preventDefault();
+  const container = e.currentTarget;
+  if (draggedDeviceId) {
+    container.classList.add('drag-over-container');
+  }
+}
+
+function handleContainerDragLeave(e) {
+  const container = e.currentTarget;
+  // Only remove if we are leaving the container, not entering a child
+  if (!container.contains(e.relatedTarget)) {
+    container.classList.remove('drag-over-container');
+  }
+}
+
+function handleContainerDrop(e) {
+  // If we are over an app card or drop zone, let their handlers handle it
+  if (e.target.closest('.app-card') || e.target.closest('.drop-zone')) {
+    return;
+  }
+
+  e.preventDefault();
+  const container = e.currentTarget;
+  const deviceId = container.id.replace('appsList-', '');
+
+  container.classList.remove('drag-over-container');
+
+  if (!draggedDeviceId) {
+    return;
+  }
+
+  // Dropping on container means append to list
+  // Target iname is null, insertAfter doesn't matter much but false implies "append if not found" logic in backend
+  // Actually backend logic: if target_iname not found/null -> append.
+
+  const targetIname = null;
+  const insertAfter = false;
+
+  if (deviceId !== draggedDeviceId) {
+    duplicateAppToDevice(draggedDeviceId, draggedIname, deviceId, targetIname, insertAfter);
+  } else {
+    // Same device - "move to end" or do nothing?
+    // If we drop on empty space of same device, maybe move to end?
+    // reorderApps requires target_iname.
+    // So we need to find the last app.
+    const appCards = container.querySelectorAll('.app-card');
+    if (appCards.length > 0) {
+      const lastApp = appCards[appCards.length - 1];
+      const lastIname = lastApp.getAttribute('data-iname');
+
+      // If we are already the last app, do nothing
+      if (lastIname === draggedIname) return;
+
+      reorderApps(deviceId, draggedIname, lastIname, true);
+    }
+  }
 }
 
 function setupDragAndDrop(card) {
@@ -705,12 +800,18 @@ function handleDragOver(e) {
   const targetDeviceId = extractDeviceIdFromCard(card);
 
   // Only allow visual feedback for cards from the same device
-  if (!draggedDeviceId || targetDeviceId !== draggedDeviceId) {
+  if (!draggedDeviceId) {
     e.dataTransfer.dropEffect = 'none';
     return;
   }
 
-  e.dataTransfer.dropEffect = 'move';
+  // Set drop effect based on whether it's the same device (move) or different (copy)
+  if (targetDeviceId !== draggedDeviceId) {
+    e.dataTransfer.dropEffect = 'copy';
+  } else {
+    e.dataTransfer.dropEffect = 'move';
+  }
+
   const container = card.closest('[id^="appsList-"]');
   const isGridView = container && container.classList.contains('apps-grid-view');
 
@@ -748,8 +849,8 @@ function handleDragEnter(e) {
   const card = e.currentTarget;
   const targetDeviceId = extractDeviceIdFromCard(card);
 
-  // Only allow dropping on cards from the same device
-  if (draggedDeviceId && targetDeviceId === draggedDeviceId) {
+  // Only allow dropping on cards from capable devices
+  if (draggedDeviceId) {
     card.classList.add('drag-over');
   } else {
     // Remove any existing visual feedback from invalid targets
@@ -774,37 +875,38 @@ function handleDrop(e) {
 
   console.log('Drop target:', { targetDeviceId, targetIname, draggedDeviceId, draggedIname });
 
-  // Only allow dropping on cards from the same device
-  if (!draggedDeviceId || targetDeviceId !== draggedDeviceId) {
-    console.log('Drop rejected: different device or no dragged device');
+  // Only allow dropping if valid drag
+  if (!draggedDeviceId) {
     return;
   }
 
-  // Don't allow dropping on the same card
-  if (targetIname === draggedIname) {
-    console.log('Drop rejected: same card');
-    return;
-  }
+  let insertAfter = false;
 
   if (isGridView) {
     // In grid view, determine insert position based on mouse position
     const rect = targetCard.getBoundingClientRect();
     const cardCenterX = rect.left + (rect.width / 2);
-    const cardCenterY = rect.top + (rect.height / 2);
 
     // Determine if we should insert before or after the target
     // For grid, we'll use a simple approach: if mouse is in the right half, insert after
-    const insertAfter = e.clientX > cardCenterX;
-
-    // Reorder the apps (same as list view)
-    reorderApps(draggedDeviceId, draggedIname, targetIname, insertAfter);
+    insertAfter = e.clientX > cardCenterX;
   } else {
     // In list view, use the original insert logic
     const rect = targetCard.getBoundingClientRect();
     const midpoint = rect.top + (rect.height / 2);
-    const insertAfter = e.clientY > midpoint;
+    insertAfter = e.clientY > midpoint;
+  }
 
-    // Reorder the apps
+  if (targetDeviceId !== draggedDeviceId) {
+    // Different device - Duplicate!
+    duplicateAppToDevice(draggedDeviceId, draggedIname, targetDeviceId, targetIname, insertAfter);
+  } else {
+    // Same device - Reorder
+    // Don't allow dropping on the same card
+    if (targetIname === draggedIname) {
+      console.log('Drop rejected: same card');
+      return;
+    }
     reorderApps(draggedDeviceId, draggedIname, targetIname, insertAfter);
   }
 
@@ -824,6 +926,43 @@ function extractDeviceIdFromCard(card) {
 function extractInameFromCard(card) {
   // Get the iname from the data attribute
   return card.getAttribute('data-iname');
+}
+
+function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname, insertAfter) {
+  console.log('duplicateAppToDevice called:', { sourceDeviceId, iname, targetDeviceId, targetIname, insertAfter });
+
+  if (!sourceDeviceId || !iname || !targetDeviceId) {
+    console.error('Missing required parameters for duplicateAppToDevice');
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  if (targetIname) {
+    formData.append('target_iname', targetIname);
+  }
+  formData.append('insert_after', insertAfter ? 'true' : 'false');
+
+  fetch(`/${targetDeviceId}/duplicate_from/${sourceDeviceId}/${iname}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to duplicate app to device');
+        alert('Failed to duplicate app to device. Please try again.');
+      } else {
+        console.log('App duplicated successfully to new device');
+        // Refresh the apps list for the TARGET device
+        refreshAppsList(targetDeviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while duplicating the app. Please try again.');
+    });
 }
 
 function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
@@ -870,13 +1009,17 @@ function handleDropZoneDragOver(e) {
   const zone = e.currentTarget;
   const deviceId = zone.getAttribute('data-device-id');
 
-  // Only allow visual feedback for zones from the same device
-  if (!draggedDeviceId || deviceId !== draggedDeviceId) {
+  // Only allow visual feedback for zones if valid drag
+  if (!draggedDeviceId) {
     e.dataTransfer.dropEffect = 'none';
     return;
   }
 
-  e.dataTransfer.dropEffect = 'move';
+  if (deviceId !== draggedDeviceId) {
+    e.dataTransfer.dropEffect = 'copy';
+  } else {
+    e.dataTransfer.dropEffect = 'move';
+  }
 }
 
 function handleDropZoneDragEnter(e) {
@@ -884,8 +1027,8 @@ function handleDropZoneDragEnter(e) {
   const zone = e.currentTarget;
   const deviceId = zone.getAttribute('data-device-id');
 
-  // Only allow dropping on zones from the same device
-  if (draggedDeviceId && deviceId === draggedDeviceId) {
+  // Only allow dropping on zones if valid drag
+  if (draggedDeviceId) {
     zone.classList.add('active');
   } else {
     // Remove any existing visual feedback from invalid targets
@@ -905,8 +1048,8 @@ function handleDropZoneDrop(e) {
   const deviceId = zone.getAttribute('data-device-id');
   const position = zone.getAttribute('data-position');
 
-  // Only allow dropping on zones from the same device
-  if (!draggedDeviceId || deviceId !== draggedDeviceId) {
+  // Only allow dropping on zones if valid drag
+  if (!draggedDeviceId) {
     return;
   }
 
@@ -914,23 +1057,35 @@ function handleDropZoneDrop(e) {
   const container = zone.parentElement;
   const appCards = container.querySelectorAll('.app-card');
 
-  if (appCards.length === 0) {
-    return;
-  }
+  let targetIname = null;
+  let insertAfter = false;
 
-  let targetIname;
-  let insertAfter;
-
-  if (position === 'top') {
-    targetIname = appCards[0].getAttribute('data-iname');
+  if (appCards.length > 0) {
+    if (position === 'top') {
+      targetIname = appCards[0].getAttribute('data-iname');
+      insertAfter = false;
+    } else { // position === 'bottom'
+      targetIname = appCards[appCards.length - 1].getAttribute('data-iname');
+      insertAfter = true;
+    }
+  } else {
+    // Empty list - we are appending to empty device
+    targetIname = null;
     insertAfter = false;
-  } else { // position === 'bottom'
-    targetIname = appCards[appCards.length - 1].getAttribute('data-iname');
-    insertAfter = true;
   }
 
   // Reorder the apps
-  reorderApps(deviceId, draggedIname, targetIname, insertAfter);
+  // Check if cross-device or same device
+  if (deviceId !== draggedDeviceId) {
+    duplicateAppToDevice(draggedDeviceId, draggedIname, deviceId, targetIname, insertAfter);
+  } else {
+    if (appCards.length > 0) {
+      reorderApps(deviceId, draggedIname, targetIname, insertAfter);
+    } else {
+      // Should not happen for same device reorder (cannot be empty if we are dragging an app from it)
+      console.warn("Attempted to reorder in empty device list");
+    }
+  }
 
   // Clean up
   zone.classList.remove('active');
@@ -956,6 +1111,28 @@ function toggleDeviceInfo(button) {
     content.style.maxHeight = '0px';
     if (icon) {
       icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+    }
+  }
+}
+
+function toggleDropdown(id) {
+  var x = document.getElementById(id);
+  if (x.className.indexOf("w3-show") == -1) {
+    x.className += " w3-show";
+  } else {
+    x.className = x.className.replace(" w3-show", "");
+  }
+}
+
+// Close dropdowns when clicking outside
+window.onclick = function (event) {
+  if (!event.target.closest('.w3-dropdown-click')) {
+    var dropdowns = document.getElementsByClassName("w3-dropdown-content");
+    for (var i = 0; i < dropdowns.length; i++) {
+      var openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains('w3-show')) {
+        openDropdown.classList.remove('w3-show');
+      }
     }
   }
 }

@@ -4,11 +4,11 @@
     <!-- Left: Preview Image -->
     <div class="app-preview">
       <div class="app-img">
-        <img src="{{url_for('appwebp', device_id=device.id,iname=app.iname) }}"
-             alt="{{ _('Preview') }}">
+        <img src="{{url_for('appwebp', device_id=device.id,iname=app.iname) }}" alt="{{ _('Preview') }}">
         {% if app.empty_last_render %}
         <div class="inactive-overlay">
-          <span class="inactive-badge-overlay"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ _('INACTIVE') }}</span>
+          <span class="inactive-badge-overlay"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{
+            _('INACTIVE') }}</span>
         </div>
         {% endif %}
       </div>
@@ -20,16 +20,20 @@
         <h3>{{ app.name }}-{{ app.iname }}</h3>
         <div class="app-status">
           {% if device.pinned_app == app.iname %}
-          <span class="status-badge pinned"><i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ _('PINNED') }}</span>
+          <span class="status-badge pinned"><i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ _('PINNED')
+            }}</span>
           {% else %}
-            {% if app.enabled %}
-            <span class="status-badge enabled"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ _('ENABLED') }}</span>
-            {% else %}
-            <span class="status-badge disabled"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ _('DISABLED') }}</span>
-            {% endif %}
+          {% if app.enabled %}
+          <span class="status-badge enabled"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ _('ENABLED')
+            }}</span>
+          {% else %}
+          <span class="status-badge disabled"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{
+            _('DISABLED') }}</span>
+          {% endif %}
           {% endif %}
           {% if app.autopin and (device.pinned_app == app.iname or app.enabled) %}
-          <span class="status-badge autopin"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> {{ _('AUTOPIN') }}</span>
+          <span class="status-badge autopin"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> {{
+            _('AUTOPIN') }}</span>
           {% endif %}
         </div>
       </div>
@@ -55,38 +59,64 @@
         <!-- Primary Actions Row -->
         <div class="app-actions-primary">
           <a class="action w3-button w3-blue w3-round"
-             href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ _('Edit') }}</a>
+            href="{{ url_for('updateapp', device_id=device.id, iname=app.iname) }}"><i class="fa-solid fa-pen-to-square"
+              aria-hidden="true"></i> {{ _('Edit') }}</a>
           <a class="action w3-button w3-blue w3-round"
-             href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=False"><i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ _('Configure') }}</a>
+            href="{{ url_for('configapp', device_id=device.id, iname=app.iname) }}?delete_on_cancel=False"><i
+              class="fa-solid fa-sliders" aria-hidden="true"></i> {{ _('Configure') }}</a>
           <button class="action w3-button w3-blue w3-round"
-                  onclick="previewApp('{{ device.id }}', '{{ app.iname }}', null, this, { previewing: '{{ _('Previewing...') }}', sent: '{{ _('Sent') }}', failed: '{{ _('Failed') }}' })"><i class="fa-solid fa-play" aria-hidden="true"></i> {{ _('Preview') }}</button>
+            onclick="previewApp('{{ device.id }}', '{{ app.iname }}', null, this, { previewing: '{{ _('Previewing...') }}', sent: '{{ _('Sent') }}', failed: '{{ _('Failed') }}' })"><i
+              class="fa-solid fa-play" aria-hidden="true"></i> {{ _('Preview') }}</button>
           <button class="action w3-button w3-green w3-round"
-                  onclick="duplicateApp('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-copy" aria-hidden="true"></i> {{ _('Duplicate') }}</button>
-          <button class="action w3-button w3-red w3-round"
-                  onclick="deleteApp('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
+            onclick="duplicateApp('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-copy"
+              aria-hidden="true"></i> {{ _('Duplicate') }}</button>
+
+          <div style="position: relative; display: inline-block;">
+            <select class="action w3-button w3-indigo w3-round"
+              style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right: 25px; cursor: pointer;"
+              onchange="if(this.value) { duplicateAppToDevice('{{ device.id }}', '{{ app.iname }}', this.value, null, false); this.selectedIndex=0; }">
+              <option value="" disabled selected>{{ _('Copy to...') }}</option>
+              {% for item in devices_with_ui_scales %}
+              {% set target_device = item.device %}
+              {% if target_device.id != device.id %}
+              <option value="{{ target_device.id }}" style="color: black;">{{ target_device.name }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <i class="fa fa-caret-down"
+              style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: white;"></i>
+          </div>
+          <button class="action w3-button w3-red w3-round" onclick="deleteApp('{{ device.id }}', '{{ app.iname }}')"><i
+              class="fa-solid fa-trash" aria-hidden="true"></i> {{ _('Delete') }}</button>
         </div>
 
         <!-- Secondary Actions Row -->
         <div class="app-actions-secondary">
           <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.first %}w3-disabled{% endif %}"
-                  {% if loop.first %}disabled{% endif %}
-                  onclick="{% if not loop.first %}moveApp('{{ device.id }}', '{{ app.iname }}', 'top'){% endif %}"><i class="fa-solid fa-angles-up" aria-hidden="true"></i> {{ _('Top') }}</button>
-          <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.last %}w3-disabled{% endif %}"
-                  {% if loop.last %}disabled{% endif %}
-                  onclick="{% if not loop.last %}moveApp('{{ device.id }}', '{{ app.iname }}', 'bottom'){% endif %}"><i class="fa-solid fa-angles-down" aria-hidden="true"></i> {{ _('Bottom') }}</button>
+            {% if loop.first %}disabled{% endif %}
+            onclick="{% if not loop.first %}moveApp('{{ device.id }}', '{{ app.iname }}', 'top'){% endif %}"><i
+              class="fa-solid fa-angles-up" aria-hidden="true"></i> {{ _('Top') }}</button>
+          <button class="action w3-button w3-blue w3-round app-btn-no-hover {% if loop.last %}w3-disabled{% endif %}" {%
+            if loop.last %}disabled{% endif %}
+            onclick="{% if not loop.last %}moveApp('{{ device.id }}', '{{ app.iname }}', 'bottom'){% endif %}"><i
+              class="fa-solid fa-angles-down" aria-hidden="true"></i> {{ _('Bottom') }}</button>
           {% if device.pinned_app == app.iname %}
           <button class="action w3-button w3-orange w3-round app-btn-no-hover"
-             onclick="togglePin('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-thumbtack-slash" aria-hidden="true"></i> {{ _('Unpin') }}</button>
+            onclick="togglePin('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-thumbtack-slash"
+              aria-hidden="true"></i> {{ _('Unpin') }}</button>
           {% else %}
-            <button class="action w3-button w3-green w3-round app-btn-no-hover"
-               onclick="togglePin('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ _('Pin') }}</button>
-            {% if app.enabled %}
-            <button class="action w3-button w3-orange w3-round app-btn-no-hover"
-               onclick="toggleEnabled('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-pause" aria-hidden="true"></i> {{ _('Disable') }}</button>
-            {% else %}
-            <button class="action w3-button w3-green w3-round app-btn-no-hover"
-               onclick="toggleEnabled('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-play" aria-hidden="true"></i> {{ _('Enable') }}</button>
-            {% endif %}
+          <button class="action w3-button w3-green w3-round app-btn-no-hover"
+            onclick="togglePin('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-thumbtack"
+              aria-hidden="true"></i> {{ _('Pin') }}</button>
+          {% if app.enabled %}
+          <button class="action w3-button w3-orange w3-round app-btn-no-hover"
+            onclick="toggleEnabled('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-pause"
+              aria-hidden="true"></i> {{ _('Disable') }}</button>
+          {% else %}
+          <button class="action w3-button w3-green w3-round app-btn-no-hover"
+            onclick="toggleEnabled('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-play"
+              aria-hidden="true"></i> {{ _('Enable') }}</button>
+          {% endif %}
           {% endif %}
         </div>
       </div>
