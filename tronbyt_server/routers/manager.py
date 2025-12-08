@@ -2546,44 +2546,25 @@ def duplicate_app_to_device(
     original_app = source_device.apps[iname]
 
     # Generate a unique iname for the duplicate on the target device
-    max_attempts = 10
+    max_attempts = 900
     for _i in range(max_attempts):
         new_iname = str(randint(100, 999))
         if new_iname not in target_device.apps:
             break
     else:
         return Response(
-            "Error generating unique ID",
+            "Error generating unique ID: No available IDs in the 100-999 range.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
     # Create a copy of the original app with the new iname
-    duplicated_app = App(
-        name=original_app.name,
-        iname=new_iname,
-        enabled=original_app.enabled,
-        last_render=0,  # Reset render time for new app
-        uinterval=original_app.uinterval,
-        display_time=original_app.display_time,
-        notes=original_app.notes,
-        config=original_app.config.copy(),  # Deep copy the config
-        path=original_app.path,
-        id=original_app.id,
-        empty_last_render=original_app.empty_last_render,
-        render_messages=original_app.render_messages.copy()
-        if original_app.render_messages
-        else [],
-        start_time=original_app.start_time,
-        end_time=original_app.end_time,
-        days=original_app.days.copy() if original_app.days else [],
-        use_custom_recurrence=original_app.use_custom_recurrence,
-        recurrence_type=original_app.recurrence_type,
-        recurrence_interval=original_app.recurrence_interval,
-        recurrence_pattern=original_app.recurrence_pattern,
-        recurrence_start_date=original_app.recurrence_start_date,
-        recurrence_end_date=original_app.recurrence_end_date,
-        pushed=original_app.pushed,
-        order=0,  # Will be set below
+    duplicated_app = original_app.model_copy(
+        deep=True,
+        update={
+            "iname": new_iname,
+            "last_render": 0,  # Reset render time for new app
+            "order": 0,  # Will be set below
+        },
     )
 
     # Logic to insert at correct position in target device

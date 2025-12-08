@@ -62,21 +62,19 @@
                   onclick="previewApp('{{ device.id }}', '{{ app.iname }}', null, this, { previewing: '{{ _('Previewing...') }}', sent: '{{ _('Sent') }}', failed: '{{ _('Failed') }}' })"><i class="fa-solid fa-play" aria-hidden="true"></i> {{ _('Preview') }}</button>
           <button class="action w3-button w3-green w3-round"
                   onclick="duplicateApp('{{ device.id }}', '{{ app.iname }}')"><i class="fa-solid fa-copy" aria-hidden="true"></i> {{ _('Duplicate') }}</button>
-                  
-          <div style="position: relative; display: inline-block;">
-            <select class="action w3-button w3-indigo w3-round"
-              style="-webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right: 25px; cursor: pointer;"
+
+          <div class="copy-to-dropdown">
+            <select class="action w3-button w3-indigo w3-round custom-select"
               onchange="if(this.value) { duplicateAppToDevice('{{ device.id }}', '{{ app.iname }}', this.value, null, false); this.selectedIndex=0; }">
               <option value="" disabled selected>{{ _('Copy to...') }}</option>
               {% for item in devices_with_ui_scales %}
               {% set target_device = item.device %}
               {% if target_device.id != device.id %}
-              <option value="{{ target_device.id }}" style="color: black;">{{ target_device.name }}</option>
+              <option value="{{ target_device.id }}">{{ target_device.name }}</option>
               {% endif %}
               {% endfor %}
             </select>
-            <i class="fa fa-caret-down"
-              style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: white;"></i>
+            <i class="fa fa-caret-down custom-select-arrow"></i>
           </div>
 
           <button class="action w3-button w3-red w3-round"

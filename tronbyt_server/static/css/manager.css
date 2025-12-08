@@ -1133,3 +1133,31 @@ button.action.w3-button {
   text-align: left;
   font-size: 0.9em;
 }
+
+/* Custom dropdown styles for "Copy to..." button */
+.copy-to-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.custom-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 25px !important;
+  /* Ensure space for arrow */
+  cursor: pointer;
+}
+
+.custom-select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: white;
+}
+
+.custom-select option {
+  color: black;
+}
