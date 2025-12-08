@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/static/css/configapp-simple.css">
 <link rel="stylesheet" href="/static/css/updateapp-simple.css">
 <script src="/static/js/location.js"></script>
+
 <h1>{{ t .Localizer "Configuring" }} {{ .App.Iname }} ({{ .App.Name }})</h1>
 {{ end }}
 
@@ -280,24 +281,115 @@
           <h4>{{ t .Localizer "Weekly Options" }}</h4>
           <label for="weekdays">{{ t .Localizer "Active Days" }}</label>
           <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
-          <!-- Simplified checkbox list for now, reusing days logic if possible or separate field -->
-          <!-- The backend expects 'days' for weekly recurrence too usually, or 'weekdays' -->
           <div style="margin-top: 10px;">
-             <!-- Implement checkboxes for weekdays similar to legacy schedule -->
+            {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
+            {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="monday" {{ if or (contains $weekdays "monday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Monday" }}
+            </label>
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="tuesday" {{ if or (contains $weekdays "tuesday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Tuesday" }}
+            </label>
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="wednesday" {{ if or (contains $weekdays "wednesday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Wednesday" }}
+            </label>
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="thursday" {{ if or (contains $weekdays "thursday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Thursday" }}
+            </label>
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="friday" {{ if or (contains $weekdays "friday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Friday" }}
+            </label>
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="saturday" {{ if or (contains $weekdays "saturday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Saturday" }}
+            </label>
+            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
+              <input type="checkbox" name="weekdays" value="sunday" {{ if or (contains $weekdays "sunday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Sunday" }}
+            </label>
           </div>
         </div>
 
         <!-- Monthly Options -->
         <div id="monthly_options" style="display: none; margin-top: 20px;">
           <h4>{{ t .Localizer "Monthly Options" }}</h4>
-          <!-- Implement Monthly Pattern logic -->
+
+          <table class="form-table">
+            <!-- Monthly Pattern -->
+            <tr>
+              <td>
+                <label for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
+                <small>{{ t .Localizer "Choose how to specify the monthly occurrence" }}</small>
+              </td>
+              <td>
+                <select name="monthly_pattern" id="monthly_pattern" class="form-control">
+                  {{ $dom := index .App.RecurrencePattern "day_of_month" }}
+                  {{ $dow := index .App.RecurrencePattern "day_of_week" }}
+                  {{ $current_pattern := "day_of_month" }}
+                  {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
+                  <option value="day_of_month" {{ if eq $current_pattern "day_of_month" }} selected {{ end }}>{{ t .Localizer "Day of Month" }}</option>
+                  <option value="day_of_week" {{ if eq $current_pattern "day_of_week" }} selected {{ end }}>{{ t .Localizer "Day of Week" }}</option>
+                </select>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Day of Month Option -->
+          <div id="day_of_month_option">
+            <table class="form-table">
+              <tr>
+                <td>
+                  <label for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
+                  <small>{{ t .Localizer "Which day of the month (1-31)" }}</small>
+                </td>
+                <td>
+                  <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="form-control"
+                    value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Day of Week Option -->
+          <div id="day_of_week_option" style="display: none;">
+            <table class="form-table">
+              <tr>
+                <td>
+                  <label for="day_of_week_pattern">{{ t .Localizer "Day of Week Pattern" }}</label>
+                  <small>{{ t .Localizer "Which occurrence of which day" }}</small>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <select name="week_occurrence" id="week_occurrence" class="form-control">
+                        <option value="first">{{ t .Localizer "First" }}</option>
+                        <option value="second">{{ t .Localizer "Second" }}</option>
+                        <option value="third">{{ t .Localizer "Third" }}</option>
+                        <option value="fourth">{{ t .Localizer "Fourth" }}</option>
+                        <option value="last">{{ t .Localizer "Last" }}</option>
+                    </select>
+                    <select name="week_day" id="week_day" class="form-control">
+                        <option value="monday">{{ t .Localizer "Monday" }}</option>
+                        <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
+                        <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
+                        <option value="thursday">{{ t .Localizer "Thursday" }}</option>
+                        <option value="friday">{{ t .Localizer "Friday" }}</option>
+                        <option value="saturday">{{ t .Localizer "Saturday" }}</option>
+                        <option value="sunday">{{ t .Localizer "Sunday" }}</option>
+                    </select>
+                    <!-- Hidden input to combine the values for form submission -->
+                    <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="{{ if $dow }}{{ $dow }}{{ end }}">
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
         </div>
       </div>
 
     <div class="button-container">
         <button type="submit" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}</button>
         <button type="button" class="w3-button w3-blue w3-round" id="resetButton"><i class="fa-solid fa-rotate-left"></i> {{ t .Localizer "Reset" }}</button>
+        {{ if eq .Device.Info.ProtocolType "WS" }}
         <button type="button" class="w3-button w3-blue w3-round" id="previewButton"><i class="fa-solid fa-eye"></i> {{ t .Localizer "Preview" }}</button>
+        {{ end }}
         <button type="button" class="w3-button w3-red w3-round" id="cancelButton"><i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}</button>
         <button type="button" class="w3-button w3-red w3-round" id="deleteButton" onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)"><i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}</button>
     </div>
@@ -323,6 +415,36 @@
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
     </div>
 
+    <!-- Disable App -->
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--danger-text);">{{ t .Localizer "Disable App" }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}' \
+  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+    </div>
+
+    <!-- Pin App -->
+    <div style="margin-bottom: 20px;">
+      <h3>{{ t .Localizer "Pin App" }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"pinnedApp": "{{ .App.Iname }}"}' \
+  /v0/devices/{{ .Device.ID }}</pre>
+    </div>
+
+    <!-- Unpin App -->
+    <div style="margin-bottom: 20px;">
+      <h3 style="color: var(--danger-text);">{{ t .Localizer "Unpin App" }}</h3>
+      <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"pinnedApp": ""}' \
+  /v0/devices/{{ .Device.ID }}</pre>
+    </div>
+
     <small>
       <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
     </small>
@@ -332,7 +454,7 @@
 <script>
   // Make the schema and config objects available to JavaScript
   const schema = {{ .Schema }};
-  const config = {{ .AppConfig | json }};
+  const config = {{ .AppConfig | json }} || {};
   const deleteOnCancel = {{ .DeleteOnCancel }};
 
   // Device Location
@@ -406,25 +528,21 @@
     const configContentPre = document.getElementById("configContentPre");
     const previewImage = document.getElementById("previewImage");
     if (configContentPre) configContentPre.textContent = JSON.stringify(config, null, 2);
-    // Reload the preview image to reflect updated config - uses POST to update ephemeral preview
-    // Actually, simple GET preview doesn't support inline config param easily unless backend supports it.
-    // The Go backend supports POST /devices/{id}/{iname}/preview with JSON body.
-    // We can't set that as img src.
-    // We need to fetch and blob it.
 
-    // For now, let's rely on the explicit "Preview" button or implement fetch logic.
-    // Implementing fetch logic:
-    /*
-    fetch(`/devices/{{ .Device.ID }}/{{ .App.Iname }}/preview`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-    }).then(...)
-    */
-    // The preview endpoint updates the pushed/preview image state.
-    // So we can just trigger it, and if it succeeds, reload the image?
-    // Or simpler: The user clicks "Preview" button to see changes.
-  }, 100);
+    // Trigger backend preview (POST to update ephemeral, then GET with config param)
+    previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', config, null, null)
+    .then(() => {
+         // Refresh image with cache busting AND pass current config as query param
+         if(previewImage) {
+             const currentSrc = previewImage.src.split('?')[0];
+             const encodedConfig = encodeURIComponent(JSON.stringify(config));
+             previewImage.src = `${currentSrc}?config=${encodedConfig}&t=${new Date().getTime()}`;
+             // Note: The 'load' event listener below will handle hiding the skeleton
+             // when the new image is actually loaded.
+             previewImage.classList.remove('loaded'); // Reset to show skeleton during load
+         }
+    });
+  }, 500);
 
   // Centralized config update handler
   function handleConfigUpdate(event) {
@@ -443,6 +561,8 @@
     if (target.type === "checkbox") {
       config[configId] = target.checked ? "true" : "false";
     } else if (target.type === "select-one") {
+      config[configId] = target.value;
+    } else if (target.type === "color") {
       config[configId] = target.value;
     } else if (target.type === "datetime-local") {
       config[configId] = new Date(target.value).toISOString();
@@ -466,7 +586,14 @@
       const label = document.createElement("label");
       const inputId = "schema_" + field.id;
       label.htmlFor = inputId;
-      label.textContent = field.name;
+      // Icon handling if available in schema
+      if (field.icon) {
+          const icon = document.createElement("i");
+          icon.className = `fa fa-${field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
+          label.appendChild(icon);
+          label.appendChild(document.createTextNode(" "));
+      }
+      label.appendChild(document.createTextNode(field.name));
       labelCell.appendChild(label);
       if (field.description) {
           labelCell.appendChild(document.createElement("br"));
@@ -487,16 +614,33 @@
           inputElement.value = config[field.id] || field.default || "";
           inputElement.className = "form-control";
           break;
+        case "color":
+          inputElement = document.createElement("input");
+          inputElement.type = "color";
+          inputElement.value = config[field.id] || field.default || "#000000";
+          inputElement.className = "form-control form-control-color";
+          if (field.palette) {
+              const div = createColorPaletteButtons(field, inputElement);
+              inputCell.appendChild(div);
+          }
+          break;
         case "onoff":
           inputElement = document.createElement("input");
           inputElement.type = "checkbox";
-          // Check explicit 'true' string or boolean true
           const val = config[field.id];
           const isChecked = val === "true" || val === true || (!val && field.default === "true");
           inputElement.checked = isChecked;
           inputElement.className = "form-control";
-          // Initialize config state
           config[field.id] = isChecked ? "true" : "false";
+          break;
+        case "datetime":
+          inputElement = document.createElement("input");
+          inputElement.type = "datetime-local";
+          inputElement.value = (config[field.id] || field.default || "").replace("Z", "");
+          inputElement.className = "form-control";
+          if (!config[field.id] && field.default) {
+            config[field.id] = field.default;
+          }
           break;
         case "dropdown":
           inputElement = document.createElement("select");
@@ -510,11 +654,22 @@
                inputElement.appendChild(o);
             });
           }
-          // Set default if empty
           if (!config[field.id] && field.default) {
               inputElement.value = field.default;
               config[field.id] = field.default;
           }
+          break;
+        case "location":
+          inputElement = createLocationField(field, config);
+          break;
+        case "locationbased":
+          inputElement = createLocationBasedField(field, config);
+          break;
+        case "png":
+          inputElement = createImageUploadField(field, config);
+          break;
+        case "typeahead":
+          inputElement = createTypeaheadField(field, config);
           break;
         default:
           inputElement = document.createElement("input");
@@ -526,8 +681,36 @@
           inputElement.id = inputId;
           inputElement.dataset.configId = field.id;
           const eventType = (inputElement.type === 'checkbox' || inputElement.tagName === 'SELECT') ? 'change' : 'input';
-          inputElement.addEventListener(eventType, handleConfigUpdate);
-          inputCell.appendChild(inputElement);
+
+          if (!inputElement.hasAttribute("data-ignore-config")) {
+             inputElement.addEventListener(eventType, handleConfigUpdate);
+          }
+
+          let elementToAppend = inputElement;
+
+          if (field.type === "text" && field.secret) {
+              const secretContainer = document.createElement("div");
+              secretContainer.className = "secret-input-container";
+
+              const toggleButton = document.createElement("button");
+              toggleButton.type = "button";
+              toggleButton.className = "secret-toggle-button";
+
+              const icon = document.createElement("i");
+              icon.className = "fa fa-eye";
+              toggleButton.appendChild(icon);
+
+              toggleButton.addEventListener("click", () => {
+                  inputElement.type = inputElement.type === "password" ? "text" : "password";
+                  icon.className = inputElement.type === "password" ? "fa fa-eye-slash" : "fa fa-eye";
+              });
+
+              secretContainer.appendChild(inputElement);
+              secretContainer.appendChild(toggleButton);
+              elementToAppend = secretContainer;
+          }
+
+          inputCell.appendChild(elementToAppend);
       }
       row.appendChild(inputCell);
       rows.push(row);
@@ -535,9 +718,413 @@
     return rows;
   }
 
+  function createGeneratedFormFields(schema, config) {
+    if (!schema || !schema.schema) {
+      return;
+    }
+
+    schema.schema
+      .filter(field => field.type === "generated")
+      .forEach(field => createGeneratedField(field, config));
+  }
+
+  function createLocationSearchElements(field, config) {
+    const container = document.createElement("div");
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.id = `${field.id}_search`;
+    searchInput.placeholder = "{{ t .Localizer "Enter a location" }}";
+    searchInput.setAttribute("data-ignore-config", "true");
+    searchInput.className = "form-control";
+
+    container.appendChild(searchInput);
+
+    const resultsList = document.createElement("ul");
+    resultsList.id = `${field.id}_results`;
+    resultsList.style.listStyleType = "none";
+    resultsList.style.padding = "0";
+    container.appendChild(resultsList);
+
+    return { container, searchInput, resultsList };
+  }
+
+  function createLocationField(field, config) {
+    const { container, searchInput, resultsList } = createLocationSearchElements(field);
+
+    let initialLocationJsonString = config[field.id] || (deviceLocation !== null ? JSON.stringify(deviceLocation) : undefined) || field.default || "{}";
+    if (typeof initialLocationJsonString !== 'string') {
+      initialLocationJsonString = JSON.stringify(initialLocationJsonString);
+    }
+
+    try {
+      const parsedLoc = JSON.parse(initialLocationJsonString);
+      if (parsedLoc && parsedLoc.description) {
+        searchInput.value = parsedLoc.description;
+      } else {
+        searchInput.value = "";
+      }
+    } catch (e) {
+      console.warn("Could not parse initial location", e);
+      searchInput.value = "";
+    }
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = "schema_" + field.id;
+    hiddenInput.dataset.configId = field.id;
+    hiddenInput.name = field.id;
+    hiddenInput.value = initialLocationJsonString;
+    container.appendChild(hiddenInput);
+
+    enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
+      // location is a JSON string
+      try {
+          config[field.id] = JSON.parse(location);
+      } catch (e) {
+          config[field.id] = location;
+      }
+      updateConfigAndPreview();
+    });
+
+    return container;
+  }
+
+  function createLocationBasedField(field, config) {
+    const { container, searchInput, resultsList } = createLocationSearchElements(field);
+
+    if (deviceLocation) {
+        if (deviceLocation.description) {
+            searchInput.value = deviceLocation.description;
+        }
+    } else {
+        searchInput.value = "";
+    }
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = `${field.id}_location`;
+    hiddenInput.name = `${field.id}_location`;
+    hiddenInput.value = JSON.stringify(deviceLocation);
+    hiddenInput.setAttribute("data-ignore-config", "true");
+    container.appendChild(hiddenInput);
+
+    const dropdown = document.createElement("select");
+    dropdown.id = "schema_" + field.id;
+    dropdown.dataset.configId = field.id;
+    dropdown.name = field.id;
+    dropdown.className = "form-control";
+    container.appendChild(dropdown);
+
+    dropdown.addEventListener("change", handleConfigUpdate);
+
+    enableLocationSearch(searchInput, resultsList, hiddenInput, async locationQueryJson => {
+      const currentOptionJsonString = JSON.stringify(config[field.id]);
+      await fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString);
+    });
+
+    if (deviceLocation) {
+      const currentOptionJsonString = JSON.stringify(config[field.id]);
+      fetchOptionsForLocation(field, JSON.stringify(deviceLocation), dropdown, currentOptionJsonString);
+    }
+
+    return container;
+  }
+
+  function createImageUploadField(field, config) {
+    const container = document.createElement("div");
+
+    const uploadLabel = document.createElement("label");
+    uploadLabel.htmlFor = `${field.id}_upload`;
+    uploadLabel.textContent = "{{ t .Localizer "Upload Image" }}";
+    container.appendChild(uploadLabel);
+
+    const uploadInput = document.createElement("input");
+    uploadInput.type = "file";
+    uploadInput.id = `${field.id}_upload`;
+    uploadInput.setAttribute("data-ignore-config", "true");
+    uploadInput.accept = "image/png, image/jpeg, image/gif, image/svg+xml, image/webp";
+    container.appendChild(uploadInput);
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = "schema_" + field.id;
+    hiddenInput.dataset.configId = field.id;
+    hiddenInput.name = field.id;
+    hiddenInput.value = config[field.id] || "";
+    container.appendChild(hiddenInput);
+
+    const previewImage = document.createElement("img");
+    previewImage.id = `${field.id}_preview`;
+    previewImage.src = config[field.id] ? `data:image/png;base64,${config[field.id]}` : "";
+    previewImage.alt = "{{ t .Localizer "Preview" }}";
+    previewImage.style.maxWidth = "100%";
+    previewImage.style.height = "auto";
+    previewImage.style.marginTop = "10px";
+    previewImage.style.display = config[field.id] ? "inline" : "none";
+    container.appendChild(previewImage);
+
+    uploadInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const maxSize = 500 * 1024;
+      if (file.size > maxSize) {
+        alert("{{ t .Localizer "File size exceeds 500KB limit. Please upload a smaller image." }}");
+        uploadInput.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const base64Data = e.target.result.split(",")[1];
+        hiddenInput.value = base64Data;
+        previewImage.src = e.target.result;
+        previewImage.style.display = "inline";
+        config[field.id] = base64Data;
+        updateConfigAndPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    return container;
+  }
+
+  function createTypeaheadField(field, config) {
+    let inputElement = document.createElement("div");
+
+    const typeaheadInput = document.createElement("input");
+    typeaheadInput.type = "text";
+    typeaheadInput.id = `${field.id}_typeahead`;
+    typeaheadInput.setAttribute("data-ignore-config", "true");
+    typeaheadInput.placeholder = "{{ t .Localizer "Start typing..." }}";
+    typeaheadInput.className = "form-control";
+    inputElement.appendChild(typeaheadInput);
+
+    const hiddenTypeaheadInput = document.createElement("input");
+    hiddenTypeaheadInput.type = "hidden";
+    hiddenTypeaheadInput.id = "schema_" + field.id;
+    hiddenTypeaheadInput.dataset.configId = field.id;
+    hiddenTypeaheadInput.name = field.id;
+    hiddenTypeaheadInput.value = JSON.stringify(config[field.id] || {});
+    inputElement.appendChild(hiddenTypeaheadInput);
+
+    const typeaheadResults = document.createElement("ul");
+    typeaheadResults.id = `${field.id}_results`;
+    typeaheadResults.style.listStyleType = "none";
+    typeaheadResults.style.padding = "0";
+    typeaheadResults.style.margin = "0";
+    typeaheadResults.style.border = "1px solid #ccc";
+    typeaheadResults.style.maxHeight = "150px";
+    typeaheadResults.style.overflowY = "auto";
+    typeaheadResults.style.display = "none";
+    inputElement.appendChild(typeaheadResults);
+
+    typeaheadInput.addEventListener("input", async function () {
+      const query = typeaheadInput.value.trim();
+      if (!query) {
+        typeaheadResults.style.display = "none";
+        typeaheadResults.innerHTML = "";
+        return;
+      }
+
+      try {
+        const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
+        const response = await fetch(handlerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: field.id, param: query, config: config })
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch typeahead options");
+
+        const options = await response.json();
+        typeaheadResults.innerHTML = "";
+
+        options.forEach(option => {
+          const listItem = document.createElement("li");
+          listItem.textContent = option.display;
+          listItem.style.cursor = "pointer";
+          listItem.style.padding = "5px";
+          listItem.addEventListener("click", () => {
+            typeaheadInput.value = option.display;
+            hiddenTypeaheadInput.value = JSON.stringify(option);
+            typeaheadResults.style.display = "none";
+            typeaheadResults.innerHTML = "";
+            config[field.id] = option;
+            updateConfigAndPreview();
+          });
+          typeaheadResults.appendChild(listItem);
+        });
+        typeaheadResults.style.display = "block";
+      } catch (error) {
+        console.error("Error fetching typeahead options:", error);
+      }
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!inputElement.contains(event.target)) {
+        typeaheadResults.style.display = "none";
+      }
+    });
+    return inputElement;
+  }
+
+  function createGeneratedField(field, config) {
+    const sourceField = document.getElementById("schema_" + field.source);
+    if (!sourceField) {
+      console.warn(`Source field with id "schema_${field.source}" not found for generated field "${field.id}"`);
+      return;
+    }
+
+    const updateGeneratedFields = async () => {
+      const sourceValue = sourceField.value;
+      try {
+        const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
+        const response = await fetch(handlerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: field.id, param: sourceValue, config: config })
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch generated fields");
+
+        const generatedFields = await response.json();
+
+        // Clear existing rows
+        const existingRows = document.querySelectorAll(`[data-generated-field="${field.id}"]`);
+        existingRows.forEach(row => row.remove());
+
+        // Note: generatedFields is a full schema object with a 'schema' array
+        const generatedInput = createFormFields(generatedFields, config);
+        const formTable = document.getElementById("schemaConfigContainer");
+        generatedInput.forEach(row => {
+          row.setAttribute("data-generated-field", field.id);
+          formTable.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Error fetching generated fields:", error);
+      }
+    };
+
+    // Need to bind to correct event
+    const eventType = (sourceField.type === 'checkbox' || sourceField.tagName === 'SELECT') ? 'change' : 'input';
+    sourceField.addEventListener(eventType, updateGeneratedFields);
+
+    updateGeneratedFields();
+  }
+
+  function createColorPaletteButtons(field, inputElement) {
+    const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
+    const div = document.createElement('div');
+    div.className = 'palette';
+    if(field.palette) {
+        field.palette.forEach(color => {
+            if (!hexColorRegex.test(color)) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w3-button';
+            btn.style.setProperty('--color', color);
+            btn.style.backgroundColor = color; // Fallback
+            btn.style.width = '20px';
+            btn.style.height = '20px';
+            btn.style.margin = '2px';
+            btn.addEventListener('click', () => {
+                if (color.length === 4) {
+                    color = '#' + [...color.slice(1)].map(c => c + c).join('');
+                }
+                inputElement.value = color;
+                inputElement.dispatchEvent(new Event('input'));
+            })
+            div.appendChild(btn);
+        });
+    }
+    return div;
+  }
+
+  async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
+    try {
+      const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
+      const response = await fetch(handlerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: field.id, param: locationQueryJson, config: config })
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch options");
+
+      const options = await response.json();
+      dropdown.innerHTML = "";
+
+      let selectedIndex = 0;
+      let currentOptionFromConfig = null;
+
+      if (typeof currentOptionJsonString === 'string' && currentOptionJsonString !== 'undefined') {
+        try {
+          currentOptionFromConfig = JSON.parse(currentOptionJsonString);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (options && options.length > 0) {
+        options.forEach((option, index) => {
+          const opt = document.createElement("option");
+          opt.value = JSON.stringify(option);
+          opt.textContent = option.display;
+          dropdown.appendChild(opt);
+
+          if (currentOptionFromConfig && JSON.stringify(option) === JSON.stringify(currentOptionFromConfig)) {
+            selectedIndex = index;
+          }
+        });
+        dropdown.selectedIndex = selectedIndex;
+      } else {
+        const noOpt = document.createElement("option");
+        noOpt.textContent = "{{ t .Localizer "No options available for this location" }}";
+        noOpt.value = "";
+        noOpt.disabled = true;
+        dropdown.appendChild(noOpt);
+      }
+      dropdown.dispatchEvent(new Event("change"));
+    } catch (error) {
+      console.error(`Error fetching options for field ${field.id}:`, error);
+      dropdown.innerHTML = "";
+      const errOpt = document.createElement("option");
+      errOpt.textContent = "{{ t .Localizer "Error loading options" }}";
+      errOpt.value = "";
+      errOpt.disabled = true;
+      dropdown.appendChild(errOpt);
+    }
+  }
+
   // Recurrence Logic
   function initializeRecurrenceOptions() {
     toggleCustomRecurrence();
+
+    const monthlyPatternSelect = document.getElementById("monthly_pattern");
+    if (monthlyPatternSelect) {
+      monthlyPatternSelect.addEventListener("change", toggleMonthlyPatternOptions);
+      toggleMonthlyPatternOptions();
+    }
+
+    const weekOccurrenceSelect = document.getElementById("week_occurrence");
+    const weekDaySelect = document.getElementById("week_day");
+    if (weekOccurrenceSelect && weekDaySelect) {
+      weekOccurrenceSelect.addEventListener("change", updateDayOfWeekPattern);
+      weekDaySelect.addEventListener("change", updateDayOfWeekPattern);
+
+      // Initialize if value exists
+      const hiddenPattern = document.getElementById("day_of_week_pattern");
+      if(hiddenPattern && hiddenPattern.value) {
+          const parts = hiddenPattern.value.split('_');
+          if(parts.length === 2) {
+              weekOccurrenceSelect.value = parts[0];
+              weekDaySelect.value = parts[1];
+          }
+      }
+      updateDayOfWeekPattern();
+    }
   }
 
   function toggleCustomRecurrence() {
@@ -556,10 +1143,44 @@
   }
 
   function toggleRecurrenceOptions() {
-    // Basic implementation
     const type = document.getElementById("recurrence_type").value;
-    document.getElementById("weekly_options").style.display = type === 'weekly' ? 'block' : 'none';
-    document.getElementById("monthly_options").style.display = type === 'monthly' ? 'block' : 'none';
+    const weeklyOptions = document.getElementById("weekly_options");
+    const monthlyOptions = document.getElementById("monthly_options");
+    const intervalUnit = document.getElementById("interval_unit");
+
+    weeklyOptions.style.display = type === 'weekly' ? 'block' : 'none';
+    monthlyOptions.style.display = type === 'monthly' ? 'block' : 'none';
+
+    switch (type) {
+      case "daily": intervalUnit.textContent = "{{ t .Localizer "days" }}"; break;
+      case "weekly": intervalUnit.textContent = "{{ t .Localizer "weeks" }}"; break;
+      case "monthly": intervalUnit.textContent = "{{ t .Localizer "months" }}"; break;
+      case "yearly": intervalUnit.textContent = "{{ t .Localizer "years" }}"; break;
+    }
+  }
+
+  function toggleMonthlyPatternOptions() {
+    const monthlyPattern = document.getElementById("monthly_pattern").value;
+    const dayOfMonthOption = document.getElementById("day_of_month_option");
+    const dayOfWeekOption = document.getElementById("day_of_week_option");
+
+    if (monthlyPattern === "day_of_month") {
+      dayOfMonthOption.style.display = "block";
+      dayOfWeekOption.style.display = "none";
+    } else {
+      dayOfMonthOption.style.display = "none";
+      dayOfWeekOption.style.display = "block";
+    }
+  }
+
+  function updateDayOfWeekPattern() {
+    const occurrence = document.getElementById("week_occurrence").value;
+    const day = document.getElementById("week_day").value;
+    const hiddenField = document.getElementById("day_of_week_pattern");
+
+    if (occurrence && day) {
+      hiddenField.value = occurrence + "_" + day;
+    }
   }
 
   function deleteApp(deviceId, iname, deleteOnCancel) {
@@ -574,6 +1195,17 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    const previewImage = document.getElementById('previewImage');
+    if (previewImage) {
+        previewImage.addEventListener('load', () => {
+            previewImage.classList.add('loaded');
+        });
+        // Handle cached images
+        if (previewImage.complete) {
+            previewImage.classList.add('loaded');
+        }
+    }
+
     const form = document.getElementById("dynamicForm");
     const formTable = document.getElementById("schemaConfigContainer");
 
@@ -583,12 +1215,18 @@
       formTable.appendChild(row);
     });
 
+    // Create generated fields
+    createGeneratedFormFields(schema, config);
+
     initializeToggleButtons();
     initializeRecurrenceOptions();
     updateConfigAndPreview();
 
     form.addEventListener("submit", function (event) {
       event.preventDefault();
+
+      const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
+      const weekdays = Array.from(document.querySelectorAll('input[name="weekdays"]:checked')).map(cb => cb.value);
 
       // Collect settings
       const settings = {
@@ -597,12 +1235,39 @@
           uinterval: parseInt(document.getElementById('uinterval').value),
           display_time: parseInt(document.getElementById('display_time').value),
           notes: document.getElementById('notes').value,
+          start_time: document.getElementById('start_time').value,
+          end_time: document.getElementById('end_time').value,
+          color_filter: document.getElementById('color_filter').value,
+          days: days,
+
           use_custom_recurrence: document.getElementById('use_custom_recurrence').checked,
           recurrence_type: document.getElementById('recurrence_type').value,
           recurrence_interval: parseInt(document.getElementById('recurrence_interval').value),
-          // ... other recurrence fields
+          recurrence_start_date: document.getElementById('recurrence_start_date').value,
+          recurrence_end_date: document.getElementById('recurrence_end_date').value,
+          weekdays: weekdays,
+
+          // Monthly pattern construction
+          monthly_pattern: document.getElementById('monthly_pattern') ? document.getElementById('monthly_pattern').value : null,
+          day_of_month: document.getElementById('day_of_month') ? parseInt(document.getElementById('day_of_month').value) : null,
+          day_of_week_pattern: document.getElementById('day_of_week_pattern') ? document.getElementById('day_of_week_pattern').value : null,
+
           config: config
       };
+
+      // Construct recurrence_pattern object
+      if (settings.use_custom_recurrence) {
+         settings.recurrence_pattern = {};
+         if (settings.recurrence_type === 'weekly') {
+             settings.recurrence_pattern.weekdays = weekdays;
+         } else if (settings.recurrence_type === 'monthly') {
+             if (settings.monthly_pattern === 'day_of_month') {
+                 settings.recurrence_pattern.day_of_month = settings.day_of_month;
+             } else {
+                 settings.recurrence_pattern.day_of_week = settings.day_of_week_pattern;
+             }
+         }
+      }
 
       fetch(window.location.href, {
         method: 'POST',

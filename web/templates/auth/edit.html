@@ -164,17 +164,27 @@
         <div style="margin-top: 10px;">
             <ul class="w3-ul w3-hoverable" style="border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
                 {{ range .User.Credentials }}
-                <li style="display: flex; align-items: center; gap: 10px; padding: 8px;">
-                    <i class="fa-solid fa-key"></i>
-                    <span>{{ .Authenticator }} ({{ .AttestationType }})</span>
+                <li style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-key"></i>
+                        <span>{{ .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
+                    </div>
+                    <button onclick="deletePasskey('{{ .ID }}')" class="w3-button w3-tiny w3-red w3-round" title="{{ t $.Localizer "Delete Passkey" }}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </li>
                 {{ else }}
                 <li style="padding: 8px; color: #888;">{{ t .Localizer "No passkeys registered." }}</li>
                 {{ end }}
             </ul>
-            <button onclick="registerPasskey()" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;">
+            <button onclick="registerPasskey()" class="w3-button w3-blue" style="padding: 8px 16px; font-size: 14px;" {{ if gt (len .User.Credentials) 0 }}disabled title="{{ t .Localizer "Only one passkey allowed" }}"{{ end }}>
                 <i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
             </button>
+            {{ if gt (len .User.Credentials) 0 }}
+            <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                <i class="fa-solid fa-circle-info"></i> {{ t .Localizer "Only one passkey can be registered at a time. Delete the existing one to add a new device." }}
+            </div>
+            {{ end }}
         </div>
     </div>
 </div>
@@ -189,6 +199,23 @@
             .replace(/\+/g, "-")
             .replace(/\//g, "_")
             .replace(/=/g, "");
+    }
+
+    async function deletePasskey(id) {
+        if (!confirm('{{ t .Localizer "Delete this passkey?" }}')) return;
+        try {
+            const resp = await fetch('/auth/webauthn/delete/' + encodeURIComponent(id), {
+                method: 'POST'
+            });
+            if (resp.ok) {
+                location.reload();
+            } else {
+                alert("{{ t .Localizer "Failed to delete passkey" }}");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error: " + e.message);
+        }
     }
 
     async function registerPasskey() {

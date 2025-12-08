@@ -212,26 +212,28 @@
 
             <div id="custom_brightness_inputs" style="{{ if eq .Device.CustomBrightnessScale "" }}display: none;{{ end }}">
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 10px;">
+                {{ $scaleValues := slice }}
+                {{ if ne .Device.CustomBrightnessScale "" }}
+                  {{ $scaleValues = split .Device.CustomBrightnessScale "," }}
+                {{ end }}
+                {{ $defaultScale := slice "0" "3" "5" "12" "35" "100" }}
+                {{ range $i := seq 0 5 }}
                 <div style="display: flex; align-items: center; gap: 8px;">
-                   <!-- Placeholder for logic to split string in JS or backend. -->
-                   <!-- For now, just a text input for simplicity or better UI later -->
-                   <!-- Implementing simpler input for now since splitting in template is hard without helper -->
-                   <label>{{ t .Localizer "Scale (comma separated)" }}:</label>
-                   <input type="text" name="custom_brightness_scale" id="custom_brightness_scale_input"
-                          value="{{ .Device.CustomBrightnessScale }}"
-                          placeholder="0, 3, 5, 12, 35, 100"
-                          class="device-settings-input" style="width: 100%;">
+                   <label style="font-weight: bold; min-width: 60px;">{{ t $.Localizer "Level" }} {{ $i }}:</label>
+                   <input type="number" name="brightness_level_{{ $i }}" id="brightness_level_{{ $i }}"
+                          value="{{ if lt $i (len $scaleValues) }}{{ index $scaleValues $i | trim }}{{ else }}{{ index $defaultScale $i }}{{ end }}"
+                          min="0" max="100" step="1"
+                          class="device-settings-input" style="width: 80px; padding: 4px 8px;">
                 </div>
+                {{ end }}
               </div>
               <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
                 {{ t .Localizer "Each value should be between 0-100. Higher levels should generally have higher values." }}
-                <br>
-                {{ t .Localizer "Invalid custom brightness scale format. Use 6 comma-separated values (0-100)." }}
               </div>
             </div>
 
-            <!-- Hidden input if we used individual inputs, but using single input for now -->
-            <!-- <input type="hidden" name="custom_brightness_scale" id="custom_brightness_scale_hidden" value="{{ .Device.CustomBrightnessScale }}"> -->
+            <!-- Hidden input to store the comma-separated scale -->
+            <input type="hidden" name="custom_brightness_scale" id="custom_brightness_scale_hidden" value="{{ .Device.CustomBrightnessScale }}">
 
             <div style="font-size: 0.85em; color: #666; margin-top: 10px; padding: 5px; background-color: #f5f5f5; border-radius: 3px;">
               <strong>{{ t .Localizer "Default system scale" }}</strong>:
@@ -416,7 +418,7 @@
         </td>
         <td>
           <input type="text" id="location_search" placeholder="{{ t .Localizer "Enter a location" }}"
-            value="{{ if .Device.Location }}{{ index .Device.Location "description" }}{{ end }}" class="device-settings-input">
+            value="{{ if .Device.Location }}{{ .Device.Location.Description }}{{ end }}" class="device-settings-input">
           <ul id="location_results"></ul>
           <input type="hidden" name="location" id="location"
             value='{{ if .Device.Location }}{{ json .Device.Location }}{{ else }}{{ "{}" }}{{ end }}'>
@@ -554,6 +556,25 @@
 
   <script>
     function saveDeviceForm() {
+      // Update the hidden custom brightness scale field before submitting
+      const useCustomScaleCheckbox = document.getElementById('use_custom_brightness_scale');
+      const hiddenInput = document.getElementById('custom_brightness_scale_hidden');
+
+      if (useCustomScaleCheckbox && useCustomScaleCheckbox.checked) {
+        const values = [];
+        for (let i = 0; i < 6; i++) {
+          const input = document.getElementById('brightness_level_' + i);
+          if (input) {
+            values.push(input.value);
+          }
+        }
+        if (hiddenInput) {
+            hiddenInput.value = values.join(',');
+        }
+      } else if (hiddenInput) {
+        hiddenInput.value = '';
+      }
+
       // Submit the form
       document.getElementById('device-form').submit();
     }

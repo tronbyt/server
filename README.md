@@ -61,7 +61,7 @@ If you are upgrading from the Python version (v1.x) and using the default SQLite
 **Configuration:**
 
 The server can be configured via environment variables or `.env` file:
-*   `TRONBYT_HOST`: Listen address (default: `0.0.0.0` / all interfaces).
+*   `TRONBYT_HOST`: Listen address (default: empty / all interfaces).
 *   `TRONBYT_PORT`: Listen port (default: `8000`).
 *   `TRONBYT_UNIX_SOCKET`: Path to Unix socket to listen on (optional).
 *   `TRONBYT_SSL_KEYFILE` & `TRONBYT_SSL_CERTFILE`: Paths to TLS key/cert for native HTTPS.

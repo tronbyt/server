@@ -15,7 +15,6 @@ services:
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
-      - TRONBYT_HOST=0.0.0.0
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
 

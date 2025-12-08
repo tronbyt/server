@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -316,11 +317,25 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 			}
 			return translated
 		},
-		"deref": func(s *string) string {
-			if s == nil {
+		"deref": func(v any) string {
+			if v == nil {
 				return ""
 			}
-			return *s
+			switch val := v.(type) {
+			case *string:
+				if val == nil {
+					return ""
+				}
+				return *val
+			case *data.ColorFilter:
+				if val == nil {
+					return ""
+				}
+				return string(*val)
+			default:
+				// Fallback for unexpected types
+				return fmt.Sprintf("%v", v)
+			}
 		},
 		"isPinned": func(device *data.Device, iname string) bool {
 			if device.PinnedApp == nil {
@@ -353,6 +368,11 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 				return ""
 			}
 			return s[start:end]
+		},
+		"split": strings.Split,
+		"trim":  strings.TrimSpace,
+		"slice": func(args ...string) []string {
+			return args
 		},
 		"contains": func(slice []string, item string) bool {
 			for _, s := range slice {
@@ -414,19 +434,20 @@ func (s *Server) routes() {
 	}
 
 	// App Preview (Specific path)
-	s.Router.HandleFunc("/preview/app/{id}", s.handleAppPreview)
+	s.Router.HandleFunc("/preview/app/{id}", s.handleSystemAppThumbnail)
 
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetDevice)))
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePush)))
-	s.Router.Handle("GET /{id}/next", http.HandlerFunc(s.handleNextApp))
 	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(http.HandlerFunc(s.handleListInstallations)))
-
 	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchDevice)))
 	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchInstallation)))
 	s.Router.Handle("DELETE /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handleDeleteInstallationAPI)))
 
 	s.Router.HandleFunc("GET /v0/dots", s.handleDots)
+
+	// Device endpoint
+	s.Router.Handle("GET /{id}/next", http.HandlerFunc(s.handleNextApp))
 
 	// Web UI
 	s.Router.HandleFunc("/", s.handleIndex)
@@ -445,23 +466,23 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("GET /devices/create", s.handleCreateDeviceGet)
 	s.Router.HandleFunc("POST /devices/create", s.handleCreateDevicePost)
 
-	s.Router.HandleFunc("GET /devices/{id}/addapp", s.handleAddAppGet)
-	s.Router.HandleFunc("POST /devices/{id}/addapp", s.handleAddAppPost)
+	s.Router.HandleFunc("GET /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppGet)))
+	s.Router.HandleFunc("POST /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppPost)))
 
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/delete", s.handleDeleteApp)
-	s.Router.HandleFunc("GET /devices/{id}/{iname}/config", s.handleConfigAppGet)
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/config", s.handleConfigAppPost)
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/schema_handler/{handler}", s.handleSchemaHandler)
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/delete", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleDeleteApp))))
+	s.Router.HandleFunc("GET /devices/{id}/{iname}/config", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleConfigAppGet))))
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/config", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleConfigAppPost))))
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/schema_handler/{handler}", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleSchemaHandler))))
 
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_pin", s.handleTogglePin)
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_enabled", s.handleToggleEnabled)
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/moveapp", s.handleMoveApp)
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/duplicate", s.handleDuplicateApp)
-	s.Router.HandleFunc("POST /devices/{id}/reorder_apps", s.handleReorderApps)
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_pin", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleTogglePin))))
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_enabled", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleToggleEnabled))))
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/moveapp", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleMoveApp))))
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/duplicate", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleDuplicateApp))))
+	s.Router.HandleFunc("POST /devices/{id}/reorder_apps", s.RequireLogin(s.RequireDevice(s.handleReorderApps)))
 
-	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.handleUploadAppGet)
-	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.handleUploadAppPost)
-	s.Router.HandleFunc("GET /devices/{id}/uploads/{filename}/delete", s.handleDeleteUpload)
+	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppGet)))
+	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppPost)))
+	s.Router.HandleFunc("GET /devices/{id}/uploads/{filename}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteUpload)))
 
 	s.Router.HandleFunc("POST /set_api_key", s.handleSetAPIKey)
 	s.Router.HandleFunc("POST /set_theme_preference", s.handleSetThemePreference)
@@ -470,7 +491,7 @@ func (s *Server) routes() {
 
 	s.Router.HandleFunc("GET /export_user_config", s.handleExportUserConfig)
 	s.Router.HandleFunc("POST /import_user_config", s.handleImportUserConfig)
-	s.Router.HandleFunc("GET /devices/{id}/export_config", s.handleExportDeviceConfig)
+	s.Router.HandleFunc("GET /devices/{id}/export_config", s.RequireLogin(s.RequireDevice(s.handleExportDeviceConfig)))
 
 	s.Router.HandleFunc("POST /set_system_repo", s.handleSetSystemRepo)
 	s.Router.HandleFunc("POST /refresh_system_repo", s.handleRefreshSystemRepo)
@@ -481,23 +502,25 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /unmark_app_broken", s.handleUnmarkAppBroken)
 
 	s.Router.HandleFunc("GET /devices/{id}/current", s.handleCurrentApp)
-	s.Router.HandleFunc("GET /devices/{id}/installations/{iname}/preview", s.handleAppWebP)
-	s.Router.HandleFunc("POST /devices/{id}/{iname}/preview", s.handlePreviewApp)
+	s.Router.HandleFunc("GET /devices/{id}/installations/{iname}/preview", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleRenderConfigPreview))))
+	s.Router.HandleFunc("POST /devices/{id}/{iname}/preview", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handlePushPreview))))
 
 	// WebAuthn
 	s.Router.HandleFunc("GET /auth/webauthn/register/begin", s.handleWebAuthnRegisterBegin)
 	s.Router.HandleFunc("POST /auth/webauthn/register/finish", s.handleWebAuthnRegisterFinish)
 	s.Router.HandleFunc("GET /auth/webauthn/login/begin", s.handleWebAuthnLoginBegin)
 	s.Router.HandleFunc("POST /auth/webauthn/login/finish", s.handleWebAuthnLoginFinish)
+	s.Router.HandleFunc("POST /auth/webauthn/delete/{id}", s.handleDeleteWebAuthnCredential)
 	s.Router.HandleFunc("GET /auth/passkeys", s.handlePasskeysGet)
 
 	// Firmware
-	s.Router.HandleFunc("GET /devices/{id}/firmware", s.handleFirmwareGenerateGet)
-	s.Router.HandleFunc("POST /devices/{id}/firmware", s.handleFirmwareGeneratePost)
+	s.Router.HandleFunc("GET /devices/{id}/firmware", s.RequireLogin(s.RequireDevice(s.handleFirmwareGenerateGet)))
+	s.Router.HandleFunc("POST /devices/{id}/firmware", s.RequireLogin(s.RequireDevice(s.handleFirmwareGeneratePost)))
 
-	s.Router.HandleFunc("GET /devices/{id}/update", s.handleUpdateDeviceGet)
-	s.Router.HandleFunc("POST /devices/{id}/update", s.handleUpdateDevicePost)
-	s.Router.HandleFunc("POST /devices/{id}/delete", s.handleDeleteDevice)
+	s.Router.HandleFunc("GET /devices/{id}/update", s.RequireLogin(s.RequireDevice(s.handleUpdateDeviceGet)))
+	s.Router.HandleFunc("POST /devices/{id}/update", s.RequireLogin(s.RequireDevice(s.handleUpdateDevicePost)))
+	s.Router.HandleFunc("POST /devices/{id}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteDevice)))
+	s.Router.HandleFunc("POST /devices/{id}/import_config", s.RequireLogin(s.RequireDevice(s.handleImportDeviceConfig)))
 
 	// Websocket catch-all (conflicts with many things, so registered last or handled carefully)
 	s.Router.HandleFunc("/{id}/ws", s.handleWS)
@@ -574,10 +597,12 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 
 	// Get User from session if not provided in tmplData
 	session, _ := s.Store.Get(r, "session-name")
-	if username, ok := session.Values["username"].(string); ok {
-		var user data.User
-		if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err == nil {
-			tmplData.User = &user
+	if tmplData.User == nil {
+		if username, ok := session.Values["username"].(string); ok {
+			var user data.User
+			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err == nil {
+				tmplData.User = &user
+			}
 		}
 	}
 
@@ -691,7 +716,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		})
 
 		// Calculate UI Brightness
-		bUI := device.Brightness.UIScale()
+		var customScale map[int]int
+		if device.CustomBrightnessScale != "" {
+			customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
+		}
+		bUI := device.Brightness.UIScale(customScale)
 
 		devicesWithUI = append(devicesWithUI, DeviceWithUIScale{
 			Device:       device,
@@ -881,9 +910,22 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 
 	// Check session
 	session, _ := s.Store.Get(r, "session-name")
-	if _, ok := session.Values["username"].(string); ok {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
+	if username, ok := session.Values["username"].(string); ok {
+		// Validate user exists in DB
+		var user data.User
+		if err := s.DB.First(&user, "username = ?", username).Error; err == nil {
+			// User exists, redirect to home
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		} else {
+			// User not found in DB, invalidate session
+			slog.Info("User in session not found in DB, invalidating session", "username", username)
+			session.Options.MaxAge = -1 // Expire cookie
+			if err := session.Save(r, w); err != nil {
+				slog.Error("Failed to save session after invalidation", "error", err)
+			}
+			// Fall through to login logic
+		}
 	}
 
 	// Auto-Login Check
@@ -1286,7 +1328,7 @@ func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		User:              &user,
 		DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 		Localizer:         localizer,
-		Form:              CreateDeviceFormData{Brightness: 3}, // Default brightness
+		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil)}, // Default brightness 20%
 	})
 }
 
@@ -1413,6 +1455,10 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		LastAppIndex:          0,
 		InterstitialEnabled:   false,
 	}
+
+	// Default to 'None' color filter
+	defaultColorFilter := data.ColorFilterNone
+	newDevice.ColorFilter = &defaultColorFilter
 
 	// Set default ImgURL and WsURL if empty
 	if newDevice.ImgURL == "" {
@@ -1632,38 +1678,15 @@ func (s *Server) ensurePushedApp(deviceID, installID string) error {
 }
 
 func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
 	s.SystemAppsCacheMutex.RLock()
 	systemApps := make([]apps.AppMetadata, len(s.SystemAppsCache))
 	copy(systemApps, s.SystemAppsCache)
 	s.SystemAppsCacheMutex.RUnlock()
 
-	customApps, err := apps.ListUserApps(s.DataDir, username)
+	customApps, err := apps.ListUserApps(s.DataDir, user.Username)
 	if err != nil {
 		slog.Error("Failed to list user apps", "error", err)
 		// Continue anyway
@@ -1698,7 +1721,7 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, r, "addapp", TemplateData{
-		User:           &user,
+		User:           user,
 		Device:         device,
 		SystemApps:     systemApps,
 		CustomApps:     customApps,
@@ -1708,31 +1731,8 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
 	appName := r.FormValue("name")
 	appPath := r.FormValue("path")
@@ -1759,34 +1759,30 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("Potential path traversal", "path", realPath)
 	}
 
-	// Generate iname
-	safeName := ""
-	for _, c := range appName {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
-			safeName += string(c)
-		}
-	}
-	if len(safeName) > 20 {
-		safeName = safeName[:20]
-	}
-
+	// Generate iname (random 3-digit string, matching Python version)
 	var iname string
 	for i := 0; i < 100; i++ {
-		suffix, _ := generateSecureToken(3)
-		iname = fmt.Sprintf("%s-%s", safeName, suffix)
+		// Random integer between 100 and 999
+		n, err := rand.Int(rand.Reader, big.NewInt(900))
+		if err != nil {
+			slog.Error("Failed to generate random number", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		iname = fmt.Sprintf("%d", n.Int64()+100)
 
 		var count int64
 		if err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", device.ID, iname).Count(&count).Error; err != nil {
 			slog.Error("Failed to check iname uniqueness", "error", err)
-			// Break and accept (DB create will fail if constrained, but we handle error there)
 			break
 		}
 		if count == 0 {
 			break
 		}
 		if i == 99 {
-			// Fallback to timestamp
-			iname = fmt.Sprintf("%s-%d", safeName, time.Now().Unix())
+			slog.Error("Could not generate unique iname")
+			http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
+			return
 		}
 	}
 
@@ -1857,10 +1853,13 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trigger initial render
+	s.possiblyRender(r.Context(), &newApp, device, user)
+
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/%s/config?delete_on_cancel=true", device.ID, newApp.Iname), http.StatusSeeOther)
 }
 
-func (s *Server) handleAppPreview(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleSystemAppThumbnail(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Query().Get("file")
 	if file == "" {
 		http.Error(w, "File required", http.StatusBadRequest)
@@ -1878,53 +1877,20 @@ func (s *Server) handleAppPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
+	app := GetApp(r)
 
 	// Get Schema
 	var schemaBytes []byte
 	if app.Path != nil && *app.Path != "" {
 		appPath := s.resolveAppPath(*app.Path)
-		script, err := os.ReadFile(appPath)
-		if err == nil {
-			schemaBytes, _ = renderer.GetSchema(script)
+		var err error
+		schemaBytes, err = renderer.GetSchema(appPath, 64, 32, data.DeviceSupports2x(device.Type))
+		if err != nil {
+			slog.Error("Failed to get app schema", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 	}
 	if len(schemaBytes) == 0 {
@@ -1934,7 +1900,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	deleteOnCancel := r.URL.Query().Get("delete_on_cancel") == "true"
 
 	s.renderTemplate(w, r, "configapp", TemplateData{
-		User:           &user,
+		User:           user,
 		Device:         device,
 		App:            app,
 		Schema:         template.JS(schemaBytes),
@@ -1944,45 +1910,9 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
+	app := GetApp(r)
 
 	// Parse JSON body
 	var payload struct {
@@ -2016,54 +1946,16 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Trigger Render (async)
-	// For now, reset last render to force update next check
-	s.DB.Model(app).Update("last_render", 0)
+	// Trigger Render
+	s.possiblyRender(r.Context(), app, device, user)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
+	device := GetDevice(r)
+	app := GetApp(r)
 	handler := r.PathValue("handler")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
 
 	// Parse Body
 	var payload struct {
@@ -2088,15 +1980,16 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	appPath := s.resolveAppPath(*app.Path)
-	script, err := os.ReadFile(appPath)
-	if err != nil {
-		slog.Error("Failed to read app script", "path", appPath, "error", err)
-		http.Error(w, "Failed to read app script", http.StatusInternalServerError)
-		return
-	}
 
 	// Call Handler
-	result, err := renderer.CallSchemaHandler(r.Context(), script, configStr, handler, payload.Param)
+	result, err := renderer.CallSchemaHandler(
+		r.Context(),
+		appPath,
+		configStr,
+		64, 32,
+		data.DeviceSupports2x(device.Type),
+		handler,
+		payload.Param)
 	if err != nil {
 		slog.Error("Schema handler failed", "handler", handler, "error", err)
 		http.Error(w, "Schema handler failed", http.StatusInternalServerError)
@@ -2111,11 +2004,9 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// Auth check? Device card is in dashboard, so user is logged in.
-	// But image might be loaded by browser. Session cookie works.
+	// Auth check
 	session, _ := s.Store.Get(r, "session-name")
 	if _, ok := session.Values["username"].(string); !ok {
-		// Try API Key? No, dashboard use.
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -2126,20 +2017,6 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Logic to get current app image without rotating
-	// Reuse determineNextApp but we need to know "current".
-	// determineNextApp calculates next based on LastAppIndex.
-	// If we want "current", we probably want the one at LastAppIndex?
-	// Or maybe just re-run rotation logic without side effects?
-	// Python uses _get_app_to_display(advance_index=False).
-
-	// For simplicity, let's just serve the WebP of the app at LastAppIndex if valid.
-	// Or call determineNextApp but don't save state.
-	// But determineNextApp *finds* the next app.
-	// If LastAppIndex points to the *just displayed* app, then "current" is that one.
-
-	// HACK: Just send default image if complex.
-	// Better: Implement `GetCurrentAppImage` in rotation.go.
 	imgData, _, err := s.GetCurrentAppImage(r.Context(), &device)
 	if err != nil {
 		s.sendDefaultImage(w, r, &device)
@@ -2153,42 +2030,90 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handleAppWebP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	iname := r.PathValue("iname")
 
-	// Auth check
-	session, _ := s.Store.Get(r, "session-name")
-	if _, ok := session.Values["username"].(string); !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	// Auth check (if manual) or rely on middleware if added.
+	// Since routes were updated with RequireApp, we should use GetDevice/GetApp.
+	// But let's check if the route change was successful and applied.
+	// Yes, `s.Router.HandleFunc("GET /devices/{id}/installations/{iname}/preview", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleRenderConfigPreview))))`
+	// So we can use helpers.
+
+	device := GetDevice(r)
+	app := GetApp(r)
+
+	// Check for 'config' query param
+	configParam := r.URL.Query().Get("config")
+	if configParam != "" {
+		// Render on-the-fly
+		var configData map[string]any
+		if err := json.Unmarshal([]byte(configParam), &configData); err != nil {
+			http.Error(w, "Invalid config JSON", http.StatusBadRequest)
+			return
+		}
+
+		config := make(map[string]string)
+		for k, v := range configData {
+			config[k] = fmt.Sprintf("%v", v)
+		}
+
+		if app.Path == nil || *app.Path == "" {
+			http.Error(w, "App path not set", http.StatusBadRequest)
+			return
+		}
+		appPath := s.resolveAppPath(*app.Path)
+
+		// Defaults
+		appInterval := app.DisplayTime
+		if appInterval == 0 {
+			appInterval = device.DefaultInterval
+		}
+
+		// Filters
+		var filters []string
+		if app.ColorFilter != nil && *app.ColorFilter != "" {
+			filters = append(filters, string(*app.ColorFilter))
+		}
+
+		deviceTimezone := getDeviceTimezone(device)
+
+		imgBytes, _, err := renderer.Render(
+			r.Context(),
+			appPath,
+			config,
+			64, 32,
+			time.Duration(appInterval)*time.Second,
+			30*time.Second,
+			true,
+			data.DeviceSupports2x(device.Type),
+			&deviceTimezone,
+			device.Locale,
+			filters,
+		)
+		if err != nil {
+			slog.Error("Preview render failed", "error", err)
+			http.Error(w, "Render failed", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/webp")
+		w.Header().Set("Cache-Control", "no-cache")
+		if _, err := w.Write(imgBytes); err != nil {
+			slog.Error("Failed to write image bytes for render config preview", "error", err)
+		}
 		return
 	}
 
-	// Verify device exists (optional but good)
-	var device data.Device
-	if err := s.DB.First(&device, "id = ?", id).Error; err != nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	// Find app (optional, mostly to check if it exists)
-	// We can just look for file.
-	// <name>-<iname>.webp. We need name.
-	var app data.App
-	if err := s.DB.Where("device_id = ? AND iname = ?", id, iname).First(&app).Error; err != nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-
+	// Fallback to serving existing file
 	webpDir := s.getDeviceWebPDir(id)
 	filename := fmt.Sprintf("%s-%s.webp", app.Name, app.Iname)
 	path := filepath.Join(webpDir, filename)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// Try pushed
 		path = filepath.Join(webpDir, "pushed", iname+".webp")
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			s.sendDefaultImage(w, r, &device)
+			s.sendDefaultImage(w, r, device)
 			return
 		}
 	}
@@ -2196,62 +2121,23 @@ func (s *Server) handleAppWebP(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path)
 }
 
-func (s *Server) handlePreviewApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
+func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+	app := GetApp(r)
 
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-
-	// Parse Config from Body (optional overrides)
-	// JS: previewApp(..., config) sends JSON.
-	var configOverride map[string]any
+	// Parse Config from Body
+	var configBody map[string]any
 	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&configOverride)
+		err := json.NewDecoder(r.Body).Decode(&configBody)
+		if err != nil && err != io.EOF {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
 	}
 
-	// Merge config
+	// Convert to string values
 	config := make(map[string]string)
-	// Load saved config first
-	for k, v := range app.Config {
-		config[k] = fmt.Sprintf("%v", v)
-	}
-	// Apply overrides
-	for k, v := range configOverride {
+	for k, v := range configBody {
 		config[k] = fmt.Sprintf("%v", v)
 	}
 
@@ -2261,29 +2147,43 @@ func (s *Server) handlePreviewApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	appPath := s.resolveAppPath(*app.Path)
-	script, err := os.ReadFile(appPath)
-	if err != nil {
-		http.Error(w, "Failed to read app script", http.StatusInternalServerError)
-		return
+
+	appInterval := app.DisplayTime
+	if appInterval == 0 {
+		appInterval = device.DefaultInterval
 	}
 
-	imgBytes, err := renderer.Render(r.Context(), script, config, 64, 32)
+	// Filters
+	var filters []string
+	if app.ColorFilter != nil && *app.ColorFilter != "" {
+		filters = append(filters, string(*app.ColorFilter))
+	}
+
+	deviceTimezone := getDeviceTimezone(device)
+
+	imgBytes, messages, err := renderer.Render(
+		r.Context(),
+		appPath,
+		config,
+		64, 32,
+		time.Duration(appInterval)*time.Second,
+		30*time.Second,
+		true,
+		data.DeviceSupports2x(device.Type),
+		&deviceTimezone,
+		device.Locale,
+		filters,
+	)
 	if err != nil {
 		slog.Error("Preview render failed", "error", err)
 		http.Error(w, "Render failed", http.StatusInternalServerError)
 		return
 	}
+	for _, msg := range messages {
+		slog.Info("Preview render message", "message", msg)
+	}
 
 	// Push preview image to device (ephemeral)
-	// Use handlePush logic or direct savePushedImage
-	// The JS expects "OK" and side-effect is push.
-	// Wait, JS previewApp does NOT expect image in response?
-	// JS: if (response.ok) ... console.log('Preview request failed'...)
-	// Python: await push_image(...) and returns 200.
-
-	// Use __preview_<timestamp>.webp or similar?
-	// Or just push directly.
-	// Use savePushedImage with installID (overwrite pushed image)
 	if err := s.savePushedImage(device.ID, app.Iname, imgBytes); err != nil {
 		http.Error(w, "Failed to push preview", http.StatusInternalServerError)
 		return
@@ -2620,54 +2520,25 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
+	app := GetApp(r)
 
 	// Delete App
-	if err := s.DB.Where("device_id = ? AND iname = ?", device.ID, iname).Delete(&data.App{}).Error; err != nil {
+	if err := s.DB.Delete(app).Error; err != nil {
 		slog.Error("Failed to delete app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Clean up files?
-	// installations/<iname>
-	installDir := filepath.Join(s.DataDir, "installations", iname)
+	// Clean up files
+	installDir := filepath.Join(s.DataDir, "installations", app.Iname)
 	if err := os.RemoveAll(installDir); err != nil {
 		slog.Error("Failed to remove install directory", "path", installDir, "error", err)
 	}
 
 	// Clean up webp
 	webpDir := s.getDeviceWebPDir(device.ID)
-	// Need app name to find webp: <name>-<iname>.webp
-	// Since we already deleted the app from DB, we might not have the name easily unless we queried before delete.
-	// But we can glob: *<iname>.webp
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
+	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {
 			slog.Error("Failed to remove app webp file", "path", match, "error", err)
@@ -2678,37 +2549,13 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTogglePin(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
+	app := GetApp(r)
 
 	// Logic
-	newPinned := iname
-	if device.PinnedApp != nil && *device.PinnedApp == iname {
+	newPinned := app.Iname
+	if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
 		newPinned = ""
 	}
 
@@ -2723,51 +2570,14 @@ func (s *Server) handleTogglePin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + username)
+	s.Broadcaster.Notify("user:" + user.Username)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	app := GetApp(r)
 
 	app.Enabled = !app.Enabled
 	if err := s.DB.Model(app).Update("enabled", app.Enabled).Error; err != nil {
@@ -2775,40 +2585,16 @@ func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + username)
+	s.Broadcaster.Notify("user:" + user.Username)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
+	user := GetUser(r)
+	device := GetDevice(r)
+	targetApp := GetApp(r) // Ensures existence
 	direction := r.FormValue("direction")
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
 
 	// Sort
 	appsList := make([]data.App, len(device.Apps))
@@ -2819,14 +2605,15 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 
 	idx := -1
 	for i, app := range appsList {
-		if app.Iname == iname {
+		if app.Iname == targetApp.Iname {
 			idx = i
 			break
 		}
 	}
 
 	if idx == -1 {
-		http.Error(w, "App not found", http.StatusNotFound)
+		// Should not happen due to RequireApp
+		http.Error(w, "App not found in sorted list", http.StatusInternalServerError)
 		return
 	}
 
@@ -2873,73 +2660,38 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + username)
+	s.Broadcaster.Notify("user:" + user.Username)
 
 	w.WriteHeader(http.StatusOK)
 }
 func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	iname := r.PathValue("iname")
+	user := GetUser(r)
+	device := GetDevice(r)
+	originalApp := GetApp(r)
 
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var originalApp *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			originalApp = &device.Apps[i]
-			break
-		}
-	}
-	if originalApp == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-
-	// Generate new iname
-	safeName := ""
-	for _, c := range originalApp.Name {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
-			safeName += string(c)
-		}
-	}
-	if len(safeName) > 20 {
-		safeName = safeName[:20]
-	}
-
+	// Generate new iname (random 3-digit string)
 	var newIname string
 	for i := 0; i < 100; i++ {
-		suffix, _ := generateSecureToken(3)
-		newIname = fmt.Sprintf("%s-%s", safeName, suffix)
+		// Random integer between 100 and 999
+		n, err := rand.Int(rand.Reader, big.NewInt(900))
+		if err != nil {
+			slog.Error("Failed to generate random number", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		newIname = fmt.Sprintf("%d", n.Int64()+100)
 
 		var count int64
 		if err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", device.ID, newIname).Count(&count).Error; err != nil {
+			slog.Error("Failed to check iname uniqueness", "error", err)
 			break
 		}
 		if count == 0 {
 			break
+		}
+		if i == 99 {
+			http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
+			return
 		}
 	}
 
@@ -3026,41 +2778,17 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + username)
+	s.Broadcaster.Notify("user:" + user.Username)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	user := GetUser(r)
+	device := GetDevice(r)
 	draggedIname := r.FormValue("dragged_iname")
 	targetIname := r.FormValue("target_iname")
 	insertAfter := r.FormValue("insert_after") == "true"
-
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
 
 	appsList := make([]data.App, len(device.Apps))
 	copy(appsList, device.Apps)
@@ -3081,36 +2809,32 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if draggedIdx == -1 || targetIdx == -1 {
-		http.Error(w, "App not found", http.StatusNotFound)
+		http.Error(w, "App not found", http.StatusBadRequest)
 		return
 	}
 
-	if draggedIdx == targetIdx {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	// Move
-	// Calculate new index for dragged item
-	newIdx := targetIdx
-	if insertAfter {
-		newIdx++
-	}
-	// Adjust if we are moving downwards
-	if draggedIdx < newIdx {
-		newIdx--
-	}
-
-	// Remove dragged
-	draggedApp := appsList[draggedIdx]
+	// Reorder logic (Bubble up/down)
+	// Simple approach: Remove dragged, Insert at target
+	app := appsList[draggedIdx]
+	// Remove
 	appsList = append(appsList[:draggedIdx], appsList[draggedIdx+1:]...)
 
-	// Insert at newIdx
-	if newIdx >= len(appsList) {
-		appsList = append(appsList, draggedApp)
+	// New Target Index
+	// Since we removed one, if draggedIdx < targetIdx, targetIdx shifts down by 1
+	if draggedIdx < targetIdx {
+		targetIdx--
+	}
+
+	if insertAfter {
+		targetIdx++
+	}
+
+	// Insert
+	if targetIdx >= len(appsList) {
+		appsList = append(appsList, app)
 	} else {
-		appsList = append(appsList[:newIdx+1], appsList[newIdx:]...)
-		appsList[newIdx] = draggedApp
+		appsList = append(appsList[:targetIdx+1], appsList[targetIdx:]...)
+		appsList[targetIdx] = app
 	}
 
 	// Save new order
@@ -3125,13 +2849,13 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		slog.Error("Failed to update app order", "error", err)
+		slog.Error("Failed to reorder apps", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + username)
+	s.Broadcaster.Notify("user:" + user.Username)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -3692,107 +3416,39 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	// Calculate UI Brightness
-
-	b := device.Brightness
-
-	bUI := 5
-
-	if b == 0 {
-
-		bUI = 0
-
-	} else if b <= 3 {
-
-		bUI = 1
-
-	} else if b <= 5 {
-
-		bUI = 2
-
-	} else if b <= 12 {
-
-		bUI = 3
-
-	} else if b <= 35 {
-
-		bUI = 4
-
+	// Parse custom brightness scale if device has one
+	var customScale map[int]int
+	if device.CustomBrightnessScale != "" {
+		customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
 	}
+
+	// Calculate UI Brightness
+	bUI := device.Brightness.UIScale(customScale)
 
 	// Calculate Night Brightness UI
-
-	nb := device.NightBrightness
-
-	nbUI := 0
-
-	if nb == 0 {
-
-		nbUI = 0
-
-	} else if nb <= 3 {
-
-		nbUI = 1
-
-	} else if nb <= 5 {
-
-		nbUI = 2
-
-	} else if nb <= 12 {
-
-		nbUI = 3
-
-	} else if nb <= 35 {
-
-		nbUI = 4
-
-	} else {
-
-		nbUI = 5
-
-	}
+	nbUI := device.NightBrightness.UIScale(customScale)
 
 	// Calculate Dim Brightness UI
-
 	dbUI := 2 // Default
-
 	if device.DimBrightness != nil {
-
-		val := *device.DimBrightness
-
-		if val == 0 {
-
-			dbUI = 0
-
-		} else if val <= 3 {
-
-			dbUI = 1
-
-		} else if val <= 5 {
-
-			dbUI = 2
-
-		} else if val <= 12 {
-
-			dbUI = 3
-
-		} else if val <= 35 {
-
-			dbUI = 4
-
-		} else {
-
-			dbUI = 5
-
-		}
-
+		dbUI = (*device.DimBrightness).UIScale(customScale)
 	}
 
 	// Get available locales
-
 	locales := []string{"en_US", "de_DE"} // Add more as needed or scan directory
 
 	localizer := s.getLocalizer(r)
+
+	// Determine scheme and host for default URLs
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	wsScheme := "ws"
+	if scheme == "https" {
+		wsScheme = "wss"
+	}
+	host := r.Host
 
 	s.renderTemplate(w, r, "update", TemplateData{
 
@@ -3806,9 +3462,9 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 
 		AvailableLocales: locales,
 
-		DefaultImgURL: fmt.Sprintf("/%s/next", device.ID),
+		DefaultImgURL: fmt.Sprintf("%s://%s/%s/next", scheme, host, device.ID),
 
-		DefaultWsURL: fmt.Sprintf("/%s/ws", device.ID),
+		DefaultWsURL: fmt.Sprintf("%s://%s/%s/ws", wsScheme, host, device.ID),
 
 		BrightnessUI: bUI,
 
@@ -3877,38 +3533,13 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Parse Scale
-	scale := []int{0, 3, 5, 12, 35, 100} // Default
+	var customScale map[int]int
 	if device.CustomBrightnessScale != "" {
-		parts := strings.Split(device.CustomBrightnessScale, ",")
-		if len(parts) == 6 {
-			newScale := make([]int, 6)
-			valid := true
-			for i, p := range parts {
-				val, err := strconv.Atoi(strings.TrimSpace(p))
-				if err != nil {
-					valid = false
-					break
-				}
-				newScale[i] = val
-			}
-			if valid {
-				scale = newScale
-			}
-		}
-	}
-
-	getBrightnessValue := func(uiIndex int) int {
-		if uiIndex < 0 {
-			uiIndex = 0
-		}
-		if uiIndex >= len(scale) {
-			uiIndex = len(scale) - 1
-		}
-		return scale[uiIndex]
+		customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
 	}
 
 	if bUI, err := strconv.Atoi(r.FormValue("brightness")); err == nil {
-		device.Brightness = data.Brightness(getBrightnessValue(bUI))
+		device.Brightness = data.BrightnessFromUIScale(bUI, customScale)
 	}
 
 	// 4. Interstitial
@@ -3926,7 +3557,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	device.NightEnd = r.FormValue("night_end")
 
 	if nbUI, err := strconv.Atoi(r.FormValue("night_brightness")); err == nil {
-		device.NightBrightness = data.Brightness(getBrightnessValue(nbUI))
+		device.NightBrightness = data.BrightnessFromUIScale(nbUI, customScale)
 	}
 
 	nightApp := r.FormValue("night_mode_app")
@@ -3953,7 +3584,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if dimUI, err := strconv.Atoi(r.FormValue("dim_brightness")); err == nil {
-		val := data.Brightness(getBrightnessValue(dimUI))
+		val := data.BrightnessFromUIScale(dimUI, customScale)
 		device.DimBrightness = &val
 	}
 
@@ -4236,6 +3867,97 @@ func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, b
 		slog.Error("Failed to write JSON success response", "error", err)
 	}
 }
+func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	device := GetDevice(r)
+
+	// Max 1MB file size
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		slog.Error("Failed to parse multipart form for device import", "error", err)
+		http.Error(w, "File upload failed: invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		slog.Error("Failed to get uploaded file for device import", "error", err)
+		http.Error(w, "File upload failed", http.StatusBadRequest)
+		return
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Error("Failed to close uploaded device config file", "error", err)
+		}
+	}()
+
+	var importedDevice data.Device
+	if err := json.NewDecoder(file).Decode(&importedDevice); err != nil {
+		slog.Error("Failed to decode imported device JSON", "error", err)
+		http.Error(w, "Invalid JSON file", http.StatusBadRequest)
+		return
+	}
+
+	// Begin a transaction to ensure atomicity
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete existing apps for this device
+		if err := tx.Where("device_id = ?", device.ID).Delete(&data.App{}).Error; err != nil {
+			return fmt.Errorf("failed to delete existing apps: %w", err)
+		}
+
+		// 2. Update device fields with imported data (excluding ID, Username, APIKey)
+		device.Name = importedDevice.Name
+		device.Type = importedDevice.Type
+		device.ImgURL = importedDevice.ImgURL
+		device.WsURL = importedDevice.WsURL
+		device.Notes = importedDevice.Notes
+		device.Brightness = importedDevice.Brightness
+		device.CustomBrightnessScale = importedDevice.CustomBrightnessScale
+		device.NightModeEnabled = importedDevice.NightModeEnabled
+		device.NightModeApp = importedDevice.NightModeApp
+		device.NightStart = importedDevice.NightStart
+		device.NightEnd = importedDevice.NightEnd
+		device.NightBrightness = importedDevice.NightBrightness
+		device.DimTime = importedDevice.DimTime
+		device.DimBrightness = importedDevice.DimBrightness
+		device.DefaultInterval = importedDevice.DefaultInterval
+		device.Timezone = importedDevice.Timezone
+		device.Locale = importedDevice.Locale
+		device.Location = importedDevice.Location
+		device.LastAppIndex = importedDevice.LastAppIndex
+		device.PinnedApp = importedDevice.PinnedApp
+		device.InterstitialEnabled = importedDevice.InterstitialEnabled
+		device.InterstitialApp = importedDevice.InterstitialApp
+		device.LastSeen = importedDevice.LastSeen
+		device.Info = importedDevice.Info
+		device.ColorFilter = importedDevice.ColorFilter
+		device.NightColorFilter = importedDevice.NightColorFilter
+
+		if err := tx.Save(device).Error; err != nil {
+			return fmt.Errorf("failed to save updated device: %w", err)
+		}
+
+		// 3. Create new apps from imported device
+		for _, app := range importedDevice.Apps {
+			app.DeviceID = device.ID // Ensure DeviceID is set to the current device's ID
+			app.ID = 0               // GORM will assign a new primary key
+			if err := tx.Create(&app).Error; err != nil {
+				return fmt.Errorf("failed to create imported app '%s': %w", app.Name, err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		slog.Error("Device import transaction failed", "device_id", device.ID, "error", err)
+		http.Error(w, fmt.Sprintf("Import failed: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("Device config imported successfully", "device_id", device.ID, "username", user.Username)
+	http.Redirect(w, r, fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+}
+
 func (s *Server) handleMarkAppBroken(w http.ResponseWriter, r *http.Request) {
 	s.updateAppBrokenStatus(w, r, true)
 }

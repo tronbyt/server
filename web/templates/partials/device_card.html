@@ -66,6 +66,12 @@
 
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="/devices/{{ .Item.Device.ID }}/update"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t .Localizer "Edit Device" }}</a>
+            {{ if eq .Item.Device.Info.ProtocolType "WS" }}
+            <button class="w3-button w3-blue w3-round" style="min-width: 100px;"
+                    onclick="previewApp('{{ .Item.Device.ID }}', '', null, this, { previewing: '{{ t .Localizer "Previewing..." }}', sent: '{{ t .Localizer "Sent" }}', failed: '{{ t .Localizer "Failed" }}' })">
+              <i class="fa-solid fa-eye" aria-hidden="true"></i> {{ t .Localizer "Preview" }}
+            </button>
+            {{ end }}
         </tr>
       </table>
 

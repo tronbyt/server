@@ -14,7 +14,6 @@ services:
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
       - WEB_CONCURRENCY
-      - TRONBYT_HOST=0.0.0.0
       - GITHUB_TOKEN
 
     healthcheck:
