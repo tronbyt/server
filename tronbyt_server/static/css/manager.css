@@ -1149,6 +1149,11 @@ button.action.w3-button {
   cursor: pointer;
 }
 
+.custom-select:hover {
+  background-color: #3f51b5 !important; /* Keep w3-indigo color on hover */
+  color: white !important;
+}
+
 .custom-select-arrow {
   position: absolute;
   right: 10px;
