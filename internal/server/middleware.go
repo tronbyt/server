@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -14,10 +15,10 @@ type contextKey string
 const (
 	userContextKey   contextKey = "user"
 	deviceContextKey contextKey = "device"
+	appContextKey    contextKey = "app"
 )
 
 // APIAuthMiddleware authenticates requests using the Authorization header (API Key).
-// It mimics `get_user_and_device_from_api_key` from the Python codebase.
 func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -42,11 +43,6 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		// 1. Try to find User by API Key
 		var user data.User
 		if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "api_key = ?", apiKey).Error; err == nil {
-			// User found. If the path contains a device ID, try to find it in the user's devices.
-			// Path value parsing depends on Go 1.22+ routing match.
-			// However, middleware runs *before* strict path matching in some cases or wraps the handler.
-			// Let's assume we can parse it from URL or the final handler validates the device ownership.
-			// Storing User in context.
 			ctx := context.WithValue(r.Context(), userContextKey, &user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
@@ -55,19 +51,12 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		// 2. Try to find Device by API Key
 		var device data.Device
 		if err := s.DB.First(&device, "api_key = ?", apiKey).Error; err == nil {
-			// Device found. Find the owner.
 			var owner data.User
 			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&owner, "username = ?", device.Username).Error; err != nil {
-				// Should not happen if DB is consistent
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
 
-			// If the URL has a device ID, verify it matches or is owned by the user?
-			// The Python code: "if device and device.api_key == api_key: return user, device"
-			// It implies this API key grants access to THIS specific device.
-
-			// We store both User and Device in context.
 			ctx := context.WithValue(r.Context(), userContextKey, &owner)
 			ctx = context.WithValue(ctx, deviceContextKey, &device)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -76,6 +65,109 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	})
+}
+
+// RequireLogin authenticates Web UI requests via session cookie.
+func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, _ := s.Store.Get(r, "session-name")
+		username, ok := session.Values["username"].(string)
+		if !ok {
+			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+			return
+		}
+
+		var user data.User
+		// Preload everything we might need
+		if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
+			slog.Error("User in session not found in DB", "username", username, "error", err)
+			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), userContextKey, &user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+// RequireDevice ensures a device ID is present and owned by the authenticated user.
+// Must be used after RequireLogin or APIAuthMiddleware.
+func (s *Server) RequireDevice(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "" {
+			http.Error(w, "Device ID required", http.StatusBadRequest)
+			return
+		}
+
+		user, err := UserFromContext(r.Context())
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if device is already loaded (e.g. by API key) and matches
+		if d, err := DeviceFromContext(r.Context()); err == nil {
+			if d.ID == id {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// If authorized via Device Key X, but asking for Device Y, deny.
+			http.Error(w, "Forbidden: Device Key mismatch", http.StatusForbidden)
+			return
+		}
+
+		// Look for device in user's devices
+		var device *data.Device
+		for i := range user.Devices {
+			if user.Devices[i].ID == id {
+				device = &user.Devices[i]
+				break
+			}
+		}
+
+		if device == nil {
+			http.Error(w, "Device not found", http.StatusNotFound)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), deviceContextKey, device)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+// RequireApp ensures an app iname is present and belongs to the context device.
+// Must be used after RequireDevice.
+func (s *Server) RequireApp(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		iname := r.PathValue("iname")
+		if iname == "" {
+			http.Error(w, "App ID (iname) required", http.StatusBadRequest)
+			return
+		}
+
+		device, err := DeviceFromContext(r.Context())
+		if err != nil {
+			http.Error(w, "Device context missing", http.StatusInternalServerError)
+			return
+		}
+
+		var app *data.App
+		for i := range device.Apps {
+			if device.Apps[i].Iname == iname {
+				app = &device.Apps[i]
+				break
+			}
+		}
+
+		if app == nil {
+			http.Error(w, "App not found", http.StatusNotFound)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), appContextKey, app)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
 }
 
 // UserFromContext retrieves the User from the context
@@ -87,11 +179,50 @@ func UserFromContext(ctx context.Context) (*data.User, error) {
 	return u, nil
 }
 
-// DeviceFromContext retrieves the Device from the context (if authenticated via Device Key)
+// DeviceFromContext retrieves the Device from the context
 func DeviceFromContext(ctx context.Context) (*data.Device, error) {
 	d, ok := ctx.Value(deviceContextKey).(*data.Device)
 	if !ok {
 		return nil, errors.New("device not found in context")
 	}
 	return d, nil
+}
+
+// AppFromContext retrieves the App from the context
+func AppFromContext(ctx context.Context) (*data.App, error) {
+	a, ok := ctx.Value(appContextKey).(*data.App)
+	if !ok {
+		return nil, errors.New("app not found in context")
+	}
+	return a, nil
+}
+
+// Helper to get Context objects without error checking (panics if missing, use only within middleware)
+func GetUser(r *http.Request) *data.User {
+	u, _ := UserFromContext(r.Context())
+	if u == nil {
+		panic("GetUser called without RequireLogin/AuthMiddleware")
+	}
+	return u
+}
+
+func GetDevice(r *http.Request) *data.Device {
+	d, _ := DeviceFromContext(r.Context())
+	if d == nil {
+		panic("GetDevice called without RequireDevice middleware")
+	}
+	return d
+}
+
+func GetApp(r *http.Request) *data.App {
+	a, _ := AppFromContext(r.Context())
+	if a == nil {
+		panic("GetApp called without RequireApp middleware")
+	}
+	return a
+}
+
+// Helper to wrap APIAuthMiddleware for ServeMux which expects generic handler
+func (s *Server) APIAuth(next http.HandlerFunc) http.HandlerFunc {
+	return s.APIAuthMiddleware(next).ServeHTTP
 }

@@ -18,9 +18,7 @@ function debounce(func, wait) {
   };
 }
 
-const debouncedSearch = debounce((searchId) => {
-  applyFilters();
-}, 100);
+
 
 // Function to update the numeric display in real-time (on slider move)
 function updateBrightnessValue(deviceId, brightness) {
@@ -158,7 +156,7 @@ function moveApp(deviceId, iname, direction) {
   const formData = new URLSearchParams();
   formData.append('direction', direction);
 
-  fetch(`/${deviceId}/${iname}/moveapp?direction=${direction}`, {
+  fetch(`/devices/${deviceId}/${iname}/moveapp?direction=${direction}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -242,7 +240,7 @@ function refreshAppsList(deviceId, movedAppIname = null) {
 
 // AJAX function to toggle pin status
 function togglePin(deviceId, iname) {
-  fetch(`/${deviceId}/${iname}/toggle_pin`, {
+  fetch(`/devices/${deviceId}/${iname}/toggle_pin`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -266,7 +264,7 @@ function togglePin(deviceId, iname) {
 
 // AJAX function to toggle enabled status
 function toggleEnabled(deviceId, iname) {
-  fetch(`/${deviceId}/${iname}/toggle_enabled`, {
+  fetch(`/devices/${deviceId}/${iname}/toggle_enabled`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -345,7 +343,7 @@ function deleteApp(deviceId, iname, redirectAfterDelete = false) {
 
 // AJAX function to preview an app
 function previewApp(deviceId, iname, config = null, button = null, translations = null) {
-    const url = `/${deviceId}/${iname}/preview`;
+    const url = `/devices/${deviceId}/${iname}/preview`;
     let options = {
         method: 'POST',
         headers: {
@@ -446,10 +444,7 @@ function saveAllDevicePreferences() {
   });
 }
 
-// Drag and Drop functionality
-let draggedElement = null;
-let draggedDeviceId = null;
-let draggedIname = null;
+
 
 // ADDAPP FUNCTIONS START
 
@@ -1131,7 +1126,7 @@ function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
   formData.append('target_iname', targetIname);
   formData.append('insert_after', insertAfter ? 'true' : 'false');
 
-  fetch(`/${deviceId}/reorder_apps`, {
+  fetch(`/devices/${deviceId}/reorder_apps`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -1316,31 +1311,6 @@ function unmarkAppAsBroken(appName, packageName, event) {
   });
 }
 
-function toggleDeviceInfo(button) {
-  const content = document.getElementById(button.getAttribute('aria-controls'));
-  if (!content) {
-    return;
-  }
-  const icon = button.querySelector('i');
-  const isExpanded = button.getAttribute('aria-expanded') === 'true';
-
-  button.setAttribute('aria-expanded', !isExpanded);
-  content.classList.toggle('is-expanded');
-
-  if (!isExpanded) {
-    content.style.maxHeight = content.scrollHeight + "px";
-    if (icon) {
-      icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-    }
-  } else {
-    content.style.maxHeight = '0px';
-    if (icon) {
-      icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-    }
-  }
-}
-
-// View Toggle Functions
 function initializeViewToggles() {
   // Restore saved preferences for all devices
   const appLists = document.querySelectorAll('[id^="appsList-"]');
@@ -1555,12 +1525,10 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('uinterval').value = 10;
       }
 
-      // Automatically submit the form in a new tab
+      // Automatically submit the form
       const form = document.getElementById('main_form');
       if (form) {
-          form.target = '_blank';
           form.submit();
-          form.target = ''; // Reset target so future submissions work normally
       }
     });
 

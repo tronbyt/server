@@ -4,6 +4,9 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -79,8 +82,51 @@ func (b Brightness) Uint8() uint8 {
 }
 
 // UIScale returns 0-5
-func (b Brightness) UIScale() int {
+func (b Brightness) UIScale(customScale map[int]int) int {
 	v := int(b)
+	if customScale != nil {
+		// Use custom scale
+		// Sort keys to find brackets
+		var keys []int
+		for k := range customScale {
+			keys = append(keys, k)
+		}
+		sort.Ints(keys)
+
+		// Create pairs for sorting by percent value
+		type scalePair struct {
+			Level   int
+			Percent int
+		}
+		var pairs []scalePair
+		for _, k := range keys {
+			pairs = append(pairs, scalePair{k, customScale[k]})
+		}
+		// Sort by percent
+		sort.Slice(pairs, func(i, j int) bool {
+			return pairs[i].Percent < pairs[j].Percent
+		})
+
+		for i := range pairs {
+			level := pairs[i].Level
+			percent := pairs[i].Percent
+
+			if i == len(pairs)-1 {
+				return level
+			}
+			nextPercent := pairs[i+1].Percent
+			midpoint := (percent + nextPercent) / 2
+			if v <= midpoint {
+				return level
+			}
+		}
+		if len(pairs) > 0 {
+			return pairs[len(pairs)-1].Level
+		}
+		return 5 // Fallback
+	}
+
+	// Default scale
 	if v <= 0 {
 		return 0
 	}
@@ -97,6 +143,50 @@ func (b Brightness) UIScale() int {
 		return 4
 	}
 	return 5
+}
+
+// BrightnessFromUIScale converts a UI scale value (0-5) to Brightness percentage
+func BrightnessFromUIScale(uiValue int, customScale map[int]int) Brightness {
+	if customScale != nil {
+		if val, ok := customScale[uiValue]; ok {
+			return Brightness(val)
+		}
+		return Brightness(20) // Default if not found in custom scale
+	}
+
+	lookup := map[int]int{
+		0: 0,
+		1: 3,
+		2: 5,
+		3: 12,
+		4: 35,
+		5: 100,
+	}
+	if val, ok := lookup[uiValue]; ok {
+		return Brightness(val)
+	}
+	return Brightness(20) // Default
+}
+
+// ParseCustomBrightnessScale parses a comma-separated string into a map
+func ParseCustomBrightnessScale(scaleStr string) map[int]int {
+	if scaleStr == "" {
+		return nil
+	}
+	parts := strings.Split(scaleStr, ",")
+	if len(parts) != 6 {
+		return nil
+	}
+
+	result := make(map[int]int)
+	for i, p := range parts {
+		val, err := strconv.Atoi(strings.TrimSpace(p))
+		if err != nil || val < 0 || val > 100 {
+			return nil
+		}
+		result[i] = val
+	}
+	return result
 }
 
 type ColorFilter string
@@ -232,7 +322,11 @@ type WebAuthnCredential struct {
 	Authenticator   string // AAGUID
 	SignCount       uint32
 	CloneWarning    bool
+	BackupEligible  bool
+	BackupState     bool
 }
+
+// GORMSlogLogger wraps slog for GORM logging
 
 type Device struct {
 	ID                    string `gorm:"primaryKey"` // 8-char hex
@@ -243,7 +337,7 @@ type Device struct {
 	ImgURL                string
 	WsURL                 string
 	Notes                 string
-	Brightness            Brightness `gorm:"default:100"` // 0-100
+	Brightness            Brightness `gorm:"default:20"` // 0-100
 	CustomBrightnessScale string
 	NightModeEnabled      bool
 	NightModeApp          string
@@ -274,6 +368,15 @@ type Device struct {
 	NightColorFilter *ColorFilter
 
 	Apps []App `gorm:"foreignKey:DeviceID;references:ID"`
+}
+
+func DeviceSupports2x(deviceType DeviceType) bool {
+	switch deviceType {
+	case DeviceRaspberryPiWide, DeviceTronbytS3Wide:
+		return true
+	default:
+		return false
+	}
 }
 
 type App struct {

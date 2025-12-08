@@ -1,10 +1,12 @@
 package server
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -104,7 +106,11 @@ func (s *Server) handleWebAuthnRegisterBegin(w http.ResponseWriter, r *http.Requ
 			PublicKey:       cred.PublicKey,
 			AttestationType: cred.AttestationType,
 			Transport:       parseTransports(cred.Transport),
-			Authenticator:   webauthn.Authenticator{AAGUID: aaguid, SignCount: cred.SignCount, CloneWarning: cred.CloneWarning},
+			Flags: webauthn.CredentialFlags{ // Use webauthn.CredentialFlags
+				BackupEligible: cred.BackupEligible,
+				BackupState:    cred.BackupState,
+			},
+			Authenticator: webauthn.Authenticator{AAGUID: aaguid, SignCount: cred.SignCount, CloneWarning: cred.CloneWarning},
 		})
 	}
 
@@ -178,6 +184,13 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 
 	webAuthnUser := WebAuthnUser{User: &user}
 
+	// Read and restore body for FinishRegistration (it consumes it)
+	bodyBytes, _ := io.ReadAll(r.Body)
+	if err := r.Body.Close(); err != nil {
+		slog.Error("Failed to close request body after reading for registration", "error", err)
+	}
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	wa, err := s.initWebAuthn(r)
 	if err != nil {
 		http.Error(w, "WebAuthn init failed", http.StatusInternalServerError)
@@ -199,6 +212,9 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 		Authenticator:   hex.EncodeToString(credential.Authenticator.AAGUID),
 		SignCount:       credential.Authenticator.SignCount,
 		CloneWarning:    credential.Authenticator.CloneWarning,
+		// Access BackupEligible and BackupState directly from credential.Flags
+		BackupEligible: credential.Flags.BackupEligible,
+		BackupState:    credential.Flags.BackupState,
 	}
 
 	if err := s.DB.Create(&newCred).Error; err != nil {
@@ -217,6 +233,7 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 }
 
 func (s *Server) handleWebAuthnLoginBegin(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handleWebAuthnLoginBegin called")
 	wa, err := s.initWebAuthn(r)
 	if err != nil {
 		http.Error(w, "WebAuthn init failed", http.StatusInternalServerError)
@@ -246,6 +263,7 @@ func (s *Server) handleWebAuthnLoginBegin(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("handleWebAuthnLoginFinish called")
 	session, _ := s.Store.Get(r, "session-name")
 	sessionDataVal := session.Values["webauthn_session"]
 	if sessionDataVal == nil {
@@ -259,26 +277,88 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	wa, err := s.initWebAuthn(r)
-	if err != nil {
-		http.Error(w, "WebAuthn init failed", http.StatusInternalServerError)
+	// For discoverable login, we need to find the user first based on the credential ID
+	// Read and restore body for parsing (FinishLogin consumes it)
+	bodyBytes, _ := io.ReadAll(r.Body)
+	if err := r.Body.Close(); err != nil {
+		slog.Error("Failed to close request body after reading for login", "error", err)
+	}
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	var parse struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(bodyBytes, &parse); err != nil {
+		slog.Error("Failed to parse credential ID from login body", "error", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	credential, err := wa.FinishLogin(nil, sessionData, r)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to finish login: %v", err), http.StatusInternalServerError)
-		return
+	// paddedID logic (as before)
+	paddedID := parse.ID
+	if m := len(paddedID) % 4; m != 0 {
+		paddedID += strings.Repeat("=", 4-m)
 	}
 
 	var cred data.WebAuthnCredential
-	if err := s.DB.First(&cred, "id = ?", base64.URLEncoding.EncodeToString(credential.ID)).Error; err != nil {
+	if err := s.DB.Preload("User").Where("id = ? OR id = ?", parse.ID, paddedID).First(&cred).Error; err != nil {
+		slog.Warn("Login credential not found", "id", parse.ID, "padded_id", paddedID, "error", err)
 		http.Error(w, "Credential not found", http.StatusUnauthorized)
 		return
 	}
 
+	// 4. Construct WebAuthnUser
+	// We need to load all credentials for this user so library can verify
+	var userCreds []data.WebAuthnCredential
+	s.DB.Where("user_id = ?", cred.UserID).Find(&userCreds)
+	cred.User.Credentials = userCreds // Attach credentials to user object
+
+	var waCredentials []webauthn.Credential
+	for _, c := range userCreds {
+		idBytes, _ := base64.URLEncoding.DecodeString(c.ID)
+		aaguid, _ := hex.DecodeString(c.Authenticator)
+		waCredentials = append(waCredentials, webauthn.Credential{
+			ID:              idBytes,
+			PublicKey:       c.PublicKey,
+			AttestationType: c.AttestationType,
+			Transport:       parseTransports(c.Transport),
+			Flags: webauthn.CredentialFlags{ // Use webauthn.CredentialFlags
+				BackupEligible: c.BackupEligible,
+				BackupState:    c.BackupState,
+			},
+			Authenticator: webauthn.Authenticator{
+				AAGUID:       aaguid,
+				SignCount:    c.SignCount,
+				CloneWarning: c.CloneWarning,
+			},
+		})
+	}
+
+	webAuthnUser := WebAuthnUser{User: &cred.User, Credentials: waCredentials}
+
+	// For discoverable login, sessionData.UserID should be empty or match the user.
+	// Force it to match the user we found to ensure verification passes.
+	sessionData.UserID = webAuthnUser.WebAuthnID()
+
+	wa, err := s.initWebAuthn(r)
+	if err != nil {
+		slog.Error("WebAuthn init failed during login finish", "error", err)
+		http.Error(w, "WebAuthn init failed", http.StatusInternalServerError)
+		return
+	}
+
+	credential, err := wa.FinishLogin(webAuthnUser, sessionData, r)
+	if err != nil {
+		slog.Error("Failed to finish WebAuthn login", "error", err)
+		http.Error(w, fmt.Sprintf("Failed to finish login: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Update credential counters and flags
 	cred.SignCount = credential.Authenticator.SignCount
 	cred.CloneWarning = credential.Authenticator.CloneWarning
+	cred.BackupEligible = credential.Flags.BackupEligible
+	cred.BackupState = credential.Flags.BackupState
 	if err := s.DB.Save(&cred).Error; err != nil {
 		slog.Error("Failed to update credential", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -289,6 +369,35 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 	delete(session.Values, "webauthn_session")
 	if err := session.Save(r, w); err != nil {
 		slog.Error("Failed to save session after WebAuthn login", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleDeleteWebAuthnCredential(w http.ResponseWriter, r *http.Request) {
+	session, _ := s.Store.Get(r, "session-name")
+	username, ok := session.Values["username"].(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "Credential ID required", http.StatusBadRequest)
+		return
+	}
+
+	// ID in URL might be URL-encoded, but PathValue usually decodes standard URL encoding.
+	// However, base64url characters are safe. The padding '=' might be percent-encoded as %3D.
+	// If the client sends it raw, it might be truncated or misinterpreted if it wasn't for PathValue logic.
+	// Let's assume the ID is passed as is or query param. Using path param is cleaner if safe.
+	// We'll pass it as a path param.
+
+	if err := s.DB.Where("id = ? AND user_id = ?", id, username).Delete(&data.WebAuthnCredential{}).Error; err != nil {
+		slog.Error("Failed to delete credential", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

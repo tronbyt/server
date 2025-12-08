@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -44,22 +43,26 @@ func runHealthCheck(url string) error {
 	return nil
 }
 
-func openDB(dsn string) (*gorm.DB, error) {
+func openDB(dsn, logLevel string) (*gorm.DB, error) {
 	var db *gorm.DB
 	var err error
 
-	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-		logger.Config{
-			SlowThreshold:             200 * time.Millisecond,
-			LogLevel:                  logger.Warn,
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  true,
-		},
-	)
+	var gormLogLevel logger.LogLevel
+	switch strings.ToUpper(logLevel) {
+	case "DEBUG":
+		gormLogLevel = logger.Info // GORM Info includes SQL queries
+	case "INFO":
+		gormLogLevel = logger.Warn
+	case "WARN", "WARNING":
+		gormLogLevel = logger.Error
+	case "ERROR":
+		gormLogLevel = logger.Error
+	default:
+		gormLogLevel = logger.Warn
+	}
 
 	gormConfig := &gorm.Config{
-		Logger: newLogger,
+		Logger: data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond),
 	}
 
 	if strings.HasPrefix(dsn, "postgres") || strings.Contains(dsn, "host=") {
@@ -79,7 +82,7 @@ func openDB(dsn string) (*gorm.DB, error) {
 }
 
 func resetPassword(dsn, username, password string) error {
-	db, err := openDB(dsn)
+	db, err := openDB(dsn, "INFO")
 	if err != nil {
 		return err
 	}
@@ -110,6 +113,30 @@ func main() {
 		slog.Error("Failed to load settings", "error", err)
 		os.Exit(1)
 	}
+
+	// Re-initialize logger with configured log level
+	var level slog.Level
+	switch strings.ToUpper(cfg.LogLevel) {
+	case "DEBUG":
+		level = slog.LevelDebug
+	case "INFO":
+		level = slog.LevelInfo
+	case "WARN", "WARNING":
+		level = slog.LevelWarn
+	case "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+		slog.Warn("Invalid LOG_LEVEL, defaulting to INFO", "level", cfg.LogLevel)
+	}
+
+	// Create handler options with the parsed level
+	handlerOpts := &slog.HandlerOptions{
+		Level: level,
+	}
+	logger = slog.New(slog.NewTextHandler(os.Stdout, handlerOpts))
+	slog.SetDefault(logger)
+	slog.Debug("Logger initialized", "level", level)
 
 	dbDSN := flag.String("db", cfg.DBDSN, "Database DSN (sqlite file path or connection string)")
 	dataDir := flag.String("data", cfg.DataDir, "Path to data directory")
@@ -204,7 +231,7 @@ func main() {
 	}
 
 	// Open DB
-	db, err := openDB(*dbDSN)
+	db, err := openDB(*dbDSN, cfg.LogLevel)
 	if err != nil {
 		slog.Error("Failed to open database", "error", err)
 		os.Exit(1)

@@ -74,7 +74,8 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		// Add default config
-		config["$tz"] = getDeviceTimezone(device)
+		deviceTimezone := getDeviceTimezone(device)
+		config["$tz"] = deviceTimezone
 		if device.Location.Lat != "" {
 			config["$lat"] = device.Location.Lat
 		}
@@ -82,15 +83,34 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			config["$lng"] = device.Location.Lng
 		}
 
-		// Read Script
-		script, err := os.ReadFile(appPath)
-		if err != nil {
-			slog.Error("Failed to read script", "path", appPath, "error", err)
-			return false // Don't return false, just skip rendering? No, failed.
+		appInterval := app.DisplayTime
+		if appInterval == 0 {
+			appInterval = device.DefaultInterval
+		}
+
+		// Filters
+		var filters []string
+		if app.ColorFilter != nil && *app.ColorFilter != "" {
+			filters = append(filters, string(*app.ColorFilter))
 		}
 
 		startTime := time.Now()
-		imgBytes, err := renderer.Render(ctx, script, config, 64, 32)
+		imgBytes, messages, err := renderer.Render(
+			ctx,
+			appPath,
+			config,
+			64, 32,
+			time.Duration(appInterval)*time.Second,
+			30*time.Second,
+			true,
+			data.DeviceSupports2x(device.Type),
+			&deviceTimezone,
+			device.Locale,
+			filters,
+		)
+		for _, msg := range messages {
+			slog.Info("Render message", "app", appBasename, "message", msg)
+		}
 		renderDur := time.Since(startTime)
 
 		success := err == nil && len(imgBytes) > 0
@@ -109,6 +129,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			"last_render":       now,
 			"last_render_dur":   renderDur.Nanoseconds(),
 			"empty_last_render": !success,
+			"render_messages":   data.StringSlice(messages),
 		}
 		s.DB.Model(app).Updates(updates)
 
@@ -116,6 +137,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		app.LastRender = now
 		app.LastRenderDur = renderDur.Nanoseconds()
 		app.EmptyLastRender = !success
+		app.RenderMessages = messages
 
 		// Handle Autopin
 		if app.AutoPin && success {

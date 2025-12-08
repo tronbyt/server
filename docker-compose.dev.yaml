@@ -18,5 +18,4 @@ services:
       - PRODUCTION
       - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
-      - TRONBYT_HOST=0.0.0.0
       - GITHUB_TOKEN

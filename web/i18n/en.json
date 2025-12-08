@@ -599,8 +599,23 @@
   "No passkeys registered.": {
     "other": "No passkeys registered."
   },
+  "Delete Passkey": {
+    "other": "Delete Passkey"
+  },
+  "Delete this passkey?": {
+    "other": "Delete this passkey?"
+  },
+  "Failed to delete passkey": {
+    "other": "Failed to delete passkey"
+  },
   "Register New Passkey": {
     "other": "Register New Passkey"
+  },
+  "Only one passkey allowed": {
+    "other": "Only one passkey allowed"
+  },
+  "Only one passkey can be registered at a time. Delete the existing one to add a new device.": {
+    "other": "Only one passkey can be registered at a time. Delete the existing one to add a new device."
   },
   "Select JSON File": {
     "other": "Select JSON File"

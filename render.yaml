@@ -5,9 +5,4 @@ services:
   image:
     url: ghcr.io/tronbyt/server:1
   plan: free
-  envVars:
-  - key: WEB_CONCURRENCY
-    value: "1"
-  - key: TRONBYT_HOST
-    value: "0.0.0.0"
 version: "1"

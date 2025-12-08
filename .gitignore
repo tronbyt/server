@@ -2,12 +2,13 @@
 **/*.log
 .env
 certs
-/data/
 env
 tests/webp
-users
-server
-tronbyt-server
+/boot
+/data/
+/users/
+/server
+/tronbyt-server
 
 *.db
 *.db-shm
