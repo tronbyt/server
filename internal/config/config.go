@@ -1,22 +1,17 @@
 package config
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/joho/godotenv"
 )
 
 type Settings struct {
-	SecretKey              string `env:"SECRET_KEY"`
 	DBDSN                  string `env:"DB_DSN" envDefault:"tronbyt.db"`
 	DataDir                string `env:"DATA_DIR" envDefault:"data"`
-	Production             string `env:"PRODUCTION" envDefault:"0"`
+	Production             string `env:"PRODUCTION" envDefault:"1"`
 	EnableUserRegistration string `env:"ENABLE_USER_REGISTRATION" envDefault:"1"`
 	MaxUsers               int    `env:"MAX_USERS" envDefault:"0"`
 	SingleUserAutoLogin    string `env:"SINGLE_USER_AUTO_LOGIN" envDefault:"0"`
@@ -51,42 +46,5 @@ func LoadSettings() (*Settings, error) {
 		return nil, err
 	}
 
-	if cfg.SecretKey == "" {
-		secretKey, err := loadOrGenerateSecret(cfg.DataDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load or generate secret key: %w", err)
-		}
-		cfg.SecretKey = secretKey
-	}
-
 	return &cfg, nil
-}
-
-func loadOrGenerateSecret(dataDir string) (string, error) {
-	keyFile := filepath.Join(dataDir, ".secret_key")
-	// Ensure data directory exists
-	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dataDir, 0755); err != nil {
-			slog.Error("Failed to create data directory", "path", dataDir, "error", err)
-			return "", err
-		}
-	}
-
-	if content, err := os.ReadFile(keyFile); err == nil {
-		return string(content), nil
-	}
-
-	slog.Warn("SECRET_KEY not set, generating random key and saving to file", "path", keyFile)
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		slog.Error("Failed to generate random secret key", "error", err)
-		return "", err // Return error here
-	}
-	secret := base64.StdEncoding.EncodeToString(key)
-
-	if err := os.WriteFile(keyFile, []byte(secret), 0600); err != nil {
-		slog.Error("Failed to write secret key file", "error", err)
-		return "", err // Return error here
-	}
-	return secret, nil
 }

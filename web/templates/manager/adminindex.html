@@ -16,10 +16,10 @@
 <div class="w3-card-4 w3-padding">
   <header>
     <h1>{{ .Username }}</h1>
-    {{ if ne .Username "admin" }}
-    <form method="POST" action="/admin/{{ .Username }}/deleteuser" onsubmit="return confirm('{{ t $.Localizer "Delete User?" }}');">
-      <input class="danger" type="submit" value="{{ t $.Localizer "Delete" }}">
-    </form>
+    {{ if ne .Username $.User.Username }}
+    <button class="w3-button w3-red w3-round" onclick="deleteUser('{{ .Username }}')">
+      <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete" }}
+    </button>
     {{ end }}
 
     {{ if .Devices }}
@@ -90,4 +90,22 @@
 </div>
 {{ end }}
 
+<script>
+function deleteUser(username) {
+  if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
+  
+  fetch('/admin/users/' + username, {
+    method: 'DELETE'
+  }).then(response => {
+    if (response.ok || response.redirected) {
+      window.location.reload();
+    } else {
+      alert('Failed to delete user');
+    }
+  }).catch(err => {
+    console.error(err);
+    alert('Error deleting user');
+  });
+}
+</script>
 {{ end }}

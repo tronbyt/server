@@ -143,7 +143,7 @@ func (s *Server) handleWebAuthnRegisterBegin(w http.ResponseWriter, r *http.Requ
 	}
 
 	session.Values["webauthn_session"] = sessionData
-	if err := session.Save(r, w); err != nil {
+	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save WebAuthn session data", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -223,7 +223,7 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 	}
 
 	delete(session.Values, "webauthn_session")
-	if err := session.Save(r, w); err != nil {
+	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save session after WebAuthn registration", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -249,7 +249,7 @@ func (s *Server) handleWebAuthnLoginBegin(w http.ResponseWriter, r *http.Request
 
 	session, _ := s.Store.Get(r, "session-name")
 	session.Values["webauthn_session"] = sessionData
-	if err := session.Save(r, w); err != nil {
+	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save WebAuthn login session data", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -367,7 +367,7 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 
 	session.Values["username"] = cred.UserID
 	delete(session.Values, "webauthn_session")
-	if err := session.Save(r, w); err != nil {
+	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save session after WebAuthn login", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

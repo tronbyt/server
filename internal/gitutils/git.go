@@ -72,8 +72,8 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 	}, nil
 }
 
-// CloneOrUpdate clones a repo if it doesn't exist, or pulls if it does.
-func CloneOrUpdate(path string, url string) error {
+// EnsureRepo clones a repo if it doesn't exist, or pulls if it does and update is true.
+func EnsureRepo(path string, url string, update bool) error {
 	slog.Info("Checking git repo", "path", path, "url", url)
 
 	// Check if path exists
@@ -105,8 +105,13 @@ func CloneOrUpdate(path string, url string) error {
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove old repo: %w", err)
 			}
-			return CloneOrUpdate(path, url)
+			return EnsureRepo(path, url, update)
 		}
+	}
+
+	if !update {
+		slog.Info("Skipping repo update (update=false)")
+		return nil
 	}
 
 	// Pull

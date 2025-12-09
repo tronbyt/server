@@ -1343,6 +1343,9 @@
   "Invalid username or password": {
     "other": "Invalid username or password"
   },
+  "Administrator": {
+    "other": "Administrator"
+  },
   "Invalid old password": {
     "other": "Invalid old password"
   }

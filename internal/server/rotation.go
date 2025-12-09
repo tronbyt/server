@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"net/http"
+
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,71 +12,6 @@ import (
 	"log/slog"
 	"tronbyt-server/internal/data"
 )
-
-// handleNextApp is the handler for GET /v0/devices/{id}/next
-func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == id {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	} else {
-		// Fallback: Fetch from DB directly (No Auth required for device operation)
-		var d data.Device
-		if err := s.DB.Preload("Apps").First(&d, "id = ?", id).Error; err == nil {
-			device = &d
-		}
-	}
-
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	if len(device.Apps) == 0 {
-		var reloaded data.Device
-		if err := s.DB.Preload("Apps").First(&reloaded, "id = ?", device.ID).Error; err == nil {
-			device = &reloaded
-		}
-	}
-
-	user, _ := UserFromContext(r.Context())
-	if user == nil {
-		var owner data.User
-		s.DB.First(&owner, "username = ?", device.Username)
-		user = &owner
-	}
-
-	imgData, app, err := s.GetNextAppImage(r.Context(), device, user)
-	if err != nil {
-		// Send default image if error (or not found)
-		s.sendDefaultImage(w, r, device)
-		return
-	}
-
-	// Send Headers
-	w.Header().Set("Content-Type", "image/webp")
-	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
-	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", device.Brightness))
-
-	dwell := device.DefaultInterval
-	if app != nil && app.DisplayTime > 0 {
-		dwell = app.DisplayTime
-	}
-	w.Header().Set("Tronbyt-Dwell-Secs", fmt.Sprintf("%d", dwell))
-
-	if _, err := w.Write(imgData); err != nil {
-		slog.Error("Failed to write image data to response", "error", err)
-		// Log error, but can't change HTTP status after writing headers.
-	}
-}
 
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
 	// 1. Check Pushed Ephemeral Images (__*)
@@ -218,6 +153,16 @@ func (s *Server) determineNextApp(device *data.Device, user *data.User) (*data.A
 			shouldDisplay = true
 		} else if isInterstitialPos {
 			shouldDisplay = true
+			// Interstitial Logic: Skip if previous regular app (at index-1) is skipped
+			// Note: expanded list is always [App, Interstitial, App, Interstitial...]
+			// So an interstitial at index i corresponds to App at i-1.
+			if nextIndex > 0 {
+				prevApp := expanded[nextIndex-1]
+				prevActive := prevApp.Enabled && IsAppScheduleActive(&prevApp, device)
+				if !prevActive {
+					shouldDisplay = false
+				}
+			}
 		} else {
 			active := candidate.Enabled && IsAppScheduleActive(&candidate, device)
 			if active {

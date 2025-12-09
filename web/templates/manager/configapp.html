@@ -119,8 +119,8 @@
           </td>
           <td>
             <select name="color_filter" id="color_filter" class="form-control">
-              {{ range $key, $value := .ColorFilterChoices }}
-              <option value="{{ $key }}" {{ if eq (deref $.App.ColorFilter) $key }}selected{{ end }}>{{ t $.Localizer $value }}</option>
+              {{ range .ColorFilterOptions }}
+              <option value="{{ .Value }}" {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
               {{ end }}
             </select>
           </td>

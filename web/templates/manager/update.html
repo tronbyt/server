@@ -169,8 +169,8 @@
         </td>
         <td>
           <select name="color_filter" id="color_filter" class="device-settings-input">
-            {{ range $key, $value := .ColorFilterChoices }}
-            <option value="{{ $key }}" {{ if eq (deref $.Device.ColorFilter) $key }}selected{{ end }}>{{ t $.Localizer $value }}</option>
+            {{ range .ColorFilterOptions }}
+            <option value="{{ .Value }}" {{ if eq (derefOr $.Device.ColorFilter "none") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
             {{ end }}
           </select>
         </td>
@@ -368,8 +368,8 @@
           </td>
           <td>
             <select name="night_color_filter" id="night_color_filter" class="device-settings-input">
-              {{ range $key, $value := .ColorFilterChoices }}
-            <option value="{{ $key }}" {{ if eq (deref $.Device.NightColorFilter) $key }}selected{{ end }}>{{ t $.Localizer $value }}</option>
+              {{ range .ColorFilterOptions }}
+            <option value="{{ .Value }}" {{ if eq (derefOr $.Device.NightColorFilter "none") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
               {{ end }}
             </select>
           </td>

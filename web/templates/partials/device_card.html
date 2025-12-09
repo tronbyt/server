@@ -92,11 +92,14 @@
             <i class="fas fa-chevron-up"></i> {{ t .Localizer "Collapsed" }}
           </button>
         </div>
+        <div class="instruction-text" style="color: #666; font-style: italic;">
+          {{ t .Localizer "Drag apps to reorder or copy from/to another device" }}
+        </div>
       </div>
 
       <div id="appsList-{{ .Item.Device.ID }}" class="visible apps-list-view">
         {{ range .Item.Device.Apps }}
-          {{ template "app_card" (dict "App" . "Device" $.Item.Device "Localizer" $.Localizer) }}
+          {{ template "app_card" (dict "App" . "Device" $.Item.Device "Localizer" $.Localizer "DevicesWithUIScales" $.DevicesWithUIScales) }}
           <hr class="list-view-separator">
         {{ end }}
       </div>

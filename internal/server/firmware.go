@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/firmware"
 
 	"log/slog"
@@ -154,31 +153,8 @@ func (s *Server) UpdateFirmwareBinaries() error {
 }
 
 func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
 	// Check firmware availability
 	firmwareDir := filepath.Join(s.DataDir, "firmware")
@@ -204,7 +180,7 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 
 	localizer := s.getLocalizer(r)
 	s.renderTemplate(w, r, "firmware", TemplateData{
-		User:                  &user,
+		User:                  user,
 		Device:                device,
 		FirmwareBinsAvailable: binsAvailable,
 		FirmwareVersion:       version,
@@ -214,31 +190,7 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	ssid := r.FormValue("wifi_ap")
 	password := r.FormValue("wifi_password")

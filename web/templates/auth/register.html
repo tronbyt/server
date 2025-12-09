@@ -32,11 +32,7 @@
 
 <form method="POST">
     <label for="username">{{ t .Localizer "Username (alpha-numeric only, no symbols please.)" }}</label>
-    {{ if eq .UserCount 0 }}
-    <input class="w3-input w3-border" name="username" id="username" value="admin" readonly required>
-    {{ else }}
     <input class="w3-input w3-border" name="username" id="username" required>
-    {{ end }}
     <br>
     <label for="password">{{ t .Localizer "Password" }}</label>
     <input class="w3-input w3-border" type="password" name="password" id="password" required>
@@ -44,6 +40,11 @@
     <label for="email">{{ t .Localizer "Email Address (optional)" }}</label>
     <input class="w3-input w3-border" type="text" name="email" id="email">
     <br>
+    {{ if and .User .User.IsAdmin }}
+    <label for="is_admin">{{ t .Localizer "Administrator" }}</label>
+    <input class="w3-check" type="checkbox" name="is_admin" id="is_admin">
+    <br>
+    {{ end }}
     {{ if eq .UserCount 0 }}
     <button type="submit" class="w3-button w3-green"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Create Admin User" }}</button>
     {{ else }}
