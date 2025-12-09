@@ -18,15 +18,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             goos: linux
             goarch: amd64
             artifact_name: tronbyt-server-linux-amd64
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             goos: linux
             goarch: arm64
             artifact_name: tronbyt-server-linux-arm64
-          - os: macos-latest
+          - os: macos-26
             goos: darwin
             goarch: arm64
             artifact_name: tronbyt-server-darwin-arm64

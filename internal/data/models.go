@@ -35,12 +35,57 @@ const (
 	DeviceOther           DeviceType = "other"
 )
 
+// String returns the human-readable display name for the DeviceType.
+func (dt DeviceType) String() string {
+	switch dt {
+	case DeviceTidbytGen1:
+		return "Tidbyt Gen1"
+	case DeviceTidbytGen2:
+		return "Tidbyt Gen2"
+	case DevicePixoticker:
+		return "Pixoticker"
+	case DeviceRaspberryPi:
+		return "Raspberry Pi"
+	case DeviceRaspberryPiWide:
+		return "Raspberry Pi Wide"
+	case DeviceTronbytS3:
+		return "Tronbyt S3"
+	case DeviceTronbytS3Wide:
+		return "Tronbyt S3 Wide"
+	case DeviceMatrixPortal:
+		return "MatrixPortal S3"
+	case DeviceMatrixPortalWS:
+		return "MatrixPortal S3 Waveshare"
+	case DeviceOther:
+		return "Other"
+	default:
+		return string(dt) // Fallback to raw string value
+	}
+}
+
 type ProtocolType string
 
 const (
 	ProtocolHTTP ProtocolType = "HTTP"
 	ProtocolWS   ProtocolType = "WS"
 )
+
+func (p ProtocolType) String() string {
+	return string(p)
+}
+
+func (p ProtocolType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(p))
+}
+
+func (p *ProtocolType) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*p = ProtocolType(strings.ToUpper(s))
+	return nil
+}
 
 type RecurrenceType string
 
@@ -192,20 +237,21 @@ func ParseCustomBrightnessScale(scaleStr string) map[int]int {
 type ColorFilter string
 
 const (
-	ColorFilterNone       ColorFilter = "None"
-	ColorFilterDimmed     ColorFilter = "Dimmed"
-	ColorFilterRedshift   ColorFilter = "Redshift"
-	ColorFilterWarm       ColorFilter = "Warm"
-	ColorFilterSunset     ColorFilter = "Sunset"
-	ColorFilterSepia      ColorFilter = "Sepia"
-	ColorFilterVintage    ColorFilter = "Vintage"
-	ColorFilterDusk       ColorFilter = "Dusk"
-	ColorFilterCool       ColorFilter = "Cool"
-	ColorFilterBlackWhite ColorFilter = "Black & White"
-	ColorFilterIce        ColorFilter = "Ice"
-	ColorFilterMoonlight  ColorFilter = "Moonlight"
-	ColorFilterNeon       ColorFilter = "Neon"
-	ColorFilterPastel     ColorFilter = "Pastel"
+	ColorFilterInherit    ColorFilter = "inherit"
+	ColorFilterNone       ColorFilter = "none"
+	ColorFilterDimmed     ColorFilter = "dimmed"
+	ColorFilterRedshift   ColorFilter = "redshift"
+	ColorFilterWarm       ColorFilter = "warm"
+	ColorFilterSunset     ColorFilter = "sunset"
+	ColorFilterSepia      ColorFilter = "sepia"
+	ColorFilterVintage    ColorFilter = "vintage"
+	ColorFilterDusk       ColorFilter = "dusk"
+	ColorFilterCool       ColorFilter = "cool"
+	ColorFilterBlackWhite ColorFilter = "bw"
+	ColorFilterIce        ColorFilter = "ice"
+	ColorFilterMoonlight  ColorFilter = "moonlight"
+	ColorFilterNeon       ColorFilter = "neon"
+	ColorFilterPastel     ColorFilter = "pastel"
 )
 
 // DeviceLocation stores lat/lng and timezone.
@@ -239,11 +285,11 @@ func (l *DeviceLocation) Scan(value interface{}) error {
 
 // DeviceInfo stores firmware and protocol details.
 type DeviceInfo struct {
-	FirmwareVersion string `json:"firmware_version"`
-	FirmwareType    string `json:"firmware_type"`
-	ProtocolVersion *int   `json:"protocol_version"`
-	MACAddress      string `json:"mac_address"`
-	ProtocolType    string `json:"protocol_type"`
+	FirmwareVersion string       `json:"firmware_version"`
+	FirmwareType    string       `json:"firmware_type"`
+	ProtocolVersion *int         `json:"protocol_version"`
+	MACAddress      string       `json:"mac_address"`
+	ProtocolType    ProtocolType `json:"protocol_type"`
 }
 
 func (i DeviceInfo) Value() (driver.Value, error) {
@@ -302,6 +348,7 @@ type User struct {
 	Username        string `gorm:"primaryKey"`
 	Password        string
 	Email           string
+	IsAdmin         bool `gorm:"default:false"`
 	APIKey          string
 	ThemePreference ThemePreference `gorm:"default:'system'"`
 	SystemRepoURL   string
@@ -325,8 +372,6 @@ type WebAuthnCredential struct {
 	BackupEligible  bool
 	BackupState     bool
 }
-
-// GORMSlogLogger wraps slog for GORM logging
 
 type Device struct {
 	ID                    string `gorm:"primaryKey"` // 8-char hex
@@ -370,13 +415,23 @@ type Device struct {
 	Apps []App `gorm:"foreignKey:DeviceID;references:ID"`
 }
 
-func DeviceSupports2x(deviceType DeviceType) bool {
-	switch deviceType {
+func (dt DeviceType) Supports2x() bool {
+	switch dt {
 	case DeviceRaspberryPiWide, DeviceTronbytS3Wide:
 		return true
 	default:
 		return false
 	}
+}
+
+func (d *Device) GetTimezone() string {
+	if d.Timezone != nil && *d.Timezone != "" {
+		return *d.Timezone
+	}
+	if d.Location.Timezone != "" {
+		return d.Location.Timezone
+	}
+	return "Local"
 }
 
 type App struct {
@@ -393,8 +448,8 @@ type App struct {
 	Enabled       bool
 	Pushed        bool
 	Order         int
-	LastRender    int64 // Unix timestamp
-	LastRenderDur int64 // Nanoseconds or milliseconds? Python uses timedelta. Let's store int64 nanoseconds.
+	LastRender    time.Time
+	LastRenderDur time.Duration
 	Path          *string
 	StartTime     *string     // HH:MM
 	EndTime       *string     // HH:MM

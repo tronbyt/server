@@ -30,10 +30,25 @@ Developing additional clients for Tronbyt Server is straightforward: pull WebP i
 *   For Docker installations, use `docker compose up -d`.
 *   For Homebrew installations: `brew services start tronbyt-server`.
 *   For native installations (from source): `go build -o tronbyt-server ./cmd/server && ./tronbyt-server`
-*   Access the web app at `http://localhost:8000` with default credentials: `admin`/`password`.
+*   Access the web app at `http://localhost:8000`.
+
+### CLI Commands
+
+The `tronbyt-server` binary supports additional commands for administration:
+
+*   **`reset-password <username> <new_password>`**: Resets the password for a specified user.
+    ```bash
+    ./tronbyt-server reset-password admin newsecretpassword
+    ```
+
+*   **`health [url]`**: Performs a health check against the running server. Defaults to `http://localhost:8000/health`.
+    ```bash
+    ./tronbyt-server health
+    ./tronbyt-server health https://your-tronbyt-server.com/health
+    ```
 
 **Quick Start Guide:**
-1.  Access the web app at `http://localhost:8000` with `admin`/`password`.
+1.  Access the web app at `http://localhost:8000`.
 2.  Add your Tronbyt as a device.
 3.  Click "Firmware," enter WiFi credentials, and generate/download the firmware.
 4.  Use the ESPHome firmware flasher to flash your Tidbyt into a Tronbyt.
@@ -49,14 +64,17 @@ Developing additional clients for Tronbyt Server is straightforward: pull WebP i
 
 **Migration from v1.x:**
 If you are upgrading from the Python version (v1.x) and using the default SQLite database:
-1.  Ensure your old `usersdb.sqlite` file is in the data directory.
+1.  Ensure your old `usersdb.sqlite` file is in the data directory. If your Python installation had a separate `users` volume/directory (e.g., mounted at `/app/users` in Docker), this `users` directory needs to be attached as a volume to the Go server's main data directory (e.g., `/app/data/users` or directly at `/app/users`) during the first migration run. After successful migration, this old `users` volume can be safely detached and removed, as all its relevant contents will have been migrated to the new `data` structure.
 2.  Start the new server.
 3.  The server will automatically detect the legacy database and migrate your users, devices, and apps to the new `tronbyt.db` format.
 4.  The legacy database will be renamed to `usersdb.sqlite.bak` after successful migration.
 
 **Development:**
 *   Clone the repository and use `docker compose -f docker-compose.dev.yaml up -d --build` for Docker development.
-*   For native development: `go run ./cmd/server`.
+*   For native development:
+    *   Run directly: `go run ./cmd/server`.
+    *   With live-reloading (using [Air](https://github.com/air-verse/air)):
+        Run: `PRODUCTION=0 go tool air`
 
 **Configuration:**
 

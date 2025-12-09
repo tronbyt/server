@@ -229,8 +229,12 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 				IsInstalled: false,
 			}
 
-			// Try to find .star file
-			files, _ := os.ReadDir(appDir)
+			// List contents of this app directory
+			files, err := os.ReadDir(appDir)
+			if err != nil {
+				slog.Warn("Failed to read user app directory", "path", appDir, "error", err)
+				continue // Skip to next app directory
+			}
 			var starFile string
 			for _, f := range files {
 				if filepath.Ext(f.Name()) == ".star" {

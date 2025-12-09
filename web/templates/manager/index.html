@@ -19,7 +19,7 @@
 {{ end }}
 
 {{ range .DevicesWithUIScales }}
-  {{ template "device_card" (dict "Item" . "Localizer" $.Localizer) }}
+  {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "DevicesWithUIScales" $.DevicesWithUIScales) }}
   <hr>
 {{ end }}
 {{ end }}

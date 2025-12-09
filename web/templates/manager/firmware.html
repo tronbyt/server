@@ -12,9 +12,7 @@
 <div class="w3-panel w3-yellow w3-border w3-border-amber w3-round-large">
     <h3><i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Firmware Files Not Available" }}</h3>
     <p>{{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}</p>
-    {{ if eq .User.Username "admin" }}
-    <p>
-        <strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }}
+    {{ if .User.IsAdmin }}        <strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }}
         <a href="/auth/edit#firmware-management" class="w3-text-blue" style="text-decoration: underline;">{{ t .Localizer "Admin page" }}</a>
         {{ t .Localizer "to download the latest firmware files." }}
     </p>
@@ -29,7 +27,7 @@
     <div>
         <strong>{{ t .Localizer "Firmware Image Version" }}:</strong> {{ .FirmwareVersion }}
     </div>
-    {{ if eq .User.Username "admin" }}
+    {{ if .User.IsAdmin }}
     <div>
         <a href="/auth/edit#firmware-management" class="w3-button w3-small w3-gray firmware-management-btn">
             <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> {{ t .Localizer "Manage Firmware" }}

@@ -1345,5 +1345,14 @@
   },
   "Invalid old password": {
     "other": "Ungültiges altes Passwort."
+  },
+  "Drag apps to reorder or copy from/to another device": {
+    "other": "Apps zum Neuanordnen oder Kopieren von/zu einem anderen Gerät ziehen"
+  },
+  "Administrator": {
+    "other": "Administrator"
+  },
+  "Copy to...": {
+    "other": "Kopieren nach..."
   }
 }

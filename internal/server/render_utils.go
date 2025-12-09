@@ -16,15 +16,6 @@ import (
 	"tronbyt-server/web"
 )
 
-func (s *Server) getDeviceWebPDir(deviceID string) string {
-	path := filepath.Join(s.DataDir, "webp", deviceID)
-	if err := os.MkdirAll(path, 0755); err != nil {
-		slog.Error("Failed to create device webp directory", "path", path, "error", err)
-		// Non-fatal, continue.
-	}
-	return path
-}
-
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
 	if app.Path == nil || *app.Path == "" {
 		return false
@@ -58,9 +49,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	}
 
 	// 3. Starlark App - Check Interval
-	now := time.Now().Unix()
-	// uinterval is minutes
-	if now-app.LastRender > int64(app.UInterval*60) {
+	now := time.Now()
+	// uinterval is seconds
+	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Second {
 		slog.Info("Rendering app", "app", appBasename)
 
 		// Config
@@ -74,7 +65,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		// Add default config
-		deviceTimezone := getDeviceTimezone(device)
+		deviceTimezone := device.GetTimezone()
 		config["$tz"] = deviceTimezone
 		if device.Location.Lat != "" {
 			config["$lat"] = device.Location.Lat
@@ -90,8 +81,31 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 		// Filters
 		var filters []string
-		if app.ColorFilter != nil && *app.ColorFilter != "" {
-			filters = append(filters, string(*app.ColorFilter))
+
+		// Determine base device filter
+		var deviceFilter data.ColorFilter
+		if GetNightModeIsActive(device) && device.NightColorFilter != nil {
+			deviceFilter = *device.NightColorFilter
+		} else if device.ColorFilter != nil {
+			deviceFilter = *device.ColorFilter
+		} else {
+			deviceFilter = data.ColorFilterNone
+		}
+
+		appFilter := data.ColorFilterInherit
+		if app.ColorFilter != nil {
+			appFilter = *app.ColorFilter
+		}
+
+		if appFilter != data.ColorFilterInherit {
+			if appFilter != data.ColorFilterNone {
+				filters = append(filters, string(appFilter))
+			}
+		} else {
+			// Inherit from device
+			if deviceFilter != data.ColorFilterNone {
+				filters = append(filters, string(deviceFilter))
+			}
 		}
 
 		startTime := time.Now()
@@ -103,7 +117,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			time.Duration(appInterval)*time.Second,
 			30*time.Second,
 			true,
-			data.DeviceSupports2x(device.Type),
+			device.Type.Supports2x(),
 			&deviceTimezone,
 			device.Locale,
 			filters,
@@ -127,7 +141,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		// Update App State in DB
 		updates := map[string]any{
 			"last_render":       now,
-			"last_render_dur":   renderDur.Nanoseconds(),
+			"last_render_dur":   renderDur,
 			"empty_last_render": !success,
 			"render_messages":   data.StringSlice(messages),
 		}
@@ -135,7 +149,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 		// Update in-memory object (passed pointer)
 		app.LastRender = now
-		app.LastRenderDur = renderDur.Nanoseconds()
+		app.LastRenderDur = renderDur
 		app.EmptyLastRender = !success
 		app.RenderMessages = messages
 
@@ -152,20 +166,15 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 }
 
 func (s *Server) resolveAppPath(path string) string {
-	if filepath.IsAbs(path) {
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(s.DataDir, path)
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		slog.Error("Failed to resolve absolute path", "path", path, "error", err)
 		return path
 	}
-	return filepath.Join(s.DataDir, path)
-}
-
-func getDeviceTimezone(device *data.Device) string {
-	if device.Timezone != nil && *device.Timezone != "" {
-		return *device.Timezone
-	}
-	if device.Location.Timezone != "" {
-		return device.Location.Timezone
-	}
-	return "UTC" // Default
+	return abs
 }
 
 func copyFile(src, dst string) error {
@@ -214,6 +223,11 @@ func (s *Server) sendDefaultImage(w http.ResponseWriter, r *http.Request, device
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
 	brightness := device.Brightness
+	if GetNightModeIsActive(device) {
+		brightness = device.NightBrightness
+	} else if GetDimModeIsActive(device) && device.DimBrightness != nil {
+		brightness = *device.DimBrightness
+	}
 	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", brightness))
 
 	dwell := device.DefaultInterval

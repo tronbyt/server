@@ -39,7 +39,7 @@
   <ul>
     {{ if .User }}
     <li><a href="/">{{ t .Localizer "Home" }}</a></li>
-    {{ if eq .User.Username "admin" }}
+    {{ if .User.IsAdmin }}
     <li>
       <a href="/auth/register">{{ t .Localizer "Create User" }}</a>
     </li>
@@ -85,7 +85,7 @@
   <ul>
     {{ if .User }}
     <li><a href="/" onclick="closeMobileMenu()">{{ t .Localizer "Home" }}</a></li>
-    {{ if eq .User.Username "admin" }}
+    {{ if .User.IsAdmin }}
     <li>
       <a href="/auth/register" onclick="closeMobileMenu()">
         {{ t .Localizer "Create User" }}

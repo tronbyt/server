@@ -126,18 +126,18 @@ input[type=submit] {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  -webkit-mask-image: url('/v0/dots');
+  -webkit-mask-image: url('/dots');
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: cover;
-  mask-image: url('/v0/dots');
+  mask-image: url('/dots');
   mask-repeat: no-repeat;
   mask-size: cover;
   width: 100%;
   height: 100%;
 }
 .app-img.is-2x img {
-  -webkit-mask-image: url('/v0/dots?w=128&h=64&r=0.4');
-  mask-image: url('/v0/dots?w=128&h=64&r=0.4');
+  -webkit-mask-image: url('/dots?w=128&h=64&r=0.4');
+  mask-image: url('/dots?w=128&h=64&r=0.4');
 }
 
 /* Skeleton loader */

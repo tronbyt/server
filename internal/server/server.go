@@ -7,6 +7,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -25,7 +26,7 @@ import (
 	"time"
 
 	"tronbyt-server/internal/apps"
-	"tronbyt-server/internal/auth"
+
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
@@ -38,6 +39,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
+
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/mod/semver"
 	"golang.org/x/text/language"
@@ -77,6 +79,11 @@ type DeviceWithUIScale struct {
 	NightBrightnessUI int
 }
 
+type ColorFilterOption struct {
+	Value string
+	Name  string
+}
+
 // TemplateData is a struct to pass data to HTML templates.
 type TemplateData struct {
 	User                *data.User
@@ -107,7 +114,7 @@ type TemplateData struct {
 	AppConfig map[string]any
 
 	// Device Update Extras
-	ColorFilterChoices map[string]string
+	ColorFilterOptions []ColorFilterOption
 	AvailableLocales   []string
 	DefaultImgURL      string
 	DefaultWsURL       string
@@ -169,8 +176,12 @@ func (s *Server) RefreshSystemAppsCache() {
 
 func (s *Server) getSetting(key string) (string, error) {
 	var setting data.Setting
-	if err := s.DB.First(&setting, "key = ?", key).Error; err != nil {
-		return "", err
+	result := s.DB.Limit(1).Find(&setting, "key = ?", key)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	if result.RowsAffected == 0 {
+		return "", nil
 	}
 	return setting.Value, nil
 }
@@ -200,23 +211,18 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	// Secret Key
 	secretKey, err := s.getSetting("secret_key")
 	if err != nil || secretKey == "" {
-		if cfg.SecretKey != "" && !strings.Contains(cfg.SecretKey, "insecure") {
-			secretKey = cfg.SecretKey
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			slog.Error("Failed to generate random secret key", "error", err)
+			// Fallback to avoid crash, though this is critical
+			secretKey = "insecure-fallback-key-" + fmt.Sprintf("%d", time.Now().UnixNano())
 		} else {
-			b := make([]byte, 32)
-			if _, err := rand.Read(b); err != nil {
-				slog.Error("Failed to generate random secret key", "error", err)
-				// Fallback to avoid crash, though this is critical
-				secretKey = "insecure-fallback-key-" + fmt.Sprintf("%d", time.Now().UnixNano())
-			} else {
-				secretKey = base64.StdEncoding.EncodeToString(b)
-			}
+			secretKey = base64.StdEncoding.EncodeToString(b)
 		}
 		if err := s.setSetting("secret_key", secretKey); err != nil {
 			slog.Error("Failed to save secret key to settings", "error", err)
 		}
 	}
-	cfg.SecretKey = secretKey
 
 	// System Repo
 	repo, err := s.getSetting("system_apps_repo")
@@ -224,14 +230,13 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		cfg.SystemAppsRepo = repo
 	}
 
-	s.Store = sessions.NewCookieStore([]byte(cfg.SecretKey))
+	s.Store = sessions.NewCookieStore([]byte(secretKey))
 
 	// Configure Session Store
 	s.Store.Options = &sessions.Options{
 		Path:     "/",
 		MaxAge:   86400 * 30,
 		HttpOnly: true,
-		Secure:   cfg.Production == "1", // Set Secure flag in production
 		SameSite: http.SameSiteLaxMode,
 	}
 
@@ -240,23 +245,21 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	// Load translations
 	s.Bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 
-	// Load German translations
-	i18nData, err := web.Assets.ReadFile("i18n/de.json")
-	if err != nil {
-		slog.Error("Failed to read German translation file", "error", err)
+	if entries, err := web.Assets.ReadDir("i18n"); err != nil {
+		slog.Error("Failed to read i18n directory", "error", err)
 	} else {
-		if _, err := s.Bundle.ParseMessageFileBytes(i18nData, "de.json"); err != nil {
-			slog.Error("Failed to parse German translation file", "error", err)
-		}
-	}
-
-	// Load English translations
-	enI18nData, err := web.Assets.ReadFile("i18n/en.json")
-	if err != nil {
-		slog.Error("Failed to read English translation file", "error", err)
-	} else {
-		if _, err := s.Bundle.ParseMessageFileBytes(enI18nData, "en.json"); err != nil {
-			slog.Error("Failed to parse English translation file", "error", err)
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
+				path := "i18n/" + entry.Name()
+				data, err := web.Assets.ReadFile(path)
+				if err != nil {
+					slog.Error("Failed to read translation file", "file", entry.Name(), "error", err)
+					continue
+				}
+				if _, err := s.Bundle.ParseMessageFileBytes(data, entry.Name()); err != nil {
+					slog.Error("Failed to parse translation file", "file", entry.Name(), "error", err)
+				}
+			}
 		}
 	}
 
@@ -282,14 +285,35 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 			}
 			return dict, nil
 		},
-		"timeago": func(ts int64) string {
-			if ts == 0 {
+		"timeago": func(ts any) string {
+			var t time.Time
+			switch v := ts.(type) {
+			case int64:
+				if v == 0 {
+					return "never"
+				}
+				t = time.Unix(v, 0)
+			case time.Time:
+				if v.IsZero() {
+					return "never"
+				}
+				t = v
+			default:
 				return "never"
 			}
-			return humanize.Time(time.Unix(ts, 0))
+			return humanize.Time(t)
 		},
-		"duration": func(d int64) string {
-			dur := time.Duration(d)
+		"duration": func(d any) string {
+			var dur time.Duration
+			switch v := d.(type) {
+			case int64:
+				dur = time.Duration(v)
+			case time.Duration:
+				dur = v
+			default:
+				return "0s"
+			}
+
 			if dur.Seconds() < 60 {
 				return fmt.Sprintf("%.3f s", dur.Seconds())
 			}
@@ -334,6 +358,25 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 				return string(*val)
 			default:
 				// Fallback for unexpected types
+				return fmt.Sprintf("%v", v)
+			}
+		},
+		"derefOr": func(v any, def string) string {
+			if v == nil {
+				return def
+			}
+			switch val := v.(type) {
+			case *string:
+				if val == nil {
+					return def
+				}
+				return *val
+			case *data.ColorFilter:
+				if val == nil {
+					return def
+				}
+				return string(*val)
+			default:
 				return fmt.Sprintf("%v", v)
 			}
 		},
@@ -413,11 +456,21 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	return s
 }
 
+// saveSession saves the session with dynamic Secure flag based on request scheme.
+func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *sessions.Session) error {
+	// Create a copy of options to modify safely
+	opts := *session.Options
+	opts.Secure = r.URL.Scheme == "https"
+	session.Options = &opts
+
+	return session.Save(r, w)
+}
+
 func (s *Server) routes() {
 	// Conflict Resolution Handlers (Must be registered before conflicting wildcards?)
 	// Actually order of registration doesn't matter in Go 1.22 for correctness, but presence matters.
 	// But let's put them first for clarity.
-	s.Router.HandleFunc("/static/ws", func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
+	s.Router.HandleFunc("GET /static/ws", func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
 
 	// Static files
 	staticFS, err := fs.Sub(web.Assets, "static")
@@ -426,45 +479,29 @@ func (s *Server) routes() {
 	} else {
 		fileServer := http.FileServer(http.FS(staticFS))
 		// Register specific subdirectories to avoid conflict with /{id}/ws
-		s.Router.Handle("/static/css/", http.StripPrefix("/static/", fileServer))
-		s.Router.Handle("/static/js/", http.StripPrefix("/static/", fileServer))
-		s.Router.Handle("/static/webfonts/", http.StripPrefix("/static/", fileServer))
-		s.Router.Handle("/static/images/", http.StripPrefix("/static/", fileServer))
-		s.Router.Handle("/static/favicon.ico", http.StripPrefix("/static/", fileServer))
+		s.Router.Handle("GET /static/css/", http.StripPrefix("/static/", fileServer))
+		s.Router.Handle("GET /static/js/", http.StripPrefix("/static/", fileServer))
+		s.Router.Handle("GET /static/webfonts/", http.StripPrefix("/static/", fileServer))
+		s.Router.Handle("GET /static/images/", http.StripPrefix("/static/", fileServer))
+		s.Router.Handle("GET /static/favicon.ico", http.StripPrefix("/static/", fileServer))
 	}
 
 	// App Preview (Specific path)
-	s.Router.HandleFunc("/preview/app/{id}", s.handleSystemAppThumbnail)
+	s.Router.HandleFunc("GET /preview/app/{id}", s.handleSystemAppThumbnail)
 
-	// API v0 Group - authenticated with Middleware
-	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetDevice)))
-	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePush)))
-	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(http.HandlerFunc(s.handleListInstallations)))
-	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchDevice)))
-	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchInstallation)))
-	s.Router.Handle("DELETE /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handleDeleteInstallationAPI)))
-
-	s.Router.HandleFunc("GET /v0/dots", s.handleDots)
+	s.SetupAPIRoutes()
+	s.SetupAuthRoutes()
 
 	// Device endpoint
 	s.Router.Handle("GET /{id}/next", http.HandlerFunc(s.handleNextApp))
 
 	// Web UI
-	s.Router.HandleFunc("/", s.handleIndex)
-	s.Router.HandleFunc("/adminindex", s.handleAdminIndex)
-	s.Router.HandleFunc("POST /admin/{username}/deleteuser", s.handleDeleteUser)
+	s.Router.HandleFunc("GET /", s.RequireLogin(s.handleIndex))
+	s.Router.HandleFunc("GET /admin", s.RequireLogin(s.handleAdminIndex))
+	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 
-	s.Router.HandleFunc("GET /auth/login", s.handleLoginGet)
-	s.Router.HandleFunc("POST /auth/login", s.handleLoginPost)
-	s.Router.HandleFunc("GET /auth/logout", s.handleLogout)
-	s.Router.HandleFunc("GET /auth/register", s.handleRegisterGet)
-	s.Router.HandleFunc("POST /auth/register", s.handleRegisterPost)
-	s.Router.HandleFunc("GET /auth/edit", s.handleEditUserGet)
-	s.Router.HandleFunc("POST /auth/edit", s.handleEditUserPost)
-	s.Router.HandleFunc("POST /auth/generate_api_key", s.handleGenerateAPIKey)
-
-	s.Router.HandleFunc("GET /devices/create", s.handleCreateDeviceGet)
-	s.Router.HandleFunc("POST /devices/create", s.handleCreateDevicePost)
+	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
+	s.Router.HandleFunc("POST /devices/create", s.RequireLogin(s.handleCreateDevicePost))
 
 	s.Router.HandleFunc("GET /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppGet)))
 	s.Router.HandleFunc("POST /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppPost)))
@@ -478,40 +515,32 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_enabled", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleToggleEnabled))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/moveapp", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleMoveApp))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/duplicate", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleDuplicateApp))))
+	s.Router.HandleFunc("POST /devices/{target_device_id}/apps/duplicate_from/{source_device_id}/{iname}", s.RequireLogin(s.RequireDevice(s.handleDuplicateAppToDevice)))
 	s.Router.HandleFunc("POST /devices/{id}/reorder_apps", s.RequireLogin(s.RequireDevice(s.handleReorderApps)))
 
 	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppGet)))
 	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppPost)))
 	s.Router.HandleFunc("GET /devices/{id}/uploads/{filename}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteUpload)))
 
-	s.Router.HandleFunc("POST /set_api_key", s.handleSetAPIKey)
-	s.Router.HandleFunc("POST /set_theme_preference", s.handleSetThemePreference)
-	s.Router.HandleFunc("POST /set_user_repo", s.handleSetUserRepo)
-	s.Router.HandleFunc("POST /refresh_user_repo", s.handleRefreshUserRepo)
+	s.Router.HandleFunc("POST /set_theme_preference", s.RequireLogin(s.handleSetThemePreference))
+	s.Router.HandleFunc("POST /set_user_repo", s.RequireLogin(s.handleSetUserRepo))
+	s.Router.HandleFunc("POST /refresh_user_repo", s.RequireLogin(s.handleRefreshUserRepo))
 
-	s.Router.HandleFunc("GET /export_user_config", s.handleExportUserConfig)
-	s.Router.HandleFunc("POST /import_user_config", s.handleImportUserConfig)
+	s.Router.HandleFunc("GET /export_user_config", s.RequireLogin(s.handleExportUserConfig))
+	s.Router.HandleFunc("POST /import_user_config", s.RequireLogin(s.handleImportUserConfig))
 	s.Router.HandleFunc("GET /devices/{id}/export_config", s.RequireLogin(s.RequireDevice(s.handleExportDeviceConfig)))
 
-	s.Router.HandleFunc("POST /set_system_repo", s.handleSetSystemRepo)
-	s.Router.HandleFunc("POST /refresh_system_repo", s.handleRefreshSystemRepo)
-	s.Router.HandleFunc("POST /update_firmware", s.handleUpdateFirmware)
+	s.Router.HandleFunc("POST /set_system_repo", s.RequireLogin(s.handleSetSystemRepo))
+	s.Router.HandleFunc("POST /refresh_system_repo", s.RequireLogin(s.handleRefreshSystemRepo))
+	s.Router.HandleFunc("POST /update_firmware", s.RequireLogin(s.handleUpdateFirmware))
 
 	// App broken status (development only)
-	s.Router.HandleFunc("POST /mark_app_broken", s.handleMarkAppBroken)
-	s.Router.HandleFunc("POST /unmark_app_broken", s.handleUnmarkAppBroken)
+	s.Router.HandleFunc("POST /mark_app_broken", s.RequireLogin(s.handleMarkAppBroken))
+	s.Router.HandleFunc("POST /unmark_app_broken", s.RequireLogin(s.handleUnmarkAppBroken))
 
 	s.Router.HandleFunc("GET /devices/{id}/current", s.handleCurrentApp)
 	s.Router.HandleFunc("GET /devices/{id}/installations/{iname}/preview", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleRenderConfigPreview))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/preview", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handlePushPreview))))
-
-	// WebAuthn
-	s.Router.HandleFunc("GET /auth/webauthn/register/begin", s.handleWebAuthnRegisterBegin)
-	s.Router.HandleFunc("POST /auth/webauthn/register/finish", s.handleWebAuthnRegisterFinish)
-	s.Router.HandleFunc("GET /auth/webauthn/login/begin", s.handleWebAuthnLoginBegin)
-	s.Router.HandleFunc("POST /auth/webauthn/login/finish", s.handleWebAuthnLoginFinish)
-	s.Router.HandleFunc("POST /auth/webauthn/delete/{id}", s.handleDeleteWebAuthnCredential)
-	s.Router.HandleFunc("GET /auth/passkeys", s.handlePasskeysGet)
 
 	// Firmware
 	s.Router.HandleFunc("GET /devices/{id}/firmware", s.RequireLogin(s.RequireDevice(s.handleFirmwareGenerateGet)))
@@ -522,10 +551,9 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteDevice)))
 	s.Router.HandleFunc("POST /devices/{id}/import_config", s.RequireLogin(s.RequireDevice(s.handleImportDeviceConfig)))
 
-	// Websocket catch-all (conflicts with many things, so registered last or handled carefully)
-	s.Router.HandleFunc("/{id}/ws", s.handleWS)
-	s.Router.HandleFunc("/ws", s.handleDashboardWS)
-	s.Router.HandleFunc("/health", s.handleHealth)
+	// Websocket routes
+	s.SetupWebsocketRoutes()
+	s.Router.HandleFunc("GET /health", s.handleHealth)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -623,7 +651,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 		}
 	}
 
-	if err := session.Save(r, w); err != nil {
+	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save session after flashing", "error", err)
 	}
 
@@ -669,18 +697,23 @@ func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
 // getDeviceTypeChoices returns a map of device type values to display names
 func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[string]string {
 	choices := make(map[string]string)
-	// This should be dynamically generated from data.DeviceType enum
 
-	choices[string(data.DeviceTidbytGen1)] = s.localizeOrID(localizer, "Tidbyt Gen1")
-	choices[string(data.DeviceTidbytGen2)] = s.localizeOrID(localizer, "Tidbyt Gen2")
-	choices[string(data.DevicePixoticker)] = s.localizeOrID(localizer, "Pixoticker")
-	choices[string(data.DeviceRaspberryPi)] = s.localizeOrID(localizer, "Raspberry Pi")
-	choices[string(data.DeviceRaspberryPiWide)] = s.localizeOrID(localizer, "Raspberry Pi Wide")
-	choices[string(data.DeviceTronbytS3)] = s.localizeOrID(localizer, "Tronbyt S3")
-	choices[string(data.DeviceTronbytS3Wide)] = s.localizeOrID(localizer, "Tronbyt S3 Wide")
-	choices[string(data.DeviceMatrixPortal)] = s.localizeOrID(localizer, "MatrixPortal S3")
-	choices[string(data.DeviceMatrixPortalWS)] = s.localizeOrID(localizer, "MatrixPortal S3 Waveshare")
-	choices[string(data.DeviceOther)] = s.localizeOrID(localizer, "Other")
+	allDeviceTypes := []data.DeviceType{
+		data.DeviceTidbytGen1,
+		data.DeviceTidbytGen2,
+		data.DevicePixoticker,
+		data.DeviceRaspberryPi,
+		data.DeviceRaspberryPiWide,
+		data.DeviceTronbytS3,
+		data.DeviceTronbytS3Wide,
+		data.DeviceMatrixPortal,
+		data.DeviceMatrixPortalWS,
+		data.DeviceOther,
+	}
+
+	for _, dt := range allDeviceTypes {
+		choices[string(dt)] = s.localizeOrID(localizer, dt.String())
+	}
 	return choices
 }
 
@@ -688,21 +721,7 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[string]stri
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleIndex called")
-	// Check auth
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		slog.Info("Not authenticated, redirecting to login")
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-		slog.Error("User in session not found in DB", "username", username)
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	user := GetUser(r)
 
 	var devicesWithUI []DeviceWithUIScale
 
@@ -728,13 +747,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	s.renderTemplate(w, r, "index", TemplateData{User: &user, DevicesWithUIScales: devicesWithUI})
+	s.renderTemplate(w, r, "index", TemplateData{User: user, DevicesWithUIScales: devicesWithUI})
 }
 
 func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok || username != "admin" {
+	user := GetUser(r)
+	if user.Username != "admin" {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -770,15 +788,14 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	targetUsername := r.PathValue("username")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok || username != "admin" {
+	user := GetUser(r)
+	if user.Username != "admin" {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	if targetUsername == "admin" {
-		http.Error(w, "Cannot delete admin", http.StatusBadRequest)
+	if targetUsername == user.Username {
+		http.Error(w, "Cannot delete yourself", http.StatusBadRequest)
 		return
 	}
 
@@ -805,53 +822,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/adminindex", http.StatusSeeOther)
-}
-
-func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
-	widthStr := r.URL.Query().Get("w")
-	heightStr := r.URL.Query().Get("h")
-	radiusStr := r.URL.Query().Get("r")
-
-	width := 64
-	height := 32
-	radius := 0.3
-
-	if wVal, err := strconv.Atoi(widthStr); err == nil && wVal > 0 {
-		width = wVal
-	}
-	if hVal, err := strconv.Atoi(heightStr); err == nil && hVal > 0 {
-		height = hVal
-	}
-	if rVal, err := strconv.ParseFloat(radiusStr, 64); err == nil && rVal > 0 {
-		radius = rVal
-	}
-
-	etag := fmt.Sprintf("\"%d-%d-%f\"", width, height, radius)
-	w.Header().Set("ETag", etag)
-	w.Header().Set("Cache-Control", "public, max-age=31536000")
-
-	if r.Header.Get("If-None-Match") == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-
-	w.Header().Set("Content-Type", "image/svg+xml")
-
-	var sb strings.Builder
-	sb.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-	sb.WriteString(fmt.Sprintf("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\" fill=\"#fff\">\n", width, height))
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			sb.WriteString(fmt.Sprintf("<circle cx=\"%f\" cy=\"%f\" r=\"%f\"/>", float64(x)+0.5, float64(y)+0.5, radius))
-		}
-	}
-	sb.WriteString("</svg>\n")
-
-	if _, err := w.Write([]byte(sb.String())); err != nil {
-		slog.Error("Failed to write dots SVG", "error", err)
-	}
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
 func (s *Server) getRealIP(r *http.Request) string {
@@ -905,381 +876,27 @@ func (s *Server) isTrustedNetwork(r *http.Request) bool {
 	return ip.IsLoopback() || ip.IsPrivate()
 }
 
-func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("handleLoginGet called")
-
-	// Check session
-	session, _ := s.Store.Get(r, "session-name")
-	if username, ok := session.Values["username"].(string); ok {
-		// Validate user exists in DB
-		var user data.User
-		if err := s.DB.First(&user, "username = ?", username).Error; err == nil {
-			// User exists, redirect to home
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		} else {
-			// User not found in DB, invalidate session
-			slog.Info("User in session not found in DB, invalidating session", "username", username)
-			session.Options.MaxAge = -1 // Expire cookie
-			if err := session.Save(r, w); err != nil {
-				slog.Error("Failed to save session after invalidation", "error", err)
-			}
-			// Fall through to login logic
-		}
+func (s *Server) getColorFilterChoices() []ColorFilterOption {
+	return []ColorFilterOption{
+		{Value: "none", Name: "None"},
+		{Value: "dimmed", Name: "Dimmed"},
+		{Value: "redshift", Name: "Redshift"},
+		{Value: "warm", Name: "Warm"},
+		{Value: "sunset", Name: "Sunset"},
+		{Value: "sepia", Name: "Sepia"},
+		{Value: "vintage", Name: "Vintage"},
+		{Value: "dusk", Name: "Dusk"},
+		{Value: "cool", Name: "Cool"},
+		{Value: "bw", Name: "Black & White"},
+		{Value: "ice", Name: "Ice"},
+		{Value: "moonlight", Name: "Moonlight"},
+		{Value: "neon", Name: "Neon"},
+		{Value: "pastel", Name: "Pastel"},
 	}
-
-	// Auto-Login Check
-	if s.Config.SingleUserAutoLogin == "1" {
-		var count int64
-		if err := s.DB.Model(&data.User{}).Count(&count).Error; err == nil && count == 1 {
-			if s.isTrustedNetwork(r) {
-				var user data.User
-				s.DB.First(&user)
-				session.Values["username"] = user.Username
-				session.Options.MaxAge = 86400 * 30
-				if err := session.Save(r, w); err != nil {
-					slog.Error("Failed to save session for auto-login", "error", err)
-				}
-				slog.Info("Auto-logged in single user from trusted network", "username", user.Username, "ip", s.getRealIP(r))
-				http.Redirect(w, r, "/", http.StatusSeeOther)
-				return
-			}
-		}
-	}
-
-	var count int64
-	if err := s.DB.Model(&data.User{}).Count(&count).Error; err != nil {
-		slog.Error("Failed to count users", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if count == 0 {
-		slog.Info("No users found, redirecting to registration for owner setup")
-		http.Redirect(w, r, "/auth/register", http.StatusSeeOther)
-		return
-	}
-
-	s.renderTemplate(w, r, "login", TemplateData{})
-}
-
-func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("handleLoginPost called")
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-
-	var user data.User
-	if err := s.DB.First(&user, "username = ?", username).Error; err != nil {
-		slog.Warn("Login failed: user not found", "username", username)
-		s.renderTemplate(w, r, "login", TemplateData{Flashes: []string{"Invalid username or password"}})
-		return
-	}
-
-	valid, legacy, err := auth.VerifyPassword(user.Password, password)
-	if err != nil {
-		slog.Error("Password check error", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	if !valid {
-		slog.Warn("Login failed: invalid password", "username", username)
-		s.renderTemplate(w, r, "login", TemplateData{Flashes: []string{"Invalid username or password"}})
-		return
-	}
-
-	// Upgrade password if legacy
-	if legacy {
-		slog.Info("Upgrading password hash", "username", username)
-		newHash, err := auth.HashPassword(password)
-		if err == nil {
-			s.DB.Model(&user).Update("password", newHash)
-		} else {
-			slog.Error("Failed to upgrade password hash", "error", err)
-		}
-	}
-
-	// Login successful
-	slog.Info("Login successful", "username", username)
-	session, _ := s.Store.Get(r, "session-name")
-	session.Values["username"] = user.Username
-
-	if r.FormValue("remember") == "on" {
-		session.Options.MaxAge = 86400 * 30
-	} else {
-		session.Options.MaxAge = 0
-	}
-
-	if err := session.Save(r, w); err != nil {
-		slog.Error("Failed to save session", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	delete(session.Values, "username")
-	if err := session.Save(r, w); err != nil {
-		slog.Error("Failed to save session on logout", "error", err)
-		// Non-fatal, redirect anyway
-	}
-	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-}
-
-func (s *Server) handleRegisterGet(w http.ResponseWriter, r *http.Request) {
-	var count int64
-	s.DB.Model(&data.User{}).Count(&count)
-
-	if s.Config.EnableUserRegistration != "1" && count > 0 {
-		session, _ := s.Store.Get(r, "session-name")
-		currentUsername, ok := session.Values["username"].(string)
-		if !ok || currentUsername != "admin" {
-			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-			return
-		}
-	}
-
-	var flashes []string
-	if count == 0 {
-		localizer := s.getLocalizer(r)
-		flashes = append(flashes, localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "System Setup: Please create the 'admin' user."}))
-	}
-
-	s.renderTemplate(w, r, "register", TemplateData{Flashes: flashes, UserCount: int(count)})
-}
-
-func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-	email := r.FormValue("email")
-
-	var count int64
-	s.DB.Model(&data.User{}).Count(&count)
-
-	localizer := s.getLocalizer(r)
-
-	if s.Config.EnableUserRegistration != "1" && count > 0 {
-		session, _ := s.Store.Get(r, "session-name")
-		currentUsername, ok := session.Values["username"].(string)
-		if !ok || currentUsername != "admin" {
-			http.Error(w, localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "User registration is not enabled."}), http.StatusForbidden)
-			return
-		}
-	}
-
-	// Special handling for the very first user (owner registration)
-	if count == 0 {
-		if username == "" {
-			username = "admin"
-		} else if username != "admin" {
-			s.renderTemplate(w, r, "register", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "System Setup: The first user must be 'admin'."})}})
-			return
-		}
-	}
-
-	if username == "" || password == "" {
-		s.renderTemplate(w, r, "register", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Username and password required"})}})
-		return
-	}
-
-	// Check existing user only if count > 0 or username is explicitly provided for non-admin case
-	if count > 0 || (count == 0 && username == "admin") {
-		var existing data.User
-		if err := s.DB.First(&existing, "username = ?", username).Error; err == nil {
-			s.renderTemplate(w, r, "register", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Username already exists"})}})
-			return
-		}
-	}
-
-	hashedPassword, err := auth.HashPassword(password)
-	if err != nil {
-		slog.Error("Failed to hash password", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	apiKey, _ := generateSecureToken(32)
-
-	newUser := data.User{
-		Username: username,
-		Password: hashedPassword,
-		Email:    email,
-		APIKey:   apiKey,
-	}
-
-	if err := s.DB.Create(&newUser).Error; err != nil {
-		slog.Error("Failed to create user", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Auto-login the first created user (admin)
-	if count == 0 {
-		session, _ := s.Store.Get(r, "session-name")
-		session.Values["username"] = newUser.Username
-		if err := session.Save(r, w); err != nil {
-			slog.Error("Failed to save session for auto-login", "error", err)
-		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	http.Redirect(w, r, "/adminindex", http.StatusSeeOther)
-}
-
-func (s *Server) getColorFilterChoices() map[string]string {
-	return map[string]string{
-		"None":          "None",
-		"Dimmed":        "Dimmed",
-		"Redshift":      "Redshift",
-		"Warm":          "Warm",
-		"Sunset":        "Sunset",
-		"Sepia":         "Sepia",
-		"Vintage":       "Vintage",
-		"Dusk":          "Dusk",
-		"Cool":          "Cool",
-		"Black & White": "Black & White",
-		"Ice":           "Ice",
-		"Moonlight":     "Moonlight",
-		"Neon":          "Neon",
-		"Pastel":        "Pastel",
-	}
-}
-
-func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Credentials").First(&user, "username = ?", username).Error; err != nil {
-		slog.Error("Failed to fetch user for edit", "username", username, "error", err)
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	// Get System Repo Info if admin (Stub for now or implement)	// Python: system_apps.get_system_repo_info
-	// I'll leave it empty for now or implement later if critical.
-	// Template expects 'system_repo_info' but I don't pass it in TemplateData explicitly,
-	// unless I extend TemplateData or pass map.
-	// Go TemplateData has User.
-	// I need to add fields to TemplateData if I want to pass extra info.
-	// 'FirmwareVersion' is there.
-
-	firmwareVersion := "unknown"
-	firmwareFile := filepath.Join(s.DataDir, "firmware", "firmware_version.txt")
-	if bytes, err := os.ReadFile(firmwareFile); err == nil {
-		firmwareVersion = strings.TrimSpace(string(bytes))
-	}
-
-	var systemRepoInfo *gitutils.RepoInfo
-	if s.Config.SystemAppsRepo != "" {
-		path := filepath.Join(s.DataDir, "system-apps")
-		info, err := gitutils.GetRepoInfo(path, s.Config.SystemAppsRepo)
-		if err != nil {
-			slog.Error("Failed to get system repo info", "error", err)
-		} else {
-			systemRepoInfo = info
-		}
-	}
-
-	var userRepoInfo *gitutils.RepoInfo
-	if user.AppRepoURL != "" {
-		path := filepath.Join(s.DataDir, "users", user.Username, "apps")
-		info, err := gitutils.GetRepoInfo(path, user.AppRepoURL)
-		if err != nil {
-			slog.Error("Failed to get user repo info", "error", err)
-		} else {
-			userRepoInfo = info
-		}
-	}
-
-	s.renderTemplate(w, r, "edit", TemplateData{
-		User:                &user,
-		FirmwareVersion:     firmwareVersion,
-		SystemRepoInfo:      systemRepoInfo,
-		UserRepoInfo:        userRepoInfo,
-		GlobalSystemRepoURL: s.Config.SystemAppsRepo,
-	})
-}
-
-func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.First(&user, "username = ?", username).Error; err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	oldPassword := r.FormValue("old_password")
-	newPassword := r.FormValue("password")
-
-	if oldPassword != "" && newPassword != "" {
-		valid, _, err := auth.VerifyPassword(user.Password, oldPassword)
-		if err != nil || !valid {
-			s.renderTemplate(w, r, "edit", TemplateData{User: &user, Flashes: []string{"Invalid old password"}})
-			return
-		}
-
-		hash, err := auth.HashPassword(newPassword)
-		if err != nil {
-			http.Error(w, "Failed to hash password", http.StatusInternalServerError)
-			return
-		}
-		user.Password = hash
-		if err := s.DB.Save(&user).Error; err != nil {
-			slog.Error("Failed to update password", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		// Flash success?
-	}
-
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
-}
-
-func (s *Server) handleGenerateAPIKey(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	apiKey, err := generateSecureToken(32)
-	if err != nil {
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-		return
-	}
-
-	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("api_key", apiKey).Error; err != nil {
-		slog.Error("Failed to update API key", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
 }
 
 func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	user := GetUser(r)
 
 	theme := r.FormValue("theme")
 	if theme == "" {
@@ -1287,7 +904,7 @@ func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("theme_preference", theme).Error; err != nil {
+	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("theme_preference", theme).Error; err != nil {
 		slog.Error("Failed to update theme preference", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -1307,25 +924,11 @@ func generateSecureToken(length int) (string, error) {
 }
 
 func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
-	// Check auth: only logged in users can create devices
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.First(&user, "username = ?", username).Error; err != nil {
-		// User somehow disappeared from DB after session started
-		slog.Error("User in session not found for create device GET", "username", username, "error", err)
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	user := GetUser(r)
 
 	localizer := s.getLocalizer(r)
 	s.renderTemplate(w, r, "create", TemplateData{
-		User:              &user,
+		User:              user,
 		DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 		Localizer:         localizer,
 		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil)}, // Default brightness 20%
@@ -1333,21 +936,7 @@ func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) {
-	// Check auth
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		slog.Info("Not authenticated, redirecting to login")
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		slog.Error("User in session not found for create device POST", "username", username, "error", err)
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	user := GetUser(r)
 
 	// Parse form data
 	formData := CreateDeviceFormData{
@@ -1374,7 +963,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		// Flash message
 		slog.Warn("Validation error: Device name required")
 		s.renderTemplate(w, r, "create", TemplateData{
-			User:              &user,
+			User:              user,
 			Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Unique name is required."}), localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name is required."}), "Name is required."},
 			DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 			Localizer:         localizer,
@@ -1388,7 +977,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		if dev.Name == formData.Name {
 			slog.Warn("Validation error: Device name already exists", "name", formData.Name)
 			s.renderTemplate(w, r, "create", TemplateData{
-				User:              &user,
+				User:              user,
 				Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Unique name is required."}), localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name already exists."}), "Name already exists."}, // Added localized and plain text messages
 				DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 				Localizer:         localizer,
@@ -1487,194 +1076,206 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func (s *Server) handleGetDevice(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		http.Error(w, "Device ID required", http.StatusBadRequest)
-		return
-	}
-
-	user, err := UserFromContext(r.Context())
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var device *data.Device
-
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden: Device Key mismatch", http.StatusForbidden)
-			return
+// duplicateAppToDeviceLogic handles the core logic of duplicating an app.
+func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetIname string, insertAfter bool) error {
+	// Generate a unique iname for the duplicate on the target device
+	var newIname string
+	maxAttempts := 900 // Max 900 attempts for 3-digit numbers
+	for i := 0; i < maxAttempts; i++ {
+		n, err := rand.Int(rand.Reader, big.NewInt(900)) // 0-899
+		if err != nil {
+			return fmt.Errorf("failed to generate random number for iname: %w", err)
 		}
-		device = d
-	} else {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
+		candidateIname := fmt.Sprintf("%d", n.Int64()+100) // 100-999
+
+		// Check if this iname already exists on the target device
+		found := false
+		for _, app := range targetDevice.Apps {
+			if app.Iname == candidateIname {
+				found = true
 				break
 			}
 		}
-		if device == nil {
-			http.Error(w, "Device not found", http.StatusNotFound)
-			return
+		if !found {
+			newIname = candidateIname
+			break
 		}
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(s.toDevicePayload(device)); err != nil {
-		slog.Error("Failed to encode device JSON", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if newIname == "" {
+		return errors.New("error generating unique ID: No available IDs in the 100-999 range")
 	}
-}
 
-func (s *Server) handleListInstallations(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	// Create a copy of the original app
+	duplicatedApp := *originalApp // Shallow copy, then deep copy map/pointers
+	duplicatedApp.ID = 0          // Let GORM generate a new primary key
+	duplicatedApp.DeviceID = targetDevice.ID
+	duplicatedApp.Iname = newIname
+	duplicatedApp.LastRender = time.Time{} // Reset render time for new app
+	duplicatedApp.Order = 0                // Will be set below
+	duplicatedApp.AutoPin = false          // Do not auto-pin duplicated app
 
-	user, _ := UserFromContext(r.Context())
-	var device *data.Device
-
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
+	// Deep copy Config map if it exists
+	if originalApp.Config != nil {
+		newConfig := make(data.JSONMap)
+		for k, v := range originalApp.Config {
+			newConfig[k] = v
 		}
-		device = d
-	} else {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
-				break
-			}
+		duplicatedApp.Config = newConfig
+	}
+
+	// If it's a non-pushed app, copy its .star file
+	if !originalApp.Pushed && originalApp.Path != nil && *originalApp.Path != "" {
+		sourcePath := s.resolveAppPath(*originalApp.Path)
+		installDir := filepath.Join(s.DataDir, "installations", newIname)
+		if err := os.MkdirAll(installDir, 0755); err != nil {
+			return fmt.Errorf("failed to create install dir for duplicated app: %w", err)
 		}
-	}
+		destPath := filepath.Join(installDir, fmt.Sprintf("%s.star", newIname))
 
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	response := map[string]any{
-		"installations": device.Apps,
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("Failed to encode installations JSON", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
-}
-
-type PushData struct {
-	InstallationID    string `json:"installationID"`
-	InstallationIDAlt string `json:"installationId"`
-	Image             string `json:"image"`
-}
-
-func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	user, _ := UserFromContext(r.Context())
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
+		if err := copyFile(sourcePath, destPath); err != nil {
+			return fmt.Errorf("failed to copy .star file for duplicated app: %w", err)
 		}
-		device = d
-	} else {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
+		relPath := filepath.Join("installations", newIname, fmt.Sprintf("%s.star", newIname))
+		duplicatedApp.Path = &relPath
+	}
+
+	// Logic to insert at correct position in target device
+	// Get all apps sorted by order
+	appsList := make([]data.App, len(targetDevice.Apps))
+	copy(appsList, targetDevice.Apps)
+	sort.Slice(appsList, func(i, j int) bool {
+		return appsList[i].Order < appsList[j].Order
+	})
+
+	// Find insertion point
+	targetIdx := -1
+	if targetIname != "" {
+		for i, appItem := range appsList {
+			if appItem.Iname == targetIname {
+				targetIdx = i
 				break
 			}
 		}
 	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
 
-	var dataReq PushData
-	if err := json.NewDecoder(r.Body).Decode(&dataReq); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	installID := dataReq.InstallationID
-	if installID == "" {
-		installID = dataReq.InstallationIDAlt
-	}
-
-	imgBytes, err := base64.StdEncoding.DecodeString(dataReq.Image)
-	if err != nil {
-		http.Error(w, "Invalid Base64 Image", http.StatusBadRequest)
-		return
-	}
-
-	if err := s.savePushedImage(device.ID, installID, imgBytes); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	if installID != "" {
-		if err := s.ensurePushedApp(device.ID, installID); err != nil {
-			fmt.Printf("Error adding pushed app: %v\n", err)
+	if targetIdx != -1 {
+		insertIdx := targetIdx + 1
+		if !insertAfter {
+			insertIdx = targetIdx
 		}
+		// Insert (Go slices)
+		appsList = append(appsList[:insertIdx], append([]data.App{duplicatedApp}, appsList[insertIdx:]...)...)
+	} else {
+		// If no valid target found or empty list, append to end
+		appsList = append(appsList, duplicatedApp)
+	}
+
+	// Update order for all apps
+	for i := range appsList {
+		appsList[i].Order = i
+	}
+	targetDevice.Apps = appsList
+
+	// If the app is a pushed app (uploaded image), copy the image file
+	if originalApp.Pushed {
+		sourceWebpDir := s.getDeviceWebPDir(sourceDevice.ID)
+		sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
+
+		targetWebpDir := s.getDeviceWebPDir(targetDevice.ID)
+		targetPushedWebpDir := filepath.Join(targetWebpDir, "pushed")
+		if err := os.MkdirAll(targetPushedWebpDir, 0755); err != nil {
+			slog.Error("Failed to create target pushed webp directory", "path", targetPushedWebpDir, "error", err)
+			// Continue, don't fail entire operation just for image copy failure
+		}
+		targetWebpPath := filepath.Join(targetPushedWebpDir, fmt.Sprintf("%s.webp", newIname))
+
+		if _, err := os.Stat(sourceWebpPath); err == nil {
+			if err := copyFile(sourceWebpPath, targetWebpPath); err != nil {
+				slog.Error("Failed to copy pushed image", "source", sourceWebpPath, "target", targetWebpPath, "error", err)
+			} else {
+				slog.Info("Copied pushed image", "from", sourceWebpPath, "to", targetWebpPath)
+			}
+		} else if !os.IsNotExist(err) {
+			slog.Error("Failed to stat source pushed image", "path", sourceWebpPath, "error", err)
+		} else {
+			slog.Warn("Source pushed image not found", "path", sourceWebpPath)
+		}
+	}
+
+	// Save the user data (which includes devices and their apps)
+	if err := s.DB.Save(user).Error; err != nil {
+		return fmt.Errorf("failed to save user after duplicating app: %w", err)
+	}
+
+	// Trigger initial render for the duplicated app
+	s.possiblyRender(r.Context(), &duplicatedApp, targetDevice, user)
+
+	return nil
+}
+
+// handleDuplicateAppToDevice handles the HTTP request for duplicating an app across devices.
+func (s *Server) handleDuplicateAppToDevice(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r) // Assumes RequireLogin middleware sets user
+
+	sourceDeviceID := r.PathValue("source_device_id")
+	targetDeviceID := r.PathValue("target_device_id")
+	iname := r.PathValue("iname") // Source app iname
+
+	targetIname := r.FormValue("target_iname")
+	insertAfterStr := r.FormValue("insert_after")
+	insertAfter := insertAfterStr == "true"
+
+	if sourceDeviceID == "" || targetDeviceID == "" || iname == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+
+	var sourceDevice *data.Device
+	var targetDevice *data.Device
+	var originalApp *data.App
+
+	// Find source and target devices
+	for i := range user.Devices {
+		if user.Devices[i].ID == sourceDeviceID {
+			sourceDevice = &user.Devices[i]
+		}
+		if user.Devices[i].ID == targetDeviceID {
+			targetDevice = &user.Devices[i]
+		}
+	}
+
+	if sourceDevice == nil {
+		http.Error(w, "Source device not found", http.StatusNotFound)
+		return
+	}
+	if targetDevice == nil {
+		http.Error(w, "Target device not found", http.StatusNotFound)
+		return
+	}
+
+	// Find the original app on the source device
+	for i := range sourceDevice.Apps {
+		if sourceDevice.Apps[i].Iname == iname {
+			originalApp = &sourceDevice.Apps[i]
+			break
+		}
+	}
+
+	if originalApp == nil {
+		http.Error(w, "Source app not found on device", http.StatusNotFound)
+		return
+	}
+
+	if err := s.duplicateAppToDeviceLogic(r, user, sourceDevice, originalApp, targetDevice, targetIname, insertAfter); err != nil {
+		slog.Error("Failed to duplicate app", "error", err)
+		http.Error(w, fmt.Sprintf("Failed to duplicate app: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte("WebP received.")); err != nil {
-		slog.Error("Failed to write WebP received message", "error", err)
-		// Non-fatal, response already 200
+	if _, err := w.Write([]byte("OK")); err != nil {
+		slog.Error("Failed to write OK response", "error", err)
 	}
-}
-
-func (s *Server) savePushedImage(deviceID, installID string, data []byte) error {
-	dir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	var filename string
-	if installID != "" {
-		filename = installID + ".webp"
-	} else {
-		filename = fmt.Sprintf("__%d.webp", time.Now().UnixNano())
-	}
-
-	path := filepath.Join(dir, filename)
-	return os.WriteFile(path, data, 0644)
-}
-
-func (s *Server) ensurePushedApp(deviceID, installID string) error {
-	var count int64
-	err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", deviceID, installID).Count(&count).Error
-	if err != nil {
-		return err
-	}
-
-	if count > 0 {
-		return nil
-	}
-
-	newApp := data.App{
-		DeviceID:    deviceID,
-		Iname:       installID,
-		Name:        "pushed",
-		UInterval:   10,
-		DisplayTime: 0,
-		Enabled:     true,
-		Pushed:      true,
-	}
-
-	var maxOrder sql.NullInt64
-	if err := s.DB.Model(&data.App{}).Where("device_id = ?", deviceID).Select("max(`order`)").Row().Scan(&maxOrder); err != nil {
-		slog.Error("Failed to get max app order", "error", err)
-		// Non-fatal, default to 0 for order (if maxOrder.Valid is false, maxOrder.Int64 is 0)
-	}
-	newApp.Order = int(maxOrder.Int64) + 1
-
-	return s.DB.Create(&newApp).Error
 }
 
 func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
@@ -1786,48 +1387,6 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	installDir := filepath.Join(s.DataDir, "installations", iname)
-	if err := os.MkdirAll(installDir, 0755); err != nil {
-		slog.Error("Failed to create install dir", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Copy .star file
-	destPath := filepath.Join(installDir, fmt.Sprintf("%s.star", iname)) // Rename to iname.star
-
-	sourceFile, err := os.Open(realPath)
-	if err != nil {
-		slog.Error("Failed to open source file", "path", realPath, "error", err)
-		http.Error(w, "App source not found", http.StatusBadRequest)
-		return
-	}
-	defer func() {
-		if err := sourceFile.Close(); err != nil {
-			slog.Error("Failed to close source file", "error", err)
-		}
-	}()
-
-	destFile, err := os.Create(destPath)
-	if err != nil {
-		slog.Error("Failed to create dest file", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	defer func() {
-		if err := destFile.Close(); err != nil {
-			slog.Error("Failed to close destination file", "error", err)
-		}
-	}()
-
-	if _, err := io.Copy(destFile, sourceFile); err != nil {
-		slog.Error("Failed to copy file", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	relPath := filepath.Join("installations", iname, fmt.Sprintf("%s.star", iname))
-
 	// Create App in DB
 	newApp := data.App{
 		DeviceID:    device.ID,
@@ -1837,7 +1396,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		DisplayTime: displayTime,
 		Notes:       notes,
 		Enabled:     true,
-		Path:        &relPath,
+		Path:        &appPath,
 	}
 
 	var maxOrder sql.NullInt64
@@ -1886,7 +1445,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	if app.Path != nil && *app.Path != "" {
 		appPath := s.resolveAppPath(*app.Path)
 		var err error
-		schemaBytes, err = renderer.GetSchema(appPath, 64, 32, data.DeviceSupports2x(device.Type))
+		schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
 		if err != nil {
 			slog.Error("Failed to get app schema", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -1900,12 +1459,13 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	deleteOnCancel := r.URL.Query().Get("delete_on_cancel") == "true"
 
 	s.renderTemplate(w, r, "configapp", TemplateData{
-		User:           user,
-		Device:         device,
-		App:            app,
-		Schema:         template.JS(schemaBytes),
-		AppConfig:      app.Config,
-		DeleteOnCancel: deleteOnCancel,
+		User:               user,
+		Device:             device,
+		App:                app,
+		Schema:             template.JS(schemaBytes),
+		AppConfig:          app.Config,
+		DeleteOnCancel:     deleteOnCancel,
+		ColorFilterOptions: s.getColorFilterChoices(),
 	})
 }
 
@@ -1923,6 +1483,7 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		Notes               string         `json:"notes"`
 		Config              map[string]any `json:"config"`
 		UseCustomRecurrence bool           `json:"use_custom_recurrence"`
+		ColorFilter         string         `json:"color_filter"`
 		// ... schedule fields ...
 	}
 
@@ -1938,6 +1499,15 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	app.DisplayTime = payload.DisplayTime
 	app.Notes = payload.Notes
 	app.Config = payload.Config
+
+	if payload.ColorFilter != "" {
+		if payload.ColorFilter == "inherit" {
+			app.ColorFilter = nil
+		} else {
+			val := data.ColorFilter(payload.ColorFilter)
+			app.ColorFilter = &val
+		}
+	}
 
 	// Save to DB
 	if err := s.DB.Save(app).Error; err != nil {
@@ -1987,7 +1557,7 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		appPath,
 		configStr,
 		64, 32,
-		data.DeviceSupports2x(device.Type),
+		device.Type.Supports2x(),
 		handler,
 		payload.Param)
 	if err != nil {
@@ -2076,7 +1646,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			filters = append(filters, string(*app.ColorFilter))
 		}
 
-		deviceTimezone := getDeviceTimezone(device)
+		deviceTimezone := device.GetTimezone()
 
 		imgBytes, _, err := renderer.Render(
 			r.Context(),
@@ -2086,7 +1656,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			time.Duration(appInterval)*time.Second,
 			30*time.Second,
 			true,
-			data.DeviceSupports2x(device.Type),
+			device.Type.Supports2x(),
 			&deviceTimezone,
 			device.Locale,
 			filters,
@@ -2159,7 +1729,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		filters = append(filters, string(*app.ColorFilter))
 	}
 
-	deviceTimezone := getDeviceTimezone(device)
+	deviceTimezone := device.GetTimezone()
 
 	imgBytes, messages, err := renderer.Render(
 		r.Context(),
@@ -2169,7 +1739,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		time.Duration(appInterval)*time.Second,
 		30*time.Second,
 		true,
-		data.DeviceSupports2x(device.Type),
+		device.Type.Supports2x(),
 		&deviceTimezone,
 		device.Locale,
 		filters,
@@ -2197,328 +1767,6 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 
 // API Handlers
 
-type DeviceUpdate struct {
-	Brightness          *int    `json:"brightness"`
-	IntervalSec         *int    `json:"intervalSec"`
-	NightModeEnabled    *bool   `json:"nightModeEnabled"`
-	NightModeApp        *string `json:"nightModeApp"`
-	NightModeBrightness *int    `json:"nightModeBrightness"`
-	NightModeStartTime  *string `json:"nightModeStartTime"`
-	NightModeEndTime    *string `json:"nightModeEndTime"`
-	DimModeStartTime    *string `json:"dimModeStartTime"`
-	DimModeBrightness   *int    `json:"dimModeBrightness"`
-	PinnedApp           *string `json:"pinnedApp"`
-	AutoDim             *bool   `json:"autoDim"` // Legacy
-}
-
-type DevicePayload struct {
-	ID           string          `json:"id"`
-	Type         data.DeviceType `json:"type"`
-	DisplayName  string          `json:"displayName"`
-	Notes        string          `json:"notes"`
-	IntervalSec  int             `json:"intervalSec"`
-	Brightness   int             `json:"brightness"`
-	NightMode    NightMode       `json:"nightMode"`
-	DimMode      DimMode         `json:"dimMode"`
-	PinnedApp    *string         `json:"pinnedApp"`
-	Interstitial Interstitial    `json:"interstitial"`
-	LastSeen     *string         `json:"lastSeen"`
-	Info         DeviceInfo      `json:"info"`
-	AutoDim      bool            `json:"autoDim"`
-}
-
-type NightMode struct {
-	Enabled    bool   `json:"enabled"`
-	App        string `json:"app"`
-	StartTime  string `json:"startTime"`
-	EndTime    string `json:"endTime"`
-	Brightness int    `json:"brightness"`
-}
-
-type DimMode struct {
-	StartTime  *string `json:"startTime"`
-	Brightness *int    `json:"brightness"`
-}
-
-type Interstitial struct {
-	Enabled bool    `json:"enabled"`
-	App     *string `json:"app"`
-}
-
-type DeviceInfo struct {
-	FirmwareVersion string `json:"firmwareVersion"`
-	FirmwareType    string `json:"firmwareType"`
-	ProtocolVersion *int   `json:"protocolVersion"`
-	MACAddress      string `json:"macAddress"`
-	ProtocolType    string `json:"protocolType"`
-}
-
-func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
-	info := DeviceInfo{
-		FirmwareVersion: d.Info.FirmwareVersion,
-		FirmwareType:    d.Info.FirmwareType,
-		ProtocolVersion: d.Info.ProtocolVersion,
-		MACAddress:      d.Info.MACAddress,
-		ProtocolType:    d.Info.ProtocolType,
-	}
-
-	var lastSeen *string
-	if d.LastSeen != nil {
-		iso := d.LastSeen.Format(time.RFC3339)
-		lastSeen = &iso
-	}
-
-	var dimBrightnessPtr *int
-	if d.DimBrightness != nil {
-		val := int(*d.DimBrightness)
-		dimBrightnessPtr = &val
-	}
-
-	return DevicePayload{
-		ID:          d.ID,
-		Type:        d.Type,
-		DisplayName: d.Name,
-		Notes:       d.Notes,
-		IntervalSec: d.DefaultInterval,
-		Brightness:  int(d.Brightness),
-		NightMode: NightMode{
-			Enabled:    d.NightModeEnabled,
-			App:        d.NightModeApp,
-			StartTime:  d.NightStart,
-			EndTime:    d.NightEnd,
-			Brightness: int(d.NightBrightness),
-		},
-		DimMode: DimMode{
-			StartTime:  d.DimTime,
-			Brightness: dimBrightnessPtr,
-		},
-		PinnedApp: d.PinnedApp,
-		Interstitial: Interstitial{
-			Enabled: d.InterstitialEnabled,
-			App:     d.InterstitialApp,
-		},
-		LastSeen: lastSeen,
-		Info:     info,
-		AutoDim:  d.NightModeEnabled,
-	}
-}
-
-func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	// Auth handled by middleware, get device
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == id {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var update DeviceUpdate
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	if update.Brightness != nil {
-		device.Brightness = data.Brightness(*update.Brightness)
-	}
-	if update.IntervalSec != nil {
-		device.DefaultInterval = *update.IntervalSec
-	}
-	if update.NightModeEnabled != nil {
-		device.NightModeEnabled = *update.NightModeEnabled
-	}
-	if update.AutoDim != nil {
-		device.NightModeEnabled = *update.AutoDim
-	}
-	if update.NightModeApp != nil {
-		device.NightModeApp = *update.NightModeApp
-	}
-	if update.NightModeBrightness != nil {
-		device.NightBrightness = data.Brightness(*update.NightModeBrightness)
-	}
-	if update.PinnedApp != nil {
-		if *update.PinnedApp == "" {
-			device.PinnedApp = nil
-		} else {
-			device.PinnedApp = update.PinnedApp
-		}
-	}
-
-	if update.NightModeStartTime != nil {
-		device.NightStart = *update.NightModeStartTime
-	}
-	if update.NightModeEndTime != nil {
-		device.NightEnd = *update.NightModeEndTime
-	}
-	if update.DimModeStartTime != nil {
-		device.DimTime = update.DimModeStartTime
-	}
-	if update.DimModeBrightness != nil {
-		val := data.Brightness(*update.DimModeBrightness)
-		device.DimBrightness = &val
-	}
-
-	if err := s.DB.Save(device).Error; err != nil {
-		http.Error(w, "Failed to update device", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(s.toDevicePayload(device)); err != nil {
-		slog.Error("Failed to encode device", "error", err)
-	}
-}
-
-type InstallationUpdate struct {
-	Enabled           *bool `json:"enabled"`
-	Pinned            *bool `json:"pinned"`
-	RenderIntervalMin *int  `json:"renderIntervalMin"`
-	DisplayTimeSec    *int  `json:"displayTimeSec"`
-}
-
-func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	// Auth & Device fetch (same as above)
-	// ... (Simplification: Assuming middleware checks API key for device or user session)
-	// Actually middleware puts user/device in context.
-
-	var device *data.Device
-	// ... fetch device ...
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != deviceID {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == deviceID {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
-	if app == nil {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-
-	var update InstallationUpdate
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	if update.Enabled != nil {
-		app.Enabled = *update.Enabled
-	}
-	if update.RenderIntervalMin != nil {
-		app.UInterval = *update.RenderIntervalMin
-	}
-	if update.DisplayTimeSec != nil {
-		app.DisplayTime = *update.DisplayTimeSec
-	}
-	if update.Pinned != nil {
-		if *update.Pinned {
-			device.PinnedApp = &app.Iname
-		} else if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-			device.PinnedApp = nil
-		}
-		// Save device for pinned change
-		s.DB.Save(device)
-	}
-
-	if err := s.DB.Save(app).Error; err != nil {
-		http.Error(w, "Failed to update app", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(app); err != nil {
-		slog.Error("Failed to encode app", "error", err)
-	}
-}
-
-func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.PathValue("id")
-	iname := r.PathValue("iname")
-
-	// Auth & Device fetch
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != deviceID {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == deviceID {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	if err := s.DB.Where("device_id = ? AND iname = ?", device.ID, iname).Delete(&data.App{}).Error; err != nil {
-		http.Error(w, "Failed to delete app", http.StatusInternalServerError)
-		return
-	}
-
-	// Clean up files (install dir and webp)
-	installDir := filepath.Join(s.DataDir, "installations", iname)
-	if err := os.RemoveAll(installDir); err != nil {
-		slog.Error("Failed to remove install directory", "path", installDir, "error", err)
-	}
-
-	webpDir := s.getDeviceWebPDir(device.ID)
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
-	for _, match := range matches {
-		if err := os.Remove(match); err != nil {
-			slog.Error("Failed to remove webp file", "path", match, "error", err)
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write([]byte("App deleted.")); err != nil {
-		slog.Error("Failed to write response", "error", err)
-	}
-}
-
 func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	app := GetApp(r)
@@ -2528,12 +1776,6 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to delete app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
-	}
-
-	// Clean up files
-	installDir := filepath.Join(s.DataDir, "installations", app.Iname)
-	if err := os.RemoveAll(installDir); err != nil {
-		slog.Error("Failed to remove install directory", "path", installDir, "error", err)
 	}
 
 	// Clean up webp
@@ -2699,60 +1941,9 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	newApp := *originalApp
 	newApp.ID = 0 // GORM will generate new ID
 	newApp.Iname = newIname
-	newApp.LastRender = 0
+	newApp.LastRender = time.Time{}
 	newApp.Order = originalApp.Order + 1
 	newApp.Pushed = false
-
-	// Handle File Copy for User Apps
-	if originalApp.Path != nil {
-		origPath := *originalApp.Path
-		if !strings.HasPrefix(origPath, "system-apps/") {
-			// User App - Deep Copy
-			installDir := filepath.Join(s.DataDir, "installations", newIname)
-			if err := os.MkdirAll(installDir, 0755); err != nil {
-				slog.Error("Failed to create install dir for duplicate", "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			srcPath := s.resolveAppPath(origPath)
-			destFilename := fmt.Sprintf("%s.star", newIname)
-			destPath := filepath.Join(installDir, destFilename)
-
-			src, err := os.Open(srcPath)
-			if err != nil {
-				slog.Error("Failed to open source app for duplication", "path", srcPath, "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			defer func() {
-				if err := src.Close(); err != nil {
-					slog.Error("Failed to close source file", "error", err)
-				}
-			}()
-
-			dst, err := os.Create(destPath)
-			if err != nil {
-				slog.Error("Failed to create dest app for duplication", "path", destPath, "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			defer func() {
-				if err := dst.Close(); err != nil {
-					slog.Error("Failed to close dest file", "error", err)
-				}
-			}()
-
-			if _, err := io.Copy(dst, src); err != nil {
-				slog.Error("Failed to copy app content", "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			relPath := filepath.Join("installations", newIname, destFilename)
-			newApp.Path = &relPath
-		}
-	}
 
 	// Transaction for reordering and creating
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
@@ -2923,27 +2114,6 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", id), http.StatusSeeOther)
 }
 
-func (s *Server) handleSetAPIKey(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	apiKey := r.FormValue("api_key")
-	if apiKey == "" {
-		http.Redirect(w, r, "/", http.StatusSeeOther) // Should redirect to edit page?
-		return
-	}
-
-	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("api_key", apiKey).Error; err != nil {
-		slog.Error("Failed to update API key", "error", err)
-	}
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
 func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	session, _ := s.Store.Get(r, "session-name")
 	username, ok := session.Values["username"].(string)
@@ -2966,7 +2136,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	// Python replaces the dir if repo changes.
 
 	// In Go:
-	// We need `gitutils.CloneOrUpdate`.
+	// We need `gitutils.EnsureRepo`.
 	// But first update DB.
 
 	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("app_repo_url", repoURL).Error; err != nil {
@@ -2976,7 +2146,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appsPath := filepath.Join(s.DataDir, "users", username, "apps")
-	if err := gitutils.CloneOrUpdate(appsPath, repoURL); err != nil {
+	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
 		slog.Error("Failed to sync user repo", "error", err)
 	}
 
@@ -2997,7 +2167,7 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 
 	if user.AppRepoURL != "" {
 		appsPath := filepath.Join(s.DataDir, "users", username, "apps")
-		if err := gitutils.CloneOrUpdate(appsPath, user.AppRepoURL); err != nil {
+		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, true); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
 		}
 	}
@@ -3159,7 +2329,7 @@ func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.CloneOrUpdate(appsPath, repoURL); err != nil {
+	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
 		slog.Error("Failed to update system repo", "error", err)
 	}
 
@@ -3193,7 +2363,7 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 	}
 
 	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.CloneOrUpdate(appsPath, repoURL); err != nil {
+	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
 		slog.Error("Failed to refresh system repo", "error", err)
 	}
 
@@ -3239,61 +2409,15 @@ func (s *Server) handleUpdateFirmware(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadAppGet(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	s.renderTemplate(w, r, "uploadapp", TemplateData{User: &user, Device: device})
+	s.renderTemplate(w, r, "uploadapp", TemplateData{User: user, Device: device})
 }
 
 func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
 	// Parse multipart
 	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB
@@ -3351,70 +2475,9 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", device.ID), http.StatusSeeOther)
 }
 
-func (s *Server) handlePasskeysGet(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Credentials").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	s.renderTemplate(w, r, "passkeys", TemplateData{User: &user})
-}
-
 func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
-
-	id := r.PathValue("id")
-
-	session, _ := s.Store.Get(r, "session-name")
-
-	username, ok := session.Values["username"].(string)
-
-	if !ok {
-
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-
-		return
-
-	}
-
-	var user data.User
-
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-
-		return
-
-	}
-
-	var device *data.Device
-
-	for i := range user.Devices {
-
-		if user.Devices[i].ID == id {
-
-			device = &user.Devices[i]
-
-			break
-
-		}
-
-	}
-
-	if device == nil {
-
-		http.Error(w, "Device not found", http.StatusNotFound)
-
-		return
-
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
 	// Parse custom brightness scale if device has one
 	var customScale map[int]int
@@ -3436,7 +2499,6 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 
 	// Get available locales
 	locales := []string{"en_US", "de_DE"} // Add more as needed or scan directory
-
 	localizer := s.getLocalizer(r)
 
 	// Determine scheme and host for default URLs
@@ -3451,57 +2513,23 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
 
 	s.renderTemplate(w, r, "update", TemplateData{
-
-		User: &user,
-
-		Device: device,
-
-		DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-
-		ColorFilterChoices: s.getColorFilterChoices(),
-
-		AvailableLocales: locales,
-
-		DefaultImgURL: fmt.Sprintf("%s://%s/%s/next", scheme, host, device.ID),
-
-		DefaultWsURL: fmt.Sprintf("%s://%s/%s/ws", wsScheme, host, device.ID),
-
-		BrightnessUI: bUI,
-
-		NightBrightnessUI: nbUI,
-
-		DimBrightnessUI: dbUI,
+		User:               user,
+		Device:             device,
+		DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+		ColorFilterOptions: s.getColorFilterChoices(),
+		AvailableLocales:   locales,
+		DefaultImgURL:      fmt.Sprintf("%s://%s/%s/next", scheme, host, device.ID),
+		DefaultWsURL:       fmt.Sprintf("%s://%s/%s/ws", wsScheme, host, device.ID),
+		BrightnessUI:       bUI,
+		NightBrightnessUI:  nbUI,
+		DimBrightnessUI:    dbUI,
 
 		Localizer: localizer,
 	})
 }
 
 func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	// 1. Basic Info
 	device.Name = r.FormValue("name")
@@ -3516,7 +2544,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	// 2. Color Filter
 	colorFilter := r.FormValue("color_filter")
-	if colorFilter != "None" {
+	if colorFilter != "none" {
 		val := data.ColorFilter(colorFilter)
 		device.ColorFilter = &val
 	} else {
@@ -3568,7 +2596,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	nightColorFilter := r.FormValue("night_color_filter")
-	if nightColorFilter != "None" {
+	if nightColorFilter != "none" {
 		val := data.ColorFilter(nightColorFilter)
 		device.NightColorFilter = &val
 	} else {
@@ -3632,31 +2660,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	if err := s.DB.Preload("Devices").First(&user, "username = ?", username).Error; err != nil {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var device *data.Device
-	for i := range user.Devices {
-		if user.Devices[i].ID == id {
-			device = &user.Devices[i]
-			break
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	// Delete
 	if err := s.DB.Delete(device).Error; err != nil {
@@ -3666,72 +2670,6 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	conn, err := s.Upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		slog.Error("Dashboard WS upgrade failed", "error", err)
-		return
-	}
-	defer func() {
-		if err := conn.Close(); err != nil {
-			slog.Error("Failed to close Dashboard WS connection", "error", err)
-		}
-	}()
-
-	slog.Debug("Dashboard WS Connected", "username", username)
-
-	// Subscribe to user-specific updates
-	ch := s.Broadcaster.Subscribe("user:" + username)
-	defer s.Broadcaster.Unsubscribe("user:"+username, ch)
-
-	done := make(chan struct{})
-
-	// Read loop (handle ping/pong/close)
-	go func() {
-		defer close(done)
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					slog.Info("Dashboard WS read error, disconnecting", "username", username, "error", err)
-				}
-				return
-			}
-		}
-	}()
-
-	// Write loop
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-done:
-			return
-		case <-ch:
-			// A device/app update has occurred for this user
-			// Send a simple message to trigger a full page refresh or AJAX update
-			if err := conn.WriteMessage(websocket.TextMessage, []byte("refresh")); err != nil {
-				slog.Error("Failed to write refresh message to Dashboard WS", "username", username, "error", err)
-				return
-			}
-		case <-ticker.C:
-			// Keep-alive ping
-			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				slog.Error("Failed to send Dashboard WS ping", "username", username, "error", err)
-				return
-			}
-		}
-	}
 }
 
 func (s *Server) checkForUpdates() {

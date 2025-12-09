@@ -7,7 +7,6 @@ services:
     init: true
     volumes:
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
-      - users:/app/users
       - data:/app/data
     environment:
       - PUID=${UID:-1000}
@@ -38,6 +37,5 @@ services:
       timeout: 3s
       retries: 3
 volumes:
-  users:
   data:
   redis:

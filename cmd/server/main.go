@@ -75,7 +75,9 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 		slog.Info("Using SQLite DB", "path", dsn)
 		db, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 		if err == nil {
-			db.Exec("PRAGMA journal_mode=WAL;")
+			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
+				slog.Warn("Failed to set WAL mode for SQLite", "error", err)
+			}
 		}
 	}
 	return db, err
@@ -172,60 +174,44 @@ func main() {
 	}
 
 	// Check for legacy DB for automatic migration
-	legacyDBName := "usersdb.sqlite" // Old Python DB name
-	legacyDBPath := filepath.Join(*dataDir, legacyDBName)
-	newDBPath := *dbDSN // This is the path for the new Go DB
+	legacyDBPath := filepath.Join("users", "usersdb.sqlite") // Old Python DB path
+	if _, err := os.Stat(legacyDBPath); err == nil && legacyDBPath != *dbDSN {
+		slog.Info("Found legacy database, checking if migration is needed", "legacy_db", legacyDBPath, "new_db", *dbDSN)
 
-	// Only migrate if new DB looks like a file path (for SQLite)
-	// If DSN is postgres/mysql, we assume user handles it or we migrate to it?
-	// migrate logic supports writing to GORM DB, so it supports Postgres/MySQL!
-	// But `legacyDBPath` is file.
-	// Migration logic `MigrateLegacyDB` accepts `oldDBPath` and `newDBPath`.
-	// But `MigrateLegacyDB` internally calls `gorm.Open(sqlite.Open(newDBPath))`.
-	// I need to update `internal/migration/migration.go` to support DSN for new DB!
-
-	// For now, let's assume if it looks like a file, we check it.
-	// If it's a DSN string, os.Stat might fail or succeed randomly?
-	// Actually `MigrateLegacyDB` signature is `(oldPath, newPath string)`.
-	// And it opens new DB as SQLite.
-	// If I want to support migrating FROM sqlite TO postgres, I need to update `migration` package.
-	// Given the scope "Rename dbPath... to reflect available options", I should support it.
-
-	// I'll skip migration logic update for now and focus on main refactor.
-	// But I should use `dbDSN` variable.
-
-	if _, err := os.Stat(legacyDBPath); err == nil && legacyDBPath != newDBPath {
-		slog.Info("Found legacy database, initiating automatic migration", "legacy_db", legacyDBPath, "new_db", newDBPath)
-
-		// Check if new DB exists? For SQLite yes. For Postgres?
-		// We can try to open it and check if users table exists?
-		// For simplicity, skip auto-migration if using non-sqlite for now?
-		// Or assume SQLite for auto-migration path as standard use case.
-		// If user sets up Postgres, they likely know what they are doing and might use `migrate` tool manually (if updated).
-
-		// If newDBPath does NOT look like DSN (no host=, no ://), assume file.
-		isSQLite := !strings.Contains(newDBPath, "host=") && !strings.Contains(newDBPath, "://") && !strings.Contains(newDBPath, "@")
-
-		if isSQLite {
-			if _, err := os.Stat(newDBPath); err == nil {
-				slog.Warn("New database already exists, skipping automatic migration.", "new_db", newDBPath)
-			} else {
-				// Perform migration
-				if err := migration.MigrateLegacyDB(legacyDBPath, newDBPath); err != nil {
-					slog.Error("Automatic migration failed", "error", err)
-					os.Exit(1)
+		skipMigration := false
+		tempDB, err := openDB(*dbDSN, "ERROR")
+		if err == nil {
+			if tempDB.Migrator().HasTable(&data.User{}) {
+				var count int64
+				if err := tempDB.Model(&data.User{}).Count(&count).Error; err == nil && count > 0 {
+					skipMigration = true
+					slog.Warn("New database already has users, skipping automatic migration.", "new_db", *dbDSN)
 				}
-				slog.Info("Automatic migration completed successfully. Renaming legacy DB.", "legacy_db", legacyDBPath)
-				if err := os.Rename(legacyDBPath, legacyDBPath+".bak"); err != nil {
-					slog.Error("Failed to rename legacy DB after migration", "error", err)
+			}
+			if sqlDB, err := tempDB.DB(); err == nil {
+				if err := sqlDB.Close(); err != nil {
+					slog.Error("Failed to close temporary DB connection", "error", err)
 				}
+			}
+		}
+
+		if !skipMigration {
+			// Perform migration
+			if err := migration.MigrateLegacyDB(legacyDBPath, *dbDSN, *dataDir); err != nil {
+				slog.Error("Automatic migration failed", "error", err)
+				os.Exit(1)
+			}
+			slog.Info("Automatic migration completed successfully. Renaming legacy DB.", "legacy_db", legacyDBPath)
+			if err := os.Rename(legacyDBPath, legacyDBPath+".bak"); err != nil {
+				slog.Error("Failed to rename legacy DB after migration", "error", err)
 			}
 		}
 	}
 
 	// Clone/Update System Apps Repo
 	systemAppsDir := filepath.Join(*dataDir, "system-apps")
-	if err := gitutils.CloneOrUpdate(systemAppsDir, cfg.SystemAppsRepo); err != nil {
+	shouldUpdate := cfg.Production == "1"
+	if err := gitutils.EnsureRepo(systemAppsDir, cfg.SystemAppsRepo, shouldUpdate); err != nil {
 		slog.Error("Failed to update system apps repo", "error", err)
 		// Continue anyway
 	}

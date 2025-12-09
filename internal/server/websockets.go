@@ -25,80 +25,6 @@ type ClientInfo struct {
 	MACAddress      string `json:"macAddress"`
 }
 
-func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.PathValue("id")
-
-	var device data.Device
-	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
-		slog.Warn("WS connection rejected: device not found", "id", deviceID)
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	var user data.User
-	s.DB.First(&user, "username = ?", device.Username)
-
-	conn, err := s.Upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		slog.Error("WS upgrade failed", "error", err)
-		return
-	}
-	defer func() {
-		if err := conn.Close(); err != nil {
-			slog.Error("Failed to close WS connection", "error", err)
-		}
-	}()
-
-	slog.Info("WS Connected", "device", deviceID)
-
-	// Update protocol type
-	s.DB.Model(&device).Update("info", data.JSONMap{"protocol_type": "ws"})
-
-	ch := s.Broadcaster.Subscribe(deviceID)
-	defer s.Broadcaster.Unsubscribe(deviceID, ch)
-
-	ackCh := make(chan WSMessage, 10)
-	stopCh := make(chan struct{})
-
-	// Read loop to handle ping/pong/close and client messages
-	go func() {
-		defer close(stopCh)
-		for {
-			var msg WSMessage
-			if err := conn.ReadJSON(&msg); err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					slog.Info("WS closed unexpectedly", "error", err)
-				}
-				return
-			}
-
-			// Handle Message
-			if msg.ClientInfo != nil {
-				// Update Device Info
-				device.Info.FirmwareVersion = msg.ClientInfo.FirmwareVersion
-				device.Info.FirmwareType = msg.ClientInfo.FirmwareType
-				if msg.ClientInfo.ProtocolVersion != nil {
-					device.Info.ProtocolVersion = msg.ClientInfo.ProtocolVersion
-				}
-				device.Info.MACAddress = msg.ClientInfo.MACAddress
-
-				if err := s.DB.Model(&device).Update("info", device.Info).Error; err != nil {
-					slog.Error("Failed to update device info", "error", err)
-				}
-			}
-
-			if msg.Queued != nil || msg.Displaying != nil {
-				select {
-				case ackCh <- msg:
-				default:
-				}
-			}
-		}
-	}()
-
-	s.wsWriteLoop(r.Context(), conn, &device, &user, ackCh, ch, stopCh)
-}
-
 func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan struct{}, stopCh <-chan struct{}) {
 	for {
 		select {
@@ -109,7 +35,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 		// Reload device to get latest state (protocol version, brightness, etc.)
 		var device data.Device
-		if err := s.DB.First(&device, "id = ?", initialDevice.ID).Error; err != nil {
+		if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
 			slog.Error("Device gone", "id", initialDevice.ID)
 			return
 		}
@@ -185,4 +111,75 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			continue
 		}
 	}
+}
+
+func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
+	session, _ := s.Store.Get(r, "session-name")
+	username, ok := session.Values["username"].(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	conn, err := s.Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		slog.Error("Dashboard WS upgrade failed", "error", err)
+		return
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			slog.Error("Failed to close Dashboard WS connection", "error", err)
+		}
+	}()
+
+	slog.Debug("Dashboard WS Connected", "username", username)
+
+	// Subscribe to user-specific updates
+	ch := s.Broadcaster.Subscribe("user:" + username)
+	defer s.Broadcaster.Unsubscribe("user:"+username, ch)
+
+	done := make(chan struct{})
+
+	// Read loop (handle ping/pong/close)
+	go func() {
+		defer close(done)
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					slog.Info("Dashboard WS read error, disconnecting", "username", username, "error", err)
+				}
+				return
+			}
+		}
+	}()
+
+	// Write loop
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			return
+		case <-ch:
+			// A device/app update has occurred for this user
+			// Send a simple message to trigger a full page refresh or AJAX update
+			if err := conn.WriteMessage(websocket.TextMessage, []byte("refresh")); err != nil {
+				slog.Error("Failed to write refresh message to Dashboard WS", "username", username, "error", err)
+				return
+			}
+		case <-ticker.C:
+			// Keep-alive ping
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				slog.Error("Failed to send Dashboard WS ping", "username", username, "error", err)
+				return
+			}
+		}
+	}
+}
+
+func (s *Server) SetupWebsocketRoutes() {
+	s.Router.HandleFunc("GET /{id}/ws", s.handleWS)
+	s.Router.HandleFunc("GET /ws", s.handleDashboardWS)
 }

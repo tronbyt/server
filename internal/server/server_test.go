@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,18 +14,21 @@ import (
 )
 
 func newTestServer(t *testing.T) *Server {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dbName := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
 	}
 
-	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}); err != nil {
+	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
 		t.Fatalf("Failed to migrate DB: %v", err)
 	}
 
-	cfg := &config.Settings{
-		SecretKey: "testsecret",
-	}
+	// Pre-seed settings to avoid "record not found" logs during NewServer
+	db.Create(&data.Setting{Key: "secret_key", Value: "testsecret"})
+	db.Create(&data.Setting{Key: "system_apps_repo", Value: ""})
+
+	cfg := &config.Settings{}
 
 	s := NewServer(db, cfg)
 	s.DataDir = t.TempDir()

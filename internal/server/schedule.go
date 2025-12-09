@@ -43,6 +43,40 @@ func GetNightModeIsActive(device *data.Device) bool {
 	return currentHM >= start && currentHM <= end
 }
 
+// GetDimModeIsActive checks if dim mode is active (dimming without full night mode).
+func GetDimModeIsActive(device *data.Device) bool {
+	dimTime := device.DimTime
+	if dimTime == nil || *dimTime == "" {
+		return false
+	}
+
+	// Get Device Timezone
+	loc := time.Local
+	if device.Timezone != nil {
+		if l, err := time.LoadLocation(*device.Timezone); err == nil {
+			loc = l
+		}
+	} else if device.Location.Timezone != "" {
+		if l, err := time.LoadLocation(device.Location.Timezone); err == nil {
+			loc = l
+		}
+	}
+
+	currentTime := time.Now().In(loc)
+	currentHM := currentTime.Format("15:04")
+
+	start := *dimTime
+	end := "06:00" // Default
+	if device.NightEnd != "" {
+		end = device.NightEnd
+	}
+
+	if start > end {
+		return currentHM >= start || currentHM <= end
+	}
+	return currentHM >= start && currentHM <= end
+}
+
 // IsAppScheduleActive checks if an app's schedule is active.
 func IsAppScheduleActive(app *data.App, device *data.Device) bool {
 	// 1. Get Device Timezone

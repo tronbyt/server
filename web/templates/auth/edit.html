@@ -5,7 +5,7 @@
 {{ define "title" }}{{ t .Localizer "Edit User" }}{{ end }}
 
 {{ define "content" }}
-{{ if eq .User.Username "admin" }}
+{{ if .User.IsAdmin }}
 <h1>{{ t .Localizer "System Administration" }}</h1>
 
 <h2>{{ t .Localizer "System Apps Repository" }}</h2>
@@ -142,7 +142,7 @@
     </div>
 
     <div style="border-top: 1px solid #333; padding-top: 15px;">
-        <form method="post" action="/set_api_key" style="display: flex; gap: 10px; align-items: flex-end;">
+        <form method="post" action="/auth/set_api_key" style="display: flex; gap: 10px; align-items: flex-end;">
             <div style="flex: 1;">
                 <label for="api_key" style="display: block; margin-bottom: 5px; font-size: 0.9em;">{{ t .Localizer "User API Key" }}</label>
                 <input type="text" name="api_key" id="api_key" required value="{{ .User.APIKey }}" style="width: 100%; padding: 8px;">
