@@ -1354,5 +1354,8 @@
   },
   "Copy to...": {
     "other": "Kopieren nach..."
+  },
+  "WebAuthn is not supported in this browser.": {
+    "other": "WebAuthn wird in diesem Browser nicht unterstützt."
   }
 }

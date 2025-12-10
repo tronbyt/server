@@ -21,10 +21,19 @@
     <button type="submit" class="w3-button w3-green"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> {{ t .Localizer "Log In" }}</button>
 </form>
 
-<hr>
-<button onclick="loginWebAuthn()" class="w3-button w3-blue"><i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Sign in with Passkey" }}</button>
+<div id="webauthn-login-container">
+    <hr>
+    <button onclick="loginWebAuthn()" class="w3-button w3-blue"><i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Sign in with Passkey" }}</button>
+</div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            const el = document.getElementById('webauthn-login-container');
+            if (el) el.style.display = 'none';
+        }
+    });
+
     function bufferDecode(value) {
         return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
     }
@@ -37,6 +46,10 @@
     }
 
     async function loginWebAuthn() {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            alert("{{ t .Localizer "WebAuthn is not supported in this browser." }}");
+            return;
+        }
         try {
             const resp = await fetch('/auth/webauthn/login/begin');
             if (!resp.ok) throw new Error("Failed to begin login");
