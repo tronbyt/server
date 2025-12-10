@@ -69,7 +69,7 @@ func newTestServerAPI(t *testing.T) *Server {
 	return s
 }
 
-// Helper to create a request with API key
+// Helper to create a request with API key.
 func newAPIRequest(method, path, apiKey string, body []byte) *http.Request {
 	req := httptest.NewRequest(method, path, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -80,7 +80,7 @@ func newAPIRequest(method, path, apiKey string, body []byte) *http.Request {
 func TestHandleDots(t *testing.T) {
 	s := newTestServerAPI(t)
 
-	req, _ := http.NewRequest("GET", "/dots?w=2&h=1&r=0.75", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/dots?w=2&h=1&r=0.75", nil)
 	rr := httptest.NewRecorder()
 
 	s.ServeHTTP(rr, req)

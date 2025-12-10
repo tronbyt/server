@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// handleNextApp is the handler for GET /{id}/next
+// handleNextApp is the handler for GET /{id}/next.
 func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 

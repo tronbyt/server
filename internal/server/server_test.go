@@ -38,7 +38,7 @@ func newTestServer(t *testing.T) *Server {
 func TestHealthCheck(t *testing.T) {
 	s := newTestServer(t)
 
-	req, _ := http.NewRequest("GET", "/health", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	s.ServeHTTP(rr, req)
@@ -65,7 +65,7 @@ func TestLoginRedirectToRegisterIfNoUsers(t *testing.T) {
 		t.Fatalf("Expected 0 users, got %d", count)
 	}
 
-	req, _ := http.NewRequest("GET", "/auth/login", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/auth/login", nil)
 	rr := httptest.NewRecorder()
 
 	s.ServeHTTP(rr, req)

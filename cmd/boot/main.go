@@ -46,6 +46,7 @@ func main() {
 				if err != nil {
 					return nil
 				}
+
 				return os.Chown(path, uid, gid)
 			})
 			if err != nil {

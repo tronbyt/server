@@ -76,6 +76,7 @@ func getFirmwareFilename(deviceType string, swapColors bool) string {
 		if swapColors {
 			return "tidbyt-gen1_swap.bin"
 		}
+
 		return "tidbyt-gen1.bin"
 	}
 }
@@ -92,7 +93,7 @@ func updateFirmwareData(data []byte) ([]byte, error) {
 
 	// 1. Calculate Checksum (XOR sum of data + 0xEF)
 	checksum := byte(0xEF)
-	for i := 0; i < dataLen; i++ {
+	for i := range dataLen {
 		checksum ^= data[i]
 	}
 

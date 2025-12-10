@@ -27,12 +27,14 @@ func VerifyPassword(hashStr, password string) (bool, bool, error) {
 	// 1. Check for Argon2id (Standard)
 	if strings.HasPrefix(hashStr, "$argon2id") {
 		valid, err := verifyArgon2id(hashStr, password)
+
 		return valid, false, err // Valid and current
 	}
 
 	// 2. Check for Scrypt (Legacy)
 	if strings.HasPrefix(hashStr, "scrypt:") {
 		valid, err := verifyScrypt(hashStr, password)
+
 		return valid, true, err // Valid but legacy
 	}
 
@@ -42,11 +44,13 @@ func VerifyPassword(hashStr, password string) (bool, bool, error) {
 		if err == nil {
 			return true, true, nil // Valid but legacy
 		}
+
 		return false, false, err
 	}
 
 	if strings.HasPrefix(hashStr, "pbkdf2:sha256:") {
 		valid, err := verifyPbkdf2(hashStr, password)
+
 		return valid, true, err // Valid but legacy
 	}
 

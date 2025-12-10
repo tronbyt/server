@@ -46,6 +46,7 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 				branchName = ref.Name().Short()
 				return fmt.Errorf("found") // Hack to exit ForEach
 			}
+
 			return nil
 		})
 		if err != nil && err.Error() != "found" {
@@ -84,6 +85,7 @@ func EnsureRepo(path string, url string, update bool) error {
 			Progress: os.Stdout,
 			Depth:    1,
 		})
+
 		return err
 	}
 
@@ -105,6 +107,7 @@ func EnsureRepo(path string, url string, update bool) error {
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove old repo: %w", err)
 			}
+
 			return EnsureRepo(path, url, update)
 		}
 	}

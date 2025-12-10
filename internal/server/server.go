@@ -13,12 +13,14 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"math/big"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -48,7 +50,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// AppManifest reflects a subset of manifest.yaml for internal updates
+// AppManifest reflects a subset of manifest.yaml for internal updates.
 type AppManifest struct {
 	Broken       *bool   `yaml:"broken,omitempty"`
 	BrokenReason *string `yaml:"brokenReason,omitempty"`
@@ -145,7 +147,7 @@ type CreateDeviceFormData struct {
 	LocationJSON   string
 }
 
-// Map template names to their file paths relative to web/templates
+// Map template names to their file paths relative to web/templates.
 var templateFiles = map[string]string{
 	"index":      "manager/index.html",
 	"adminindex": "manager/adminindex.html",
@@ -403,10 +405,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 			if length < 0 {
 				length = 0
 			}
-			end := start + length
-			if end > len(s) {
-				end = len(s)
-			}
+			end := min(start+length, len(s))
 			if start > len(s) {
 				return ""
 			}
@@ -418,12 +417,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 			return args
 		},
 		"contains": func(slice []string, item string) bool {
-			for _, s := range slice {
-				if s == item {
-					return true
-				}
-			}
-			return false
+			return slices.Contains(slice, item)
 		},
 	}
 
@@ -673,7 +667,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	}
 }
 
-// localizeOrID helper to safely localize or return ID
+// localizeOrID helper to safely localize or return ID.
 func (s *Server) localizeOrID(localizer *i18n.Localizer, messageID string) string {
 	config := &i18n.LocalizeConfig{
 		MessageID: messageID,
@@ -694,7 +688,7 @@ func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
 	return i18n.NewLocalizer(s.Bundle, accept, language.English.String())
 }
 
-// getDeviceTypeChoices returns a map of device type values to display names
+// getDeviceTypeChoices returns a map of device type values to display names.
 func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[string]string {
 	choices := make(map[string]string)
 
@@ -723,7 +717,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleIndex called")
 	user := GetUser(r)
 
-	var devicesWithUI []DeviceWithUIScale
+	devicesWithUI := make([]DeviceWithUIScale, 0, len(user.Devices)) // Pre-allocate
 
 	for i := range user.Devices {
 		device := &user.Devices[i]
@@ -841,8 +835,8 @@ func (s *Server) getRealIP(r *http.Request) string {
 		isTrusted = true
 	} else {
 		// Simple check for comma-separated list of IPs
-		proxies := strings.Split(trustedProxies, ",")
-		for _, proxy := range proxies {
+		proxies := strings.SplitSeq(trustedProxies, ",")
+		for proxy := range proxies {
 			if strings.TrimSpace(proxy) == remoteIP {
 				isTrusted = true
 				break
@@ -1081,7 +1075,7 @@ func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sou
 	// Generate a unique iname for the duplicate on the target device
 	var newIname string
 	maxAttempts := 900 // Max 900 attempts for 3-digit numbers
-	for i := 0; i < maxAttempts; i++ {
+	for range maxAttempts {
 		n, err := rand.Int(rand.Reader, big.NewInt(900)) // 0-899
 		if err != nil {
 			return fmt.Errorf("failed to generate random number for iname: %w", err)
@@ -1117,9 +1111,7 @@ func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sou
 	// Deep copy Config map if it exists
 	if originalApp.Config != nil {
 		newConfig := make(data.JSONMap)
-		for k, v := range originalApp.Config {
-			newConfig[k] = v
-		}
+		maps.Copy(newConfig, originalApp.Config)
 		duplicatedApp.Config = newConfig
 	}
 
@@ -1362,7 +1354,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 
 	// Generate iname (random 3-digit string, matching Python version)
 	var iname string
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		// Random integer between 100 and 999
 		n, err := rand.Int(rand.Reader, big.NewInt(900))
 		if err != nil {
@@ -1906,6 +1898,7 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
 func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
@@ -1913,7 +1906,7 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 
 	// Generate new iname (random 3-digit string)
 	var newIname string
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		// Random integer between 100 and 999
 		n, err := rand.Int(rand.Reader, big.NewInt(900))
 		if err != nil {
@@ -2683,7 +2676,7 @@ func (s *Server) checkForUpdates() {
 func (s *Server) doUpdateCheck() {
 	url := "https://api.github.com/repos/tronbyt/server/releases/latest"
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Debug("Failed to create HTTP request for update check", "error", err)
 		return

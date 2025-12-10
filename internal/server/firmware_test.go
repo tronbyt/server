@@ -22,7 +22,7 @@ func TestHandleFirmwareGenerateGet(t *testing.T) {
 	var device data.Device
 	s.DB.First(&device, "id = ?", "testdevice")
 
-	req := httptest.NewRequest("GET", "/devices/testdevice/firmware", nil)
+	req := httptest.NewRequest(http.MethodGet, "/devices/testdevice/firmware", nil)
 	ctx := context.WithValue(req.Context(), userContextKey, &user)
 	ctx = context.WithValue(ctx, deviceContextKey, &device)
 	req = req.WithContext(ctx)
@@ -69,7 +69,7 @@ func TestHandleFirmwareGeneratePost(t *testing.T) {
 	form.Add("wifi_password", "TestPass")
 	form.Add("img_url", "http://example.com/image")
 
-	req := httptest.NewRequest("POST", "/devices/testdevice/firmware", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/devices/testdevice/firmware", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	ctx := context.WithValue(req.Context(), userContextKey, &user)

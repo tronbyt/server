@@ -170,7 +170,7 @@ func (s *Server) RequireApp(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// UserFromContext retrieves the User from the context
+// UserFromContext retrieves the User from the context.
 func UserFromContext(ctx context.Context) (*data.User, error) {
 	u, ok := ctx.Value(userContextKey).(*data.User)
 	if !ok {
@@ -179,7 +179,7 @@ func UserFromContext(ctx context.Context) (*data.User, error) {
 	return u, nil
 }
 
-// DeviceFromContext retrieves the Device from the context
+// DeviceFromContext retrieves the Device from the context.
 func DeviceFromContext(ctx context.Context) (*data.Device, error) {
 	d, ok := ctx.Value(deviceContextKey).(*data.Device)
 	if !ok {
@@ -188,7 +188,7 @@ func DeviceFromContext(ctx context.Context) (*data.Device, error) {
 	return d, nil
 }
 
-// AppFromContext retrieves the App from the context
+// AppFromContext retrieves the App from the context.
 func AppFromContext(ctx context.Context) (*data.App, error) {
 	a, ok := ctx.Value(appContextKey).(*data.App)
 	if !ok {
@@ -197,7 +197,7 @@ func AppFromContext(ctx context.Context) (*data.App, error) {
 	return a, nil
 }
 
-// Helper to get Context objects without error checking (panics if missing, use only within middleware)
+// GetUser is a helper to get Context objects without error checking (panics if missing, use only within middleware).
 func GetUser(r *http.Request) *data.User {
 	u, _ := UserFromContext(r.Context())
 	if u == nil {
@@ -222,7 +222,7 @@ func GetApp(r *http.Request) *data.App {
 	return a
 }
 
-// Helper to wrap APIAuthMiddleware for ServeMux which expects generic handler
+// APIAuth is a helper to wrap APIAuthMiddleware for ServeMux which expects generic handler.
 func (s *Server) APIAuth(next http.HandlerFunc) http.HandlerFunc {
 	return s.APIAuthMiddleware(next).ServeHTTP
 }
