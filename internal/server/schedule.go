@@ -189,7 +189,7 @@ func isRecurrenceActiveAtTime(app *data.App, currentTime time.Time) bool {
 		currentWeekday := strings.ToLower(currentTime.Weekday().String())
 
 		var activeDays []string
-		if weekdays, ok := app.RecurrencePattern["weekdays"].([]interface{}); ok {
+		if weekdays, ok := app.RecurrencePattern["weekdays"].([]any); ok {
 			for _, d := range weekdays {
 				if s, ok := d.(string); ok {
 					activeDays = append(activeDays, s)
