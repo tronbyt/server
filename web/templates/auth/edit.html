@@ -159,7 +159,7 @@
     </div>
 
     <!-- Passkeys Section -->
-    <div style="border-top: 1px solid #333; padding-top: 15px; margin-top: 15px;">
+    <div id="webauthn-settings-container" style="border-top: 1px solid #333; padding-top: 15px; margin-top: 15px;">
         <strong>{{ t .Localizer "Sign in with Passkey" }}</strong>
         <div style="margin-top: 10px;">
             <ul class="w3-ul w3-hoverable" style="border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
@@ -190,6 +190,13 @@
 </div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            const el = document.getElementById('webauthn-settings-container');
+            if (el) el.style.display = 'none';
+        }
+    });
+
     function bufferDecode(value) {
         return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
     }
@@ -219,6 +226,10 @@
     }
 
     async function registerPasskey() {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            alert("{{ t .Localizer "WebAuthn is not supported in this browser." }}");
+            return;
+        }
         try {
             const resp = await fetch('/auth/webauthn/register/begin');
             if (!resp.ok) throw new Error("Failed to begin registration");

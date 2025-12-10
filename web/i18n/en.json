@@ -1348,5 +1348,8 @@
   },
   "Invalid old password": {
     "other": "Invalid old password"
+  },
+  "WebAuthn is not supported in this browser.": {
+    "other": "WebAuthn is not supported in this browser."
   }
 }
