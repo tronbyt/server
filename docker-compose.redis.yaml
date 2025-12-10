@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/tronbyt/server:1 # latest v1.x.x release tag
+    image: ghcr.io/tronbyt/server:2 # latest v2.x.x release tag
     restart: unless-stopped
     ports:
       - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container

@@ -9,7 +9,7 @@ import (
 )
 
 type Settings struct {
-	DBDSN                  string `env:"DB_DSN" envDefault:"tronbyt.db"`
+	DBDSN                  string `env:"DB_DSN" envDefault:"data/tronbyt.db"`
 	DataDir                string `env:"DATA_DIR" envDefault:"data"`
 	Production             string `env:"PRODUCTION" envDefault:"1"`
 	EnableUserRegistration string `env:"ENABLE_USER_REGISTRATION" envDefault:"1"`

@@ -173,6 +173,11 @@ func main() {
 		}
 	}
 
+	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
+		slog.Error("Failed to create data directory", "error", err)
+		os.Exit(1)
+	}
+
 	// Check for legacy DB for automatic migration
 	legacyDBPath := filepath.Join("users", "usersdb.sqlite") // Old Python DB path
 	if _, err := os.Stat(legacyDBPath); err == nil && legacyDBPath != *dbDSN {
