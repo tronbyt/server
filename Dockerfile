@@ -28,7 +28,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-w -s -extldflags '-static'" -o boot ./cmd/
 
 # Build the main application and supporting binaries
 # CGO_ENABLED=1 is required for pixlet/go-libwebp and go-sqlite3
-RUN CGO_ENABLED=1 go build -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" -o tronbyt-server ./cmd/server && \
+RUN CGO_ENABLED=1 go build -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" -tags gzip_fonts -o tronbyt-server ./cmd/server && \
     CGO_ENABLED=1 go build -ldflags="-w -s -extldflags '-static'" -o migrate ./cmd/migrate
 
 # --- Runtime Stage ---

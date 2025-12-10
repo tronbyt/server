@@ -442,8 +442,8 @@ github.com/tronbyt/gg v0.0.0-20220808163829-95806fa1d427 h1:ZtI+sSJ6at2TpZXcxnUN
 github.com/tronbyt/gg v0.0.0-20220808163829-95806fa1d427/go.mod h1:wjdMaUjKINeop89o25+l/doQeDpzXNQdiGpnZxBRRkA=
 github.com/tronbyt/go-libwebp v0.0.0-20251112225040-cf43c5d662de h1:j4MqUKiSLyZU9++3yGfGfjes+8RTCRIGZID4qkOSRLc=
 github.com/tronbyt/go-libwebp v0.0.0-20251112225040-cf43c5d662de/go.mod h1:b41pZAdCBS4VJYFayrRzxyriIHKUT0uV1x9KtPjDSUU=
-github.com/tronbyt/pixlet v0.49.5 h1:ySY2EQnsjLPIvW2AKfgATlxFK7mXgOuKlCVKCbUIzbg=
-github.com/tronbyt/pixlet v0.49.5/go.mod h1:PojJF1Df+26d2JzFiv3cdumL0ELBEicjL1zCZOhu0a0=
+github.com/tronbyt/pixlet v0.49.6 h1:zxrAAKFt+DKGAOmuV5m6WJpqv1nQCvuO4Tnacri1cl4=
+github.com/tronbyt/pixlet v0.49.6/go.mod h1:PojJF1Df+26d2JzFiv3cdumL0ELBEicjL1zCZOhu0a0=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IUPn0Bjt8=
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=
