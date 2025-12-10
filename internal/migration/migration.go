@@ -235,7 +235,13 @@ func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error
 	}
 
 	// Map Apps
-	for _, lApp := range lDevice.Apps {
+	for appID, lAppRaw := range lDevice.Apps {
+		var lApp legacy.LegacyApp
+		if err := json.Unmarshal(lAppRaw, &lApp); err != nil {
+			slog.Warn("Skipping malformed app JSON", "app_id", appID, "error", err)
+			continue
+		}
+
 		app, err := mapApp(dev.ID, lApp)
 		if err != nil {
 			slog.Warn("Skipping invalid app", "iname", lApp.Iname, "error", err)
@@ -282,7 +288,7 @@ func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
 		RecurrenceStartDate: lApp.RecurrenceStartDate,
 		RecurrenceEndDate:   lApp.RecurrenceEndDate,
 		Config:              data.JSONMap(lApp.Config),
-		EmptyLastRender:     lApp.EmptyLastRender,
+		EmptyLastRender:     legacy.ParseBool(lApp.EmptyLastRender),
 		RenderMessages:      data.StringSlice(lApp.RenderMessages),
 		AutoPin:             lApp.AutoPin,
 		ColorFilter:         cf,

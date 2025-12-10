@@ -1,6 +1,7 @@
 package legacy
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -25,35 +26,35 @@ type LegacyUser struct {
 }
 
 type LegacyDevice struct {
-	ID                    string               `json:"id"`
-	Name                  string               `json:"name"`
-	Type                  string               `json:"type"`
-	APIKey                string               `json:"api_key"`
-	ImgURL                string               `json:"img_url"`
-	WsURL                 string               `json:"ws_url"`
-	Notes                 string               `json:"notes"`
-	Brightness            any                  `json:"brightness"` // Can be int or object
-	CustomBrightnessScale string               `json:"custom_brightness_scale"`
-	NightModeEnabled      bool                 `json:"night_mode_enabled"`
-	NightModeApp          string               `json:"night_mode_app"`
-	NightStart            any                  `json:"night_start"` // Can be HH:MM or int
-	NightEnd              any                  `json:"night_end"`
-	NightBrightness       any                  `json:"night_brightness"`
-	DimTime               *string              `json:"dim_time"`
-	DimBrightness         any                  `json:"dim_brightness"`
-	DefaultInterval       int                  `json:"default_interval"`
-	Timezone              *string              `json:"timezone"`
-	Locale                *string              `json:"locale"`
-	Location              *LegacyLocation      `json:"location"`
-	Apps                  map[string]LegacyApp `json:"apps"`
-	LastAppIndex          int                  `json:"last_app_index"`
-	PinnedApp             *string              `json:"pinned_app"`
-	InterstitialEnabled   bool                 `json:"interstitial_enabled"`
-	InterstitialApp       *string              `json:"interstitial_app"`
-	LastSeen              *time.Time           `json:"last_seen"`
-	Info                  LegacyDeviceInfo     `json:"info"`
-	ColorFilter           *string              `json:"color_filter"`
-	NightColorFilter      *string              `json:"night_color_filter"`
+	ID                    string                     `json:"id"`
+	Name                  string                     `json:"name"`
+	Type                  string                     `json:"type"`
+	APIKey                string                     `json:"api_key"`
+	ImgURL                string                     `json:"img_url"`
+	WsURL                 string                     `json:"ws_url"`
+	Notes                 string                     `json:"notes"`
+	Brightness            any                        `json:"brightness"` // Can be int or object
+	CustomBrightnessScale string                     `json:"custom_brightness_scale"`
+	NightModeEnabled      bool                       `json:"night_mode_enabled"`
+	NightModeApp          string                     `json:"night_mode_app"`
+	NightStart            any                        `json:"night_start"` // Can be HH:MM or int
+	NightEnd              any                        `json:"night_end"`
+	NightBrightness       any                        `json:"night_brightness"`
+	DimTime               *string                    `json:"dim_time"`
+	DimBrightness         any                        `json:"dim_brightness"`
+	DefaultInterval       int                        `json:"default_interval"`
+	Timezone              *string                    `json:"timezone"`
+	Locale                *string                    `json:"locale"`
+	Location              *LegacyLocation            `json:"location"`
+	Apps                  map[string]json.RawMessage `json:"apps"`
+	LastAppIndex          int                        `json:"last_app_index"`
+	PinnedApp             *string                    `json:"pinned_app"`
+	InterstitialEnabled   bool                       `json:"interstitial_enabled"`
+	InterstitialApp       *string                    `json:"interstitial_app"`
+	LastSeen              *time.Time                 `json:"last_seen"`
+	Info                  LegacyDeviceInfo           `json:"info"`
+	ColorFilter           *string                    `json:"color_filter"`
+	NightColorFilter      *string                    `json:"night_color_filter"`
 }
 
 type LegacyLocation struct {
@@ -74,37 +75,51 @@ type LegacyDeviceInfo struct {
 }
 
 type LegacyApp struct {
-	ID                  *string                `json:"id"`
-	Iname               string                 `json:"iname"`
-	Name                string                 `json:"name"`
-	UInterval           int                    `json:"uinterval"`
-	DisplayTime         int                    `json:"display_time"`
-	Notes               string                 `json:"notes"`
-	Enabled             bool                   `json:"enabled"`
-	Pushed              bool                   `json:"pushed"`
-	Order               int                    `json:"order"`
-	LastRender          int64                  `json:"last_render"`
-	LastRenderDuration  any                    `json:"last_render_duration"` // ISO8601 string, float seconds, or object
-	Path                *string                `json:"path"`
-	StartTime           any                    `json:"start_time"` // HH:MM
-	EndTime             any                    `json:"end_time"`   // HH:MM
-	Days                []string               `json:"days"`
-	UseCustomRecurrence bool                   `json:"use_custom_recurrence"`
-	RecurrenceType      string                 `json:"recurrence_type"`
-	RecurrenceInterval  int                    `json:"recurrence_interval"`
-	RecurrencePattern   map[string]interface{} `json:"recurrence_pattern"`
-	RecurrenceStartDate *string                `json:"recurrence_start_date"`
-	RecurrenceEndDate   *string                `json:"recurrence_end_date"`
-	Config              map[string]interface{} `json:"config"`
-	EmptyLastRender     bool                   `json:"empty_last_render"`
-	RenderMessages      []string               `json:"render_messages"`
-	AutoPin             bool                   `json:"autopin"`
-	ColorFilter         *string                `json:"color_filter"`
+	ID                  *string        `json:"id"`
+	Iname               string         `json:"iname"`
+	Name                string         `json:"name"`
+	UInterval           int            `json:"uinterval"`
+	DisplayTime         int            `json:"display_time"`
+	Notes               string         `json:"notes"`
+	Enabled             bool           `json:"enabled"`
+	Pushed              bool           `json:"pushed"`
+	Order               int            `json:"order"`
+	LastRender          int64          `json:"last_render"`
+	LastRenderDuration  any            `json:"last_render_duration"` // ISO8601 string, float seconds, or object
+	Path                *string        `json:"path"`
+	StartTime           any            `json:"start_time"` // HH:MM
+	EndTime             any            `json:"end_time"`   // HH:MM
+	Days                []string       `json:"days"`
+	UseCustomRecurrence bool           `json:"use_custom_recurrence"`
+	RecurrenceType      string         `json:"recurrence_type"`
+	RecurrenceInterval  int            `json:"recurrence_interval"`
+	RecurrencePattern   map[string]any `json:"recurrence_pattern"`
+	RecurrenceStartDate *string        `json:"recurrence_start_date"`
+	RecurrenceEndDate   *string        `json:"recurrence_end_date"`
+	Config              map[string]any `json:"config"`
+	EmptyLastRender     any            `json:"empty_last_render"` // Can be bool or int (0/1)
+	RenderMessages      []string       `json:"render_messages"`
+	AutoPin             bool           `json:"autopin"`
+	ColorFilter         *string        `json:"color_filter"`
 }
 
 // Wrapper for the JSON blob structure in DB
 type UserDataBlob struct {
 	Users map[string]LegacyUser `json:"users"`
+}
+
+// ParseBool handles boolean polymorphism (bool or int 0/1)
+func ParseBool(val any) bool {
+	if v, ok := val.(bool); ok {
+		return v
+	}
+	if v, ok := val.(int); ok {
+		return v != 0
+	}
+	if v, ok := val.(float64); ok {
+		return int(v) != 0
+	}
+	return false
 }
 
 // Helper to handle Brightness polymorphism (int or object with value)
@@ -115,7 +130,7 @@ func ParseBrightness(val any) int {
 	if v, ok := val.(int); ok {
 		return v
 	}
-	if m, ok := val.(map[string]interface{}); ok {
+	if m, ok := val.(map[string]any); ok {
 		if v, ok := m["value"].(float64); ok {
 			return int(v)
 		}
