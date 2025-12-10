@@ -34,7 +34,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		slog.Info("Downloading firmware", "asset", asset.Name)
 
 		// Use API URL with Accept header to get binary
-		dReq, _ := http.NewRequest("GET", asset.URL, nil)
+		dReq, _ := http.NewRequest(http.MethodGet, asset.URL, nil)
 		dReq.Header.Set("Accept", "application/octet-stream")
 		if token != "" {
 			dReq.Header.Set("Authorization", "Bearer "+token)

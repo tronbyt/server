@@ -40,6 +40,7 @@ func runHealthCheck(url string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("status code: %d", resp.StatusCode)
 	}
+
 	return nil
 }
 
@@ -80,6 +81,7 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 			}
 		}
 	}
+
 	return db, err
 }
 

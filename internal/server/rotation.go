@@ -212,7 +212,7 @@ func createExpandedAppsList(device *data.Device, apps []data.App) []data.App {
 		return apps
 	}
 
-	var expanded []data.App
+	expanded := make([]data.App, 0, len(device.Apps)*10) // Pre-allocate to a reasonable size
 	for i, app := range apps {
 		expanded = append(expanded, app)
 		// Add interstitial after each regular app, except the last one

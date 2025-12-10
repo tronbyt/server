@@ -153,6 +153,7 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 							apps[i].Supports2x = true
 						}
 						found = true
+
 						break
 					}
 				}
@@ -199,6 +200,7 @@ func scanSystemApps(dataDir string) ([]AppMetadata, error) {
 			apps = append(apps, app)
 		}
 	}
+
 	return apps, nil
 }
 
@@ -271,5 +273,6 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 			}
 		}
 	}
+
 	return apps, nil
 }

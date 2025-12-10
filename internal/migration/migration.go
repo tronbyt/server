@@ -71,6 +71,7 @@ func MigrateLegacyDB(oldDBPath, newDBLocation, dataDir string) error {
 	}
 
 	slog.Info("Migration complete.")
+
 	return nil
 }
 
@@ -109,6 +110,7 @@ func readLegacyUsers(dbPath string) ([]legacy.LegacyUser, error) {
 		}
 		users = append(users, user)
 	}
+
 	return users, nil
 }
 
@@ -344,6 +346,7 @@ func migrateDirectories(oldDBPath, newDataDir string) error {
 			return fmt.Errorf("failed to move %s: %w", srcPath, err)
 		}
 	}
+
 	return nil
 }
 

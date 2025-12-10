@@ -84,6 +84,7 @@ func (p *ProtocolType) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*p = ProtocolType(strings.ToUpper(s))
+
 	return nil
 }
 
@@ -98,19 +99,22 @@ const (
 
 type Brightness int
 
+// Value implements the driver.Valuer interface for database storage.
 func (b Brightness) Value() (driver.Value, error) {
 	return int64(b), nil
 }
 
-func (b *Brightness) Scan(value interface{}) error {
+func (b *Brightness) Scan(value any) error {
 	if val, ok := value.(int64); ok {
 		*b = Brightness(val)
+
 		return nil
 	}
+
 	return errors.New("failed to scan Brightness")
 }
 
-// Percent returns brightness as 0.0-1.0
+// Percent returns brightness as 0.0-1.0.
 func (b Brightness) Percent() float64 {
 	if b < 0 {
 		return 0.0
@@ -121,12 +125,12 @@ func (b Brightness) Percent() float64 {
 	return float64(b) / 100.0
 }
 
-// Uint8 returns brightness as 0-255
+// Uint8 returns brightness as 0-255.
 func (b Brightness) Uint8() uint8 {
 	return uint8(b.Percent() * 255.0)
 }
 
-// UIScale returns 0-5
+// UIScale returns 0-5.
 func (b Brightness) UIScale(customScale map[int]int) int {
 	v := int(b)
 	if customScale != nil {
@@ -190,7 +194,7 @@ func (b Brightness) UIScale(customScale map[int]int) int {
 	return 5
 }
 
-// BrightnessFromUIScale converts a UI scale value (0-5) to Brightness percentage
+// BrightnessFromUIScale converts a UI scale value (0-5) to Brightness percentage.
 func BrightnessFromUIScale(uiValue int, customScale map[int]int) Brightness {
 	if customScale != nil {
 		if val, ok := customScale[uiValue]; ok {
@@ -213,7 +217,7 @@ func BrightnessFromUIScale(uiValue int, customScale map[int]int) Brightness {
 	return Brightness(20) // Default
 }
 
-// ParseCustomBrightnessScale parses a comma-separated string into a map
+// ParseCustomBrightnessScale parses a comma-separated string into a map.
 func ParseCustomBrightnessScale(scaleStr string) map[int]int {
 	if scaleStr == "" {
 		return nil
@@ -268,7 +272,7 @@ func (l DeviceLocation) Value() (driver.Value, error) {
 	return json.Marshal(l)
 }
 
-func (l *DeviceLocation) Scan(value interface{}) error {
+func (l *DeviceLocation) Scan(value any) error {
 	if value == nil {
 		return nil
 	}
@@ -296,7 +300,7 @@ func (i DeviceInfo) Value() (driver.Value, error) {
 	return json.Marshal(i)
 }
 
-func (i *DeviceInfo) Scan(value interface{}) error {
+func (i *DeviceInfo) Scan(value any) error {
 	if value == nil {
 		return nil
 	}
@@ -311,15 +315,14 @@ func (i *DeviceInfo) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, i)
 }
 
-// JSONMap is a helper for storing arbitrary JSON in the DB
+// JSONMap is a helper for storing arbitrary JSON in the DB.
 type JSONMap map[string]any
 
 func (j JSONMap) Value() (driver.Value, error) {
-
 	return json.Marshal(j)
 }
 
-func (j *JSONMap) Scan(value interface{}) error {
+func (j *JSONMap) Scan(value any) error {
 	bytes, ok := value.([]byte)
 	if !ok {
 		return errors.New("type assertion to []byte failed")
@@ -327,14 +330,14 @@ func (j *JSONMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, j)
 }
 
-// StringSlice is a helper for storing []string as JSON
+// StringSlice is a helper for storing []string as JSON.
 type StringSlice []string
 
 func (s StringSlice) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
-func (s *StringSlice) Scan(value interface{}) error {
+func (s *StringSlice) Scan(value any) error {
 	bytes, ok := value.([]byte)
 	if !ok {
 		return errors.New("type assertion to []byte failed")

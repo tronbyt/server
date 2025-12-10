@@ -17,7 +17,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 )
 
-// Wrapper for data.User to satisfy webauthn.User interface
+// WebAuthnUser is a wrapper for data.User to satisfy webauthn.User interface.
 type WebAuthnUser struct {
 	User        *data.User
 	Credentials []webauthn.Credential
@@ -93,7 +93,7 @@ func (s *Server) handleWebAuthnRegisterBegin(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var credentials []webauthn.Credential
+	credentials := make([]webauthn.Credential, 0, len(user.Credentials))
 	for _, cred := range user.Credentials {
 		idBytes, err := base64.URLEncoding.DecodeString(cred.ID)
 		if err != nil {
@@ -313,7 +313,7 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 	s.DB.Where("user_id = ?", cred.UserID).Find(&userCreds)
 	cred.User.Credentials = userCreds // Attach credentials to user object
 
-	var waCredentials []webauthn.Credential
+	waCredentials := make([]webauthn.Credential, 0, 1) // Expecting 1 or 0
 	for _, c := range userCreds {
 		idBytes, _ := base64.URLEncoding.DecodeString(c.ID)
 		aaguid, _ := hex.DecodeString(c.Authenticator)

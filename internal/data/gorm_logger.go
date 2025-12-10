@@ -8,41 +8,41 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// GORMSlogLogger wraps slog for GORM logging
+// GORMSlogLogger wraps slog for GORM logging.
 type GORMSlogLogger struct {
 	LogLevel      logger.LogLevel
 	SlowThreshold time.Duration
 }
 
-// LogMode log mode
+// LogMode log mode.
 func (l *GORMSlogLogger) LogMode(level logger.LogLevel) logger.Interface {
 	newLogger := *l
 	newLogger.LogLevel = level
 	return &newLogger
 }
 
-// Info prints info
+// Info prints info.
 func (l *GORMSlogLogger) Info(ctx context.Context, msg string, data ...any) {
 	if l.LogLevel >= logger.Info {
 		slog.InfoContext(ctx, msg, data...)
 	}
 }
 
-// Warn prints warn messages
+// Warn prints warn messages.
 func (l *GORMSlogLogger) Warn(ctx context.Context, msg string, data ...any) {
 	if l.LogLevel >= logger.Warn {
 		slog.WarnContext(ctx, msg, data...)
 	}
 }
 
-// Error prints error messages
+// Error prints error messages.
 func (l *GORMSlogLogger) Error(ctx context.Context, msg string, data ...any) {
 	if l.LogLevel >= logger.Error {
 		slog.ErrorContext(ctx, msg, data...)
 	}
 }
 
-// Trace prints trace messages
+// Trace prints trace messages.
 func (l *GORMSlogLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.LogLevel <= logger.Silent {
 		return
@@ -65,7 +65,7 @@ func (l *GORMSlogLogger) Trace(ctx context.Context, begin time.Time, fc func() (
 	}
 }
 
-// NewGORMSlogLogger creates a new GORM logger that uses slog
+// NewGORMSlogLogger creates a new GORM logger that uses slog.
 func NewGORMSlogLogger(slogLevel logger.LogLevel, slowThreshold time.Duration) logger.Interface {
 	return &GORMSlogLogger{
 		LogLevel:      slogLevel,

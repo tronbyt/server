@@ -29,7 +29,7 @@ func TestHandleNextApp(t *testing.T) {
 		t.Fatalf("Failed to save pushed image: %v", err)
 	}
 
-	req := httptest.NewRequest("GET", "/testdevice/next", nil)
+	req := httptest.NewRequest(http.MethodGet, "/testdevice/next", nil)
 	req.SetPathValue("id", "testdevice")
 
 	rr := httptest.NewRecorder()

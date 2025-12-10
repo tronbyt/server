@@ -70,10 +70,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		var timeoutSec int
 		if device.Info.ProtocolVersion != nil {
 			// New firmware: wait longer to allow buffering/ack
-			timeoutSec = dwell * 2
-			if timeoutSec < 25 {
-				timeoutSec = 25
-			}
+			timeoutSec = max(dwell*2, 25)
 		} else {
 			// Old firmware: wait exactly dwell time
 			timeoutSec = dwell

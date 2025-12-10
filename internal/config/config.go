@@ -9,24 +9,24 @@ import (
 )
 
 type Settings struct {
-	DBDSN                  string `env:"DB_DSN" envDefault:"data/tronbyt.db"`
-	DataDir                string `env:"DATA_DIR" envDefault:"data"`
-	Production             string `env:"PRODUCTION" envDefault:"1"`
+	DBDSN                  string `env:"DB_DSN"                   envDefault:"data/tronbyt.db"`
+	DataDir                string `env:"DATA_DIR"                 envDefault:"data"`
+	Production             string `env:"PRODUCTION"               envDefault:"1"`
 	EnableUserRegistration string `env:"ENABLE_USER_REGISTRATION" envDefault:"1"`
-	MaxUsers               int    `env:"MAX_USERS" envDefault:"0"`
-	SingleUserAutoLogin    string `env:"SINGLE_USER_AUTO_LOGIN" envDefault:"0"`
-	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO" envDefault:"https://github.com/tronbyt/apps.git"`
+	MaxUsers               int    `env:"MAX_USERS"                envDefault:"0"`
+	SingleUserAutoLogin    string `env:"SINGLE_USER_AUTO_LOGIN"   envDefault:"0"`
+	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO"         envDefault:"https://github.com/tronbyt/apps.git"`
 	RedisURL               string `env:"REDIS_URL"`
-	Host                   string `env:"TRONBYT_HOST" envDefault:""`
-	Port                   string `env:"TRONBYT_PORT" envDefault:"8000"`
+	Host                   string `env:"TRONBYT_HOST"             envDefault:""`
+	Port                   string `env:"TRONBYT_PORT"             envDefault:"8000"`
 	UnixSocket             string `env:"TRONBYT_UNIX_SOCKET"`
 	SSLKeyFile             string `env:"TRONBYT_SSL_KEYFILE"`
 	SSLCertFile            string `env:"TRONBYT_SSL_CERTFILE"`
-	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES" envDefault:"*"`
-	LogLevel               string `env:"LOG_LEVEL" envDefault:"INFO"`
+	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES"  envDefault:"*"`
+	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
 }
 
-// TemplateConfig holds configuration values needed in templates
+// TemplateConfig holds configuration values needed in templates.
 type TemplateConfig struct {
 	EnableUserRegistration string
 	SingleUserAutoLogin    string

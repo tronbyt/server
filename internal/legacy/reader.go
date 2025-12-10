@@ -103,12 +103,12 @@ type LegacyApp struct {
 	ColorFilter         *string        `json:"color_filter"`
 }
 
-// Wrapper for the JSON blob structure in DB
+// UserDataBlob is a wrapper for the JSON blob structure in DB.
 type UserDataBlob struct {
 	Users map[string]LegacyUser `json:"users"`
 }
 
-// ParseBool handles boolean polymorphism (bool or int 0/1)
+// ParseBool handles boolean polymorphism (bool or int 0/1).
 func ParseBool(val any) bool {
 	if v, ok := val.(bool); ok {
 		return v
@@ -119,10 +119,11 @@ func ParseBool(val any) bool {
 	if v, ok := val.(float64); ok {
 		return int(v) != 0
 	}
+
 	return false
 }
 
-// Helper to handle Brightness polymorphism (int or object with value)
+// ParseBrightness is a helper to handle Brightness polymorphism (int or object with value).
 func ParseBrightness(val any) int {
 	if v, ok := val.(float64); ok {
 		return int(v)
@@ -135,6 +136,7 @@ func ParseBrightness(val any) int {
 			return int(v)
 		}
 	}
+
 	return 0
 }
 
@@ -148,7 +150,7 @@ func ParseTimeStr(val any) string {
 	return ""
 }
 
-// ParseDuration parses ISO8601 duration (PT1.5S) or numeric seconds into int64 nanoseconds
+// ParseDuration parses ISO8601 duration (PT1.5S) or numeric seconds into int64 nanoseconds.
 func ParseDuration(val any) int64 {
 	if val == nil {
 		return 0
