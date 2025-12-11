@@ -957,11 +957,10 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		// Flash message
 		slog.Warn("Validation error: Device name required")
 		s.renderTemplate(w, r, "create", TemplateData{
-			User:              user,
-			Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Unique name is required."}), localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name is required."}), "Name is required."},
-			DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-			Localizer:         localizer,
-			Form:              formData,
+			User:    user,
+			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name is required."})}, DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
+			Localizer: localizer,
+			Form:      formData,
 		})
 		return
 	}
@@ -971,8 +970,9 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		if dev.Name == formData.Name {
 			slog.Warn("Validation error: Device name already exists", "name", formData.Name)
 			s.renderTemplate(w, r, "create", TemplateData{
-				User:              user,
-				Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Unique name is required."}), localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name already exists."}), "Name already exists."}, // Added localized and plain text messages
+				User:    user,
+				Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name already exists."})}, // Added localized and plain text messages
+				// Added localized and plain text messages
 				DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 				Localizer:         localizer,
 				Form:              formData,

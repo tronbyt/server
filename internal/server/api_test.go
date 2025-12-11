@@ -284,14 +284,57 @@ func TestHandleListInstallations(t *testing.T) {
 	}
 
 	var response struct {
-		Installations []data.App `json:"installations"`
+		Installations []AppPayload `json:"installations"`
 	}
 	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if len(response.Installations) != 1 || response.Installations[0].Iname != "dummyapp" {
-		t.Errorf("Expected 1 installation with iname 'dummyapp', got %v", response.Installations)
+	if len(response.Installations) != 1 || response.Installations[0].ID != "dummyapp" {
+		t.Errorf("Expected 1 installation with ID 'dummyapp', got %v", response.Installations)
+	}
+}
+
+func TestHandleGetInstallation(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installID := "dummyapp"
+
+	// Add a dummy app to the device
+	dummyApp := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Dummy App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	if err := s.DB.Create(&dummyApp).Error; err != nil {
+		t.Fatalf("Failed to create dummy app: %v", err)
+	}
+
+	req := newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v",
+			rr.Code, http.StatusOK)
+	}
+
+	var payload AppPayload
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if payload.ID != installID {
+		t.Errorf("Expected app ID %s, got %s", installID, payload.ID)
+	}
+	if payload.AppID != "Dummy App" {
+		t.Errorf("Expected app name 'Dummy App', got %s", payload.AppID)
 	}
 }
 

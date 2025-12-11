@@ -42,7 +42,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	// 4. Rotation Logic
-	app, nextIndex, err := s.determineNextApp(device, user)
+	app, nextIndex, err := s.determineNextApp(ctx, device, user)
 	if err != nil || app == nil {
 		return nil, nil, fmt.Errorf("no valid app")
 	}
@@ -121,7 +121,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 	return data, app, err
 }
 
-func (s *Server) determineNextApp(device *data.Device, user *data.User) (*data.App, int, error) {
+func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user *data.User) (*data.App, int, error) {
 	// Sort Apps
 	apps := make([]data.App, len(device.Apps))
 	copy(apps, device.Apps)
@@ -177,7 +177,7 @@ func (s *Server) determineNextApp(device *data.Device, user *data.User) (*data.A
 		}
 
 		if shouldDisplay {
-			if s.possiblyRender(context.Background(), &candidate, device, user) && !candidate.EmptyLastRender {
+			if s.possiblyRender(ctx, &candidate, device, user) && !candidate.EmptyLastRender {
 				return &candidate, nextIndex, nil
 			}
 

@@ -260,12 +260,12 @@ const (
 
 // DeviceLocation stores lat/lng and timezone.
 type DeviceLocation struct {
-	Description string `json:"description"`
-	Lat         string `json:"lat"`
-	Lng         string `json:"lng"`
-	Locality    string `json:"locality"`
-	PlaceID     string `json:"place_id"`
-	Timezone    string `json:"timezone"`
+	Description string  `json:"description"`
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	Locality    string  `json:"locality"`
+	PlaceID     string  `json:"place_id"`
+	Timezone    string  `json:"timezone"`
 }
 
 func (l DeviceLocation) Value() (driver.Value, error) {
