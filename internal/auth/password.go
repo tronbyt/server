@@ -125,7 +125,7 @@ func verifyArgon2id(hashStr, password string) (bool, error) {
 }
 
 func verifyScrypt(hashStr, password string) (bool, error) {
-	slog.Info("verifyScrypt", "hashStr", hashStr)
+	slog.Info("verifyScrypt")
 	// Format: scrypt:N:r:p$salt$hash
 	parts := strings.Split(hashStr, "$")
 	if len(parts) != 3 {

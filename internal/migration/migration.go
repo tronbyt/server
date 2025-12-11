@@ -155,8 +155,8 @@ func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error
 		loc.Locality = lDevice.Location.Locality
 		loc.Description = lDevice.Location.Description
 		loc.PlaceID = lDevice.Location.PlaceID
-		loc.Lat = fmt.Sprintf("%v", lDevice.Location.Lat)
-		loc.Lng = fmt.Sprintf("%v", lDevice.Location.Lng)
+		loc.Lat = lDevice.Location.Lat
+		loc.Lng = lDevice.Location.Lng
 		if lDevice.Location.Timezone != nil {
 			loc.Timezone = *lDevice.Location.Timezone
 		}

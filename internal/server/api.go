@@ -147,10 +147,7 @@ type AppPayload struct {
 }
 
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
-	pinned := false
-	if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-		pinned = true
-	}
+	pinned := device.PinnedApp != nil && *device.PinnedApp == app.Iname
 	return AppPayload{
 		ID:                app.Iname,
 		AppID:             app.Name,
