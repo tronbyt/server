@@ -125,12 +125,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 }
 
 func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	user := GetUser(r)
+	username := user.Username
 
 	conn, err := s.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -192,5 +188,5 @@ func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) SetupWebsocketRoutes() {
 	s.Router.HandleFunc("GET /{id}/ws", s.handleWS)
-	s.Router.HandleFunc("GET /ws", s.handleDashboardWS)
+	s.Router.HandleFunc("GET /ws", s.RequireLogin(s.handleDashboardWS))
 }

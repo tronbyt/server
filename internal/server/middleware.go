@@ -229,6 +229,18 @@ func (s *Server) APIAuth(next http.HandlerFunc) http.HandlerFunc {
 	return s.APIAuthMiddleware(next).ServeHTTP
 }
 
+// RequireUser ensures the user is present in the context.
+// Must be used after RequireLogin or APIAuthMiddleware.
+func (s *Server) RequireUser(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := UserFromContext(r.Context()); err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

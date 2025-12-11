@@ -391,23 +391,12 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	// Auth check
-	session, _ := s.Store.Get(r, "session-name")
-	if _, ok := session.Values["username"].(string); !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	// The device and user are already in context due to RequireLogin and RequireDevice
+	device := GetDevice(r)
 
-	var device data.Device
-	if err := s.DB.Preload("Apps").First(&device, "id = ?", id).Error; err != nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
-	imgData, _, err := s.GetCurrentAppImage(r.Context(), &device)
+	imgData, _, err := s.GetCurrentAppImage(r.Context(), device)
 	if err != nil {
-		s.sendDefaultImage(w, r, &device)
+		s.sendDefaultImage(w, r, device)
 		return
 	}
 
@@ -1164,21 +1153,18 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	filename := filepath.Base(r.PathValue("filename"))
 
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	user := GetUser(r)
 
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
+	// user.Devices is already preloaded by RequireLogin -> RequireDevice -> RequireUser, but GetUser in current implementation doesn't preload.
+	// We need to fetch user with devices and apps here.
+	var userWithDevices data.User
+	if err := s.DB.Preload("Devices.Apps").First(&userWithDevices, "username = ?", user.Username).Error; err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 
 	inUse := false
-	for _, dev := range user.Devices {
+	for _, dev := range userWithDevices.Devices {
 		for _, app := range dev.Apps {
 			if app.Path != nil && filepath.Base(*app.Path) == filename {
 				inUse = true
@@ -1195,7 +1181,7 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userAppsPath := filepath.Join(s.DataDir, "users", username, "apps")
+	userAppsPath := filepath.Join(s.DataDir, "users", userWithDevices.Username, "apps")
 	appName := strings.TrimSuffix(filename, filepath.Ext(filename))
 	appDir := filepath.Join(userAppsPath, appName)
 
