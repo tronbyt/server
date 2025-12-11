@@ -132,6 +132,7 @@ func TestMigrateLegacyDB(t *testing.T) {
 		assert.False(t, octoprintApp.EmptyLastRender) // Should be false from the sample data
 		assert.Equal(t, time.Unix(1762849622, 0).UTC(), octoprintApp.LastRender.UTC())
 		assert.Contains(t, octoprintApp.Config, "apiKey")
+		assert.Equal(t, "system-apps/apps/octoprint/octoprint.star", *octoprintApp.Path)
 	}
 
 	// Verify 'tester' user
