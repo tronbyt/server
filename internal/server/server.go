@@ -2452,6 +2452,13 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		currentUser.APIKey = importedUser.APIKey
 	}
 
+	// Clean up files for all existing devices
+	for _, d := range currentUser.Devices {
+		if err := os.RemoveAll(s.getDeviceWebPDir(d.ID)); err != nil {
+			slog.Error("Failed to remove device webp directory", "device_id", d.ID, "error", err)
+		}
+	}
+
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// Delete existing devices and apps
 		var deviceIDs []string
@@ -3160,6 +3167,13 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Invalid JSON file", http.StatusBadRequest)
 		return
 	}
+
+	// Clean up WebP files for this device to prevent orphans
+	if err := os.RemoveAll(s.getDeviceWebPDir(device.ID)); err != nil {
+		slog.Error("Failed to clear device webp directory during import", "device_id", device.ID, "error", err)
+	}
+	// Re-create the directory immediately
+	s.getDeviceWebPDir(device.ID)
 
 	// Begin a transaction to ensure atomicity
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
