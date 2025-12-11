@@ -52,3 +52,50 @@ func TestHandleAddAppPost(t *testing.T) {
 		t.Errorf("Expected uinterval 5 (recommended), got %d", app.UInterval)
 	}
 }
+
+func TestHandleConfigAppPost(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser"}
+	s.DB.Create(&device)
+	app := data.App{
+		DeviceID: "testdevice",
+		Iname:    "100",
+		Name:     "TestApp",
+		Enabled:  true,
+	}
+	s.DB.Create(&app)
+
+	// JSON payload
+	payload := `{"enabled": false, "autopin": true, "uinterval": 30, "display_time": 10, "notes": "Updated", "config": {"key": "val"}}`
+
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/100/config", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleConfigAppPost)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
+	}
+
+	var updatedApp data.App
+	s.DB.First(&updatedApp, "iname = ?", "100")
+	if updatedApp.Enabled {
+		t.Errorf("App should be disabled")
+	}
+	if !updatedApp.AutoPin {
+		t.Errorf("App should be auto-pinned")
+	}
+	if val, ok := updatedApp.Config["key"].(string); !ok || val != "val" {
+		t.Errorf("App config not updated")
+	}
+}
