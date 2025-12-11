@@ -13,7 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
+	"tronbyt-server/internal/renderer"
 )
 
 // --- API Handlers ---
@@ -131,9 +133,17 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 	}
 }
 
-// ListDevicesPayload represents the response for listing devices
+// ListDevicesPayload represents the response for listing devices.
 type ListDevicesPayload struct {
 	Devices []DevicePayload `json:"devices"`
+}
+
+// PushAppData represents the data for pushing an app configuration.
+type PushAppData struct {
+	Config            map[string]any `json:"config"`
+	AppID             string         `json:"app_id"`
+	InstallationID    string         `json:"installationID"`
+	InstallationIDAlt string         `json:"installationId"`
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +157,7 @@ func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
 	// or should return only that device. The legacy behavior (Python) returns all devices for the user.
 	// Since APIAuthMiddleware populates user with all devices preloaded, we can just use that.
 
-	var devicePayloads []DevicePayload
+	devicePayloads := make([]DevicePayload, 0, len(user.Devices))
 	for i := range user.Devices {
 		devicePayloads = append(devicePayloads, s.toDevicePayload(&user.Devices[i]))
 	}
@@ -156,6 +166,147 @@ func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(ListDevicesPayload{Devices: devicePayloads}); err != nil {
 		slog.Error("Failed to encode devices JSON", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	user, userErr := UserFromContext(r.Context())
+	var device *data.Device
+	if d, err := DeviceFromContext(r.Context()); err == nil {
+		if d.ID != id {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		device = d
+	} else if userErr == nil && user != nil {
+		for i := range user.Devices {
+			if user.Devices[i].ID == id {
+				device = &user.Devices[i]
+				break
+			}
+		}
+	}
+	if device == nil {
+		http.Error(w, "Device not found", http.StatusNotFound)
+		return
+	}
+
+	var dataReq PushAppData
+	if err := json.NewDecoder(r.Body).Decode(&dataReq); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Find App Path
+	var appPath string
+
+	// 1. Check System Apps
+	s.SystemAppsCacheMutex.RLock()
+	for _, app := range s.SystemAppsCache {
+		if app.ID == dataReq.AppID {
+			appPath = filepath.Join(s.DataDir, app.Path)
+			break
+		}
+	}
+	s.SystemAppsCacheMutex.RUnlock()
+
+	// 2. Check User Apps
+	if appPath == "" && user != nil {
+		userApps, _ := apps.ListUserApps(s.DataDir, user.Username)
+		for _, app := range userApps {
+			if app.ID == dataReq.AppID { // AppID for user apps is folder name
+				appPath = filepath.Join(s.DataDir, app.Path)
+				break
+			}
+		}
+	}
+
+	if appPath == "" {
+		http.Error(w, "App not found", http.StatusNotFound)
+		return
+	}
+
+	// Convert config to map[string]string
+	configStr := make(map[string]string)
+	for k, v := range dataReq.Config {
+		configStr[k] = fmt.Sprintf("%v", v)
+	}
+
+	// Look up existing app if installationID is provided to get DisplayTime and filters
+	var existingApp *data.App
+	installationID := dataReq.InstallationID
+	if installationID == "" {
+		installationID = dataReq.InstallationIDAlt
+	}
+	if installationID != "" {
+		for i := range device.Apps {
+			if device.Apps[i].Iname == installationID {
+				existingApp = &device.Apps[i]
+				break
+			}
+		}
+	}
+
+	// Determine Dwell Time
+	appInterval := device.DefaultInterval
+	if existingApp != nil && existingApp.DisplayTime > 0 {
+		appInterval = existingApp.DisplayTime
+	}
+
+	// Filters
+	filters := s.getEffectiveFilters(device, existingApp)
+
+	// Render
+	deviceTimezone := device.GetTimezone()
+	imgBytes, _, err := renderer.Render(
+		r.Context(),
+		appPath,
+		configStr,
+		64, 32,
+		time.Duration(appInterval)*time.Second,
+		30*time.Second,
+		true,
+		device.Type.Supports2x(),
+		&deviceTimezone,
+		device.Locale,
+		filters,
+	)
+	if err != nil {
+		slog.Error("Failed to render app", "error", err)
+		http.Error(w, "Rendering failed", http.StatusInternalServerError)
+		return
+	}
+
+	if len(imgBytes) == 0 {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte("Empty image, not pushing")); err != nil {
+			slog.Error("Failed to write empty image response", "error", err)
+		}
+		return
+	}
+
+	if installationID != "" {
+		// Ensure app record exists
+		if err := s.ensurePushedApp(device.ID, installationID); err != nil {
+			slog.Error("Failed to ensure pushed app", "error", err)
+		}
+	}
+
+	// Notify device via Websocket
+	sent := s.Broadcaster.Notify(device.ID, imgBytes)
+
+	if !sent || installationID != "" {
+		if err := s.savePushedImage(device.ID, installationID, imgBytes); err != nil {
+			http.Error(w, "Failed to save image", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte("App pushed.")); err != nil {
+		slog.Error("Failed to write response", "error", err)
 	}
 }
 
@@ -243,7 +394,7 @@ type PushData struct {
 	Image             string `json:"image"`
 }
 
-func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	user, userErr := UserFromContext(r.Context())
@@ -284,14 +435,19 @@ func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.savePushedImage(device.ID, installID, imgBytes); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 	if installID != "" {
 		if err := s.ensurePushedApp(device.ID, installID); err != nil {
 			fmt.Printf("Error adding pushed app: %v\n", err)
+		}
+	}
+
+	// Notify device via Websocket
+	sent := s.Broadcaster.Notify(device.ID, imgBytes)
+
+	if !sent || installID != "" {
+		if err := s.savePushedImage(device.ID, installID, imgBytes); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
+			return
 		}
 	}
 
@@ -621,7 +777,8 @@ func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetDevice)))
-	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePush)))
+	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePushImage)))
+	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(http.HandlerFunc(s.handlePushApp)))
 	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(http.HandlerFunc(s.handleListInstallations)))
 	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchDevice)))
 	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchInstallation)))

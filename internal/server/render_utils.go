@@ -80,33 +80,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		// Filters
-		var filters []string
-
-		// Determine base device filter
-		var deviceFilter data.ColorFilter
-		if GetNightModeIsActive(device) && device.NightColorFilter != nil {
-			deviceFilter = *device.NightColorFilter
-		} else if device.ColorFilter != nil {
-			deviceFilter = *device.ColorFilter
-		} else {
-			deviceFilter = data.ColorFilterNone
-		}
-
-		appFilter := data.ColorFilterInherit
-		if app.ColorFilter != nil {
-			appFilter = *app.ColorFilter
-		}
-
-		if appFilter != data.ColorFilterInherit {
-			if appFilter != data.ColorFilterNone {
-				filters = append(filters, string(appFilter))
-			}
-		} else {
-			// Inherit from device
-			if deviceFilter != data.ColorFilterNone {
-				filters = append(filters, string(deviceFilter))
-			}
-		}
+		filters := s.getEffectiveFilters(device, app)
 
 		startTime := time.Now()
 		imgBytes, messages, err := renderer.Render(
@@ -163,6 +137,37 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	}
 
 	return true // Not time to render yet, assume existing is fine
+}
+
+func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []string {
+	var filters []string
+
+	// Determine base device filter
+	var deviceFilter data.ColorFilter
+	if GetNightModeIsActive(device) && device.NightColorFilter != nil {
+		deviceFilter = *device.NightColorFilter
+	} else if device.ColorFilter != nil {
+		deviceFilter = *device.ColorFilter
+	} else {
+		deviceFilter = data.ColorFilterNone
+	}
+
+	appFilter := data.ColorFilterInherit
+	if app != nil && app.ColorFilter != nil {
+		appFilter = *app.ColorFilter
+	}
+
+	if appFilter != data.ColorFilterInherit {
+		if appFilter != data.ColorFilterNone {
+			filters = append(filters, string(appFilter))
+		}
+	} else {
+		// Inherit from device
+		if deviceFilter != data.ColorFilterNone {
+			filters = append(filters, string(deviceFilter))
+		}
+	}
+	return filters
 }
 
 func (s *Server) resolveAppPath(path string) string {

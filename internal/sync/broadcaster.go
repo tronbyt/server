@@ -5,29 +5,29 @@ import (
 )
 
 type Broadcaster struct {
-	subscribers map[string]map[chan struct{}]bool
+	subscribers map[string]map[chan []byte]bool
 	lock        sync.RWMutex
 }
 
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
-		subscribers: make(map[string]map[chan struct{}]bool),
+		subscribers: make(map[string]map[chan []byte]bool),
 	}
 }
 
-func (b *Broadcaster) Subscribe(topic string) chan struct{} {
-	ch := make(chan struct{}, 1)
+func (b *Broadcaster) Subscribe(topic string) chan []byte {
+	ch := make(chan []byte, 1)
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
 	if _, ok := b.subscribers[topic]; !ok {
-		b.subscribers[topic] = make(map[chan struct{}]bool)
+		b.subscribers[topic] = make(map[chan []byte]bool)
 	}
 	b.subscribers[topic][ch] = true
 	return ch
 }
 
-func (b *Broadcaster) Unsubscribe(topic string, ch chan struct{}) {
+func (b *Broadcaster) Unsubscribe(topic string, ch chan []byte) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -40,16 +40,20 @@ func (b *Broadcaster) Unsubscribe(topic string, ch chan struct{}) {
 	close(ch)
 }
 
-func (b *Broadcaster) Notify(topic string) {
+func (b *Broadcaster) Notify(topic string, data []byte) bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
-	if subs, ok := b.subscribers[topic]; ok {
-		for ch := range subs {
-			select {
-			case ch <- struct{}{}:
-			default:
-			}
+	subs, ok := b.subscribers[topic]
+	if !ok || len(subs) == 0 {
+		return false
+	}
+
+	for ch := range subs {
+		select {
+		case ch <- data:
+		default:
 		}
 	}
+	return true
 }
