@@ -466,15 +466,7 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleExportDeviceConfig(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	var user data.User
-	s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username)
+	user := GetUser(r)
 
 	var device *data.Device
 	for i := range user.Devices {
