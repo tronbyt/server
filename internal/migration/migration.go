@@ -155,8 +155,8 @@ func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error
 		loc.Locality = lDevice.Location.Locality
 		loc.Description = lDevice.Location.Description
 		loc.PlaceID = lDevice.Location.PlaceID
-		loc.Lat = lDevice.Location.Lat
-		loc.Lng = lDevice.Location.Lng
+		loc.Lat = legacy.ParseFloat(lDevice.Location.Lat)
+		loc.Lng = legacy.ParseFloat(lDevice.Location.Lng)
 		if lDevice.Location.Timezone != nil {
 			loc.Timezone = *lDevice.Location.Timezone
 		}
@@ -274,7 +274,7 @@ func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
 		UInterval:           lApp.UInterval,
 		DisplayTime:         lApp.DisplayTime,
 		Notes:               lApp.Notes,
-		Enabled:             lApp.Enabled,
+		Enabled:             legacy.ParseBool(lApp.Enabled),
 		Pushed:              lApp.Pushed,
 		Order:               lApp.Order,
 		LastRender:          time.Unix(lApp.LastRender, 0),
