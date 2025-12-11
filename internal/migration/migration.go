@@ -267,6 +267,19 @@ func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
 		cf = &val
 	}
 
+	// Handle Path
+	var path *string
+	if lApp.Path != nil {
+		p := *lApp.Path
+		// Normalize path to be relative to data directory if possible
+		if idx := strings.Index(p, "system-apps/"); idx != -1 {
+			p = p[idx:]
+		} else if idx := strings.Index(p, "users/"); idx != -1 {
+			p = p[idx:]
+		}
+		path = &p
+	}
+
 	app := data.App{
 		DeviceID:            deviceID,
 		Iname:               lApp.Iname,
@@ -279,7 +292,7 @@ func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
 		Order:               lApp.Order,
 		LastRender:          time.Unix(lApp.LastRender, 0),
 		LastRenderDur:       time.Duration(legacy.ParseDuration(lApp.LastRenderDuration)),
-		Path:                lApp.Path,
+		Path:                path,
 		StartTime:           &startTime,
 		EndTime:             &endTime,
 		Days:                data.StringSlice(lApp.Days),
