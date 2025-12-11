@@ -1009,9 +1009,20 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 				}
 				return ""
 			}
+			safeFloat := func(v any) float64 {
+				if f, ok := v.(float64); ok {
+					return f
+				}
+				if s, ok := v.(string); ok {
+					if f, err := strconv.ParseFloat(s, 64); err == nil {
+						return f
+					}
+				}
+				return 0
+			}
 			location.Description = safeStr(locMap["description"])
-			location.Lat = safeStr(locMap["lat"])
-			location.Lng = safeStr(locMap["lng"])
+			location.Lat = safeFloat(locMap["lat"])
+			location.Lng = safeFloat(locMap["lng"])
 			location.Locality = safeStr(locMap["locality"])
 			location.PlaceID = safeStr(locMap["place_id"])
 			location.Timezone = safeStr(locMap["timezone"])
@@ -1417,13 +1428,14 @@ func (s *Server) handleSystemAppThumbnail(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Security check
-	if filepath.IsAbs(file) || filepath.Clean(file) == ".." || filepath.Clean(file) == "." {
+	baseDir := filepath.Join(s.DataDir, "system-apps", "apps")
+	path := filepath.Clean(filepath.Join(baseDir, file))
+
+	if !strings.HasPrefix(path, baseDir+string(os.PathSeparator)) {
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
-	path := filepath.Join(s.DataDir, "system-apps", "apps", file)
 	http.ServeFile(w, r, path)
 }
 
@@ -2095,7 +2107,7 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 	appDir := filepath.Join(userAppsPath, appName)
 
 	// Security check
-	if !strings.HasPrefix(appDir, userAppsPath) {
+	if !strings.HasPrefix(appDir, userAppsPath+string(os.PathSeparator)) {
 		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
@@ -2623,10 +2635,21 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 				}
 				return ""
 			}
+			safeFloat := func(v any) float64 {
+				if f, ok := v.(float64); ok {
+					return f
+				}
+				if s, ok := v.(string); ok {
+					if f, err := strconv.ParseFloat(s, 64); err == nil {
+						return f
+					}
+				}
+				return 0
+			}
 			device.Location = data.DeviceLocation{
 				Description: safeStr(locMap["description"]),
-				Lat:         safeStr(locMap["lat"]),
-				Lng:         safeStr(locMap["lng"]),
+				Lat:         safeFloat(locMap["lat"]),
+				Lng:         safeFloat(locMap["lng"]),
 				Locality:    safeStr(locMap["locality"]),
 				PlaceID:     safeStr(locMap["place_id"]),
 				Timezone:    safeStr(locMap["timezone"]),
