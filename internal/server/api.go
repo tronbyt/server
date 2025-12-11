@@ -792,7 +792,7 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {
 	deviceID := r.PathValue("id")
-	iname := r.PathValue("iname")
+	iname := filepath.Base(r.PathValue("iname"))
 
 	var device *data.Device
 	if d, err := DeviceFromContext(r.Context()); err == nil {
