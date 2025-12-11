@@ -891,15 +891,6 @@ func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getDeviceWebpDir is a helper to get device webp directory (from server.go).
-func (s *Server) getDeviceWebPDir(deviceID string) string {
-	path := filepath.Join(s.DataDir, "webp", deviceID)
-	if err := os.MkdirAll(path, 0755); err != nil {
-		slog.Error("Failed to create device webp directory", "path", path, "error", err)
-		// Non-fatal, continue.
-	}
-	return path
-}
 
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
