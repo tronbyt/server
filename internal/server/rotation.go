@@ -53,11 +53,11 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 			slog.Error("Failed to update last_app_index", "error", err)
 		}
 		device.LastAppIndex = nextIndex // Keep in-memory updated
+	}
 
-		// Notify Dashboard
-		if user != nil {
-			s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
-		}
+	// Notify Dashboard that the device has updated (new app or new render)
+	if user != nil {
+		s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 	}
 
 	// 6. Return Image
