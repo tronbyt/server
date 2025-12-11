@@ -626,12 +626,38 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		device.NightModeEnabled = *update.AutoDim
 	}
 	if update.NightModeApp != nil {
+		if *update.NightModeApp != "" {
+			appExists := false
+			for _, app := range device.Apps {
+				if app.Iname == *update.NightModeApp {
+					appExists = true
+					break
+				}
+			}
+			if !appExists {
+				http.Error(w, "Night mode app not found", http.StatusBadRequest)
+				return
+			}
+		}
 		device.NightModeApp = *update.NightModeApp
 	}
 	if update.NightModeBrightness != nil {
 		device.NightBrightness = data.Brightness(*update.NightModeBrightness)
 	}
 	if update.PinnedApp != nil {
+		if *update.PinnedApp != "" {
+			appExists := false
+			for _, app := range device.Apps {
+				if app.Iname == *update.PinnedApp {
+					appExists = true
+					break
+				}
+			}
+			if !appExists {
+				http.Error(w, "Pinned app not found", http.StatusBadRequest)
+				return
+			}
+		}
 		if *update.PinnedApp == "" {
 			device.PinnedApp = nil
 		} else {
@@ -716,6 +742,26 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 
 	if update.Enabled != nil {
 		app.Enabled = *update.Enabled
+		if !app.Enabled {
+			// Delete associated webp files when app is disabled
+			webpDir := s.getDeviceWebPDir(device.ID)
+			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
+			for _, match := range matches {
+				if err := os.Remove(match); err != nil {
+					slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
+				}
+			}
+			// Also check for pushed webp files
+			pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", app.Iname))
+			if _, err := os.Stat(pushedWebpPath); err == nil {
+				if err := os.Remove(pushedWebpPath); err != nil {
+					slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
+				}
+			}
+		} else {
+			// Reset LastRender when app is enabled
+			app.LastRender = time.Time{}
+		}
 	}
 	if update.RenderIntervalMin != nil {
 		app.UInterval = *update.RenderIntervalMin
