@@ -131,6 +131,34 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 	}
 }
 
+// ListDevicesPayload represents the response for listing devices
+type ListDevicesPayload struct {
+	Devices []DevicePayload `json:"devices"`
+}
+
+func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
+	user, err := UserFromContext(r.Context())
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// If using an API key associated with a specific device, this endpoint might not make sense
+	// or should return only that device. The legacy behavior (Python) returns all devices for the user.
+	// Since APIAuthMiddleware populates user with all devices preloaded, we can just use that.
+
+	var devicePayloads []DevicePayload
+	for i := range user.Devices {
+		devicePayloads = append(devicePayloads, s.toDevicePayload(&user.Devices[i]))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(ListDevicesPayload{Devices: devicePayloads}); err != nil {
+		slog.Error("Failed to encode devices JSON", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
 func (s *Server) handleGetDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -591,6 +619,7 @@ func (s *Server) getDeviceWebPDir(deviceID string) string {
 
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
+	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetDevice)))
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePush)))
 	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(http.HandlerFunc(s.handleListInstallations)))

@@ -106,6 +106,34 @@ func TestHandleDots(t *testing.T) {
 	}
 }
 
+func TestHandleListDevices(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+
+	req := newAPIRequest("GET", "/v0/devices", apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v",
+			rr.Code, http.StatusOK)
+	}
+
+	var payload ListDevicesPayload
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(payload.Devices) != 1 {
+		t.Errorf("Expected 1 device, got %d", len(payload.Devices))
+	}
+
+	if payload.Devices[0].ID != "testdevice" {
+		t.Errorf("Expected device ID 'testdevice', got %s", payload.Devices[0].ID)
+	}
+}
+
 func TestHandleGetDevice(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
