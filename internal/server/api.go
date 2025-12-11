@@ -133,6 +133,37 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 	}
 }
 
+// AppPayload represents the API response for an app installation.
+type AppPayload struct {
+	ID                string `json:"id"`
+	AppID             string `json:"appID"`
+	Enabled           bool   `json:"enabled"`
+	Pinned            bool   `json:"pinned"`
+	Pushed            bool   `json:"pushed"`
+	RenderIntervalMin int    `json:"renderIntervalMin"`
+	DisplayTimeSec    int    `json:"displayTimeSec"`
+	LastRenderAt      int64  `json:"lastRenderAt"`
+	IsInactive        bool   `json:"isInactive"`
+}
+
+func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
+	pinned := false
+	if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+		pinned = true
+	}
+	return AppPayload{
+		ID:                app.Iname,
+		AppID:             app.Name,
+		Enabled:           app.Enabled,
+		Pinned:            pinned,
+		Pushed:            app.Pushed,
+		RenderIntervalMin: app.UInterval,
+		DisplayTimeSec:    app.DisplayTime,
+		LastRenderAt:      app.LastRender.Unix(),
+		IsInactive:        app.EmptyLastRender,
+	}
+}
+
 // ListDevicesPayload represents the response for listing devices.
 type ListDevicesPayload struct {
 	Devices []DevicePayload `json:"devices"`
@@ -377,12 +408,60 @@ func (s *Server) handleListInstallations(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	installations := make([]AppPayload, 0, len(device.Apps))
+	for i := range device.Apps {
+		installations = append(installations, s.toAppPayload(device, &device.Apps[i]))
+	}
+
 	response := map[string]any{
-		"installations": device.Apps,
+		"installations": installations,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		slog.Error("Failed to encode installations JSON", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleGetInstallation(w http.ResponseWriter, r *http.Request) {
+	deviceID := r.PathValue("id")
+	iname := r.PathValue("iname")
+
+	var device *data.Device
+	if d, err := DeviceFromContext(r.Context()); err == nil {
+		if d.ID != deviceID {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		device = d
+	} else if u, err := UserFromContext(r.Context()); err == nil {
+		for i := range u.Devices {
+			if u.Devices[i].ID == deviceID {
+				device = &u.Devices[i]
+				break
+			}
+		}
+	}
+	if device == nil {
+		http.Error(w, "Device not found", http.StatusNotFound)
+		return
+	}
+
+	var app *data.App
+	for i := range device.Apps {
+		if device.Apps[i].Iname == iname {
+			app = &device.Apps[i]
+			break
+		}
+	}
+	if app == nil {
+		http.Error(w, "App not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(s.toAppPayload(device, app)); err != nil {
+		slog.Error("Failed to encode app JSON", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
@@ -437,7 +516,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 
 	if installID != "" {
 		if err := s.ensurePushedApp(device.ID, installID); err != nil {
-			fmt.Printf("Error adding pushed app: %v\n", err)
+			slog.Error("Error adding pushed app", "error", err)
 		}
 	}
 
@@ -699,8 +778,14 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 
 	// Clean up files (install dir and webp)
 	installDir := filepath.Join(s.DataDir, "installations", iname)
-	if err := os.RemoveAll(installDir); err != nil {
-		slog.Error("Failed to remove install directory", "path", installDir, "error", err)
+	// Security check for path traversal
+	expectedPrefix := filepath.Join(s.DataDir, "installations") + string(os.PathSeparator)
+	if strings.HasPrefix(filepath.Clean(installDir), expectedPrefix) {
+		if err := os.RemoveAll(installDir); err != nil {
+			slog.Error("Failed to remove install directory", "path", installDir, "error", err)
+		}
+	} else {
+		slog.Warn("Potential path traversal detected in handleDeleteInstallationAPI", "iname", iname)
 	}
 
 	webpDir := s.getDeviceWebPDir(device.ID)
@@ -780,6 +865,7 @@ func (s *Server) SetupAPIRoutes() {
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePushImage)))
 	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(http.HandlerFunc(s.handlePushApp)))
 	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(http.HandlerFunc(s.handleListInstallations)))
+	s.Router.Handle("GET /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetInstallation)))
 	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchDevice)))
 	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchInstallation)))
 	s.Router.Handle("DELETE /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handleDeleteInstallationAPI)))
