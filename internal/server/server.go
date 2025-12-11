@@ -810,7 +810,36 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to remove user apps directory", "username", targetUsername, "error", err)
 	}
 
-	if err := s.DB.Delete(&targetUser).Error; err != nil {
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete Apps for all user's devices
+		var deviceIDs []string
+		for _, d := range targetUser.Devices {
+			deviceIDs = append(deviceIDs, d.ID)
+		}
+		if len(deviceIDs) > 0 {
+			if err := tx.Where("device_id IN ?", deviceIDs).Delete(&data.App{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// 2. Delete Devices
+		if err := tx.Where("username = ?", targetUsername).Delete(&data.Device{}).Error; err != nil {
+			return err
+		}
+
+		// 3. Delete Credentials
+		if err := tx.Where("user_id = ?", targetUsername).Delete(&data.WebAuthnCredential{}).Error; err != nil {
+			return err
+		}
+
+		// 4. Delete User
+		if err := tx.Delete(&targetUser).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		slog.Error("Failed to delete user", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -2201,7 +2230,7 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	filename := r.PathValue("filename")
+	filename := filepath.Base(r.PathValue("filename"))
 
 	session, _ := s.Store.Get(r, "session-name")
 	username, ok := session.Values["username"].(string)
