@@ -62,8 +62,8 @@ type LegacyLocation struct {
 	Description string  `json:"description"`
 	PlaceID     string  `json:"place_id"`
 	Timezone    *string `json:"timezone"`
-	Lat         float64 `json:"lat"`
-	Lng         float64 `json:"lng"`
+	Lat         any     `json:"lat"`
+	Lng         any     `json:"lng"`
 }
 
 type LegacyDeviceInfo struct {
@@ -81,7 +81,7 @@ type LegacyApp struct {
 	UInterval           int            `json:"uinterval"`
 	DisplayTime         int            `json:"display_time"`
 	Notes               string         `json:"notes"`
-	Enabled             bool           `json:"enabled"`
+	Enabled             any            `json:"enabled"`
 	Pushed              bool           `json:"pushed"`
 	Order               int            `json:"order"`
 	LastRender          int64          `json:"last_render"`
@@ -121,6 +121,19 @@ func ParseBool(val any) bool {
 	}
 
 	return false
+}
+
+// ParseFloat handles float polymorphism (float or string).
+func ParseFloat(val any) float64 {
+	if v, ok := val.(float64); ok {
+		return v
+	}
+	if s, ok := val.(string); ok {
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return f
+		}
+	}
+	return 0.0
 }
 
 // ParseBrightness is a helper to handle Brightness polymorphism (int or object with value).
