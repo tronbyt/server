@@ -684,6 +684,11 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Notify Dashboard
+	if user, err := UserFromContext(r.Context()); err == nil {
+		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(s.toDevicePayload(device)); err != nil {
 		slog.Error("Failed to encode device", "error", err)
@@ -784,6 +789,11 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Notify Dashboard
+	if user, err := UserFromContext(r.Context()); err == nil {
+		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(app); err != nil {
 		slog.Error("Failed to encode app", "error", err)
@@ -837,6 +847,11 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 		if err := os.Remove(match); err != nil {
 			slog.Error("Failed to remove webp file", "path", match, "error", err)
 		}
+	}
+
+	// Notify Dashboard
+	if user, err := UserFromContext(r.Context()); err == nil {
+		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 	}
 
 	w.WriteHeader(http.StatusOK)

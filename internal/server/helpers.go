@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -416,4 +417,13 @@ func (s *Server) getSetting(key string) (string, error) {
 
 func (s *Server) setSetting(key, value string) error {
 	return s.DB.Save(&data.Setting{Key: key, Value: value}).Error
+}
+
+func (s *Server) notifyDashboard(username string, event WSEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		slog.Error("Failed to marshal WS event", "error", err)
+		return
+	}
+	s.Broadcaster.Notify("user:"+username, data)
 }

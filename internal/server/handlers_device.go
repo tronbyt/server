@@ -431,6 +431,9 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -460,6 +463,9 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{Type: "device_deleted", DeviceID: device.ID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

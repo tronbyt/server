@@ -25,6 +25,13 @@ type ClientInfo struct {
 	MACAddress      string `json:"macAddress"`
 }
 
+type WSEvent struct {
+	Type     string `json:"type"`
+	DeviceID string `json:"device_id,omitempty"`
+	AppID    string `json:"app_id,omitempty"`
+	Payload  any    `json:"payload,omitempty"`
+}
+
 func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
 	var pendingImage []byte
 
@@ -169,11 +176,14 @@ func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-done:
 			return
-		case <-ch:
-			// A device/app update has occurred for this user
-			// Send a simple message to trigger a full page refresh or AJAX update
-			if err := conn.WriteMessage(websocket.TextMessage, []byte("refresh")); err != nil {
-				slog.Error("Failed to write refresh message to Dashboard WS", "username", username, "error", err)
+		case data := <-ch:
+			// Forward the event data (JSON) to the client
+			if len(data) == 0 {
+				// Fallback for legacy calls sending nil: trigger generic refresh
+				data = []byte(`{"type": "refresh"}`)
+			}
+			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				slog.Error("Failed to write message to Dashboard WS", "username", username, "error", err)
 				return
 			}
 		case <-ticker.C:

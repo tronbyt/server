@@ -1623,8 +1623,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const dashboardWs = new WebSocket(wsUrl);
 
   dashboardWs.onopen = () => { console.log('Dashboard WebSocket connected'); };
-  dashboardWs.onmessage = (event) => {
-    if (event.data === 'refresh') {
+  function refreshAll() {
       console.log('Dashboard refresh signal received');
       const appListContainers = document.querySelectorAll('[id^="appsList-"]');
       appListContainers.forEach(container => {
@@ -1632,6 +1631,28 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshAppsList(deviceId);
         pollImageWithEtag(deviceId);
       });
+  }
+
+  dashboardWs.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'refresh') {
+          refreshAll();
+      } else if (msg.type === 'apps_changed' && msg.device_id) {
+          console.log('Apps changed for device', msg.device_id);
+          refreshAppsList(msg.device_id);
+          pollImageWithEtag(msg.device_id);
+      } else if (msg.type === 'image_updated' && msg.device_id) {
+          console.log('Image updated for device', msg.device_id);
+          pollImageWithEtag(msg.device_id);
+      } else if (msg.type === 'device_deleted' && msg.device_id) {
+          console.log('Device deleted', msg.device_id);
+          window.location.reload();
+      }
+    } catch (e) {
+      if (event.data === 'refresh') {
+        refreshAll();
+      }
     }
   };
   dashboardWs.onclose = (event) => { console.log('Dashboard WebSocket disconnected', event); };
