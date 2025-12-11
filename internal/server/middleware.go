@@ -5,7 +5,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
+	"time"
 
 	"tronbyt-server/internal/data"
 )
@@ -225,4 +227,38 @@ func GetApp(r *http.Request) *data.App {
 // APIAuth is a helper to wrap APIAuthMiddleware for ServeMux which expects generic handler.
 func (s *Server) APIAuth(next http.HandlerFunc) http.HandlerFunc {
 	return s.APIAuthMiddleware(next).ServeHTTP
+}
+
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		slog.Debug("Request started", "method", r.Method, "path", r.URL.Path)
+		next.ServeHTTP(w, r)
+		slog.Debug("Request finished", "method", r.Method, "path", r.URL.Path, "duration", time.Since(start))
+	})
+}
+
+func ProxyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+			r.URL.Scheme = proto
+		}
+		if host := r.Header.Get("X-Forwarded-Host"); host != "" {
+			r.Host = host
+			r.URL.Host = host
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func RecoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				slog.Error("Panic recovered", "error", err, "stack", string(debug.Stack()))
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }

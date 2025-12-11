@@ -1,0 +1,419 @@
+package server
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"html/template"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"tronbyt-server/internal/apps"
+	"tronbyt-server/internal/config"
+	"tronbyt-server/internal/data"
+	"tronbyt-server/internal/gitutils"
+	"tronbyt-server/internal/version"
+
+	"github.com/gorilla/sessions"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"golang.org/x/text/language"
+)
+
+type DeviceWithUIScale struct {
+	Device            *data.Device
+	BrightnessUI      int
+	NightBrightnessUI int
+}
+
+type ColorFilterOption struct {
+	Value string
+	Name  string
+}
+
+// TemplateData is a struct to pass data to HTML templates.
+type TemplateData struct {
+	User                *data.User
+	Users               []data.User // For admin view
+	Config              *config.TemplateConfig
+	Flashes             []string
+	DevicesWithUIScales []DeviceWithUIScale
+	Localizer           *i18n.Localizer // Pass Localizer directly
+
+	UpdateAvailable  bool
+	LatestReleaseURL string
+
+	// Page-specific data
+	Device            *data.Device
+	SystemApps        []apps.AppMetadata
+	CustomApps        []apps.AppMetadata
+	DeviceTypeChoices map[string]string
+	Form              CreateDeviceFormData
+
+	// Repo Info for Admin/User Settings
+	SystemRepoInfo      *gitutils.RepoInfo
+	UserRepoInfo        *gitutils.RepoInfo
+	GlobalSystemRepoURL string
+
+	// App Config
+	App       *data.App
+	Schema    template.JS
+	AppConfig map[string]any
+
+	// Device Update Extras
+	ColorFilterOptions []ColorFilterOption
+	AvailableLocales   []string
+	DefaultImgURL      string
+	DefaultWsURL       string
+	BrightnessUI       int
+	NightBrightnessUI  int
+	DimBrightnessUI    int
+
+	// Firmware
+	FirmwareBinsAvailable bool
+	FirmwareVersion       string
+	ServerVersion         string
+	CommitHash            string
+	IsAutoLoginActive     bool // Indicate if single-user auto-login is active
+	UserCount             int  // Number of users, for registration logic
+	DeleteOnCancel        bool // Indicate if app should be deleted on cancel
+}
+
+// CreateDeviceFormData represents the form data for creating a device.
+type CreateDeviceFormData struct {
+	Name           string
+	DeviceType     string
+	ImgURL         string
+	WsURL          string
+	APIKey         string
+	Notes          string
+	Brightness     int
+	LocationSearch string
+	LocationJSON   string
+}
+
+func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name string, tmplData TemplateData) {
+	if tmplData.Config == nil {
+		tmplData.Config = &config.TemplateConfig{
+			EnableUserRegistration: s.Config.EnableUserRegistration,
+			SingleUserAutoLogin:    s.Config.SingleUserAutoLogin,
+		}
+	}
+
+	// Create localizer based on user's locale preference or request header
+	if tmplData.Localizer == nil {
+		tmplData.Localizer = s.getLocalizer(r)
+	}
+
+	// Set version
+	tmplData.ServerVersion = version.Version
+	tmplData.CommitHash = version.Commit
+
+	// Set Update Info
+	tmplData.UpdateAvailable = s.UpdateAvailable
+	tmplData.LatestReleaseURL = s.LatestReleaseURL
+
+	// Get User from session if not provided in tmplData
+	session, _ := s.Store.Get(r, "session-name")
+	if tmplData.User == nil {
+		if username, ok := session.Values["username"].(string); ok {
+			var user data.User
+			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err == nil {
+				tmplData.User = &user
+			}
+		}
+	}
+
+	// Calculate IsAutoLoginActive
+	var userCount int64
+	if err := s.DB.Model(&data.User{}).Count(&userCount).Error; err != nil {
+		slog.Error("Failed to count users for auto-login check", "error", err)
+	} else {
+		tmplData.IsAutoLoginActive = (s.Config.SingleUserAutoLogin == "1" && userCount == 1)
+	}
+
+	// Get and clear flash messages
+	if flashes := session.Flashes(); len(flashes) > 0 {
+		for _, f := range flashes {
+			if msg, ok := f.(string); ok {
+				tmplData.Flashes = append(tmplData.Flashes, msg)
+			}
+		}
+	}
+
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save session after flashing", "error", err)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// Verify template exists in map
+	tmpl, ok := s.PageTemplates[name]
+	if !ok {
+		slog.Error("Template not found in map", "name", name)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Execute pre-parsed template
+	err := tmpl.ExecuteTemplate(w, name, tmplData)
+	if err != nil {
+		slog.Error("Failed to render template", "template", name, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// localizeOrID helper to safely localize or return ID.
+func (s *Server) localizeOrID(localizer *i18n.Localizer, messageID string) string {
+	config := &i18n.LocalizeConfig{
+		MessageID: messageID,
+		DefaultMessage: &i18n.Message{
+			ID:    messageID,
+			Other: messageID,
+		},
+	}
+	translation, err := localizer.Localize(config)
+	if err != nil {
+		return messageID
+	}
+	return translation
+}
+
+func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
+	accept := r.Header.Get("Accept-Language")
+	return i18n.NewLocalizer(s.Bundle, accept, language.English.String())
+}
+
+// getDeviceTypeChoices returns a map of device type values to display names.
+func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[string]string {
+	choices := make(map[string]string)
+
+	allDeviceTypes := []data.DeviceType{
+		data.DeviceTidbytGen1,
+		data.DeviceTidbytGen2,
+		data.DevicePixoticker,
+		data.DeviceRaspberryPi,
+		data.DeviceRaspberryPiWide,
+		data.DeviceTronbytS3,
+		data.DeviceTronbytS3Wide,
+		data.DeviceMatrixPortal,
+		data.DeviceMatrixPortalWS,
+		data.DeviceOther,
+	}
+
+	for _, dt := range allDeviceTypes {
+		choices[string(dt)] = s.localizeOrID(localizer, dt.String())
+	}
+	return choices
+}
+
+func (s *Server) getColorFilterChoices() []ColorFilterOption {
+	return []ColorFilterOption{
+		{Value: "none", Name: "None"},
+		{Value: "dimmed", Name: "Dimmed"},
+		{Value: "redshift", Name: "Redshift"},
+		{Value: "warm", Name: "Warm"},
+		{Value: "sunset", Name: "Sunset"},
+		{Value: "sepia", Name: "Sepia"},
+		{Value: "vintage", Name: "Vintage"},
+		{Value: "dusk", Name: "Dusk"},
+		{Value: "cool", Name: "Cool"},
+		{Value: "bw", Name: "Black & White"},
+		{Value: "ice", Name: "Ice"},
+		{Value: "moonlight", Name: "Moonlight"},
+		{Value: "neon", Name: "Neon"},
+		{Value: "pastel", Name: "Pastel"},
+	}
+}
+
+// generateSecureToken generates a URL-safe, base64 encoded, securely random string.
+// This is used for generating API keys and device IDs.
+func generateSecureToken(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b)[:length], nil // Take only requested length
+}
+
+// flashAndRedirect adds a flash message and redirects to the specified URL.
+func (s *Server) flashAndRedirect(w http.ResponseWriter, r *http.Request, messageID string, redirectURL string, status int) {
+	localizer := s.getLocalizer(r)
+	session, _ := s.Store.Get(r, "session-name")
+	session.AddFlash(s.localizeOrID(localizer, messageID))
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save session", "error", err)
+	}
+	http.Redirect(w, r, redirectURL, status)
+}
+
+// parseTimeInput parses time input in various formats and returns as HH:MM string.
+func parseTimeInput(timeStr string) (string, error) {
+	timeStr = strings.TrimSpace(timeStr)
+	if timeStr == "" {
+		return "", fmt.Errorf("time cannot be empty")
+	}
+
+	var hour, minute int
+	var err error
+
+	if strings.Contains(timeStr, ":") {
+		parts := strings.Split(timeStr, ":")
+		if len(parts) != 2 {
+			return "", fmt.Errorf("invalid time format: %s", timeStr)
+		}
+		hour, err = strconv.Atoi(parts[0])
+		if err != nil {
+			return "", fmt.Errorf("time must contain only numbers: %s", timeStr)
+		}
+		minute, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return "", fmt.Errorf("time must contain only numbers: %s", timeStr)
+		}
+	} else {
+		if len(timeStr) == 4 {
+			hour, err = strconv.Atoi(timeStr[:2])
+			if err != nil {
+				return "", err
+			}
+			minute, err = strconv.Atoi(timeStr[2:])
+			if err != nil {
+				return "", err
+			}
+		} else if len(timeStr) == 3 {
+			hour, err = strconv.Atoi(timeStr[:1])
+			if err != nil {
+				return "", err
+			}
+			minute, err = strconv.Atoi(timeStr[1:])
+			if err != nil {
+				return "", err
+			}
+		} else if len(timeStr) == 2 || len(timeStr) == 1 {
+			hour, err = strconv.Atoi(timeStr)
+			if err != nil {
+				return "", err
+			}
+			minute = 0
+		} else {
+			return "", fmt.Errorf("invalid time format: %s", timeStr)
+		}
+	}
+
+	if hour < 0 || hour > 23 {
+		return "", fmt.Errorf("hour must be between 0 and 23: %d", hour)
+	}
+	if minute < 0 || minute > 59 {
+		return "", fmt.Errorf("minute must be between 0 and 59: %d", minute)
+	}
+
+	return fmt.Sprintf("%02d:%02d", hour, minute), nil
+}
+
+func (s *Server) sanitizeURL(u string) string {
+	return strings.TrimSpace(u)
+}
+
+func (s *Server) getRealIP(r *http.Request) string {
+	remoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if remoteIP == "" {
+		remoteIP = r.RemoteAddr
+	}
+
+	trustedProxies := s.Config.TrustedProxies
+	if trustedProxies == "" {
+		return remoteIP
+	}
+
+	isTrusted := false
+	if trustedProxies == "*" {
+		isTrusted = true
+	} else {
+		// Simple check for comma-separated list of IPs
+		for proxy := range strings.SplitSeq(trustedProxies, ",") {
+			if strings.TrimSpace(proxy) == remoteIP {
+				isTrusted = true
+				break
+			}
+		}
+	}
+
+	if isTrusted {
+		xfwd := r.Header.Get("X-Forwarded-For")
+		if xfwd != "" {
+			parts := strings.Split(xfwd, ",")
+			return strings.TrimSpace(parts[0])
+		}
+	}
+
+	return remoteIP
+}
+
+func (s *Server) isTrustedNetwork(r *http.Request) bool {
+	ipStr := s.getRealIP(r)
+
+	if ipStr == "localhost" || ipStr == "::1" || ipStr == "127.0.0.1" {
+		return true
+	}
+
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+
+	return ip.IsLoopback() || ip.IsPrivate()
+}
+
+// saveSession saves the session with dynamic Secure flag based on request scheme.
+func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *sessions.Session) error {
+	// Create a copy of options to modify safely
+	opts := *session.Options
+	opts.Secure = r.URL.Scheme == "https"
+	session.Options = &opts
+
+	return session.Save(r, w)
+}
+
+// getDeviceWebpDir is a helper to get device webp directory (from server.go).
+func (s *Server) getDeviceWebPDir(deviceID string) string {
+	path := filepath.Join(s.DataDir, "webp", deviceID)
+	if err := os.MkdirAll(path, 0755); err != nil {
+		slog.Error("Failed to create device webp directory", "path", path, "error", err)
+		// Non-fatal, continue.
+	}
+	return path
+}
+
+func (s *Server) RefreshSystemAppsCache() {
+	s.SystemAppsCacheMutex.Lock()
+	defer s.SystemAppsCacheMutex.Unlock()
+
+	slog.Info("Refreshing system apps cache")
+	apps, err := apps.ListSystemApps(s.DataDir)
+	if err == nil {
+		s.SystemAppsCache = apps
+		slog.Info("System apps cache refreshed", "count", len(s.SystemAppsCache))
+	} else {
+		slog.Error("Failed to refresh system apps cache", "error", err)
+	}
+}
+
+func (s *Server) getSetting(key string) (string, error) {
+	var setting data.Setting
+	result := s.DB.Limit(1).Find(&setting, "key = ?", key)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	if result.RowsAffected == 0 {
+		return "", nil
+	}
+	return setting.Value, nil
+}
+
+func (s *Server) setSetting(key, value string) error {
+	return s.DB.Save(&data.Setting{Key: key, Value: value}).Error
+}
