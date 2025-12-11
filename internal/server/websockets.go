@@ -25,7 +25,9 @@ type ClientInfo struct {
 	MACAddress      string `json:"macAddress"`
 }
 
-func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan struct{}, stopCh <-chan struct{}) {
+func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
+	var pendingImage []byte
+
 	for {
 		select {
 		case <-stopCh:
@@ -41,11 +43,20 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		}
 
 		// 1. Get Next Image
-		imgData, app, err := s.GetNextAppImage(ctx, &device, user)
-		if err != nil {
-			slog.Error("Failed to get next app", "error", err)
-			time.Sleep(5 * time.Second)
-			continue
+		var imgData []byte
+		var app *data.App
+		var err error
+
+		if pendingImage != nil {
+			imgData = pendingImage
+			pendingImage = nil
+		} else {
+			imgData, app, err = s.GetNextAppImage(ctx, &device, user)
+			if err != nil {
+				slog.Error("Failed to get next app", "error", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
 		}
 
 		dwell := device.DefaultInterval
@@ -86,10 +97,13 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			case <-ackCh:
 				// Received ACK (Queued or Displaying).
 				waiting = false
-			case <-broadcastCh:
+			case data := <-broadcastCh:
 				// Update available
 				interrupted = true
 				waiting = false
+				if len(data) > 0 {
+					pendingImage = data
+				}
 				if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
 					slog.Error("Failed to write immediate WS message", "error", err)
 					return

@@ -1752,7 +1752,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify device via Websocket (Broadcaster)
-	s.Broadcaster.Notify(device.ID)
+	s.Broadcaster.Notify(device.ID, nil)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -1804,7 +1804,7 @@ func (s *Server) handleTogglePin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + user.Username)
+	s.Broadcaster.Notify("user:"+user.Username, nil)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -1819,7 +1819,7 @@ func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + user.Username)
+	s.Broadcaster.Notify("user:"+user.Username, nil)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -1894,7 +1894,7 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + user.Username)
+	s.Broadcaster.Notify("user:"+user.Username, nil)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -1962,7 +1962,7 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + user.Username)
+	s.Broadcaster.Notify("user:"+user.Username, nil)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -2039,7 +2039,7 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:" + user.Username)
+	s.Broadcaster.Notify("user:"+user.Username, nil)
 
 	w.WriteHeader(http.StatusOK)
 }

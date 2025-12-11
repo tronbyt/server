@@ -159,7 +159,7 @@ func TestHandleGetDevice(t *testing.T) {
 	}
 }
 
-func TestHandlePush(t *testing.T) {
+func TestHandlePushImage(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "device_api_key"
 	deviceID := "testdevice"
@@ -196,6 +196,59 @@ func TestHandlePush(t *testing.T) {
 
 	// Verify image file exists
 	expectedPath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Errorf("Expected pushed image to exist at %s, but it didn't", expectedPath)
+	}
+}
+
+func TestHandlePushApp(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "testsystemapp"
+
+	// Create dummy system app
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		t.Fatalf("Failed to create app dir: %v", err)
+	}
+
+	starContent := `
+load("render.star", "render")
+def main(config):
+    return render.Root(child=render.Box(width=64, height=32, color="#00ff00"))
+`
+	if err := os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644); err != nil {
+		t.Fatalf("Failed to write star file: %v", err)
+	}
+
+	// Refresh cache to pick up new app
+	s.RefreshSystemAppsCache()
+
+	// Prepare Request
+	pushAppData := PushAppData{
+		AppID:          appID,
+		Config:         map[string]any{"foo": "bar"},
+		InstallationID: "testinstall",
+	}
+	body, _ := json.Marshal(pushAppData)
+
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	if rr.Body.String() != "App pushed." {
+		t.Errorf("Expected body 'App pushed.', got '%s'", rr.Body.String())
+	}
+
+	// Verify image exists
+	expectedPath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", "testinstall.webp")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("Expected pushed image to exist at %s, but it didn't", expectedPath)
 	}

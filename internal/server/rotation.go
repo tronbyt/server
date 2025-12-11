@@ -56,7 +56,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 
 		// Notify Dashboard
 		if user != nil {
-			s.Broadcaster.Notify("user:" + user.Username)
+			s.Broadcaster.Notify("user:"+user.Username, nil)
 		}
 	}
 
