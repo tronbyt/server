@@ -268,8 +268,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
 		if err != nil {
 			slog.Error("Failed to get app schema", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+			// Fall through with empty schema
 		}
 	}
 	if len(schemaBytes) == 0 {
