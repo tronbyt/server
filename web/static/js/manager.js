@@ -1609,20 +1609,40 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeViewToggles();
   initializeDeviceInfoToggles();
 
-  const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
-  webpImages.forEach(image => {
-    const deviceId = image.id.replace('currentWebp-', '');
-    pollImageWithEtag(deviceId);
-    setInterval(() => {
-      pollImageWithEtag(deviceId);
-    }, 5000);
-  });
+  // Polling logic for fallback
+  const pollingIntervals = {};
+
+  function startPollingAll() {
+      const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
+      webpImages.forEach(image => {
+        const deviceId = image.id.replace('currentWebp-', '');
+        if (!pollingIntervals[deviceId]) {
+            pollImageWithEtag(deviceId);
+            pollingIntervals[deviceId] = setInterval(() => {
+                pollImageWithEtag(deviceId);
+            }, 5000);
+        }
+      });
+  }
+
+  function stopPollingAll() {
+      Object.keys(pollingIntervals).forEach(deviceId => {
+          clearInterval(pollingIntervals[deviceId]);
+          delete pollingIntervals[deviceId];
+      });
+  }
+
+  // Start polling initially (safety net)
+  startPollingAll();
 
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
   const dashboardWs = new WebSocket(wsUrl);
 
-  dashboardWs.onopen = () => { console.log('Dashboard WebSocket connected'); };
+  dashboardWs.onopen = () => { 
+      console.log('Dashboard WebSocket connected');
+      stopPollingAll(); // Rely on push updates
+  };
   function refreshAll() {
       console.log('Dashboard refresh signal received');
       const appListContainers = document.querySelectorAll('[id^="appsList-"]');
@@ -1655,7 +1675,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   };
-  dashboardWs.onclose = (event) => { console.log('Dashboard WebSocket disconnected', event); };
+  dashboardWs.onclose = (event) => { 
+      console.log('Dashboard WebSocket disconnected', event); 
+      startPollingAll(); // Fallback to polling
+  };
   dashboardWs.onerror = (error) => { console.error('Dashboard WebSocket error:', error); };
 
   // Addapp specific initializations (if on addapp page)
