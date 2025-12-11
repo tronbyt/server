@@ -917,6 +917,84 @@ func generateSecureToken(length int) (string, error) {
 	return hex.EncodeToString(b)[:length], nil // Take only requested length
 }
 
+// flashAndRedirect adds a flash message and redirects to the specified URL.
+func (s *Server) flashAndRedirect(w http.ResponseWriter, r *http.Request, messageID string, redirectURL string, status int) {
+	localizer := s.getLocalizer(r)
+	session, _ := s.Store.Get(r, "session-name")
+	session.AddFlash(s.localizeOrID(localizer, messageID))
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save session", "error", err)
+	}
+	http.Redirect(w, r, redirectURL, status)
+}
+
+// parseTimeInput parses time input in various formats and returns as HH:MM string.
+func parseTimeInput(timeStr string) (string, error) {
+	timeStr = strings.TrimSpace(timeStr)
+	if timeStr == "" {
+		return "", fmt.Errorf("time cannot be empty")
+	}
+
+	var hour, minute int
+	var err error
+
+	if strings.Contains(timeStr, ":") {
+		parts := strings.Split(timeStr, ":")
+		if len(parts) != 2 {
+			return "", fmt.Errorf("invalid time format: %s", timeStr)
+		}
+		hour, err = strconv.Atoi(parts[0])
+		if err != nil {
+			return "", fmt.Errorf("time must contain only numbers: %s", timeStr)
+		}
+		minute, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return "", fmt.Errorf("time must contain only numbers: %s", timeStr)
+		}
+	} else {
+		if len(timeStr) == 4 {
+			hour, err = strconv.Atoi(timeStr[:2])
+			if err != nil {
+				return "", err
+			}
+			minute, err = strconv.Atoi(timeStr[2:])
+			if err != nil {
+				return "", err
+			}
+		} else if len(timeStr) == 3 {
+			hour, err = strconv.Atoi(timeStr[:1])
+			if err != nil {
+				return "", err
+			}
+			minute, err = strconv.Atoi(timeStr[1:])
+			if err != nil {
+				return "", err
+			}
+		} else if len(timeStr) == 2 || len(timeStr) == 1 {
+			hour, err = strconv.Atoi(timeStr)
+			if err != nil {
+				return "", err
+			}
+			minute = 0
+		} else {
+			return "", fmt.Errorf("invalid time format: %s", timeStr)
+		}
+	}
+
+	if hour < 0 || hour > 23 {
+		return "", fmt.Errorf("hour must be between 0 and 23: %d", hour)
+	}
+	if minute < 0 || minute > 59 {
+		return "", fmt.Errorf("minute must be between 0 and 59: %d", minute)
+	}
+
+	return fmt.Sprintf("%02d:%02d", hour, minute), nil
+}
+
+func (s *Server) sanitizeURL(u string) string {
+	return strings.TrimSpace(u)
+}
+
 func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
@@ -1349,7 +1427,34 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uinterval, _ := strconv.Atoi(uintervalStr)
+	// 1. Find App Details (Recommended Interval)
+	recommendedInterval := 15 // Default
+
+	// Check System Apps Cache
+	s.SystemAppsCacheMutex.RLock()
+	for _, app := range s.SystemAppsCache {
+		if app.ID == appName {
+			recommendedInterval = app.RecommendedInterval
+			break
+		}
+	}
+	s.SystemAppsCacheMutex.RUnlock()
+
+	uinterval := 0
+	if uintervalStr != "" {
+		if val, err := strconv.Atoi(uintervalStr); err == nil {
+			uinterval = val
+		}
+	}
+
+	// Use recommended_interval logic
+	if uinterval == 0 || (uinterval == 10 && recommendedInterval != 10) {
+		uinterval = recommendedInterval
+	}
+	if uinterval == 0 {
+		uinterval = 10
+	}
+
 	displayTime, _ := strconv.Atoi(displayTimeStr)
 
 	// Construct source path
@@ -1358,9 +1463,9 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	absDataDir, _ := filepath.Abs(s.DataDir)
 	absRealPath, _ := filepath.Abs(realPath)
 	if len(absRealPath) < len(absDataDir) || absRealPath[:len(absDataDir)] != absDataDir {
-		// Attempting traversal?
-		// For now, just logging warning
 		slog.Warn("Potential path traversal", "path", realPath)
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
 	}
 
 	// Generate iname (random 3-digit string, matching Python version)
@@ -1390,6 +1495,9 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check if it's a WebP app (based on extension)
+	isWebP := strings.EqualFold(filepath.Ext(appPath), ".webp")
+
 	// Create App in DB
 	newApp := data.App{
 		DeviceID:    device.ID,
@@ -1398,7 +1506,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		UInterval:   uinterval,
 		DisplayTime: displayTime,
 		Notes:       notes,
-		Enabled:     true,
+		Enabled:     isWebP,
 		Path:        &appPath,
 	}
 
@@ -1412,6 +1520,41 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	if err := s.DB.Create(&newApp).Error; err != nil {
 		slog.Error("Failed to save app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// If WebP, copy file and redirect to index
+	if isWebP {
+		destDir := s.getDeviceWebPDir(device.ID)
+		destPath := filepath.Join(destDir, fmt.Sprintf("%s-%s.webp", newApp.Name, newApp.Iname))
+
+		srcFile, err := os.Open(realPath)
+		if err == nil {
+			defer func() {
+				if err := srcFile.Close(); err != nil {
+					slog.Error("Failed to close source webp", "error", err)
+				}
+			}()
+			destFile, err := os.Create(destPath)
+			if err == nil {
+				defer func() {
+					if err := destFile.Close(); err != nil {
+						slog.Error("Failed to close destination webp", "error", err)
+					}
+				}()
+				if _, err := io.Copy(destFile, srcFile); err != nil {
+					slog.Error("Failed to copy webp content", "error", err)
+				}
+			} else {
+				slog.Error("Failed to create destination webp", "error", err)
+			}
+		} else {
+			slog.Error("Failed to open source webp", "error", err)
+		}
+
+		s.possiblyRender(r.Context(), &newApp, device, user)
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -2088,10 +2231,7 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if inUse {
-		// Flash message? Go templates need flash support.
-		// For now just error or redirect.
-		slog.Warn("Cannot delete upload in use", "filename", filename)
-		http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", id), http.StatusSeeOther)
+		s.flashAndRedirect(w, r, fmt.Sprintf("Cannot delete %s because it is installed on a device.", filename), fmt.Sprintf("/devices/%s/addapp", id), http.StatusSeeOther)
 		return
 	}
 
@@ -2476,6 +2616,69 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	// Ensure written to disk before reading for preview
+	_ = dst.Sync()
+
+	// Generate Preview
+	previewDir := filepath.Join(s.DataDir, "apps")
+	if err := os.MkdirAll(previewDir, 0755); err != nil {
+		slog.Error("Failed to create preview dir", "error", err)
+	}
+
+	switch ext {
+	case ".star":
+		// Render preview
+		imgBytes, _, err := renderer.Render(
+			r.Context(),
+			dstPath,
+			nil,
+			64, 32,
+			15*time.Second,
+			30*time.Second,
+			true,
+			false,
+			nil,
+			nil,
+			nil,
+		)
+
+		if err == nil && len(imgBytes) > 0 {
+			previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
+			if err := os.WriteFile(previewPath, imgBytes, 0644); err != nil {
+				slog.Error("Failed to write preview image", "error", err)
+			}
+		} else {
+			slog.Error("Failed to render preview", "error", err)
+		}
+
+	case ".webp":
+		// Copy webp as preview
+		previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
+
+		src, err := os.Open(dstPath)
+		if err == nil {
+			defer func() {
+				if err := src.Close(); err != nil {
+					slog.Error("Failed to close preview source", "error", err)
+				}
+			}()
+			dstPreview, err := os.Create(previewPath)
+			if err == nil {
+				defer func() {
+					if err := dstPreview.Close(); err != nil {
+						slog.Error("Failed to close preview file", "error", err)
+					}
+				}()
+				if _, err := io.Copy(dstPreview, src); err != nil {
+					slog.Error("Failed to copy preview webp", "error", err)
+				}
+			} else {
+				slog.Error("Failed to create preview file", "error", err)
+			}
+		} else {
+			slog.Error("Failed to open uploaded webp for preview", "error", err)
+		}
+	}
 
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", device.ID), http.StatusSeeOther)
 }
@@ -2537,10 +2740,21 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	device := GetDevice(r)
 
 	// 1. Basic Info
-	device.Name = r.FormValue("name")
+	name := r.FormValue("name")
+	if name == "" {
+		s.flashAndRedirect(w, r, "Name is required.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+	device.Name = name
 	device.Type = data.DeviceType(r.FormValue("device_type"))
-	device.ImgURL = r.FormValue("img_url")
-	device.WsURL = r.FormValue("ws_url")
+	device.ImgURL = s.sanitizeURL(r.FormValue("img_url"))
+	if device.ImgURL == "" {
+		device.ImgURL = fmt.Sprintf("/%s/next", device.ID)
+	}
+	device.WsURL = s.sanitizeURL(r.FormValue("ws_url"))
+	if device.WsURL == "" {
+		device.WsURL = fmt.Sprintf("/%s/ws", device.ID)
+	}
 	device.Notes = r.FormValue("notes")
 
 	if i, err := strconv.Atoi(r.FormValue("default_interval")); err == nil {
@@ -2560,6 +2774,10 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	useCustomScale := r.FormValue("use_custom_brightness_scale") == "on"
 	customScaleStr := r.FormValue("custom_brightness_scale")
 	if useCustomScale {
+		if data.ParseCustomBrightnessScale(customScaleStr) == nil {
+			s.flashAndRedirect(w, r, "Invalid custom brightness scale format. Use 6 comma-separated values (0-100).", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
 		device.CustomBrightnessScale = customScaleStr
 	} else {
 		device.CustomBrightnessScale = ""
@@ -2579,6 +2797,16 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	device.InterstitialEnabled = r.FormValue("interstitial_enabled") == "on"
 	interstitialApp := r.FormValue("interstitial_app")
 	if interstitialApp != "None" {
+		exists := false
+		for _, app := range device.Apps {
+			if app.Iname == interstitialApp {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			slog.Warn("Interstitial app not found", "app", interstitialApp)
+		}
 		device.InterstitialApp = &interstitialApp
 	} else {
 		device.InterstitialApp = nil
@@ -2586,8 +2814,26 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	// 5. Night Mode
 	device.NightModeEnabled = r.FormValue("night_mode_enabled") == "on"
-	device.NightStart = r.FormValue("night_start")
-	device.NightEnd = r.FormValue("night_end")
+
+	nightStart := r.FormValue("night_start")
+	if nightStart != "" {
+		parsed, err := parseTimeInput(nightStart)
+		if err != nil {
+			s.flashAndRedirect(w, r, fmt.Sprintf("Invalid night start time: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
+		device.NightStart = parsed
+	}
+
+	nightEnd := r.FormValue("night_end")
+	if nightEnd != "" {
+		parsed, err := parseTimeInput(nightEnd)
+		if err != nil {
+			s.flashAndRedirect(w, r, fmt.Sprintf("Invalid night end time: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
+		device.NightEnd = parsed
+	}
 
 	if nbUI, err := strconv.Atoi(r.FormValue("night_brightness")); err == nil {
 		device.NightBrightness = data.BrightnessFromUIScale(nbUI, customScale)
@@ -2595,6 +2841,16 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	nightApp := r.FormValue("night_mode_app")
 	if nightApp != "None" {
+		exists := false
+		for _, app := range device.Apps {
+			if app.Iname == nightApp {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			slog.Warn("Night mode app not found", "app", nightApp)
+		}
 		device.NightModeApp = nightApp
 	} else {
 		device.NightModeApp = ""
@@ -2611,7 +2867,12 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// 6. Dim Mode
 	dimTime := r.FormValue("dim_time")
 	if dimTime != "" {
-		device.DimTime = &dimTime
+		parsed, err := parseTimeInput(dimTime)
+		if err != nil {
+			s.flashAndRedirect(w, r, fmt.Sprintf("Invalid dim time: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
+		device.DimTime = &parsed
 	} else {
 		device.DimTime = nil
 	}
@@ -2654,6 +2915,9 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 				PlaceID:     safeStr(locMap["place_id"]),
 				Timezone:    safeStr(locMap["timezone"]),
 			}
+		} else {
+			s.flashAndRedirect(w, r, fmt.Sprintf("Location JSON error: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
 		}
 	}
 	locale := r.FormValue("locale")
