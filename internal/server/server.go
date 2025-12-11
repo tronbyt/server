@@ -2971,8 +2971,25 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	// Delete
-	if err := s.DB.Delete(device).Error; err != nil {
+	// Clean up files
+	if err := os.RemoveAll(s.getDeviceWebPDir(device.ID)); err != nil {
+		slog.Error("Failed to remove device webp directory", "device_id", device.ID, "error", err)
+	}
+
+	// Cascading delete in transaction
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete Apps
+		if err := tx.Where("device_id = ?", device.ID).Delete(&data.App{}).Error; err != nil {
+			return err
+		}
+		// 2. Delete Device
+		if err := tx.Delete(device).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		slog.Error("Failed to delete device", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
