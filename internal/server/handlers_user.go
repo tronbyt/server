@@ -169,21 +169,16 @@ func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	user := GetUser(r)
 
 	repoURL := r.FormValue("app_repo_url")
-	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("app_repo_url", repoURL).Error; err != nil {
+	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("app_repo_url", repoURL).Error; err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	appsPath := filepath.Join(s.DataDir, "users", username, "apps")
+	appsPath := filepath.Join(s.DataDir, "users", user.Username, "apps")
 	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
 		slog.Error("Failed to sync user repo", "error", err)
 	}
@@ -192,19 +187,10 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	// Get user to find repo URL
-	var user data.User
-	s.DB.First(&user, "username = ?", username)
+	user := GetUser(r)
 
 	if user.AppRepoURL != "" {
-		appsPath := filepath.Join(s.DataDir, "users", username, "apps")
+		appsPath := filepath.Join(s.DataDir, "users", user.Username, "apps")
 		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, true); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
 		}
@@ -214,15 +200,10 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	userContext := GetUser(r)
 
 	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").Preload("Credentials").First(&user, "username = ?", username).Error; err != nil {
+	if err := s.DB.Preload("Devices").Preload("Devices.Apps").Preload("Credentials").First(&user, "username = ?", userContext.Username).Error; err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -232,7 +213,7 @@ func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) 
 	user.APIKey = ""
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s_config.json", username))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s_config.json", user.Username))
 
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
@@ -242,12 +223,7 @@ func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok {
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
+	userContext := GetUser(r)
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
@@ -267,7 +243,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var currentUser data.User
-	if err := s.DB.Preload("Devices").First(&currentUser, "username = ?", username).Error; err != nil {
+	if err := s.DB.Preload("Devices").First(&currentUser, "username = ?", userContext.Username).Error; err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -308,7 +284,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		}
 
 		for _, dev := range importedUser.Devices {
-			dev.Username = username
+			dev.Username = currentUser.Username
 			if err := tx.Create(&dev).Error; err != nil {
 				return err
 			}
@@ -326,9 +302,8 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok || username != "admin" {
+	user := GetUser(r)
+	if user.Username != "admin" {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -356,15 +331,11 @@ func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
-	if !ok || username != "admin" {
+	user := GetUser(r)
+	if user.Username != "admin" {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-
-	var user data.User
-	s.DB.First(&user, "username = ?", username)
 
 	// Get global repo URL
 	repoURL, _ := s.getSetting("system_apps_repo")
