@@ -586,6 +586,11 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Notify Dashboard
+	// We need the user to notify. GetUser(r) gets it from context.
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -611,7 +616,7 @@ func (s *Server) handleTogglePin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:"+user.Username, nil)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -626,11 +631,10 @@ func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:"+user.Username, nil)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: app.DeviceID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
-
 func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
@@ -700,7 +704,7 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:"+user.Username, nil)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -768,7 +772,7 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	s.Broadcaster.Notify("user:"+user.Username, nil)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -953,6 +957,9 @@ func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sou
 
 	s.possiblyRender(r.Context(), &duplicatedApp, targetDevice, user)
 
+	// Notify Dashboard about target device update
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: targetDevice.ID})
+
 	return nil
 }
 
@@ -1020,7 +1027,7 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Broadcaster.Notify("user:"+user.Username, nil)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.WriteHeader(http.StatusOK)
 }
