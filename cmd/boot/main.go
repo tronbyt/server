@@ -14,12 +14,16 @@ func main() {
 	gid := 1000
 
 	if s := os.Getenv("PUID"); s != "" {
-		if i, err := strconv.Atoi(s); err == nil {
+		if i, err := strconv.Atoi(s); err != nil {
+			slog.Warn("Invalid PUID value, using default", "puid", s, "error", err)
+		} else {
 			uid = i
 		}
 	}
 	if s := os.Getenv("PGID"); s != "" {
-		if i, err := strconv.Atoi(s); err == nil {
+		if i, err := strconv.Atoi(s); err != nil {
+			slog.Warn("Invalid PGID value, using default", "pgid", s, "error", err)
+		} else {
 			gid = i
 		}
 	}

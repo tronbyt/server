@@ -2441,7 +2441,7 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	filename := header.Filename
+	filename := filepath.Base(header.Filename)
 	ext := filepath.Ext(filename)
 	if ext != ".star" && ext != ".webp" {
 		http.Error(w, "Invalid file type", http.StatusBadRequest)
