@@ -234,6 +234,9 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	// Trigger initial render
 	s.possiblyRender(r.Context(), &newApp, device, user)
 
+	// Notify Dashboard & Device
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/%s/config?delete_on_cancel=true", device.ID, newApp.Iname), http.StatusSeeOther)
 }
 
@@ -336,6 +339,9 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 
 	// Trigger Render
 	s.possiblyRender(r.Context(), app, device, user)
+
+	// Notify Dashboard & Device
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

@@ -906,7 +906,6 @@ func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))

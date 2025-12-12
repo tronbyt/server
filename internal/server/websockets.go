@@ -34,6 +34,9 @@ type WSEvent struct {
 
 func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
 	var pendingImage []byte
+	device := *initialDevice
+	lastSentBrightness := -1
+	sendImmediate := false
 
 	for {
 		select {
@@ -42,12 +45,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		default:
 		}
 
-		// Reload device to get latest state (protocol version, brightness, etc.)
-		var device data.Device
-		if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
-			slog.Error("Device gone", "id", initialDevice.ID)
-			return
-		}
+		// Calculate effective brightness
+		effectiveBrightness := device.GetEffectiveBrightness()
 
 		// 1. Get Next Image
 		var imgData []byte
@@ -76,12 +75,26 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			slog.Error("Failed to write dwell_secs WS message", "error", err)
 			return
 		}
-		if err := conn.WriteJSON(map[string]int{"brightness": int(device.Brightness)}); err != nil {
-			slog.Error("Failed to write brightness WS message", "error", err)
-			return
+
+		// Only send brightness if changed
+		if effectiveBrightness != lastSentBrightness {
+			if err := conn.WriteJSON(map[string]int{"brightness": effectiveBrightness}); err != nil {
+				slog.Error("Failed to write brightness WS message", "error", err)
+				return
+			}
+			lastSentBrightness = effectiveBrightness
 		}
+
 		if err := conn.WriteMessage(websocket.BinaryMessage, imgData); err != nil {
 			return
+		}
+
+		if sendImmediate {
+			if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
+				slog.Error("Failed to write immediate WS message", "error", err)
+				return
+			}
+			sendImmediate = false
 		}
 
 		// 3. Wait for ACK or Timeout or Interrupt
@@ -105,15 +118,29 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				// Received ACK (Queued or Displaying).
 				waiting = false
 			case data := <-broadcastCh:
-				// Update available
-				interrupted = true
-				waiting = false
-				if len(data) > 0 {
-					pendingImage = data
-				}
-				if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
-					slog.Error("Failed to write immediate WS message", "error", err)
+				// Update available (Reload device first)
+				if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
+					slog.Error("Device gone", "id", initialDevice.ID)
 					return
+				}
+
+				if len(data) > 0 {
+					// Pushed Image: Interrupt and send
+					pendingImage = data
+					interrupted = true
+					waiting = false
+					sendImmediate = true
+				} else {
+					// State Change: Update Brightness immediately, but don't interrupt current app
+					newBrightness := device.GetEffectiveBrightness()
+
+					if newBrightness != lastSentBrightness {
+						if err := conn.WriteJSON(map[string]int{"brightness": newBrightness}); err != nil {
+							slog.Error("Failed to write brightness WS message", "error", err)
+							return
+						}
+						lastSentBrightness = newBrightness
+					}
 				}
 			case <-timer.C:
 				// Timeout
