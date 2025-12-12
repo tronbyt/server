@@ -79,7 +79,7 @@
           {{ end }}
 
           <button class="action w3-button w3-red w3-round"
-                  onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}')"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}</button>
+                  onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }})"><i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}</button>
         </div>
 
         <!-- Secondary Actions Row -->
