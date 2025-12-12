@@ -11,6 +11,7 @@ import (
 
 	"log/slog"
 	"tronbyt-server/internal/data"
+	"tronbyt-server/web"
 )
 
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
@@ -31,20 +32,31 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		}
 	}
 
+	// Helper to return default image
+	getDefaultImage := func() ([]byte, *data.App, error) {
+		data, err := web.Assets.ReadFile("static/images/default.webp")
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read default image: %w", err)
+		}
+		return data, nil, nil
+	}
+
 	// 2. Apps Check
 	if len(device.Apps) == 0 {
-		return nil, nil, fmt.Errorf("no apps")
+		return getDefaultImage()
 	}
 
 	// 3. Brightness Check
 	if device.Brightness == 0 {
-		return nil, nil, fmt.Errorf("brightness 0")
+		slog.Debug("Brightness is 0, returning default image")
+		return getDefaultImage()
 	}
 
 	// 4. Rotation Logic
 	app, nextIndex, err := s.determineNextApp(ctx, device, user)
 	if err != nil || app == nil {
-		return nil, nil, fmt.Errorf("no valid app")
+		// No valid app found (e.g. all disabled or scheduled out)
+		return getDefaultImage()
 	}
 
 	// 5. Save State
@@ -70,6 +82,11 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	data, err := os.ReadFile(webpPath)
+	// If reading the specific app image fails, fall back to default
+	if err != nil {
+		slog.Error("Failed to read app image", "path", webpPath, "error", err)
+		return getDefaultImage()
+	}
 	return data, app, err
 }
 
