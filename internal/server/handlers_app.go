@@ -551,7 +551,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, msg := range messages {
-		slog.Info("Preview render message", "message", msg)
+		slog.Debug("Preview render message", "message", msg)
 	}
 
 	// Push preview image to device (ephemeral)

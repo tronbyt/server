@@ -94,7 +94,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			filters,
 		)
 		for _, msg := range messages {
-			slog.Info("Render message", "app", appBasename, "message", msg)
+			slog.Debug("Render message", "app", appBasename, "message", msg)
 		}
 		renderDur := time.Since(startTime)
 
