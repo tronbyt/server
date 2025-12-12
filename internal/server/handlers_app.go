@@ -442,10 +442,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		appPath := s.resolveAppPath(*app.Path)
 
 		// Defaults
-		appInterval := app.DisplayTime
-		if appInterval == 0 {
-			appInterval = device.DefaultInterval
-		}
+		appInterval := device.GetEffectiveDwellTime(app)
 
 		// Filters
 		var filters []string
@@ -525,10 +522,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	appPath := s.resolveAppPath(*app.Path)
 
-	appInterval := app.DisplayTime
-	if appInterval == 0 {
-		appInterval = device.DefaultInterval
-	}
+	appInterval := device.GetEffectiveDwellTime(app)
 
 	// Filters
 	var filters []string

@@ -543,6 +543,14 @@ func (d *Device) GetDimModeIsActive() bool {
 	return currentHM >= start && currentHM <= end
 }
 
+// GetEffectiveDwellTime returns the display duration for an app, falling back to the device default.
+func (d *Device) GetEffectiveDwellTime(app *App) int {
+	if app != nil && app.DisplayTime > 0 {
+		return app.DisplayTime
+	}
+	return d.DefaultInterval
+}
+
 // GetEffectiveBrightness calculates the effective brightness of a device, accounting for night and dim modes.
 func (d *Device) GetEffectiveBrightness() int {
 	brightness := int(d.Brightness)

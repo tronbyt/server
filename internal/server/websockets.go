@@ -154,10 +154,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			}
 		}
 
-		dwell := device.DefaultInterval
-		if app != nil && app.DisplayTime > 0 {
-			dwell = app.DisplayTime
-		}
+		dwell := device.GetEffectiveDwellTime(app)
 
 		// 2. Send Data
 		if err := conn.WriteJSON(map[string]int{"dwell_secs": dwell}); err != nil {

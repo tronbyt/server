@@ -74,10 +74,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			config["$lng"] = fmt.Sprintf("%f", device.Location.Lng)
 		}
 
-		appInterval := app.DisplayTime
-		if appInterval == 0 {
-			appInterval = device.DefaultInterval
-		}
+		appInterval := device.GetEffectiveDwellTime(app)
 
 		// Filters
 		filters := s.getEffectiveFilters(device, app)
