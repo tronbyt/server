@@ -1,4 +1,31 @@
 {
+  "JustNow": {
+    "other": "Gerade eben"
+  },
+  "TimeAgo_Minutes": {
+    "one": "Vor 1 Minute",
+    "other": "Vor {{.PluralCount}} Minuten"
+  },
+  "TimeAgo_Hours": {
+    "one": "Vor 1 Stunde",
+    "other": "Vor {{.PluralCount}} Stunden"
+  },
+  "TimeAgo_Days": {
+    "one": "Vor 1 Tag",
+    "other": "Vor {{.PluralCount}} Tagen"
+  },
+  "TimeAgo_Weeks": {
+    "one": "Vor 1 Woche",
+    "other": "Vor {{.PluralCount}} Wochen"
+  },
+  "TimeAgo_Months": {
+    "one": "Vor 1 Monat",
+    "other": "Vor {{.PluralCount}} Monaten"
+  },
+  "TimeAgo_Years": {
+    "one": "Vor 1 Jahr",
+    "other": "Vor {{.PluralCount}} Jahren"
+  },
   "Never": {
     "other": "Nie"
   },

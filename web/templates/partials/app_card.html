@@ -39,7 +39,7 @@
         <p class="app-render-info">
           {{ t .Localizer "Interval:" }} {{ .App.UInterval }} min |
           {{ if .App.EmptyLastRender }}{{ t .Localizer "No output for " }}{{ end }}
-          {{ t .Localizer "Last:" }} {{ timeago .App.LastRender }}
+          {{ t .Localizer "Last:" }} {{ timeago .Localizer .App.LastRender }}
           <!-- Duration missing for now -->
         </p>
         {{ if ne .App.DisplayTime 0 }}
