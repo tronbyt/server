@@ -35,7 +35,6 @@ func newTestServer(t *testing.T) *Server {
 	return s
 }
 
-
 func TestLoginRedirectToRegisterIfNoUsers(t *testing.T) {
 	s := newTestServer(t)
 

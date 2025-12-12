@@ -144,7 +144,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		candidate := expanded[nextIndex]
 
 		isPinned := device.PinnedApp != nil && *device.PinnedApp == candidate.Iname
-		isNight := GetNightModeIsActive(device) && device.NightModeApp == candidate.Iname
+		isNight := device.GetNightModeIsActive() && device.NightModeApp == candidate.Iname
 		isInterstitialPos := device.InterstitialEnabled && nextIndex%2 == 1
 
 		shouldDisplay := false

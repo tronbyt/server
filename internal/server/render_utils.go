@@ -144,7 +144,7 @@ func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []strin
 
 	// Determine base device filter
 	var deviceFilter data.ColorFilter
-	if GetNightModeIsActive(device) && device.NightColorFilter != nil {
+	if device.GetNightModeIsActive() && device.NightColorFilter != nil {
 		deviceFilter = *device.NightColorFilter
 	} else if device.ColorFilter != nil {
 		deviceFilter = *device.ColorFilter
@@ -227,12 +227,7 @@ func (s *Server) sendDefaultImage(w http.ResponseWriter, r *http.Request, device
 	w.Header().Set("Content-Type", "image/webp")
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
-	brightness := device.Brightness
-	if GetNightModeIsActive(device) {
-		brightness = device.NightBrightness
-	} else if GetDimModeIsActive(device) && device.DimBrightness != nil {
-		brightness = *device.DimBrightness
-	}
+	brightness := device.GetEffectiveBrightness()
 	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", brightness))
 
 	dwell := device.DefaultInterval

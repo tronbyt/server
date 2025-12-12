@@ -426,4 +426,9 @@ func (s *Server) notifyDashboard(username string, event WSEvent) {
 		return
 	}
 	s.Broadcaster.Notify("user:"+username, data)
+
+	if event.DeviceID != "" {
+		// Signal device loop to reload (empty message triggers DB reload in wsWriteLoop)
+		s.Broadcaster.Notify(event.DeviceID, nil)
+	}
 }

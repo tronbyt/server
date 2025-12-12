@@ -63,12 +63,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
 	// Determine Brightness
-	brightness := device.Brightness
-	if GetNightModeIsActive(device) {
-		brightness = device.NightBrightness
-	} else if GetDimModeIsActive(device) && device.DimBrightness != nil {
-		brightness = *device.DimBrightness
-	}
+	brightness := device.GetEffectiveBrightness()
 	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", brightness))
 
 	dwell := device.DefaultInterval

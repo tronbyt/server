@@ -472,3 +472,84 @@ type App struct {
 	AutoPin         bool
 	ColorFilter     *ColorFilter
 }
+
+// GetNightModeIsActive checks if night mode is currently active for a device.
+func (d *Device) GetNightModeIsActive() bool {
+	if !d.NightModeEnabled {
+		return false
+	}
+
+	// Get Device Timezone
+	loc := time.Local
+	if d.Timezone != nil {
+		if l, err := time.LoadLocation(*d.Timezone); err == nil {
+			loc = l
+		}
+	} else if d.Location.Timezone != "" {
+		if l, err := time.LoadLocation(d.Location.Timezone); err == nil {
+			loc = l
+		}
+	}
+
+	currentTime := time.Now().In(loc)
+	currentHM := currentTime.Format("15:04")
+
+	start := "22:00"
+	if d.NightStart != "" {
+		start = d.NightStart
+	}
+	end := "06:00"
+	if d.NightEnd != "" {
+		end = d.NightEnd
+	}
+
+	if start > end {
+		return currentHM >= start || currentHM <= end
+	}
+	return currentHM >= start && currentHM <= end
+}
+
+// GetDimModeIsActive checks if dim mode is active (dimming without full night mode).
+func (d *Device) GetDimModeIsActive() bool {
+	dimTime := d.DimTime
+	if dimTime == nil || *dimTime == "" {
+		return false
+	}
+
+	// Get Device Timezone
+	loc := time.Local
+	if d.Timezone != nil {
+		if l, err := time.LoadLocation(*d.Timezone); err == nil {
+			loc = l
+		}
+	} else if d.Location.Timezone != "" {
+		if l, err := time.LoadLocation(d.Location.Timezone); err == nil {
+			loc = l
+		}
+	}
+
+	currentTime := time.Now().In(loc)
+	currentHM := currentTime.Format("15:04")
+
+	start := *dimTime
+	end := "06:00" // Default
+	if d.NightEnd != "" {
+		end = d.NightEnd
+	}
+
+	if start > end {
+		return currentHM >= start || currentHM <= end
+	}
+	return currentHM >= start && currentHM <= end
+}
+
+// GetEffectiveBrightness calculates the effective brightness of a device, accounting for night and dim modes.
+func (d *Device) GetEffectiveBrightness() int {
+	brightness := int(d.Brightness)
+	if d.GetNightModeIsActive() {
+		brightness = int(d.NightBrightness)
+	} else if d.GetDimModeIsActive() && d.DimBrightness != nil {
+		brightness = int(*d.DimBrightness)
+	}
+	return brightness
+}
