@@ -10,18 +10,15 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/config"
-	"tronbyt-server/internal/data"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/web"
 
-	"github.com/dustin/go-humanize"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
@@ -137,161 +134,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		}
 	}
 
-	funcMap := template.FuncMap{
-		"seq": func(start, end int) []int {
-			var s []int
-			for i := start; i <= end; i++ {
-				s = append(s, i)
-			}
-			return s
-		},
-		"dict": func(values ...any) (map[string]any, error) {
-			if len(values)%2 != 0 {
-				return nil, fmt.Errorf("dict expects even number of arguments")
-			}
-			dict := make(map[string]any, len(values)/2)
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					return nil, fmt.Errorf("dict keys must be strings")
-				}
-				dict[key] = values[i+1]
-			}
-			return dict, nil
-		},
-		"timeago": func(ts any) string {
-			var t time.Time
-			switch v := ts.(type) {
-			case int64:
-				if v == 0 {
-					return "never"
-				}
-				t = time.Unix(v, 0)
-			case time.Time:
-				if v.IsZero() {
-					return "never"
-				}
-				t = v
-			default:
-				return "never"
-			}
-			return humanize.Time(t)
-		},
-		"duration": func(d any) string {
-			var dur time.Duration
-			switch v := d.(type) {
-			case int64:
-				dur = time.Duration(v)
-			case time.Duration:
-				dur = v
-			default:
-				return "0s"
-			}
-
-			if dur.Seconds() < 60 {
-				return fmt.Sprintf("%.3f s", dur.Seconds())
-			}
-			return dur.String()
-		},
-		"t": func(localizer *i18n.Localizer, messageID string, args ...any) string {
-			localizeConfig := &i18n.LocalizeConfig{
-				MessageID: messageID,
-				DefaultMessage: &i18n.Message{
-					ID:    messageID,
-					Other: messageID,
-				},
-			}
-			if len(args) > 0 {
-				if num, ok := args[0].(int); ok {
-					localizeConfig.PluralCount = num
-				} else if dataMap, ok := args[0].(map[string]any); ok {
-					localizeConfig.TemplateData = dataMap
-				}
-			}
-			translated, err := localizer.Localize(localizeConfig)
-			if err != nil {
-				slog.Warn("Translation not found", "id", messageID, "error", err)
-				return messageID // Fallback to message ID (which is the English string here)
-			}
-			return translated
-		},
-		"deref": func(v any) string {
-			if v == nil {
-				return ""
-			}
-			switch val := v.(type) {
-			case *string:
-				if val == nil {
-					return ""
-				}
-				return *val
-			case *data.ColorFilter:
-				if val == nil {
-					return ""
-				}
-				return string(*val)
-			default:
-				// Fallback for unexpected types
-				return fmt.Sprintf("%v", v)
-			}
-		},
-		"derefOr": func(v any, def string) string {
-			if v == nil {
-				return def
-			}
-			switch val := v.(type) {
-			case *string:
-				if val == nil {
-					return def
-				}
-				return *val
-			case *data.ColorFilter:
-				if val == nil {
-					return def
-				}
-				return string(*val)
-			default:
-				return fmt.Sprintf("%v", v)
-			}
-		},
-		"isPinned": func(device *data.Device, iname string) bool {
-			if device.PinnedApp == nil {
-				return false
-			}
-			return *device.PinnedApp == iname
-		},
-		"json": func(v any) (template.JS, error) {
-			a, err := json.Marshal(v)
-			if err != nil {
-				return "", err
-			}
-			return template.JS(a), nil
-		},
-		"string": func(v any) string {
-			return fmt.Sprintf("%v", v)
-		},
-		"substr": func(s string, start, length int) string {
-			if start < 0 {
-				start = 0
-			}
-			if length < 0 {
-				length = 0
-			}
-			end := min(start+length, len(s))
-			if start > len(s) {
-				return ""
-			}
-			return s[start:end]
-		},
-		"split": strings.Split,
-		"trim":  strings.TrimSpace,
-		"slice": func(args ...string) []string {
-			return args
-		},
-		"contains": func(slice []string, item string) bool {
-			return slices.Contains(slice, item)
-		},
-	}
+	funcMap := getFuncMap()
 
 	// Load base templates and partials
 	s.BaseTemplates = template.New("").Funcs(funcMap)

@@ -185,7 +185,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var maxOrder sql.NullInt64
-	if err := s.DB.Model(&data.App{}).Where("device_id = ?", device.ID).Select("max(`order`)").Row().Scan(&maxOrder); err != nil {
+	if err := s.DB.Model(&data.App{}).Where("device_id = ?", device.ID).Select("MAX(\"order\")").Row().Scan(&maxOrder); err != nil {
 		slog.Error("Failed to get max app order", "error", err)
 	}
 	newApp.Order = int(maxOrder.Int64) + 1
@@ -561,7 +561,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify device via Websocket (Broadcaster)
-	s.Broadcaster.Notify(device.ID, nil)
+	s.Broadcaster.Notify(device.ID, imgBytes)
 
 	w.WriteHeader(http.StatusOK)
 }

@@ -81,6 +81,11 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// Update LastSeen
+			if err := s.DB.Model(&device).Update("last_seen", time.Now()).Error; err != nil {
+				slog.Error("Failed to update last_seen", "error", err)
+			}
+
 			// Handle Message
 			if msg.ClientInfo != nil {
 				// Update Device Info
@@ -149,7 +154,27 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			imgData, app, err = s.GetNextAppImage(ctx, &device, user)
 			if err != nil {
 				slog.Error("Failed to get next app", "error", err)
-				time.Sleep(5 * time.Second)
+
+				// Wait for update or timeout before retrying
+				timer := time.NewTimer(5 * time.Second)
+				select {
+				case <-broadcastCh:
+					// Update available - reload device
+					if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
+						slog.Error("Device gone", "id", initialDevice.ID)
+						return
+					}
+				case <-timer.C:
+					// Timeout - reload device just in case we missed something
+					if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
+						slog.Error("Device gone", "id", initialDevice.ID)
+						return
+					}
+				case <-stopCh:
+					timer.Stop()
+					return
+				}
+				timer.Stop()
 				continue
 			}
 		}

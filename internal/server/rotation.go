@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 
+	"time"
+
 	"log/slog"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
@@ -60,11 +62,18 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	// 5. Save State
+	updates := map[string]any{}
 	if nextIndex != device.LastAppIndex {
-		if err := s.DB.Model(device).Update("last_app_index", nextIndex).Error; err != nil {
-			slog.Error("Failed to update last_app_index", "error", err)
-		}
+		updates["last_app_index"] = nextIndex
 		device.LastAppIndex = nextIndex // Keep in-memory updated
+	}
+	updates["last_seen"] = time.Now()
+	// Update LastSeen in memory if needed, though mostly for DB
+	now := time.Now()
+	device.LastSeen = &now
+
+	if err := s.DB.Model(device).Updates(updates).Error; err != nil {
+		slog.Error("Failed to update device state (last_app_index/last_seen)", "error", err)
 	}
 
 	// Notify Dashboard that the device has updated (new app or new render)

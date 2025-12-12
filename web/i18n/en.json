@@ -1,4 +1,31 @@
 {
+  "JustNow": {
+    "other": "Just now"
+  },
+  "TimeAgo_Minutes": {
+    "one": "1 minute ago",
+    "other": "{{.PluralCount}} minutes ago"
+  },
+  "TimeAgo_Hours": {
+    "one": "1 hour ago",
+    "other": "{{.PluralCount}} hours ago"
+  },
+  "TimeAgo_Days": {
+    "one": "1 day ago",
+    "other": "{{.PluralCount}} days ago"
+  },
+  "TimeAgo_Weeks": {
+    "one": "1 week ago",
+    "other": "{{.PluralCount}} weeks ago"
+  },
+  "TimeAgo_Months": {
+    "one": "1 month ago",
+    "other": "{{.PluralCount}} months ago"
+  },
+  "TimeAgo_Years": {
+    "one": "1 year ago",
+    "other": "{{.PluralCount}} years ago"
+  },
   "Never": {
     "other": "Never"
   },

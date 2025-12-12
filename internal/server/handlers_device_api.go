@@ -49,6 +49,14 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		user = &owner
 	}
 
+	// Update protocol type if different from current
+	if device.Info.ProtocolType != data.ProtocolHTTP {
+		slog.Info("Updating protocol_type to HTTP on /next request", "device", device.ID)
+		s.DB.Model(device).Update("info", data.JSONMap{"protocol_type": data.ProtocolHTTP})
+		// Update in-memory state so subsequent calls (like GetNextAppImage logging) reflect it if needed
+		device.Info.ProtocolType = data.ProtocolHTTP
+	}
+
 	imgData, app, err := s.GetNextAppImage(r.Context(), device, user)
 	if err != nil {
 		// Send default image if error (or not found)

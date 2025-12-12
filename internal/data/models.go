@@ -469,6 +469,15 @@ func (dt DeviceType) Supports2x() bool {
 	}
 }
 
+func (dt DeviceType) SupportsFirmware() bool {
+	switch dt {
+	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+		return true
+	default:
+		return false
+	}
+}
+
 func (d *Device) GetTimezone() string {
 	if d.Timezone != nil && *d.Timezone != "" {
 		return *d.Timezone

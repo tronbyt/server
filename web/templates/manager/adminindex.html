@@ -69,9 +69,8 @@
                         {{ end }}
                 </td>
                 <td><br><div class="app-img"><img width="400" src="/devices/{{ $device.ID }}/{{ .Iname }}/appwebp" alt="{{ t $.Localizer "Preview" }}" ></div>
-                  <br>
-                  {{ t $.Localizer "Last Rendered:" }} {{ timeago .LastRender }}
-          </div>
+            <br>
+            {{ t $.Localizer "Last Rendered:" }} {{ duration .LastRenderDur }}
           </li>
           </td>
           </tr>
@@ -93,7 +92,7 @@
 <script>
 function deleteUser(username) {
   if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
-  
+
   fetch('/admin/users/' + username, {
     method: 'DELETE'
   }).then(response => {

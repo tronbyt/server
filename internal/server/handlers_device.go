@@ -138,7 +138,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		ImgURL:                formData.ImgURL, // Can be overridden by default logic later
 		WsURL:                 formData.WsURL,  // Can be overridden by default logic later
 		Notes:                 formData.Notes,
-		Brightness:            data.Brightness(formData.Brightness),
+		Brightness:            data.BrightnessFromUIScale(formData.Brightness, nil),
 		CustomBrightnessScale: "",
 		NightBrightness:       0,
 		DefaultInterval:       15,

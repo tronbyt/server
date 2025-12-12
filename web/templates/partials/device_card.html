@@ -31,8 +31,24 @@
                 <i class="fas fa-chevron-down"></i> {{ t .Localizer "Device Info" }}
               </button>
               <div id="device-info-content-{{ .Item.Device.ID }}" class="device-info-content">
-                <!-- Info Table Placeholder -->
-                <p>ID: {{ .Item.Device.ID }}</p>
+                <table class="device-info-table">
+                  {{ if .Item.Device.Info.FirmwareVersion }}
+                  <tr><td>{{ t $.Localizer "Firmware Version:" }}</td><td>{{ .Item.Device.Info.FirmwareVersion }}</td></tr>
+                  {{ end }}
+                  {{ if .Item.Device.Info.FirmwareType }}
+                  <tr><td>{{ t $.Localizer "Firmware Type:" }}</td><td>{{ .Item.Device.Info.FirmwareType }}</td></tr>
+                  {{ end }}
+                  {{ if .Item.Device.Info.ProtocolVersion }}
+                  <tr><td>{{ t $.Localizer "Protocol Version:" }}</td><td>{{ deref .Item.Device.Info.ProtocolVersion }}</td></tr>
+                  {{ end }}
+                  {{ if .Item.Device.Info.MACAddress }}
+                  <tr><td>{{ t $.Localizer "MAC Address:" }}</td><td>{{ .Item.Device.Info.MACAddress }}</td></tr>
+                  {{ end }}
+                  <tr><td>{{ t $.Localizer "Protocol Type:" }}</td><td>{{ .Item.Device.Info.ProtocolType }}</td></tr>
+                  {{ if .Item.Device.LastSeen }}
+                  <tr><td>{{ t $.Localizer "Last Seen:" }}</td><td>{{ timeago $.Localizer .Item.Device.LastSeen }}</td></tr>
+                  {{ end }}
+                </table>
               </div>
             </div>
           </td>
@@ -66,11 +82,9 @@
 
             <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
               href="/devices/{{ .Item.Device.ID }}/update"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t .Localizer "Edit Device" }}</a>
-            {{ if eq .Item.Device.Info.ProtocolType "WS" }}
-            <button class="w3-button w3-blue w3-round" style="min-width: 100px;"
-                    onclick="previewApp('{{ .Item.Device.ID }}', '', null, this, { previewing: '{{ t .Localizer "Previewing..." }}', sent: '{{ t .Localizer "Sent" }}', failed: '{{ t .Localizer "Failed" }}' })">
-              <i class="fa-solid fa-eye" aria-hidden="true"></i> {{ t .Localizer "Preview" }}
-            </button>
+            {{ if .Item.Device.Type.SupportsFirmware }}
+            <a class="w3-button w3-teal w3-round" style="min-width: 100px;"
+               href="/devices/{{ .Item.Device.ID }}/firmware"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Firmware" }}</a>
             {{ end }}
         </tr>
       </table>
