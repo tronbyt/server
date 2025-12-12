@@ -81,8 +81,16 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 
 		var user data.User
 		// Preload everything we might need
-		if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err != nil {
-			slog.Error("User in session not found in DB", "username", username, "error", err)
+		// Use Limit(1).Find to avoid GORM "record not found" error log for stale sessions
+		result := s.DB.Preload("Devices").Preload("Devices.Apps").Limit(1).Find(&user, "username = ?", username)
+		if result.Error != nil {
+			slog.Error("Database error checking session user", "username", username, "error", result.Error)
+			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+			return
+		}
+
+		if result.RowsAffected == 0 {
+			slog.Info("User in session not found in DB", "username", username)
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
 		}
@@ -228,7 +236,6 @@ func GetApp(r *http.Request) *data.App {
 func (s *Server) APIAuth(next http.HandlerFunc) http.HandlerFunc {
 	return s.APIAuthMiddleware(next).ServeHTTP
 }
-
 
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
