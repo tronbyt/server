@@ -1373,6 +1373,12 @@
   "Administrator": {
     "other": "Administrator"
   },
+  "MarkAppBrokenConfirm": {
+    "other": "Mark '{{.AppName}}' as broken? This will add 'broken: true' to its manifest.yaml and prevent it from being installed."
+  },
+  "UnmarkAppBrokenConfirm": {
+    "other": "Unmark '{{.AppName}}' as broken? This will set 'broken: false' in its manifest.yaml and allow it to be installed."
+  },
   "Invalid old password": {
     "other": "Invalid old password"
   },

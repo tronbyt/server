@@ -315,8 +315,8 @@ function duplicateApp(deviceId, iname) {
 }
 
 // AJAX function to delete an app
-function deleteApp(deviceId, iname, redirectAfterDelete = false) {
-  if (!confirm('Delete App?')) {
+function deleteApp(deviceId, iname, redirectAfterDelete = false, confirmMessage = null) {
+  if (!confirm(confirmMessage || 'Delete App?')) {
     return;
   }
 
@@ -1639,7 +1639,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
   const dashboardWs = new WebSocket(wsUrl);
 
-  dashboardWs.onopen = () => { 
+  dashboardWs.onopen = () => {
       console.log('Dashboard WebSocket connected');
       stopPollingAll(); // Rely on push updates
   };
@@ -1675,8 +1675,8 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   };
-  dashboardWs.onclose = (event) => { 
-      console.log('Dashboard WebSocket disconnected', event); 
+  dashboardWs.onclose = (event) => {
+      console.log('Dashboard WebSocket disconnected', event);
       startPollingAll(); // Fallback to polling
   };
   dashboardWs.onerror = (error) => { console.error('Dashboard WebSocket error:', error); };

@@ -95,9 +95,9 @@
     {{ end }}
     {{ if eq .ConfigProduction "0" }}
       {{ if .App.Broken }}
-      <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event);" style="background-color: var(--success-color); color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ t .Localizer "Unmark Broken" }}</button>
+      <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});" style="background-color: var(--success-color); color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ t .Localizer "Unmark Broken" }}</button>
       {{ else }}
-      <button class="mark-broken-btn" onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event);" style="background-color: var(--danger-color); color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ t .Localizer "Mark Broken" }}</button>
+      <button class="mark-broken-btn" onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});" style="background-color: var(--danger-color); color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ t .Localizer "Mark Broken" }}</button>
       {{ end }}
     {{ end }}
 </div>
