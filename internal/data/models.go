@@ -105,13 +105,35 @@ func (b Brightness) Value() (driver.Value, error) {
 }
 
 func (b *Brightness) Scan(value any) error {
-	if val, ok := value.(int64); ok {
-		*b = Brightness(val)
-
+	if value == nil {
+		*b = 0
 		return nil
 	}
-
-	return errors.New("failed to scan Brightness")
+	switch v := value.(type) {
+	case int64:
+		*b = Brightness(v)
+	case int:
+		*b = Brightness(v)
+	case int32:
+		*b = Brightness(v)
+	case float64:
+		*b = Brightness(v)
+	case []byte:
+		i, err := strconv.Atoi(string(v))
+		if err != nil {
+			return err
+		}
+		*b = Brightness(i)
+	case string:
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return err
+		}
+		*b = Brightness(i)
+	default:
+		return errors.New("failed to scan Brightness")
+	}
+	return nil
 }
 
 // Percent returns brightness as 0.0-1.0.
@@ -276,13 +298,14 @@ func (l *DeviceLocation) Scan(value any) error {
 	if value == nil {
 		return nil
 	}
-	bytes, ok := value.([]byte)
-	if !ok {
-		if s, ok := value.(string); ok {
-			bytes = []byte(s)
-		} else {
-			return errors.New("type assertion to []byte failed")
-		}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return errors.New("type assertion to []byte or string failed")
 	}
 	return json.Unmarshal(bytes, l)
 }
@@ -304,13 +327,14 @@ func (i *DeviceInfo) Scan(value any) error {
 	if value == nil {
 		return nil
 	}
-	bytes, ok := value.([]byte)
-	if !ok {
-		if s, ok := value.(string); ok {
-			bytes = []byte(s)
-		} else {
-			return errors.New("type assertion to []byte failed")
-		}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return errors.New("type assertion to []byte or string failed")
 	}
 	return json.Unmarshal(bytes, i)
 }
@@ -323,9 +347,18 @@ func (j JSONMap) Value() (driver.Value, error) {
 }
 
 func (j *JSONMap) Scan(value any) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return errors.New("type assertion to []byte or string failed")
 	}
 	return json.Unmarshal(bytes, j)
 }
@@ -338,9 +371,18 @@ func (s StringSlice) Value() (driver.Value, error) {
 }
 
 func (s *StringSlice) Scan(value any) error {
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
+	if value == nil {
+		*s = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return errors.New("type assertion to []byte or string failed")
 	}
 	return json.Unmarshal(bytes, s)
 }
