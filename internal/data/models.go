@@ -492,8 +492,8 @@ type App struct {
 	// Composite key might be better, but a surrogate ID is easier for GORM
 	ID uint `gorm:"primaryKey"`
 
-	DeviceID string `gorm:"index;type:string"` // Foreign Key to Device
-	Iname    string `gorm:"index"`             // Installation Name/ID (e.g. "123")
+	DeviceID string `gorm:"index;index:idx_device_order,priority:1;type:string"` // Foreign Key to Device
+	Iname    string `gorm:"index"`                                               // Installation Name/ID (e.g. "123")
 
 	Name          string // App Name (e.g. "Clock")
 	UInterval     int    // Update Interval
@@ -501,7 +501,7 @@ type App struct {
 	Notes         string
 	Enabled       bool
 	Pushed        bool
-	Order         int
+	Order         int `gorm:"index:idx_device_order,priority:2"`
 	LastRender    time.Time
 	LastRenderDur time.Duration
 	Path          *string
