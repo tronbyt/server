@@ -1,0 +1,46 @@
+services:
+  web:
+    image: ghcr.io/tronbyt/server:2 # latest v2.x.x release tag
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container
+    init: true
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
+      - data:/app/data
+    environment:
+      - PUID=${UID:-1000}
+      - PGID=${GID:-${UID:-1000}}
+      - SYSTEM_APPS_REPO
+      - PRODUCTION
+      - ENABLE_USER_REGISTRATION
+      - SINGLE_USER_AUTO_LOGIN
+      - GITHUB_TOKEN
+      - DB_DSN=host=db user=tronbyt password=tronbyt dbname=tronbyt port=5432 sslmode=disable TimeZone=UTC
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "/app/tronbyt-server", "health"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tronbyt
+      - POSTGRES_PASSWORD=tronbyt
+      - POSTGRES_DB=tronbyt
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tronbyt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  data:
+  db_data:
