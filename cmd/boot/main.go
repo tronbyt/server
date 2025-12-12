@@ -31,22 +31,33 @@ func main() {
 	dirs := []string{"data", "users"}
 
 	if os.Getuid() == 0 {
-		for _, dir := range dirs {
-			// Ensure data directory exists if it's "data"
-			if dir == "data" {
-				if _, err := os.Stat(dir); os.IsNotExist(err) {
-					if err := os.MkdirAll(dir, 0755); err != nil {
-						slog.Warn("Failed to create directory", "dir", dir, "error", err)
-					}
-				}
-			}
+		// Ensure data directory exists unconditionally
+		if err := os.MkdirAll("data", 0755); err != nil {
+			slog.Warn("Failed to create data directory", "error", err)
+		}
 
-			if _, err := os.Stat(dir); os.IsNotExist(err) {
+		for _, dir := range dirs {
+			// Check if the directory exists.
+			// The 'data' dir is created above. 'users' is for legacy compatibility.
+			info, err := os.Stat(dir)
+			if os.IsNotExist(err) {
+				if dir == "users" {
+					slog.Debug("Users directory not found (legacy compatibility, skipping chown)", "dir", dir)
+					continue
+				}
+				slog.Warn("Directory not found", "dir", dir, "error", err)
 				continue
 			}
-
+			if err != nil {
+				slog.Warn("Failed to stat directory", "dir", dir, "error", err)
+				continue
+			}
+			if !info.IsDir() {
+				slog.Warn("Path is not a directory", "path", dir)
+				continue
+			}
 			// Recursive chown
-			err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					slog.Warn("Cannot access path", "path", path, "error", err)
 					return nil

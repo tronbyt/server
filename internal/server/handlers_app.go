@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"maps"
-	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -142,31 +140,11 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate iname (random 3-digit string, matching Python version)
-	var iname string
-	for i := range 100 {
-		// Random integer between 100 and 999
-		n, err := rand.Int(rand.Reader, big.NewInt(900))
-		if err != nil {
-			slog.Error("Failed to generate random number", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		iname = fmt.Sprintf("%d", n.Int64()+100)
-
-		var count int64
-		if err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", device.ID, iname).Count(&count).Error; err != nil {
-			slog.Error("Failed to check iname uniqueness", "error", err)
-			break
-		}
-		if count == 0 {
-			break
-		}
-		if i == 99 {
-			slog.Error("Could not generate unique iname")
-			http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
-			return
-		}
+	iname, err := generateUniqueIname(s.DB, device.ID)
+	if err != nil {
+		slog.Error("Failed to generate unique iname", "error", err)
+		http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
+		return
 	}
 
 	// Check if it's a WebP app (based on extension)
@@ -185,7 +163,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var maxOrder sql.NullInt64
-	if err := s.DB.Model(&data.App{}).Where("device_id = ?", device.ID).Select("MAX(\"order\")").Row().Scan(&maxOrder); err != nil {
+	if err := s.DB.Model(&data.App{}).Where("device_id = ?", device.ID).Select("MAX(apps.order)").Row().Scan(&maxOrder); err != nil {
 		slog.Error("Failed to get max app order", "error", err)
 	}
 	newApp.Order = int(maxOrder.Int64) + 1
@@ -579,7 +557,7 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 
 	// Clean up webp
 	webpDir := s.getDeviceWebPDir(device.ID)
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
+	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*- %s.webp", app.Iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {
 			slog.Error("Failed to remove app webp file", "path", match, "error", err)
@@ -714,30 +692,14 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	originalApp := GetApp(r)
 
-	// Generate new iname (random 3-digit string)
 	var newIname string
-	for i := range 100 {
-		// Random integer between 100 and 999
-		n, err := rand.Int(rand.Reader, big.NewInt(900))
-		if err != nil {
-			slog.Error("Failed to generate random number", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		newIname = fmt.Sprintf("%d", n.Int64()+100)
+	var err error
 
-		var count int64
-		if err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", device.ID, newIname).Count(&count).Error; err != nil {
-			slog.Error("Failed to check iname uniqueness", "error", err)
-			break
-		}
-		if count == 0 {
-			break
-		}
-		if i == 99 {
-			http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
-			return
-		}
+	newIname, err = generateUniqueIname(s.DB, device.ID)
+	if err != nil {
+		slog.Error("Failed to generate unique iname", "error", err)
+		http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
+		return
 	}
 
 	// Copy App
@@ -749,7 +711,7 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	newApp.Pushed = false
 
 	// Transaction for reordering and creating
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// Shift orders
 		for i := range device.Apps {
 			if device.Apps[i].Order > originalApp.Order {
@@ -842,29 +804,9 @@ func (s *Server) handleDuplicateAppToDevice(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetIname string, insertAfter bool) error {
-	var newIname string
-	maxAttempts := 900
-	for range maxAttempts {
-		n, err := rand.Int(rand.Reader, big.NewInt(900))
-		if err != nil {
-			return fmt.Errorf("failed to generate random number for iname: %w", err)
-		}
-		candidateIname := fmt.Sprintf("%d", n.Int64()+100)
-
-		found := false
-		for _, app := range targetDevice.Apps {
-			if app.Iname == candidateIname {
-				found = true
-				break
-			}
-		}
-		if !found {
-			newIname = candidateIname
-			break
-		}
-	}
-	if newIname == "" {
-		return fmt.Errorf("error generating unique ID: No available IDs in the 100-999 range")
+	newIname, err := generateUniqueIname(s.DB, targetDevice.ID)
+	if err != nil {
+		return fmt.Errorf("failed to generate unique iname: %w", err)
 	}
 
 	duplicatedApp := *originalApp
@@ -1022,11 +964,12 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		slog.Error("Failed to reorder apps", "error", err)
+		slog.Error("Failed to update app order", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	// Notify Dashboard
 	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.WriteHeader(http.StatusOK)
