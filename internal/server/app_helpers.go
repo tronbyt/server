@@ -25,3 +25,21 @@ func generateUniqueIname(db *gorm.DB, deviceID string) (string, error) {
 
 	return fmt.Sprintf("%d", maxIname+1), nil
 }
+
+// getMaxAppOrder retrieves the current maximum order for apps on a specific device.
+// It returns 0 if no apps exist or if an error (other than record not found) occurs.
+func getMaxAppOrder(db *gorm.DB, deviceID string) (int, error) {
+	var currentMax int
+	// Use Order + Limit + Pluck which is dialect-agnostic and handles quoting
+	// This approach is safer than Select("MAX(order)") or Select(clause.Expr) which caused issues.
+	// If the column is indexed, performance is comparable to MAX().
+	if err := db.Model(&data.App{}).
+		Where("device_id = ?", deviceID).
+		Order("order DESC").
+		Limit(1).
+		Pluck("order", &currentMax).Error; err != nil && err != gorm.ErrRecordNotFound {
+		return 0, fmt.Errorf("failed to get max app order: %w", err)
+	}
+
+	return currentMax, nil
+}
