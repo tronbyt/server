@@ -60,6 +60,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	imgData, app, err := s.GetNextAppImage(r.Context(), device, user)
 	if err != nil {
 		// Send default image if error (or not found)
+		slog.Error("Failed to get next app image", "device", device.ID, "error", err)
 		s.sendDefaultImage(w, r, device)
 		return
 	}
