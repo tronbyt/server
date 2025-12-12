@@ -45,6 +45,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 
 	// 2. Apps Check
 	if len(device.Apps) == 0 {
+		slog.Debug("No apps on device, returning default image", "device", device.ID)
 		return getDefaultImage()
 	}
 
@@ -57,7 +58,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	// 4. Rotation Logic
 	app, nextIndex, err := s.determineNextApp(ctx, device, user)
 	if err != nil || app == nil {
-		// No valid app found (e.g. all disabled or scheduled out)
+		slog.Debug("No valid app found (e.g. all disabled or scheduled out), returning default image", "device", device.ID, "error", err)
 		return getDefaultImage()
 	}
 
