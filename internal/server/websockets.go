@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -35,9 +36,9 @@ type WSEvent struct {
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	deviceID := r.PathValue("id")
 
-	var device data.Device
-	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
-		slog.Warn("WS connection rejected: device not found", "id", deviceID)
+	device, err := s.reloadDevice(deviceID)
+	if err != nil {
+		slog.Warn("WS connection rejected: device not found", "id", deviceID, "error", err)
 		http.Error(w, "Device not found", http.StatusNotFound)
 		return
 	}
@@ -123,7 +124,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	s.wsWriteLoop(r.Context(), conn, &device, &user, ackCh, ch, stopCh)
+	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh)
 }
 
 func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
@@ -160,16 +161,20 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				select {
 				case <-broadcastCh:
 					// Update available - reload device
-					if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
-						slog.Error("Device gone", "id", initialDevice.ID)
+					reloadedDevice, err := s.reloadDevice(initialDevice.ID)
+					if err != nil {
+						slog.Error("Device gone", "id", initialDevice.ID, "error", err)
 						return
 					}
+					device = *reloadedDevice
 				case <-timer.C:
 					// Timeout - reload device just in case we missed something
-					if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
-						slog.Error("Device gone", "id", initialDevice.ID)
+					reloadedDevice, err := s.reloadDevice(initialDevice.ID)
+					if err != nil {
+						slog.Error("Device gone", "id", initialDevice.ID, "error", err)
 						return
 					}
+					device = *reloadedDevice
 				case <-stopCh:
 					timer.Stop()
 					return
@@ -340,4 +345,12 @@ func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
 func (s *Server) SetupWebsocketRoutes() {
 	s.Router.HandleFunc("GET /{id}/ws", s.handleWS)
 	s.Router.HandleFunc("GET /ws", s.RequireLogin(s.handleDashboardWS))
+}
+
+func (s *Server) reloadDevice(deviceID string) (*data.Device, error) {
+	var device data.Device
+	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
+		return nil, fmt.Errorf("device gone: %w", err)
+	}
+	return &device, nil
 }
