@@ -16,6 +16,8 @@ import (
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/renderer"
+
+	"gorm.io/gorm"
 )
 
 // --- API Handlers ---
@@ -572,12 +574,19 @@ func (s *Server) ensurePushedApp(deviceID, installID string) error {
 		Pushed:      true,
 	}
 
-	var maxOrder sql.NullInt64
-	if err := s.DB.Model(&data.App{}).Where("device_id = ?", deviceID).Select("max(`order`)").Row().Scan(&maxOrder); err != nil {
+	var maxOrder int
+	var currentMax sql.NullInt64
+	if err := s.DB.Model(&data.App{}).Where("device_id = ?", deviceID).Order("order DESC").Limit(1).Pluck("order", &currentMax).Error; err != nil && err != gorm.ErrRecordNotFound {
 		slog.Error("Failed to get max app order", "error", err)
 		// Non-fatal, default to 0 for order (if maxOrder.Valid is false, maxOrder.Int64 is 0)
 	}
-	newApp.Order = int(maxOrder.Int64) + 1
+
+	if currentMax.Valid {
+		maxOrder = int(currentMax.Int64)
+	} else {
+		maxOrder = 0
+	}
+	newApp.Order = maxOrder + 1
 
 	return s.DB.Create(&newApp).Error
 }

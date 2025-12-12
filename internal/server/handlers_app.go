@@ -162,11 +162,18 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		Path:        &appPath,
 	}
 
-	var maxOrder sql.NullInt64
-	if err := s.DB.Model(&data.App{}).Where("device_id = ?", device.ID).Select("MAX(apps.order)").Row().Scan(&maxOrder); err != nil {
+	var maxOrder int
+	var currentMax sql.NullInt64
+	if err := s.DB.Model(&data.App{}).Where("device_id = ?", device.ID).Order("order DESC").Limit(1).Pluck("order", &currentMax).Error; err != nil && err != gorm.ErrRecordNotFound {
 		slog.Error("Failed to get max app order", "error", err)
 	}
-	newApp.Order = int(maxOrder.Int64) + 1
+
+	if currentMax.Valid {
+		maxOrder = int(currentMax.Int64)
+	} else {
+		maxOrder = 0
+	}
+	newApp.Order = maxOrder + 1
 
 	if err := s.DB.Create(&newApp).Error; err != nil {
 		slog.Error("Failed to save app", "error", err)
