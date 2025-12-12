@@ -32,6 +32,95 @@ type WSEvent struct {
 	Payload  any    `json:"payload,omitempty"`
 }
 
+func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
+	deviceID := r.PathValue("id")
+
+	var device data.Device
+	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
+		slog.Warn("WS connection rejected: device not found", "id", deviceID)
+		http.Error(w, "Device not found", http.StatusNotFound)
+		return
+	}
+
+	var user data.User
+	s.DB.First(&user, "username = ?", device.Username)
+
+	conn, err := s.Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		slog.Error("WS upgrade failed", "error", err)
+		return
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			slog.Error("Failed to close WS connection", "error", err)
+		}
+	}()
+
+	slog.Info("WS Connected", "device", deviceID)
+
+	// Update protocol type if different from current
+	if device.Info.ProtocolType != data.ProtocolWS {
+		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
+		s.DB.Model(&device).Update("info", data.JSONMap{"protocol_type": data.ProtocolWS})
+	}
+	ch := s.Broadcaster.Subscribe(deviceID)
+	defer s.Broadcaster.Unsubscribe(deviceID, ch)
+
+	ackCh := make(chan WSMessage, 10)
+	stopCh := make(chan struct{})
+
+	// Read loop to handle ping/pong/close and client messages
+	go func() {
+		defer close(stopCh)
+		for {
+			var msg WSMessage
+			if err := conn.ReadJSON(&msg); err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					slog.Info("WS closed unexpectedly", "error", err)
+				}
+				return
+			}
+
+			// Handle Message
+			if msg.ClientInfo != nil {
+				// Update Device Info
+				device.Info.FirmwareVersion = msg.ClientInfo.FirmwareVersion
+				device.Info.FirmwareType = msg.ClientInfo.FirmwareType
+				if msg.ClientInfo.ProtocolVersion != nil {
+					device.Info.ProtocolVersion = msg.ClientInfo.ProtocolVersion
+				}
+				device.Info.MACAddress = msg.ClientInfo.MACAddress
+
+				if err := s.DB.Model(&device).Update("info", device.Info).Error; err != nil {
+					slog.Error("Failed to update device info", "error", err)
+				}
+			}
+
+			if msg.Queued != nil {
+				// If we get a queued message, it's a new firmware device.
+				// Update protocol version if not set.
+				if device.Info.ProtocolVersion == nil {
+					slog.Info("First 'queued' message, setting protocol_version to 1", "device", deviceID)
+					newVersion := 1
+					device.Info.ProtocolVersion = &newVersion
+					if err := s.DB.Model(&device).Update("info", device.Info).Error; err != nil {
+						slog.Error("Failed to update device info (protocol version)", "error", err)
+					}
+				}
+			}
+
+			if msg.Displaying != nil || msg.Counter != nil {
+				select {
+				case ackCh <- msg:
+				default:
+				}
+			}
+		}
+	}()
+
+	s.wsWriteLoop(r.Context(), conn, &device, &user, ackCh, ch, stopCh)
+}
+
 func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
 	var pendingImage []byte
 	device := *initialDevice
@@ -114,9 +203,12 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 		for waiting {
 			select {
-			case <-ackCh:
-				// Received ACK (Queued or Displaying).
-				waiting = false
+			case msg := <-ackCh:
+				// Received ACK
+				if msg.Displaying != nil || msg.Counter != nil {
+					waiting = false
+				}
+				// If just Queued, we keep waiting for Displaying.
 			case data := <-broadcastCh:
 				// Update available (Reload device first)
 				if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
