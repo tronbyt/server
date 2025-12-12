@@ -64,10 +64,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	brightness := device.GetEffectiveBrightness()
 	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", brightness))
 
-	dwell := device.DefaultInterval
-	if app != nil && app.DisplayTime > 0 {
-		dwell = app.DisplayTime
-	}
+	dwell := device.GetEffectiveDwellTime(app)
 	w.Header().Set("Tronbyt-Dwell-Secs", fmt.Sprintf("%d", dwell))
 
 	if _, err := w.Write(imgData); err != nil {
