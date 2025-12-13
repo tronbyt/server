@@ -281,6 +281,16 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		Config              map[string]any `json:"config"`
 		UseCustomRecurrence bool           `json:"use_custom_recurrence"`
 		ColorFilter         string         `json:"color_filter"`
+
+		StartTime string   `json:"start_time"`
+		EndTime   string   `json:"end_time"`
+		Days      []string `json:"days"`
+
+		RecurrenceType      data.RecurrenceType `json:"recurrence_type"`
+		RecurrenceInterval  int                 `json:"recurrence_interval"`
+		RecurrencePattern   map[string]any      `json:"recurrence_pattern"`
+		RecurrenceStartDate string              `json:"recurrence_start_date"`
+		RecurrenceEndDate   string              `json:"recurrence_end_date"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -295,6 +305,35 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	app.DisplayTime = payload.DisplayTime
 	app.Notes = payload.Notes
 	app.Config = payload.Config
+	app.UseCustomRecurrence = payload.UseCustomRecurrence
+	app.RecurrenceType = payload.RecurrenceType
+	app.RecurrenceInterval = payload.RecurrenceInterval
+	app.RecurrencePattern = payload.RecurrencePattern
+
+	// Handle optional string pointers
+	if payload.StartTime != "" {
+		app.StartTime = &payload.StartTime
+	} else {
+		app.StartTime = nil
+	}
+	if payload.EndTime != "" {
+		app.EndTime = &payload.EndTime
+	} else {
+		app.EndTime = nil
+	}
+	if payload.RecurrenceStartDate != "" {
+		app.RecurrenceStartDate = &payload.RecurrenceStartDate
+	} else {
+		app.RecurrenceStartDate = nil
+	}
+	if payload.RecurrenceEndDate != "" {
+		app.RecurrenceEndDate = &payload.RecurrenceEndDate
+	} else {
+		app.RecurrenceEndDate = nil
+	}
+
+	// Handle Days slice
+	app.Days = payload.Days
 
 	if payload.ColorFilter != "" {
 		if payload.ColorFilter == "inherit" {
@@ -610,6 +649,7 @@ func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
+
 func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
