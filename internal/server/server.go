@@ -23,6 +23,9 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/websocket"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
 )
@@ -38,6 +41,7 @@ type Server struct {
 	Bundle        *i18n.Bundle // Add i18n bundle
 	Broadcaster   *syncer.Broadcaster
 	Upgrader      *websocket.Upgrader
+	PromRegistry  *prometheus.Registry
 
 	SystemAppsCache      []apps.AppMetadata
 	SystemAppsCacheMutex sync.RWMutex
@@ -76,7 +80,12 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 				return true
 			},
 		},
+		PromRegistry: prometheus.NewRegistry(),
 	}
+
+	// Register standard metrics
+	s.PromRegistry.MustRegister(collectors.NewGoCollector())
+	s.PromRegistry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
 	// Load Settings from DB
 	// Secret Key
@@ -253,6 +262,7 @@ func (s *Server) routes() {
 	// Websocket routes
 	s.SetupWebsocketRoutes()
 	s.Router.HandleFunc("GET /health", s.handleHealth)
+	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromRegistry, promhttp.HandlerOpts{}))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
