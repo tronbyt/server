@@ -440,3 +440,17 @@ func (s *Server) getBaseURL(r *http.Request) string {
 	}
 	return fmt.Sprintf("%s://%s", scheme, r.Host)
 }
+
+func (s *Server) getImageURL(r *http.Request, deviceID string) string {
+	baseURL := s.getBaseURL(r)
+	return fmt.Sprintf("%s/%s/next", baseURL, deviceID)
+}
+
+func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
+	baseURL := s.getBaseURL(r)
+	wsScheme := "ws"
+	if strings.HasPrefix(baseURL, "https") {
+		wsScheme = "wss"
+	}
+	return fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, deviceID)
+}

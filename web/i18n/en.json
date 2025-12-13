@@ -1397,6 +1397,9 @@
   "Device configuration imported successfully": {
     "other": "Device configuration imported successfully"
   },
+  "Import failed. See server logs for details.": {
+    "other": "Import failed. See server logs for details."
+  },
   "This will overwrite all current settings and apps. Continue?": {
     "other": "This will overwrite all current settings and apps. Continue?"
   }
