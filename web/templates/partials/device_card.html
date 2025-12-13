@@ -11,7 +11,7 @@
                 <a href="{{ .Item.Device.ImgURL }}" target="_blank" class="device-link">
                   {{ .Item.Device.Name }}
                 </a>
-                {{ if .Item.Device.PinnedApp }}
+                {{ if and .Item.Device.PinnedApp (ne (deref .Item.Device.PinnedApp) "") }}
                     <span class="pinned-badge">
                       <i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "Pinned:" }} {{ deref .Item.Device.PinnedApp }}
                     </span>
