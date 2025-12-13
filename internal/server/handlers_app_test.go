@@ -51,6 +51,11 @@ func TestHandleAddAppPost(t *testing.T) {
 	if app.UInterval != 5 {
 		t.Errorf("Expected uinterval 5 (recommended), got %d", app.UInterval)
 	}
+
+	// Check Enabled default
+	if !app.Enabled {
+		t.Errorf("App should be enabled")
+	}
 }
 
 func TestHandleConfigAppPost(t *testing.T) {
