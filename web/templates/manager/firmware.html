@@ -102,7 +102,7 @@
             <input name="wifi_password" id="wifi_password" required class="device-settings-input">
           </td>
         </tr>
-        {{ if eq (string .Device.Type) "tidbyt_gen1" }}
+        {{ if eq .Device.Type "tidbyt_gen1" }}
         <tr>
           <td>
             <label for="swap_colors" class="device-settings-label">{{ t .Localizer "Swap Colors?" }}</label>
