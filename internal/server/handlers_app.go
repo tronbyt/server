@@ -146,9 +146,6 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if it's a WebP app (based on extension)
-	isWebP := strings.EqualFold(filepath.Ext(appPath), ".webp")
-
 	// Create App in DB
 	newApp := data.App{
 		DeviceID:    device.ID,
@@ -157,7 +154,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		UInterval:   uinterval,
 		DisplayTime: displayTime,
 		Notes:       notes,
-		Enabled:     isWebP,
+		Enabled:     true,
 		Path:        &appPath,
 	}
 
@@ -174,6 +171,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If WebP, copy file and redirect to index
+	isWebP := strings.EqualFold(filepath.Ext(appPath), ".webp")
 	if isWebP {
 		destDir := s.getDeviceWebPDir(device.ID)
 		destPath := filepath.Join(destDir, fmt.Sprintf("%s-%s.webp", newApp.Name, newApp.Iname))
