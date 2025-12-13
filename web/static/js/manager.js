@@ -136,7 +136,7 @@ function pollImageWithEtag(deviceId) {
                 return null;
             } else {
                 // Handle other errors
-                console.error('Error fetching image for device ' + deviceId, response.status);
+                console.error('Error fetching image for device', deviceId, response.status);
                 return null;
             }
         })
@@ -151,7 +151,7 @@ function pollImageWithEtag(deviceId) {
             }
         })
         .catch(error => {
-            console.error('Fetch error for device ' + deviceId, error);
+            console.error('Fetch error for device', deviceId, error);
         });
 }
 
@@ -410,7 +410,7 @@ function previewApp(deviceId, iname, config = null, button = null, translations 
                     button.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${translations?.sent || 'Sent'}`;
                 } else {
                     button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
-                    console.error('Preview request failed with status: ' + response.status);
+                    console.error('Preview request failed with status:', response.status);
                 }
             }
         })
