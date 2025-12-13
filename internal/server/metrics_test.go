@@ -20,7 +20,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
 	}
-	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}); err != nil {
+	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.Setting{}); err != nil {
 		t.Fatalf("Failed to migrate DB: %v", err)
 	}
 
