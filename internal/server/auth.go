@@ -277,14 +277,6 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get System Repo Info if admin (Stub for now or implement)	// Python: system_apps.get_system_repo_info
-	// I'll leave it empty for now or implement later if critical.
-	// Template expects 'system_repo_info' but I don't pass it in TemplateData explicitly,
-	// unless I extend TemplateData or pass map.
-	// Go TemplateData has User.
-	// I need to add fields to TemplateData if I want to pass extra info.
-	// 'FirmwareVersion' is there.
-
 	firmwareVersion := "unknown"
 	firmwareFile := filepath.Join(s.DataDir, "firmware", "firmware_version.txt")
 	if bytes, err := os.ReadFile(firmwareFile); err == nil {
