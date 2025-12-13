@@ -432,3 +432,11 @@ func (s *Server) notifyDashboard(username string, event WSEvent) {
 		s.Broadcaster.Notify(event.DeviceID, nil)
 	}
 }
+
+func (s *Server) getBaseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, r.Host)
+}

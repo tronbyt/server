@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"tronbyt-server/internal/data"
 
@@ -153,11 +154,16 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	// Set default ImgURL and WsURL if empty
 	if newDevice.ImgURL == "" {
-		newDevice.ImgURL = fmt.Sprintf("/%s/next", newDevice.ID)
+		baseURL := s.getBaseURL(r)
+		newDevice.ImgURL = fmt.Sprintf("%s/%s/next", baseURL, newDevice.ID)
 	}
-	// Need to determine absolute path for WS. For now, relative.
 	if newDevice.WsURL == "" {
-		newDevice.WsURL = fmt.Sprintf("/%s/ws", newDevice.ID)
+		baseURL := s.getBaseURL(r)
+		wsScheme := "ws"
+		if strings.HasPrefix(baseURL, "https") {
+			wsScheme = "wss"
+		}
+		newDevice.WsURL = fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, newDevice.ID)
 	}
 
 	// Save to DB
@@ -504,14 +510,14 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	// Max 1MB file size
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		slog.Error("Failed to parse multipart form for device import", "error", err)
-		http.Error(w, "File upload failed: invalid form data", http.StatusBadRequest)
+		s.flashAndRedirect(w, r, "File upload failed: invalid form data", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
 		slog.Error("Failed to get uploaded file for device import", "error", err)
-		http.Error(w, "File upload failed", http.StatusBadRequest)
+		s.flashAndRedirect(w, r, "File upload failed", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
 	defer func() {
@@ -523,7 +529,7 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	var importedDevice data.Device
 	if err := json.NewDecoder(file).Decode(&importedDevice); err != nil {
 		slog.Error("Failed to decode imported device JSON", "error", err)
-		http.Error(w, "Invalid JSON file", http.StatusBadRequest)
+		s.flashAndRedirect(w, r, "Invalid JSON file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
 
@@ -533,6 +539,16 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	}
 	// Re-create the directory immediately
 	s.getDeviceWebPDir(device.ID)
+
+	// Regenerate URLs
+	baseURL := s.getBaseURL(r)
+	importedDevice.ImgURL = fmt.Sprintf("%s/v0/devices/%s/push", baseURL, device.ID)
+	// For WsURL, we need to handle scheme (http -> ws, https -> wss)
+	wsScheme := "ws"
+	if strings.HasPrefix(baseURL, "https") {
+		wsScheme = "wss"
+	}
+	importedDevice.WsURL = fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, device.ID)
 
 	// Begin a transaction to ensure atomicity
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
@@ -587,10 +603,10 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		slog.Error("Device import transaction failed", "device_id", device.ID, "error", err)
-		http.Error(w, fmt.Sprintf("Import failed: %s", err.Error()), http.StatusInternalServerError)
+		s.flashAndRedirect(w, r, "Import failed: "+err.Error(), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
 
 	slog.Info("Device config imported successfully", "device_id", device.ID, "username", user.Username)
-	http.Redirect(w, r, fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "Device configuration imported successfully", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 }
