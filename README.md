@@ -47,6 +47,13 @@ The `tronbyt-server` binary supports additional commands for administration:
     ./tronbyt-server health https://your-tronbyt-server.com/health
     ```
 
+### Monitoring
+
+*   **`/metrics`**: Exposes Prometheus-compatible metrics for monitoring the server's health and performance. This endpoint includes standard Go runtime metrics and process-level metrics.
+    ```bash
+    curl http://localhost:8000/metrics
+    ```
+
 **Quick Start Guide:**
 1.  Access the web app at `http://localhost:8000`.
 2.  Add your Tronbyt as a device.
