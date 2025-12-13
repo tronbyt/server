@@ -352,6 +352,8 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger Render
+	// Force render by resetting LastRender
+	app.LastRender = time.Time{}
 	s.possiblyRender(r.Context(), app, device, user)
 
 	// Notify Dashboard & Device
