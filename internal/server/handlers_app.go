@@ -315,12 +315,24 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 
 	// Handle optional string pointers
 	if payload.StartTime != "" {
-		app.StartTime = &payload.StartTime
+		parsed, err := parseTimeInput(payload.StartTime)
+		if err != nil {
+			slog.Warn("Invalid start time", "time", payload.StartTime, "error", err)
+			http.Error(w, fmt.Sprintf("Invalid start time: %v", err), http.StatusBadRequest)
+			return
+		}
+		app.StartTime = &parsed
 	} else {
 		app.StartTime = nil
 	}
 	if payload.EndTime != "" {
-		app.EndTime = &payload.EndTime
+		parsed, err := parseTimeInput(payload.EndTime)
+		if err != nil {
+			slog.Warn("Invalid end time", "time", payload.EndTime, "error", err)
+			http.Error(w, fmt.Sprintf("Invalid end time: %v", err), http.StatusBadRequest)
+			return
+		}
+		app.EndTime = &parsed
 	} else {
 		app.EndTime = nil
 	}

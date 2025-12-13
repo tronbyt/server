@@ -264,7 +264,7 @@ func parseTimeInput(timeStr string) (string, error) {
 
 	if strings.Contains(timeStr, ":") {
 		parts := strings.Split(timeStr, ":")
-		if len(parts) != 2 {
+		if len(parts) < 2 || len(parts) > 3 {
 			return "", fmt.Errorf("invalid time format: %s", timeStr)
 		}
 		hour, err = strconv.Atoi(parts[0])
