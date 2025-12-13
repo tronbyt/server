@@ -204,6 +204,11 @@ func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error
 		ncf = &val
 	}
 
+	var pinnedApp *string
+	if lDevice.PinnedApp != nil && *lDevice.PinnedApp != "" {
+		pinnedApp = lDevice.PinnedApp
+	}
+
 	dev := data.Device{
 		ID:                    lDevice.ID,
 		Username:              username,
@@ -227,7 +232,7 @@ func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error
 		Locale:                lDevice.Locale,
 		Location:              loc,
 		LastAppIndex:          lDevice.LastAppIndex,
-		PinnedApp:             lDevice.PinnedApp,
+		PinnedApp:             pinnedApp,
 		InterstitialEnabled:   lDevice.InterstitialEnabled,
 		InterstitialApp:       lDevice.InterstitialApp,
 		LastSeen:              lDevice.LastSeen,
