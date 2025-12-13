@@ -541,11 +541,12 @@
       <a href="/devices/{{ .Device.ID }}/export_config" class="w3-button w3-blue config-management-btn">
         <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export Configuration" }}
       </a>
-      <!-- Import not yet implemented in Go backend route, so hiding or mocking? -->
-      <!-- Added route in server.go: /devices/{id}/update. Import is usually a POST or separate page. -->
-      <!-- Python has 'import_device_config' endpoint. Go has 'Import Device Configuration' handled in main server.go? -->
-      <!-- Checking server.go routes... I see handleExportDeviceConfig but not import. -->
-      <!-- Leaving as placeholder or pointing to a not-yet-created route. -->
+      <form action="/devices/{{ .Device.ID }}/import_config" method="post" enctype="multipart/form-data" style="display: inline;">
+        <input type="file" name="file" id="import_config_file" style="display: none;" onchange="if(confirm('{{ t .Localizer "This will overwrite all current settings and apps. Continue?" }}')) { this.form.submit(); } else { this.value = ''; }" accept=".json">
+        <button type="button" class="w3-button w3-orange config-management-btn" onclick="document.getElementById('import_config_file').click();">
+          <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
+        </button>
+      </form>
     </div>
   </div>
 
