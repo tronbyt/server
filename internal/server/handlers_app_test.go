@@ -104,3 +104,55 @@ func TestHandleConfigAppPost(t *testing.T) {
 		t.Errorf("App config not updated")
 	}
 }
+
+func TestHandleConfigAppPost_TimeFormat(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser"}
+	s.DB.Create(&device)
+	app := data.App{
+		DeviceID: "testdevice",
+		Iname:    "101",
+		Name:     "TimeApp",
+		Enabled:  true,
+	}
+	s.DB.Create(&app)
+
+	// JSON payload with seconds in time
+	payload := `{"start_time": "04:00:00", "end_time": "22:30:59"}`
+
+	req, err := http.NewRequest(http.MethodPost, "/devices/testdevice/101/config", strings.NewReader(payload))
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleConfigAppPost)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
+	}
+
+	var updatedApp data.App
+	s.DB.First(&updatedApp, "iname = ?", "101")
+
+	if updatedApp.StartTime == nil {
+		t.Error("Expected StartTime to be '04:00', but it was nil")
+	} else if *updatedApp.StartTime != "04:00" {
+		t.Errorf("Expected StartTime '04:00', got %q", *updatedApp.StartTime)
+	}
+	if updatedApp.EndTime == nil {
+		t.Error("Expected EndTime to be '22:30', but it was nil")
+	} else if *updatedApp.EndTime != "22:30" {
+		t.Errorf("Expected EndTime '22:30', got %q", *updatedApp.EndTime)
+	}
+}
