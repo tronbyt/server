@@ -1390,5 +1390,23 @@
   },
   "WebAuthn is not supported in this browser.": {
     "other": "WebAuthn wird in diesem Browser nicht unterstützt."
+  },
+  "File upload failed: invalid form data": {
+    "other": "Datei-Upload fehlgeschlagen: ungültige Formulardaten"
+  },
+  "File upload failed": {
+    "other": "Datei-Upload fehlgeschlagen"
+  },
+  "Invalid JSON file": {
+    "other": "Ungültige JSON-Datei"
+  },
+  "Device configuration imported successfully": {
+    "other": "Gerätekonfiguration erfolgreich importiert"
+  },
+  "Import failed. See server logs for details.": {
+    "other": "Import fehlgeschlagen. Details in den Server-Logs."
+  },
+  "This will overwrite all current settings and apps. Continue?": {
+    "other": "Dies überschreibt alle aktuellen Einstellungen und Apps. Fortfahren?"
   }
 }

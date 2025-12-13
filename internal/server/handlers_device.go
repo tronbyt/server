@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"tronbyt-server/internal/data"
 
@@ -154,16 +153,10 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	// Set default ImgURL and WsURL if empty
 	if newDevice.ImgURL == "" {
-		baseURL := s.getBaseURL(r)
-		newDevice.ImgURL = fmt.Sprintf("%s/%s/next", baseURL, newDevice.ID)
+		newDevice.ImgURL = s.getImageURL(r, newDevice.ID)
 	}
 	if newDevice.WsURL == "" {
-		baseURL := s.getBaseURL(r)
-		wsScheme := "ws"
-		if strings.HasPrefix(baseURL, "https") {
-			wsScheme = "wss"
-		}
-		newDevice.WsURL = fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, newDevice.ID)
+		newDevice.WsURL = s.getWebsocketURL(r, newDevice.ID)
 	}
 
 	// Save to DB
@@ -541,14 +534,8 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	s.getDeviceWebPDir(device.ID)
 
 	// Regenerate URLs
-	baseURL := s.getBaseURL(r)
-	importedDevice.ImgURL = fmt.Sprintf("%s/v0/devices/%s/push", baseURL, device.ID)
-	// For WsURL, we need to handle scheme (http -> ws, https -> wss)
-	wsScheme := "ws"
-	if strings.HasPrefix(baseURL, "https") {
-		wsScheme = "wss"
-	}
-	importedDevice.WsURL = fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, device.ID)
+	importedDevice.ImgURL = s.getImageURL(r, device.ID)
+	importedDevice.WsURL = s.getWebsocketURL(r, device.ID)
 
 	// Begin a transaction to ensure atomicity
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
@@ -603,7 +590,7 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		slog.Error("Device import transaction failed", "device_id", device.ID, "error", err)
-		s.flashAndRedirect(w, r, "Import failed: "+err.Error(), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		s.flashAndRedirect(w, r, "Import failed. See server logs for details.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
 
