@@ -2,13 +2,6 @@
 tronbyt-server
 go.work
 
-# Python (Legacy)
-__pycache__
-.venv
-.mypy_cache
-.pytest_cache
-.ruff_cache
-
 # IDE / Editor
 .vscode
 .idea

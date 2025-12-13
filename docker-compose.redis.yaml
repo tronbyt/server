@@ -20,7 +20,7 @@ services:
       - GITHUB_TOKEN
 
     healthcheck:
-      test: ["CMD", "python3", "-m", "tronbyt_server.healthcheck", "http://localhost:8000/health"]
+      test: ["CMD", "/app/tronbyt-server", "health"]
       interval: 1m30s
       timeout: 10s
       retries: 3
