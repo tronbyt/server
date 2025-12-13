@@ -241,12 +241,15 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	// Get Schema
 	var schemaBytes []byte
 	if app.Path != nil && *app.Path != "" {
-		appPath := s.resolveAppPath(*app.Path)
-		var err error
-		schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
+		appPath, err := s.resolveAppPath(*app.Path)
 		if err != nil {
-			slog.Error("Failed to get app schema", "error", err)
-			// Fall through with empty schema
+			slog.Error("Failed to resolve app path", "error", err)
+		} else {
+			schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
+			if err != nil {
+				slog.Error("Failed to get app schema", "error", err)
+				// Fall through with empty schema
+			}
 		}
 	}
 	if len(schemaBytes) == 0 {
@@ -389,7 +392,12 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "App path not set", http.StatusBadRequest)
 		return
 	}
-	appPath := s.resolveAppPath(*app.Path)
+	appPath, err := s.resolveAppPath(*app.Path)
+	if err != nil {
+		slog.Error("Failed to resolve app path", "error", err)
+		http.Error(w, "Invalid app path", http.StatusBadRequest)
+		return
+	}
 
 	// Call Handler
 	result, err := renderer.CallSchemaHandler(
@@ -455,7 +463,12 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			http.Error(w, "App path not set", http.StatusBadRequest)
 			return
 		}
-		appPath := s.resolveAppPath(*app.Path)
+		appPath, err := s.resolveAppPath(*app.Path)
+		if err != nil {
+			slog.Error("Failed to resolve app path", "error", err)
+			http.Error(w, "Invalid app path", http.StatusBadRequest)
+			return
+		}
 
 		// Defaults
 		appInterval := device.GetEffectiveDwellTime(app)
@@ -536,7 +549,12 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "App path not set", http.StatusBadRequest)
 		return
 	}
-	appPath := s.resolveAppPath(*app.Path)
+	appPath, err := s.resolveAppPath(*app.Path)
+	if err != nil {
+		slog.Error("Failed to resolve app path", "error", err)
+		http.Error(w, "Invalid app path", http.StatusBadRequest)
+		return
+	}
 
 	appInterval := device.GetEffectiveDwellTime(app)
 
@@ -863,7 +881,10 @@ func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sou
 	}
 
 	if !originalApp.Pushed && originalApp.Path != nil && *originalApp.Path != "" {
-		sourcePath := s.resolveAppPath(*originalApp.Path)
+		sourcePath, err := s.resolveAppPath(*originalApp.Path)
+		if err != nil {
+			return fmt.Errorf("failed to resolve source path: %w", err)
+		}
 		installDir := filepath.Join(s.DataDir, "installations", newIname)
 		if err := os.MkdirAll(installDir, 0755); err != nil {
 			return fmt.Errorf("failed to create install dir for duplicated app: %w", err)
@@ -1213,7 +1234,14 @@ func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, b
 		appID = packageName
 	}
 
-	manifestPath := filepath.Join(s.DataDir, "system-apps", "apps", appID, "manifest.yaml")
+	appsDir := filepath.Join(s.DataDir, "system-apps", "apps")
+	manifestPath := filepath.Join(appsDir, appID, "manifest.yaml")
+
+	// Security Check
+	if !strings.HasPrefix(filepath.Clean(manifestPath), filepath.Clean(appsDir)+string(os.PathSeparator)) {
+		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+		return
+	}
 
 	var manifest AppManifest
 	manifestData, err := os.ReadFile(manifestPath)

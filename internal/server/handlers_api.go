@@ -547,6 +547,12 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 	}
 
 	path := filepath.Join(dir, filename)
+
+	// Security Check
+	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(dir)+string(os.PathSeparator)) {
+		return fmt.Errorf("path traversal attempt: %s", path)
+	}
+
 	return os.WriteFile(path, data, 0644)
 }
 
