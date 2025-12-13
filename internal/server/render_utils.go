@@ -17,6 +17,11 @@ import (
 )
 
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
+	// 1. Pushed App (Pre-rendered)
+	if app.Pushed {
+		return true
+	}
+
 	if app.Path == nil || *app.Path == "" {
 		return false
 	}
@@ -36,7 +41,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 
-	// 1. Static WebP App
+	// 2. Static WebP App
 	if strings.HasSuffix(strings.ToLower(*app.Path), ".webp") {
 		if _, err := os.Stat(webpPath); os.IsNotExist(err) {
 			// Copy from source
@@ -51,11 +56,6 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			}
 		}
 		return true // Exists
-	}
-
-	// 2. Pushed App (Pre-rendered)
-	if app.Pushed {
-		return true
 	}
 
 	// 3. Starlark App - Check Interval
