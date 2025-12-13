@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -148,44 +149,23 @@ func tmplT(localizer *i18n.Localizer, messageID string, args ...any) string {
 }
 
 func tmplDeref(v any) string {
-	if v == nil {
-		return ""
-	}
-	switch val := v.(type) {
-	case *string:
-		if val == nil {
-			return ""
-		}
-		return *val
-	case *data.ColorFilter:
-		if val == nil {
-			return ""
-		}
-		return string(*val)
-	default:
-		// Fallback for unexpected types
-		return fmt.Sprintf("%v", v)
-	}
+	return tmplDerefOr(v, "")
 }
 
 func tmplDerefOr(v any, def string) string {
 	if v == nil {
 		return def
 	}
-	switch val := v.(type) {
-	case *string:
-		if val == nil {
+
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
 			return def
 		}
-		return *val
-	case *data.ColorFilter:
-		if val == nil {
-			return def
-		}
-		return string(*val)
-	default:
-		return fmt.Sprintf("%v", v)
+		rv = rv.Elem()
 	}
+
+	return fmt.Sprintf("%v", rv.Interface())
 }
 
 func tmplIsPinned(device *data.Device, iname string) bool {
