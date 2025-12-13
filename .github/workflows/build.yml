@@ -77,7 +77,7 @@ jobs:
           CGO_ENABLED=1 go build -v -ldflags "${LDFLAGS}" -o ${{ matrix.artifact_name }} ./cmd/server
 
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}
