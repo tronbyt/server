@@ -95,7 +95,7 @@
         <label for="device_type" class="device-settings-label">{{ t .Localizer "Device Type" }}</label>
         <select name="device_type" id="device_type" class="device-settings-input">
           {{ range $key, $value := .DeviceTypeChoices }}
-            <option value="{{ $key }}" {{ if eq (string $.Device.Type) $key }}selected{{ end }}>{{ $value }}</option>
+            <option value="{{ $key }}" {{ if eq $.Device.Type $key }}selected{{ end }}>{{ $value }}</option>
           {{ end }}
         </select>
       </div>

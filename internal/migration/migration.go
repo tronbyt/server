@@ -262,8 +262,15 @@ func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error
 
 func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
 	// Parse Time fields
-	startTime := legacy.ParseTimeStr(lApp.StartTime)
-	endTime := legacy.ParseTimeStr(lApp.EndTime)
+	startTimeStr := legacy.ParseTimeStr(lApp.StartTime)
+	endTimeStr := legacy.ParseTimeStr(lApp.EndTime)
+	var startTime, endTime *string
+	if startTimeStr != "" {
+		startTime = &startTimeStr
+	}
+	if endTimeStr != "" {
+		endTime = &endTimeStr
+	}
 
 	// Color Filter
 	var cf *data.ColorFilter
@@ -298,8 +305,8 @@ func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
 		LastRender:          time.Unix(lApp.LastRender, 0),
 		LastRenderDur:       time.Duration(legacy.ParseDuration(lApp.LastRenderDuration)),
 		Path:                path,
-		StartTime:           &startTime,
-		EndTime:             &endTime,
+		StartTime:           startTime,
+		EndTime:             endTime,
 		Days:                data.StringSlice(lApp.Days),
 		UseCustomRecurrence: lApp.UseCustomRecurrence,
 		RecurrenceType:      data.RecurrenceType(lApp.RecurrenceType),
