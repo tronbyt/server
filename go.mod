@@ -13,6 +13,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/prometheus/client_golang v1.23.2
+	github.com/quic-go/quic-go v0.57.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tronbyt/pixlet v0.49.6
 	golang.org/x/crypto v0.46.0
@@ -96,6 +97,7 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/qri-io/starlib v0.5.1-0.20220611014110-7fb7ff9ec804 // indirect
+	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
