@@ -14,6 +14,8 @@ import (
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/renderer"
 	"tronbyt-server/web"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
@@ -33,11 +35,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 	webpDir := s.getDeviceWebPDir(device.ID)
-	webpPath := filepath.Join(webpDir, fmt.Sprintf("%s.webp", appBasename))
-
-	// Security Check: Ensure webpPath is within webpDir
-	if !strings.HasPrefix(filepath.Clean(webpPath), filepath.Clean(webpDir)+string(os.PathSeparator)) {
-		slog.Error("Path traversal attempt in webp path", "path", webpPath)
+	webpPath, err := securejoin.SecureJoin(webpDir, fmt.Sprintf("%s.webp", appBasename))
+	if err != nil {
+		slog.Error("Path traversal attempt in webp path", "app", appBasename, "error", err)
 		return false
 	}
 

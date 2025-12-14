@@ -21,6 +21,7 @@ import (
 	"tronbyt-server/internal/gitutils"
 	"tronbyt-server/internal/renderer"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
@@ -174,7 +175,12 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	isWebP := strings.EqualFold(filepath.Ext(appPath), ".webp")
 	if isWebP {
 		destDir := s.getDeviceWebPDir(device.ID)
-		destPath := filepath.Join(destDir, fmt.Sprintf("%s-%s.webp", newApp.Name, newApp.Iname))
+		destPath, err := securejoin.SecureJoin(destDir, fmt.Sprintf("%s-%s.webp", newApp.Name, newApp.Iname))
+		if err != nil {
+			slog.Warn("Path traversal attempt blocked", "error", err)
+			http.Error(w, "Invalid filename", http.StatusBadRequest)
+			return
+		}
 
 		srcFile, err := os.Open(realPath)
 		if err == nil {
@@ -223,9 +229,9 @@ func (s *Server) handleSystemAppThumbnail(w http.ResponseWriter, r *http.Request
 	}
 
 	baseDir := filepath.Join(s.DataDir, "system-apps", "apps")
-	path := filepath.Clean(filepath.Join(baseDir, file))
-
-	if !strings.HasPrefix(path, baseDir+string(os.PathSeparator)) {
+	path, err := securejoin.SecureJoin(baseDir, file)
+	if err != nil {
+		slog.Warn("Path traversal attempt blocked", "error", err)
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
@@ -1083,7 +1089,13 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 
 	appName := strings.TrimSuffix(filename, ext)
 
-	appDir := filepath.Join(s.DataDir, "users", user.Username, "apps", appName)
+	userAppsDir := filepath.Join(s.DataDir, "users", user.Username, "apps")
+	appDir, err := securejoin.SecureJoin(userAppsDir, appName)
+	if err != nil {
+		slog.Warn("Path traversal attempt blocked", "error", err)
+		http.Error(w, "Invalid app name", http.StatusBadRequest)
+		return
+	}
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		slog.Error("Failed to create app dir", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -1205,9 +1217,9 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 
 	userAppsPath := filepath.Join(s.DataDir, "users", userWithDevices.Username, "apps")
 	appName := strings.TrimSuffix(filename, filepath.Ext(filename))
-	appDir := filepath.Join(userAppsPath, appName)
-
-	if !strings.HasPrefix(appDir, userAppsPath+string(os.PathSeparator)) {
+	appDir, err := securejoin.SecureJoin(userAppsPath, appName)
+	if err != nil {
+		slog.Warn("Path traversal attempt blocked", "error", err)
 		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
@@ -1247,10 +1259,9 @@ func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, b
 	}
 
 	appsDir := filepath.Join(s.DataDir, "system-apps", "apps")
-	manifestPath := filepath.Join(appsDir, appID, "manifest.yaml")
-
-	// Security Check
-	if !strings.HasPrefix(filepath.Clean(manifestPath), filepath.Clean(appsDir)+string(os.PathSeparator)) {
+	manifestPath, err := securejoin.SecureJoin(appsDir, filepath.Join(appID, "manifest.yaml"))
+	if err != nil {
+		slog.Warn("Path traversal attempt blocked", "error", err)
 		http.Error(w, "Invalid app ID", http.StatusBadRequest)
 		return
 	}
