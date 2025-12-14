@@ -378,9 +378,22 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 		// Wrap handler to set Alt-Svc header for TCP connections
 		baseHandler := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if err := h3Srv.SetQUICHeaders(w.Header()); err != nil {
-				slog.Debug("Failed to set QUIC headers", "error", err)
+			// Determine the external port to advertise in Alt-Svc.
+			// We must check X-Forwarded-Host manually because ProxyMiddleware
+			// runs inside baseHandler (srv.ServeHTTP), so r.Host is not yet updated here.
+			host := r.Header.Get("X-Forwarded-Host")
+			if host == "" {
+				host = r.Host
 			}
+
+			// Try to extract port from host
+			_, port, err := net.SplitHostPort(host)
+			if err != nil {
+				// No port in host, assume standard HTTPS port 443
+				port = "443"
+			}
+
+			w.Header().Set("Alt-Svc", fmt.Sprintf(`h3=":%s"; ma=2592000`, port))
 			baseHandler.ServeHTTP(w, r)
 		})
 	}
