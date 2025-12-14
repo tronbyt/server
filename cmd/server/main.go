@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -335,18 +336,39 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 	}
 	errCh := make(chan error, numServers)
 
+	// TLS Config (Shared)
+	var tlsConfig *tls.Config
+	if cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" {
+		cert, err := tls.LoadX509KeyPair(cfg.SSLCertFile, cfg.SSLKeyFile)
+		if err != nil {
+			slog.Error("Failed to load TLS certificates", "error", err)
+			os.Exit(1)
+		}
+		tlsConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+		slog.Info("TLS certificates loaded", "cert", cfg.SSLCertFile, "key", cfg.SSLKeyFile)
+	}
+
 	// HTTP/3 (QUIC) Support
 	if http3Enabled {
+		if tlsConfig == nil {
+			// This should practically not happen due to http3Enabled check above,
+			// but good for safety if logic changes.
+			slog.Error("HTTP/3 enabled but TLS config is nil")
+			os.Exit(1)
+		}
 		addr := net.JoinHostPort(cfg.Host, cfg.Port)
 		h3Srv := &http3.Server{
 			Addr:        addr,
 			Handler:     srv,
 			IdleTimeout: 120 * time.Second,
+			TLSConfig:   tlsConfig,
 		}
 
 		go func() {
 			slog.Info("Serving HTTP/3 (QUIC)", "addr", addr)
-			err := h3Srv.ListenAndServeTLS(cfg.SSLCertFile, cfg.SSLKeyFile)
+			err := h3Srv.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
 				errCh <- fmt.Errorf("HTTP/3 server failed: %w", err)
 			}
@@ -374,12 +396,11 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 	for _, l := range listeners {
 		go func(l net.Listener) {
 			var err error
-			if cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" {
-				slog.Info("Serving TLS", "cert", cfg.SSLCertFile, "key", cfg.SSLKeyFile)
-				err = httpSrv.ServeTLS(l, cfg.SSLCertFile, cfg.SSLKeyFile)
-			} else {
-				err = httpSrv.Serve(l)
+			if tlsConfig != nil {
+				// Wrap listener with TLS if config is present
+				l = tls.NewListener(l, tlsConfig)
 			}
+			err = httpSrv.Serve(l)
 			if err != nil && err != http.ErrServerClosed {
 				errCh <- err
 			}
