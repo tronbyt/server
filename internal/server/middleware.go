@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"tronbyt-server/internal/data"
+
+	"gorm.io/gorm"
 )
 
 type contextKey string
@@ -44,7 +46,9 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 
 		// 1. Try to find User by API Key
 		var user data.User
-		if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "api_key = ?", apiKey).Error; err == nil {
+		if err := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
+			return db.Order("name ASC")
+		}).Preload("Devices.Apps").First(&user, "api_key = ?", apiKey).Error; err == nil {
 			ctx := context.WithValue(r.Context(), userContextKey, &user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
@@ -54,7 +58,9 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		var device data.Device
 		if err := s.DB.First(&device, "api_key = ?", apiKey).Error; err == nil {
 			var owner data.User
-			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&owner, "username = ?", device.Username).Error; err != nil {
+			if err := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
+				return db.Order("name ASC")
+			}).Preload("Devices.Apps").First(&owner, "username = ?", device.Username).Error; err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -82,7 +88,9 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 		var user data.User
 		// Preload everything we might need
 		// Use Limit(1).Find to avoid GORM "record not found" error log for stale sessions
-		result := s.DB.Preload("Devices").Preload("Devices.Apps").Limit(1).Find(&user, "username = ?", username)
+		result := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
+			return db.Order("name ASC")
+		}).Preload("Devices.Apps").Limit(1).Find(&user, "username = ?", username)
 		if result.Error != nil {
 			slog.Error("Database error checking session user", "username", username, "error", result.Error)
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
