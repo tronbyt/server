@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,9 +27,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 
-	appPath, err := s.resolveAppPath(*app.Path)
+	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "error", err)
+		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
 		return false
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
@@ -175,33 +174,6 @@ func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []strin
 		}
 	}
 	return filters
-}
-
-func (s *Server) resolveAppPath(path string) (string, error) {
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(s.DataDir, path)
-	}
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		slog.Error("Failed to resolve absolute path", "path", path, "error", err)
-		return "", err
-	}
-
-	// Security check: Ensure path is within DataDir
-	absDataDir, err := filepath.Abs(s.DataDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve data dir: %w", err)
-	}
-
-	// Clean paths to ensure consistent comparison
-	abs = filepath.Clean(abs)
-	absDataDir = filepath.Clean(absDataDir)
-
-	if !strings.HasPrefix(abs, absDataDir+string(os.PathSeparator)) && abs != absDataDir {
-		return "", fmt.Errorf("path traversal attempt: %s is not within %s", abs, absDataDir)
-	}
-
-	return abs, nil
 }
 
 func copyFile(src, dst string) error {
