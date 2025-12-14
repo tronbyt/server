@@ -442,6 +442,14 @@ func (s *Server) GetBaseURL(r *http.Request) string {
 	if host == "" {
 		host = r.Host
 	}
+
+	if port := r.Header.Get("X-Forwarded-Port"); port != "" {
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		host = net.JoinHostPort(host, port)
+	}
+
 	return fmt.Sprintf("%s://%s", scheme, host)
 }
 
