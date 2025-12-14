@@ -20,10 +20,10 @@ type WSMessage struct {
 }
 
 type ClientInfo struct {
-	FirmwareVersion string `json:"firmwareVersion"`
-	FirmwareType    string `json:"firmwareType"`
-	ProtocolVersion *int   `json:"protocolVersion"`
-	MACAddress      string `json:"macAddress"`
+	FirmwareVersion string `json:"firmware_version"`
+	FirmwareType    string `json:"firmware_type"`
+	ProtocolVersion *int   `json:"protocol_version"`
+	MACAddress      string `json:"mac"`
 }
 
 type WSEvent struct {
