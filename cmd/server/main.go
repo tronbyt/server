@@ -19,6 +19,7 @@ import (
 	"tronbyt-server/internal/migration"
 	"tronbyt-server/internal/server"
 
+	"github.com/quic-go/quic-go/http3"
 	"github.com/tronbyt/pixlet/runtime"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -324,8 +325,39 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 		os.Exit(1)
 	}
 
+	var handler http.Handler = srv
+
+	// HTTP/3 (QUIC) Support
+	if cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" && (cfg.Host != "" || cfg.Port != "") {
+		addr := net.JoinHostPort(cfg.Host, cfg.Port)
+		h3Srv := &http3.Server{
+			Addr:        addr,
+			Handler:     srv,
+			IdleTimeout: 120 * time.Second,
+		}
+
+		go func() {
+			slog.Info("Serving HTTP/3 (QUIC)", "addr", addr)
+			if err := h3Srv.ListenAndServeTLS(cfg.SSLCertFile, cfg.SSLKeyFile); err != nil && err != http.ErrServerClosed {
+				slog.Error("HTTP/3 Server failed", "error", err)
+			}
+		}()
+
+		// Wrap handler to set Alt-Svc header for TCP connections
+		baseHandler := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if err := h3Srv.SetQUICHeaders(w.Header()); err != nil {
+				slog.Debug("Failed to set QUIC headers", "error", err)
+			}
+			baseHandler.ServeHTTP(w, r)
+		})
+	}
+
 	httpSrv := &http.Server{
-		Handler: srv,
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	slog.Info("Tronbyt Server starting", "db", *dbDSN, "dataDir", *dataDir)
@@ -333,11 +365,15 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 	errCh := make(chan error, len(listeners))
 	for _, l := range listeners {
 		go func(l net.Listener) {
+			var err error
 			if cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" {
 				slog.Info("Serving TLS", "cert", cfg.SSLCertFile, "key", cfg.SSLKeyFile)
-				errCh <- httpSrv.ServeTLS(l, cfg.SSLCertFile, cfg.SSLKeyFile)
+				err = httpSrv.ServeTLS(l, cfg.SSLCertFile, cfg.SSLKeyFile)
 			} else {
-				errCh <- httpSrv.Serve(l)
+				err = httpSrv.Serve(l)
+			}
+			if err != nil && err != http.ErrServerClosed {
+				errCh <- err
 			}
 		}(l)
 	}
