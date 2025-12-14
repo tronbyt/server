@@ -327,8 +327,16 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 
 	var handler http.Handler = srv
 
+	// Determine number of servers to start and create error channel
+	numServers := len(listeners)
+	http3Enabled := cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" && (cfg.Host != "" || cfg.Port != "")
+	if http3Enabled {
+		numServers++
+	}
+	errCh := make(chan error, numServers)
+
 	// HTTP/3 (QUIC) Support
-	if cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" && (cfg.Host != "" || cfg.Port != "") {
+	if http3Enabled {
 		addr := net.JoinHostPort(cfg.Host, cfg.Port)
 		h3Srv := &http3.Server{
 			Addr:        addr,
@@ -338,8 +346,9 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 
 		go func() {
 			slog.Info("Serving HTTP/3 (QUIC)", "addr", addr)
-			if err := h3Srv.ListenAndServeTLS(cfg.SSLCertFile, cfg.SSLKeyFile); err != nil && err != http.ErrServerClosed {
-				slog.Error("HTTP/3 Server failed", "error", err)
+			err := h3Srv.ListenAndServeTLS(cfg.SSLCertFile, cfg.SSLKeyFile)
+			if err != nil && err != http.ErrServerClosed {
+				errCh <- fmt.Errorf("HTTP/3 server failed: %w", err)
 			}
 		}()
 
@@ -362,7 +371,6 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 
 	slog.Info("Tronbyt Server starting", "db", *dbDSN, "dataDir", *dataDir)
 
-	errCh := make(chan error, len(listeners))
 	for _, l := range listeners {
 		go func(l net.Listener) {
 			var err error
