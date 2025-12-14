@@ -433,21 +433,25 @@ func (s *Server) notifyDashboard(username string, event WSEvent) {
 	}
 }
 
-func (s *Server) getBaseURL(r *http.Request) string {
+func (s *Server) GetBaseURL(r *http.Request) string {
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
 	}
-	return fmt.Sprintf("%s://%s", scheme, r.Host)
+	host := r.Header.Get("X-Forwarded-Host")
+	if host == "" {
+		host = r.Host
+	}
+	return fmt.Sprintf("%s://%s", scheme, host)
 }
 
 func (s *Server) getImageURL(r *http.Request, deviceID string) string {
-	baseURL := s.getBaseURL(r)
+	baseURL := s.GetBaseURL(r)
 	return fmt.Sprintf("%s/%s/next", baseURL, deviceID)
 }
 
 func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
-	baseURL := s.getBaseURL(r)
+	baseURL := s.GetBaseURL(r)
 	wsScheme := "ws"
 	if strings.HasPrefix(baseURL, "https") {
 		wsScheme = "wss"

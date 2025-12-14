@@ -203,25 +203,14 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	locales := []string{"en_US", "de_DE"} // Add more as needed or scan directory
 	localizer := s.getLocalizer(r)
 
-	// Determine scheme and host for default URLs
-	scheme := "http"
-	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-	wsScheme := "ws"
-	if scheme == "https" {
-		wsScheme = "wss"
-	}
-	host := r.Host
-
 	s.renderTemplate(w, r, "update", TemplateData{
 		User:               user,
 		Device:             device,
 		DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
 		ColorFilterOptions: s.getColorFilterChoices(),
 		AvailableLocales:   locales,
-		DefaultImgURL:      fmt.Sprintf("%s://%s/%s/next", scheme, host, device.ID),
-		DefaultWsURL:       fmt.Sprintf("%s://%s/%s/ws", wsScheme, host, device.ID),
+		DefaultImgURL:      s.getImageURL(r, device.ID),
+		DefaultWsURL:       s.getWebsocketURL(r, device.ID),
 		BrightnessUI:       bUI,
 		NightBrightnessUI:  nbUI,
 		DimBrightnessUI:    dbUI,
@@ -243,11 +232,11 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	device.Type = data.DeviceType(r.FormValue("device_type"))
 	device.ImgURL = s.sanitizeURL(r.FormValue("img_url"))
 	if device.ImgURL == "" {
-		device.ImgURL = fmt.Sprintf("/%s/next", device.ID)
+		device.ImgURL = s.getImageURL(r, device.ID)
 	}
 	device.WsURL = s.sanitizeURL(r.FormValue("ws_url"))
 	if device.WsURL == "" {
-		device.WsURL = fmt.Sprintf("/%s/ws", device.ID)
+		device.WsURL = s.getWebsocketURL(r, device.ID)
 	}
 	device.Notes = r.FormValue("notes")
 
