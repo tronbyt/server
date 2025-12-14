@@ -261,8 +261,12 @@ func (s *Server) routes() {
 
 	// Websocket routes
 	s.SetupWebsocketRoutes()
+
+	// Health and Metrics
 	s.Router.HandleFunc("GET /health", s.handleHealth)
-	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromRegistry, promhttp.HandlerOpts{}))
+	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromRegistry, promhttp.HandlerOpts{
+		DisableCompression: true,
+	}))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
