@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -379,17 +380,17 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 		baseHandler := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Determine the external port to advertise in Alt-Svc.
-			// We must check X-Forwarded-Host manually because ProxyMiddleware
-			// runs inside baseHandler (srv.ServeHTTP), so r.Host is not yet updated here.
-			host := r.Header.Get("X-Forwarded-Host")
-			if host == "" {
-				host = r.Host
+			// Use GetBaseURL to handle X-Forwarded-Host/Proto respecting logic centrally.
+			baseURL := srv.GetBaseURL(r)
+			u, err := url.Parse(baseURL)
+			var port string
+			if err == nil {
+				port = u.Port()
 			}
 
-			// Try to extract port from host
-			_, port, err := net.SplitHostPort(host)
-			if err != nil {
-				// No port in host, assume standard HTTPS port 443
+			if port == "" {
+				// No port in URL, use default based on scheme
+				// HTTP/3 implies HTTPS, so 443.
 				port = "443"
 			}
 
