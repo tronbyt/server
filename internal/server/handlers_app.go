@@ -130,12 +130,9 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	displayTime, _ := strconv.Atoi(displayTimeStr)
 
 	// Construct source path
-	realPath := filepath.Join(s.DataDir, appPath)
-	// Safety check: ensure it's inside data dir
-	absDataDir, _ := filepath.Abs(s.DataDir)
-	absRealPath, _ := filepath.Abs(realPath)
-	if len(absRealPath) < len(absDataDir) || absRealPath[:len(absDataDir)] != absDataDir {
-		slog.Warn("Potential path traversal", "path", realPath)
+	realPath, err := securejoin.SecureJoin(s.DataDir, appPath)
+	if err != nil {
+		slog.Warn("Potential path traversal", "path", appPath, "error", err)
 		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
@@ -247,9 +244,11 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	// Get Schema
 	var schemaBytes []byte
 	if app.Path != nil && *app.Path != "" {
-		appPath, err := s.resolveAppPath(*app.Path)
+		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 		if err != nil {
-			slog.Error("Failed to resolve app path", "error", err)
+			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+			http.Error(w, "Invalid app path", http.StatusBadRequest)
+			return
 		} else {
 			schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
 			if err != nil {
@@ -410,9 +409,9 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "App path not set", http.StatusBadRequest)
 		return
 	}
-	appPath, err := s.resolveAppPath(*app.Path)
+	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "error", err)
+		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
 		http.Error(w, "Invalid app path", http.StatusBadRequest)
 		return
 	}
@@ -481,9 +480,9 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			http.Error(w, "App path not set", http.StatusBadRequest)
 			return
 		}
-		appPath, err := s.resolveAppPath(*app.Path)
+		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 		if err != nil {
-			slog.Error("Failed to resolve app path", "error", err)
+			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
 			http.Error(w, "Invalid app path", http.StatusBadRequest)
 			return
 		}
@@ -567,9 +566,9 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "App path not set", http.StatusBadRequest)
 		return
 	}
-	appPath, err := s.resolveAppPath(*app.Path)
+	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "error", err)
+		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
 		http.Error(w, "Invalid app path", http.StatusBadRequest)
 		return
 	}
@@ -899,9 +898,9 @@ func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sou
 	}
 
 	if !originalApp.Pushed && originalApp.Path != nil && *originalApp.Path != "" {
-		sourcePath, err := s.resolveAppPath(*originalApp.Path)
+		sourcePath, err := securejoin.SecureJoin(s.DataDir, *originalApp.Path)
 		if err != nil {
-			return fmt.Errorf("failed to resolve source path: %w", err)
+			return fmt.Errorf("failed to resolve source path %s: %w", *originalApp.Path, err)
 		}
 		installDir := filepath.Join(s.DataDir, "installations", newIname)
 		if err := os.MkdirAll(installDir, 0755); err != nil {
