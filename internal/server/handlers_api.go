@@ -15,6 +15,8 @@ import (
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/renderer"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 // --- API Handlers ---
@@ -546,11 +548,9 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 		filename = fmt.Sprintf("__%d.webp", time.Now().UnixNano())
 	}
 
-	path := filepath.Join(dir, filename)
-
-	// Security Check
-	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(dir)+string(os.PathSeparator)) {
-		return fmt.Errorf("path traversal attempt: %s", path)
+	path, err := securejoin.SecureJoin(dir, filename)
+	if err != nil {
+		return err
 	}
 
 	return os.WriteFile(path, data, 0644)
@@ -835,15 +835,14 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Clean up files (install dir and webp)
-	installDir := filepath.Join(s.DataDir, "installations", iname)
-	// Security check for path traversal
-	expectedPrefix := filepath.Join(s.DataDir, "installations") + string(os.PathSeparator)
-	if strings.HasPrefix(filepath.Clean(installDir), expectedPrefix) {
+	installationsDir := filepath.Join(s.DataDir, "installations")
+	installDir, err := securejoin.SecureJoin(installationsDir, iname)
+	if err != nil {
+		slog.Warn("Potential path traversal detected in handleDeleteInstallationAPI", "iname", iname, "error", err)
+	} else {
 		if err := os.RemoveAll(installDir); err != nil {
 			slog.Error("Failed to remove install directory", "path", installDir, "error", err)
 		}
-	} else {
-		slog.Warn("Potential path traversal detected in handleDeleteInstallationAPI", "iname", iname)
 	}
 
 	webpDir := s.getDeviceWebPDir(device.ID)
