@@ -1,12 +1,17 @@
 package server
 
 import (
+	"bufio"
+	"compress/gzip"
 	"context"
 	"errors"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"tronbyt-server/internal/data"
@@ -277,4 +282,120 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+var gzipWriterPool = sync.Pool{
+	New: func() any {
+		return gzip.NewWriter(io.Discard)
+	},
+}
+
+// GzipMiddleware compresses HTTP responses with gzip if the client supports it.
+func GzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(strings.ToLower(r.Header.Get("Accept-Encoding")), "gzip") ||
+			strings.Contains(strings.ToLower(r.Header.Get("Connection")), "upgrade") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gzw := &gzipResponseWriter{ResponseWriter: w}
+		defer func() {
+			if r := recover(); r != nil {
+				// We are panicking. Do not close the gzip writer to avoid writing a footer
+				// which would corrupt the response if the recover middleware writes an error.
+				// We must re-panic to allow the recovery middleware to handle it.
+				panic(r)
+			}
+			if err := gzw.Close(); err != nil {
+				slog.Error("Failed to close gzip writer", "error", err)
+			}
+		}()
+
+		next.ServeHTTP(gzw, r)
+	})
+}
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+
+	gz          *gzip.Writer
+	wroteHeader bool
+	hijacked    bool
+}
+
+func (w *gzipResponseWriter) WriteHeader(code int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+
+	// If response code does not allow body, do not create gzip writer
+	if code == http.StatusNoContent || code == http.StatusNotModified || (code >= 100 && code < 200) {
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
+
+	w.Header().Del("Content-Length")
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Add("Vary", "Accept-Encoding")
+	w.ResponseWriter.WriteHeader(code)
+
+	w.gz = gzipWriterPool.Get().(*gzip.Writer)
+	w.gz.Reset(w.ResponseWriter)
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		// Detect content type if not set
+		if w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", http.DetectContentType(b))
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+	if w.gz != nil {
+		return w.gz.Write(b)
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *gzipResponseWriter) Close() error {
+	if w.hijacked {
+		return nil
+	}
+	if w.gz != nil {
+		err := w.gz.Close()
+		gzipWriterPool.Put(w.gz)
+		w.gz = nil
+		return err
+	}
+	return nil
+}
+
+func (w *gzipResponseWriter) Flush() {
+	if w.gz != nil {
+		_ = w.gz.Flush()
+	}
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+// Hijack implements http.Hijacker.
+func (w *gzipResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("http.Hijacker not supported by underlying ResponseWriter")
+	}
+	w.hijacked = true // Mark as hijacked
+	return h.Hijack()
+}
+
+// Push implements http.Pusher.
+func (w *gzipResponseWriter) Push(target string, opts *http.PushOptions) error {
+	p, ok := w.ResponseWriter.(http.Pusher)
+	if !ok {
+		return errors.New("http.Pusher not supported by underlying ResponseWriter")
+	}
+	return p.Push(target, opts)
 }

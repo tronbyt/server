@@ -266,6 +266,6 @@ func (s *Server) routes() {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Chain middlewares: Recover -> Logging -> Proxy -> Mux
-	RecoverMiddleware(LoggingMiddleware(ProxyMiddleware(s.Router))).ServeHTTP(w, r)
+	// Chain middlewares: Recover -> Gzip -> Logging -> Proxy -> Mux
+	RecoverMiddleware(GzipMiddleware(LoggingMiddleware(ProxyMiddleware(s.Router)))).ServeHTTP(w, r)
 }
