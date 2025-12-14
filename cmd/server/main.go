@@ -346,6 +346,7 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 		}
 		tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
 		}
 		slog.Info("TLS certificates loaded", "cert", cfg.SSLCertFile, "key", cfg.SSLKeyFile)
 	}
