@@ -322,6 +322,7 @@ type gzipResponseWriter struct {
 	gz          *gzip.Writer
 	wroteHeader bool
 	hijacked    bool
+	skip        bool
 }
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
@@ -330,19 +331,47 @@ func (w *gzipResponseWriter) WriteHeader(code int) {
 	}
 	w.wroteHeader = true
 
-	// If response code does not allow body, do not create gzip writer
-	if code == http.StatusNoContent || code == http.StatusNotModified || (code >= 100 && code < 200) {
-		w.ResponseWriter.WriteHeader(code)
-		return
+	// If Content-Encoding is already set, skip compression
+	if w.Header().Get("Content-Encoding") != "" {
+		w.skip = true
 	}
 
-	w.Header().Del("Content-Length")
-	w.Header().Set("Content-Encoding", "gzip")
-	w.Header().Add("Vary", "Accept-Encoding")
+	// Check Content-Type against allowlist
+	contentType := w.Header().Get("Content-Type")
+	// Clean up content type (remove params like charset)
+	if idx := strings.Index(contentType, ";"); idx != -1 {
+		contentType = contentType[:idx]
+	}
+	contentType = strings.TrimSpace(strings.ToLower(contentType))
+
+	isCompressible := strings.HasPrefix(contentType, "text/") ||
+		contentType == "application/json" ||
+		contentType == "application/javascript" ||
+		contentType == "application/x-javascript" ||
+		contentType == "application/xml" ||
+		contentType == "application/ld+json" ||
+		contentType == "image/svg+xml"
+
+	if !isCompressible {
+		w.skip = true
+	}
+
+	// If response code does not allow body, do not create gzip writer
+	if code == http.StatusNoContent || code == http.StatusNotModified || (code >= 100 && code < 200) {
+		w.skip = true
+	}
+
+	if !w.skip {
+		w.Header().Del("Content-Length")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Add("Vary", "Accept-Encoding")
+	}
 	w.ResponseWriter.WriteHeader(code)
 
-	w.gz = gzipWriterPool.Get().(*gzip.Writer)
-	w.gz.Reset(w.ResponseWriter)
+	if !w.skip {
+		w.gz = gzipWriterPool.Get().(*gzip.Writer)
+		w.gz.Reset(w.ResponseWriter)
+	}
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
@@ -353,14 +382,23 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 		}
 		w.WriteHeader(http.StatusOK)
 	}
-	if w.gz != nil {
-		return w.gz.Write(b)
+	if w.skip {
+		return w.ResponseWriter.Write(b)
 	}
-	return w.ResponseWriter.Write(b)
+
+	// CRITICAL: If compression is not skipped, w.gz *must* be initialized.
+	// If it's nil, it indicates an internal server error or unexpected state,
+	// and writing uncompressed data would lead to client-side decompression failures.
+	if w.gz == nil {
+		slog.Error("gzip writer is nil when compression is not skipped, but Content-Encoding: gzip header was set.")
+		return 0, errors.New("internal server error: failed to write gzipped response")
+	}
+
+	return w.gz.Write(b)
 }
 
 func (w *gzipResponseWriter) Close() error {
-	if w.hijacked {
+	if w.hijacked || w.skip {
 		return nil
 	}
 	if w.gz != nil {
