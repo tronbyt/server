@@ -69,7 +69,7 @@
               <option value="" disabled selected>{{ t .Localizer "Copy to..." }}</option>
               {{ range $item := .DevicesWithUIScales }}
               {{ $target_device := $item.Device }}
-              {{ if ne $target_device.ID .Device.ID }}
+              {{ if ne $target_device.ID $.Device.ID }}
               <option value="{{ $target_device.ID }}">{{ $target_device.Name }}</option>
               {{ end }}
               {{ end }}
