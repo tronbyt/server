@@ -18,11 +18,28 @@ import (
 )
 
 func newTestServerAPI(t *testing.T) *Server {
-	dbName := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
-	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+	// Use a private in-memory database (`cache=private`) to ensure each test gets a completely
+	// isolated database. We must also limit the connection pool to a single connection
+	// (`SetMaxOpenConns(1)`) because each new connection to a private in-memory database
+	// would create a new, separate database. This configuration is crucial to prevent both
+	// race conditions (like "database table is locked") and data visibility issues across
+	// different operations within the same test.
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=private"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
 	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("Failed to get sql.DB: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Logf("Failed to close DB: %v", err)
+		}
+	})
 
 	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
 		t.Fatalf("Failed to migrate DB: %v", err)
