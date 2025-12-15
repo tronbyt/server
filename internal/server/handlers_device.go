@@ -586,3 +586,72 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	slog.Info("Device config imported successfully", "device_id", device.ID, "username", user.Username)
 	s.flashAndRedirect(w, r, "Device configuration imported successfully", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 }
+
+func (s *Server) handleUpdateBrightness(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	brightnessStr := r.FormValue("brightness")
+	bUI, err := strconv.Atoi(brightnessStr)
+	if err != nil || bUI < 0 || bUI > 5 {
+		slog.Warn("Invalid brightness value", "device", device.ID, "value", brightnessStr)
+		http.Error(w, "Brightness must be between 0 and 5", http.StatusBadRequest)
+		return
+	}
+
+	// Parse Scale
+	var customScale map[int]int
+	if device.CustomBrightnessScale != "" {
+		customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
+	}
+
+	device.Brightness = data.BrightnessFromUIScale(bUI, customScale)
+
+	if err := s.DB.Save(device).Error; err != nil {
+		slog.Error("Failed to update device brightness", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Notify Device (Websocket)
+	s.Broadcaster.Notify(device.ID, nil)
+
+	// Notify Dashboard
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{
+		Type:     "device_updated",
+		DeviceID: device.ID,
+		Payload:  map[string]any{"brightness": bUI},
+	})
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleUpdateInterval(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	intervalStr := r.FormValue("interval")
+	interval, err := strconv.Atoi(intervalStr)
+	if err != nil || interval < 1 {
+		slog.Warn("Invalid interval value", "device", device.ID, "value", intervalStr)
+		http.Error(w, "Interval must be 1 or greater", http.StatusBadRequest)
+		return
+	}
+
+	device.DefaultInterval = interval
+
+	if err := s.DB.Save(device).Error; err != nil {
+		slog.Error("Failed to update device interval", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Notify Dashboard
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{
+		Type:     "device_updated",
+		DeviceID: device.ID,
+		Payload:  map[string]any{"interval": interval},
+	})
+
+	w.WriteHeader(http.StatusOK)
+}

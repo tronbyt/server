@@ -47,7 +47,7 @@ function updateBrightness(deviceId, brightness) {
   const formData = new URLSearchParams();
   formData.append('brightness', brightness);
 
-  fetch(`/${deviceId}/update_brightness`, {
+  fetch(`/devices/${deviceId}/update_brightness`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -77,7 +77,7 @@ function updateInterval(deviceId, interval) {
   const formData = new URLSearchParams();
   formData.append('interval', interval);
 
-  fetch(`/${deviceId}/update_interval`, {
+  fetch(`/devices/${deviceId}/update_interval`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -114,45 +114,45 @@ function toggleDetails(deviceId) {
 const etags = {};
 
 function pollImageWithEtag(deviceId) {
-    const img = document.getElementById('currentWebp-' + deviceId);
-    if (!img) return;
+  const img = document.getElementById('currentWebp-' + deviceId);
+  if (!img) return;
 
-    const url = img.dataset.src;
-    const headers = new Headers();
-    if (etags[deviceId]) {
-        headers.append('If-None-Match', etags[deviceId]);
-    }
+  const url = img.dataset.src;
+  const headers = new Headers();
+  if (etags[deviceId]) {
+    headers.append('If-None-Match', etags[deviceId]);
+  }
 
-    fetch(url, { headers: headers, cache: 'no-cache' })
-        .then(response => {
-            if (response.status === 200) {
-                const newEtag = response.headers.get('ETag');
-                if (newEtag) {
-                    etags[deviceId] = newEtag;
-                }
-                return response.blob();
-            } else if (response.status === 304) {
-                // Not modified, do nothing
-                return null;
-            } else {
-                // Handle other errors
-                console.error('Error fetching image for device', deviceId, response.status);
-                return null;
-            }
-        })
-        .then(blob => {
-            if (blob) {
-                const oldSrc = img.src;
-                // Check if oldSrc is a blob URL and revoke it to prevent memory leaks
-                if (oldSrc.startsWith('blob:')) {
-                    URL.revokeObjectURL(oldSrc);
-                }
-                img.src = URL.createObjectURL(blob);
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error for device', deviceId, error);
-        });
+  fetch(url, { headers: headers, cache: 'no-cache' })
+    .then(response => {
+      if (response.status === 200) {
+        const newEtag = response.headers.get('ETag');
+        if (newEtag) {
+          etags[deviceId] = newEtag;
+        }
+        return response.blob();
+      } else if (response.status === 304) {
+        // Not modified, do nothing
+        return null;
+      } else {
+        // Handle other errors
+        console.error('Error fetching image for device', deviceId, response.status);
+        return null;
+      }
+    })
+    .then(blob => {
+      if (blob) {
+        const oldSrc = img.src;
+        // Check if oldSrc is a blob URL and revoke it to prevent memory leaks
+        if (oldSrc.startsWith('blob:')) {
+          URL.revokeObjectURL(oldSrc);
+        }
+        img.src = URL.createObjectURL(blob);
+      }
+    })
+    .catch(error => {
+      console.error('Fetch error for device', deviceId, error);
+    });
 }
 
 // AJAX function to move apps without page reload
@@ -333,9 +333,9 @@ function deleteApp(deviceId, iname, redirectAfterDelete = false, confirmMessage 
       } else {
         console.log('App deleted successfully');
         if (redirectAfterDelete) {
-            window.location.href = "/";
+          window.location.href = "/";
         } else {
-            refreshAppsList(deviceId);
+          refreshAppsList(deviceId);
         }
       }
     })
@@ -384,50 +384,50 @@ function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname
 
 // AJAX function to preview an app
 function previewApp(deviceId, iname, config = null, button = null, translations = null) {
-    const url = `/devices/${deviceId}/${iname}/preview`;
-    let options = {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
+  const url = `/devices/${deviceId}/${iname}/preview`;
+  let options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  };
+
+  if (config) {
+    options.body = JSON.stringify(config);
+  }
+
+  let originalButtonContent = null;
+  if (button) {
+    originalButtonContent = button.innerHTML;
+    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> ${translations?.previewing || 'Previewing...'}`;
+    button.disabled = true;
+  }
+
+  return fetch(url, options)
+    .then(response => {
+      if (button) {
+        if (response.ok) {
+          button.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${translations?.sent || 'Sent'}`;
+        } else {
+          button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
+          console.error('Preview request failed with status:', response.status);
         }
-    };
-
-    if (config) {
-        options.body = JSON.stringify(config);
-    }
-
-    let originalButtonContent = null;
-    if (button) {
-        originalButtonContent = button.innerHTML;
-        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> ${translations?.previewing || 'Previewing...'}`;
-        button.disabled = true;
-    }
-
-    return fetch(url, options)
-        .then(response => {
-            if (button) {
-                if (response.ok) {
-                    button.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${translations?.sent || 'Sent'}`;
-                } else {
-                    button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
-                    console.error('Preview request failed with status:', response.status);
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error sending preview request:', error);
-            if (button) {
-                button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
-            }
-        })
-        .finally(() => {
-            if (button) {
-                setTimeout(() => {
-                    button.innerHTML = originalButtonContent;
-                    button.disabled = false;
-                }, 2000);
-            }
-        });
+      }
+    })
+    .catch(error => {
+      console.error('Error sending preview request:', error);
+      if (button) {
+        button.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${translations?.failed || 'Failed'}`;
+      }
+    })
+    .finally(() => {
+      if (button) {
+        setTimeout(() => {
+          button.innerHTML = originalButtonContent;
+          button.disabled = false;
+        }, 2000);
+      }
+    });
 }
 
 // Cookie utility functions
@@ -714,7 +714,7 @@ function setupLazyLoading() {
           img.src = img.dataset.src;
           img.removeAttribute('data-src');
           // Add loaded class when image loads
-          img.onload = function() {
+          img.onload = function () {
             img.classList.add('loaded');
           };
           // Also add loaded class immediately for cached images
@@ -1413,19 +1413,19 @@ function markAppAsBroken(appName, packageName, event) {
   fetch(url, {
     method: 'POST'
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      alert("App marked as broken successfully!");
-      location.reload();
-    } else {
-      alert("Error: " + data.message);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert("Failed to mark app as broken");
-  });
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert("App marked as broken successfully!");
+        location.reload();
+      } else {
+        alert("Error: " + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Failed to mark app as broken");
+    });
 }
 
 // Function to unmark app as broken (development mode only)
@@ -1445,19 +1445,19 @@ function unmarkAppAsBroken(appName, packageName, event) {
   fetch(url, {
     method: 'POST'
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      alert("App unmarked successfully!");
-      location.reload();
-    } else {
-      alert("Error: " + data.message);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert("Failed to unmark app");
-  });
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert("App unmarked successfully!");
+        location.reload();
+      } else {
+        alert("Error: " + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Failed to unmark app");
+    });
 }
 
 function initializeViewToggles() {
@@ -1603,7 +1603,7 @@ function switchToCollapsedView(deviceId) {
 }
 
 // Initialize drag and drop for all app cards when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Common initializations
   initializeDragAndDrop();
   initializeViewToggles();
@@ -1613,23 +1613,23 @@ document.addEventListener('DOMContentLoaded', function() {
   const pollingIntervals = {};
 
   function startPollingAll() {
-      const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
-      webpImages.forEach(image => {
-        const deviceId = image.id.replace('currentWebp-', '');
-        if (!pollingIntervals[deviceId]) {
-            pollImageWithEtag(deviceId);
-            pollingIntervals[deviceId] = setInterval(() => {
-                pollImageWithEtag(deviceId);
-            }, 5000);
-        }
-      });
+    const webpImages = document.querySelectorAll('[id^="currentWebp-"]');
+    webpImages.forEach(image => {
+      const deviceId = image.id.replace('currentWebp-', '');
+      if (!pollingIntervals[deviceId]) {
+        pollImageWithEtag(deviceId);
+        pollingIntervals[deviceId] = setInterval(() => {
+          pollImageWithEtag(deviceId);
+        }, 5000);
+      }
+    });
   }
 
   function stopPollingAll() {
-      Object.keys(pollingIntervals).forEach(deviceId => {
-          clearInterval(pollingIntervals[deviceId]);
-          delete pollingIntervals[deviceId];
-      });
+    Object.keys(pollingIntervals).forEach(deviceId => {
+      clearInterval(pollingIntervals[deviceId]);
+      delete pollingIntervals[deviceId];
+    });
   }
 
   // Start polling initially (safety net)
@@ -1640,34 +1640,44 @@ document.addEventListener('DOMContentLoaded', function() {
   const dashboardWs = new WebSocket(wsUrl);
 
   dashboardWs.onopen = () => {
-      console.log('Dashboard WebSocket connected');
-      stopPollingAll(); // Rely on push updates
+    console.log('Dashboard WebSocket connected');
+    stopPollingAll(); // Rely on push updates
   };
   function refreshAll() {
-      console.log('Dashboard refresh signal received');
-      const appListContainers = document.querySelectorAll('[id^="appsList-"]');
-      appListContainers.forEach(container => {
-        const deviceId = container.id.replace('appsList-', '');
-        refreshAppsList(deviceId);
-        pollImageWithEtag(deviceId);
-      });
+    console.log('Dashboard refresh signal received');
+    const appListContainers = document.querySelectorAll('[id^="appsList-"]');
+    appListContainers.forEach(container => {
+      const deviceId = container.id.replace('appsList-', '');
+      refreshAppsList(deviceId);
+      pollImageWithEtag(deviceId);
+    });
   }
 
   dashboardWs.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data);
       if (msg.type === 'refresh') {
-          refreshAll();
+        refreshAll();
       } else if (msg.type === 'apps_changed' && msg.device_id) {
-          console.log('Apps changed for device', msg.device_id);
-          refreshAppsList(msg.device_id);
-          pollImageWithEtag(msg.device_id);
+        console.log('Apps changed for device', msg.device_id);
+        refreshAppsList(msg.device_id);
+        pollImageWithEtag(msg.device_id);
+      } else if (msg.type === 'device_updated' && msg.device_id) {
+        console.log('Device updated', msg.device_id);
+        if (msg.payload) {
+          if (msg.payload.brightness !== undefined) {
+            updateBrightnessValue(msg.device_id, msg.payload.brightness);
+          }
+          if (msg.payload.interval !== undefined) {
+            updateIntervalValue(msg.device_id, msg.payload.interval);
+          }
+        }
       } else if (msg.type === 'image_updated' && msg.device_id) {
-          console.log('Image updated for device', msg.device_id);
-          pollImageWithEtag(msg.device_id);
+        console.log('Image updated for device', msg.device_id);
+        pollImageWithEtag(msg.device_id);
       } else if (msg.type === 'device_deleted' && msg.device_id) {
-          console.log('Device deleted', msg.device_id);
-          window.location.reload();
+        console.log('Device deleted', msg.device_id);
+        window.location.reload();
       }
     } catch (e) {
       if (event.data === 'refresh') {
@@ -1676,8 +1686,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
   dashboardWs.onclose = (event) => {
-      console.log('Dashboard WebSocket disconnected', event);
-      startPollingAll(); // Fallback to polling
+    console.log('Dashboard WebSocket disconnected', event);
+    startPollingAll(); // Fallback to polling
   };
   dashboardWs.onerror = (error) => { console.error('Dashboard WebSocket error:', error); };
 
@@ -1694,7 +1704,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 
     // Event delegation for clicks on app items
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       const appItem = e.target.closest('.app-item');
       if (!appItem) return;
 
@@ -1713,20 +1723,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const recInterval = appItem.getAttribute('data-recommended-interval');
       if (recInterval && recInterval !== '0') {
-          document.getElementById('uinterval').value = recInterval;
+        document.getElementById('uinterval').value = recInterval;
       } else {
-          document.getElementById('uinterval').value = 10;
+        document.getElementById('uinterval').value = 10;
       }
 
       // Automatically submit the form
       const form = document.getElementById('main_form');
       if (form) {
-          form.submit();
+        form.submit();
       }
     });
 
     // Enhanced image loading with error handling (for addapp page)
-    document.addEventListener('load', function(e) {
+    document.addEventListener('load', function (e) {
       if (e.target.classList.contains('lazy-image')) {
         e.target.classList.add('loaded');
         const skeleton = e.target.parentElement.querySelector('.skeleton-loader');
@@ -1736,7 +1746,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }, true);
 
-    document.addEventListener('error', function(e) {
+    document.addEventListener('error', function (e) {
       if (e.target.classList.contains('lazy-image')) {
         const skeleton = e.target.parentElement.querySelector('.skeleton-loader');
         if (skeleton) {
