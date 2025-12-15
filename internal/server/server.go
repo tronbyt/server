@@ -267,9 +267,7 @@ func (s *Server) routes() {
 
 	// Health and Metrics
 	s.Router.HandleFunc("GET /health", s.handleHealth)
-	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromRegistry, promhttp.HandlerOpts{
-		DisableCompression: true,
-	}))
+	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromRegistry, promhttp.HandlerOpts{}))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -1,9 +1,7 @@
 package server
 
 import (
-	"compress/gzip"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -62,106 +60,4 @@ func TestLoginRedirectToRegisterIfNoUsers(t *testing.T) {
 		t.Errorf("handler returned wrong redirect location: got %v want %v",
 			location.Path, "/auth/register")
 	}
-}
-
-func TestGzipMiddleware(t *testing.T) {
-	s := newTestServer(t)
-	s.Router.HandleFunc("GET /gzip-test", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		if _, err := w.Write([]byte("Hello, Gzip!")); err != nil {
-			t.Logf("Write failed: %v", err)
-		}
-	})
-	s.Router.HandleFunc("GET /gzip-204", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	t.Run("with Accept-Encoding gzip", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/gzip-test", nil)
-		req.Header.Set("Accept-Encoding", "gzip")
-		rr := httptest.NewRecorder()
-
-		s.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("Expected 200 OK, got %v", rr.Code)
-		}
-
-		if rr.Header().Get("Content-Encoding") != "gzip" {
-			t.Errorf("Expected Content-Encoding: gzip, got %v", rr.Header().Get("Content-Encoding"))
-		}
-
-		// Verify content
-		gr, err := gzip.NewReader(rr.Body)
-		if err != nil {
-			t.Fatalf("Failed to create gzip reader: %v", err)
-		}
-		defer func() { _ = gr.Close() }()
-
-		body, err := io.ReadAll(gr)
-		if err != nil {
-			t.Fatalf("Failed to read gzip body: %v", err)
-		}
-
-		if string(body) != "Hello, Gzip!" {
-			t.Errorf("Expected body 'Hello, Gzip!', got %q", string(body))
-		}
-	})
-
-	t.Run("without Accept-Encoding", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/gzip-test", nil)
-		rr := httptest.NewRecorder()
-
-		s.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("Expected 200 OK, got %v", rr.Code)
-		}
-
-		if rr.Header().Get("Content-Encoding") != "" {
-			t.Errorf("Expected no Content-Encoding, got %v", rr.Header().Get("Content-Encoding"))
-		}
-
-		if rr.Body.String() != "Hello, Gzip!" {
-			t.Errorf("Expected body 'Hello, Gzip!', got %q", rr.Body.String())
-		}
-	})
-
-	t.Run("with 204 No Content", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/gzip-204", nil)
-		req.Header.Set("Accept-Encoding", "gzip")
-		rr := httptest.NewRecorder()
-
-		s.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusNoContent {
-			t.Errorf("Expected 204 No Content, got %v", rr.Code)
-		}
-
-		if rr.Header().Get("Content-Encoding") == "gzip" {
-			t.Error("Expected no Content-Encoding for 204 response")
-		}
-
-		if rr.Body.Len() > 0 {
-			t.Errorf("Expected empty body for 204, got length %d", rr.Body.Len())
-		}
-	})
-
-	t.Run("WebSocket Upgrade Skipped", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/gzip-test", nil)
-		req.Header.Set("Accept-Encoding", "gzip")
-		req.Header.Set("Connection", "Upgrade")
-		req.Header.Set("Upgrade", "websocket")
-		rr := httptest.NewRecorder()
-
-		s.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Errorf("Expected 200 OK (mock handler), got %v", rr.Code)
-		}
-
-		if rr.Header().Get("Content-Encoding") != "" {
-			t.Errorf("Expected no Content-Encoding for WS upgrade, got %v", rr.Header().Get("Content-Encoding"))
-		}
-	})
 }
