@@ -63,6 +63,13 @@ func (dt DeviceType) String() string {
 	}
 }
 
+// Value returns the slug to be stored in the database.
+// Without this, the Postgres driver will incorrectly store
+// the value of DeviceType.String.
+func (dt DeviceType) Value() (driver.Value, error) {
+	return string(dt), nil
+}
+
 type ProtocolType string
 
 const (
