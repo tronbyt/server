@@ -80,12 +80,6 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		// Add default config
 		deviceTimezone := device.GetTimezone()
 		config["$tz"] = deviceTimezone
-		if device.Location.Lat != 0 {
-			config["$lat"] = fmt.Sprintf("%f", device.Location.Lat)
-		}
-		if device.Location.Lng != 0 {
-			config["$lng"] = fmt.Sprintf("%f", device.Location.Lng)
-		}
 
 		appInterval := device.GetEffectiveDwellTime(app)
 
