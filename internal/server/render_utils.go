@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,6 +17,59 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 )
+
+// RenderApp consolidates the logic for rendering an app for a device.
+// It handles config normalization, timezone/locale injection, dwell time, and filters.
+func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, appPath string, configOverrides map[string]any) ([]byte, []string, error) {
+	// Config
+	var rawConfig map[string]any
+	if configOverrides != nil {
+		rawConfig = configOverrides
+	} else if app != nil {
+		rawConfig = app.Config
+	}
+	config := normalizeConfig(rawConfig)
+
+	// Timezone & Locale
+	var deviceTimezone string
+	var locale *string
+	supports2x := false
+
+	if device != nil {
+		deviceTimezone = device.GetTimezone()
+		config["$tz"] = deviceTimezone
+		locale = device.Locale
+		supports2x = device.Type.Supports2x()
+	}
+
+	// Dwell Time
+	var appInterval int
+	if device != nil {
+		appInterval = device.GetEffectiveDwellTime(app)
+	} else {
+		appInterval = 15 // Default fallback if no device context
+	}
+
+	// Filters
+	var filters []string
+	if device != nil {
+		filters = s.getEffectiveFilters(device, app)
+	}
+
+	return renderer.Render(
+		ctx,
+		appPath,
+		config,
+		64, 32,
+		time.Duration(appInterval)*time.Second,
+		30*time.Second,
+		true,
+		supports2x,
+		&deviceTimezone,
+		locale,
+		filters,
+	)
+}
 
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
 	// 1. Pushed App (Pre-rendered)
@@ -67,43 +121,13 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Second {
 		slog.Info("Rendering app", "app", appBasename)
 
-		// Config
-		config := make(map[string]string)
-		for k, v := range app.Config {
-			if str, ok := v.(string); ok {
-				config[k] = str
-			} else {
-				config[k] = fmt.Sprintf("%v", v)
-			}
-		}
-
-		// Add default config
-		deviceTimezone := device.GetTimezone()
-		config["$tz"] = deviceTimezone
-
-		appInterval := device.GetEffectiveDwellTime(app)
-
-		// Filters
-		filters := s.getEffectiveFilters(device, app)
-
 		startTime := time.Now()
-		imgBytes, messages, err := renderer.Render(
-			ctx,
-			appPath,
-			config,
-			64, 32,
-			time.Duration(appInterval)*time.Second,
-			30*time.Second,
-			true,
-			device.Type.Supports2x(),
-			&deviceTimezone,
-			device.Locale,
-			filters,
-		)
+		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
+		renderDur := time.Since(startTime)
+
 		for _, msg := range messages {
 			slog.Debug("Render message", "app", appBasename, "message", msg)
 		}
-		renderDur := time.Since(startTime)
 
 		success := err == nil && len(imgBytes) > 0
 
@@ -234,4 +258,20 @@ func (s *Server) sendDefaultImage(w http.ResponseWriter, r *http.Request, device
 		slog.Error("Embedded file does not implement ReadSeeker")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+func normalizeConfig(input map[string]any) map[string]string {
+	config := make(map[string]string)
+	for k, v := range input {
+		if str, ok := v.(string); ok {
+			config[k] = str
+		} else {
+			if b, err := json.Marshal(v); err == nil {
+				config[k] = string(b)
+			} else {
+				config[k] = fmt.Sprintf("%v", v)
+			}
+		}
+	}
+	return config
 }
