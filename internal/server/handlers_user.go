@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
+	"tronbyt-server/internal/legacy"
 
 	"gorm.io/gorm"
 )
@@ -103,7 +105,13 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	// Clean up files
 	for _, d := range targetUser.Devices {
-		if err := os.RemoveAll(s.getDeviceWebPDir(d.ID)); err != nil {
+		deviceWebpDir, err := s.ensureDeviceImageDir(d.ID)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for deletion", "device_id", d.ID, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if err := os.RemoveAll(deviceWebpDir); err != nil {
 			slog.Error("Failed to remove device webp directory", "device_id", d.ID, "error", err)
 		}
 	}
@@ -236,14 +244,36 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		}
 	}()
 
-	var importedUser data.User
-	if err := json.NewDecoder(file).Decode(&importedUser); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	// Read file content
+	content, err := io.ReadAll(file)
+	if err != nil {
+		slog.Error("Failed to read uploaded file", "error", err)
+		http.Error(w, "Failed to read file", http.StatusInternalServerError)
 		return
+	}
+
+	var importedUser data.User
+
+	// Try standard format first
+	errStandard := json.Unmarshal(content, &importedUser)
+	if errStandard != nil || importedUser.Username == "" {
+		// Try legacy format
+		var legacyUser legacy.LegacyUser
+		if errLegacy := json.Unmarshal(content, &legacyUser); errLegacy == nil && legacyUser.Username != "" {
+			slog.Info("Detected legacy user config format")
+			// Map LegacyUser to data.User
+			importedUser = legacyUser.ToDataUser()
+		} else {
+			// Both failed
+			slog.Error("Failed to decode imported user JSON (both standard and legacy)", "standard_error", errStandard, "legacy_error", errLegacy)
+			s.flashAndRedirect(w, r, "Invalid JSON file or unsupported format.", "/auth/edit", http.StatusSeeOther)
+			return
+		}
 	}
 
 	var currentUser data.User
 	if err := s.DB.Preload("Devices").First(&currentUser, "username = ?", userContext.Username).Error; err != nil {
+		slog.Error("User not found during import", "username", userContext.Username, "error", err)
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -259,7 +289,13 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 
 	// Clean up files for all existing devices
 	for _, d := range currentUser.Devices {
-		if err := os.RemoveAll(s.getDeviceWebPDir(d.ID)); err != nil {
+		deviceWebpDir, err := s.ensureDeviceImageDir(d.ID)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for cleanup", "device_id", d.ID, "error", err)
+			s.flashAndRedirect(w, r, "Import failed: internal server error.", "/auth/edit", http.StatusSeeOther)
+			return
+		}
+		if err := os.RemoveAll(deviceWebpDir); err != nil {
 			slog.Error("Failed to remove device webp directory", "device_id", d.ID, "error", err)
 		}
 	}
@@ -294,11 +330,11 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 
 	if err != nil {
 		slog.Error("Import failed", "error", err)
-		http.Error(w, "Import failed", http.StatusInternalServerError)
+		s.flashAndRedirect(w, r, "Import failed. Check server logs.", "/auth/edit", http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "Configuration imported successfully.", "/auth/edit", http.StatusSeeOther)
 }
 
 func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {

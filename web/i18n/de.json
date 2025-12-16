@@ -1408,5 +1408,29 @@
   },
   "This will overwrite all current settings and apps. Continue?": {
     "other": "Dies überschreibt alle aktuellen Einstellungen und Apps. Fortfahren?"
+  },
+  "Invalid JSON file or unsupported format.": {
+    "other": "Ungültige JSON-Datei oder nicht unterstütztes Format."
+  },
+  "Invalid JSON structure: missing required fields.": {
+    "other": "Ungültige JSON-Struktur: erforderliche Felder fehlen."
+  },
+  "Import failed. Check server logs.": {
+    "other": "Import fehlgeschlagen. Prüfen Sie die Server-Logs."
+  },
+  "Configuration imported successfully.": {
+    "other": "Konfiguration erfolgreich importiert."
+  },
+  "Create a device by importing a JSON configuration file.": {
+    "other": "Erstellen Sie ein Gerät durch Importieren einer JSON-Konfigurationsdatei."
+  },
+  "New device imported successfully": {
+    "other": "Neues Gerät erfolgreich importiert"
+  },
+  "Imported device name cannot be empty.": {
+    "other": "Importierter Gerätename darf nicht leer sein."
+  },
+  "A device with this name already exists.": {
+    "other": "Ein Gerät mit diesem Namen existiert bereits."
   }
 }

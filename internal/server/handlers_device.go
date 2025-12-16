@@ -167,10 +167,11 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Create device webp directory
-	deviceWebpDir := s.getDeviceWebPDir(newDevice.ID)
-	if err := os.MkdirAll(deviceWebpDir, 0755); err != nil {
-		slog.Error("Failed to create device webp directory", "path", deviceWebpDir, "error", err)
-		// Not a fatal error, but log it
+	_, err = s.ensureDeviceImageDir(newDevice.ID)
+	if err != nil {
+		slog.Error("Failed to get or create device webp directory", "device_id", newDevice.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	// Redirect to dashboard
@@ -429,12 +430,18 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
 	// Clean up files
-	if err := os.RemoveAll(s.getDeviceWebPDir(device.ID)); err != nil {
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for deletion", "device_id", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if err := os.RemoveAll(deviceWebpDir); err != nil {
 		slog.Error("Failed to remove device webp directory", "device_id", device.ID, "error", err)
 	}
 
 	// Cascading delete in transaction
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps
 		if err := tx.Where("device_id = ?", device.ID).Delete(&data.App{}).Error; err != nil {
 			return err
@@ -516,11 +523,23 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	}
 
 	// Clean up WebP files for this device to prevent orphans
-	if err := os.RemoveAll(s.getDeviceWebPDir(device.ID)); err != nil {
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for cleanup during import", "device_id", device.ID, "error", err)
+		s.flashAndRedirect(w, r, "Import failed: internal server error.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+
+	if err := os.RemoveAll(deviceWebpDir); err != nil {
 		slog.Error("Failed to clear device webp directory during import", "device_id", device.ID, "error", err)
 	}
 	// Re-create the directory immediately
-	s.getDeviceWebPDir(device.ID)
+	_, err = s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to re-create device webp directory during import", "device_id", device.ID, "error", err)
+		s.flashAndRedirect(w, r, "Import failed: internal server error.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
 
 	// Regenerate URLs
 	importedDevice.ImgURL = s.getImageURL(r, device.ID)
@@ -654,4 +673,111 @@ func (s *Server) handleUpdateInterval(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+
+	// Max 1MB file size
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		slog.Error("Failed to parse multipart form for device import", "error", err)
+		http.Error(w, "File upload failed: invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		slog.Error("Failed to get uploaded file for device import", "error", err)
+		http.Error(w, "File upload failed", http.StatusBadRequest)
+		return
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Error("Failed to close uploaded device config file", "error", err)
+		}
+	}()
+
+	var importedDevice data.Device
+	if err := json.NewDecoder(file).Decode(&importedDevice); err != nil {
+		slog.Error("Failed to decode imported device JSON", "error", err)
+		s.flashAndRedirect(w, r, "Invalid JSON file", "/devices/create", http.StatusSeeOther)
+		return
+	}
+
+	localizer := s.getLocalizer(r)
+
+	// Validate imported device name for consistency with device creation form.
+	if importedDevice.Name == "" {
+		slog.Warn("Validation error: Imported device name empty during import")
+		s.flashAndRedirect(w, r, localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Imported device name cannot be empty."}), "/devices/create", http.StatusSeeOther)
+		return
+	}
+
+	for _, dev := range user.Devices {
+		if dev.Name == importedDevice.Name {
+			slog.Warn("Validation error: Imported device name already exists", "name", importedDevice.Name)
+			s.flashAndRedirect(w, r, localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "A device with this name already exists."}), "/devices/create", http.StatusSeeOther)
+			return
+		}
+	}
+
+	// Generate NEW ID and API Key
+	deviceID, err := generateSecureToken(8)
+	if err != nil {
+		slog.Error("Failed to generate device ID", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	apiKey, err := generateSecureToken(32)
+	if err != nil {
+		slog.Error("Failed to generate API key", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare new device
+	newDevice := importedDevice
+	newDevice.ID = deviceID
+	newDevice.Username = user.Username
+	newDevice.APIKey = apiKey
+	newDevice.Apps = nil // Clear apps for now, we'll insert them separately
+
+	// Set default ImgURL and WsURL if empty (or if imported ones are specific to old device)
+	// It's safer to regenerate them for the new ID
+	newDevice.ImgURL = s.getImageURL(r, newDevice.ID)
+	newDevice.WsURL = s.getWebsocketURL(r, newDevice.ID)
+
+	// Save to DB in transaction
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&newDevice).Error; err != nil {
+			return fmt.Errorf("failed to create device: %w", err)
+		}
+
+		// Create apps
+		for _, app := range importedDevice.Apps {
+			app.DeviceID = newDevice.ID
+			app.ID = 0 // Reset ID to allow GORM to generate new one
+			if err := tx.Create(&app).Error; err != nil {
+				return fmt.Errorf("failed to create app '%s': %w", app.Name, err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		slog.Error("New device import transaction failed", "error", err)
+		http.Error(w, "Import failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Create device webp directory
+	_, err = s.ensureDeviceImageDir(newDevice.ID)
+	if err != nil {
+		slog.Error("Failed to get or create device webp directory", "device_id", newDevice.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("New device imported successfully", "device_id", newDevice.ID, "username", user.Username)
+	s.flashAndRedirect(w, r, "New device imported successfully", "/", http.StatusSeeOther)
 }

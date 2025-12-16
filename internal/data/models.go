@@ -397,74 +397,110 @@ func (s *StringSlice) Scan(value any) error {
 // --- Models ---
 
 type User struct {
-	Username        string `gorm:"primaryKey"`
-	Password        string
-	Email           string
-	IsAdmin         bool `gorm:"default:false"`
-	APIKey          string
-	ThemePreference ThemePreference `gorm:"default:'system'"`
-	SystemRepoURL   string
-	AppRepoURL      string
+	Username        string          `gorm:"primaryKey"       json:"username"`
+	Password        string          `json:"-"`
+	Email           string          `json:"email"`
+	IsAdmin         bool            `gorm:"default:false"    json:"is_admin"`
+	APIKey          string          `json:"api_key"`
+	ThemePreference ThemePreference `gorm:"default:'system'" json:"theme_preference"`
+	SystemRepoURL   string          `json:"system_repo_url"`
+	AppRepoURL      string          `json:"app_repo_url"`
 
-	Devices     []Device             `gorm:"foreignKey:Username;references:Username"`
-	Credentials []WebAuthnCredential `gorm:"foreignKey:UserID;references:Username"`
+	Devices     []Device             `gorm:"foreignKey:Username;references:Username" json:"devices"`
+	Credentials []WebAuthnCredential `gorm:"foreignKey:UserID;references:Username"   json:"credentials"`
 }
 
 type WebAuthnCredential struct {
-	ID              string `gorm:"primaryKey"`
-	UserID          string `gorm:"index"`
-	User            User   `gorm:"foreignKey:UserID;references:Username"`
-	PublicKey       []byte
-	AttestationType string
-	Transport       string // Comma-separated
-	Flags           string // Comma-separated keywords
-	Authenticator   string // AAGUID
-	SignCount       uint32
-	CloneWarning    bool
-	BackupEligible  bool
-	BackupState     bool
+	ID              string `gorm:"primaryKey"                            json:"id"`
+	UserID          string `gorm:"index"                                 json:"user_id"`
+	User            User   `gorm:"foreignKey:UserID;references:Username" json:"-"`
+	PublicKey       []byte `json:"public_key"`
+	AttestationType string `json:"attestation_type"`
+	Transport       string `json:"transport"`     // Comma-separated
+	Flags           string `json:"flags"`         // Comma-separated keywords
+	Authenticator   string `json:"authenticator"` // AAGUID
+	SignCount       uint32 `json:"sign_count"`
+	CloneWarning    bool   `json:"clone_warning"`
+	BackupEligible  bool   `json:"backup_eligible"`
+	BackupState     bool   `json:"backup_state"`
+}
+
+type App struct {
+	// Composite key might be better, but a surrogate ID is easier for GORM
+	ID uint `gorm:"primaryKey" json:"id"`
+
+	DeviceID string `gorm:"index;index:idx_device_order,priority:1;type:string" json:"device_id"` // Foreign Key to Device
+	Iname    string `gorm:"index"                                               json:"iname"`     // Installation Name/ID (e.g. "123")
+
+	Name          string        `json:"name"`      // App Name (e.g. "Clock")
+	UInterval     int           `json:"uinterval"` // Update Interval
+	DisplayTime   int           `json:"display_time"`
+	Notes         string        `json:"notes"`
+	Enabled       bool          `json:"enabled"`
+	Pushed        bool          `json:"pushed"`
+	Order         int           `gorm:"index:idx_device_order,priority:2" json:"order"`
+	LastRender    time.Time     `json:"last_render"`
+	LastRenderDur time.Duration `json:"last_render_dur"`
+	Path          *string       `json:"path"`
+	StartTime     *string       `json:"start_time"`                                    // HH:MM
+	EndTime       *string       `json:"end_time"`                                      // HH:MM
+	Days          StringSlice   `gorm:"type:text"                         json:"days"` // ["monday", "tuesday"]
+
+	// Recurrence
+	UseCustomRecurrence bool           `json:"use_custom_recurrence"`
+	RecurrenceType      RecurrenceType `json:"recurrence_type"`
+	RecurrenceInterval  int            `json:"recurrence_interval"`
+	RecurrencePattern   JSONMap        `gorm:"type:text"             json:"recurrence_pattern"`
+	RecurrenceStartDate *string        `json:"recurrence_start_date"` // YYYY-MM-DD
+	RecurrenceEndDate   *string        `json:"recurrence_end_date"`   // YYYY-MM-DD
+
+	Config          JSONMap      `gorm:"type:text"         json:"config"`
+	EmptyLastRender bool         `json:"empty_last_render"`
+	RenderMessages  StringSlice  `gorm:"type:text"         json:"render_messages"`
+	AutoPin         bool         `json:"auto_pin"`
+	ColorFilter     *ColorFilter `json:"color_filter"`
 }
 
 type Device struct {
-	ID                    string `gorm:"primaryKey"` // 8-char hex
-	Username              string `gorm:"index"`
-	Name                  string
-	Type                  DeviceType `gorm:"default:'tidbyt_gen1'"`
-	APIKey                string
-	ImgURL                string
-	WsURL                 string
-	Notes                 string
-	Brightness            Brightness `gorm:"default:20"` // 0-100
-	CustomBrightnessScale string
-	NightModeEnabled      bool
-	NightModeApp          string
-	NightStart            string     // HH:MM
-	NightEnd              string     // HH:MM
-	NightBrightness       Brightness `gorm:"default:0"`
-	DimTime               *string
-	DimBrightness         *Brightness
-	DefaultInterval       int `gorm:"default:15"`
+	ID                    string      `gorm:"primaryKey"              json:"id"` // 8-char hex
+	Username              string      `gorm:"index"                   json:"username"`
+	Name                  string      `json:"name"`
+	Type                  DeviceType  `gorm:"default:'tidbyt_gen1'"   json:"type"`
+	APIKey                string      `json:"api_key"`
+	ImgURL                string      `json:"img_url"`
+	WsURL                 string      `json:"ws_url"`
+	Notes                 string      `json:"notes"`
+	Brightness            Brightness  `gorm:"default:20"              json:"brightness"` // 0-100
+	CustomBrightnessScale string      `json:"custom_brightness_scale"`
+	NightModeEnabled      bool        `json:"night_mode_enabled"`
+	NightModeApp          string      `json:"night_mode_app"`
+	NightStart            string      `json:"night_start"` // HH:MM
+	NightEnd              string      `json:"night_end"`   // HH:MM
+	NightBrightness       Brightness  `gorm:"default:0"               json:"night_brightness"`
+	DimTime               *string     `json:"dim_time"`
+	DimBrightness         *Brightness `json:"dim_brightness"`
+	DefaultInterval       int         `gorm:"default:15"              json:"default_interval"`
 
-	Timezone *string
-	Locale   *string
+	Timezone *string `json:"timezone"`
+	Locale   *string `json:"locale"`
 
 	// Location fields embedded directly or as JSON? Let's use embedded fields for queryability if needed,
 	// but JSON is easier for migration. Let's use JSON for Location to match the complexity.
-	Location DeviceLocation `gorm:"type:text"` // Stores lat, lng, locality, etc.
+	Location DeviceLocation `gorm:"type:text" json:"location"` // Stores lat, lng, locality, etc.
 
-	LastAppIndex        int
-	PinnedApp           *string
-	InterstitialEnabled bool
-	InterstitialApp     *string
-	LastSeen            *time.Time
+	LastAppIndex        int        `json:"last_app_index"`
+	PinnedApp           *string    `json:"pinned_app"`
+	InterstitialEnabled bool       `json:"interstitial_enabled"`
+	InterstitialApp     *string    `json:"interstitial_app"`
+	LastSeen            *time.Time `json:"last_seen"`
 
 	// DeviceInfo fields (FirmwareVersion etc)
-	Info DeviceInfo `gorm:"type:text"`
+	Info DeviceInfo `gorm:"type:text" json:"info"`
 
-	ColorFilter      *ColorFilter
-	NightColorFilter *ColorFilter
+	ColorFilter      *ColorFilter `json:"color_filter"`
+	NightColorFilter *ColorFilter `json:"night_color_filter"`
 
-	Apps []App `gorm:"foreignKey:DeviceID;references:ID"`
+	Apps []App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
 
 func (dt DeviceType) Supports2x() bool {
@@ -475,7 +511,6 @@ func (dt DeviceType) Supports2x() bool {
 		return false
 	}
 }
-
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
 	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
@@ -484,7 +519,6 @@ func (dt DeviceType) SupportsFirmware() bool {
 		return false
 	}
 }
-
 func (d *Device) GetTimezone() string {
 	if d.Timezone != nil && *d.Timezone != "" {
 		return *d.Timezone
@@ -493,42 +527,6 @@ func (d *Device) GetTimezone() string {
 		return d.Location.Timezone
 	}
 	return "Local"
-}
-
-type App struct {
-	// Composite key might be better, but a surrogate ID is easier for GORM
-	ID uint `gorm:"primaryKey"`
-
-	DeviceID string `gorm:"index;index:idx_device_order,priority:1;type:string"` // Foreign Key to Device
-	Iname    string `gorm:"index"`                                               // Installation Name/ID (e.g. "123")
-
-	Name          string // App Name (e.g. "Clock")
-	UInterval     int    // Update Interval
-	DisplayTime   int
-	Notes         string
-	Enabled       bool
-	Pushed        bool
-	Order         int `gorm:"index:idx_device_order,priority:2"`
-	LastRender    time.Time
-	LastRenderDur time.Duration
-	Path          *string
-	StartTime     *string     // HH:MM
-	EndTime       *string     // HH:MM
-	Days          StringSlice `gorm:"type:text"` // ["monday", "tuesday"]
-
-	// Recurrence
-	UseCustomRecurrence bool
-	RecurrenceType      RecurrenceType
-	RecurrenceInterval  int
-	RecurrencePattern   JSONMap `gorm:"type:text"`
-	RecurrenceStartDate *string // YYYY-MM-DD
-	RecurrenceEndDate   *string // YYYY-MM-DD
-
-	Config          JSONMap `gorm:"type:text"`
-	EmptyLastRender bool
-	RenderMessages  StringSlice `gorm:"type:text"`
-	AutoPin         bool
-	ColorFilter     *ColorFilter
 }
 
 // GetNightModeIsActive checks if night mode is currently active for a device.

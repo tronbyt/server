@@ -536,7 +536,12 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) savePushedImage(deviceID, installID string, data []byte) error {
-	dir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+	dir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		return fmt.Errorf("failed to get device webp directory: %w", err)
+	}
+
+	dir = filepath.Join(dir, "pushed")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -754,7 +759,12 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		app.Enabled = *update.Enabled
 		if !app.Enabled {
 			// Delete associated webp files when app is disabled
-			webpDir := s.getDeviceWebPDir(device.ID)
+			webpDir, err := s.ensureDeviceImageDir(device.ID)
+			if err != nil {
+				slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", device.ID, "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 			for _, match := range matches {
 				if err := os.Remove(match); err != nil {
@@ -845,7 +855,12 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	webpDir := s.getDeviceWebPDir(device.ID)
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {

@@ -33,7 +33,11 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	webpDir := s.getDeviceWebPDir(device.ID)
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for rendering", "device_id", device.ID, "error", err)
+		return false
+	}
 	webpPath, err := securejoin.SecureJoin(webpDir, fmt.Sprintf("%s.webp", appBasename))
 	if err != nil {
 		slog.Error("Path traversal attempt in webp path", "app", appBasename, "error", err)
@@ -202,7 +206,10 @@ func copyFile(src, dst string) error {
 }
 
 func (s *Server) sendDefaultImage(w http.ResponseWriter, r *http.Request, device *data.Device) {
+	// Fallback if main image retrieval fails
 	path := "static/images/default.webp"
+
+	// Get default image from embedded assets
 	f, err := web.Assets.Open(path)
 	if err != nil {
 		slog.Error("Failed to open default image from assets", "error", err)
