@@ -14,7 +14,6 @@ import (
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
-	"tronbyt-server/internal/renderer"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 )
@@ -257,12 +256,6 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert config to map[string]string
-	configStr := make(map[string]string)
-	for k, v := range dataReq.Config {
-		configStr[k] = fmt.Sprintf("%v", v)
-	}
-
 	// Look up existing app if installationID is provided to get DisplayTime and filters
 	var existingApp *data.App
 	installationID := dataReq.InstallationID
@@ -278,30 +271,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Determine Dwell Time
-	appInterval := device.DefaultInterval
-	if existingApp != nil && existingApp.DisplayTime > 0 {
-		appInterval = existingApp.DisplayTime
-	}
-
-	// Filters
-	filters := s.getEffectiveFilters(device, existingApp)
-
-	// Render
-	deviceTimezone := device.GetTimezone()
-	imgBytes, _, err := renderer.Render(
-		r.Context(),
-		appPath,
-		configStr,
-		64, 32,
-		time.Duration(appInterval)*time.Second,
-		30*time.Second,
-		true,
-		device.Type.Supports2x(),
-		&deviceTimezone,
-		device.Locale,
-		filters,
-	)
+	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, appPath, dataReq.Config)
 	if err != nil {
 		slog.Error("Failed to render app", "error", err)
 		http.Error(w, "Rendering failed", http.StatusInternalServerError)

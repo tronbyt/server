@@ -114,7 +114,6 @@ func readLegacyUsers(dbPath string) ([]legacy.LegacyUser, error) {
 }
 
 func migrateUser(db *gorm.DB, lUser legacy.LegacyUser) error {
-	// Use consolidated converter
 	user := lUser.ToDataUser()
 
 	// Set Admin flag manually (not in legacy JSON usually, but implied by username)

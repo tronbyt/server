@@ -476,11 +476,6 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		config := make(map[string]string)
-		for k, v := range configData {
-			config[k] = fmt.Sprintf("%v", v)
-		}
-
 		if app.Path == nil || *app.Path == "" {
 			http.Error(w, "App path not set", http.StatusBadRequest)
 			return
@@ -492,30 +487,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		// Defaults
-		appInterval := device.GetEffectiveDwellTime(app)
-
-		// Filters
-		var filters []string
-		if app.ColorFilter != nil && *app.ColorFilter != "" {
-			filters = append(filters, string(*app.ColorFilter))
-		}
-
-		deviceTimezone := device.GetTimezone()
-
-		imgBytes, _, err := renderer.Render(
-			r.Context(),
-			appPath,
-			config,
-			64, 32,
-			time.Duration(appInterval)*time.Second,
-			30*time.Second,
-			true,
-			device.Type.Supports2x(),
-			&deviceTimezone,
-			device.Locale,
-			filters,
-		)
+		imgBytes, _, err := s.RenderApp(r.Context(), device, app, appPath, configData)
 		if err != nil {
 			slog.Error("Preview render failed", "error", err)
 			http.Error(w, "Render failed", http.StatusInternalServerError)
@@ -565,12 +537,6 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Convert to string values
-	config := make(map[string]string)
-	for k, v := range configBody {
-		config[k] = fmt.Sprintf("%v", v)
-	}
-
 	// Render
 	if app.Path == nil || *app.Path == "" {
 		http.Error(w, "App path not set", http.StatusBadRequest)
@@ -583,29 +549,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appInterval := device.GetEffectiveDwellTime(app)
-
-	// Filters
-	var filters []string
-	if app.ColorFilter != nil && *app.ColorFilter != "" {
-		filters = append(filters, string(*app.ColorFilter))
-	}
-
-	deviceTimezone := device.GetTimezone()
-
-	imgBytes, messages, err := renderer.Render(
-		r.Context(),
-		appPath,
-		config,
-		64, 32,
-		time.Duration(appInterval)*time.Second,
-		30*time.Second,
-		true,
-		device.Type.Supports2x(),
-		&deviceTimezone,
-		device.Locale,
-		filters,
-	)
+	imgBytes, messages, err := s.RenderApp(r.Context(), device, app, appPath, configBody)
 	if err != nil {
 		slog.Error("Preview render failed", "error", err)
 		http.Error(w, "Render failed", http.StatusInternalServerError)
@@ -1149,19 +1093,7 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 
 	switch ext {
 	case ".star":
-		imgBytes, _, err := renderer.Render(
-			r.Context(),
-			dstPath,
-			nil,
-			64, 32,
-			15*time.Second,
-			30*time.Second,
-			true,
-			false,
-			nil,
-			nil,
-			nil,
-		)
+		imgBytes, _, err := s.RenderApp(r.Context(), device, nil, dstPath, nil)
 
 		if err == nil && len(imgBytes) > 0 {
 			previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
