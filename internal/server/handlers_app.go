@@ -171,7 +171,12 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	// If WebP, copy file and redirect to index
 	isWebP := strings.EqualFold(filepath.Ext(appPath), ".webp")
 	if isWebP {
-		destDir := s.getDeviceWebPDir(device.ID)
+		destDir, err := s.ensureDeviceImageDir(device.ID)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for app copy", "device_id", device.ID, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		destPath, err := securejoin.SecureJoin(destDir, fmt.Sprintf("%s-%s.webp", newApp.Name, newApp.Iname))
 		if err != nil {
 			slog.Warn("Path traversal attempt blocked", "error", err)
@@ -526,7 +531,12 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Fallback to serving existing file
-	webpDir := s.getDeviceWebPDir(id)
+	webpDir, err := s.ensureDeviceImageDir(id)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for config preview", "device_id", id, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	filename := fmt.Sprintf("%s-%s.webp", app.Name, app.Iname)
 	path := filepath.Join(webpDir, filename)
 
@@ -629,7 +639,12 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clean up webp
-	webpDir := s.getDeviceWebPDir(device.ID)
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*- %s.webp", app.Iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {
@@ -947,10 +962,16 @@ func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sou
 	targetDevice.Apps = appsList
 
 	if originalApp.Pushed {
-		sourceWebpDir := s.getDeviceWebPDir(sourceDevice.ID)
+		sourceWebpDir, err := s.ensureDeviceImageDir(sourceDevice.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get source device webp directory: %w", err)
+		}
 		sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
 
-		targetWebpDir := s.getDeviceWebPDir(targetDevice.ID)
+		targetWebpDir, err := s.ensureDeviceImageDir(targetDevice.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get target device webp directory: %w", err)
+		}
 		targetPushedWebpDir := filepath.Join(targetWebpDir, "pushed")
 		if err := os.MkdirAll(targetPushedWebpDir, 0755); err != nil {
 			slog.Error("Failed to create target pushed webp directory", "path", targetPushedWebpDir, "error", err)

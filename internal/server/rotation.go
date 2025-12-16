@@ -84,11 +84,18 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 
 	// 6. Return Image
 	var webpPath string
+
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for next app image", "device_id", device.ID, "error", err)
+		return getDefaultImage()
+	}
+
 	if app.Pushed {
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), "pushed", app.Iname+".webp")
+		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
 	} else {
 		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), fmt.Sprintf("%s.webp", appBasename))
+		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 	}
 
 	data, err := os.ReadFile(webpPath)
@@ -137,11 +144,18 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 
 	// Return image
 	var webpPath string
+
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for current app image", "device_id", device.ID, "error", err)
+		return nil, nil, fmt.Errorf("failed to get device webp directory: %w", err)
+	}
+
 	if app.Pushed {
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), "pushed", app.Iname+".webp")
+		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
 	} else {
 		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), fmt.Sprintf("%s.webp", appBasename))
+		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 	}
 
 	data, err := os.ReadFile(webpPath)

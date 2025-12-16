@@ -20,6 +20,7 @@ import (
 	"tronbyt-server/internal/gitutils"
 	"tronbyt-server/internal/version"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
@@ -379,14 +380,17 @@ func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *se
 	return session.Save(r, w)
 }
 
-// getDeviceWebpDir is a helper to get device webp directory (from server.go).
-func (s *Server) getDeviceWebPDir(deviceID string) string {
-	path := filepath.Join(s.DataDir, "webp", deviceID)
-	if err := os.MkdirAll(path, 0755); err != nil {
-		slog.Error("Failed to create device webp directory", "path", path, "error", err)
-		// Non-fatal, continue.
+// ensureDeviceImageDir is a helper to get and ensure the device webp directory exists.
+func (s *Server) ensureDeviceImageDir(deviceID string) (string, error) {
+	path, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp"), deviceID)
+	if err != nil {
+		return "", fmt.Errorf("failed to securejoin path for device webp directory %s: %w", deviceID, err)
 	}
-	return path
+
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return "", fmt.Errorf("failed to create device webp directory %s: %w", path, err)
+	}
+	return path, nil
 }
 
 func (s *Server) RefreshSystemAppsCache() {

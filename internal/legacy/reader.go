@@ -2,9 +2,6 @@ package legacy
 
 import (
 	"encoding/json"
-	"fmt"
-	"regexp"
-	"strconv"
 	"time"
 )
 
@@ -106,90 +103,4 @@ type LegacyApp struct {
 // UserDataBlob is a wrapper for the JSON blob structure in DB.
 type UserDataBlob struct {
 	Users map[string]LegacyUser `json:"users"`
-}
-
-// ParseBool handles boolean polymorphism (bool or int 0/1).
-func ParseBool(val any) bool {
-	if v, ok := val.(bool); ok {
-		return v
-	}
-	if v, ok := val.(int); ok {
-		return v != 0
-	}
-	if v, ok := val.(float64); ok {
-		return int(v) != 0
-	}
-
-	return false
-}
-
-// ParseFloat handles float polymorphism (float or string).
-func ParseFloat(val any) float64 {
-	if v, ok := val.(float64); ok {
-		return v
-	}
-	if s, ok := val.(string); ok {
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			return f
-		}
-	}
-	return 0.0
-}
-
-// ParseBrightness is a helper to handle Brightness polymorphism (int or object with value).
-func ParseBrightness(val any) int {
-	if v, ok := val.(float64); ok {
-		return int(v)
-	}
-	if v, ok := val.(int); ok {
-		return v
-	}
-	if m, ok := val.(map[string]any); ok {
-		if v, ok := m["value"].(float64); ok {
-			return int(v)
-		}
-	}
-
-	return 0
-}
-
-func ParseTimeStr(val any) string {
-	if s, ok := val.(string); ok {
-		return s
-	}
-	if f, ok := val.(float64); ok {
-		return fmt.Sprintf("%02d:00", int(f))
-	}
-	return ""
-}
-
-// ParseDuration parses ISO8601 duration (PT1.5S) or numeric seconds into int64 nanoseconds.
-func ParseDuration(val any) int64 {
-	if val == nil {
-		return 0
-	}
-
-	// Case 1: Numeric (seconds)
-	if v, ok := val.(float64); ok {
-		return int64(v * 1e9)
-	}
-
-	// Case 2: String (ISO8601)
-	str, ok := val.(string)
-	if !ok {
-		return 0
-	}
-
-	// Simple regex for PT#S or PT#.#S
-	// This covers the most common case output by Python's simple serialization
-	re := regexp.MustCompile(`^PT(?:(\d+(?:\.\d+)?)S)?$`)
-	matches := re.FindStringSubmatch(str)
-	if len(matches) > 1 && matches[1] != "" {
-		seconds, err := strconv.ParseFloat(matches[1], 64)
-		if err == nil {
-			return int64(seconds * 1e9)
-		}
-	}
-
-	return 0
 }
