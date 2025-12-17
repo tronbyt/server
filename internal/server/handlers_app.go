@@ -1,15 +1,19 @@
 package server
 
 import (
+	"archive/zip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"log/slog"
 	"maps"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,6 +35,8 @@ type AppManifest struct {
 	Broken       *bool   `yaml:"broken,omitempty"`
 	BrokenReason *string `yaml:"brokenReason,omitempty"`
 }
+
+var packageNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
@@ -1040,7 +1046,7 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 
 	filename := filepath.Base(header.Filename)
 	ext := filepath.Ext(filename)
-	if ext != ".star" && ext != ".webp" {
+	if ext != ".star" && ext != ".webp" && ext != ".zip" {
 		http.Error(w, "Invalid file type", http.StatusBadRequest)
 		return
 	}
@@ -1054,9 +1060,19 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid app name", http.StatusBadRequest)
 		return
 	}
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		slog.Error("Failed to create app dir", "error", err)
+	previewDir := filepath.Join(s.DataDir, "apps")
+	if err := os.MkdirAll(previewDir, 0755); err != nil {
+		slog.Error("Failed to create preview dir", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Handle zip files specifically
+	if ext == ".zip" {
+		if err := s.handleZipUpload(w, r, user, device, file, header, appName); err != nil {
+			slog.Error("Failed to handle zip upload", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -1079,11 +1095,6 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = dst.Sync()
-
-	previewDir := filepath.Join(s.DataDir, "apps")
-	if err := os.MkdirAll(previewDir, 0755); err != nil {
-		slog.Error("Failed to create preview dir", "error", err)
-	}
 
 	switch ext {
 	case ".star":
@@ -1127,6 +1138,246 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", device.ID), http.StatusSeeOther)
+}
+
+func (s *Server) parseManifest(tempExtractDir string) (string, error) {
+	manifestPath := filepath.Join(tempExtractDir, "manifest.yaml")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("Failed to read manifest.yaml", "error", err)
+		}
+		return "", nil // No manifest or read failed, continue with default name
+	}
+
+	var m apps.Manifest
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		slog.Warn("Failed to parse manifest.yaml", "error", err)
+		return "", nil
+	}
+
+	if m.PackageName != "" && packageNameRegex.MatchString(m.PackageName) {
+		return m.PackageName, nil
+	}
+	return "", nil
+}
+
+func (s *Server) handleZipUpload(w http.ResponseWriter, r *http.Request, user *data.User, device *data.Device, file io.Reader, header *multipart.FileHeader, appName string) error {
+	userAppsDir := filepath.Join(s.DataDir, "users", user.Username, "apps")
+	previewDir := filepath.Join(s.DataDir, "apps")
+	if err := os.MkdirAll(previewDir, 0755); err != nil {
+		slog.Error("Failed to create preview dir", "error", err)
+		return err
+	}
+
+	// Save the zip file temporarily
+	tempZip, err := os.CreateTemp("", "upload-*.zip")
+	if err != nil {
+		slog.Error("Failed to create temp zip file", "error", err)
+		return err
+	}
+	defer func() {
+		if err := os.Remove(tempZip.Name()); err != nil {
+			slog.Error("Failed to remove temp zip file", "error", err)
+		}
+	}()
+
+	if _, err := io.Copy(tempZip, file); err != nil {
+		slog.Error("Failed to write temp zip file", "error", err)
+		if cerr := tempZip.Close(); cerr != nil {
+			slog.Error("Failed to close temp zip file after error", "error", cerr)
+		}
+		return err
+	}
+	if err := tempZip.Close(); err != nil {
+		slog.Error("Failed to close temp zip file", "error", err)
+		return err
+	}
+
+	// Create a temp dir for extraction
+	tempExtractDir, err := os.MkdirTemp("", "app-extract-*")
+	if err != nil {
+		slog.Error("Failed to create temp extract dir", "error", err)
+		return err
+	}
+	defer func() {
+		if err := os.RemoveAll(tempExtractDir); err != nil {
+			slog.Error("Failed to remove temp extract dir", "error", err)
+		}
+	}()
+
+	// Unzip contents to temp dir
+	if err := s.unzip(tempZip.Name(), tempExtractDir); err != nil {
+		slog.Error("Failed to unzip file", "error", err)
+		return err
+	}
+
+	if parsedName, _ := s.parseManifest(tempExtractDir); parsedName != "" {
+		appName = parsedName
+	}
+
+	// Re-calculate appDir with potentially new appName
+	appDir, err := securejoin.SecureJoin(userAppsDir, appName)
+	if err != nil {
+		slog.Warn("Path traversal attempt blocked", "error", err)
+		return err
+	}
+
+	// Replace existing directory
+	if err := os.RemoveAll(appDir); err != nil {
+		slog.Error("Failed to remove existing app dir", "path", appDir, "error", err)
+		return err
+	}
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		slog.Error("Failed to create app dir", "error", err)
+		return err
+	}
+
+	// Copy files from tempExtractDir to appDir
+	if err := copyDir(tempExtractDir, appDir); err != nil {
+		slog.Error("Failed to copy extracted files", "error", err)
+		return err
+	}
+
+	s.generatePreview(r.Context(), device, appDir, previewDir, appName)
+
+	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", device.ID), http.StatusSeeOther)
+	return nil
+}
+
+func (s *Server) generatePreview(ctx context.Context, device *data.Device, appDir, previewDir, appName string) {
+	// Check for a .webp preview image to copy
+	var webpPath string
+	entries, err := os.ReadDir(appDir)
+	if err != nil {
+		slog.Error("Failed to read app dir for preview generation", "path", appDir, "error", err)
+		return
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			if strings.HasSuffix(entry.Name(), ".webp") {
+				if webpPath == "" || entry.Name() == appName+".webp" {
+					webpPath = filepath.Join(appDir, entry.Name())
+				}
+			}
+		}
+	}
+
+	previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
+	if webpPath != "" {
+		// If a webp exists, copy it to preview
+		// Note: The UI expects [AppName].webp in the previews dir
+		if err := copyFile(webpPath, previewPath); err != nil {
+			slog.Error("Failed to copy preview image from zip", "error", err)
+		}
+	} else {
+		// If no webp, try to render the app directory
+		imgBytes, _, err := s.RenderApp(ctx, device, nil, appDir, nil)
+		if err == nil && len(imgBytes) > 0 {
+			if err := os.WriteFile(previewPath, imgBytes, 0644); err != nil {
+				slog.Error("Failed to write preview image", "error", err)
+			}
+		} else {
+			slog.Error("Failed to render preview", "error", err)
+		}
+	}
+}
+
+func copyDir(src string, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		dstPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			// Skip symlinks for safety
+			return nil
+		}
+
+		return copyFile(path, dstPath)
+	})
+}
+
+func (s *Server) unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			slog.Error("Failed to close zip reader", "error", err)
+		}
+	}()
+	for _, f := range r.File {
+		// securejoin to prevent zip slip
+		fpath, err := securejoin.SecureJoin(dest, f.Name)
+		if err != nil {
+			return err
+		}
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(fpath, f.Mode()); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err = os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			// Ensure outFile is closed if rc.Open() fails
+			if closeErr := outFile.Close(); closeErr != nil {
+				slog.Error("Failed to close extracted file after rc.Open() failed", "error", closeErr)
+			}
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+		copyErr := err // Preserve copy error
+
+		// Attempt to close both files, logging errors if they occur
+		outFileCloseErr := outFile.Close()
+		rcCloseErr := rc.Close()
+
+		// Prioritize copy error
+		if copyErr != nil {
+			if outFileCloseErr != nil {
+				slog.Error("Failed to close extracted file after copy error", "error", outFileCloseErr)
+			}
+			if rcCloseErr != nil {
+				slog.Error("Failed to close zip file reader after copy error", "error", rcCloseErr)
+			}
+			return copyErr
+		}
+
+		// If copy was successful, return close errors if any
+		if outFileCloseErr != nil {
+			return outFileCloseErr
+		}
+		if rcCloseErr != nil {
+			return rcCloseErr
+		}
+	}
+	return nil
 }
 
 func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {

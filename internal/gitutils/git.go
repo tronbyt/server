@@ -11,6 +11,21 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
+// logWriter implements io.Writer to redirect git progress to slog.
+type logWriter struct{}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	// git progress often uses \r or partial lines. We trim whitespace
+	// to avoid empty log entries, but we log everything.
+	// Using Debug to avoid flooding Info logs with progress percentages if configured.
+	// However, user asked for it to be in slog, mimicking previous stdout visibility.
+	msg := strings.TrimSpace(string(p))
+	if msg != "" {
+		slog.Info(msg)
+	}
+	return len(p), nil
+}
+
 // RepoInfo holds details about a Git repository.
 type RepoInfo struct {
 	URL           string
@@ -82,7 +97,7 @@ func EnsureRepo(path string, url string, update bool) error {
 		slog.Info("Cloning repo", "url", url)
 		_, err := git.PlainClone(path, false, &git.CloneOptions{
 			URL:      url,
-			Progress: os.Stdout,
+			Progress: &logWriter{},
 			Depth:    1,
 		})
 
@@ -135,12 +150,20 @@ func EnsureRepo(path string, url string, update bool) error {
 	slog.Info("Pulling repo")
 	err = w.Pull(&git.PullOptions{
 		RemoteName: "origin",
-		Progress:   os.Stdout,
+		Progress:   &logWriter{},
 	})
 
 	if errors.Is(err, git.NoErrAlreadyUpToDate) {
 		slog.Info("Repo already up to date")
 		return nil
+	}
+
+	if errors.Is(err, plumbing.ErrObjectNotFound) {
+		slog.Warn("Git pull failed with object not found, re-cloning", "error", err)
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("failed to remove broken repo: %w", err)
+		}
+		return EnsureRepo(path, url, update)
 	}
 
 	return err
