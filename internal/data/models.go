@@ -453,11 +453,11 @@ type Device struct {
 	Location DeviceLocation `gorm:"type:text"` // Stores lat, lng, locality, etc.
 
 	LastAppIndex        int
+	DisplayingApp       *string
 	PinnedApp           *string
 	InterstitialEnabled bool
 	InterstitialApp     *string
 	LastSeen            *time.Time
-
 	// DeviceInfo fields (FirmwareVersion etc)
 	Info DeviceInfo `gorm:"type:text"`
 
