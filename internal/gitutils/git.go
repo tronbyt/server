@@ -138,33 +138,56 @@ func EnsureRepo(path string, url string, update bool) error {
 		return err
 	}
 
-	// Reset to HEAD (Hard) to discard local changes
-	if err := w.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
-		slog.Warn("Failed to hard reset repo", "error", err)
+	// Fetch updates (Depth 1 = Shallow)
+	slog.Info("Fetching updates")
+	err = r.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Progress:   &logWriter{},
+		Depth:      1,
+		Force:      true,
+	})
+
+	// Handle fetch errors
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		// If fetch fails with object not found (or other critical git error), try re-cloning
+		if errors.Is(err, plumbing.ErrObjectNotFound) {
+			slog.Warn("Git fetch failed with object not found, re-cloning", "error", err)
+			if err := os.RemoveAll(path); err != nil {
+				return fmt.Errorf("failed to remove broken repo: %w", err)
+			}
+			return EnsureRepo(path, url, update)
+		}
+		return fmt.Errorf("failed to fetch repo: %w", err)
 	}
+
+	// Identify the branch we are on
+	headRef, err := r.Head()
+	if err != nil {
+		return fmt.Errorf("failed to get HEAD: %w", err)
+	}
+	branchName := headRef.Name().Short()
+
+	// Find the commit hash of that branch on the remote
+	// We look for refs/remotes/origin/<branchName>
+	remoteRefName := plumbing.ReferenceName(fmt.Sprintf("refs/remotes/origin/%s", branchName))
+	remoteRef, err := r.Reference(remoteRefName, true)
+	if err != nil {
+		return fmt.Errorf("failed to find remote ref %s: %w", remoteRefName, err)
+	}
+
+	// Hard Reset the worktree to the remote commit
+	slog.Info("Resetting to remote HEAD", "commit", remoteRef.Hash().String())
+	if err := w.Reset(&git.ResetOptions{
+		Mode:   git.HardReset,
+		Commit: remoteRef.Hash(),
+	}); err != nil {
+		return fmt.Errorf("failed to reset worktree: %w", err)
+	}
+
 	// Clean untracked files
 	if err := w.Clean(&git.CleanOptions{Dir: true}); err != nil {
 		slog.Warn("Failed to clean repo", "error", err)
 	}
 
-	slog.Info("Pulling repo")
-	err = w.Pull(&git.PullOptions{
-		RemoteName: "origin",
-		Progress:   &logWriter{},
-	})
-
-	if errors.Is(err, git.NoErrAlreadyUpToDate) {
-		slog.Info("Repo already up to date")
-		return nil
-	}
-
-	if errors.Is(err, plumbing.ErrObjectNotFound) {
-		slog.Warn("Git pull failed with object not found, re-cloning", "error", err)
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("failed to remove broken repo: %w", err)
-		}
-		return EnsureRepo(path, url, update)
-	}
-
-	return err
+	return nil
 }
