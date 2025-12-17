@@ -165,6 +165,10 @@ func EnsureRepo(path string, url string, update bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to get HEAD: %w", err)
 	}
+
+	if !headRef.Name().IsBranch() {
+		return fmt.Errorf("repository in detached HEAD state at %s, cannot determine branch to update", headRef.Hash().String())
+	}
 	branchName := headRef.Name().Short()
 
 	// Find the commit hash of that branch on the remote
