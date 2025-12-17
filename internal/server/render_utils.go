@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"strings"
@@ -19,16 +19,18 @@ import (
 )
 
 // RenderApp consolidates the logic for rendering an app for a device.
-// It handles config normalization, timezone/locale injection, dwell time, and filters.
+// It handles config overrides, timezone/locale injection, dwell time, and filters.
 func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, appPath string, configOverrides map[string]any) ([]byte, []string, error) {
 	// Config
-	var rawConfig map[string]any
-	if configOverrides != nil {
-		rawConfig = configOverrides
-	} else if app != nil {
-		rawConfig = app.Config
+	var config map[string]any
+	switch {
+	case configOverrides != nil:
+		config = configOverrides
+	case app != nil && app.Config != nil:
+		config = maps.Clone(app.Config)
+	default:
+		config = make(map[string]any)
 	}
-	config := normalizeConfig(rawConfig)
 
 	// Timezone & Locale
 	var deviceTimezone string
@@ -37,6 +39,8 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 
 	if device != nil {
 		deviceTimezone = device.GetTimezone()
+		// The legacy "$tz" config variable should eventually be removed.
+		// The system apps already use `time.tz()`, but users' custom apps might not.
 		config["$tz"] = deviceTimezone
 		locale = device.Locale
 		supports2x = device.Type.Supports2x()
@@ -261,20 +265,4 @@ func (s *Server) sendDefaultImage(w http.ResponseWriter, r *http.Request, device
 		slog.Error("Embedded file does not implement ReadSeeker")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
-}
-
-func normalizeConfig(input map[string]any) map[string]string {
-	config := make(map[string]string)
-	for k, v := range input {
-		if str, ok := v.(string); ok {
-			config[k] = str
-		} else if v != nil {
-			if b, err := json.Marshal(v); err == nil {
-				config[k] = string(b)
-			} else {
-				config[k] = fmt.Sprintf("%v", v)
-			}
-		}
-	}
-	return config
 }

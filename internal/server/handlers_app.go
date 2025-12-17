@@ -403,12 +403,6 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert Config to map[string]string for Pixlet
-	configStr := make(map[string]string)
-	for k, v := range payload.Config {
-		configStr[k] = fmt.Sprintf("%v", v)
-	}
-
 	// Read Script
 	if app.Path == nil || *app.Path == "" {
 		http.Error(w, "App path not set", http.StatusBadRequest)
@@ -425,7 +419,7 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	result, err := renderer.CallSchemaHandler(
 		r.Context(),
 		appPath,
-		configStr,
+		payload.Config,
 		64, 32,
 		device.Type.Supports2x(),
 		handler,
