@@ -129,10 +129,13 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			slog.Debug("Render message", "app", appBasename, "message", msg)
 		}
 
-		success := err == nil && len(imgBytes) > 0
+		empty := len(imgBytes) == 0
+		success := err == nil && !empty
 
-		if !success {
+		if err != nil {
 			slog.Error("Error rendering app", "app", appBasename, "error", err)
+		} else if empty {
+			slog.Debug("No output from app", "app", appBasename)
 		} else {
 			// Save WebP
 			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
