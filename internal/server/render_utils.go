@@ -268,7 +268,7 @@ func normalizeConfig(input map[string]any) map[string]string {
 	for k, v := range input {
 		if str, ok := v.(string); ok {
 			config[k] = str
-		} else {
+		} else if v != nil {
 			if b, err := json.Marshal(v); err == nil {
 				config[k] = string(b)
 			} else {
