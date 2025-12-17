@@ -482,8 +482,8 @@
   "Upload App": {
     "other": "App hochladen"
   },
-  "Select File (.star or .webp)": {
-    "other": "Datei auswählen (.star oder .webp)"
+  "Select File (.star, .webp or .zip)": {
+    "other": "Datei auswählen (.star, .webp oder .zip)"
   },
   "Sign in with Passkey": {
     "other": "Mit Passkey anmelden"
@@ -533,8 +533,8 @@
   "Loading apps...": {
     "other": "Lade Apps…"
   },
-  "Upload .star or .webp file": {
-    "other": ".star oder .webp Datei hochladen"
+  "Upload app": {
+    "other": "App hochladen"
   },
   "App Selection": {
     "other": "App-Auswahl"
