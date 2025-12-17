@@ -978,7 +978,10 @@
     }
 
     const updateGeneratedFields = async () => {
-      const sourceValue = sourceField.value;
+      let sourceValue = sourceField.value;
+      if (sourceField.type === "checkbox") {
+        sourceValue = sourceField.checked ? "true" : "false";
+      }
       try {
         const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
         const response = await fetch(handlerUrl, {
