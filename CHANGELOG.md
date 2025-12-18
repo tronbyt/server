@@ -21,8 +21,8 @@ The entire backend has been rewritten in Go (1.25+). This change offers:
 
 ## ✨ New Features
 
-*   **ZIP-packaged App Support:** Users can now upload and run apps packaged as ZIP files. This enables more complex apps that split logic across multiple files, reference external assets like images, and include metadata via manifest files.
 *   **Responsive Real-time UI:** The web interface is now more responsive and updates in real-time via WebSockets, instantly reflecting changes made via the API.
+*   **Native HTTPS:** Support for providing SSL key/cert files directly to the server, alongside the existing reverse-proxy patterns.
 *   **HTTP/3 (QUIC) Support:** Native support for HTTP/3 when TLS certificates are provided, offering faster and more reliable connections over modern networks.
 *   **Unix Domain Sockets:** Support for listening on Unix sockets (`TRONBYT_UNIX_SOCKET`), ideal for local communication and high-performance reverse proxy setups.
 *   **Prometheus Metrics:** A new `/metrics` endpoint exposes Go runtime and application metrics for monitoring.
@@ -30,7 +30,8 @@ The entire backend has been rewritten in Go (1.25+). This change offers:
     *   `reset-password`: Manually reset a user's password.
     *   `health`: Perform health checks against the running server.
 *   **Passkey Authentication:** Added support for passkey authentication (requires HTTPS on some browsers) for more secure and convenient logins.
-*   **Native HTTPS:** Support for providing SSL key/cert files directly to the server, alongside the existing reverse-proxy patterns.
+*   **App Configuration Export/Import:** Users can now export app configurations to a JSON file and import them back into existing app installations. This makes it easy to backup configurations or replicate complex setups across different apps.
+*   **ZIP-packaged App Support:** Users can now upload and run apps packaged as ZIP files. This enables more complex apps that split logic across multiple files, reference external assets like images, and include metadata via manifest files.
 
 ## 🛠 Deployment & DevOps
 
@@ -50,8 +51,8 @@ The entire backend has been rewritten in Go (1.25+). This change offers:
 2.  **Pull:** Update your Docker image to `v2.0.0` (or `latest`).
 3.  **Run:** Start the container. The server will log the migration process:
     ```text
-    INFO: Detecting legacy database...
-    INFO: Migrating user admin...
-    INFO: Migration complete.
+    INFO: Migrating database
+    INFO: Migrated user username=admin
+    INFO: Migration complete
     ```
 4.  **Verify:** Log in to the web UI and verify your devices and apps are present.
