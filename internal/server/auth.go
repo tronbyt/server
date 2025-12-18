@@ -2,9 +2,7 @@ package server
 
 import (
 	"net/http"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"log/slog"
 	"tronbyt-server/internal/auth"
@@ -277,10 +275,9 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	firmwareVersion := "unknown"
-	firmwareFile := filepath.Join(s.DataDir, "firmware", "firmware_version.txt")
-	if bytes, err := os.ReadFile(firmwareFile); err == nil {
-		firmwareVersion = strings.TrimSpace(string(bytes))
+	firmwareVersion := s.GetFirmwareVersion()
+	if firmwareVersion == "" {
+		firmwareVersion = "unknown"
 	}
 
 	var systemRepoInfo *gitutils.RepoInfo

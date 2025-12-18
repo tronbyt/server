@@ -1438,5 +1438,41 @@
   },
   "Error parsing config file.": {
     "other": "Error parsing config file."
+  },
+  "Firmware Update": {
+    "other": "Firmware Update"
+  },
+  "Device Version": {
+    "other": "Device Version"
+  },
+  "Available Version": {
+    "other": "Available Version"
+  },
+  "Swap Colors (Fix for some Tidbyt Gen 1 displays)": {
+    "other": "Swap Colors (Fix for some Tidbyt Gen 1 displays)"
+  },
+  "Note: Changing this setting will require saving before updating firmware.": {
+    "other": "Note: Changing this setting will require saving before updating firmware."
+  },
+  "Install Latest Firmware": {
+    "other": "Install Latest Firmware"
+  },
+  "This will trigger an Over-The-Air update. The device will reboot. Continue?": {
+    "other": "This will trigger an Over-The-Air update. The device will reboot. Continue?"
+  },
+  "Updates the device to the latest version available on the server.": {
+    "other": "Updates the device to the latest version available on the server."
+  },
+  "OTA not supported for this device type": {
+    "other": "OTA not supported for this device type"
+  },
+  "Firmware binary not found. Please update firmware binaries in Admin settings.": {
+    "other": "Firmware binary not found. Please update firmware binaries in Admin settings."
+  },
+  "Internal Error": {
+    "other": "Internal Error"
+  },
+  "OTA Update queued. Device should update shortly.": {
+    "other": "OTA Update queued. Device should update shortly."
   }
 }

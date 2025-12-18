@@ -532,10 +532,38 @@
           <input name="notes" id="notes" value="{{ .Device.Notes }}" class="notes-input" placeholder="{{ t .Localizer "Optional notes about this device" }}">
         </td>
       </tr>
-    </table>
-  </div>
+        </table>
+      </div>
 
-  <div class="device-settings-section">
+      {{ if .FirmwareAvailable }}
+            <div class="device-settings-section">
+              <h2>{{ t .Localizer "Firmware Update" }}</h2>
+              <div style="padding: 10px;">
+                <p><strong>{{ t .Localizer "Device Version" }}:</strong> {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}</p>
+                <p><strong>{{ t .Localizer "Available Version" }}:</strong> {{ if .FirmwareVersion }}{{ .FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}</p>
+
+                {{ if eq .Device.Type "tidbyt_gen1" }}
+
+          <div style="margin-bottom: 10px;">
+            <label for="swap_colors" style="cursor: pointer;">
+              <input type="checkbox" name="swap_colors" id="swap_colors" {{ if .Device.SwapColors }}checked{{ end }}>
+              {{ t .Localizer "Swap Colors (Fix for some Tidbyt Gen 1 displays)" }}
+            </label>
+            <p class="small-text">{{ t .Localizer "Note: Changing this setting will require saving before updating firmware." }}</p>
+                </div>
+                {{ end }}
+
+                <button type="button" class="w3-button w3-blue config-management-btn" onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Latest Firmware" }}
+                </button>
+                <small class="small-text" style="display: block; margin-top: 5px;">{{ t .Localizer "Updates the device to the latest version available on the server." }}</small>
+              </div>
+
+      </div>
+      {{ end }}
+
+      <div class="device-settings-section">
+
     <h2>{{ t .Localizer "Configuration Management" }}</h2>
 
     <div class="config-management-container">

@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -194,6 +195,10 @@ func (s *Server) routes() {
 		s.Router.Handle("GET /static/favicon.ico", http.StripPrefix("/static/", fileServer))
 	}
 
+	// Serve firmware binaries
+	firmwareDir := filepath.Join(s.DataDir, "firmware")
+	s.Router.Handle("GET /static/firmware/", http.StripPrefix("/static/firmware/", http.FileServer(http.Dir(firmwareDir))))
+
 	// App Preview (Specific path)
 	s.Router.HandleFunc("GET /preview/app/{id}", s.handleSystemAppThumbnail)
 
@@ -257,6 +262,7 @@ func (s *Server) routes() {
 	// Firmware
 	s.Router.HandleFunc("GET /devices/{id}/firmware", s.RequireLogin(s.RequireDevice(s.handleFirmwareGenerateGet)))
 	s.Router.HandleFunc("POST /devices/{id}/firmware", s.RequireLogin(s.RequireDevice(s.handleFirmwareGeneratePost)))
+	s.Router.HandleFunc("POST /devices/{id}/ota", s.RequireLogin(s.RequireDevice(s.handleTriggerOTA))) // OTA Update
 
 	s.Router.HandleFunc("GET /devices/{id}/update", s.RequireLogin(s.RequireDevice(s.handleUpdateDeviceGet)))
 	s.Router.HandleFunc("POST /devices/{id}/update", s.RequireLogin(s.RequireDevice(s.handleUpdateDevicePost)))

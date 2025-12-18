@@ -202,7 +202,7 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	binData, err := firmware.Generate(s.DataDir, string(device.Type), ssid, password, imgURL, swapColors)
+	binData, err := firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to generate firmware: %v", err), http.StatusInternalServerError)
 		return
@@ -214,4 +214,46 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 		slog.Error("Failed to write firmware data to response", "error", err)
 		// Log error, but can't change HTTP status after writing headers.
 	}
+}
+
+func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	binName := device.Type.FirmwareFilename(device.SwapColors)
+	if binName == "" {
+		s.flashAndRedirect(w, r, "OTA not supported for this device type", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+
+	firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
+	if _, err := os.Stat(firmwarePath); os.IsNotExist(err) {
+		s.flashAndRedirect(w, r, "Firmware binary not found. Please update firmware binaries in Admin settings.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Construct URL
+	// Using the new /static/firmware/ route
+	baseURL := s.GetBaseURL(r)
+	// Ensure baseURL has no trailing slash, but /static/firmware/ does
+	updateURL := fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), binName)
+
+	if err := s.DB.Model(device).Update("pending_update_url", updateURL).Error; err != nil {
+		slog.Error("Failed to save pending update", "error", err)
+		s.flashAndRedirect(w, r, "Internal Error", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+	device.PendingUpdateURL = updateURL
+
+	// Notify Device (to wake up WS loop)
+	s.Broadcaster.Notify(device.ID, nil)
+
+	s.flashAndRedirect(w, r, "OTA Update queued. Device should update shortly.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+}
+
+func (s *Server) GetFirmwareVersion() string {
+	versionBytes, err := os.ReadFile(filepath.Join(s.DataDir, "firmware", "firmware_version.txt"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(versionBytes))
 }

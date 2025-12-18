@@ -77,6 +77,7 @@ type TemplateData struct {
 
 	// Firmware
 	FirmwareBinsAvailable bool
+	FirmwareAvailable     bool
 	FirmwareVersion       string
 	ServerVersion         string
 	CommitHash            string

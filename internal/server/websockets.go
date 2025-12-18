@@ -154,6 +154,27 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		var app *data.App
 		var err error
 
+		// Check for Pending Update
+		if updateURL := device.PendingUpdateURL; updateURL != "" {
+			slog.Info("Sending OTA update command", "device", device.ID, "url", updateURL)
+			if err := conn.WriteJSON(map[string]string{
+				"ota_url": updateURL,
+			}); err != nil {
+				slog.Error("Failed to write OTA update message", "error", err)
+				return
+			}
+			// Clear pending update to avoid loops
+			if err := s.DB.Model(&device).Update("pending_update_url", "").Error; err != nil {
+				slog.Error("Failed to clear pending update", "error", err)
+			} else {
+				device.PendingUpdateURL = ""
+			}
+			// Wait a bit to let the device process, then return or continue?
+			// The device will likely close connection and reboot.
+			// Let's just continue loop, but we won't send image this cycle probably?
+			// Or we can just let it flow. The device should handle it.
+		}
+
 		if pendingImage != nil {
 			imgData = pendingImage
 			pendingImage = nil

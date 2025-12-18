@@ -30,6 +30,7 @@ The entire backend has been rewritten in Go (1.25+). This change offers:
     *   `reset-password`: Manually reset a user's password.
     *   `health`: Perform health checks against the running server.
 *   **Passkey Authentication:** Added support for passkey authentication (requires HTTPS on some browsers) for more secure and convenient logins.
+*   **Over-The-Air (OTA) Updates:** Devices running compatible firmware can now be updated directly from the web interface. Updates are delivered via WebSocket commands or HTTP headers, streamlining the firmware management process.
 *   **App Configuration Export/Import:** Users can now export app configurations to a JSON file and import them back into existing app installations. This makes it easy to backup configurations or replicate complex setups across different apps.
 *   **ZIP-packaged App Support:** Users can now upload and run apps packaged as ZIP files. This enables more complex apps that split logic across multiple files, reference external assets like images, and include metadata via manifest files.
 

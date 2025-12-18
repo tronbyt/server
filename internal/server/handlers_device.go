@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"tronbyt-server/internal/data"
@@ -204,6 +205,23 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	locales := []string{"en_US", "de_DE"} // Add more as needed or scan directory
 	localizer := s.getLocalizer(r)
 
+	// Check if specific firmware exists for this device
+	firmwareAvailable := false
+	firmwareVersion := "Unknown"
+	binName := device.Type.FirmwareFilename(device.SwapColors)
+	if binName != "" {
+		firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
+		if _, err := os.Stat(firmwarePath); err == nil {
+			firmwareAvailable = true
+
+			// Read version
+			v := s.GetFirmwareVersion()
+			if v != "" {
+				firmwareVersion = v
+			}
+		}
+	}
+
 	s.renderTemplate(w, r, "update", TemplateData{
 		User:               user,
 		Device:             device,
@@ -215,6 +233,8 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		BrightnessUI:       bUI,
 		NightBrightnessUI:  nbUI,
 		DimBrightnessUI:    dbUI,
+		FirmwareAvailable:  firmwareAvailable,
+		FirmwareVersion:    firmwareVersion,
 
 		Localizer: localizer,
 	})
@@ -414,6 +434,9 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// 8. API Key
 	device.APIKey = r.FormValue("api_key")
 
+	// 9. OTA
+	device.SwapColors = r.FormValue("swap_colors") == "on"
+
 	if err := s.DB.Save(device).Error; err != nil {
 		slog.Error("Failed to update device", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -579,6 +602,7 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		device.Info = importedDevice.Info
 		device.ColorFilter = importedDevice.ColorFilter
 		device.NightColorFilter = importedDevice.NightColorFilter
+		device.SwapColors = importedDevice.SwapColors
 
 		if err := tx.Save(device).Error; err != nil {
 			return fmt.Errorf("failed to save updated device: %w", err)

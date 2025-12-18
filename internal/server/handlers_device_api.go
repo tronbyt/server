@@ -77,6 +77,19 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/webp")
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
+	// Check for Pending Update
+	if updateURL := device.PendingUpdateURL; updateURL != "" {
+		slog.Info("Sending OTA update header", "device", device.ID, "url", updateURL)
+		w.Header().Set("Tronbyt-OTA-URL", updateURL)
+
+		// Clear pending update
+		if err := s.DB.Model(device).Update("pending_update_url", "").Error; err != nil {
+			slog.Error("Failed to clear pending update", "error", err)
+		} else {
+			device.PendingUpdateURL = ""
+		}
+	}
+
 	// Determine Brightness
 	brightness := device.GetEffectiveBrightness()
 	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", brightness))
