@@ -14,7 +14,7 @@ import (
 )
 
 func newTestServer(t *testing.T) *Server {
-	dbName := fmt.Sprintf("file:%s?mode=memory&cache=shared&_busy_timeout=5000", t.Name())
+	dbName := fmt.Sprintf("file:%s?mode=memory&cache=private&_busy_timeout=5000", t.Name())
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
