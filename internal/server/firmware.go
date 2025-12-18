@@ -39,7 +39,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		return err
 	}
 
-	token := os.Getenv("GITHUB_TOKEN")
+	token := s.Config.GitHubToken
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}

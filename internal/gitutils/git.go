@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strings"
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/transport"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
 )
 
 // logWriter implements io.Writer to redirect git progress to slog.
@@ -89,16 +92,31 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 }
 
 // EnsureRepo clones a repo if it doesn't exist, or pulls if it does and update is true.
-func EnsureRepo(path string, url string, update bool) error {
-	slog.Info("Checking git repo", "path", path, "url", url)
+func EnsureRepo(path string, repoURL string, token string, update bool) error {
+	slog.Info("Checking git repo", "path", path, "url", repoURL)
+
+	var auth transport.AuthMethod
+
+	u, err := url.Parse(repoURL)
+	if err == nil && u.User == nil {
+		if token != "" && (u.Scheme == "http" || u.Scheme == "https") && u.Host == "github.com" {
+			auth = &http.BasicAuth{
+				Username: token,
+				Password: "", // For GitHub PATs, the password can be empty.
+			}
+		}
+	} else if err != nil {
+		slog.Warn("Failed to parse repo URL", "url", repoURL, "error", err)
+	}
 
 	// Check if path exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		slog.Info("Cloning repo", "url", url)
+		slog.Info("Cloning repo", "url", repoURL)
 		_, err := git.PlainClone(path, &git.CloneOptions{
-			URL:      url,
+			URL:      repoURL,
 			Progress: &logWriter{},
 			Depth:    1,
+			Auth:     auth,
 		})
 
 		return err
@@ -116,14 +134,14 @@ func EnsureRepo(path string, url string, update bool) error {
 	rem, err := r.Remote("origin")
 	if err == nil {
 		urls := rem.Config().URLs
-		if len(urls) > 0 && urls[0] != url {
-			slog.Warn("Repo remote URL mismatch, re-cloning", "current", urls[0], "new", url)
+		if len(urls) > 0 && urls[0] != repoURL {
+			slog.Warn("Repo remote URL mismatch, re-cloning", "current", urls[0], "new", repoURL)
 			// Remove and re-clone
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove old repo: %w", err)
 			}
 
-			return EnsureRepo(path, url, update)
+			return EnsureRepo(path, repoURL, token, update)
 		}
 	}
 
@@ -145,6 +163,7 @@ func EnsureRepo(path string, url string, update bool) error {
 		Progress:   &logWriter{},
 		Depth:      1,
 		Force:      true,
+		Auth:       auth,
 	})
 
 	// Handle fetch errors
@@ -155,7 +174,7 @@ func EnsureRepo(path string, url string, update bool) error {
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove broken repo: %w", err)
 			}
-			return EnsureRepo(path, url, update)
+			return EnsureRepo(path, repoURL, token, update)
 		}
 		return fmt.Errorf("failed to fetch repo: %w", err)
 	}
