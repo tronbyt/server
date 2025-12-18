@@ -184,19 +184,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			}
 		}
 
-		if app != nil && len(imgData) > 500*1024 {
-			slog.Warn("Image size very large", "app", app.Iname, "size", len(imgData))
-		}
-
 		dwell := device.GetEffectiveDwellTime(app)
 
-		// 2. Send Data
-		// Send Dwell only, sequence ID is not used by firmware
-		appName := "pushed_image"
-		if app != nil {
-			appName = app.Iname
-		}
-		slog.Debug("Sending Image", "app", appName, "dwell", dwell, "size", len(imgData))
 		if err := conn.WriteJSON(map[string]any{"dwell_secs": dwell}); err != nil {
 			slog.Error("Failed to write metadata WS message", "error", err)
 			return
@@ -227,8 +216,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		var timeoutSec int
 		if device.Info.ProtocolVersion != nil {
 			// Device may delay ACK until previous app completes its dwell time.
-			// Minimum 45s accommodates dwell time + network latency + processing overhead.
-			timeoutSec = max(dwell*2, 45)
+			// Wait at least 30s OR 2x the dwell time, whichever is greater.
+			timeoutSec = max(dwell*2, 30)
 		} else {
 			// Old firmware: wait exactly dwell time
 			timeoutSec = dwell
