@@ -196,7 +196,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		if app != nil {
 			appName = app.Iname
 		}
-		slog.Info("Sending Image", "app", appName, "dwell", dwell, "size", len(imgData))
+		slog.Debug("Sending Image", "app", appName, "dwell", dwell, "size", len(imgData))
 		if err := conn.WriteJSON(map[string]any{"dwell_secs": dwell}); err != nil {
 			slog.Error("Failed to write metadata WS message", "error", err)
 			return
@@ -226,8 +226,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		// 3. Wait for ACK or Timeout or Interrupt
 		var timeoutSec int
 		if device.Info.ProtocolVersion != nil {
-			// New firmware: wait longer to allow buffering/ack
-			// 25s was too short for large 24KB images on slow networks, causing desync.
+			// Device may delay ACK until previous app completes its dwell time.
+			// Minimum 45s accommodates dwell time + network latency + processing overhead.
 			timeoutSec = max(dwell*2, 45)
 		} else {
 			// Old firmware: wait exactly dwell time
@@ -244,13 +244,14 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			case msg := <-ackCh:
 				// Received ACK
 				if msg.Displaying != nil || msg.Counter != nil {
-					// Firmware sends a counter in 'displaying', not the App ID.
-					// We cannot strictly match it. We accept any Displaying message as confirmation.
+					// The firmware sends a sequential counter (1, 2, 3...) in the 'displaying' field,
+					// not the App ID we sent. Since we can't verify which specific app is displaying,
+					// we accept any ACK as confirmation that the device received and processed our message.
 					waiting = false
 
 					// Update DisplayingApp confirmation in DB
 					if app != nil {
-						slog.Info("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
+						slog.Debug("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
 						// Only now do we update the database that the device is truly displaying this app.
 						if err := s.DB.Model(&data.Device{ID: device.ID}).Update("displaying_app", app.Iname).Error; err != nil {
 							slog.Error("Failed to update displaying_app", "device", device.ID, "error", err)
