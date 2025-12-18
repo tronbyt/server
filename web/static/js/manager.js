@@ -1757,3 +1757,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }, true);
   }
 });
+
+function triggerOTA(deviceId, confirmMessage) {
+  if (confirm(confirmMessage)) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/devices/${deviceId}/ota`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}

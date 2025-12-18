@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"tronbyt-server/internal/data"
 )
 
 const (
@@ -14,8 +16,8 @@ const (
 	PlaceholderURL      = "XplaceholderREMOTEURL___________________________________________________________________________________________________________"
 )
 
-func Generate(dataDir string, deviceType string, ssid, password, url string, swapColors bool) ([]byte, error) {
-	filename := getFirmwareFilename(deviceType, swapColors)
+func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
+	filename := deviceType.FirmwareFilename(swapColors)
 	path := filepath.Join(dataDir, "firmware", filename)
 
 	content, err := os.ReadFile(path)
@@ -56,29 +58,6 @@ func Generate(dataDir string, deviceType string, ssid, password, url string, swa
 
 	// Correct Checksum and Digest
 	return updateFirmwareData(content)
-}
-
-func getFirmwareFilename(deviceType string, swapColors bool) string {
-	switch deviceType {
-	case "tidbyt_gen2":
-		return "tidbyt-gen2.bin"
-	case "pixoticker":
-		return "pixoticker.bin"
-	case "tronbyt_s3":
-		return "tronbyt-S3.bin"
-	case "tronbyt_s3_wide":
-		return "tronbyt-s3-wide.bin"
-	case "matrixportal_s3":
-		return "matrixportal-s3.bin"
-	case "matrixportal_s3_waveshare":
-		return "matrixportal-s3-waveshare.bin"
-	default:
-		if swapColors {
-			return "tidbyt-gen1_swap.bin"
-		}
-
-		return "tidbyt-gen1.bin"
-	}
 }
 
 func updateFirmwareData(data []byte) ([]byte, error) {

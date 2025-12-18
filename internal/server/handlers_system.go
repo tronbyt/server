@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,10 +26,9 @@ func (s *Server) handleUpdateFirmware(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		version := "unknown"
-		firmwareDir := filepath.Join(s.DataDir, "firmware")
-		if vBytes, e := os.ReadFile(filepath.Join(firmwareDir, "firmware_version.txt")); e == nil {
-			version = strings.TrimSpace(string(vBytes))
+		version := s.GetFirmwareVersion()
+		if version == "" {
+			version = "unknown"
 		}
 
 		resp := map[string]any{"success": err == nil, "version": version}

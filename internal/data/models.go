@@ -500,6 +500,10 @@ type Device struct {
 	ColorFilter      *ColorFilter `json:"color_filter"`
 	NightColorFilter *ColorFilter `json:"night_color_filter"`
 
+	// OTA
+	SwapColors       bool   `json:"swap_colors"`
+	PendingUpdateURL string `json:"pending_update_url,omitempty"`
+
 	Apps []App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
 
@@ -511,6 +515,7 @@ func (dt DeviceType) Supports2x() bool {
 		return false
 	}
 }
+
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
 	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
@@ -519,6 +524,31 @@ func (dt DeviceType) SupportsFirmware() bool {
 		return false
 	}
 }
+
+func (dt DeviceType) FirmwareFilename(swapColors bool) string {
+	switch dt {
+	case DeviceTidbytGen1:
+		if swapColors {
+			return "tidbyt-gen1_swap.bin"
+		}
+		return "tidbyt-gen1.bin"
+	case DeviceTidbytGen2:
+		return "tidbyt-gen2.bin"
+	case DevicePixoticker:
+		return "pixoticker.bin"
+	case DeviceTronbytS3:
+		return "tronbyt-S3.bin"
+	case DeviceTronbytS3Wide:
+		return "tronbyt-s3-wide.bin"
+	case DeviceMatrixPortal:
+		return "matrixportal-s3.bin"
+	case DeviceMatrixPortalWS:
+		return "matrixportal-s3-waveshare.bin"
+	default:
+		return ""
+	}
+}
+
 func (d *Device) GetTimezone() string {
 	if d.Timezone != nil && *d.Timezone != "" {
 		return *d.Timezone
