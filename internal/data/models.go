@@ -489,6 +489,7 @@ type Device struct {
 	Location DeviceLocation `gorm:"type:text" json:"location"` // Stores lat, lng, locality, etc.
 
 	LastAppIndex        int        `json:"last_app_index"`
+	DisplayingApp       *string    `json:"displaying_app"`
 	PinnedApp           *string    `json:"pinned_app"`
 	InterstitialEnabled bool       `json:"interstitial_enabled"`
 	InterstitialApp     *string    `json:"interstitial_app"`

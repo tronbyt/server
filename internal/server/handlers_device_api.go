@@ -65,6 +65,14 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// For HTTP devices, we assume "Sent" equals "Displaying" (or roughly so).
+	// We update DisplayingApp here so the Preview uses the explicit field instead of fallback.
+	if app != nil {
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("displaying_app", app.Iname).Error; err != nil {
+			slog.Error("Failed to update displaying_app for HTTP device", "device", device.ID, "error", err)
+		}
+	}
+
 	// Send Headers
 	w.Header().Set("Content-Type", "image/webp")
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")

@@ -76,7 +76,8 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	// Notify Dashboard that the device has updated (new app or new render)
-	if user != nil {
+	// For WS devices, we wait for the ACK to send this event to avoid "future" previews.
+	if user != nil && device.Info.ProtocolType != data.ProtocolWS {
 		s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 	}
 
@@ -89,12 +90,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		return getDefaultImage()
 	}
 
-	if app.Pushed {
-		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
-	} else {
-		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
-	}
+	webpPath = s.getAppWebpPath(deviceWebpDir, app)
 
 	data, err := os.ReadFile(webpPath)
 	// If reading the specific app image fails, fall back to default
@@ -115,13 +111,36 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 	var user data.User
 	s.DB.First(&user, "username = ?", device.Username)
 
-	// Reuse determineNextApp but we want the *current* state.
-	// Actually, just serving the app at LastAppIndex is usually enough for "Current App" display.
-	// But we need to handle the case where LastAppIndex is invalid or app is disabled.
-	// Ideally we run the rotation logic starting at LastAppIndex - 1 (so next is LastAppIndex)?
+	// Priority 1: Check DisplayingApp (Real-time confirmation from WS devices)
+	if device.DisplayingApp != nil && *device.DisplayingApp != "" {
+		targetIname := *device.DisplayingApp
+		// slog.Debug("Checking DisplayingApp", "iname", targetIname)
+		// Find app in device.Apps
+		for i := range device.Apps {
+			if device.Apps[i].Iname == targetIname {
+				app := &device.Apps[i]
 
-	// Let's implement a simplified version that just tries to render the app at LastAppIndex.
+				// Generate path
+				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+				if err != nil {
+					slog.Warn("Failed to get device webp directory", "device_id", device.ID, "error", err)
+					break
+				}
+				webpPath := s.getAppWebpPath(deviceWebpDir, app)
 
+				// Check if file exists to be safe
+				if _, err := os.Stat(webpPath); err == nil {
+					data, err := os.ReadFile(webpPath)
+					return data, app, err
+				} else {
+					slog.Warn("DisplayingApp file missing, falling back", "path", webpPath)
+				}
+				break // Valid app but missing file, fallthrough to legacy logic
+			}
+		}
+	}
+
+	// Priority 2: Fallback to LastAppIndex (Legacy/HTTP devices)
 	apps := make([]data.App, len(device.Apps))
 	copy(apps, device.Apps)
 	sort.Slice(apps, func(i, j int) bool {
@@ -149,12 +168,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 		return nil, nil, fmt.Errorf("failed to get device webp directory: %w", err)
 	}
 
-	if app.Pushed {
-		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
-	} else {
-		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
-	}
+	webpPath = s.getAppWebpPath(deviceWebpDir, app)
 
 	data, err := os.ReadFile(webpPath)
 	return data, app, err
@@ -261,4 +275,14 @@ func createExpandedAppsList(device *data.Device, apps []data.App) []data.App {
 		}
 	}
 	return expanded
+}
+
+// getAppWebpPath generates the file path for an app's WebP image.
+// It handles both pushed apps (stored in pushed/ subdirectory) and regular apps.
+func (s *Server) getAppWebpPath(deviceWebpDir string, app *data.App) string {
+	if app.Pushed {
+		return filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
+	}
+	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	return filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 }
