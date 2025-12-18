@@ -3,15 +3,13 @@ package server
 import (
 	"context"
 	"fmt"
-
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
 	"time"
 
-	"log/slog"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
 )
@@ -85,11 +83,18 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 
 	// 6. Return Image
 	var webpPath string
+
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for next app image", "device_id", device.ID, "error", err)
+		return getDefaultImage()
+	}
+
 	if app.Pushed {
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), "pushed", app.Iname+".webp")
+		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
 	} else {
 		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), fmt.Sprintf("%s.webp", appBasename))
+		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 	}
 
 	data, err := os.ReadFile(webpPath)
@@ -164,11 +169,18 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 
 	// Return image
 	var webpPath string
+
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for current app image", "device_id", device.ID, "error", err)
+		return nil, nil, fmt.Errorf("failed to get device webp directory: %w", err)
+	}
+
 	if app.Pushed {
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), "pushed", app.Iname+".webp")
+		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
 	} else {
 		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), fmt.Sprintf("%s.webp", appBasename))
+		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 	}
 
 	data, err := os.ReadFile(webpPath)
@@ -198,13 +210,15 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		candidate := expanded[nextIndex]
 
 		isPinned := device.PinnedApp != nil && *device.PinnedApp == candidate.Iname
-		isNight := device.GetNightModeIsActive() && device.NightModeApp == candidate.Iname
+		nightModeActive := device.GetNightModeIsActive()
+		isNightTarget := nightModeActive && device.NightModeApp == candidate.Iname
 		isInterstitialPos := device.InterstitialEnabled && nextIndex%2 == 1
 
 		shouldDisplay := false
-
-		if isPinned || isNight {
+		if isPinned {
 			shouldDisplay = true
+		} else if nightModeActive {
+			shouldDisplay = isNightTarget
 		} else if isInterstitialPos {
 			shouldDisplay = true
 			// Interstitial Logic: Skip if previous regular app (at index-1) is skipped
@@ -218,8 +232,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 				}
 			}
 		} else {
-			active := candidate.Enabled && IsAppScheduleActive(&candidate, device)
-			if active {
+			if candidate.Enabled && IsAppScheduleActive(&candidate, device) {
 				shouldDisplay = true
 			}
 		}

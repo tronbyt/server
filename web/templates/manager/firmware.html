@@ -2,6 +2,8 @@
 {{ template "base" . }}
 {{ end }}
 
+{{ define "title" }}{{ t .Localizer "Firmware" }}{{ end }}
+
 {{ define "content" }}
 <link rel="stylesheet" href="/static/css/firmware-simple.css">
 <div class="header-container">

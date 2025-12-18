@@ -96,5 +96,6 @@ The server can be configured via environment variables or `.env` file:
 **HTTPS (TLS):**
 *   Can be achieved by configuring `TRONBYT_SSL_KEYFILE` and `TRONBYT_SSL_CERTFILE`.
 *   Or by fronting the service with a reverse proxy like Caddy (see `docker-compose.https.yaml`).
+*   After enabling HTTPS, configure the health check to use the corresponding URL, e.g. `test: ["CMD", "/app/tronbyt-server", "health", "https://tronbyt.example.com/health"]`.
 
 **Cache:** By default, an in-memory cache is used. Redis can be configured via `REDIS_URL` for persistent caching across container restarts.

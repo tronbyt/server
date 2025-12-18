@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"strings"
@@ -16,6 +17,63 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 )
+
+// RenderApp consolidates the logic for rendering an app for a device.
+// It handles config overrides, timezone/locale injection, dwell time, and filters.
+func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, appPath string, configOverrides map[string]any) ([]byte, []string, error) {
+	// Config
+	var config map[string]any
+	switch {
+	case configOverrides != nil:
+		config = configOverrides
+	case app != nil && app.Config != nil:
+		config = maps.Clone(app.Config)
+	default:
+		config = make(map[string]any)
+	}
+
+	// Timezone & Locale
+	var deviceTimezone string
+	var locale *string
+	supports2x := false
+
+	if device != nil {
+		deviceTimezone = device.GetTimezone()
+		// The legacy "$tz" config variable should eventually be removed.
+		// The system apps already use `time.tz()`, but users' custom apps might not.
+		config["$tz"] = deviceTimezone
+		locale = device.Locale
+		supports2x = device.Type.Supports2x()
+	}
+
+	// Dwell Time
+	var appInterval int
+	if device != nil {
+		appInterval = device.GetEffectiveDwellTime(app)
+	} else {
+		appInterval = 15 // Default fallback if no device context
+	}
+
+	// Filters
+	var filters []string
+	if device != nil {
+		filters = s.getEffectiveFilters(device, app)
+	}
+
+	return renderer.Render(
+		ctx,
+		appPath,
+		config,
+		64, 32,
+		time.Duration(appInterval)*time.Second,
+		30*time.Second,
+		true,
+		supports2x,
+		&deviceTimezone,
+		locale,
+		filters,
+	)
+}
 
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
 	// 1. Pushed App (Pre-rendered)
@@ -33,7 +91,11 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	webpDir := s.getDeviceWebPDir(device.ID)
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for rendering", "device_id", device.ID, "error", err)
+		return false
+	}
 	webpPath, err := securejoin.SecureJoin(webpDir, fmt.Sprintf("%s.webp", appBasename))
 	if err != nil {
 		slog.Error("Path traversal attempt in webp path", "app", appBasename, "error", err)
@@ -63,54 +125,21 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Second {
 		slog.Info("Rendering app", "app", appBasename)
 
-		// Config
-		config := make(map[string]string)
-		for k, v := range app.Config {
-			if str, ok := v.(string); ok {
-				config[k] = str
-			} else {
-				config[k] = fmt.Sprintf("%v", v)
-			}
-		}
-
-		// Add default config
-		deviceTimezone := device.GetTimezone()
-		config["$tz"] = deviceTimezone
-		if device.Location.Lat != 0 {
-			config["$lat"] = fmt.Sprintf("%f", device.Location.Lat)
-		}
-		if device.Location.Lng != 0 {
-			config["$lng"] = fmt.Sprintf("%f", device.Location.Lng)
-		}
-
-		appInterval := device.GetEffectiveDwellTime(app)
-
-		// Filters
-		filters := s.getEffectiveFilters(device, app)
-
 		startTime := time.Now()
-		imgBytes, messages, err := renderer.Render(
-			ctx,
-			appPath,
-			config,
-			64, 32,
-			time.Duration(appInterval)*time.Second,
-			30*time.Second,
-			true,
-			device.Type.Supports2x(),
-			&deviceTimezone,
-			device.Locale,
-			filters,
-		)
+		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
+		renderDur := time.Since(startTime)
+
 		for _, msg := range messages {
 			slog.Debug("Render message", "app", appBasename, "message", msg)
 		}
-		renderDur := time.Since(startTime)
 
-		success := err == nil && len(imgBytes) > 0
+		empty := len(imgBytes) == 0
+		success := err == nil && !empty
 
-		if !success {
+		if err != nil {
 			slog.Error("Error rendering app", "app", appBasename, "error", err)
+		} else if empty {
+			slog.Debug("No output from app", "app", appBasename)
 		} else {
 			// Save WebP
 			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
@@ -202,7 +231,10 @@ func copyFile(src, dst string) error {
 }
 
 func (s *Server) sendDefaultImage(w http.ResponseWriter, r *http.Request, device *data.Device) {
+	// Fallback if main image retrieval fails
 	path := "static/images/default.webp"
+
+	// Get default image from embedded assets
 	f, err := web.Assets.Open(path)
 	if err != nil {
 		slog.Error("Failed to open default image from assets", "error", err)

@@ -7,9 +7,24 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 )
+
+// logWriter implements io.Writer to redirect git progress to slog.
+type logWriter struct{}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	// git progress often uses \r or partial lines. We trim whitespace
+	// to avoid empty log entries, but we log everything.
+	// Using Debug to avoid flooding Info logs with progress percentages if configured.
+	// However, user asked for it to be in slog, mimicking previous stdout visibility.
+	msg := strings.TrimSpace(string(p))
+	if msg != "" {
+		slog.Info(msg)
+	}
+	return len(p), nil
+}
 
 // RepoInfo holds details about a Git repository.
 type RepoInfo struct {
@@ -80,9 +95,9 @@ func EnsureRepo(path string, url string, update bool) error {
 	// Check if path exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		slog.Info("Cloning repo", "url", url)
-		_, err := git.PlainClone(path, false, &git.CloneOptions{
+		_, err := git.PlainClone(path, &git.CloneOptions{
 			URL:      url,
-			Progress: os.Stdout,
+			Progress: &logWriter{},
 			Depth:    1,
 		})
 
@@ -123,25 +138,60 @@ func EnsureRepo(path string, url string, update bool) error {
 		return err
 	}
 
-	// Reset to HEAD (Hard) to discard local changes
-	if err := w.Reset(&git.ResetOptions{Mode: git.HardReset}); err != nil {
-		slog.Warn("Failed to hard reset repo", "error", err)
+	// Fetch updates (Depth 1 = Shallow)
+	slog.Info("Fetching updates")
+	err = r.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Progress:   &logWriter{},
+		Depth:      1,
+		Force:      true,
+	})
+
+	// Handle fetch errors
+	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		// If fetch fails with object not found (or other critical git error), try re-cloning
+		if errors.Is(err, plumbing.ErrObjectNotFound) {
+			slog.Warn("Git fetch failed with object not found, re-cloning", "error", err)
+			if err := os.RemoveAll(path); err != nil {
+				return fmt.Errorf("failed to remove broken repo: %w", err)
+			}
+			return EnsureRepo(path, url, update)
+		}
+		return fmt.Errorf("failed to fetch repo: %w", err)
 	}
+
+	// Identify the branch we are on
+	headRef, err := r.Head()
+	if err != nil {
+		return fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	if !headRef.Name().IsBranch() {
+		return fmt.Errorf("repository in detached HEAD state at %s, cannot determine branch to update", headRef.Hash().String())
+	}
+	branchName := headRef.Name().Short()
+
+	// Find the commit hash of that branch on the remote
+	// We look for refs/remotes/origin/<branchName>
+	remoteRefName := plumbing.ReferenceName(fmt.Sprintf("refs/remotes/origin/%s", branchName))
+	remoteRef, err := r.Reference(remoteRefName, true)
+	if err != nil {
+		return fmt.Errorf("failed to find remote ref %s: %w", remoteRefName, err)
+	}
+
+	// Hard Reset the worktree to the remote commit
+	slog.Info("Resetting to remote HEAD", "commit", remoteRef.Hash().String())
+	if err := w.Reset(&git.ResetOptions{
+		Mode:   git.HardReset,
+		Commit: remoteRef.Hash(),
+	}); err != nil {
+		return fmt.Errorf("failed to reset worktree: %w", err)
+	}
+
 	// Clean untracked files
 	if err := w.Clean(&git.CleanOptions{Dir: true}); err != nil {
 		slog.Warn("Failed to clean repo", "error", err)
 	}
 
-	slog.Info("Pulling repo")
-	err = w.Pull(&git.PullOptions{
-		RemoteName: "origin",
-		Progress:   os.Stdout,
-	})
-
-	if errors.Is(err, git.NoErrAlreadyUpToDate) {
-		slog.Info("Repo already up to date")
-		return nil
-	}
-
-	return err
+	return nil
 }

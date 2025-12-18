@@ -56,5 +56,9 @@ EXPOSE 8000
 # Use the Go-based entrypoint wrapper
 ENTRYPOINT ["/boot"]
 
+# Default environment variables
+ENV DB_DSN=data/tronbyt.db
+ENV DATA_DIR=data
+
 # Default command to execute the main server binary
-CMD ["/app/tronbyt-server", "-db", "data/tronbyt.db", "-data", "data"]
+CMD ["/app/tronbyt-server"]

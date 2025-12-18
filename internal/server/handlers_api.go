@@ -14,7 +14,6 @@ import (
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
-	"tronbyt-server/internal/renderer"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 )
@@ -257,12 +256,6 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert config to map[string]string
-	configStr := make(map[string]string)
-	for k, v := range dataReq.Config {
-		configStr[k] = fmt.Sprintf("%v", v)
-	}
-
 	// Look up existing app if installationID is provided to get DisplayTime and filters
 	var existingApp *data.App
 	installationID := dataReq.InstallationID
@@ -278,30 +271,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Determine Dwell Time
-	appInterval := device.DefaultInterval
-	if existingApp != nil && existingApp.DisplayTime > 0 {
-		appInterval = existingApp.DisplayTime
-	}
-
-	// Filters
-	filters := s.getEffectiveFilters(device, existingApp)
-
-	// Render
-	deviceTimezone := device.GetTimezone()
-	imgBytes, _, err := renderer.Render(
-		r.Context(),
-		appPath,
-		configStr,
-		64, 32,
-		time.Duration(appInterval)*time.Second,
-		30*time.Second,
-		true,
-		device.Type.Supports2x(),
-		&deviceTimezone,
-		device.Locale,
-		filters,
-	)
+	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, appPath, dataReq.Config)
 	if err != nil {
 		slog.Error("Failed to render app", "error", err)
 		http.Error(w, "Rendering failed", http.StatusInternalServerError)
@@ -536,7 +506,12 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) savePushedImage(deviceID, installID string, data []byte) error {
-	dir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+	dir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		return fmt.Errorf("failed to get device webp directory: %w", err)
+	}
+
+	dir = filepath.Join(dir, "pushed")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -754,7 +729,12 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		app.Enabled = *update.Enabled
 		if !app.Enabled {
 			// Delete associated webp files when app is disabled
-			webpDir := s.getDeviceWebPDir(device.ID)
+			webpDir, err := s.ensureDeviceImageDir(device.ID)
+			if err != nil {
+				slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", device.ID, "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 			for _, match := range matches {
 				if err := os.Remove(match); err != nil {
@@ -845,7 +825,12 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	webpDir := s.getDeviceWebPDir(device.ID)
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {

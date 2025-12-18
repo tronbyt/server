@@ -482,8 +482,8 @@
   "Upload App": {
     "other": "Upload App"
   },
-  "Select File (.star or .webp)": {
-    "other": "Select File (.star or .webp)"
+  "Select File (.star, .webp or .zip)": {
+    "other": "Select File (.star, .webp or .zip)"
   },
   "Sign in with Passkey": {
     "other": "Sign in with Passkey"
@@ -533,8 +533,8 @@
   "Loading apps...": {
     "other": "Loading apps..."
   },
-  "Upload .star or .webp file": {
-    "other": "Upload .star or .webp file"
+  "Upload app": {
+    "other": "Upload app"
   },
   "App Selection": {
     "other": "App Selection"
@@ -1402,5 +1402,41 @@
   },
   "This will overwrite all current settings and apps. Continue?": {
     "other": "This will overwrite all current settings and apps. Continue?"
+  },
+  "Invalid JSON file or unsupported format.": {
+    "other": "Invalid JSON file or unsupported format."
+  },
+  "Invalid JSON structure: missing required fields.": {
+    "other": "Invalid JSON structure: missing required fields."
+  },
+  "Import failed. Check server logs.": {
+    "other": "Import failed. Check server logs."
+  },
+  "Configuration imported successfully.": {
+    "other": "Configuration imported successfully."
+  },
+  "Create a device by importing a JSON configuration file.": {
+    "other": "Create a device by importing a JSON configuration file."
+  },
+  "New device imported successfully": {
+    "other": "New device imported successfully"
+  },
+  "Imported device name cannot be empty.": {
+    "other": "Imported device name cannot be empty."
+  },
+  "A device with this name already exists.": {
+    "other": "A device with this name already exists."
+  },
+  "Export Config": {
+    "other": "Export Config"
+  },
+  "Import Config": {
+    "other": "Import Config"
+  },
+  "Config imported successfully. Click Save to apply changes.": {
+    "other": "Config imported successfully. Click Save to apply changes."
+  },
+  "Error parsing config file.": {
+    "other": "Error parsing config file."
   }
 }

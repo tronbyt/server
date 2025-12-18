@@ -18,7 +18,7 @@ import (
 func Render(
 	ctx context.Context,
 	path string,
-	config map[string]string,
+	config map[string]any,
 	width, height int,
 	maxDuration time.Duration,
 	timeout time.Duration,
@@ -55,7 +55,8 @@ func Render(
 	}
 
 	return loader.RenderApplet(
-		path, config,
+		path,
+		config,
 		loader.WithMeta(canvas.Metadata{
 			Width:  int(width),
 			Height: int(height),
@@ -102,7 +103,7 @@ func GetSchema(path string, width, height int, output2x bool) ([]byte, error) {
 func CallSchemaHandler(
 	ctx context.Context,
 	path string,
-	config map[string]string,
+	config map[string]any,
 	width, height int,
 	output2x bool,
 	handlerName string,

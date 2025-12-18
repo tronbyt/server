@@ -2,6 +2,8 @@
 {{ template "base" . }}
 {{ end }}
 
+{{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
+
 {{ define "header" }}
 <link rel="stylesheet" href="/static/css/configapp-simple.css">
 <link rel="stylesheet" href="/static/css/updateapp-simple.css">
@@ -390,10 +392,14 @@
         {{ if eq .Device.Info.ProtocolType "WS" }}
         <button type="button" class="w3-button w3-blue w3-round" id="previewButton"><i class="fa-solid fa-eye"></i> {{ t .Localizer "Preview" }}</button>
         {{ end }}
+        <button type="button" class="w3-button w3-grey w3-round" onclick="exportConfig()"><i class="fa-solid fa-download"></i> {{ t .Localizer "Export Config" }}</button>
+        <button type="button" class="w3-button w3-grey w3-round" onclick="document.getElementById('importConfigInput').click()"><i class="fa-solid fa-upload"></i> {{ t .Localizer "Import Config" }}</button>
         <button type="button" class="w3-button w3-red w3-round" id="cancelButton"><i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}</button>
         <button type="button" class="w3-button w3-red w3-round" id="deleteButton" onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)"><i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}</button>
     </div>
 </form>
+
+<input type="file" id="importConfigInput" style="display:none;" accept=".json" onchange="importConfig(this)">
 
 <!-- API Examples Section -->
 <div id="apiUsageContent">
@@ -978,7 +984,10 @@
     }
 
     const updateGeneratedFields = async () => {
-      const sourceValue = sourceField.value;
+      let sourceValue = sourceField.value;
+      if (sourceField.type === "checkbox") {
+        sourceValue = sourceField.checked ? "true" : "false";
+      }
       try {
         const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
         const response = await fetch(handlerUrl, {
@@ -1183,48 +1192,7 @@
     }
   }
 
-  function deleteApp(deviceId, iname, deleteOnCancel) {
-      fetch(`/devices/${deviceId}/${iname}/delete`, {
-        method: 'POST'
-      }).then(() => {
-           window.location.href = "/";
-      }).catch(() => {
-        alert("{{ t .Localizer "Error deleting app." }}");
-        window.location.href = "/";
-      });
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    const previewImage = document.getElementById('previewImage');
-    if (previewImage) {
-        previewImage.addEventListener('load', () => {
-            previewImage.classList.add('loaded');
-        });
-        // Handle cached images
-        if (previewImage.complete) {
-            previewImage.classList.add('loaded');
-        }
-    }
-
-    const form = document.getElementById("dynamicForm");
-    const formTable = document.getElementById("schemaConfigContainer");
-
-    // Generate schema fields
-    const formFields = createFormFields(schema, config);
-    formFields.forEach(row => {
-      formTable.appendChild(row);
-    });
-
-    // Create generated fields
-    createGeneratedFormFields(schema, config);
-
-    initializeToggleButtons();
-    initializeRecurrenceOptions();
-    updateConfigAndPreview();
-
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-
+  function collectSettings() {
       const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
       const weekdays = Array.from(document.querySelectorAll('input[name="weekdays"]:checked')).map(cb => cb.value);
 
@@ -1268,6 +1236,173 @@
              }
          }
       }
+      return settings;
+  }
+
+  function exportConfig() {
+      const settings = collectSettings();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "app_config_{{ .App.Iname }}.json");
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  }
+
+  function importConfig(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          try {
+              const settings = JSON.parse(e.target.result);
+
+              // Field Mappings for simple values and checkboxes
+              const fieldMappings = {
+                  enabled: { type: 'checked' },
+                  autopin: { type: 'checked' },
+                  uinterval: { type: 'value', default: '' },
+                  display_time: { type: 'value', default: '' },
+                  notes: { type: 'value', default: '' },
+                  start_time: { type: 'value', default: '' },
+                  end_time: { type: 'value', default: '' },
+                  color_filter: { type: 'value', default: 'inherit' },
+                  use_custom_recurrence: { type: 'checked' },
+                  recurrence_type: { type: 'value', default: 'daily' },
+                  recurrence_interval: { type: 'value', default: '1' },
+                  recurrence_start_date: { type: 'value', default: '' },
+                  recurrence_end_date: { type: 'value', default: '' },
+              };
+
+              // Apply standard mappings
+              for (const [key, config] of Object.entries(fieldMappings)) {
+                  const element = document.getElementById(key);
+                  if (element) {
+                      if (config.type === 'checked') {
+                          element.checked = !!settings[key];
+                      } else {
+                          element.value = settings[key] ?? config.default;
+                      }
+                  }
+              }
+
+              // Days
+              document.querySelectorAll('input[name="days"]').forEach(cb => {
+                  cb.checked = Array.isArray(settings.days) && settings.days.includes(cb.value);
+              });
+
+              // Toggle Recurrence UI based on imported values
+              toggleCustomRecurrence();
+              toggleRecurrenceOptions();
+
+              // Weekdays
+              document.querySelectorAll('input[name="weekdays"]').forEach(cb => {
+                  cb.checked = Array.isArray(settings.weekdays) && settings.weekdays.includes(cb.value);
+              });
+
+              // Monthly pattern
+              if (settings.monthly_pattern) {
+                  const el = document.getElementById('monthly_pattern');
+                  if (el) {
+                      el.value = settings.monthly_pattern;
+                      toggleMonthlyPatternOptions();
+                  }
+              }
+
+              const domEl = document.getElementById('day_of_month');
+              if (domEl) domEl.value = settings.day_of_month ?? '';
+
+              if (settings.day_of_week_pattern) {
+                  const parts = settings.day_of_week_pattern.split('_');
+                  if (parts.length === 2) {
+                      const occEl = document.getElementById('week_occurrence');
+                      const dayEl = document.getElementById('week_day');
+                      if (occEl) occEl.value = parts[0];
+                      if (dayEl) dayEl.value = parts[1];
+                      updateDayOfWeekPattern();
+                  }
+              }
+
+              // Config object - Update global config object and UI
+              if (settings.config && typeof settings.config === 'object') {
+                  Object.assign(config, settings.config);
+
+                  // Update UI fields
+                  for (const [key, value] of Object.entries(settings.config)) {
+                      // Handle potential nulls in config object
+                      const safeValue = value ?? '';
+                      const input = document.querySelector(`[data-config-id="${key}"]`);
+                      if (input) {
+                          if (input.type === 'checkbox') {
+                              input.checked = safeValue === 'true' || safeValue === true;
+                          } else {
+                              input.value = safeValue;
+                          }
+                          // Trigger change event for dependent fields (like generated fields)
+                          input.dispatchEvent(new Event('change'));
+                          input.dispatchEvent(new Event('input'));
+                      }
+                  }
+              }
+
+              updateConfigAndPreview();
+              alert("{{ t .Localizer "Config imported successfully. Click Save to apply changes." }}");
+
+          } catch (err) {
+              console.error(err);
+              alert("{{ t .Localizer "Error parsing config file." }}");
+          }
+          // Reset input
+          input.value = '';
+      };
+      reader.readAsText(file);
+  }
+
+  function deleteApp(deviceId, iname, deleteOnCancel) {
+      fetch(`/devices/${deviceId}/${iname}/delete`, {
+        method: 'POST'
+      }).then(() => {
+           window.location.href = "/";
+      }).catch(() => {
+        alert("{{ t .Localizer "Error deleting app." }}");
+        window.location.href = "/";
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const previewImage = document.getElementById('previewImage');
+    if (previewImage) {
+        previewImage.addEventListener('load', () => {
+            previewImage.classList.add('loaded');
+        });
+        // Handle cached images
+        if (previewImage.complete) {
+            previewImage.classList.add('loaded');
+        }
+    }
+
+    const form = document.getElementById("dynamicForm");
+    const formTable = document.getElementById("schemaConfigContainer");
+
+    // Generate schema fields
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => {
+      formTable.appendChild(row);
+    });
+
+    // Create generated fields
+    createGeneratedFormFields(schema, config);
+
+    initializeToggleButtons();
+    initializeRecurrenceOptions();
+    updateConfigAndPreview();
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const settings = collectSettings();
 
       fetch(window.location.href, {
         method: 'POST',

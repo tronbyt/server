@@ -6,6 +6,7 @@ import (
 	"tronbyt-server/internal/data"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // generateUniqueIname generates a unique 3-digit string for an app installation name (iname).
@@ -35,7 +36,7 @@ func getMaxAppOrder(db *gorm.DB, deviceID string) (int, error) {
 	// If the column is indexed, performance is comparable to MAX().
 	if err := db.Model(&data.App{}).
 		Where("device_id = ?", deviceID).
-		Order("order DESC").
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "order"}, Desc: true}).
 		Limit(1).
 		Pluck("order", &currentMax).Error; err != nil && err != gorm.ErrRecordNotFound {
 		return 0, fmt.Errorf("failed to get max app order: %w", err)

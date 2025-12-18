@@ -2,12 +2,14 @@
 {{ template "base" . }}
 {{ end }}
 
+{{ define "title" }}{{ t .Localizer "Upload App" }}{{ end }}
+
 {{ define "content" }}
 <h1>{{ t .Localizer "Upload App" }}</h1>
 <div class="w3-card-4 w3-padding">
     <form method="post" enctype="multipart/form-data">
-        <label>{{ t .Localizer "Select File (.star or .webp)" }}</label>
-        <input class="w3-input" type="file" name="file" accept=".star,.webp" required>
+        <label>{{ t .Localizer "Select File (.star, .webp or .zip)" }}</label>
+        <input class="w3-input" type="file" name="file" accept=".star,.webp,.zip" required>
         <br>
         <button class="w3-button w3-green" type="submit">{{ t .Localizer "Upload" }}</button>
     </form>

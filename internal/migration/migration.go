@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/legacy"
@@ -115,213 +114,17 @@ func readLegacyUsers(dbPath string) ([]legacy.LegacyUser, error) {
 }
 
 func migrateUser(db *gorm.DB, lUser legacy.LegacyUser) error {
-	// Map User
-	user := data.User{
-		Username:        lUser.Username,
-		Password:        lUser.Password,
-		Email:           lUser.Email,
-		APIKey:          lUser.APIKey,
-		ThemePreference: data.ThemePreference(lUser.ThemePreference),
-		SystemRepoURL:   lUser.SystemRepoURL,
-		AppRepoURL:      lUser.AppRepoURL,
-		IsAdmin:         lUser.Username == "admin",
-	}
+	user := lUser.ToDataUser()
 
-	// Save User first
+	// Set Admin flag manually (not in legacy JSON usually, but implied by username)
+	user.IsAdmin = (lUser.Username == "admin")
+
+	// Save User (and cascading Devices/Apps)
 	if err := db.Create(&user).Error; err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
 
-	// Map Devices
-	for _, lDevice := range lUser.Devices {
-		dev, err := mapDevice(lUser.Username, lDevice)
-		if err != nil {
-			slog.Warn("Skipping invalid device", "id", lDevice.ID, "error", err)
-			continue
-		}
-
-		if err := db.Create(&dev).Error; err != nil {
-			return fmt.Errorf("create device %s: %w", dev.ID, err)
-		}
-	}
-
 	return nil
-}
-
-func mapDevice(username string, lDevice legacy.LegacyDevice) (data.Device, error) {
-	// Handle Location
-	var loc data.DeviceLocation
-	if lDevice.Location != nil {
-		loc.Locality = lDevice.Location.Locality
-		loc.Description = lDevice.Location.Description
-		loc.PlaceID = lDevice.Location.PlaceID
-		loc.Lat = legacy.ParseFloat(lDevice.Location.Lat)
-		loc.Lng = legacy.ParseFloat(lDevice.Location.Lng)
-		if lDevice.Location.Timezone != nil {
-			loc.Timezone = *lDevice.Location.Timezone
-		}
-	}
-
-	// Handle Info
-	var info data.DeviceInfo
-	if lDevice.Info.FirmwareVersion != nil {
-		info.FirmwareVersion = *lDevice.Info.FirmwareVersion
-	}
-	if lDevice.Info.FirmwareType != nil {
-		info.FirmwareType = *lDevice.Info.FirmwareType
-	}
-	if lDevice.Info.ProtocolVersion != nil {
-		info.ProtocolVersion = lDevice.Info.ProtocolVersion
-	}
-	if lDevice.Info.MacAddress != nil {
-		info.MACAddress = *lDevice.Info.MacAddress
-	}
-	if lDevice.Info.ProtocolType != nil {
-		info.ProtocolType = data.ProtocolType(*lDevice.Info.ProtocolType)
-	}
-
-	// Handle Brightness polymorphism
-	brightness := data.Brightness(legacy.ParseBrightness(lDevice.Brightness))
-	nightBrightness := data.Brightness(legacy.ParseBrightness(lDevice.NightBrightness))
-	var dimBrightness *data.Brightness
-	if lDevice.DimBrightness != nil {
-		val := data.Brightness(legacy.ParseBrightness(lDevice.DimBrightness))
-		dimBrightness = &val
-	}
-
-	nightStart := legacy.ParseTimeStr(lDevice.NightStart)
-	nightEnd := legacy.ParseTimeStr(lDevice.NightEnd)
-
-	// Color Filters
-	var cf *data.ColorFilter
-	if lDevice.ColorFilter != nil {
-		val := data.ColorFilter(*lDevice.ColorFilter)
-		cf = &val
-	}
-	var ncf *data.ColorFilter
-	if lDevice.NightColorFilter != nil {
-		val := data.ColorFilter(*lDevice.NightColorFilter)
-		ncf = &val
-	}
-
-	var pinnedApp *string
-	if lDevice.PinnedApp != nil && *lDevice.PinnedApp != "" {
-		pinnedApp = lDevice.PinnedApp
-	}
-
-	dev := data.Device{
-		ID:                    lDevice.ID,
-		Username:              username,
-		Name:                  lDevice.Name,
-		Type:                  data.DeviceType(lDevice.Type),
-		APIKey:                lDevice.APIKey,
-		ImgURL:                lDevice.ImgURL,
-		WsURL:                 lDevice.WsURL,
-		Notes:                 lDevice.Notes,
-		Brightness:            brightness,
-		CustomBrightnessScale: lDevice.CustomBrightnessScale,
-		NightModeEnabled:      lDevice.NightModeEnabled,
-		NightModeApp:          lDevice.NightModeApp,
-		NightStart:            nightStart,
-		NightEnd:              nightEnd,
-		NightBrightness:       nightBrightness,
-		DimTime:               lDevice.DimTime,
-		DimBrightness:         dimBrightness,
-		DefaultInterval:       lDevice.DefaultInterval,
-		Timezone:              lDevice.Timezone,
-		Locale:                lDevice.Locale,
-		Location:              loc,
-		LastAppIndex:          lDevice.LastAppIndex,
-		PinnedApp:             pinnedApp,
-		InterstitialEnabled:   lDevice.InterstitialEnabled,
-		InterstitialApp:       lDevice.InterstitialApp,
-		LastSeen:              lDevice.LastSeen,
-		Info:                  info,
-		ColorFilter:           cf,
-		NightColorFilter:      ncf,
-	}
-
-	// Map Apps
-	for appID, lAppRaw := range lDevice.Apps {
-		var lApp legacy.LegacyApp
-		if err := json.Unmarshal(lAppRaw, &lApp); err != nil {
-			slog.Warn("Skipping malformed app JSON", "app_id", appID, "error", err)
-			continue
-		}
-
-		app, err := mapApp(dev.ID, lApp)
-		if err != nil {
-			slog.Warn("Skipping invalid app", "iname", lApp.Iname, "error", err)
-			continue
-		}
-		dev.Apps = append(dev.Apps, app)
-	}
-
-	return dev, nil
-}
-
-func mapApp(deviceID string, lApp legacy.LegacyApp) (data.App, error) {
-	// Parse Time fields
-	startTimeStr := legacy.ParseTimeStr(lApp.StartTime)
-	endTimeStr := legacy.ParseTimeStr(lApp.EndTime)
-	var startTime, endTime *string
-	if startTimeStr != "" {
-		startTime = &startTimeStr
-	}
-	if endTimeStr != "" {
-		endTime = &endTimeStr
-	}
-
-	// Color Filter
-	var cf *data.ColorFilter
-	if lApp.ColorFilter != nil {
-		val := data.ColorFilter(*lApp.ColorFilter)
-		cf = &val
-	}
-
-	// Handle Path
-	var path *string
-	if lApp.Path != nil {
-		p := *lApp.Path
-		// Normalize path to be relative to data directory if possible
-		if idx := strings.Index(p, "system-apps/"); idx != -1 {
-			p = p[idx:]
-		} else if idx := strings.Index(p, "users/"); idx != -1 {
-			p = p[idx:]
-		}
-		path = &p
-	}
-
-	app := data.App{
-		DeviceID:            deviceID,
-		Iname:               lApp.Iname,
-		Name:                lApp.Name,
-		UInterval:           lApp.UInterval,
-		DisplayTime:         lApp.DisplayTime,
-		Notes:               lApp.Notes,
-		Enabled:             legacy.ParseBool(lApp.Enabled),
-		Pushed:              lApp.Pushed,
-		Order:               lApp.Order,
-		LastRender:          time.Unix(lApp.LastRender, 0),
-		LastRenderDur:       time.Duration(legacy.ParseDuration(lApp.LastRenderDuration)),
-		Path:                path,
-		StartTime:           startTime,
-		EndTime:             endTime,
-		Days:                data.StringSlice(lApp.Days),
-		UseCustomRecurrence: lApp.UseCustomRecurrence,
-		RecurrenceType:      data.RecurrenceType(lApp.RecurrenceType),
-		RecurrenceInterval:  lApp.RecurrenceInterval,
-		RecurrencePattern:   data.JSONMap(lApp.RecurrencePattern),
-		RecurrenceStartDate: lApp.RecurrenceStartDate,
-		RecurrenceEndDate:   lApp.RecurrenceEndDate,
-		Config:              data.JSONMap(lApp.Config),
-		EmptyLastRender:     legacy.ParseBool(lApp.EmptyLastRender),
-		RenderMessages:      data.StringSlice(lApp.RenderMessages),
-		AutoPin:             lApp.AutoPin,
-		ColorFilter:         cf,
-	}
-
-	return app, nil
 }
 
 func migrateDirectories(oldDBPath, newDataDir string) error {

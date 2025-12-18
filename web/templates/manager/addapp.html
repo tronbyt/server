@@ -2,6 +2,8 @@
 {{ template "base" . }}
 {{ end }}
 
+{{ define "title" }}{{ t .Localizer "Add App" }}{{ end }}
+
 {{ define "header" }}
 <link rel="stylesheet" href="/static/css/addapp-simple.css">
 <h1>{{ t .Localizer "Add App" }}</h1>
@@ -15,7 +17,7 @@
   <p>{{ t .Localizer "Loading apps..." }}</p>
 </div>
 
-<a class="w3-button w3-purple w3-round w3-padding" href="/devices/{{ .Device.ID }}/uploadapp"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Upload .star or .webp file" }}</a>
+<a class="w3-button w3-purple w3-round w3-padding" href="/devices/{{ .Device.ID }}/uploadapp"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Upload app" }}</a>
 
 <form method="post" id="main_form">
   <label for="name">{{ t .Localizer "App Selection" }}</label>

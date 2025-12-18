@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 )
 
