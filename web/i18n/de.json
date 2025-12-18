@@ -288,7 +288,7 @@
     "other": "Möchten Sie fortfahren?"
   },
   "Create User": {
-    "other": "Benutzer anlegen"
+    "other": "Registrieren"
   },
   "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user.": {
     "other": "Der Auto-Login-Modus ist aktiviert. Sie können sich in diesem Modus nicht abmelden. Um den Auto-Login zu deaktivieren, setzen Sie SINGLE_USER_AUTO_LOGIN=0 in Ihrer .env-Datei oder erstellen Sie einen zweiten Benutzer."
@@ -516,7 +516,7 @@
     "other": "E-Mail-Adresse (optional)"
   },
   "Create Admin User": {
-    "other": "Admin-Benutzer anlegen"
+    "other": "Admin-Benutzer registrieren"
   },
   "SINGLE-USER AUTO-LOGIN MODE ACTIVE": {
     "other": "EINZELBENUTZER-AUTO-LOGIN-MODUS AKTIV"
@@ -525,7 +525,7 @@
     "other": "Authentifizierung für privaten Netzwerkzugriff deaktiviert"
   },
   "Create": {
-    "other": "Benutzer anlegen"
+    "other": "Benutzer registrieren"
   },
   "Add App": {
     "other": "App hinzufügen"
@@ -1432,5 +1432,17 @@
   },
   "A device with this name already exists.": {
     "other": "Ein Gerät mit diesem Namen existiert bereits."
+  },
+  "Export Config": {
+    "other": "Konfiguration exportieren"
+  },
+  "Import Config": {
+    "other": "Konfiguration importieren"
+  },
+  "Config imported successfully. Click Save to apply changes.": {
+    "other": "Konfiguration erfolgreich importiert. Klicken Sie auf Speichern, um die Änderungen zu übernehmen."
+  },
+  "Error parsing config file.": {
+    "other": "Fehler beim Parsen der Konfigurationsdatei."
   }
 }

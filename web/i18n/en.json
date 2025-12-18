@@ -1426,5 +1426,17 @@
   },
   "A device with this name already exists.": {
     "other": "A device with this name already exists."
+  },
+  "Export Config": {
+    "other": "Export Config"
+  },
+  "Import Config": {
+    "other": "Import Config"
+  },
+  "Config imported successfully. Click Save to apply changes.": {
+    "other": "Config imported successfully. Click Save to apply changes."
+  },
+  "Error parsing config file.": {
+    "other": "Error parsing config file."
   }
 }

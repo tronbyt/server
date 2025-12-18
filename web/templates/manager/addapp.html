@@ -2,6 +2,8 @@
 {{ template "base" . }}
 {{ end }}
 
+{{ define "title" }}{{ t .Localizer "Add App" }}{{ end }}
+
 {{ define "header" }}
 <link rel="stylesheet" href="/static/css/addapp-simple.css">
 <h1>{{ t .Localizer "Add App" }}</h1>

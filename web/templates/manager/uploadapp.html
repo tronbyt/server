@@ -2,6 +2,8 @@
 {{ template "base" . }}
 {{ end }}
 
+{{ define "title" }}{{ t .Localizer "Upload App" }}{{ end }}
+
 {{ define "content" }}
 <h1>{{ t .Localizer "Upload App" }}</h1>
 <div class="w3-card-4 w3-padding">
