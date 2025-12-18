@@ -90,12 +90,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		return getDefaultImage()
 	}
 
-	if app.Pushed {
-		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
-	} else {
-		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
-	}
+	webpPath = s.getAppWebpPath(deviceWebpDir, app)
 
 	data, err := os.ReadFile(webpPath)
 	// If reading the specific app image fails, fall back to default
@@ -126,13 +121,12 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 				app := &device.Apps[i]
 
 				// Generate path
-				var webpPath string
-				if app.Pushed {
-					webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), "pushed", app.Iname+".webp")
-				} else {
-					appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-					webpPath = filepath.Join(s.getDeviceWebPDir(device.ID), fmt.Sprintf("%s.webp", appBasename))
+				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+				if err != nil {
+					slog.Warn("Failed to get device webp directory", "device_id", device.ID, "error", err)
+					break
 				}
+				webpPath := s.getAppWebpPath(deviceWebpDir, app)
 
 				// Check if file exists to be safe
 				if _, err := os.Stat(webpPath); err == nil {
@@ -176,12 +170,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 		return nil, nil, fmt.Errorf("failed to get device webp directory: %w", err)
 	}
 
-	if app.Pushed {
-		webpPath = filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
-	} else {
-		appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-		webpPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
-	}
+	webpPath = s.getAppWebpPath(deviceWebpDir, app)
 
 	data, err := os.ReadFile(webpPath)
 	return data, app, err
@@ -288,4 +277,14 @@ func createExpandedAppsList(device *data.Device, apps []data.App) []data.App {
 		}
 	}
 	return expanded
+}
+
+// getAppWebpPath generates the file path for an app's WebP image.
+// It handles both pushed apps (stored in pushed/ subdirectory) and regular apps.
+func (s *Server) getAppWebpPath(deviceWebpDir string, app *data.App) string {
+	if app.Pushed {
+		return filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
+	}
+	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	return filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 }

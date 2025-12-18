@@ -12,6 +12,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	// minAckTimeoutSeconds is the minimum time to wait for device ACK.
+	// This accounts for the previous app's dwell time, network latency, and processing overhead.
+	minAckTimeoutSeconds = 30
+)
+
 type WSMessage struct {
 	Queued     *int        `json:"queued"`
 	Displaying *int        `json:"displaying"`
@@ -216,8 +222,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		var timeoutSec int
 		if device.Info.ProtocolVersion != nil {
 			// Device may delay ACK until previous app completes its dwell time.
-			// Wait at least 30s OR 2x the dwell time, whichever is greater.
-			timeoutSec = max(dwell*2, 30)
+			// Wait at least minAckTimeoutSeconds OR 2x the dwell time, whichever is greater.
+			timeoutSec = max(dwell*2, minAckTimeoutSeconds)
 		} else {
 			// Old firmware: wait exactly dwell time
 			timeoutSec = dwell
