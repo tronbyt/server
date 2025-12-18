@@ -359,7 +359,7 @@ function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname
   }
   formData.append('insert_after', insertAfter ? 'true' : 'false');
 
-  fetch(`/devices/${targetDeviceId}/duplicate_from/${sourceDeviceId}/${iname}`, {
+  fetch(`/devices/${targetDeviceId}/apps/duplicate_from/${sourceDeviceId}/${iname}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -946,6 +946,12 @@ function addDropZones() {
     topDropZone.className = 'drop-zone top';
     topDropZone.setAttribute('data-device-id', deviceId);
     topDropZone.setAttribute('data-position', 'top');
+
+    topDropZone.addEventListener('dragover', handleDropZoneDragOver);
+    topDropZone.addEventListener('dragenter', handleDropZoneDragEnter);
+    topDropZone.addEventListener('dragleave', handleDropZoneDragLeave);
+    topDropZone.addEventListener('drop', handleDropZoneDrop);
+
     container.insertBefore(topDropZone, container.firstChild);
 
     // Add bottom drop zone for list view
@@ -953,6 +959,12 @@ function addDropZones() {
     bottomDropZone.className = 'drop-zone bottom';
     bottomDropZone.setAttribute('data-device-id', deviceId);
     bottomDropZone.setAttribute('data-position', 'bottom');
+
+    bottomDropZone.addEventListener('dragover', handleDropZoneDragOver);
+    bottomDropZone.addEventListener('dragenter', handleDropZoneDragEnter);
+    bottomDropZone.addEventListener('dragleave', handleDropZoneDragLeave);
+    bottomDropZone.addEventListener('drop', handleDropZoneDrop);
+
     container.appendChild(bottomDropZone);
 
     // Add event listeners to container for dropping on empty space

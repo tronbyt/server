@@ -725,42 +725,18 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	originalApp := GetApp(r)
 
-	var newIname string
-	var err error
-
-	newIname, err = generateUniqueIname(s.DB, device.ID)
-	if err != nil {
-		slog.Error("Failed to generate unique iname", "error", err)
-		http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
-		return
+	// Determine insert position (after original app)
+	targetIdx := -1
+	for i, app := range device.Apps {
+		if app.Iname == originalApp.Iname {
+			targetIdx = i
+			break
+		}
 	}
 
-	// Copy App
-	newApp := *originalApp
-	newApp.ID = 0 // GORM will generate new ID
-	newApp.Iname = newIname
-	newApp.LastRender = time.Time{}
-	newApp.Order = originalApp.Order + 1
-	newApp.Pushed = false
+	insertAfter := targetIdx != -1
 
-	// Transaction for reordering and creating
-	err = s.DB.Transaction(func(tx *gorm.DB) error {
-		// Shift orders
-		for i := range device.Apps {
-			if device.Apps[i].Order > originalApp.Order {
-				if err := tx.Model(&device.Apps[i]).Update("order", device.Apps[i].Order+1).Error; err != nil {
-					return err
-				}
-			}
-		}
-
-		if err := tx.Create(&newApp).Error; err != nil {
-			return err
-		}
-		return nil
-	})
-
-	if err != nil {
+	if err := s.performAppDuplication(r.Context(), user, device, originalApp, device, targetIdx, insertAfter); err != nil {
 		slog.Error("Failed to duplicate app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -776,7 +752,7 @@ func (s *Server) handleDuplicateAppToDevice(w http.ResponseWriter, r *http.Reque
 	user := GetUser(r)
 
 	sourceDeviceID := r.PathValue("source_device_id")
-	targetDeviceID := r.PathValue("target_device_id")
+	targetDeviceID := r.PathValue("id")
 	iname := r.PathValue("iname")
 
 	targetIname := r.FormValue("target_iname")
@@ -824,7 +800,18 @@ func (s *Server) handleDuplicateAppToDevice(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := s.duplicateAppToDeviceLogic(r, user, sourceDevice, originalApp, targetDevice, targetIname, insertAfter); err != nil {
+	// Determine target index based on targetIname
+	targetIdx := -1
+	if targetIname != "" {
+		for i, app := range targetDevice.Apps {
+			if app.Iname == targetIname {
+				targetIdx = i
+				break
+			}
+		}
+	}
+
+	if err := s.performAppDuplication(r.Context(), user, sourceDevice, originalApp, targetDevice, targetIdx, insertAfter); err != nil {
 		slog.Error("Failed to duplicate app", "error", err)
 		http.Error(w, fmt.Sprintf("Failed to duplicate app: %v", err), http.StatusInternalServerError)
 		return
@@ -834,117 +821,6 @@ func (s *Server) handleDuplicateAppToDevice(w http.ResponseWriter, r *http.Reque
 	if _, err := w.Write([]byte("OK")); err != nil {
 		slog.Error("Failed to write OK response", "error", err)
 	}
-}
-
-func (s *Server) duplicateAppToDeviceLogic(r *http.Request, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetIname string, insertAfter bool) error {
-	newIname, err := generateUniqueIname(s.DB, targetDevice.ID)
-	if err != nil {
-		return fmt.Errorf("failed to generate unique iname: %w", err)
-	}
-
-	duplicatedApp := *originalApp
-	duplicatedApp.ID = 0
-	duplicatedApp.DeviceID = targetDevice.ID
-	duplicatedApp.Iname = newIname
-	duplicatedApp.LastRender = time.Time{}
-	duplicatedApp.Order = 0
-	duplicatedApp.AutoPin = false
-
-	if originalApp.Config != nil {
-		newConfig := make(data.JSONMap)
-		maps.Copy(newConfig, originalApp.Config)
-		duplicatedApp.Config = newConfig
-	}
-
-	if !originalApp.Pushed && originalApp.Path != nil && *originalApp.Path != "" {
-		sourcePath, err := securejoin.SecureJoin(s.DataDir, *originalApp.Path)
-		if err != nil {
-			return fmt.Errorf("failed to resolve source path %s: %w", *originalApp.Path, err)
-		}
-		installDir := filepath.Join(s.DataDir, "installations", newIname)
-		if err := os.MkdirAll(installDir, 0755); err != nil {
-			return fmt.Errorf("failed to create install dir for duplicated app: %w", err)
-		}
-		destPath := filepath.Join(installDir, fmt.Sprintf("%s.star", newIname))
-
-		if err := copyFile(sourcePath, destPath); err != nil {
-			return fmt.Errorf("failed to copy .star file for duplicated app: %w", err)
-		}
-		relPath := filepath.Join("installations", newIname, fmt.Sprintf("%s.star", newIname))
-		duplicatedApp.Path = &relPath
-	}
-
-	appsList := make([]data.App, len(targetDevice.Apps))
-	copy(appsList, targetDevice.Apps)
-	sort.Slice(appsList, func(i, j int) bool {
-		return appsList[i].Order < appsList[j].Order
-	})
-
-	targetIdx := -1
-	if targetIname != "" {
-		for i, appItem := range appsList {
-			if appItem.Iname == targetIname {
-				targetIdx = i
-				break
-			}
-		}
-	}
-
-	if targetIdx != -1 {
-		insertIdx := targetIdx + 1
-		if !insertAfter {
-			insertIdx = targetIdx
-		}
-		appsList = append(appsList[:insertIdx], append([]data.App{duplicatedApp}, appsList[insertIdx:]...)...)
-	} else {
-		appsList = append(appsList, duplicatedApp)
-	}
-
-	for i := range appsList {
-		appsList[i].Order = i
-	}
-	targetDevice.Apps = appsList
-
-	if originalApp.Pushed {
-		sourceWebpDir, err := s.ensureDeviceImageDir(sourceDevice.ID)
-		if err != nil {
-			return fmt.Errorf("failed to get source device webp directory: %w", err)
-		}
-		sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
-
-		targetWebpDir, err := s.ensureDeviceImageDir(targetDevice.ID)
-		if err != nil {
-			return fmt.Errorf("failed to get target device webp directory: %w", err)
-		}
-		targetPushedWebpDir := filepath.Join(targetWebpDir, "pushed")
-		if err := os.MkdirAll(targetPushedWebpDir, 0755); err != nil {
-			slog.Error("Failed to create target pushed webp directory", "path", targetPushedWebpDir, "error", err)
-		}
-		targetWebpPath := filepath.Join(targetPushedWebpDir, fmt.Sprintf("%s.webp", newIname))
-
-		if _, err := os.Stat(sourceWebpPath); err == nil {
-			if err := copyFile(sourceWebpPath, targetWebpPath); err != nil {
-				slog.Error("Failed to copy pushed image", "source", sourceWebpPath, "target", targetWebpPath, "error", err)
-			} else {
-				slog.Info("Copied pushed image", "from", sourceWebpPath, "to", targetWebpPath)
-			}
-		} else if !os.IsNotExist(err) {
-			slog.Error("Failed to stat source pushed image", "path", sourceWebpPath, "error", err)
-		} else {
-			slog.Warn("Source pushed image not found", "path", sourceWebpPath)
-		}
-	}
-
-	if err := s.DB.Save(user).Error; err != nil {
-		return fmt.Errorf("failed to save user after duplicating app: %w", err)
-	}
-
-	s.possiblyRender(r.Context(), &duplicatedApp, targetDevice, user)
-
-	// Notify Dashboard about target device update
-	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: targetDevice.ID})
-
-	return nil
 }
 
 func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
@@ -1505,4 +1381,103 @@ func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, b
 	if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 		slog.Error("Failed to write JSON success response", "error", err)
 	}
+}
+
+func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetIdx int, insertAfter bool) error {
+	newIname, err := generateUniqueIname(s.DB, targetDevice.ID)
+	if err != nil {
+		return fmt.Errorf("failed to generate unique iname: %w", err)
+	}
+
+	duplicatedApp := *originalApp
+	duplicatedApp.ID = 0
+	duplicatedApp.DeviceID = targetDevice.ID
+	duplicatedApp.Iname = newIname
+	duplicatedApp.LastRender = time.Time{}
+	duplicatedApp.Order = 0 // Will be set later
+	duplicatedApp.AutoPin = false
+
+	if originalApp.Config != nil {
+		newConfig := make(data.JSONMap)
+		maps.Copy(newConfig, originalApp.Config)
+		duplicatedApp.Config = newConfig
+	}
+
+	// Pushed Apps: We don't have a source file, but we have a pushed image.
+	// Non-Pushed Apps: We reference the existing path (no copy).
+	if !originalApp.Pushed && originalApp.Path != nil && *originalApp.Path != "" {
+		duplicatedApp.Pushed = false
+		pathCopy := *originalApp.Path
+		duplicatedApp.Path = &pathCopy
+	}
+
+	// Determine new order and insert into DB using transaction
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		// Fetch current apps for target device to ensure up-to-date order
+		var currentApps []data.App
+		if err := tx.Where("device_id = ?", targetDevice.ID).Order("\"order\" ASC").Find(&currentApps).Error; err != nil {
+			return err
+		}
+
+		// Calculate insertion index in the list
+		insertPos := len(currentApps) // Default append
+		if targetIdx != -1 {
+			if insertAfter {
+				insertPos = targetIdx + 1
+			} else {
+				insertPos = targetIdx
+			}
+		}
+
+		// Bounds check
+		if insertPos > len(currentApps) {
+			insertPos = len(currentApps)
+		}
+
+		duplicatedApp.Order = insertPos
+		if err := tx.Create(&duplicatedApp).Error; err != nil {
+			return err
+		}
+
+		// Efficient SQL update for subsequent apps
+		if err := tx.Model(&data.App{}).
+			Where("device_id = ? AND \"order\" >= ? AND id != ?", targetDevice.ID, insertPos, duplicatedApp.ID).
+			UpdateColumn("order", gorm.Expr("\"order\" + ?", 1)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to save duplicated app: %w", err)
+	}
+
+	// Reload app to ensure ID is set
+	if err := s.DB.Where("device_id = ? AND iname = ?", targetDevice.ID, newIname).First(&duplicatedApp).Error; err != nil {
+		return fmt.Errorf("failed to reload duplicated app: %w", err)
+	}
+
+	// Pushed App Image Copying
+	if originalApp.Pushed {
+		sourceWebpDir, err := s.ensureDeviceImageDir(sourceDevice.ID)
+		if err == nil {
+			sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
+
+			targetWebpDir, err := s.ensureDeviceImageDir(targetDevice.ID)
+			if err == nil {
+				targetPushedWebpDir := filepath.Join(targetWebpDir, "pushed")
+				_ = os.MkdirAll(targetPushedWebpDir, 0755)
+				targetWebpPath := filepath.Join(targetPushedWebpDir, fmt.Sprintf("%s.webp", newIname))
+
+				if _, err := os.Stat(sourceWebpPath); err == nil {
+					_ = copyFile(sourceWebpPath, targetWebpPath)
+				}
+			}
+		}
+	}
+
+	s.possiblyRender(ctx, &duplicatedApp, targetDevice, user)
+
+	return nil
 }
