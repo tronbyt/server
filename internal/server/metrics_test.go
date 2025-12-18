@@ -16,7 +16,7 @@ import (
 
 func TestMetricsEndpoint(t *testing.T) {
 	// Setup ephemeral DB
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=private"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("Failed to open DB: %v", err)
 	}

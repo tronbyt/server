@@ -22,7 +22,7 @@ import (
 
 func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	// Setup DB
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=private"), &gorm.Config{})
 	assert.NoError(t, err)
 	err = db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{})
 	assert.NoError(t, err)
@@ -71,13 +71,6 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/import_user_config", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	// Mock Session/User Context
-	// In a real integration test, we'd use the session store.
-	// Here we can use the helper context if we extract it,
-	// but since GetUser(r) relies on session, we might need to mock GetUser or the session.
-	// However, GetUser retrieves from context if middleware set it?
-	// Let's look at helpers.go: GetUser checks r.Context().Value(UserKey)
-
 	// Manually inject user into context
 	ctx := context.WithValue(req.Context(), userContextKey, &user)
 	req = req.WithContext(ctx)
@@ -100,4 +93,87 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	assert.Len(t, updatedUser.Devices[0].Apps, 1)
 	assert.Equal(t, "Clock", updatedUser.Devices[0].Apps[0].Name)
 	assert.True(t, updatedUser.Devices[0].Apps[0].Enabled)
+}
+
+func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
+	// Setup DB
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=private"), &gorm.Config{})
+	assert.NoError(t, err)
+	err = db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{})
+	assert.NoError(t, err)
+
+	// Create existing user
+	user := data.User{
+		Username: "testuser",
+		Email:    "test@example.com",
+	}
+	db.Create(&user)
+
+	// Create Server
+	store := sessions.NewCookieStore([]byte("secret-key"))
+	s := &Server{
+		DB:     db,
+		Store:  store,
+		Bundle: i18n.NewBundle(language.English),
+	}
+
+	// Create JSON payload with explicit App ID
+	// We use a high ID (e.g., 9999) to verify it gets reset
+	importedUser := data.User{
+		Username: "testuser",
+		Email:    "imported@example.com",
+		Devices: []data.Device{
+			{
+				ID:       "dev1",
+				Username: "testuser",
+				Name:     "Imported Device",
+				Apps: []data.App{
+					{
+						ID:    9999, // Explicit ID that should be ignored/reset
+						Iname: "app1",
+						Name:  "Test App",
+					},
+				},
+			},
+		},
+	}
+	jsonData, _ := json.Marshal(importedUser)
+
+	// Create Multipart Request
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "config.json")
+	assert.NoError(t, err)
+	_, err = part.Write(jsonData)
+	assert.NoError(t, err)
+	err = writer.Close()
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/import_user_config", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Manually inject user into context
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+
+	// Execute
+	s.handleImportUserConfig(w, req)
+
+	// Assert
+	assert.Equal(t, http.StatusSeeOther, w.Code)
+
+	// Verify DB updates
+	var updatedUser data.User
+	db.Preload("Devices").Preload("Devices.Apps").First(&updatedUser, "username = ?", "testuser")
+
+	assert.Len(t, updatedUser.Devices, 1)
+	dev := updatedUser.Devices[0]
+	assert.Len(t, dev.Apps, 1)
+	app := dev.Apps[0]
+
+	assert.Equal(t, "Test App", app.Name)
+	// The ID should NOT be 9999. It should be 1 (or whatever the next sequence is)
+	assert.NotEqual(t, uint(9999), app.ID, "App ID should have been reset")
 }
