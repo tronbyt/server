@@ -138,8 +138,6 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 				break // Valid app but missing file, fallthrough to legacy logic
 			}
 		}
-	} else {
-		// slog.Debug("DisplayingApp is nil/empty")
 	}
 
 	// Priority 2: Fallback to LastAppIndex (Legacy/HTTP devices)
