@@ -723,6 +723,7 @@ button.action.w3-button {
   margin-top: 0;
   width: 100%;
   box-sizing: border-box;
+  min-height: 60px; /* Ensure drop target exists when empty */
 }
 
 /* Hide separators and drop zones in grid view */
@@ -975,6 +976,18 @@ button.action.w3-button {
   display: block;
   margin-top: 0;
   padding-top: 0;
+  min-height: 60px; /* Ensure drop target exists when empty */
+}
+
+.drag-over-container {
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 2px dashed #2196F3;
+  border-radius: 8px;
+}
+
+[data-theme="dark"] .drag-over-container {
+  background-color: rgba(96, 165, 250, 0.1);
+  border: 2px dashed #60a5fa;
 }
 
 .apps-list-view .app-card {
