@@ -65,7 +65,7 @@ func (s *Server) doUpdateCheck() {
 		return
 	}
 
-	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubToken := s.Config.GitHubToken
 	if githubToken != "" {
 		req.Header.Set("Authorization", "Bearer "+githubToken)
 	}

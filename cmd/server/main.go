@@ -221,7 +221,7 @@ func main() {
 	// Clone/Update System Apps Repo
 	systemAppsDir := filepath.Join(*dataDir, "system-apps")
 	shouldUpdate := cfg.Production == "1"
-	if err := gitutils.EnsureRepo(systemAppsDir, cfg.SystemAppsRepo, shouldUpdate); err != nil {
+	if err := gitutils.EnsureRepo(systemAppsDir, cfg.SystemAppsRepo, cfg.GitHubToken, shouldUpdate); err != nil {
 		slog.Error("Failed to update system apps repo", "error", err)
 		// Continue anyway
 	}

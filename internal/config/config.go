@@ -16,6 +16,7 @@ type Settings struct {
 	MaxUsers               int    `env:"MAX_USERS"                envDefault:"0"`
 	SingleUserAutoLogin    string `env:"SINGLE_USER_AUTO_LOGIN"   envDefault:"0"`
 	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO"         envDefault:"https://github.com/tronbyt/apps.git"`
+	GitHubToken            string `env:"GITHUB_TOKEN"`
 	RedisURL               string `env:"REDIS_URL"`
 	Host                   string `env:"TRONBYT_HOST"             envDefault:""`
 	Port                   string `env:"TRONBYT_PORT"             envDefault:"8000"`

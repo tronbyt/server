@@ -187,7 +187,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appsPath := filepath.Join(s.DataDir, "users", user.Username, "apps")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
+	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
 		slog.Error("Failed to sync user repo", "error", err)
 	}
 
@@ -199,7 +199,7 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 
 	if user.AppRepoURL != "" {
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "apps")
-		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, true); err != nil {
+		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
 		}
 	}
@@ -355,7 +355,7 @@ func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
+	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
 		slog.Error("Failed to update system repo", "error", err)
 	}
 
@@ -385,7 +385,7 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 	}
 
 	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, true); err != nil {
+	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
 		slog.Error("Failed to refresh system repo", "error", err)
 	}
 
