@@ -77,7 +77,15 @@ nav ul li a, nav ul li span, nav header .action { display: block; padding: 0.5re
 .content { padding: 0 1rem 1rem; }
 .content > header { border-bottom: 1px solid var(--secondary-color); display: flex; align-items:flex-end; }
 .content > header h1 { flex: auto; margin: 1rem 0 0.25rem 0; } /* Uses h1 style */
-.flash { margin: 1em 0; padding: 1em; background: var(--flash-bg); border: 1px solid var(--flash-border); color: var(--flash-text); }
+.flash {
+  margin: 1em 0;
+  padding: 1em;
+  background: var(--flash-bg);
+  border: 1px solid var(--flash-border);
+  color: var(--flash-text);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
 .post > header { display: flex; align-items: flex-end; font-size: 0.85em; } /* Text color will be inherited from body */
 .post > header > div:first-of-type { flex: auto; }
 .post > header h1 { font-size: 1.5em; margin-bottom: 0; } /* Uses h1 style */
