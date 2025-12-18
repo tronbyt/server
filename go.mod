@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/go-git/go-git/v5 v5.16.4
+	github.com/go-git/go-git/v6 v6.0.0-20251216093047-22c365fcee9c
 	github.com/go-webauthn/webauthn v0.15.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/gorilla/websocket v1.5.3
@@ -54,8 +54,8 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gen2brain/webp v0.5.5 // indirect
-	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.7.0 // indirect
+	github.com/go-git/gcfg/v2 v2.0.2 // indirect
+	github.com/go-git/go-billy/v6 v6.0.0-20251209065551-8afc3eb64e4d // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.29.0 // indirect
@@ -75,7 +75,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.6 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kevinburke/ssh_config v1.4.0 // indirect
@@ -101,7 +100,6 @@ require (
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
-	github.com/skeema/knownhosts v1.3.2 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -114,7 +112,6 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/zachomedia/go-bdf v0.0.0-20220611021443-a3af701111be // indirect
 	go.starlark.net v0.0.0-20251109183026-be02852a5e1f // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
@@ -123,7 +120,6 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
 tool github.com/air-verse/air

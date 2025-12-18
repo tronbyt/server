@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 )
 
 // logWriter implements io.Writer to redirect git progress to slog.
@@ -95,7 +95,7 @@ func EnsureRepo(path string, url string, update bool) error {
 	// Check if path exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		slog.Info("Cloning repo", "url", url)
-		_, err := git.PlainClone(path, false, &git.CloneOptions{
+		_, err := git.PlainClone(path, &git.CloneOptions{
 			URL:      url,
 			Progress: &logWriter{},
 			Depth:    1,
