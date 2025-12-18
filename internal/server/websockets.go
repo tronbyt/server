@@ -184,20 +184,19 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			}
 		}
 
-		dwell := device.GetEffectiveDwellTime(app)
-
-		// Drain ackCh to remove any stale ACKs directly before sending
-	drainLoop:
-		for {
-			select {
-			case <-ackCh:
-			default:
-				break drainLoop
-			}
+		if app != nil && len(imgData) > 500*1024 {
+			slog.Warn("Image size very large", "app", app.Iname, "size", len(imgData))
 		}
+
+		dwell := device.GetEffectiveDwellTime(app)
 
 		// 2. Send Data
 		// Send Dwell only, sequence ID is not used by firmware
+		appName := "pushed_image"
+		if app != nil {
+			appName = app.Iname
+		}
+		slog.Info("Sending Image", "app", appName, "dwell", dwell, "size", len(imgData))
 		if err := conn.WriteJSON(map[string]any{"dwell_secs": dwell}); err != nil {
 			slog.Error("Failed to write metadata WS message", "error", err)
 			return
@@ -228,7 +227,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		var timeoutSec int
 		if device.Info.ProtocolVersion != nil {
 			// New firmware: wait longer to allow buffering/ack
-			timeoutSec = max(dwell*2, 25)
+			// 25s was too short for large 24KB images on slow networks, causing desync.
+			timeoutSec = max(dwell*2, 45)
 		} else {
 			// Old firmware: wait exactly dwell time
 			timeoutSec = dwell
@@ -244,11 +244,13 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			case msg := <-ackCh:
 				// Received ACK
 				if msg.Displaying != nil || msg.Counter != nil {
+					// Firmware sends a counter in 'displaying', not the App ID.
+					// We cannot strictly match it. We accept any Displaying message as confirmation.
 					waiting = false
 
-					// Update Displaying App confirmation in DB
+					// Update DisplayingApp confirmation in DB
 					if app != nil {
-						// slog.Info("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
+						slog.Info("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
 						// Only now do we update the database that the device is truly displaying this app.
 						if err := s.DB.Model(&data.Device{ID: device.ID}).Update("displaying_app", app.Iname).Error; err != nil {
 							slog.Error("Failed to update displaying_app", "device", device.ID, "error", err)
@@ -256,7 +258,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						// Notify Dashboard
 						s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 					} else {
-						// slog.Info("Received ACK but app is nil (maybe default image)", "device", device.ID)
+						slog.Info("Received ACK but app is nil (maybe default image)", "device", device.ID)
 					}
 				}
 				// If just Queued, we keep waiting for Displaying.
