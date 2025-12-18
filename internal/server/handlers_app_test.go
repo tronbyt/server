@@ -286,7 +286,7 @@ func TestHandleUploadAppPost_Zip_EdgeCases(t *testing.T) {
 		{
 			name: "Invalid PackageName",
 			zipContent: map[string]string{
-				"script.star": "print('hello')",
+				"script.star":   "print('hello')",
 				"manifest.yaml": "packageName: 'invalid name!'",
 			},
 			zipFilename:    "invalidpkg.zip",

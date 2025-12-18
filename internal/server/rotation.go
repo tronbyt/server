@@ -3,15 +3,13 @@ package server
 import (
 	"context"
 	"fmt"
-
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
 	"time"
 
-	"log/slog"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
 )
@@ -185,13 +183,15 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		candidate := expanded[nextIndex]
 
 		isPinned := device.PinnedApp != nil && *device.PinnedApp == candidate.Iname
-		isNight := device.GetNightModeIsActive() && device.NightModeApp == candidate.Iname
+		nightModeActive := device.GetNightModeIsActive()
+		isNightTarget := nightModeActive && device.NightModeApp == candidate.Iname
 		isInterstitialPos := device.InterstitialEnabled && nextIndex%2 == 1
 
 		shouldDisplay := false
-
-		if isPinned || isNight {
+		if isPinned {
 			shouldDisplay = true
+		} else if nightModeActive {
+			shouldDisplay = isNightTarget
 		} else if isInterstitialPos {
 			shouldDisplay = true
 			// Interstitial Logic: Skip if previous regular app (at index-1) is skipped
@@ -205,8 +205,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 				}
 			}
 		} else {
-			active := candidate.Enabled && IsAppScheduleActive(&candidate, device)
-			if active {
+			if candidate.Enabled && IsAppScheduleActive(&candidate, device) {
 				shouldDisplay = true
 			}
 		}
