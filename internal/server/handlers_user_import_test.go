@@ -56,7 +56,8 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 			},
 		},
 	}
-	jsonData, _ := json.Marshal(legacyUser)
+	jsonData, err := json.Marshal(legacyUser)
+	assert.NoError(t, err)
 
 	// Create Multipart Request
 	body := new(bytes.Buffer)
@@ -85,7 +86,8 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 
 	// Verify DB updates
 	var updatedUser data.User
-	db.Preload("Devices").Preload("Devices.Apps").First(&updatedUser, "username = ?", "testuser")
+	result := db.Preload("Devices").Preload("Devices.Apps").First(&updatedUser, "username = ?", "testuser")
+	assert.NoError(t, result.Error)
 
 	assert.Equal(t, "new@example.com", updatedUser.Email)
 	assert.Len(t, updatedUser.Devices, 1)
@@ -137,7 +139,8 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 			},
 		},
 	}
-	jsonData, _ := json.Marshal(importedUser)
+	jsonData, err := json.Marshal(importedUser)
+	assert.NoError(t, err)
 
 	// Create Multipart Request
 	body := new(bytes.Buffer)
@@ -166,7 +169,8 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 
 	// Verify DB updates
 	var updatedUser data.User
-	db.Preload("Devices").Preload("Devices.Apps").First(&updatedUser, "username = ?", "testuser")
+	result := db.Preload("Devices").Preload("Devices.Apps").First(&updatedUser, "username = ?", "testuser")
+	assert.NoError(t, result.Error)
 
 	assert.Len(t, updatedUser.Devices, 1)
 	dev := updatedUser.Devices[0]
@@ -174,6 +178,6 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 	app := dev.Apps[0]
 
 	assert.Equal(t, "Test App", app.Name)
-	// The ID should NOT be 9999. It should be 1 (or whatever the next sequence is)
-	assert.NotEqual(t, uint(9999), app.ID, "App ID should have been reset")
+	// The ID should be reset to 1 in this fresh in-memory DB
+	assert.Equal(t, uint(1), app.ID, "App ID should be reset to 1")
 }
