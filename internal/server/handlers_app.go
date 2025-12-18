@@ -1461,22 +1461,30 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 	// Pushed App Image Copying
 	if originalApp.Pushed {
 		sourceWebpDir, err := s.ensureDeviceImageDir(sourceDevice.ID)
-		if err == nil {
-			sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
-
+		if err != nil {
+			slog.Error("Failed to get source device webp directory for duplication", "error", err)
+		} else {
 			targetWebpDir, err := s.ensureDeviceImageDir(targetDevice.ID)
-			if err == nil {
+			if err != nil {
+				slog.Error("Failed to get target device webp directory for duplication", "error", err)
+			} else {
+				sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
 				targetPushedWebpDir := filepath.Join(targetWebpDir, "pushed")
-				_ = os.MkdirAll(targetPushedWebpDir, 0755)
+				if err := os.MkdirAll(targetPushedWebpDir, 0755); err != nil {
+					slog.Error("Failed to create target pushed webp directory", "path", targetPushedWebpDir, "error", err)
+				}
 				targetWebpPath := filepath.Join(targetPushedWebpDir, fmt.Sprintf("%s.webp", newIname))
 
 				if _, err := os.Stat(sourceWebpPath); err == nil {
-					_ = copyFile(sourceWebpPath, targetWebpPath)
+					if err := copyFile(sourceWebpPath, targetWebpPath); err != nil {
+						slog.Error("Failed to copy pushed image", "source", sourceWebpPath, "target", targetWebpPath, "error", err)
+					}
+				} else if !os.IsNotExist(err) {
+					slog.Error("Failed to stat source pushed image", "path", sourceWebpPath, "error", err)
 				}
 			}
 		}
 	}
-
 	s.possiblyRender(ctx, &duplicatedApp, targetDevice, user)
 
 	return nil
