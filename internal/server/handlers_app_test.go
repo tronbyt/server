@@ -419,3 +419,106 @@ func TestHandleUploadAppPost_CorruptedZip(t *testing.T) {
 		t.Errorf("handler returned wrong status code for corrupt zip: got %v want %v", rr.Code, http.StatusInternalServerError)
 	}
 }
+
+func TestHandleDeleteApp_UnpinsApp(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser"}
+	s.DB.Create(&device)
+
+	iname := "app1"
+	app := data.App{
+		DeviceID: "testdevice",
+		Iname:    iname,
+		Name:     "Test App",
+		Enabled:  true,
+	}
+	s.DB.Create(&app)
+
+	// Pin the app
+	s.DB.Model(&device).Update("pinned_app", iname)
+
+	// Verify it is pinned
+	var dev data.Device
+	s.DB.First(&dev, "id = ?", "testdevice")
+	if dev.PinnedApp == nil || *dev.PinnedApp != iname {
+		t.Fatalf("Setup failed: app should be pinned")
+	}
+
+	// Create request
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/"+iname+"/delete", nil)
+
+	// Set context
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &dev) // Pass the device from DB
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleDeleteApp)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	// Verify app is deleted
+	var count int64
+	s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", "testdevice", iname).Count(&count)
+	if count != 0 {
+		t.Errorf("App was not deleted")
+	}
+
+	// Verify app is unpinned
+	s.DB.First(&dev, "id = ?", "testdevice")
+	if dev.PinnedApp != nil {
+		t.Errorf("App was not unpinned, PinnedApp is: %v", *dev.PinnedApp)
+	}
+}
+
+func TestHandleDeleteApp_NotPinned(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser"}
+	s.DB.Create(&device)
+
+	iname := "app1"
+	app := data.App{
+		DeviceID: "testdevice",
+		Iname:    iname,
+		Name:     "Test App",
+		Enabled:  true,
+	}
+	s.DB.Create(&app)
+
+	// Ensure NOT pinned
+	s.DB.Model(&device).Update("pinned_app", nil)
+
+	// Create request
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/"+iname+"/delete", nil)
+
+	// Set context
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleDeleteApp)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	// Verify app is deleted
+	var count int64
+	s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", "testdevice", iname).Count(&count)
+	if count != 0 {
+		t.Errorf("App was not deleted")
+	}
+}

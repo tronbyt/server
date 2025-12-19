@@ -575,6 +575,13 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	app := GetApp(r)
 
+	// Unpin if pinned
+	if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+		if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+			slog.Error("Failed to unpin app being deleted", "error", err)
+		}
+	}
+
 	// Delete App
 	if err := s.DB.Delete(app).Error; err != nil {
 		slog.Error("Failed to delete app", "error", err)
@@ -589,7 +596,7 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*- %s.webp", app.Iname)))
+	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {
 			slog.Error("Failed to remove app webp file", "path", match, "error", err)
