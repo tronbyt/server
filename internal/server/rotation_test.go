@@ -85,3 +85,60 @@ func TestDetermineNextApp_NightMode(t *testing.T) {
 		d.LastAppIndex = nextIndex
 	}
 }
+
+func TestDetermineNextApp_NightMode_NoAppSelected(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create a user
+	user := data.User{Username: "testuser"}
+	if err := s.DB.Create(&user).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	// Create a device with Night Mode enabled all day but NO NightModeApp selected
+	device := data.Device{
+		ID:               "device2",
+		Username:         user.Username,
+		NightModeEnabled: true,
+		NightStart:       "00:00",
+		NightEnd:         "23:59",
+		NightModeApp:     "", // Empty!
+	}
+	if err := s.DB.Create(&device).Error; err != nil {
+		t.Fatalf("failed to create device: %v", err)
+	}
+
+	// Create Regular App
+	appRegular := data.App{
+		DeviceID: device.ID,
+		Iname:    "app-regular",
+		Name:     "Regular App",
+		Enabled:  true,
+		Pushed:   true,
+		Order:    1,
+	}
+	if err := s.DB.Create(&appRegular).Error; err != nil {
+		t.Fatalf("failed to create regular app: %v", err)
+	}
+
+	// Reload device with apps
+	var d data.Device
+	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+		t.Fatalf("failed to reload device with apps: %v", err)
+	}
+
+	d.LastAppIndex = -1
+
+	// Should return the regular app
+	app, _, err := s.determineNextApp(context.Background(), &d, &user)
+	if err != nil {
+		t.Fatalf("determineNextApp failed: %v", err)
+	}
+	if app == nil {
+		t.Fatal("expected an app (fallback to rotation), got nil")
+	}
+
+	if app.Iname != "app-regular" {
+		t.Errorf("Expected regular app (app-regular), got %s", app.Iname)
+	}
+}
