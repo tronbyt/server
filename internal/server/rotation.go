@@ -204,7 +204,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		shouldDisplay := false
 		if isPinned {
 			shouldDisplay = true
-		} else if nightModeActive {
+		} else if nightModeActive && device.NightModeApp != "" {
 			shouldDisplay = isNightTarget
 		} else if isInterstitialPos {
 			shouldDisplay = true
