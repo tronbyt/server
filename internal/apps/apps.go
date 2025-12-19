@@ -13,41 +13,28 @@ import (
 
 // Manifest reflects the structure of manifest.yaml for system apps.
 type Manifest struct {
-	ID                  string  `yaml:"id"`
-	Name                string  `yaml:"name"`
-	Summary             string  `yaml:"summary"`
-	Desc                string  `yaml:"desc"`
-	Author              string  `yaml:"author"`
-	FileName            string  `yaml:"fileName"`
-	PackageName         string  `yaml:"packageName"`
-	RecommendedInterval int     `yaml:"recommendedInterval"`
-	Supports2x          bool    `yaml:"supports2x"`
-	Preview             string  `yaml:"preview"`   // Primary preview image
-	Preview2x           string  `yaml:"preview2x"` // Secondary 2x preview image
-	Broken              *bool   `yaml:"broken,omitempty"`
-	BrokenReason        *string `yaml:"brokenReason,omitempty"`
-	Date                string  `yaml:"date"` // Optional
+	ID                  string `yaml:"id"`
+	Name                string `yaml:"name"`
+	Summary             string `yaml:"summary"`
+	Desc                string `yaml:"desc"`
+	Author              string `yaml:"author"`
+	FileName            string `yaml:"fileName"`
+	PackageName         string `yaml:"packageName"`
+	RecommendedInterval int    `yaml:"recommendedInterval"`
+	Supports2x          bool   `yaml:"supports2x"`
+	Preview             string `yaml:"preview"`
+	Preview2x           string `yaml:"preview2x"`
+	Broken              bool   `yaml:"broken"`
+	BrokenReason        string `yaml:"brokenReason"`
 }
 
 type AppMetadata struct {
-	ID                  string `json:"name"`        // JSON "name" is the package name / ID
-	Name                string `json:"displayName"` // JSON "displayName" is the human readable name
-	Summary             string `json:"summary"`
-	Desc                string `json:"description"`
-	Author              string `json:"author"`
-	Preview             string `json:"image"`
-	Preview2x           string `json:"image2x,omitempty"` // For 2x preview images
-	FileName            string `json:"starFile"`
-	RecommendedInterval int    `json:"recommendedInterval"`
-	Supports2x          bool   `json:"supports2x,omitempty"`
-	Date                string `json:"date,omitempty"` // When the app was added/updated
+	Manifest
 
 	// Fields populated by logic
-	Path         string `json:"path"`
-	PackageName  string `json:"packageName"`
-	IsInstalled  bool   `json:"is_installed"`
-	Broken       bool   `json:"broken"` // Not in JSON, but useful
-	BrokenReason string `json:"brokenReason,omitempty"`
+	Path        string
+	IsInstalled bool
+	Date        string
 }
 
 func ListSystemApps(dataDir string) ([]AppMetadata, error) {
@@ -66,57 +53,21 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 		appDir := filepath.Join(dataDir, "system-apps", "apps", dirName)
 		manifestPath := filepath.Join(appDir, "manifest.yaml")
 
-		var manifest Manifest
 		if manifestData, err := os.ReadFile(manifestPath); err == nil {
-			if err := yaml.Unmarshal(manifestData, &manifest); err != nil {
+			if err := yaml.Unmarshal(manifestData, &apps[i].Manifest); err != nil {
 				slog.Warn("Failed to parse manifest.yaml", "appID", apps[i].ID, "error", err)
-			} else {
-				// Merge data from manifest, prioritizing it
-				if manifest.ID != "" {
-					apps[i].ID = manifest.ID
-				}
-				if manifest.Name != "" {
-					apps[i].Name = manifest.Name
-				}
-				if manifest.Summary != "" {
-					apps[i].Summary = manifest.Summary
-				}
-				if manifest.Desc != "" {
-					apps[i].Desc = manifest.Desc
-				}
-				if manifest.Author != "" {
-					apps[i].Author = manifest.Author
-				}
-				if manifest.FileName != "" {
-					apps[i].FileName = manifest.FileName
-				}
-				if manifest.PackageName != "" {
-					apps[i].PackageName = manifest.PackageName
-				}
-				apps[i].RecommendedInterval = manifest.RecommendedInterval
-				if manifest.Preview != "" {
-					apps[i].Preview = filepath.Join(dirName, manifest.Preview)
-				}
-				if manifest.Preview2x != "" {
-					apps[i].Preview2x = filepath.Join(dirName, manifest.Preview2x)
-				}
-				apps[i].Supports2x = manifest.Supports2x
-				// Handle *bool and *string
-				if manifest.Broken != nil {
-					apps[i].Broken = *manifest.Broken
-				}
-				if manifest.BrokenReason != nil {
-					apps[i].BrokenReason = *manifest.BrokenReason
-				}
-				if manifest.Date != "" {
-					apps[i].Date = manifest.Date
-				}
 			}
 		} else {
 			slog.Debug("manifest.yaml not found for app", "appID", apps[i].ID, "error", err)
 		}
 
 		// Finalize paths and defaults
+		if apps[i].ID == "" {
+			apps[i].ID = dirName
+		}
+		if apps[i].Name == "" {
+			apps[i].Name = apps[i].ID
+		}
 		if apps[i].PackageName == "" {
 			apps[i].PackageName = dirName
 		}
@@ -124,6 +75,12 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 			apps[i].FileName = apps[i].PackageName + ".star"
 		}
 		apps[i].Path = filepath.Join("system-apps", "apps", dirName)
+
+		// Populate Date from file modification time
+		starPath := filepath.Join(appDir, apps[i].FileName)
+		if info, err := os.Stat(starPath); err == nil {
+			apps[i].Date = info.ModTime().Format("2006-01-02 15:04")
+		}
 
 		// Derive Preview if not set
 		if apps[i].Preview == "" {
@@ -192,9 +149,9 @@ func scanSystemApps(dataDir string) ([]AppMetadata, error) {
 			appID := entry.Name()
 			// Basic default metadata
 			app := AppMetadata{
-				ID:          appID,
-				Name:        appID,
-				PackageName: appID,
+				Manifest: Manifest{
+					ID: appID,
+				},
 			}
 			apps = append(apps, app)
 		}
@@ -222,12 +179,13 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 
 			// Default AppMetadata for user app
 			userApp := AppMetadata{
-				ID:          appName,
-				Name:        appName,
-				PackageName: appName,
-				Author:      username,
-				Summary:     "User uploaded app",
-				IsInstalled: false,
+				Manifest: Manifest{
+					ID:          appName,
+					Name:        appName,
+					PackageName: appName,
+					Author:      username,
+					Summary:     "User uploaded app",
+				},
 			}
 
 			// List contents of this app directory

@@ -44,8 +44,8 @@ type Server struct {
 	Upgrader      *websocket.Upgrader
 	PromRegistry  *prometheus.Registry
 
-	SystemAppsCache      []apps.AppMetadata
-	SystemAppsCacheMutex sync.RWMutex
+	systemAppsCache      []apps.AppMetadata
+	systemAppsCacheMutex sync.RWMutex
 
 	UpdateAvailable  bool
 	LatestReleaseURL string

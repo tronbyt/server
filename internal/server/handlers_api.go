@@ -231,14 +231,12 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 	var appPath string
 
 	// 1. Check System Apps
-	s.SystemAppsCacheMutex.RLock()
-	for _, app := range s.SystemAppsCache {
+	for _, app := range s.ListSystemApps() {
 		if app.ID == dataReq.AppID {
 			appPath = filepath.Join(s.DataDir, app.Path)
 			break
 		}
 	}
-	s.SystemAppsCacheMutex.RUnlock()
 
 	// 2. Check User Apps
 	if appPath == "" && user != nil {
