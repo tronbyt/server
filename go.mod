@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/quic-go/quic-go v0.57.1
 	github.com/stretchr/testify v1.11.1
-	github.com/tronbyt/pixlet v0.49.7-0.20251217102908-151328f05239
+	github.com/tronbyt/pixlet v0.49.7
 	golang.org/x/crypto v0.46.0
 	golang.org/x/mod v0.31.0
 	golang.org/x/text v0.32.0
