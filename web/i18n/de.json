@@ -1,30 +1,57 @@
 {
-  "JustNow": {
+  "TimeAgo_JustNow": {
+    "other": "Gerade eben"
+  },
+  "TimeSince_JustNow": {
     "other": "Gerade eben"
   },
   "TimeAgo_Minutes": {
     "one": "Vor 1 Minute",
     "other": "Vor {{.PluralCount}} Minuten"
   },
+  "TimeSince_Minutes": {
+    "one": "1 Minute",
+    "other": "{{.PluralCount}} Minuten"
+  },
   "TimeAgo_Hours": {
     "one": "Vor 1 Stunde",
     "other": "Vor {{.PluralCount}} Stunden"
+  },
+  "TimeSince_Hours": {
+    "one": "1 Stunde",
+    "other": "{{.PluralCount}} Stunden"
   },
   "TimeAgo_Days": {
     "one": "Vor 1 Tag",
     "other": "Vor {{.PluralCount}} Tagen"
   },
+  "TimeSince_Days": {
+    "one": "1 Tag",
+    "other": "{{.PluralCount}} Tage"
+  },
   "TimeAgo_Weeks": {
     "one": "Vor 1 Woche",
     "other": "Vor {{.PluralCount}} Wochen"
+  },
+  "TimeSince_Weeks": {
+    "one": "1 Woche",
+    "other": "{{.PluralCount}} Wochen"
   },
   "TimeAgo_Months": {
     "one": "Vor 1 Monat",
     "other": "Vor {{.PluralCount}} Monaten"
   },
+  "TimeSince_Months": {
+    "one": "1 Monat",
+    "other": "{{.PluralCount}} Monate"
+  },
   "TimeAgo_Years": {
     "one": "Vor 1 Jahr",
     "other": "Vor {{.PluralCount}} Jahren"
+  },
+  "TimeSince_Years": {
+    "one": "1 Jahr",
+    "other": "{{.PluralCount}} Jahre"
   },
   "Never": {
     "other": "Nie"
@@ -1226,8 +1253,8 @@
   "Interval:": {
     "other": "Intervall:"
   },
-  "No output for ": {
-    "other": "Keine Ausgabe für "
+  "No output for:": {
+    "other": "Keine Ausgabe für:"
   },
   "Last:": {
     "other": "Zuletzt:"

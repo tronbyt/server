@@ -17,21 +17,22 @@ import (
 
 func getFuncMap() template.FuncMap {
 	return template.FuncMap{
-		"seq":      tmplSeq,
-		"dict":     tmplDict,
-		"timeago":  tmplTimeAgo,
-		"duration": tmplDuration,
-		"t":        tmplT,
-		"deref":    tmplDeref,
-		"derefOr":  tmplDerefOr,
-		"isPinned": tmplIsPinned,
-		"json":     tmplJSON,
-		"string":   tmplString,
-		"substr":   tmplSubstr,
-		"split":    strings.Split,
-		"trim":     strings.TrimSpace,
-		"slice":    tmplSlice,
-		"contains": tmplContains,
+		"seq":       tmplSeq,
+		"dict":      tmplDict,
+		"timeago":   tmplTimeAgo,
+		"timesince": tmplTimeSince,
+		"duration":  tmplDuration,
+		"t":         tmplT,
+		"deref":     tmplDeref,
+		"derefOr":   tmplDerefOr,
+		"isPinned":  tmplIsPinned,
+		"json":      tmplJSON,
+		"string":    tmplString,
+		"substr":    tmplSubstr,
+		"split":     strings.Split,
+		"trim":      strings.TrimSpace,
+		"slice":     tmplSlice,
+		"contains":  tmplContains,
 	}
 }
 
@@ -59,6 +60,14 @@ func tmplDict(values ...any) (map[string]any, error) {
 }
 
 func tmplTimeAgo(localizer *i18n.Localizer, ts any) string {
+	return humanizeTime(localizer, ts, "TimeAgo")
+}
+
+func tmplTimeSince(localizer *i18n.Localizer, ts any) string {
+	return humanizeTime(localizer, ts, "TimeSince")
+}
+
+func humanizeTime(localizer *i18n.Localizer, ts any, prefix string) string {
 	var t time.Time
 	switch v := ts.(type) {
 	case int64:
@@ -86,26 +95,30 @@ func tmplTimeAgo(localizer *i18n.Localizer, ts any) string {
 	}
 
 	if d < time.Minute {
-		return tmplT(localizer, "JustNow")
+		return tmplT(localizer, prefix+"_JustNow")
 	}
 	if d < time.Hour {
 		minutes := int(d.Minutes())
-		return tmplT(localizer, "TimeAgo_Minutes", minutes)
+		return tmplT(localizer, prefix+"_Minutes", minutes)
 	}
 	if d < 24*time.Hour {
 		hours := int(d.Hours())
-		return tmplT(localizer, "TimeAgo_Hours", hours)
+		return tmplT(localizer, prefix+"_Hours", hours)
+	}
+	if d < 7*24*time.Hour {
+		days := int(d.Hours() / 24)
+		return tmplT(localizer, prefix+"_Days", days)
 	}
 	if d < 30*24*time.Hour {
-		days := int(d.Hours() / 24)
-		return tmplT(localizer, "TimeAgo_Days", days)
+		weeks := int(d.Hours() / (24 * 7))
+		return tmplT(localizer, prefix+"_Weeks", weeks)
 	}
 	if d < 365*24*time.Hour {
 		months := int(d.Hours() / (24 * 30))
-		return tmplT(localizer, "TimeAgo_Months", months)
+		return tmplT(localizer, prefix+"_Months", months)
 	}
 	years := int(d.Hours() / (24 * 365))
-	return tmplT(localizer, "TimeAgo_Years", years)
+	return tmplT(localizer, prefix+"_Years", years)
 }
 
 func tmplDuration(d any) string {
