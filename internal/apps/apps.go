@@ -123,7 +123,7 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 		if apps[i].FileName == "" {
 			apps[i].FileName = apps[i].PackageName + ".star"
 		}
-		apps[i].Path = filepath.Join("system-apps", "apps", apps[i].PackageName)
+		apps[i].Path = filepath.Join("system-apps", "apps", dirName)
 
 		// Derive Preview if not set
 		if apps[i].Preview == "" {
