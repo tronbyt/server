@@ -27,8 +27,14 @@ func TestHandleAddAppPost(t *testing.T) {
 	s.DB.Create(&device)
 
 	// Mock SystemAppsCache
-	s.SystemAppsCache = []apps.AppMetadata{
-		{ID: "Clock", RecommendedInterval: 5},
+	s.systemAppsCache = []apps.AppMetadata{
+		{
+			Manifest: apps.Manifest{
+				ID:                  "Clock",
+				RecommendedInterval: 5,
+			},
+			Path: "system-apps/apps/clock",
+		},
 	}
 
 	form := url.Values{}

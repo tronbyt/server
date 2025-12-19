@@ -47,6 +47,17 @@
   <div class="skeleton-loader"></div>
 </div>
 
+{{ if .AppMetadata }}
+<div class="app-metadata">
+    {{ if .AppMetadata.Summary }}
+    <p class="app-summary">{{ .AppMetadata.Summary }}</p>
+    {{ end }}
+    {{ if .AppMetadata.Desc }}
+    <div class="app-desc">{{ .AppMetadata.Desc }}</div>
+    {{ end }}
+</div>
+{{ end }}
+
 <form method="post" id="dynamicForm">
     <!-- Schema Config Section -->
     <h2>{{ t .Localizer "App Configuration" }}</h2>

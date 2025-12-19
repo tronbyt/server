@@ -42,10 +42,7 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
 
-	s.SystemAppsCacheMutex.RLock()
-	systemApps := make([]apps.AppMetadata, len(s.SystemAppsCache))
-	copy(systemApps, s.SystemAppsCache)
-	s.SystemAppsCacheMutex.RUnlock()
+	systemApps := s.ListSystemApps()
 
 	customApps, err := apps.ListUserApps(s.DataDir, user.Username)
 	if err != nil {
@@ -108,15 +105,10 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	// 1. Find App Details (Recommended Interval)
 	recommendedInterval := 15 // Default
 
-	// Check System Apps Cache
-	s.SystemAppsCacheMutex.RLock()
-	for _, app := range s.SystemAppsCache {
-		if app.ID == appName {
-			recommendedInterval = app.RecommendedInterval
-			break
-		}
+	// Try to get metadata using getAppMetadata (checks cache and disk)
+	if metadata := s.getAppMetadata(appPath); metadata != nil {
+		recommendedInterval = metadata.RecommendedInterval
 	}
-	s.SystemAppsCacheMutex.RUnlock()
 
 	uinterval := 0
 	if uintervalStr != "" {
@@ -274,6 +266,11 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	deleteOnCancel := r.URL.Query().Get("delete_on_cancel") == "true"
 
+	var appMetadata *apps.AppMetadata
+	if app.Path != nil {
+		appMetadata = s.getAppMetadata(*app.Path)
+	}
+
 	s.renderTemplate(w, r, "configapp", TemplateData{
 		User:               user,
 		Device:             device,
@@ -282,6 +279,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		AppConfig:          app.Config,
 		DeleteOnCancel:     deleteOnCancel,
 		ColorFilterOptions: s.getColorFilterChoices(),
+		AppMetadata:        appMetadata,
 	})
 }
 

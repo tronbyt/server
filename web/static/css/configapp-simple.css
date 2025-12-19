@@ -46,6 +46,20 @@
   display: none;
 }
 
+.app-metadata {
+  text-align: center;
+  margin: 20px auto;
+  max-width: 600px;
+}
+.app-summary {
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 10px;
+}
+.app-desc {
+  white-space: pre-wrap;
+}
+
 @media screen and (max-width: 600px) {
   .palette button {
     width: auto;

@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 )
 
 type DeviceWithUIScale struct {
@@ -62,9 +63,10 @@ type TemplateData struct {
 	GlobalSystemRepoURL string
 
 	// App Config
-	App       *data.App
-	Schema    template.JS
-	AppConfig map[string]any
+	App         *data.App
+	Schema      template.JS
+	AppConfig   map[string]any
+	AppMetadata *apps.AppMetadata
 
 	// Device Update Extras
 	ColorFilterOptions []ColorFilterOption
@@ -394,18 +396,83 @@ func (s *Server) ensureDeviceImageDir(deviceID string) (string, error) {
 	return path, nil
 }
 
+// ListSystemApps returns a thread-safe copy of the system apps cache.
+func (s *Server) ListSystemApps() []apps.AppMetadata {
+	s.systemAppsCacheMutex.RLock()
+	defer s.systemAppsCacheMutex.RUnlock()
+
+	list := make([]apps.AppMetadata, len(s.systemAppsCache))
+	copy(list, s.systemAppsCache)
+	return list
+}
+
 func (s *Server) RefreshSystemAppsCache() {
-	s.SystemAppsCacheMutex.Lock()
-	defer s.SystemAppsCacheMutex.Unlock()
+	s.systemAppsCacheMutex.Lock()
+	defer s.systemAppsCacheMutex.Unlock()
 
 	slog.Info("Refreshing system apps cache")
 	apps, err := apps.ListSystemApps(s.DataDir)
 	if err == nil {
-		s.SystemAppsCache = apps
-		slog.Info("System apps cache refreshed", "count", len(s.SystemAppsCache))
+		s.systemAppsCache = apps
+		slog.Info("System apps cache refreshed", "count", len(s.systemAppsCache))
 	} else {
 		slog.Error("Failed to refresh system apps cache", "error", err)
 	}
+}
+
+// getAppMetadata retrieves metadata for an app path, checking the system cache first,
+// then falling back to reading the manifest.yaml from disk.
+func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
+	if appPath == "" {
+		return nil
+	}
+
+	var appMetadata *apps.AppMetadata
+	appDir := filepath.Dir(appPath)
+
+	s.systemAppsCacheMutex.RLock()
+	for i := range s.systemAppsCache {
+		metaPath := s.systemAppsCache[i].Path
+		// Check for exact match (if appPath is the directory) or parent directory match (if appPath is a file)
+		if appPath == metaPath || appDir == metaPath {
+			meta := s.systemAppsCache[i]
+			appMetadata = &meta
+			break
+		}
+	}
+	s.systemAppsCacheMutex.RUnlock()
+
+	if appMetadata != nil {
+		return appMetadata
+	}
+
+	// Fallback: Check for manifest.yaml in app directory
+	fullPath, err := securejoin.SecureJoin(s.DataDir, appPath)
+	if err == nil {
+		var appDir string
+		info, err := os.Stat(fullPath)
+		if err == nil && info.IsDir() {
+			appDir = fullPath
+		} else {
+			appDir = filepath.Dir(fullPath)
+		}
+
+		manifestPath := filepath.Join(appDir, "manifest.yaml")
+		if _, err := os.Stat(manifestPath); err == nil {
+			if data, err := os.ReadFile(manifestPath); err == nil {
+				var m apps.Manifest
+				if err := yaml.Unmarshal(data, &m); err == nil {
+					return &apps.AppMetadata{
+						Manifest: m,
+					}
+				} else {
+					slog.Debug("Failed to unmarshal manifest for fallback", "path", manifestPath, "error", err)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Server) getSetting(key string) (string, error) {
