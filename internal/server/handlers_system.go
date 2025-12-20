@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"tronbyt-server/internal/gitutils"
 	"tronbyt-server/internal/version"
 
 	"golang.org/x/mod/semver"
@@ -51,6 +53,38 @@ func (s *Server) checkForUpdates() {
 	for range ticker.C {
 		s.doUpdateCheck()
 	}
+}
+
+func (s *Server) autoRefreshSystemRepo() {
+	if s.Config.SystemAppsAutoRefresh != "1" {
+		return
+	}
+
+	slog.Info("Scheduled system apps auto-refresh enabled (every 12h)")
+
+	ticker := time.NewTicker(12 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		if s.Config.SystemAppsAutoRefresh != "1" {
+			slog.Info("System apps auto-refresh disabled, stopping ticker")
+			return
+		}
+		slog.Info("Performing scheduled system apps refresh")
+		if err := s.refreshSystemRepo(); err != nil {
+			slog.Error("Scheduled refresh of system repo failed", "error", err)
+		}
+	}
+}
+
+func (s *Server) refreshSystemRepo() error {
+	repoURL := s.Config.SystemAppsRepo
+	appsPath := filepath.Join(s.DataDir, "system-apps")
+	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
+		return err
+	}
+
+	s.RefreshSystemAppsCache()
+	return nil
 }
 
 func (s *Server) doUpdateCheck() {
