@@ -161,7 +161,30 @@ func scanSystemApps(dataDir string) ([]AppMetadata, error) {
 }
 
 func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
-	userAppsDir := filepath.Join(dataDir, "users", username, "apps")
+	var allApps []AppMetadata
+
+	// 1. Uploaded Apps
+	uploaded, err := scanUserAppsDir(dataDir, username, "apps", "User uploaded app")
+	if err != nil {
+		// Just log error, don't fail completely
+		slog.Warn("Failed to list uploaded user apps", "error", err)
+	} else {
+		allApps = append(allApps, uploaded...)
+	}
+
+	// 2. Repo Apps
+	repoApps, err := scanUserAppsDir(dataDir, username, "repo", "Git Repository app")
+	if err != nil {
+		slog.Warn("Failed to list user repo apps", "error", err)
+	} else {
+		allApps = append(allApps, repoApps...)
+	}
+
+	return allApps, nil
+}
+
+func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMetadata, error) {
+	userAppsDir := filepath.Join(dataDir, "users", username, subDir)
 	var apps []AppMetadata
 
 	entries, err := os.ReadDir(userAppsDir)
@@ -169,7 +192,7 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 		return apps, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read user apps directory: %w", err)
+		return nil, fmt.Errorf("failed to read user apps directory %s: %w", subDir, err)
 	}
 
 	for _, entry := range entries {
@@ -184,7 +207,7 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 					Name:        appName,
 					PackageName: appName,
 					Author:      username,
-					Summary:     "User uploaded app",
+					Summary:     defaultSummary,
 				},
 			}
 
@@ -204,7 +227,7 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 
 			if starFile != "" {
 				userApp.FileName = starFile
-				userApp.Path = filepath.Join("users", username, "apps", appName, starFile)
+				userApp.Path = filepath.Join("users", username, subDir, appName, starFile)
 
 				// Infer Preview/Preview2x from convention if files exist
 				baseFileName := strings.TrimSuffix(starFile, ".star")

@@ -125,6 +125,13 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	// Repo exists, open it
 	r, err := git.PlainOpen(path)
 	if err != nil {
+		if errors.Is(err, git.ErrRepositoryNotExists) {
+			slog.Warn("Directory exists but is not a valid git repo, re-cloning", "path", path)
+			if err := os.RemoveAll(path); err != nil {
+				return fmt.Errorf("failed to remove invalid repo directory: %w", err)
+			}
+			return EnsureRepo(path, repoURL, token, update)
+		}
 		// If not a git repo, maybe remove and re-clone?
 		// For safety, error out.
 		return fmt.Errorf("failed to open repo: %w", err)
