@@ -1501,5 +1501,23 @@
   },
   "OTA Update queued. Device should update shortly.": {
     "other": "OTA Update queued. Device should update shortly."
+  },
+  "Failed to update repository URL.": {
+    "other": "Failed to update repository URL."
+  },
+  "Failed to remove user repository. Check server logs.": {
+    "other": "Failed to remove user repository. Check server logs."
+  },
+  "Failed to sync user repository. Check server logs.": {
+    "other": "Failed to sync user repository. Check server logs."
+  },
+  "User repository updated successfully.": {
+    "other": "User repository updated successfully."
+  },
+  "Failed to refresh user repository. Check server logs.": {
+    "other": "Failed to refresh user repository. Check server logs."
+  },
+  "User repository refreshed successfully.": {
+    "other": "User repository refreshed successfully."
   }
 }
