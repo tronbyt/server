@@ -140,21 +140,33 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			slog.Error("Error rendering app", "app", appBasename, "error", err)
 		} else if empty {
 			slog.Debug("No output from app", "app", appBasename)
-		} else {
-			// Save WebP
-			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
-				slog.Error("Failed to write webp", "path", webpPath, "error", err)
-			}
 		}
 
-		// Update App State in DB
+		// Update App State in DB - This is our atomic check-and-update.
+		// If the app was deleted while we were rendering, RowsAffected will be 0.
 		updates := map[string]any{
 			"last_render":       now,
 			"last_render_dur":   renderDur,
 			"empty_last_render": !success,
 			"render_messages":   data.StringSlice(messages),
 		}
-		s.DB.Model(app).Updates(updates)
+		result := s.DB.Model(&data.App{}).Where("id = ?", app.ID).Updates(updates)
+		if result.Error != nil {
+			slog.Error("Failed to update app state in DB", "app", appBasename, "error", result.Error)
+			return false
+		}
+
+		if result.RowsAffected == 0 {
+			slog.Info("App no longer exists in DB, aborting", "app", appBasename)
+			return false
+		}
+
+		if success {
+			// Save WebP
+			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
+				slog.Error("Failed to write webp", "path", webpPath, "error", err)
+			}
+		}
 
 		// Update in-memory object (passed pointer)
 		app.LastRender = now

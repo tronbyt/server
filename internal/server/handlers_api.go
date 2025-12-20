@@ -657,7 +657,7 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		device.DimBrightness = &val
 	}
 
-	if err := s.DB.Save(device).Error; err != nil {
+	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		http.Error(w, "Failed to update device", http.StatusInternalServerError)
 		return
 	}
@@ -764,7 +764,10 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 			device.PinnedApp = nil
 		}
 		// Save device for pinned change
-		s.DB.Save(device)
+		if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
+			http.Error(w, "Failed to update device pin status", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if err := s.DB.Save(app).Error; err != nil {
