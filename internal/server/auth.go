@@ -293,7 +293,7 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 
 	var userRepoInfo *gitutils.RepoInfo
 	if user.AppRepoURL != "" {
-		path := filepath.Join(s.DataDir, "users", user.Username, "apps")
+		path := filepath.Join(s.DataDir, "users", user.Username, "repo")
 		info, err := gitutils.GetRepoInfo(path, user.AppRepoURL)
 		if err != nil {
 			slog.Error("Failed to get user repo info", "error", err)
