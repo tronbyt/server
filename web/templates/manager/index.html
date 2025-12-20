@@ -1,25 +1,22 @@
 {{ define "index" }}
-  {{ template "base" . }}
+{{ template "base" . }}
 {{ end }}
-
 {{ define "title" }}{{ t .Localizer "Home" }}{{ end }}
-
 {{ define "header" }}
 <!-- Add viewport meta tag -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <!-- Include external CSS and JS -->
 <link rel="stylesheet" href="/static/css/manager.css">
 {{ end }}
-
 {{ define "content" }}
 {{ if .User }}
-<br><a class="w3-button w3-purple w3-round w3-padding" href="/devices/create"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "New Tronbyt" }}</a>
+<br>
+<a class="w3-button w3-purple w3-round w3-padding"
+   href="/devices/create"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "New Tronbyt" }}</a>
 <hr>
 {{ end }}
-
 {{ range .DevicesWithUIScales }}
-  {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "DevicesWithUIScales" $.DevicesWithUIScales) }}
-  <hr>
+{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "DevicesWithUIScales" $.DevicesWithUIScales) }}
+<hr>
 {{ end }}
 {{ end }}

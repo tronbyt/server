@@ -3,102 +3,135 @@
     <h3 style="display: inline-block; margin-right: 10px;">{{ .Title }}</h3>
     {{ if and .ShowVersion .SystemRepoInfo .SystemRepoInfo.CommitHash }}
     <span style="font-size: 14px; color: #888;">
-      (version: <a href="{{ .SystemRepoInfo.CommitURL }}" target="_blank" style="color: var(--primary-color); text-decoration: none;" title="{{ .SystemRepoInfo.CommitHash }}">
-        {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
-      </a>{{ if .SystemRepoInfo.CommitDate }} - {{ .SystemRepoInfo.CommitDate }}{{ end }})
-    </span>
-    {{ end }}
-
-    {{ if .ShowControls }}
-    <!-- Filter and Sort Controls -->
-    <div class="filter-sort-controls">
-      <div class="filter-sort-controls-inner">
-
-        <input type="search" id="{{ .SearchID }}" placeholder="{{ t .Localizer "Search apps" }}"
-          onkeyup="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
-          oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')" />
-
+        (version: <a href="{{ .SystemRepoInfo.CommitURL }}"
+    target="_blank"
+    style="color: var(--primary-color);
+           text-decoration: none"
+    title="{{ .SystemRepoInfo.CommitHash }}">
+    {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
+    </a>{{ if .SystemRepoInfo.CommitDate }} - {{ .SystemRepoInfo.CommitDate }}{{ end }})
+</span>
+{{ end }}
+{{ if .ShowControls }}
+<!-- Filter and Sort Controls -->
+<div class="filter-sort-controls">
+    <div class="filter-sort-controls-inner">
+        <input type="search"
+               id="{{ .SearchID }}"
+               placeholder="{{ t .Localizer "Search apps" }}"
+               onkeyup="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
+               oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')" />
         <label class="control-label">
-          <input type="checkbox" id="hide_installed_{{ .SearchID }}" onchange="toggleInstalledApps('{{ .SearchID }}')"
-            class="control-checkbox">
-          {{ t .Localizer "Hide installed apps" }}
+            <input type="checkbox"
+                   id="hide_installed_{{ .SearchID }}"
+                   onchange="toggleInstalledApps('{{ .SearchID }}')"
+                   class="control-checkbox">
+            {{ t .Localizer "Hide installed apps" }}
         </label>
-
         <label class="control-label">
-          <input type="checkbox" id="show_broken_{{ .SearchID }}" onchange="toggleBrokenApps('{{ .SearchID }}')"
-            class="control-checkbox">
-          {{ t .Localizer "Show broken apps" }}
+            <input type="checkbox"
+                   id="show_broken_{{ .SearchID }}"
+                   onchange="toggleBrokenApps('{{ .SearchID }}')"
+                   class="control-checkbox">
+            {{ t .Localizer "Show broken apps" }}
         </label>
-
         <label for="sort_{{ .SearchID }}" class="control-label">
-          {{ t .Localizer "Sort by:" }}
-          <select id="sort_{{ .SearchID }}" onchange="sortApps('{{ .SearchID }}')">
-            <option value="system" selected>{{ t .Localizer "Default" }}</option>
-            <option value="newest">{{ t .Localizer "Newest" }}</option>
-            <option value="alphabetical">{{ t .Localizer "Alphabetical (A-Z)" }}</option>
-            <option value="rev-alphabetical">{{ t .Localizer "Alphabetical (Z-A)" }}</option>
-          </select>
+            {{ t .Localizer "Sort by:" }}
+            <select id="sort_{{ .SearchID }}" onchange="sortApps('{{ .SearchID }}')">
+                <option value="system" selected>{{ t .Localizer "Default" }}</option>
+                <option value="newest">{{ t .Localizer "Newest" }}</option>
+                <option value="alphabetical">{{ t .Localizer "Alphabetical (A-Z)" }}</option>
+                <option value="rev-alphabetical">{{ t .Localizer "Alphabetical (Z-A)" }}</option>
+            </select>
         </label>
-      </div>
-    </div>
-    {{ end }}
-
-    <div id="{{ .GridID }}" class="app-grid">
-      {{ range .Apps }}
-        {{ template "app_card_grid_item" (dict "App" . "DeviceID" $.DeviceID "Localizer" $.Localizer "IsCustom" $.IsCustom "ConfigProduction" $.ConfigProduction) }}
-      {{ end }}
     </div>
 </div>
 {{ end }}
-
+<div id="{{ .GridID }}" class="app-grid">
+    {{ range .Apps }}
+    {{ template "app_card_grid_item" (dict "App" . "DeviceID" $.DeviceID "Localizer" $.Localizer "IsCustom" $.IsCustom "ConfigProduction" $.ConfigProduction) }}
+    {{ end }}
+</div>
+</div>
+{{ end }}
 {{ define "app_card_grid_item" }}
 <div class="app-item {{ if .App.Broken }}broken-app{{ end }}"
-    data-value="{{ .App.ID }}"
-    data-path="{{ .App.Path }}"
-    data-name="{{ .App.Name }}"
-    data-installed="{{ .App.IsInstalled }}"
-    data-recommended-interval="{{ .App.RecommendedInterval }}"
-    data-date="{{ .App.Date }}"
-    data-broken="{{ .App.Broken }}"
-    data-author="{{ .App.Author }}">
-
+     data-value="{{ .App.ID }}"
+     data-path="{{ .App.Path }}"
+     data-name="{{ .App.Name }}"
+     data-installed="{{ .App.IsInstalled }}"
+     data-recommended-interval="{{ .App.RecommendedInterval }}"
+     data-date="{{ .App.Date }}"
+     data-broken="{{ .App.Broken }}"
+     data-author="{{ .App.Author }}">
     {{ if .App.IsInstalled }}
     <div class="installed-badge">{{ t .Localizer "Installed" }}</div>
     {{ end }}
     {{ if .App.Supports2x }}
     <div class="supports-2x-badge">2x</div>
     {{ end }}
-
     <!-- Skeleton loader for images -->
     <div class="app-img">
         <div class="skeleton-loader"></div>
         <img data-src="/preview/app/{{ .App.ID }}?file={{ if .App.Supports2x }}{{ .App.Preview2x }}{{ else }}{{ .App.Preview }}{{ end }}"
-            alt="{{ .App.Name }}"
-            class="lazy-image"
-            {{ if .App.Broken }}style="opacity: 0.4;"{{ end }}>
+             alt="{{ .App.Name }}"
+             class="lazy-image"
+             width="64"
+             height="64"
+             {{ if .App.Broken }}
+             style="opacity: 0.4"
+             {{ end }}>
     </div>
-
-    <p {{ if .App.Broken }}style="opacity: 0.5;"{{ end }}>{{ .App.Name }} - {{ .App.Summary }}</p>
+    <p {{ if .App.Broken }}style="opacity: 0.5;"{{ end }}>{{ .App.Name }} - {{ .App.Summary }}
+    </p>
     {{ if .App.Author }}
-    <p {{ if .App.Broken }}style="opacity: 0.5;"{{ end }}>{{ t .Localizer "From" }} {{ .App.Author }}</p>
+    <p {{ if .App.Broken }}style="opacity: 0.5;"{{ end }}>{{ t .Localizer "From" }} {{ .App.Author }}
+    </p>
     {{ end }}
     {{ if .App.Broken }}
-    <div style="background-color: #f44336; color: white; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 12px; text-align: center; line-height: 1.3; margin-top: 5px;">
-        <i class="fa-solid fa-xmark" aria-hidden="true"></i> {{ t .Localizer "BROKEN" }}<br>
+    <div style="background-color: #f44336;
+                color: white;
+                padding: 5px 10px;
+                font-weight: bold;
+                border-radius: 3px;
+                font-size: 12px;
+                text-align: center;
+                line-height: 1.3;
+                margin-top: 5px">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i> {{ t .Localizer "BROKEN" }}
+        <br>
         <span style="font-size: 10px; font-weight: normal;">{{ .App.BrokenReason }}</span>
     </div>
     {{ end }}
     {{ if .IsCustom }}
-    <a href="/devices/{{ .DeviceID }}/uploads/{{ .App.ID }}/delete" class="delete-upload-btn" onclick="event.stopPropagation(); return confirm('{{ t .Localizer "Delete this uploaded app?" }}');">
+    <a href="/devices/{{ .DeviceID }}/uploads/{{ .App.ID }}/delete"
+       class="delete-upload-btn"
+       onclick="event.stopPropagation(); return confirm('{{ t .Localizer "Delete this uploaded app?" }}');">
         <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
     </a>
     {{ end }}
     {{ if eq .ConfigProduction "0" }}
-      {{ if .App.Broken }}
-      <button class="unmark-broken-btn" onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});" style="background-color: var(--success-color); color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ t .Localizer "Unmark Broken" }}</button>
-      {{ else }}
-      <button class="mark-broken-btn" onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});" style="background-color: var(--danger-color); color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px; font-size: 12px;">{{ t .Localizer "Mark Broken" }}</button>
-      {{ end }}
+    {{ if .App.Broken }}
+    <button class="unmark-broken-btn"
+            onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});"
+            style="background-color: var(--success-color);
+                   color: white;
+                   border: none;
+                   padding: 5px 10px;
+                   cursor: pointer;
+                   margin-top: 5px;
+                   font-size: 12px">{{ t .Localizer "Unmark Broken" }}</button>
+{{ else }}
+    <button class="mark-broken-btn"
+            onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});"
+            style="background-color: var(--danger-color);
+                   color: white;
+                   border: none;
+                   padding: 5px 10px;
+                   cursor: pointer;
+                   margin-top: 5px;
+                   font-size: 12px">{{ t .Localizer "Mark Broken" }}</button>
+    {{ end }}
     {{ end }}
 </div>
 {{ end }}

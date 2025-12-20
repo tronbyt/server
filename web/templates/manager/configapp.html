@@ -1,52 +1,62 @@
 {{ define "configapp" }}
 {{ template "base" . }}
 {{ end }}
-
 {{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
-
 {{ define "header" }}
 <link rel="stylesheet" href="/static/css/configapp-simple.css">
 <link rel="stylesheet" href="/static/css/updateapp-simple.css">
 <script src="/static/js/location.js"></script>
-
 <h1>{{ t .Localizer "Configuring" }} {{ .App.Iname }} ({{ .App.Name }})</h1>
 {{ end }}
-
 {{ define "content" }}
 <!-- Navigation and Toggle Buttons -->
 <div class="flex-container">
-  <!-- Toggle Buttons -->
-  <div class="toggle-buttons">
-    <button id="toggleConfigBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show App Config" }}</span></button>
-    <button id="toggleDebugBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show Render Debug" }}</span></button>
-  </div>
-
-  <!-- Action Buttons -->
-  <div class="action-buttons">
-    <button type="submit" form="dynamicForm" class="w3-button w3-green w3-round" id="saveButton"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}</button>
-    <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ t .Localizer "Cancel" }}</button>
-  </div>
+    <!-- Toggle Buttons -->
+    <div class="toggle-buttons">
+        <button id="toggleConfigBtn"
+                class="w3-button"
+                style="background-color: var(--primary-color);
+                       color: white">
+            <i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show App Config" }}</span>
+        </button>
+        <button id="toggleDebugBtn"
+                class="w3-button"
+                style="background-color: var(--primary-color);
+                       color: white">
+            <i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show Render Debug" }}</span>
+        </button>
+    </div>
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button type="submit"
+                form="dynamicForm"
+                class="w3-button w3-green w3-round"
+                id="saveButton">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+        </button>
+        <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop">
+            <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ t .Localizer "Cancel" }}
+        </button>
+    </div>
 </div>
-
 <!-- Config Content -->
 <div id="configContent" class="hidden">
-  <pre class="flash" id="configContentPre"></pre>
+    <pre class="flash" id="configContentPre"></pre>
 </div>
-
 <!-- Debug Content -->
 <div id="debugContent" class="hidden">
-  <pre class="flash">{{ range .App.RenderMessages }}{{ . }}
+    <pre class="flash">{{ range .App.RenderMessages }}{{ . }}
 {{ end }}</pre>
 </div>
-
 <!-- App Preview -->
 <div class="app-img">
-  <img id="previewImage"
-    src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
-    alt="{{ t .Localizer "Preview" }}">
-  <div class="skeleton-loader"></div>
+    <img id="previewImage"
+         src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+         alt="{{ t .Localizer "Preview" }}"
+         width="128"
+         height="64">
+    <div class="skeleton-loader"></div>
 </div>
-
 {{ if .AppMetadata }}
 <div class="app-metadata">
     {{ if .AppMetadata.Summary }}
@@ -57,417 +67,593 @@
     {{ end }}
 </div>
 {{ end }}
-
 <form method="post" id="dynamicForm">
     <!-- Schema Config Section -->
     <h2>{{ t .Localizer "App Configuration" }}</h2>
-    <table id="schemaConfigContainer" class="form-table" style="border-spacing: 0 15px;">
+    <table id="schemaConfigContainer"
+           class="form-table"
+           style="border-spacing: 0 15px">
         <!-- Schema fields will be injected here -->
     </table>
-
     <hr>
-
     <!-- App Settings Section -->
     <h2>{{ t .Localizer "Settings" }}</h2>
     <table class="form-table">
         <!-- Name (ReadOnly) -->
         <tr>
-            <td><label>{{ t .Localizer "Name" }}</label></td>
-            <td><input type="text" id="name" name="name" class="form-control" value="{{ .App.Name }}" readonly></td>
+            <td>
+                <label>{{ t .Localizer "Name" }}</label>
+            </td>
+            <td>
+                <input type="text"
+                       id="name"
+                       name="name"
+                       class="form-control"
+                       value="{{ .App.Name }}"
+                       readonly>
+            </td>
         </tr>
         <!-- Enabled Status -->
         <tr>
-          <td>
-            <label for="enabled">{{ t .Localizer "Enabled" }}</label>
-            <small>{{ t .Localizer "Enable or disable this app" }}</small>
-          </td>
-          <td>
-            <input name="enabled" type="checkbox" id="enabled" class="form-control"
-                   {{ if .App.Enabled }} checked {{ end }} data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
-          </td>
+            <td>
+                <label for="enabled">{{ t .Localizer "Enabled" }}</label>
+                <small>{{ t .Localizer "Enable or disable this app" }}</small>
+            </td>
+            <td>
+                <input name="enabled"
+                       type="checkbox"
+                       id="enabled"
+                       class="form-control"
+                       {{ if .App.Enabled }}
+                       checked
+                       {{ end }}
+                       data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
+            </td>
         </tr>
-
         <!-- Autopin Status -->
         <tr>
-          <td>
-            <label for="autopin">{{ t .Localizer "Autopin" }}</label>
-            <small>{{ t .Localizer "Automatically pin this app when it renders successfully" }}</small>
-          </td>
-          <td>
-            <input name="autopin" type="checkbox" id="autopin" class="form-control"
-                   {{ if .App.AutoPin }} checked {{ end }} data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
-          </td>
+            <td>
+                <label for="autopin">{{ t .Localizer "Autopin" }}</label>
+                <small>{{ t .Localizer "Automatically pin this app when it renders successfully" }}</small>
+            </td>
+            <td>
+                <input name="autopin"
+                       type="checkbox"
+                       id="autopin"
+                       class="form-control"
+                       {{ if .App.AutoPin }}
+                       checked
+                       {{ end }}
+                       data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
+            </td>
         </tr>
-
         <!-- Render Interval -->
         <tr>
-          <td>
-            <label for="uinterval">{{ t .Localizer "Render Interval Minutes" }}</label>
-            <small>{{ t .Localizer "Update every X minutes" }}</small>
-          </td>
-          <td>
-            <input type="number" name="uinterval" id="uinterval" min="0" class="form-control"
-                   value="{{ .App.UInterval }}" data-default="{{ .App.UInterval }}" required>
-          </td>
+            <td>
+                <label for="uinterval">{{ t .Localizer "Render Interval Minutes" }}</label>
+                <small>{{ t .Localizer "Update every X minutes" }}</small>
+            </td>
+            <td>
+                <input type="number"
+                       name="uinterval"
+                       id="uinterval"
+                       min="0"
+                       class="form-control"
+                       value="{{ .App.UInterval }}"
+                       data-default="{{ .App.UInterval }}"
+                       required>
+            </td>
         </tr>
-
         <!-- Display Time -->
         <tr>
-          <td>
-            <label for="display_time">{{ t .Localizer "Display Time Seconds" }}</label>
-            <small>{{ t .Localizer "0 for device default" }}</small>
-          </td>
-          <td>
-            <input type="number" name="display_time" id="display_time" min="0" class="form-control"
-                   value="{{ .App.DisplayTime }}" data-default="{{ .App.DisplayTime }}">
-          </td>
+            <td>
+                <label for="display_time">{{ t .Localizer "Display Time Seconds" }}</label>
+                <small>{{ t .Localizer "0 for device default" }}</small>
+            </td>
+            <td>
+                <input type="number"
+                       name="display_time"
+                       id="display_time"
+                       min="0"
+                       class="form-control"
+                       value="{{ .App.DisplayTime }}"
+                       data-default="{{ .App.DisplayTime }}">
+            </td>
         </tr>
-
         <!-- Color Filter -->
         <tr>
-          <td>
-            <label for="color_filter">{{ t .Localizer "Color Filter" }}</label>
-            <span class="tooltip-icon" title="{{ t .Localizer "ColorFilterTooltip" }}">ⓘ</span>
-            <small>{{ t .Localizer "Override device color filter" }}</small>
-          </td>
-          <td>
-            <select name="color_filter" id="color_filter" class="form-control">
-              {{ range .ColorFilterOptions }}
-              <option value="{{ .Value }}" {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
-              {{ end }}
-            </select>
-          </td>
+            <td>
+                <label for="color_filter">{{ t .Localizer "Color Filter" }}</label>
+                <span class="tooltip-icon" title="{{ t .Localizer "ColorFilterTooltip" }}">ⓘ</span>
+                <small>{{ t .Localizer "Override device color filter" }}</small>
+            </td>
+            <td>
+                <select name="color_filter" id="color_filter" class="form-control">
+                    {{ range .ColorFilterOptions }}
+                    <option value="{{ .Value }}"
+                            {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}
+                            selected
+                            {{ end }}>{{ t $.Localizer .Name }}
+                    </option>
+                    {{ end }}
+                </select>
+            </td>
         </tr>
-
         <!-- Notes -->
         <tr>
-          <td>
-            <label for="notes">{{ t .Localizer "Notes" }}</label>
-            <small>{{ t .Localizer "Optional notes about this app" }}</small>
-          </td>
-          <td>
-            <input name="notes" id="notes" class="form-control"
-                   value="{{ .App.Notes }}" data-default="{{ .App.Notes }}">
-          </td>
+            <td>
+                <label for="notes">{{ t .Localizer "Notes" }}</label>
+                <small>{{ t .Localizer "Optional notes about this app" }}</small>
+            </td>
+            <td>
+                <input name="notes"
+                       id="notes"
+                       class="form-control"
+                       value="{{ .App.Notes }}"
+                       data-default="{{ .App.Notes }}">
+            </td>
         </tr>
     </table>
-
     <hr>
-
     <!-- Schedule Section -->
     <div class="schedule-section">
         <h2>{{ t .Localizer "Schedule" }}</h2>
-
         <table class="form-table">
-          <!-- Start Time -->
-          <tr>
-            <td>
-              <label for="start_time">{{ t .Localizer "Start Time" }}</label>
-              <small>{{ t .Localizer "When the app should start displaying" }}</small>
-            </td>
-            <td>
-              <input type="time" name="start_time" id="start_time" class="form-control"
-                     value="{{ deref .App.StartTime }}" data-default="{{ deref .App.StartTime }}">
-            </td>
-          </tr>
-
-          <!-- End Time -->
-          <tr>
-            <td>
-              <label for="end_time">{{ t .Localizer "End Time" }}</label>
-              <small>{{ t .Localizer "When the app should stop displaying" }}</small>
-            </td>
-            <td>
-              <input type="time" name="end_time" id="end_time" class="form-control"
-                     value="{{ deref .App.EndTime }}" data-default="{{ deref .App.EndTime }}">
-            </td>
-          </tr>
+            <!-- Start Time -->
+            <tr>
+                <td>
+                    <label for="start_time">{{ t .Localizer "Start Time" }}</label>
+                    <small>{{ t .Localizer "When the app should start displaying" }}</small>
+                </td>
+                <td>
+                    <input type="time"
+                           name="start_time"
+                           id="start_time"
+                           class="form-control"
+                           value="{{ deref .App.StartTime }}"
+                           data-default="{{ deref .App.StartTime }}">
+                </td>
+            </tr>
+            <!-- End Time -->
+            <tr>
+                <td>
+                    <label for="end_time">{{ t .Localizer "End Time" }}</label>
+                    <small>{{ t .Localizer "When the app should stop displaying" }}</small>
+                </td>
+                <td>
+                    <input type="time"
+                           name="end_time"
+                           id="end_time"
+                           class="form-control"
+                           value="{{ deref .App.EndTime }}"
+                           data-default="{{ deref .App.EndTime }}">
+                </td>
+            </tr>
         </table>
-
         <!-- Legacy Schedule (Default) -->
         <div id="legacy_schedule">
-          <h3>{{ t .Localizer "Active Days" }}</h3>
-          <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
-          <div style="margin-top: 10px;">
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="monday" {{ if or (contains .App.Days "monday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Monday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="tuesday" {{ if or (contains .App.Days "tuesday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Tuesday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="wednesday" {{ if or (contains .App.Days "wednesday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Wednesday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="thursday" {{ if or (contains .App.Days "thursday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Thursday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="friday" {{ if or (contains .App.Days "friday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Friday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="saturday" {{ if or (contains .App.Days "saturday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Saturday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="days" value="sunday" {{ if or (contains .App.Days "sunday") (eq (len .App.Days) 0) }} checked {{ end }}> {{ t .Localizer "Sunday" }}
-            </label>
-          </div>
+            <h3>{{ t .Localizer "Active Days" }}</h3>
+            <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
+            <div style="margin-top: 10px;">
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="monday"
+                           {{ if or (contains .App.Days "monday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Monday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="tuesday"
+                           {{ if or (contains .App.Days "tuesday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Tuesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="wednesday"
+                           {{ if or (contains .App.Days "wednesday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Wednesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="thursday"
+                           {{ if or (contains .App.Days "thursday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Thursday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="friday"
+                           {{ if or (contains .App.Days "friday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Friday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="saturday"
+                           {{ if or (contains .App.Days "saturday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Saturday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="sunday"
+                           {{ if or (contains .App.Days "sunday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Sunday" }}
+                </label>
+            </div>
         </div>
-      </div>
-
-      <!-- Custom Recurrence Toggle -->
-      <div style="margin: 20px 0;">
-        <label for="use_custom_recurrence" style="display: flex; align-items: center; gap: 10px;">
-          <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {{ if .App.UseCustomRecurrence }} checked {{ end }}
-            onchange="toggleCustomRecurrence()">
-          <div>
-            <strong>{{ t .Localizer "Use Custom Recurrence" }}</strong>
-            <small style="display: block; color: var(--post-about-text); margin-top: 5px;">
-              {{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}
-            </small>
-          </div>
+    </div>
+    <!-- Custom Recurrence Toggle -->
+    <div style="margin: 20px 0;">
+        <label for="use_custom_recurrence"
+               style="display: flex;
+                      align-items: center;
+                      gap: 10px">
+            <input type="checkbox"
+                   name="use_custom_recurrence"
+                   id="use_custom_recurrence"
+                   {{ if .App.UseCustomRecurrence }}
+                   checked
+                   {{ end }}
+                   onchange="toggleCustomRecurrence()">
+            <div>
+                <strong>{{ t .Localizer "Use Custom Recurrence" }}</strong>
+                <small style="display: block;
+                              color: var(--post-about-text);
+                              margin-top: 5px">
+                    {{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}
+                </small>
+            </div>
         </label>
-      </div>
-
-      <!-- Custom Recurrence Section -->
-      <div id="custom_recurrence" class="custom-recurrence-section" style="display: none;">
+    </div>
+    <!-- Custom Recurrence Section -->
+    <div id="custom_recurrence"
+         class="custom-recurrence-section"
+         style="display: none">
         <h3>{{ t .Localizer "Custom Recurrence" }}</h3>
-
         <table class="form-table">
-          <!-- Frequency -->
-          <tr>
-            <td>
-              <label for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
-              <small>{{ t .Localizer "How often the app should run" }}</small>
-            </td>
-            <td>
-              <select name="recurrence_type" id="recurrence_type" class="form-control" onchange="toggleRecurrenceOptions()">
-                <option value="daily" {{ if eq (string .App.RecurrenceType) "daily" }} selected {{ end }}>{{ t .Localizer "Daily" }}</option>
-                <option value="weekly" {{ if eq (string .App.RecurrenceType) "weekly" }} selected {{ end }}>{{ t .Localizer "Weekly" }}</option>
-                <option value="monthly" {{ if eq (string .App.RecurrenceType) "monthly" }} selected {{ end }}>{{ t .Localizer "Monthly" }}</option>
-                <option value="yearly" {{ if eq (string .App.RecurrenceType) "yearly" }} selected {{ end }}>{{ t .Localizer "Yearly" }}</option>
-              </select>
-            </td>
-          </tr>
-
-          <!-- Repeat Interval -->
-          <tr>
-            <td>
-              <label for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
-              <small>{{ t .Localizer "Interval between occurrences" }}</small>
-            </td>
-            <td>
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" class="form-control"
-                  value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}" style="width: 100px;">
-                <span id="interval_unit">{{ t .Localizer "days" }}</span>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Start Date -->
-          <tr>
-            <td>
-              <label for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
-              <small>{{ t .Localizer "When the recurrence should begin" }}</small>
-            </td>
-            <td>
-              <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="form-control"
-                value="{{ deref .App.RecurrenceStartDate }}">
-            </td>
-          </tr>
-
-          <!-- End Date -->
-          <tr>
-            <td>
-              <label for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
-              <small>{{ t .Localizer "When the recurrence should stop" }}</small>
-            </td>
-            <td>
-              <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="form-control"
-                value="{{ deref .App.RecurrenceEndDate }}">
-            </td>
-          </tr>
+            <!-- Frequency -->
+            <tr>
+                <td>
+                    <label for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
+                    <small>{{ t .Localizer "How often the app should run" }}</small>
+                </td>
+                <td>
+                    <select name="recurrence_type"
+                            id="recurrence_type"
+                            class="form-control"
+                            onchange="toggleRecurrenceOptions()">
+                        <option value="daily"
+                                {{ if eq (string .App.RecurrenceType) "daily" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Daily" }}
+                        </option>
+                        <option value="weekly"
+                                {{ if eq (string .App.RecurrenceType) "weekly" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Weekly" }}
+                        </option>
+                        <option value="monthly"
+                                {{ if eq (string .App.RecurrenceType) "monthly" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Monthly" }}
+                        </option>
+                        <option value="yearly"
+                                {{ if eq (string .App.RecurrenceType) "yearly" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Yearly" }}
+                        </option>
+                    </select>
+                </td>
+            </tr>
+            <!-- Repeat Interval -->
+            <tr>
+                <td>
+                    <label for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
+                    <small>{{ t .Localizer "Interval between occurrences" }}</small>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number"
+                               name="recurrence_interval"
+                               id="recurrence_interval"
+                               min="1"
+                               max="52"
+                               class="form-control"
+                               value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}"
+                               style="width: 100px">
+                        <span id="interval_unit">{{ t .Localizer "days" }}</span>
+                    </div>
+                </td>
+            </tr>
+            <!-- Start Date -->
+            <tr>
+                <td>
+                    <label for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
+                    <small>{{ t .Localizer "When the recurrence should begin" }}</small>
+                </td>
+                <td>
+                    <input type="date"
+                           name="recurrence_start_date"
+                           id="recurrence_start_date"
+                           class="form-control"
+                           value="{{ deref .App.RecurrenceStartDate }}">
+                </td>
+            </tr>
+            <!-- End Date -->
+            <tr>
+                <td>
+                    <label for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
+                    <small>{{ t .Localizer "When the recurrence should stop" }}</small>
+                </td>
+                <td>
+                    <input type="date"
+                           name="recurrence_end_date"
+                           id="recurrence_end_date"
+                           class="form-control"
+                           value="{{ deref .App.RecurrenceEndDate }}">
+                </td>
+            </tr>
         </table>
-
         <!-- Weekly Options -->
         <div id="weekly_options" style="display: none; margin-top: 20px;">
-          <h4>{{ t .Localizer "Weekly Options" }}</h4>
-          <label for="weekdays">{{ t .Localizer "Active Days" }}</label>
-          <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
-          <div style="margin-top: 10px;">
-            {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
-            {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="monday" {{ if or (contains $weekdays "monday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Monday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="tuesday" {{ if or (contains $weekdays "tuesday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Tuesday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="wednesday" {{ if or (contains $weekdays "wednesday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Wednesday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="thursday" {{ if or (contains $weekdays "thursday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Thursday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="friday" {{ if or (contains $weekdays "friday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Friday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="saturday" {{ if or (contains $weekdays "saturday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Saturday" }}
-            </label>
-            <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px;">
-              <input type="checkbox" name="weekdays" value="sunday" {{ if or (contains $weekdays "sunday") (eq (len $weekdays) 0) }} checked {{ end }}> {{ t .Localizer "Sunday" }}
-            </label>
-          </div>
+            <h4>{{ t .Localizer "Weekly Options" }}</h4>
+            <label for="weekdays">{{ t .Localizer "Active Days" }}</label>
+            <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
+            <div style="margin-top: 10px;">
+                {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
+                {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="monday"
+                           {{ if or (contains $weekdays "monday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Monday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="tuesday"
+                           {{ if or (contains $weekdays "tuesday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Tuesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="wednesday"
+                           {{ if or (contains $weekdays "wednesday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Wednesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="thursday"
+                           {{ if or (contains $weekdays "thursday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Thursday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="friday"
+                           {{ if or (contains $weekdays "friday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Friday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="saturday"
+                           {{ if or (contains $weekdays "saturday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Saturday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="sunday"
+                           {{ if or (contains $weekdays "sunday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Sunday" }}
+                </label>
+            </div>
         </div>
-
         <!-- Monthly Options -->
         <div id="monthly_options" style="display: none; margin-top: 20px;">
-          <h4>{{ t .Localizer "Monthly Options" }}</h4>
-
-          <table class="form-table">
-            <!-- Monthly Pattern -->
-            <tr>
-              <td>
-                <label for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
-                <small>{{ t .Localizer "Choose how to specify the monthly occurrence" }}</small>
-              </td>
-              <td>
-                <select name="monthly_pattern" id="monthly_pattern" class="form-control">
-                  {{ $dom := index .App.RecurrencePattern "day_of_month" }}
-                  {{ $dow := index .App.RecurrencePattern "day_of_week" }}
-                  {{ $current_pattern := "day_of_month" }}
-                  {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
-                  <option value="day_of_month" {{ if eq $current_pattern "day_of_month" }} selected {{ end }}>{{ t .Localizer "Day of Month" }}</option>
-                  <option value="day_of_week" {{ if eq $current_pattern "day_of_week" }} selected {{ end }}>{{ t .Localizer "Day of Week" }}</option>
-                </select>
-              </td>
-            </tr>
-          </table>
-
-          <!-- Day of Month Option -->
-          <div id="day_of_month_option">
+            <h4>{{ t .Localizer "Monthly Options" }}</h4>
             <table class="form-table">
-              <tr>
-                <td>
-                  <label for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
-                  <small>{{ t .Localizer "Which day of the month (1-31)" }}</small>
-                </td>
-                <td>
-                  <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="form-control"
-                    value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
-                </td>
-              </tr>
+                <!-- Monthly Pattern -->
+                <tr>
+                    <td>
+                        <label for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
+                        <small>{{ t .Localizer "Choose how to specify the monthly occurrence" }}</small>
+                    </td>
+                    <td>
+                        <select name="monthly_pattern" id="monthly_pattern" class="form-control">
+                            {{ $dom := index .App.RecurrencePattern "day_of_month" }}
+                            {{ $dow := index .App.RecurrencePattern "day_of_week" }}
+                            {{ $current_pattern := "day_of_month" }}
+                            {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
+                            <option value="day_of_month"
+                                    {{ if eq $current_pattern "day_of_month" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Day of Month" }}
+                            </option>
+                            <option value="day_of_week"
+                                    {{ if eq $current_pattern "day_of_week" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Day of Week" }}
+                            </option>
+                        </select>
+                    </td>
+                </tr>
             </table>
-          </div>
-
-          <!-- Day of Week Option -->
-          <div id="day_of_week_option" style="display: none;">
-            <table class="form-table">
-              <tr>
-                <td>
-                  <label for="day_of_week_pattern">{{ t .Localizer "Day of Week Pattern" }}</label>
-                  <small>{{ t .Localizer "Which occurrence of which day" }}</small>
-                </td>
-                <td>
-                  <div style="display: flex; gap: 10px; align-items: center;">
-                    <select name="week_occurrence" id="week_occurrence" class="form-control">
-                        <option value="first">{{ t .Localizer "First" }}</option>
-                        <option value="second">{{ t .Localizer "Second" }}</option>
-                        <option value="third">{{ t .Localizer "Third" }}</option>
-                        <option value="fourth">{{ t .Localizer "Fourth" }}</option>
-                        <option value="last">{{ t .Localizer "Last" }}</option>
-                    </select>
-                    <select name="week_day" id="week_day" class="form-control">
-                        <option value="monday">{{ t .Localizer "Monday" }}</option>
-                        <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
-                        <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
-                        <option value="thursday">{{ t .Localizer "Thursday" }}</option>
-                        <option value="friday">{{ t .Localizer "Friday" }}</option>
-                        <option value="saturday">{{ t .Localizer "Saturday" }}</option>
-                        <option value="sunday">{{ t .Localizer "Sunday" }}</option>
-                    </select>
-                    <!-- Hidden input to combine the values for form submission -->
-                    <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="{{ if $dow }}{{ $dow }}{{ end }}">
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </div>
+            <!-- Day of Month Option -->
+            <div id="day_of_month_option">
+                <table class="form-table">
+                    <tr>
+                        <td>
+                            <label for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
+                            <small>{{ t .Localizer "Which day of the month (1-31)" }}</small>
+                        </td>
+                        <td>
+                            <input type="number"
+                                   name="day_of_month"
+                                   id="day_of_month"
+                                   min="1"
+                                   max="31"
+                                   class="form-control"
+                                   value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Day of Week Option -->
+            <div id="day_of_week_option" style="display: none;">
+                <table class="form-table">
+                    <tr>
+                        <td>
+                            <label for="day_of_week_pattern">{{ t .Localizer "Day of Week Pattern" }}</label>
+                            <small>{{ t .Localizer "Which occurrence of which day" }}</small>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <select name="week_occurrence" id="week_occurrence" class="form-control">
+                                    <option value="first">{{ t .Localizer "First" }}</option>
+                                    <option value="second">{{ t .Localizer "Second" }}</option>
+                                    <option value="third">{{ t .Localizer "Third" }}</option>
+                                    <option value="fourth">{{ t .Localizer "Fourth" }}</option>
+                                    <option value="last">{{ t .Localizer "Last" }}</option>
+                                </select>
+                                <select name="week_day" id="week_day" class="form-control">
+                                    <option value="monday">{{ t .Localizer "Monday" }}</option>
+                                    <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
+                                    <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
+                                    <option value="thursday">{{ t .Localizer "Thursday" }}</option>
+                                    <option value="friday">{{ t .Localizer "Friday" }}</option>
+                                    <option value="saturday">{{ t .Localizer "Saturday" }}</option>
+                                    <option value="sunday">{{ t .Localizer "Sunday" }}</option>
+                                </select>
+                                <!-- Hidden input to combine the values for form submission -->
+                                <input type="hidden"
+                                       name="day_of_week_pattern"
+                                       id="day_of_week_pattern"
+                                       value="{{ if $dow }}{{ $dow }}{{ end }}">
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
-      </div>
-
+    </div>
     <div class="button-container">
-        <button type="submit" class="w3-button w3-green w3-round"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}</button>
-        <button type="button" class="w3-button w3-blue w3-round" id="resetButton"><i class="fa-solid fa-rotate-left"></i> {{ t .Localizer "Reset" }}</button>
+        <button type="submit" class="w3-button w3-green w3-round">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+        </button>
+        <button type="button" class="w3-button w3-blue w3-round" id="resetButton">
+            <i class="fa-solid fa-rotate-left"></i> {{ t .Localizer "Reset" }}
+        </button>
         {{ if eq .Device.Info.ProtocolType "WS" }}
-        <button type="button" class="w3-button w3-blue w3-round" id="previewButton"><i class="fa-solid fa-eye"></i> {{ t .Localizer "Preview" }}</button>
+        <button type="button" class="w3-button w3-blue w3-round" id="previewButton">
+            <i class="fa-solid fa-eye"></i> {{ t .Localizer "Preview" }}
+        </button>
         {{ end }}
-        <button type="button" class="w3-button w3-grey w3-round" onclick="exportConfig()"><i class="fa-solid fa-download"></i> {{ t .Localizer "Export Config" }}</button>
-        <button type="button" class="w3-button w3-grey w3-round" onclick="document.getElementById('importConfigInput').click()"><i class="fa-solid fa-upload"></i> {{ t .Localizer "Import Config" }}</button>
-        <button type="button" class="w3-button w3-red w3-round" id="cancelButton"><i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}</button>
-        <button type="button" class="w3-button w3-red w3-round" id="deleteButton" onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)"><i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}</button>
+        <button type="button"
+                class="w3-button w3-grey w3-round"
+                onclick="exportConfig()">
+            <i class="fa-solid fa-download"></i> {{ t .Localizer "Export Config" }}
+        </button>
+        <button type="button"
+                class="w3-button w3-grey w3-round"
+                onclick="document.getElementById('importConfigInput').click()">
+            <i class="fa-solid fa-upload"></i> {{ t .Localizer "Import Config" }}
+        </button>
+        <button type="button" class="w3-button w3-red w3-round" id="cancelButton">
+            <i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}
+        </button>
+        <button type="button"
+                class="w3-button w3-red w3-round"
+                id="deleteButton"
+                onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
+            <i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}
+        </button>
     </div>
 </form>
-
-<input type="file" id="importConfigInput" style="display:none;" accept=".json" onchange="importConfig(this)">
-
+<input type="file"
+       id="importConfigInput"
+       style="display:none"
+       accept=".json"
+       onchange="importConfig(this)">
 <!-- API Examples Section -->
 <div id="apiUsageContent">
-  <div class="api-section">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <h2>{{ t .Localizer "API Usage" }}</h2>
-        <button id="toggleApiUsageBtn" class="w3-button" style="background-color: var(--primary-color); color: white;"><i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show API Usage" }}</span></button>
-    </div>
-    <div class="api-usage-details collapsed">
-        <p>{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
-
-    <!-- Enable App -->
-    <div style="margin-bottom: 20px;">
-      <h3>{{ t .Localizer "Enable App" }}</h3>
-      <pre>curl -X PATCH \
+    <div class="api-section">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h2>{{ t .Localizer "API Usage" }}</h2>
+            <button id="toggleApiUsageBtn"
+                    class="w3-button"
+                    style="background-color: var(--primary-color);
+                           color: white">
+                <i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show API Usage" }}</span>
+            </button>
+        </div>
+        <div class="api-usage-details collapsed">
+            <p>{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
+            <!-- Enable App -->
+            <div style="margin-bottom: 20px;">
+                <h3>{{ t .Localizer "Enable App" }}</h3>
+                <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
-    </div>
-
-    <!-- Disable App -->
-    <div style="margin-bottom: 20px;">
-      <h3 style="color: var(--danger-text);">{{ t .Localizer "Disable App" }}</h3>
-      <pre>curl -X PATCH \
+            </div>
+            <!-- Disable App -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: var(--danger-text);">{{ t .Localizer "Disable App" }}</h3>
+                <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
-    </div>
-
-    <!-- Pin App -->
-    <div style="margin-bottom: 20px;">
-      <h3>{{ t .Localizer "Pin App" }}</h3>
-      <pre>curl -X PATCH \
+            </div>
+            <!-- Pin App -->
+            <div style="margin-bottom: 20px;">
+                <h3>{{ t .Localizer "Pin App" }}</h3>
+                <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": "{{ .App.Iname }}"}' \
   /v0/devices/{{ .Device.ID }}</pre>
-    </div>
-
-    <!-- Unpin App -->
-    <div style="margin-bottom: 20px;">
-      <h3 style="color: var(--danger-text);">{{ t .Localizer "Unpin App" }}</h3>
-      <pre>curl -X PATCH \
+            </div>
+            <!-- Unpin App -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: var(--danger-text);">{{ t .Localizer "Unpin App" }}</h3>
+                <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": ""}' \
   /v0/devices/{{ .Device.ID }}</pre>
+            </div>
+            <small>
+                <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
+            </small>
+        </div>
     </div>
-
-    <small>
-      <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
-    </small>
-  </div>
 </div>
-
 <script>
   // Make the schema and config objects available to JavaScript
   const schema = {{ .Schema }};

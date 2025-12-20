@@ -65,6 +65,18 @@ jobs:
           version: latest
           args: --timeout=5m
 
+      - name: Setup Python
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Lint Templates
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        run: |
+          pip install djlint
+          djlint web/templates --profile=golang --check
+
       - name: Test
         # CGO required for pixlet
         run: CGO_ENABLED=1 go test -v ./...
