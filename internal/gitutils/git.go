@@ -139,17 +139,21 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 
 	// Check remote URL
 	rem, err := r.Remote("origin")
-	if err == nil {
-		urls := rem.Config().URLs
-		if len(urls) > 0 && urls[0] != repoURL {
-			slog.Warn("Repo remote URL mismatch, re-cloning", "current", urls[0], "new", repoURL)
-			// Remove and re-clone
-			if err := os.RemoveAll(path); err != nil {
-				return fmt.Errorf("failed to remove old repo: %w", err)
-			}
-
-			return EnsureRepo(path, repoURL, token, update)
+	if err != nil || len(rem.Config().URLs) == 0 || rem.Config().URLs[0] != repoURL {
+		reason := "remote URL mismatch"
+		if err != nil {
+			reason = fmt.Sprintf("error getting remote: %v", err)
+		} else if len(rem.Config().URLs) == 0 {
+			reason = "no remote URLs"
 		}
+
+		slog.Warn("Repo validation failed, re-cloning", "reason", reason, "new", repoURL)
+		// Remove and re-clone
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("failed to remove old repo: %w", err)
+		}
+
+		return EnsureRepo(path, repoURL, token, update)
 	}
 
 	if !update {

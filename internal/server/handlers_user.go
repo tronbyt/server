@@ -182,7 +182,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	repoURL := r.FormValue("app_repo_url")
 	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("app_repo_url", repoURL).Error; err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/auth/edit", http.StatusSeeOther)
 		return
 	}
 
@@ -190,14 +190,18 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	if repoURL == "" {
 		if err := os.RemoveAll(appsPath); err != nil {
 			slog.Error("Failed to remove user repo directory", "error", err)
+			s.flashAndRedirect(w, r, "Failed to remove user repository. Check server logs.", "/auth/edit", http.StatusSeeOther)
+			return
 		}
 	} else {
 		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
 			slog.Error("Failed to sync user repo", "error", err)
+			s.flashAndRedirect(w, r, "Failed to sync user repository. Check server logs.", "/auth/edit", http.StatusSeeOther)
+			return
 		}
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "User repository updated successfully.", "/auth/edit", http.StatusSeeOther)
 }
 
 func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
@@ -207,10 +211,12 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
 		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
+			s.flashAndRedirect(w, r, "Failed to refresh user repository. Check server logs.", "/auth/edit", http.StatusSeeOther)
+			return
 		}
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "User repository refreshed successfully.", "/auth/edit", http.StatusSeeOther)
 }
 
 func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) {

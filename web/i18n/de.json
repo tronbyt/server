@@ -1510,5 +1510,23 @@
   },
   "OTA Update queued. Device should update shortly.": {
     "other": "OTA-Update eingereiht. Das Gerät sollte in Kürze aktualisiert werden."
+  },
+  "Failed to update repository URL.": {
+    "other": "Fehler beim Aktualisieren der Repository-URL."
+  },
+  "Failed to remove user repository. Check server logs.": {
+    "other": "Fehler beim Entfernen des Benutzer-Repositorys. Prüfen Sie die Server-Logs."
+  },
+  "Failed to sync user repository. Check server logs.": {
+    "other": "Fehler beim Synchronisieren des Benutzer-Repositorys. Prüfen Sie die Server-Logs."
+  },
+  "User repository updated successfully.": {
+    "other": "Benutzer-Repository erfolgreich aktualisiert."
+  },
+  "Failed to refresh user repository. Check server logs.": {
+    "other": "Fehler beim Aktualisieren des Benutzer-Repositorys. Prüfen Sie die Server-Logs."
+  },
+  "User repository refreshed successfully.": {
+    "other": "Benutzer-Repository erfolgreich aktualisiert."
   }
 }
