@@ -187,8 +187,14 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
-		slog.Error("Failed to sync user repo", "error", err)
+	if repoURL == "" {
+		if err := os.RemoveAll(appsPath); err != nil {
+			slog.Error("Failed to remove user repo directory", "error", err)
+		}
+	} else {
+		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
+			slog.Error("Failed to sync user repo", "error", err)
+		}
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
