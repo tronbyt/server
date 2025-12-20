@@ -535,7 +535,7 @@
         </table>
       </div>
 
-      {{ if .FirmwareAvailable }}
+      {{ if and .FirmwareAvailable .Device.OTACapable }}
             <div class="device-settings-section">
               <h2>{{ t .Localizer "Firmware Update" }}</h2>
               <div style="padding: 10px;">

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 )
 
 // --- Enums & Value Types ---
@@ -647,4 +649,19 @@ func (d *Device) GetEffectiveBrightness() int {
 		brightness = int(*d.DimBrightness)
 	}
 	return brightness
+}
+
+func (d *Device) OTACapable() bool {
+	if !d.Type.SupportsFirmware() {
+		return false
+	}
+	v := d.Info.FirmwareVersion
+	if v == "" {
+		return false
+	}
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+
+	return semver.Compare(v, "v1.4.4") >= 0
 }

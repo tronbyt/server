@@ -186,7 +186,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appsPath := filepath.Join(s.DataDir, "users", user.Username, "apps")
+	appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
 	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
 		slog.Error("Failed to sync user repo", "error", err)
 	}
@@ -198,7 +198,7 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
 	if user.AppRepoURL != "" {
-		appsPath := filepath.Join(s.DataDir, "users", user.Username, "apps")
+		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
 		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
 		}
