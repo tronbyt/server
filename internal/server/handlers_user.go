@@ -366,19 +366,17 @@ func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
 		repoURL = s.Config.SystemAppsRepo
 	}
 
-	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
-		slog.Error("Failed to update system repo", "error", err)
-	}
-
 	// Save to global setting
 	if err := s.setSetting("system_apps_repo", repoURL); err != nil {
 		slog.Error("Failed to save system repo setting", "error", err)
 	}
 
-	// Update in-memory config and cache
+	// Update in-memory config
 	s.Config.SystemAppsRepo = repoURL
-	s.RefreshSystemAppsCache()
+
+	if err := s.refreshSystemRepo(); err != nil {
+		slog.Error("Failed to update system repo", "error", err)
+	}
 
 	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
 }
@@ -390,21 +388,19 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get global repo URL
-	repoURL, _ := s.getSetting("system_apps_repo")
-	if repoURL == "" {
-		repoURL = s.Config.SystemAppsRepo
-	}
-
-	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
+	if err := s.refreshSystemRepo(); err != nil {
 		slog.Error("Failed to refresh system repo", "error", err)
 	}
 
-	s.RefreshSystemAppsCache()
-
 	if r.Header.Get("Accept") == "application/json" {
-		repoInfo, _ := gitutils.GetRepoInfo(appsPath, repoURL)
+		repoURL := s.Config.SystemAppsRepo
+		appsPath := filepath.Join(s.DataDir, "system-apps")
+		repoInfo, err := gitutils.GetRepoInfo(appsPath, repoURL)
+		if err != nil {
+			slog.Error("Failed to get repo info", "error", err)
+			http.Error(w, "Failed to get repository information", http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(repoInfo); err != nil {
 			slog.Error("Failed to encode repo info", "error", err)

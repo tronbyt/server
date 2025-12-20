@@ -170,6 +170,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	s.RefreshSystemAppsCache()
 
 	go s.checkForUpdates()
+	go s.autoRefreshSystemRepo()
 
 	s.routes()
 	return s
