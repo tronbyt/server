@@ -437,7 +437,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// 9. OTA
 	device.SwapColors = r.FormValue("swap_colors") == "on"
 
-	if err := s.DB.Save(device).Error; err != nil {
+	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		slog.Error("Failed to update device", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -649,7 +649,7 @@ func (s *Server) handleUpdateBrightness(w http.ResponseWriter, r *http.Request) 
 
 	device.Brightness = data.BrightnessFromUIScale(bUI, customScale)
 
-	if err := s.DB.Save(device).Error; err != nil {
+	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		slog.Error("Failed to update device brightness", "device", device.ID, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -682,7 +682,7 @@ func (s *Server) handleUpdateInterval(w http.ResponseWriter, r *http.Request) {
 
 	device.DefaultInterval = interval
 
-	if err := s.DB.Save(device).Error; err != nil {
+	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		slog.Error("Failed to update device interval", "device", device.ID, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
