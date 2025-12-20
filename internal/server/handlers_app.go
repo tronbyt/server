@@ -44,10 +44,7 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 
 	systemApps := s.ListSystemApps()
 
-	customApps, err := apps.ListUserApps(s.DataDir, user.Username)
-	if err != nil {
-		slog.Error("Failed to list user apps", "error", err)
-	}
+	customApps := apps.ListUserApps(s.DataDir, user.Username)
 
 	// Mark installed apps
 	installedMap := make(map[string]bool)

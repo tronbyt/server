@@ -160,7 +160,7 @@ func scanSystemApps(dataDir string) ([]AppMetadata, error) {
 	return apps, nil
 }
 
-func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
+func ListUserApps(dataDir, username string) []AppMetadata {
 	var allApps []AppMetadata
 
 	// 1. Uploaded Apps
@@ -173,14 +173,14 @@ func ListUserApps(dataDir, username string) ([]AppMetadata, error) {
 	}
 
 	// 2. Repo Apps
-	repoApps, err := scanUserAppsDir(dataDir, username, "repo", "Git Repository app")
+	repoApps, err := scanUserAppsDir(dataDir, username, filepath.Join("repo", "apps"), "Git Repository app")
 	if err != nil {
 		slog.Warn("Failed to list user repo apps", "error", err)
 	} else {
 		allApps = append(allApps, repoApps...)
 	}
 
-	return allApps, nil
+	return allApps
 }
 
 func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMetadata, error) {

@@ -240,7 +240,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Check User Apps
 	if appPath == "" && user != nil {
-		userApps, _ := apps.ListUserApps(s.DataDir, user.Username)
+		userApps := apps.ListUserApps(s.DataDir, user.Username)
 		for _, app := range userApps {
 			if app.ID == dataReq.AppID { // AppID for user apps is folder name
 				appPath = filepath.Join(s.DataDir, app.Path)
@@ -812,17 +812,7 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Clean up files (install dir and webp)
-	installationsDir := filepath.Join(s.DataDir, "installations")
-	installDir, err := securejoin.SecureJoin(installationsDir, iname)
-	if err != nil {
-		slog.Warn("Potential path traversal detected in handleDeleteInstallationAPI", "iname", iname, "error", err)
-	} else {
-		if err := os.RemoveAll(installDir); err != nil {
-			slog.Error("Failed to remove install directory", "path", installDir, "error", err)
-		}
-	}
-
+	// Clean up files
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	if err != nil {
 		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)

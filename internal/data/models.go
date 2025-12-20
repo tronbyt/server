@@ -14,6 +14,8 @@ import (
 
 // --- Enums & Value Types ---
 
+const minOTAFirmwareVersion = "v1.4.4"
+
 type ThemePreference string
 
 const (
@@ -663,5 +665,5 @@ func (d *Device) OTACapable() bool {
 		v = "v" + v
 	}
 
-	return semver.Compare(v, "v1.4.4") >= 0
+	return semver.Compare(v, minOTAFirmwareVersion) >= 0
 }
