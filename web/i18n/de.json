@@ -1427,9 +1427,6 @@
   "Invalid JSON file": {
     "other": "Ungültige JSON-Datei"
   },
-  "Device configuration imported successfully": {
-    "other": "Gerätekonfiguration erfolgreich importiert"
-  },
   "Import failed. See server logs for details.": {
     "other": "Import fehlgeschlagen. Details in den Server-Logs."
   },

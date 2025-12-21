@@ -1421,9 +1421,6 @@
   "Invalid JSON file": {
     "other": "Invalid JSON file"
   },
-  "Device configuration imported successfully": {
-    "other": "Device configuration imported successfully"
-  },
   "Import failed. See server logs for details.": {
     "other": "Import failed. See server logs for details."
   },
