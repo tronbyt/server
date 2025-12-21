@@ -954,6 +954,12 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		slog.Error("Failed to create app dir", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	dstPath := filepath.Join(appDir, filename)
 	dst, err := os.Create(dstPath)
 	if err != nil {
