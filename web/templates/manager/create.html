@@ -135,11 +135,22 @@
             </button>
             <button type="button"
                     class="w3-button w3-orange config-management-btn"
-                    onclick="window.location.href='/devices/import';">
+                    onclick="document.getElementById('import-file').click();">
                 <i class="fa-solid fa-file-import" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
             </button>
         </div>
     </div>
+</form>
+<form id="import-device-form"
+      method="post"
+      action="/devices/import"
+      enctype="multipart/form-data"
+      style="display: none">
+    <input type="file"
+           name="file"
+           id="import-file"
+           accept=".json"
+           onchange="this.form.submit();">
 </form>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
