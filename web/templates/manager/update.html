@@ -603,7 +603,7 @@
         const { server, deviceId } = parseImageUrl(imageUrl);
 
         // Simple base64 stub for display
-        const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "$(base64 -w 0 -i test.webp)"}'`;
+        const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'"$(base64 -w 0 -i test.webp)"'"}'`;
         document.getElementById("curl_example").value = curl;
 
         const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
