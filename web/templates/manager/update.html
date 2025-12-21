@@ -668,26 +668,16 @@
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Configuration Management" }}</h2>
         <div class="config-management-container">
-            <a href="/devices/{{ .Device.ID }}/export_config"
-               class="w3-button w3-blue config-management-btn">
+            <button type="button"
+                    class="w3-button w3-blue config-management-btn"
+                    onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
                 <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export Configuration" }}
-            </a>
-            <form action="/devices/{{ .Device.ID }}/import_config"
-                  method="post"
-                  enctype="multipart/form-data"
-                  style="display: inline">
-                <input type="file"
-                       name="file"
-                       id="import_config_file"
-                       style="display: none"
-                       onchange="if(confirm('{{ t .Localizer "This will overwrite all current settings and apps. Continue?" }}')) { this.form.submit(); } else { this.value = ''; }"
-                       accept=".json">
-                <button type="button"
-                        class="w3-button w3-orange config-management-btn"
-                        onclick="document.getElementById('import_config_file').click();">
-                    <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
-                </button>
-            </form>
+            </button>
+            <button type="button"
+                    class="w3-button w3-orange config-management-btn"
+                    onclick="document.getElementById('import_config_file').click();">
+                <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
+            </button>
         </div>
     </div>
     <div class="button-container">
@@ -727,5 +717,15 @@
       document.getElementById('device-form').submit();
     }
     </script>
+</form>
+<form action="/devices/{{ .Device.ID }}/import_config"
+      method="post"
+      enctype="multipart/form-data"
+      style="display: none">
+    <input type="file"
+           name="file"
+           id="import_config_file"
+           onchange="if(confirm('{{ t .Localizer "This will overwrite all current settings and apps. Continue?" }}')) { this.form.submit(); } else { this.value = ''; }"
+           accept=".json">
 </form>
 {{ end }}
