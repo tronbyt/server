@@ -45,3 +45,41 @@ func TestHandleNextApp(t *testing.T) {
 		t.Errorf("Expected content type image/webp, got %s", rr.Header().Get("Content-Type"))
 	}
 }
+
+func TestHandleNextApp_FirmwareUpdate(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	// Ensure device exists
+	device := data.Device{
+		ID:       "fwdevice",
+		Username: "admin",
+		Info: data.DeviceInfo{
+			ProtocolType: data.ProtocolWS, // Start with WS to test protocol update to HTTP
+		},
+	}
+	s.DB.Create(&device)
+
+	req := httptest.NewRequest(http.MethodGet, "/fwdevice/next", nil)
+	req.SetPathValue("id", "fwdevice")
+	req.Header.Set("X-Firmware-Version", "v1.5.0")
+
+	rr := httptest.NewRecorder()
+	s.handleNextApp(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	// Verify DB update
+	var updatedDevice data.Device
+	if err := s.DB.First(&updatedDevice, "id = ?", "fwdevice").Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+
+	if updatedDevice.Info.ProtocolType != data.ProtocolHTTP {
+		t.Errorf("Expected protocol HTTP, got %s", updatedDevice.Info.ProtocolType)
+	}
+	if updatedDevice.Info.FirmwareVersion != "v1.5.0" {
+		t.Errorf("Expected firmware version v1.5.0, got %s", updatedDevice.Info.FirmwareVersion)
+	}
+}

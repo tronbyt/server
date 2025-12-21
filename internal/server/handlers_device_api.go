@@ -49,12 +49,27 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		user = &owner
 	}
 
-	// Update protocol type if different from current
+	// Update device info if needed
+	updatedInfo := false
 	if device.Info.ProtocolType != data.ProtocolHTTP {
-		slog.Info("Updating protocol_type to HTTP on /next request", "device", device.ID)
-		s.DB.Model(device).Update("info", data.JSONMap{"protocol_type": data.ProtocolHTTP})
-		// Update in-memory state so subsequent calls (like GetNextAppImage logging) reflect it if needed
+		slog.Debug("Updating protocol_type to HTTP on /next request", "device", device.ID)
 		device.Info.ProtocolType = data.ProtocolHTTP
+		updatedInfo = true
+	}
+
+	// Check for firmware version header
+	if fwVersion := r.Header.Get("X-Firmware-Version"); fwVersion != "" {
+		if device.Info.FirmwareVersion != fwVersion {
+			slog.Debug("Updating firmware_version on /next request", "device", device.ID, "version", fwVersion)
+			device.Info.FirmwareVersion = fwVersion
+			updatedInfo = true
+		}
+	}
+
+	if updatedInfo {
+		if err := s.DB.Model(device).Update("info", device.Info).Error; err != nil {
+			slog.Error("Failed to update device info on /next request", "device", device.ID, "error", err)
+		}
 	}
 
 	imgData, app, err := s.GetNextAppImage(r.Context(), device, user)

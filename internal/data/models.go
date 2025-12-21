@@ -657,10 +657,6 @@ func (d *Device) OTACapable() bool {
 	if !d.Type.SupportsFirmware() {
 		return false
 	}
-	if d.Info.ProtocolType == ProtocolHTTP {
-		// we don't know the firmware version for HTTP devices, so assume capable
-		return true
-	}
 	v := d.Info.FirmwareVersion
 	if v == "" {
 		return false
