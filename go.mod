@@ -13,7 +13,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/quic-go/quic-go v0.57.1
+	github.com/quic-go/quic-go v0.58.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tronbyt/pixlet v0.49.7
 	golang.org/x/crypto v0.46.0
