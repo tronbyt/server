@@ -647,6 +647,8 @@ func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
 	app.Enabled = !app.Enabled
 	if err := s.DB.Model(app).Update("enabled", app.Enabled).Error; err != nil {
 		slog.Error("Failed to toggle enabled", "error", err)
+		http.Error(w, "Failed to toggle enabled status", http.StatusInternalServerError)
+		return
 	}
 
 	// Notify Dashboard

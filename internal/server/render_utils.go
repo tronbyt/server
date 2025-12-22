@@ -121,8 +121,8 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 	// 3. Starlark App - Check Interval
 	now := time.Now()
-	// uinterval is seconds
-	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Second {
+	// uinterval is minutes
+	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
