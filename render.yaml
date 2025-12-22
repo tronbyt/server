@@ -3,6 +3,6 @@ services:
   name: tronbyt-server
   runtime: image
   image:
-    url: ghcr.io/tronbyt/server:1
+    url: ghcr.io/tronbyt/server:2
   plan: free
 version: "1"
