@@ -232,10 +232,15 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 
 	apiKey, _ := generateSecureToken(32)
 
+	var emailPtr *string
+	if email != "" {
+		emailPtr = &email
+	}
+
 	newUser := data.User{
 		Username: username,
 		Password: hashedPassword,
-		Email:    email,
+		Email:    emailPtr,
 		APIKey:   apiKey,
 		IsAdmin:  isAdmin,
 	}

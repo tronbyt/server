@@ -30,7 +30,7 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	// Create existing user
 	user := data.User{
 		Username: "testuser",
-		Email:    "old@example.com",
+		Email:    stringPtr("old@example.com"),
 	}
 	db.Create(&user)
 
@@ -89,7 +89,8 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	result := db.Preload("Devices").Preload("Devices.Apps").First(&updatedUser, "username = ?", "testuser")
 	assert.NoError(t, result.Error)
 
-	assert.Equal(t, "new@example.com", updatedUser.Email)
+	assert.NotNil(t, updatedUser.Email)
+	assert.Equal(t, "new@example.com", *updatedUser.Email)
 	assert.Len(t, updatedUser.Devices, 1)
 	assert.Equal(t, "Legacy Device", updatedUser.Devices[0].Name)
 	assert.Len(t, updatedUser.Devices[0].Apps, 1)
@@ -107,7 +108,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 	// Create existing user
 	user := data.User{
 		Username: "testuser",
-		Email:    "test@example.com",
+		Email:    stringPtr("test@example.com"),
 	}
 	db.Create(&user)
 
@@ -123,7 +124,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 	// We use a high ID (e.g., 9999) to verify it gets reset
 	importedUser := data.User{
 		Username: "testuser",
-		Email:    "imported@example.com",
+		Email:    stringPtr("imported@example.com"),
 		Devices: []data.Device{
 			{
 				ID:       "dev1",
