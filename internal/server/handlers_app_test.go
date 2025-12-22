@@ -528,3 +528,51 @@ func TestHandleDeleteApp_NotPinned(t *testing.T) {
 		t.Errorf("App was not deleted")
 	}
 }
+
+func TestHandleDeleteApp_ClearsNightModeApp(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser", NightModeApp: "app1"}
+	s.DB.Create(&device)
+
+	iname := "app1"
+	app := data.App{
+		DeviceID: "testdevice",
+		Iname:    iname,
+		Name:     "Test App",
+		Enabled:  true,
+	}
+	s.DB.Create(&app)
+
+	// Verify NightModeApp is set
+	var dev data.Device
+	s.DB.First(&dev, "id = ?", "testdevice")
+	if dev.NightModeApp != iname {
+		t.Fatalf("Setup failed: NightModeApp should be set to %s, got %s", iname, dev.NightModeApp)
+	}
+
+	// Create request
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/"+iname+"/delete", nil)
+
+	// Set context
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &dev)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleDeleteApp)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	// Verify NightModeApp is cleared
+	s.DB.First(&dev, "id = ?", "testdevice")
+	if dev.NightModeApp != "" {
+		t.Errorf("NightModeApp was not cleared, is: %v", dev.NightModeApp)
+	}
+}
