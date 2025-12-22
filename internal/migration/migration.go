@@ -180,7 +180,7 @@ func migrateDirectories(oldDBPath, newDataDir string) error {
 
 func movePath(src, dst string) error {
 	if err := os.Rename(src, dst); err != nil {
-		slog.Info("os.Rename failed (likely cross-volume), attempting copy-and-delete", "src", src, "dst", dst, "error", err)
+		slog.Debug("os.Rename failed (likely cross-volume), attempting copy-and-delete", "src", src, "dst", dst, "error", err)
 		if err := copyRecursive(src, dst); err != nil {
 			return fmt.Errorf("copy failed: %w", err)
 		}

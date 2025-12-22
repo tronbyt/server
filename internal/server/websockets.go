@@ -275,7 +275,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						// Notify Dashboard
 						s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 					} else {
-						slog.Info("Received ACK but app is nil (maybe default image)", "device", device.ID)
+						slog.Debug("Received ACK for default or pushed image (no app context)", "device", device.ID)
 					}
 				}
 				// If just Queued, we keep waiting for Displaying.
