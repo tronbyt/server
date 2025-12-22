@@ -354,16 +354,18 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update Email
-	var emailPtr *string
-	if email != "" {
-		emailPtr = &email
+	currentEmail := ""
+	if user.Email != nil {
+		currentEmail = *user.Email
 	}
-	// Check if email actually changed
-	emailChanged := (user.Email == nil && emailPtr != nil) || (user.Email != nil && emailPtr == nil) || (user.Email != nil && emailPtr != nil && *user.Email != *emailPtr)
 
-	if emailChanged {
-		user.Email = emailPtr
+	if currentEmail != email {
 		needsSave = true
+		if email == "" {
+			user.Email = nil
+		} else {
+			user.Email = &email
+		}
 	}
 
 	if needsSave {
