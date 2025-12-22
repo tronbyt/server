@@ -36,6 +36,7 @@
         "GridID" "system_app_grid"
         "Apps" .SystemApps
         "ShowControls" true
+        "ShowVersion" true
         "IsCustom" false
         "DeviceID" .Device.ID
         "Localizer" .Localizer
@@ -65,67 +66,5 @@
             <i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ t .Localizer "Configure" }}
         </button>
     </form>
-</div>
-{{ end }}
-{{ define "app_list_grid" }}
-<div class="app-group">
-    <h3>{{ .Title }}</h3>
-    {{ if .ShowControls }}
-    <div class="filter-sort-controls">
-        <div class="filter-sort-controls-inner">
-            <input type="search"
-                   id="{{ .SearchID }}"
-                   placeholder="{{ t .Localizer "Search apps" }}"
-                   onkeyup="searchApps('{{ .SearchID }}')"
-                   oninput="searchApps('{{ .SearchID }}')" />
-            <label class="control-label">
-                <input type="checkbox"
-                       id="hide_installed_{{ .SearchID }}"
-                       onchange="toggleInstalledApps('{{ .SearchID }}')"
-                       class="control-checkbox">
-                {{ t .Localizer "Hide installed apps" }}
-            </label>
-            <label for="sort_{{ .SearchID }}" class="control-label">
-                {{ t .Localizer "Sort by:" }}
-                <select id="sort_{{ .SearchID }}" onchange="sortApps('{{ .SearchID }}')">
-                    <option value="system" selected>{{ t .Localizer "Default" }}</option>
-                    <option value="alphabetical">{{ t .Localizer "Alphabetical (A-Z)" }}</option>
-                    <option value="rev-alphabetical">{{ t .Localizer "Alphabetical (Z-A)" }}</option>
-                </select>
-            </label>
-        </div>
-    </div>
-    {{ end }}
-    <div id="{{ .GridID }}" class="app-grid">
-        {{ range .Apps }}
-        <div class="app-item"
-             data-value="{{ .ID }}"
-             data-path="{{ .Path }}"
-             data-name="{{ .Name }}"
-             data-installed="{{ .IsInstalled }}"
-             data-recommended-interval="{{ .RecommendedInterval }}">
-            {{ if .IsInstalled }}
-            <div class="installed-badge">{{ t $.Localizer "Installed" }}</div>
-            {{ end }}
-            <div class="app-img">
-                <div class="skeleton-loader"></div>
-                <img data-src="/preview/app/{{ .ID }}?file={{ .Preview }}"
-                     alt="{{ .Name }}"
-                     class="lazy-image"
-                     width="64"
-                     height="64">
-            </div>
-            <p>{{ .Name }} - {{ .Summary }}</p>
-            <p>{{ t $.Localizer "From" }} {{ .Author }}</p>
-            {{ if $.IsCustom }}
-            <a href="/devices/{{ $.DeviceID }}/uploads/{{ .ID }}/delete"
-               class="delete-upload-btn"
-               onclick="event.stopPropagation(); return confirm('{{ t $.Localizer "Delete this uploaded app?" }}');">
-                <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t $.Localizer "Delete" }}
-            </a>
-            {{ end }}
-        </div>
-        {{ end }}
-    </div>
 </div>
 {{ end }}
