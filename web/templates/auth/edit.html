@@ -255,46 +255,64 @@
             padding: 20px;
             margin-bottom: 20px">
     <div style="margin-bottom: 20px;">
-        <strong>{{ t .Localizer "Change Password" }}</strong>
+        <strong>{{ t .Localizer "Profile Information" }}</strong>
         <form method="post" style="margin-top: 10px;">
-            <div style="display: flex;
-                        gap: 10px;
-                        align-items: flex-end;
-                        justify-content: flex-start">
-                <div style="width: 100%; max-width: 250px;">
-                    <label for="old_password"
-                           style="display: block;
-                                  margin-bottom: 5px;
-                                  font-size: 0.9em">{{ t .Localizer "Old Password" }}</label>
-                    <input type="password"
-                           name="old_password"
-                           id="old_password"
-                           required
-                           style="width: 100%;
-                                  padding: 8px;
-                                  margin: 0">
-                </div>
-                <div style="width: 100%; max-width: 250px;">
-                    <label for="password"
-                           style="display: block;
-                                  margin-bottom: 5px;
-                                  font-size: 0.9em">{{ t .Localizer "New Password" }}</label>
-                    <input type="password"
-                           name="password"
-                           id="password"
-                           required
-                           style="width: 100%;
-                                  padding: 8px;
-                                  margin: 0">
-                </div>
-                <button type="submit"
-                        class="w3-button w3-green"
-                        style="padding: 8px 16px;
-                               font-size: 14px;
-                               margin: 0">
-                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
-                </button>
+            <div style="margin-bottom: 15px; max-width: 500px;">
+                <label for="email"
+                       style="display: block;
+                              margin-bottom: 5px;
+                              font-size: 0.9em">{{ t .Localizer "Email Address" }}</label>
+                <input type="email"
+                       name="email"
+                       id="email"
+                       value="{{ if .User.Email }}{{ .User.Email }}{{ end }}"
+                       style="width: 100%;
+                              padding: 8px;
+                              margin: 0">
             </div>
+            <div style="border-top: 1px solid #333;
+                        padding-top: 15px;
+                        margin-top: 15px;
+                        margin-bottom: 20px">
+                <strong>{{ t .Localizer "Change Password" }}</strong>
+                <div style="display: flex;
+                            gap: 10px;
+                            align-items: flex-end;
+                            justify-content: flex-start;
+                            margin-top: 10px">
+                    <div style="width: 100%; max-width: 250px;">
+                        <label for="old_password"
+                               style="display: block;
+                                      margin-bottom: 5px;
+                                      font-size: 0.9em">{{ t .Localizer "Old Password" }}</label>
+                        <input type="password"
+                               name="old_password"
+                               id="old_password"
+                               style="width: 100%;
+                                      padding: 8px;
+                                      margin: 0">
+                    </div>
+                    <div style="width: 100%; max-width: 250px;">
+                        <label for="password"
+                               style="display: block;
+                                      margin-bottom: 5px;
+                                      font-size: 0.9em">{{ t .Localizer "New Password" }}</label>
+                        <input type="password"
+                               name="password"
+                               id="password"
+                               style="width: 100%;
+                                      padding: 8px;
+                                      margin: 0">
+                    </div>
+                </div>
+            </div>
+            <button type="submit"
+                    class="w3-button w3-green"
+                    style="padding: 8px 16px;
+                           font-size: 14px;
+                           margin: 0">
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save Changes" }}
+            </button>
         </form>
     </div>
     <div style="border-top: 1px solid #333; padding-top: 15px;">

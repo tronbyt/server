@@ -332,6 +332,9 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 
 	oldPassword := r.FormValue("old_password")
 	newPassword := r.FormValue("password")
+	email := r.FormValue("email")
+
+	needsSave := false
 
 	if oldPassword != "" && newPassword != "" {
 		valid, _, err := auth.VerifyPassword(user.Password, oldPassword)
@@ -347,12 +350,28 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.Password = hash
+		needsSave = true
+	}
+
+	// Update Email
+	var emailPtr *string
+	if email != "" {
+		emailPtr = &email
+	}
+	// Check if email actually changed
+	emailChanged := (user.Email == nil && emailPtr != nil) || (user.Email != nil && emailPtr == nil) || (user.Email != nil && emailPtr != nil && *user.Email != *emailPtr)
+
+	if emailChanged {
+		user.Email = emailPtr
+		needsSave = true
+	}
+
+	if needsSave {
 		if err := s.DB.Save(&user).Error; err != nil {
-			slog.Error("Failed to update password", "error", err)
+			slog.Error("Failed to update user profile", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		// Flash success?
 	}
 
 	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)

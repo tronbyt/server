@@ -461,6 +461,15 @@
   "Security Settings": {
     "other": "Security Settings"
   },
+  "Profile Information": {
+    "other": "Profile Information"
+  },
+  "Email Address": {
+    "other": "Email Address"
+  },
+  "Save Changes": {
+    "other": "Save Changes"
+  },
   "Change Password": {
     "other": "Change Password"
   },
