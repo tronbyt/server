@@ -257,9 +257,16 @@ func main() {
 
 	// Firmware Update (production only)
 	if cfg.Production == "1" {
-		if err := srv.UpdateFirmwareBinaries(); err != nil {
-			slog.Error("Failed to update firmware binaries on startup (non-fatal)", "error", err)
-		}
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("Panic during background firmware update", "panic", r)
+				}
+			}()
+			if err := srv.UpdateFirmwareBinaries(); err != nil {
+				slog.Error("Failed to update firmware binaries in background", "error", err)
+			}
+		}()
 	} else {
 		slog.Info("Skipping firmware update (dev mode)")
 	}
