@@ -36,7 +36,7 @@
            required>
     <br>
     <label for="email">{{ t .Localizer "Email Address (optional)" }}</label>
-    <input class="w3-input w3-border" type="text" name="email" id="email">
+    <input class="w3-input w3-border" type="email" name="email" id="email">
     <br>
     {{ if and .User .User.IsAdmin }}
     <label for="is_admin">{{ t .Localizer "Administrator" }}</label>
