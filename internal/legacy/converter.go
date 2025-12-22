@@ -17,10 +17,15 @@ var durationRegex = regexp.MustCompile(`^PT(?:(\d+(?:\.\d+)?)S)?$`)
 
 // ToDataUser converts a LegacyUser to the modern data.User format.
 func (lu *LegacyUser) ToDataUser() data.User {
+	var emailPtr *string
+	if lu.Email != "" {
+		emailPtr = &lu.Email
+	}
+
 	user := data.User{
 		Username:        lu.Username,
 		Password:        lu.Password,
-		Email:           lu.Email,
+		Email:           emailPtr,
 		APIKey:          lu.APIKey,
 		ThemePreference: data.ThemePreference(lu.ThemePreference),
 		SystemRepoURL:   lu.SystemRepoURL,

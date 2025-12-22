@@ -403,9 +403,9 @@ func (s *StringSlice) Scan(value any) error {
 type User struct {
 	Username        string          `gorm:"primaryKey"       json:"username"`
 	Password        string          `json:"-"`
-	Email           string          `json:"email"`
+	Email           *string         `gorm:"uniqueIndex"      json:"email"`
 	IsAdmin         bool            `gorm:"default:false"    json:"is_admin"`
-	APIKey          string          `json:"api_key"`
+	APIKey          string          `gorm:"uniqueIndex"      json:"api_key"`
 	ThemePreference ThemePreference `gorm:"default:'system'" json:"theme_preference"`
 	SystemRepoURL   string          `json:"system_repo_url"`
 	AppRepoURL      string          `json:"app_repo_url"`
@@ -433,8 +433,8 @@ type App struct {
 	// Composite key might be better, but a surrogate ID is easier for GORM
 	ID uint `gorm:"primaryKey" json:"id"`
 
-	DeviceID string `gorm:"index;index:idx_device_order,priority:1;type:string" json:"device_id"` // Foreign Key to Device
-	Iname    string `gorm:"index"                                               json:"iname"`     // Installation Name/ID (e.g. "123")
+	DeviceID string `gorm:"index:idx_device_order,priority:1;uniqueIndex:idx_device_iname,priority:1;type:string" json:"device_id"` // Foreign Key to Device
+	Iname    string `gorm:"uniqueIndex:idx_device_iname,priority:2"                                               json:"iname"`     // Installation Name/ID (e.g. "123")
 
 	Name          string        `json:"name"`      // App Name (e.g. "Clock")
 	UInterval     int           `json:"uinterval"` // Update Interval
@@ -470,7 +470,7 @@ type Device struct {
 	Username              string      `gorm:"index"                   json:"username"`
 	Name                  string      `json:"name"`
 	Type                  DeviceType  `gorm:"default:'tidbyt_gen1'"   json:"type"`
-	APIKey                string      `json:"api_key"`
+	APIKey                string      `gorm:"uniqueIndex"             json:"api_key"`
 	ImgURL                string      `json:"img_url"`
 	WsURL                 string      `json:"ws_url"`
 	Notes                 string      `json:"notes"`

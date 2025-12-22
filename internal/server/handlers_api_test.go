@@ -58,6 +58,7 @@ func newTestServerAPI(t *testing.T) *Server {
 	adminUser := data.User{
 		Username: "admin",
 		Password: "$2a$10$w3bQ0wWwWwWwWwWwWwWwWu.D/ZJ.p.Xg.3Q.Q.Q.Q.Q.Q.Q.Q", // Placeholder for hashed password
+		Email:    stringPtr("admin@example.com"),
 		APIKey:   "admin_test_api_key",
 	}
 	if err := db.Create(&adminUser).Error; err != nil {
@@ -67,6 +68,7 @@ func newTestServerAPI(t *testing.T) *Server {
 	user := data.User{
 		Username: "testuser",
 		Password: "$2a$10$w3bQ0wWwWwWwWwWwWwWwWu.D/ZJ.p.Xg.3Q.Q.Q.Q.Q.Q.Q.Q", // Placeholder for hashed password
+		Email:    stringPtr("test@example.com"),
 		APIKey:   "test_api_key",
 	}
 	if err := db.Create(&user).Error; err != nil {
