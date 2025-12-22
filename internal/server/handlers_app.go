@@ -577,6 +577,13 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Unset Night Mode App if it matches
+	if device.NightModeApp == app.Iname {
+		if err := s.DB.Model(device).Update("night_mode_app", "").Error; err != nil {
+			slog.Error("Failed to unset night mode app being deleted", "error", err)
+		}
+	}
+
 	// Delete App
 	if err := s.DB.Delete(app).Error; err != nil {
 		slog.Error("Failed to delete app", "error", err)

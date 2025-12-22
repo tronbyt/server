@@ -48,7 +48,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	// 3. Brightness Check
-	if device.Brightness == 0 {
+	if device.GetEffectiveBrightness() == 0 {
 		slog.Debug("Brightness is 0, returning default image")
 		return getDefaultImage()
 	}
@@ -187,24 +187,39 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 
 	lastIndex := device.LastAppIndex
 
+	// Night Mode Pre-Check
+	nightModeActive := device.GetNightModeIsActive()
+	forceNightApp := false
+
+	if nightModeActive && device.NightModeApp != "" {
+		found := false
+		for _, a := range device.Apps {
+			if a.Iname == device.NightModeApp {
+				found = true
+				break
+			}
+		}
+		if found {
+			forceNightApp = true
+		} else {
+			slog.Warn("Night Mode App configured but not found on device, falling back to normal rotation", "app", device.NightModeApp, "device", device.ID)
+		}
+	}
+
 	// Loop to find next valid app
 	for i := 0; i < len(expanded)*2; i++ {
 		nextIndex := (lastIndex + 1) % len(expanded)
-		if len(expanded) == 0 {
-			break
-		}
 
 		candidate := expanded[nextIndex]
 
 		isPinned := device.PinnedApp != nil && *device.PinnedApp == candidate.Iname
-		nightModeActive := device.GetNightModeIsActive()
-		isNightTarget := nightModeActive && device.NightModeApp == candidate.Iname
+		isNightTarget := forceNightApp && device.NightModeApp == candidate.Iname
 		isInterstitialPos := device.InterstitialEnabled && nextIndex%2 == 1
 
 		shouldDisplay := false
 		if isPinned {
 			shouldDisplay = true
-		} else if nightModeActive && device.NightModeApp != "" {
+		} else if forceNightApp {
 			shouldDisplay = isNightTarget
 		} else if isInterstitialPos {
 			shouldDisplay = true
