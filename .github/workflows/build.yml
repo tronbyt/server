@@ -128,14 +128,3 @@ jobs:
               --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
               --generate-notes \
               $(find dist -type f -print0 | xargs -0)
-
-      - name: Bump Homebrew formula
-        uses: dawidd6/action-homebrew-bump-formula@v7
-        with:
-          token: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
-          formula: tronbyt-server
-          tap: tronbyt/homebrew-tronbyt
-          tag: ${{ inputs.version || github.ref_name }}
-          revision: ${{ github.sha }}
-          force: false
-          no_fork: true
