@@ -10,6 +10,9 @@ import (
 	"testing"
 
 	"tronbyt-server/internal/data"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleImportUserConfig_VerifyIDs(t *testing.T) {
@@ -20,7 +23,8 @@ func TestHandleImportUserConfig_VerifyIDs(t *testing.T) {
 		Username: "testuser",
 		APIKey:   "apikey",
 	}
-	s.DB.Create(&user)
+	err := s.DB.Create(&user).Error
+	require.NoError(t, err, "Failed to create initial user")
 
 	// Create import payload (User with Device with App having ID=999 in JSON)
 	importedUser := data.User{
@@ -40,18 +44,20 @@ func TestHandleImportUserConfig_VerifyIDs(t *testing.T) {
 			},
 		},
 	}
-	jsonData, _ := json.Marshal(importedUser)
+	jsonData, err := json.Marshal(importedUser)
+	require.NoError(t, err, "Failed to marshal imported user")
 
 	// Create Request
 	body := new(strings.Builder)
 	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("file", "config.json")
-	if _, err := part.Write(jsonData); err != nil {
-		t.Fatalf("Failed to write to part: %v", err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatalf("Failed to close writer: %v", err)
-	}
+	part, err := writer.CreateFormFile("file", "config.json")
+	require.NoError(t, err, "Failed to create form file")
+
+	_, err = part.Write(jsonData)
+	require.NoError(t, err, "Failed to write to part")
+
+	err = writer.Close()
+	require.NoError(t, err, "Failed to close writer")
 
 	req := httptest.NewRequest(http.MethodPost, "/import_user_config", strings.NewReader(body.String()))
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -65,25 +71,16 @@ func TestHandleImportUserConfig_VerifyIDs(t *testing.T) {
 	s.handleImportUserConfig(w, req)
 
 	// Check Response
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("Expected redirect, got %d. Body: %s", w.Code, w.Body.String())
-	}
+	assert.Equal(t, http.StatusSeeOther, w.Code, "Expected redirect status")
 
 	// Check DB for App ID
 	var app data.App
-	if err := s.DB.First(&app, "iname = ?", "100").Error; err != nil {
-		t.Fatalf("Failed to find imported app: %v", err)
-	}
+	err = s.DB.First(&app, "iname = ?", "100").Error
+	require.NoError(t, err, "Failed to find imported app")
 
-	if app.ID == 999 {
-		t.Errorf("App ID was not reset! Still 999")
-	}
-	if app.ID == 0 {
-		t.Errorf("App ID is 0, expected valid auto-increment ID")
-	}
+	assert.NotEqual(t, uint(999), app.ID, "App ID was not reset! Still 999")
+	assert.NotEqual(t, uint(0), app.ID, "App ID is 0, expected valid auto-increment ID")
 
 	// Verify Device Link
-	if app.DeviceID != "dev1" {
-		t.Errorf("App linked to wrong device: %s", app.DeviceID)
-	}
+	assert.Equal(t, "dev1", app.DeviceID, "App linked to wrong device")
 }
