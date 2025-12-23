@@ -175,7 +175,7 @@ func tmplDerefOr(v any, def string) string {
 	}
 
 	rv := reflect.ValueOf(v)
-	for rv.Kind() == reflect.Ptr {
+	for rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
 			return def
 		}
