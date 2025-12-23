@@ -374,7 +374,7 @@
                            padding: 8px">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <i class="fa-solid fa-key"></i>
-                        <span>{{ .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
+                        <span>{{ or .Name .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
                     </div>
                     <button onclick="deletePasskey('{{ .ID }}')"
                             class="w3-button w3-tiny w3-red w3-round"

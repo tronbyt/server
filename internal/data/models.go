@@ -418,6 +418,7 @@ type WebAuthnCredential struct {
 	ID              string `gorm:"primaryKey"                            json:"id"`
 	UserID          string `gorm:"index"                                 json:"user_id"`
 	User            User   `gorm:"foreignKey:UserID;references:Username" json:"-"`
+	Name            string `json:"name"` // User-friendly name
 	PublicKey       []byte `json:"public_key"`
 	AttestationType string `json:"attestation_type"`
 	Transport       string `json:"transport"`     // Comma-separated
