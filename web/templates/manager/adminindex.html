@@ -97,21 +97,21 @@
 </div>
 {{ end }}
 <script>
-function deleteUser(username) {
-  if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
+    function deleteUser(username) {
+        if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
 
-  fetch('/admin/users/' + username, {
-    method: 'DELETE'
-  }).then(response => {
-    if (response.ok || response.redirected) {
-      window.location.reload();
-    } else {
-      alert('Failed to delete user');
+        fetch('/admin/users/' + username, {
+            method: 'DELETE'
+        }).then(response => {
+            if (response.ok || response.redirected) {
+                window.location.reload();
+            } else {
+                alert('Failed to delete user');
+            }
+        }).catch(err => {
+            console.error(err);
+            alert('Error deleting user');
+        });
     }
-  }).catch(err => {
-    console.error(err);
-    alert('Error deleting user');
-  });
-}
 </script>
 {{ end }}

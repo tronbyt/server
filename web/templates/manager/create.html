@@ -9,18 +9,18 @@
     <h1 class="page-title">{{ t .Localizer "New Tronbyt Device" }}</h1>
 </div>
 <script>
-  function setBrightnessCreate(brightness) {
-    document.getElementById('brightness').value = brightness;
-    document.getElementById('brightness-output').innerText = brightness;
-    const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
-    buttons.forEach(btn => {
-      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-  }
+    function setBrightnessCreate(brightness) {
+        document.getElementById('brightness').value = brightness;
+        document.getElementById('brightness-output').innerText = brightness;
+        const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
+        buttons.forEach(btn => {
+            if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
 </script>
 {{ end }}
 {{ define "content" }}
@@ -153,8 +153,8 @@
            onchange="this.form.submit();">
 </form>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
+    document.addEventListener('DOMContentLoaded', function() {
+        enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
     });
 </script>
 {{ end }}

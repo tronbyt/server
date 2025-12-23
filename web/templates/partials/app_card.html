@@ -41,11 +41,11 @@
                 <p class="app-render-info">
                     {{ t .Localizer "Interval:" }} {{ .App.UInterval }} min |
                     {{ if .App.EmptyLastRender }}
-                    {{ t .Localizer "No output for:" }} {{ timesince .Localizer .App.LastRender }}
+                    {{ t .Localizer "No output for:" }} {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
                 {{ else }}
                     {{ t .Localizer "Last:" }} {{ timeago .Localizer .App.LastRender }}
-                    {{ end }}
                     ({{ t .Localizer "in" }} {{ duration .App.LastRenderDur }})
+                    {{ end }}
                 </p>
                 {{ if ne .App.DisplayTime 0 }}
                 <p>{{ t .Localizer "Display Time (secs):" }} {{ .App.DisplayTime }}</p>

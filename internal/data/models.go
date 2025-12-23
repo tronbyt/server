@@ -436,19 +436,20 @@ type App struct {
 	DeviceID string `gorm:"index:idx_device_order,priority:1;uniqueIndex:idx_device_iname,priority:1;type:string" json:"device_id"` // Foreign Key to Device
 	Iname    string `gorm:"uniqueIndex:idx_device_iname,priority:2"                                               json:"iname"`     // Installation Name/ID (e.g. "123")
 
-	Name          string        `json:"name"`      // App Name (e.g. "Clock")
-	UInterval     int           `json:"uinterval"` // Update Interval
-	DisplayTime   int           `json:"display_time"`
-	Notes         string        `json:"notes"`
-	Enabled       bool          `json:"enabled"`
-	Pushed        bool          `json:"pushed"`
-	Order         int           `gorm:"index:idx_device_order,priority:2" json:"order"`
-	LastRender    time.Time     `json:"last_render"`
-	LastRenderDur time.Duration `json:"last_render_dur"`
-	Path          *string       `json:"path"`
-	StartTime     *string       `json:"start_time"`                                    // HH:MM
-	EndTime       *string       `json:"end_time"`                                      // HH:MM
-	Days          StringSlice   `gorm:"type:text"                         json:"days"` // ["monday", "tuesday"]
+	Name                 string        `json:"name"`      // App Name (e.g. "Clock")
+	UInterval            int           `json:"uinterval"` // Update Interval
+	DisplayTime          int           `json:"display_time"`
+	Notes                string        `json:"notes"`
+	Enabled              bool          `json:"enabled"`
+	Pushed               bool          `json:"pushed"`
+	Order                int           `gorm:"index:idx_device_order,priority:2" json:"order"`
+	LastRender           time.Time     `json:"last_render"`
+	LastSuccessfulRender *time.Time    `json:"last_successful_render"`
+	LastRenderDur        time.Duration `json:"last_render_dur"`
+	Path                 *string       `json:"path"`
+	StartTime            *string       `json:"start_time"`                                    // HH:MM
+	EndTime              *string       `json:"end_time"`                                      // HH:MM
+	Days                 StringSlice   `gorm:"type:text"                         json:"days"` // ["monday", "tuesday"]
 
 	// Recurrence
 	UseCustomRecurrence bool           `json:"use_custom_recurrence"`

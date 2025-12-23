@@ -150,6 +150,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			"empty_last_render": !success,
 			"render_messages":   data.StringSlice(messages),
 		}
+		if success {
+			updates["last_successful_render"] = now
+		}
 		result := s.DB.Model(&data.App{}).Where("id = ?", app.ID).Updates(updates)
 		if result.Error != nil {
 			slog.Error("Failed to update app state in DB", "app", appBasename, "error", result.Error)
@@ -170,6 +173,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 		// Update in-memory object (passed pointer)
 		app.LastRender = now
+		if success {
+			app.LastSuccessfulRender = &now
+		}
 		app.LastRenderDur = renderDur
 		app.EmptyLastRender = !success
 		app.RenderMessages = messages

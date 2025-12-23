@@ -10,72 +10,72 @@
     <div id="header-buttons"></div>
 </div>
 <script>
-  function setBrightnessUpdate(brightness) {
-    document.getElementById('brightness').value = brightness;
-    const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
-    buttons.forEach(btn => {
-      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
+    function setBrightnessUpdate(brightness) {
+        document.getElementById('brightness').value = brightness;
+        const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
+        buttons.forEach(btn => {
+            if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function setNightBrightnessUpdate(brightness) {
+        document.getElementById('night_brightness').value = brightness;
+        const buttons = document.querySelectorAll('#night-brightness-panel .brightness-btn');
+        buttons.forEach(btn => {
+            if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function setDimBrightnessUpdate(brightness) {
+        document.getElementById('dim_brightness').value = brightness;
+        const buttons = document.querySelectorAll('#dim-brightness-panel .brightness-btn');
+        buttons.forEach(btn => {
+            if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    // Move buttons to header on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const headerButtons = document.getElementById('header-buttons');
+        const form = document.getElementById('device-form');
+
+        // Create Save button
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'w3-button w3-green config-management-btn';
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}';
+        saveBtn.onclick = function() {
+            saveDeviceForm();
+        };
+
+        // Create Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'w3-button w3-red config-management-btn';
+        deleteBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}';
+        deleteBtn.onclick = function() {
+            if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) {
+                form.action = "/devices/{{ .Device.ID }}/delete";
+                form.method = 'post';
+                form.submit();
+            }
+        };
+
+        headerButtons.appendChild(saveBtn);
+        headerButtons.appendChild(deleteBtn);
     });
-  }
-
-  function setNightBrightnessUpdate(brightness) {
-    document.getElementById('night_brightness').value = brightness;
-    const buttons = document.querySelectorAll('#night-brightness-panel .brightness-btn');
-    buttons.forEach(btn => {
-      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-  }
-
-  function setDimBrightnessUpdate(brightness) {
-    document.getElementById('dim_brightness').value = brightness;
-    const buttons = document.querySelectorAll('#dim-brightness-panel .brightness-btn');
-    buttons.forEach(btn => {
-      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
-  }
-
-  // Move buttons to header on page load
-  document.addEventListener('DOMContentLoaded', function() {
-    const headerButtons = document.getElementById('header-buttons');
-    const form = document.getElementById('device-form');
-
-    // Create Save button
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.className = 'w3-button w3-green config-management-btn';
-    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}';
-    saveBtn.onclick = function() {
-      saveDeviceForm();
-    };
-
-    // Create Delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'w3-button w3-red config-management-btn';
-    deleteBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}';
-    deleteBtn.onclick = function() {
-      if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) {
-        form.action = "/devices/{{ .Device.ID }}/delete";
-        form.method = 'post';
-        form.submit();
-      }
-    };
-
-    headerButtons.appendChild(saveBtn);
-    headerButtons.appendChild(deleteBtn);
-  });
 </script>
 {{ end }}
 {{ define "content" }}
@@ -144,14 +144,14 @@
         </div>
     </div>
     <script>
-      function resetImgUrl() {
-        document.getElementById('img_url').value = '{{ .DefaultImgURL }}';
-        updateExampleCommands(); // Update example commands if they exist
-      }
+        function resetImgUrl() {
+            document.getElementById('img_url').value = '{{ .DefaultImgURL }}';
+            updateExampleCommands(); // Update example commands if they exist
+        }
 
-      function resetWsUrl() {
-        document.getElementById('ws_url').value = '{{ .DefaultWsURL }}';
-      }
+        function resetWsUrl() {
+            document.getElementById('ws_url').value = '{{ .DefaultWsURL }}';
+        }
     </script>
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Display Settings" }}</h2>
@@ -286,11 +286,11 @@
                             <span style="display: inline-block; margin: 0 8px;"><strong>5:</strong> 100</span>
                         </div>
                         <script>
-              function toggleCustomBrightnessInputs() {
-                const checkbox = document.getElementById('use_custom_brightness_scale');
-                const inputs = document.getElementById('custom_brightness_inputs');
-                inputs.style.display = checkbox.checked ? 'block' : 'none';
-              }
+                            function toggleCustomBrightnessInputs() {
+                                const checkbox = document.getElementById('use_custom_brightness_scale');
+                                const inputs = document.getElementById('custom_brightness_inputs');
+                                inputs.style.display = checkbox.checked ? 'block' : 'none';
+                            }
                         </script>
                     </td>
                 </tr>
@@ -578,40 +578,49 @@
         </div>
     </div>
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      if (typeof enableLocationSearch === 'function') {
-        enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
-      }
-    });
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof enableLocationSearch === 'function') {
+                enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
+            }
+        });
     </script>
     <script>
-      function parseImageUrl(imageUrl) {
-        try {
-          const url = new URL(imageUrl);
-          const pathParts = url.pathname.split("/").filter(Boolean);
-          const deviceId = pathParts[0];
-          const server = `${url.protocol}//${url.host}`;
-          return { server, deviceId };
-        } catch (e) {
-          return { server: window.location.origin, deviceId: 'UNKNOWN' };
+        function parseImageUrl(imageUrl) {
+            try {
+                const url = new URL(imageUrl);
+                const pathParts = url.pathname.split("/").filter(Boolean);
+                const deviceId = pathParts[0];
+                const server = `${url.protocol}//${url.host}`;
+                return {
+                    server,
+                    deviceId
+                };
+            } catch (e) {
+                return {
+                    server: window.location.origin,
+                    deviceId: 'UNKNOWN'
+                };
+            }
         }
-      }
 
-      function updateExampleCommands() {
-        const apiKey = document.getElementById("api_key").value.trim();
-        const imageUrl = document.getElementById("img_url").value.trim();
-        const { server, deviceId } = parseImageUrl(imageUrl);
+        function updateExampleCommands() {
+            const apiKey = document.getElementById("api_key").value.trim();
+            const imageUrl = document.getElementById("img_url").value.trim();
+            const {
+                server,
+                deviceId
+            } = parseImageUrl(imageUrl);
 
-        // Simple base64 stub for display
-        const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'"$(base64 -w 0 -i test.webp)"'"}'`;
-        document.getElementById("curl_example").value = curl;
+            // Simple base64 stub for display
+            const curl = `curl -X POST ${server}/v0/devices/${deviceId}/push -H 'Authorization: ${apiKey || 'CHANGEME'}' -H 'Content-Type: application/json' --data '{"image": "'"$(base64 -w 0 -i test.webp)"'"}'`;
+            document.getElementById("curl_example").value = curl;
 
-        const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
-        document.getElementById("pixlet_example").value = pixlet;
-      }
+            const pixlet = `pixlet push -u ${server} -t '${apiKey || 'CHANGEME'}' ${deviceId} test.webp`;
+            document.getElementById("pixlet_example").value = pixlet;
+        }
 
-      // Update curl command on page load
-      document.addEventListener("DOMContentLoaded", updateExampleCommands);
+        // Update curl command on page load
+        document.addEventListener("DOMContentLoaded", updateExampleCommands);
     </script>
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Additional Settings" }}</h2>
@@ -693,29 +702,29 @@
         </button>
     </div>
     <script>
-    function saveDeviceForm() {
-      // Update the hidden custom brightness scale field before submitting
-      const useCustomScaleCheckbox = document.getElementById('use_custom_brightness_scale');
-      const hiddenInput = document.getElementById('custom_brightness_scale_hidden');
+        function saveDeviceForm() {
+            // Update the hidden custom brightness scale field before submitting
+            const useCustomScaleCheckbox = document.getElementById('use_custom_brightness_scale');
+            const hiddenInput = document.getElementById('custom_brightness_scale_hidden');
 
-      if (useCustomScaleCheckbox && useCustomScaleCheckbox.checked) {
-        const values = [];
-        for (let i = 0; i < 6; i++) {
-          const input = document.getElementById('brightness_level_' + i);
-          if (input) {
-            values.push(input.value);
-          }
-        }
-        if (hiddenInput) {
-            hiddenInput.value = values.join(',');
-        }
-      } else if (hiddenInput) {
-        hiddenInput.value = '';
-      }
+            if (useCustomScaleCheckbox && useCustomScaleCheckbox.checked) {
+                const values = [];
+                for (let i = 0; i < 6; i++) {
+                    const input = document.getElementById('brightness_level_' + i);
+                    if (input) {
+                        values.push(input.value);
+                    }
+                }
+                if (hiddenInput) {
+                    hiddenInput.value = values.join(',');
+                }
+            } else if (hiddenInput) {
+                hiddenInput.value = '';
+            }
 
-      // Submit the form
-      document.getElementById('device-form').submit();
-    }
+            // Submit the form
+            document.getElementById('device-form').submit();
+        }
     </script>
 </form>
 <form action="/devices/{{ .Device.ID }}/import_config"
