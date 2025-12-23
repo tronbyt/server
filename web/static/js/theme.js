@@ -67,8 +67,14 @@
         const APP_IMG_2X_WIDTH = 128;
 
         const processImage = (img) => {
-            const applyClass = () => img.closest('.app-img')?.classList.toggle('is-2x', img.naturalWidth === APP_IMG_2X_WIDTH);
-            if (img.complete) {
+            const applyClass = () => {
+                const is2x = img.naturalWidth === APP_IMG_2X_WIDTH;
+                const container = img.closest('.app-img');
+                if (container) {
+                    container.classList.toggle('is-2x', is2x);
+                }
+            };
+            if (img.complete && img.naturalWidth > 0) {
                 applyClass();
             } else {
                 img.addEventListener('load', applyClass, { once: true });

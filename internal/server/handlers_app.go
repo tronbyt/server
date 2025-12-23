@@ -218,18 +218,69 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/%s/config?delete_on_cancel=true", device.ID, newApp.Iname), http.StatusSeeOther)
 }
 
-func (s *Server) handleSystemAppThumbnail(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Query().Get("file")
-	if file == "" {
-		http.Error(w, "File required", http.StatusBadRequest)
+func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "App ID required", http.StatusBadRequest)
 		return
 	}
 
-	baseDir := filepath.Join(s.DataDir, "system-apps", "apps")
-	path, err := securejoin.SecureJoin(baseDir, file)
+	user, _ := UserFromContext(r.Context())
+
+	var appMeta *apps.AppMetadata
+
+	// 1. Check system apps cache
+	s.systemAppsCacheMutex.RLock()
+	for i := range s.systemAppsCache {
+		if s.systemAppsCache[i].ID == id {
+			meta := s.systemAppsCache[i]
+			appMeta = &meta
+			break
+		}
+	}
+	s.systemAppsCacheMutex.RUnlock()
+
+	// 2. If not found in system apps, check user apps (if logged in)
+	if appMeta == nil && user != nil {
+		userApps := apps.ListUserApps(s.DataDir, user.Username)
+		for i := range userApps {
+			if userApps[i].ID == id {
+				meta := userApps[i]
+				appMeta = &meta
+				break
+			}
+		}
+	}
+
+	if appMeta == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// 3. Determine file to serve
+	// Pick the best preview from metadata.
+	var file string
+	if appMeta.Supports2x && appMeta.Preview2x != "" {
+		file = appMeta.Preview2x
+	} else {
+		file = appMeta.Preview
+	}
+
+	if file == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// 4. Resolve full path
+	// apps.AppMetadata.Path is relative to DataDir
+	// For System Apps: Path=".../clock", Dir(Path)=".../apps", file="clock/preview.webp" -> Join=".../apps/clock/preview.webp" (Correct)
+	// For User Apps: Path=".../app.star", Dir(Path)=".../app", file="preview.webp" -> Join=".../app/preview.webp" (Correct)
+	appDir := filepath.Join(s.DataDir, filepath.Dir(appMeta.Path))
+
+	path, err := securejoin.SecureJoin(appDir, file)
 	if err != nil {
-		slog.Warn("Path traversal attempt blocked", "error", err)
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		slog.Warn("Invalid thumbnail path", "error", err, "path", file)
+		http.NotFound(w, r)
 		return
 	}
 
@@ -947,12 +998,7 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid app name", http.StatusBadRequest)
 		return
 	}
-	previewDir := filepath.Join(s.DataDir, "apps")
-	if err := os.MkdirAll(previewDir, 0755); err != nil {
-		slog.Error("Failed to create preview dir", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	previewDir := appDir
 
 	// Handle zip files specifically
 	if ext == ".zip" {
@@ -1001,33 +1047,6 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 		} else {
 			slog.Error("Failed to render preview", "error", err)
 		}
-
-	case ".webp":
-		previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
-
-		src, err := os.Open(dstPath)
-		if err == nil {
-			defer func() {
-				if err := src.Close(); err != nil {
-					slog.Error("Failed to close preview source", "error", err)
-				}
-			}()
-			dstPreview, err := os.Create(previewPath)
-			if err == nil {
-				defer func() {
-					if err := dstPreview.Close(); err != nil {
-						slog.Error("Failed to close preview file", "error", err)
-					}
-				}()
-				if _, err := io.Copy(dstPreview, src); err != nil {
-					slog.Error("Failed to copy preview webp", "error", err)
-				}
-			} else {
-				slog.Error("Failed to create preview file", "error", err)
-			}
-		} else {
-			slog.Error("Failed to open uploaded webp for preview", "error", err)
-		}
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", device.ID), http.StatusSeeOther)
@@ -1057,11 +1076,6 @@ func (s *Server) parseManifest(tempExtractDir string) (string, error) {
 
 func (s *Server) handleZipUpload(w http.ResponseWriter, r *http.Request, user *data.User, device *data.Device, file io.Reader, header *multipart.FileHeader, appName string) error {
 	userAppsDir := filepath.Join(s.DataDir, "users", user.Username, "apps")
-	previewDir := filepath.Join(s.DataDir, "apps")
-	if err := os.MkdirAll(previewDir, 0755); err != nil {
-		slog.Error("Failed to create preview dir", "error", err)
-		return err
-	}
 
 	// Save the zip file temporarily
 	tempZip, err := os.CreateTemp("", "upload-*.zip")
@@ -1132,7 +1146,7 @@ func (s *Server) handleZipUpload(w http.ResponseWriter, r *http.Request, user *d
 		return err
 	}
 
-	s.generatePreview(r.Context(), device, appDir, previewDir, appName)
+	s.generatePreview(r.Context(), device, appDir, appDir, appName)
 
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", device.ID), http.StatusSeeOther)
 	return nil
@@ -1160,8 +1174,10 @@ func (s *Server) generatePreview(ctx context.Context, device *data.Device, appDi
 	if webpPath != "" {
 		// If a webp exists, copy it to preview
 		// Note: The UI expects [AppName].webp in the previews dir
-		if err := copyFile(webpPath, previewPath); err != nil {
-			slog.Error("Failed to copy preview image from zip", "error", err)
+		if webpPath != previewPath {
+			if err := copyFile(webpPath, previewPath); err != nil {
+				slog.Error("Failed to copy preview image from zip", "error", err)
+			}
 		}
 	} else {
 		// If no webp, try to render the app directory
