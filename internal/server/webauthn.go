@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"log/slog"
 	"tronbyt-server/internal/data"
@@ -206,6 +207,7 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 	newCred := data.WebAuthnCredential{
 		ID:              base64.URLEncoding.EncodeToString(credential.ID),
 		UserID:          user.Username,
+		Name:            fmt.Sprintf("Passkey %s UTC", time.Now().UTC().Format("2006-01-02 15:04:05")),
 		PublicKey:       credential.PublicKey,
 		AttestationType: credential.AttestationType,
 		Transport:       joinTransports(credential.Transport),
