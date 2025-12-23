@@ -162,6 +162,15 @@ func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request
 	user := GetUser(r)
 
 	theme := r.FormValue("theme")
+	if theme == "" && r.Header.Get("Content-Type") == "application/json" {
+		var req struct {
+			Theme string `json:"theme"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			theme = req.Theme
+		}
+	}
+
 	if theme == "" {
 		http.Error(w, "Theme required", http.StatusBadRequest)
 		return
@@ -174,6 +183,11 @@ func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request
 	}
 
 	w.WriteHeader(http.StatusOK)
+	if r.Header.Get("Accept") == "application/json" {
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "success"}); err != nil {
+			slog.Error("Failed to encode theme preference response", "error", err)
+		}
+	}
 }
 
 func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
