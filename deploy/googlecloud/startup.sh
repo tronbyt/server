@@ -86,13 +86,12 @@ curl -o docker-compose.redis.yaml https://raw.githubusercontent.com/tronbyt/tron
 
 # --- Create Docker Volume Directories ---
 echo "Creating directories for Docker volumes..."
-mkdir -p ./users
 mkdir -p ./data
 mkdir -p ./redis_data # Renamed to avoid conflict with the 'data' directory
 
 # --- Set correct permissions for volume directories ---
 echo "Setting ownership of volume directories to 1000:1000..."
-chown -R 1000:1000 ./users ./data ./redis_data
+chown -R 1000:1000 ./data ./redis_data
 
 # --- Create .env file ---
 # These variables are passed in as metadata from Terraform
@@ -103,14 +102,12 @@ SERVER_PORT=8000
 SYSTEM_APPS_REPO=https://github.com/tidbyt/community
 PRODUCTION=1
 ENABLE_USER_REGISTRATION=0
-WEB_CONCURRENCY=1
 REDIS_URL=redis://redis:6379
 EOF
 
 # --- Update docker-compose.yaml to use local paths ---
 # The default docker-compose.yaml uses named volumes. We need to map them to our persistent disk paths.
 echo "Updating docker-compose file..."
-sed -i 's|users:/app/users|./users:/app/users|' docker-compose.redis.yaml
 sed -i 's|data:/app/data|./data:/app/data|' docker-compose.redis.yaml
 sed -i 's|redis:/data|./redis_data:/data|' docker-compose.redis.yaml
 

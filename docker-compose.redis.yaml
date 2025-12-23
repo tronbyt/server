@@ -15,7 +15,6 @@ services:
       - PRODUCTION
       - REDIS_URL=redis://redis:6379
       - ENABLE_USER_REGISTRATION
-      - WEB_CONCURRENCY
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
 

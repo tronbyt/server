@@ -12,7 +12,6 @@ services:
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - ENABLE_USER_REGISTRATION
-      - WEB_CONCURRENCY
       - GITHUB_TOKEN
 
     healthcheck:
