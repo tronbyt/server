@@ -73,11 +73,11 @@
     <!-- Skeleton loader for images -->
     <div class="app-img">
         <div class="skeleton-loader"></div>
-        <img data-src="/preview/app/{{ .App.ID }}?file={{ if .App.Supports2x }}{{ .App.Preview2x }}{{ else }}{{ .App.Preview }}{{ end }}"
+        <img data-src="/preview/app/{{ .App.ID }}"
              alt="{{ .App.Name }}"
              class="lazy-image"
              width="64"
-             height="64"
+             height="32"
              {{ if .App.Broken }}
              style="opacity: 0.4"
              {{ end }}>

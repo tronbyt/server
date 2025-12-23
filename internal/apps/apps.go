@@ -22,8 +22,6 @@ type Manifest struct {
 	PackageName         string `yaml:"packageName"`
 	RecommendedInterval int    `yaml:"recommendedInterval"`
 	Supports2x          bool   `yaml:"supports2x"`
-	Preview             string `yaml:"preview"`
-	Preview2x           string `yaml:"preview2x"`
 	Broken              bool   `yaml:"broken"`
 	BrokenReason        string `yaml:"brokenReason"`
 }
@@ -35,6 +33,8 @@ type AppMetadata struct {
 	Path        string
 	IsInstalled bool
 	Date        string
+	Preview     string
+	Preview2x   string
 }
 
 func ListSystemApps(dataDir string) ([]AppMetadata, error) {
@@ -114,17 +114,6 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 						break
 					}
 				}
-			}
-		} else if apps[i].Preview2x == "" {
-			// If Preview was set from manifest, check for matching 2x if not set
-			relPreview := strings.TrimPrefix(apps[i].Preview, dirName+string(filepath.Separator))
-			ext := filepath.Ext(relPreview)
-			base := strings.TrimSuffix(relPreview, ext)
-			fname2x := base + "@2x" + ext
-			fpath2x := filepath.Join(appDir, fname2x)
-			if _, err := os.Stat(fpath2x); err == nil {
-				apps[i].Preview2x = filepath.Join(dirName, fname2x)
-				apps[i].Supports2x = true
 			}
 		}
 	}
@@ -239,7 +228,6 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 				}
 				if _, err := os.Stat(filepath.Join(appDir, preview2xWebP)); err == nil {
 					userApp.Preview2x = preview2xWebP
-					userApp.Supports2x = true
 				}
 
 				// Use file mod time as date
@@ -247,8 +235,6 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 					userApp.Date = info.ModTime().Format("2006-01-02 15:04")
 				}
 
-				// No broken status for user apps by default
-				userApp.Broken = false
 				apps = append(apps, userApp)
 			}
 		}

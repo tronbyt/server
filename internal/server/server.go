@@ -201,7 +201,7 @@ func (s *Server) routes() {
 	s.Router.Handle("GET /static/firmware/", http.StripPrefix("/static/firmware/", http.FileServer(http.Dir(firmwareDir))))
 
 	// App Preview (Specific path)
-	s.Router.HandleFunc("GET /preview/app/{id}", s.handleSystemAppThumbnail)
+	s.Router.HandleFunc("GET /preview/app/{id}", s.RequireLogin(s.handleAppThumbnail))
 
 	s.SetupAPIRoutes()
 	s.SetupAuthRoutes()

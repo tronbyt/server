@@ -256,10 +256,10 @@ func TestHandleUploadAppPost_Zip(t *testing.T) {
 		t.Error("manifest.yaml not found in extracted dir")
 	}
 
-	// Verify Preview - should match appName (manifest-app)
-	previewPath := filepath.Join(s.DataDir, "apps", "manifest-app.webp")
+	// Verify Preview - should match appName (manifest-app) inside appDir
+	previewPath := filepath.Join(appDir, "manifest-app.webp")
 	if _, err := os.Stat(previewPath); os.IsNotExist(err) {
-		t.Error("Preview image not found in apps/manifest-app.webp")
+		t.Errorf("Preview image not found in %s", previewPath)
 	}
 }
 
