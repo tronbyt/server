@@ -333,13 +333,21 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 
 		for _, dev := range importedUser.Devices {
 			dev.Username = currentUser.Username
-			// Reset App IDs so the DB generates new ones (prevents sequence desync)
-			for i := range dev.Apps {
-				dev.Apps[i].ID = 0
-			}
+
+			// Extract apps to insert them individually
+			apps := dev.Apps
+			dev.Apps = nil
 
 			if err := tx.Create(&dev).Error; err != nil {
 				return err
+			}
+
+			for _, app := range apps {
+				app.DeviceID = dev.ID
+				app.ID = 0 // Ensure DB generates new ID
+				if err := tx.Create(&app).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil
