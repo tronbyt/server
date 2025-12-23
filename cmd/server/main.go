@@ -233,6 +233,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Sanitize data before migration (fixes v2.0.x empty email constraint issue)
+	if db.Migrator().HasTable(&data.User{}) {
+		if err := db.Model(&data.User{}).Where("email = ?", "").Update("email", nil).Error; err != nil {
+			slog.Warn("Failed to sanitize empty emails", "error", err)
+		}
+	}
+
 	// AutoMigrate (ensure schema exists)
 	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
 		slog.Error("Failed to migrate schema", "error", err)
