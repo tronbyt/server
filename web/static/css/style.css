@@ -84,7 +84,7 @@ nav ul li a, nav ul li span, nav header .action { display: block; padding: 0.5re
   border: 1px solid var(--flash-border);
   color: var(--flash-text);
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .post > header { display: flex; align-items: flex-end; font-size: 0.85em; } /* Text color will be inherited from body */
 .post > header > div:first-of-type { flex: auto; }

@@ -171,13 +171,13 @@
     <header>
         {{ block "header" . }}{{ end }}
     </header>
-    {{ if .Flashes }}
+    {{- if .Flashes -}}
     <div class="flash">
-        {{ range .Flashes }}
+        {{- range .Flashes -}}
         <div>{{ . }}</div>
-        {{ end }}
+        {{- end -}}
     </div>
-    {{ end }}
+    {{- end -}}
     {{ block "content" . }}{{ end }}
 </section>
 <script>
