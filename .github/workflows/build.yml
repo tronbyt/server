@@ -17,6 +17,41 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    name: Lint & Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Lint Go
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Setup Python for djLint
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Lint Templates
+        run: |
+          pip install djlint
+          djlint web/templates --profile=golang --check
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile
+
   build-and-test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -55,28 +90,6 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Verify dependencies
-        run: go mod verify
-
-      - name: Lint
-        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: latest
-          args: --timeout=5m
-
-      - name: Setup Python
-        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
-
-      - name: Lint Templates
-        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
-        run: |
-          pip install djlint
-          djlint web/templates --profile=golang --check
-
       - name: Test
         # CGO required for pixlet
         run: CGO_ENABLED=1 go test -v ./...
@@ -98,16 +111,11 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}
 
-      - uses: hadolint/hadolint-action@v3.3.0
-        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
-        with:
-          dockerfile: Dockerfile
-
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build-and-test
+    needs: [lint, build-and-test]
     permissions:
       contents: write
 
