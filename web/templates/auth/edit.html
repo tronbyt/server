@@ -460,7 +460,9 @@
                 });
             }
 
-            const credential = await navigator.credentials.create({ publicKey: options.publicKey });
+            const credential = await navigator.credentials.create({
+                publicKey: options.publicKey
+            });
 
             const body = {
                 id: credential.id,
@@ -474,7 +476,9 @@
 
             const finishResp = await fetch('/auth/webauthn/register/finish', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(body)
             });
 
@@ -575,74 +579,78 @@
           font-family: monospace">{{ substr .CommitHash 0 7 }}</a>){{ end }}
 </div>
 <script>
-function refreshSystemRepo(form) {
-    const btn = form.querySelector('button');
-    const originalContent = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ t .Localizer "Refreshing..." }}';
+    function refreshSystemRepo(form) {
+        const btn = form.querySelector('button');
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ t .Localizer "Refreshing..." }}';
 
-    fetch(form.action, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.CommitHash) {
-            const branchEl = document.getElementById('system-repo-branch');
-            if (branchEl) branchEl.innerText = '{{ t .Localizer "Branch" }}: ' + data.Branch;
-            const commitLink = document.getElementById('system-repo-commit-link');
-            if (commitLink) {
-                commitLink.href = data.CommitURL;
-                commitLink.title = data.CommitHash;
-                commitLink.innerText = data.CommitMessage || data.CommitHash.substring(0, 8);
-            }
-            const dateEl = document.getElementById('system-repo-commit-date');
-            if (dateEl) dateEl.innerText = data.CommitDate;
-        }
-        btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';
-    })
-    .catch(() => {
-        btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
-    })
-    .finally(() => {
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-        }, 2000);
-    });
-}
+        fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.CommitHash) {
+                    const branchEl = document.getElementById('system-repo-branch');
+                    if (branchEl) branchEl.innerText = '{{ t .Localizer "Branch" }}: ' + data.Branch;
+                    const commitLink = document.getElementById('system-repo-commit-link');
+                    if (commitLink) {
+                        commitLink.href = data.CommitURL;
+                        commitLink.title = data.CommitHash;
+                        commitLink.innerText = data.CommitMessage || data.CommitHash.substring(0, 8);
+                    }
+                    const dateEl = document.getElementById('system-repo-commit-date');
+                    if (dateEl) dateEl.innerText = data.CommitDate;
+                }
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';
+            })
+            .catch(() => {
+                btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }, 2000);
+            });
+    }
 
-function updateFirmware(form) {
-    const btn = form.querySelector('button');
-    const originalContent = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ t .Localizer "Updating..." }}';
+    function updateFirmware(form) {
+        const btn = form.querySelector('button');
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ t .Localizer "Updating..." }}';
 
-    fetch(form.action, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.version) {
-            const el = document.getElementById('firmware-version');
-            if (el) el.innerHTML = '<strong>{{ t .Localizer "Version" }}:</strong> ' + data.version;
-        }
-        if (data.success) {
-             btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';
-        } else {
-             btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
-        }
-    })
-    .catch(() => {
-        btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
-    })
-    .finally(() => {
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-        }, 2000);
-    });
-}
+        fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.version) {
+                    const el = document.getElementById('firmware-version');
+                    if (el) el.innerHTML = '<strong>{{ t .Localizer "Version" }}:</strong> ' + data.version;
+                }
+                if (data.success) {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';
+                } else {
+                    btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
+                }
+            })
+            .catch(() => {
+                btn.innerHTML = '<i class="fa-solid fa-xmark"></i> {{ t .Localizer "Failed" }}';
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }, 2000);
+            });
+    }
 </script>
 {{ end }}

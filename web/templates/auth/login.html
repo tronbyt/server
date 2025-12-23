@@ -63,7 +63,9 @@
                 });
             }
 
-            const credential = await navigator.credentials.get({ publicKey: options.publicKey });
+            const credential = await navigator.credentials.get({
+                publicKey: options.publicKey
+            });
 
             const body = {
                 id: credential.id,
@@ -79,7 +81,9 @@
 
             const finishResp = await fetch('/auth/webauthn/login/finish', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(body)
             });
 
