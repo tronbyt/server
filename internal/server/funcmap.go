@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -12,27 +13,30 @@ import (
 
 	"tronbyt-server/internal/data"
 
+	"github.com/google/uuid"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/sumup/aaguids-go"
 )
 
 func getFuncMap() template.FuncMap {
 	return template.FuncMap{
-		"seq":       tmplSeq,
-		"dict":      tmplDict,
-		"timeago":   tmplTimeAgo,
-		"timesince": tmplTimeSince,
-		"duration":  tmplDuration,
-		"t":         tmplT,
-		"deref":     tmplDeref,
-		"derefOr":   tmplDerefOr,
-		"isPinned":  tmplIsPinned,
-		"json":      tmplJSON,
-		"string":    tmplString,
-		"substr":    tmplSubstr,
-		"split":     strings.Split,
-		"trim":      strings.TrimSpace,
-		"slice":     tmplSlice,
-		"contains":  tmplContains,
+		"seq":           tmplSeq,
+		"dict":          tmplDict,
+		"timeago":       tmplTimeAgo,
+		"timesince":     tmplTimeSince,
+		"duration":      tmplDuration,
+		"t":             tmplT,
+		"deref":         tmplDeref,
+		"derefOr":       tmplDerefOr,
+		"isPinned":      tmplIsPinned,
+		"json":          tmplJSON,
+		"string":        tmplString,
+		"substr":        tmplSubstr,
+		"split":         strings.Split,
+		"trim":          strings.TrimSpace,
+		"slice":         tmplSlice,
+		"contains":      tmplContains,
+		"webauthn_icon": tmplWebAuthnIcon,
 	}
 }
 
@@ -220,4 +224,32 @@ func tmplSlice(args ...string) []string {
 
 func tmplContains(slice []string, item string) bool {
 	return slices.Contains(slice, item)
+}
+
+func tmplWebAuthnIcon(authenticator string, dark bool) template.URL {
+	aaguidBytes, err := hex.DecodeString(authenticator)
+	if err != nil {
+		slog.Debug("tmplWebAuthnIcon: failed to decode authenticator hex string", "authenticator", authenticator, "error", err)
+		return ""
+	}
+
+	id, err := uuid.FromBytes(aaguidBytes)
+	if err != nil {
+		slog.Debug("tmplWebAuthnIcon: failed to create uuid from bytes", "authenticator", authenticator, "error", err)
+		return ""
+	}
+
+	metadata, err := aaguids.GetMetadata(id.String())
+	if err != nil {
+		slog.Debug("tmplWebAuthnIcon: failed to get metadata", "uuid", id.String(), "error", err)
+		return ""
+	}
+	if metadata == nil {
+		return ""
+	}
+
+	if dark {
+		return template.URL(metadata.IconDark)
+	}
+	return template.URL(metadata.IconLight)
 }

@@ -284,3 +284,28 @@ input[type="range"] {
     font-size: 0.8rem;
   }
 }
+
+/* Authenticator Icon Switching */
+.auth-icon-dark { display: none; }
+.auth-icon-light { display: block; }
+
+[data-theme="dark"] .auth-icon-light { display: none; }
+[data-theme="dark"] .auth-icon-dark { display: block; }
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] .auth-icon-light { display: none; }
+  [data-theme="system"] .auth-icon-dark { display: block; }
+}
+
+.authenticator-icon-container {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.authenticator-icon {
+  width: 24px;
+  height: 24px;
+}

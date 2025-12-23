@@ -16,6 +16,8 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
+	"github.com/sumup/aaguids-go"
 )
 
 // WebAuthnUser is a wrapper for data.User to satisfy webauthn.User interface.
@@ -204,10 +206,22 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Determine Name
+	credName := fmt.Sprintf("Passkey %s UTC", time.Now().UTC().Format("2006-01-02 15:04"))
+
+	// Try to resolve AAGUID
+	if len(credential.Authenticator.AAGUID) == 16 {
+		if id, err := uuid.FromBytes(credential.Authenticator.AAGUID); err == nil {
+			if metadata, err := aaguids.GetMetadata(id.String()); err == nil && metadata != nil && metadata.Name != "" {
+				credName = metadata.Name
+			}
+		}
+	}
+
 	newCred := data.WebAuthnCredential{
 		ID:              base64.URLEncoding.EncodeToString(credential.ID),
 		UserID:          user.Username,
-		Name:            fmt.Sprintf("Passkey %s UTC", time.Now().UTC().Format("2006-01-02 15:04:05")),
+		Name:            credName,
 		PublicKey:       credential.PublicKey,
 		AttestationType: credential.AttestationType,
 		Transport:       joinTransports(credential.Transport),

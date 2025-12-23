@@ -373,7 +373,24 @@
                            gap: 10px;
                            padding: 8px">
                     <div style="display: flex; align-items: center; gap: 10px;">
+                        {{ $iconLight := webauthn_icon .Authenticator false }}
+                        {{ $iconDark := webauthn_icon .Authenticator true }}
+                        {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
+                        <div class="authenticator-icon-container">
+                            <img src="{{ $iconLight }}"
+                                 alt="Authenticator Icon"
+                                 class="auth-icon-light authenticator-icon">
+                            <img src="{{ $iconDark }}"
+                                 alt="Authenticator Icon"
+                                 class="auth-icon-dark authenticator-icon">
+                        </div>
+                        {{ else if or $iconLight $iconDark }}
+                        <img src="{{ or $iconLight $iconDark }}"
+                             alt="Authenticator Icon"
+                             class="authenticator-icon">
+                    {{ else }}
                         <i class="fa-solid fa-key"></i>
+                        {{ end }}
                         <span>{{ or .Name .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
                     </div>
                     <button onclick="deletePasskey('{{ .ID }}')"
