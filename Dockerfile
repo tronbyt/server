@@ -14,7 +14,8 @@ RUN apk add --no-cache git clang
 
 # Copy go mod and sum files for dependency caching
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY --from=xx / /
 
@@ -29,12 +30,11 @@ ARG VERSION=dev
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 
-# Build the Go-based entrypoint wrapper to manage permissions and drop privileges
-RUN CGO_ENABLED=0 xx-go build -ldflags="-w -s -extldflags '-static'" -o boot ./cmd/boot
-
-# Build the main application and supporting binaries
-# CGO_ENABLED=1 is required for pixlet/go-libwebp and go-sqlite3
-RUN CGO_ENABLED=1 xx-go build -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" -tags gzip_fonts -o tronbyt-server ./cmd/server && \
+# Build all Go binaries in a single layer
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 xx-go build -ldflags="-w -s -extldflags '-static'" -o boot ./cmd/boot && \
+    CGO_ENABLED=1 xx-go build -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" -tags gzip_fonts -o tronbyt-server ./cmd/server && \
     CGO_ENABLED=1 xx-go build -ldflags="-w -s -extldflags '-static'" -o migrate ./cmd/migrate
 
 # --- Runtime Stage ---
