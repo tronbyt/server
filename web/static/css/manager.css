@@ -1045,6 +1045,11 @@ button.action.w3-button {
     height: 100px;
   }
 
+  .app-preview .app-img img {
+    width: 100%;
+    height: 100%;
+  }
+
   .inactive-overlay {
     width: 200px;
     height: 100px;
