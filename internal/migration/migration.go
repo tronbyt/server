@@ -116,6 +116,11 @@ func readLegacyUsers(dbPath string) ([]legacy.LegacyUser, error) {
 func migrateUser(db *gorm.DB, lUser legacy.LegacyUser) error {
 	user := lUser.ToDataUser()
 
+	// Sanitize email
+	if user.Email != nil && (*user.Email == "" || *user.Email == "none") {
+		user.Email = nil
+	}
+
 	// Set Admin flag manually (not in legacy JSON usually, but implied by username)
 	user.IsAdmin = (lUser.Username == "admin")
 
