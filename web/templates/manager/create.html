@@ -40,13 +40,53 @@
             <div>
                 <label for="device_type" class="device-settings-label">{{ t .Localizer "Device Type" }}</label>
                 <select name="device_type" id="device_type" class="device-settings-input">
-                    {{ range $value, $name := .DeviceTypeChoices }}
-                    <option value="{{ $value }}"
-                            {{ if eq $.Form.DeviceType $value }}
+                    <option value="tidbyt_gen1"
+                            {{ if eq $.Form.DeviceType "tidbyt_gen1" }}
                             selected
-                            {{ end }}>{{ $name }}
+                            {{ end }}>{{ index .DeviceTypeChoices "tidbyt_gen1" }}
                     </option>
-                    {{ end }}
+                    <option value="tidbyt_gen2"
+                            {{ if eq $.Form.DeviceType "tidbyt_gen2" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "tidbyt_gen2" }}
+                    </option>
+                    <option value="tronbyt_s3"
+                            {{ if eq $.Form.DeviceType "tronbyt_s3" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "tronbyt_s3" }}
+                    </option>
+                    <option value="tronbyt_s3_wide"
+                            {{ if eq $.Form.DeviceType "tronbyt_s3_wide" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "tronbyt_s3_wide" }}
+                    </option>
+                    <option value="matrixportal_s3"
+                            {{ if eq $.Form.DeviceType "matrixportal_s3" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "matrixportal_s3" }}
+                    </option>
+                    <option value="matrixportal_s3_waveshare"
+                            {{ if eq $.Form.DeviceType "matrixportal_s3_waveshare" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "matrixportal_s3_waveshare" }}
+                    </option>
+                    <option value="pixoticker"
+                            {{ if eq $.Form.DeviceType "pixoticker" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "pixoticker" }}
+                    </option>
+                    <option value="raspberrypi"
+                            {{ if eq $.Form.DeviceType "raspberrypi" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "raspberrypi" }}
+                    </option>
+                    <option value="raspberrypi_wide"
+                            {{ if eq $.Form.DeviceType "raspberrypi_wide" }}
+                            selected
+                            {{ end }}>{{ index .DeviceTypeChoices "raspberrypi_wide" }}
+                    </option>
+                    <option value="other" {{ if eq $.Form.DeviceType "other" }}selected{{ end }}>{{ index .DeviceTypeChoices "other" }}
+                    </option>
                 </select>
             </div>
         </div>
