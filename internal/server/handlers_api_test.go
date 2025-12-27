@@ -79,6 +79,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		ID:       "testdevice",
 		Username: "testuser",
 		Name:     "Test Device",
+		Type:     data.DeviceTidbytGen1,
 		APIKey:   "device_api_key",
 	}
 	if err := db.Create(&device).Error; err != nil {
