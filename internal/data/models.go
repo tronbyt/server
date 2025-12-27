@@ -24,20 +24,46 @@ const (
 	ThemeSystem ThemePreference = "system"
 )
 
-type DeviceType string
+type DeviceType int
 
 const (
-	DeviceTidbytGen1      DeviceType = "tidbyt_gen1"
-	DeviceTidbytGen2      DeviceType = "tidbyt_gen2"
-	DevicePixoticker      DeviceType = "pixoticker"
-	DeviceRaspberryPi     DeviceType = "raspberrypi"
-	DeviceRaspberryPiWide DeviceType = "raspberrypi_wide"
-	DeviceTronbytS3       DeviceType = "tronbyt_s3"
-	DeviceTronbytS3Wide   DeviceType = "tronbyt_s3_wide"
-	DeviceMatrixPortal    DeviceType = "matrixportal_s3"
-	DeviceMatrixPortalWS  DeviceType = "matrixportal_s3_waveshare"
-	DeviceOther           DeviceType = "other"
+	DeviceTidbytGen1 DeviceType = iota
+	DeviceTidbytGen2
+	DeviceTronbytS3
+	DeviceTronbytS3Wide
+	DeviceMatrixPortal
+	DeviceMatrixPortalWS
+	DevicePixoticker
+	DeviceRaspberryPi
+	DeviceRaspberryPiWide
+	DeviceOther
 )
+
+var deviceTypeToString = map[DeviceType]string{
+	DeviceTidbytGen1:      "tidbyt_gen1",
+	DeviceTidbytGen2:      "tidbyt_gen2",
+	DeviceTronbytS3:       "tronbyt_s3",
+	DeviceTronbytS3Wide:   "tronbyt_s3_wide",
+	DeviceMatrixPortal:    "matrixportal_s3",
+	DeviceMatrixPortalWS:  "matrixportal_s3_waveshare",
+	DevicePixoticker:      "pixoticker",
+	DeviceRaspberryPi:     "raspberrypi",
+	DeviceRaspberryPiWide: "raspberrypi_wide",
+	DeviceOther:           "other",
+}
+
+var stringToDeviceType = map[string]DeviceType{
+	"tidbyt_gen1":               DeviceTidbytGen1,
+	"tidbyt_gen2":               DeviceTidbytGen2,
+	"tronbyt_s3":                DeviceTronbytS3,
+	"tronbyt_s3_wide":           DeviceTronbytS3Wide,
+	"matrixportal_s3":           DeviceMatrixPortal,
+	"matrixportal_s3_waveshare": DeviceMatrixPortalWS,
+	"pixoticker":                DevicePixoticker,
+	"raspberrypi":               DeviceRaspberryPi,
+	"raspberrypi_wide":          DeviceRaspberryPiWide,
+	"other":                     DeviceOther,
+}
 
 // String returns the human-readable display name for the DeviceType.
 func (dt DeviceType) String() string {
@@ -63,15 +89,72 @@ func (dt DeviceType) String() string {
 	case DeviceOther:
 		return "Other"
 	default:
-		return string(dt) // Fallback to raw string value
+		return "Unknown"
 	}
 }
 
-// Value returns the slug to be stored in the database.
-// Without this, the Postgres driver will incorrectly store
-// the value of DeviceType.String.
+// Slug returns the URL-friendly slug for the DeviceType.
+func (dt DeviceType) Slug() string {
+	if s, ok := deviceTypeToString[dt]; ok {
+		return s
+	}
+	return "other"
+}
+
 func (dt DeviceType) Value() (driver.Value, error) {
-	return string(dt), nil
+	return int64(dt), nil
+}
+
+func (dt *DeviceType) Scan(value any) error {
+	if value == nil {
+		*dt = DeviceOther // Or a default value
+		return nil
+	}
+	switch v := value.(type) {
+	case int64:
+		*dt = DeviceType(v)
+	case int:
+		*dt = DeviceType(v)
+	case []byte:
+		i, err := strconv.Atoi(string(v))
+		if err != nil {
+			return err
+		}
+		*dt = DeviceType(i)
+	case string:
+		// Handle legacy string values from DB
+		if val, ok := stringToDeviceType[v]; ok {
+			*dt = val
+		} else {
+			// Try converting string to int
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				*dt = DeviceOther // Fallback for unknown strings
+			} else {
+				*dt = DeviceType(i)
+			}
+		}
+	default:
+		return errors.New("failed to scan DeviceType")
+	}
+	return nil
+}
+
+func (dt DeviceType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(dt.Slug())
+}
+
+func (dt *DeviceType) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	if val, ok := stringToDeviceType[s]; ok {
+		*dt = val
+	} else {
+		*dt = DeviceOther // Fallback for unknown strings
+	}
+	return nil
 }
 
 type ProtocolType string
@@ -471,7 +554,7 @@ type Device struct {
 	ID                    string      `gorm:"primaryKey"              json:"id"` // 8-char hex
 	Username              string      `gorm:"index"                   json:"username"`
 	Name                  string      `json:"name"`
-	Type                  DeviceType  `gorm:"default:'tidbyt_gen1'"   json:"type"`
+	Type                  DeviceType  `gorm:"default:0"   json:"type"`
 	APIKey                string      `gorm:"uniqueIndex"             json:"api_key"`
 	ImgURL                string      `json:"img_url"`
 	WsURL                 string      `json:"ws_url"`

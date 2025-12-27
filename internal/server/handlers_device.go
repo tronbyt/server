@@ -169,14 +169,22 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	deviceTypeInt, err := strconv.Atoi(formData.DeviceType)
+	if err != nil {
+		slog.Error("Invalid device type", "error", err)
+		http.Error(w, "Invalid device type", http.StatusBadRequest)
+		return
+	}
+	deviceType := data.DeviceType(deviceTypeInt)
+
 	// Create new device
 	newDevice := data.Device{
-		ID:                    deviceID,
-		Username:              user.Username,
-		Name:                  formData.Name,
-		Type:                  data.DeviceType(formData.DeviceType),
-		APIKey:                apiKey,
-		ImgURL:                formData.ImgURL, // Can be overridden by default logic later
+		ID:       deviceID,
+		Username: user.Username,
+		Name:     formData.Name,
+		Type:     deviceType,
+		APIKey:   apiKey,
+		ImgURL:   formData.ImgURL, // Can be overridden by default logic later
 		WsURL:                 formData.WsURL,  // Can be overridden by default logic later
 		Notes:                 formData.Notes,
 		Brightness:            data.BrightnessFromUIScale(formData.Brightness, nil),
@@ -290,7 +298,9 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	device.Name = name
-	device.Type = data.DeviceType(r.FormValue("device_type"))
+	if deviceType, err := strconv.Atoi(r.FormValue("device_type")); err == nil {
+		device.Type = data.DeviceType(deviceType)
+	}
 	device.ImgURL = s.sanitizeURL(r.FormValue("img_url"))
 	if device.ImgURL == "" {
 		device.ImgURL = s.getImageURL(r, device.ID)

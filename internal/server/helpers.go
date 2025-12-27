@@ -54,7 +54,7 @@ type TemplateData struct {
 	Device            *data.Device
 	SystemApps        []apps.AppMetadata
 	CustomApps        []apps.AppMetadata
-	DeviceTypeChoices map[string]string
+	DeviceTypeChoices map[int]string
 	Form              CreateDeviceFormData
 
 	// Repo Info for Admin/User Settings
@@ -197,24 +197,24 @@ func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
 }
 
 // getDeviceTypeChoices returns a map of device type values to display names.
-func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[string]string {
-	choices := make(map[string]string)
+func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[int]string {
+	choices := make(map[int]string)
 
 	allDeviceTypes := []data.DeviceType{
 		data.DeviceTidbytGen1,
 		data.DeviceTidbytGen2,
-		data.DevicePixoticker,
-		data.DeviceRaspberryPi,
-		data.DeviceRaspberryPiWide,
 		data.DeviceTronbytS3,
 		data.DeviceTronbytS3Wide,
 		data.DeviceMatrixPortal,
 		data.DeviceMatrixPortalWS,
+		data.DevicePixoticker,
+		data.DeviceRaspberryPi,
+		data.DeviceRaspberryPiWide,
 		data.DeviceOther,
 	}
 
 	for _, dt := range allDeviceTypes {
-		choices[string(dt)] = s.localizeOrID(localizer, dt.String())
+		choices[int(dt)] = s.localizeOrID(localizer, dt.String())
 	}
 	return choices
 }
