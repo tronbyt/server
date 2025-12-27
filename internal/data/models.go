@@ -65,19 +65,6 @@ var StringToDeviceType = map[string]DeviceType{
 	"other":                     DeviceOther,
 }
 
-var OrderedDeviceTypes = []DeviceType{
-	DeviceTidbytGen1,
-	DeviceTidbytGen2,
-	DeviceTronbytS3,
-	DeviceTronbytS3Wide,
-	DeviceMatrixPortal,
-	DeviceMatrixPortalWS,
-	DevicePixoticker,
-	DeviceRaspberryPi,
-	DeviceRaspberryPiWide,
-	DeviceOther,
-}
-
 // String returns the human-readable display name for the DeviceType.
 func (dt DeviceType) String() string {
 	switch dt {
@@ -115,7 +102,7 @@ func (dt DeviceType) Slug() string {
 }
 
 func (dt DeviceType) Value() (driver.Value, error) {
-	return int64(dt), nil
+	return dt.Slug(), nil
 }
 
 func (dt *DeviceType) Scan(value any) error {
@@ -129,20 +116,24 @@ func (dt *DeviceType) Scan(value any) error {
 	case int:
 		*dt = DeviceType(v)
 	case []byte:
-		i, err := strconv.Atoi(string(v))
-		if err != nil {
-			return err
+		s := string(v)
+		if val, ok := StringToDeviceType[s]; ok {
+			*dt = val
+		} else {
+			i, err := strconv.Atoi(s)
+			if err != nil {
+				*dt = DeviceOther
+			} else {
+				*dt = DeviceType(i)
+			}
 		}
-		*dt = DeviceType(i)
 	case string:
-		// Handle legacy string values from DB
 		if val, ok := StringToDeviceType[v]; ok {
 			*dt = val
 		} else {
-			// Try converting string to int
 			i, err := strconv.Atoi(v)
 			if err != nil {
-				*dt = DeviceOther // Fallback for unknown strings
+				*dt = DeviceOther
 			} else {
 				*dt = DeviceType(i)
 			}

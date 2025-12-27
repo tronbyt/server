@@ -240,12 +240,6 @@ func main() {
 		}
 	}
 
-	// Run Database Migrations
-	if err := migration.Migrate(db); err != nil {
-		slog.Error("Database migration failed", "error", err)
-		os.Exit(1)
-	}
-
 	// AutoMigrate (ensure schema exists)
 	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
 		slog.Error("Failed to migrate schema", "error", err)

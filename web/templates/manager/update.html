@@ -96,14 +96,12 @@
                 <label for="device_type" class="device-settings-label">{{ t .Localizer "Device Type" }}</label>
                 <select name="device_type" id="device_type" class="device-settings-input">
                     {{ $deviceType := .Device.Type }}
-                    {{ $choices := .DeviceTypeChoices }}
-                    {{ $orderedKeys := .OrderedDeviceTypes }}
-                    {{ range $key := $orderedKeys }}
-                    <option value="{{ printf "%d" $key }}"
-                            {{ if eq $deviceType $key }}
+                    {{ range .DeviceTypeChoices }}
+                    <option value="{{ printf "%d" .Value }}"
+                            {{ if eq $deviceType .Value }}
                             selected
                             {{ end }}>
-                        {{ index $choices $key }}
+                        {{ .Label }}
                     </option>
                     {{ end }}
                 </select>
@@ -656,7 +654,7 @@
             <p>
                 <strong>{{ t .Localizer "Available Version" }}:</strong> {{ if .FirmwareVersion }}{{ .FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
             </p>
-            {{ if eq .Device.Type "tidbyt_gen1" }}
+            {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
             <div style="margin-bottom: 10px;">
                 <label for="swap_colors" style="cursor: pointer;">
                     <input type="checkbox"

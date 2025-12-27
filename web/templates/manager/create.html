@@ -41,14 +41,12 @@
                 <label for="device_type" class="device-settings-label">{{ t .Localizer "Device Type" }}</label>
                 <select name="device_type" id="device_type" class="device-settings-input">
                     {{ $deviceType := .Form.DeviceType }}
-                    {{ $choices := .DeviceTypeChoices }}
-                    {{ $orderedKeys := .OrderedDeviceTypes }}
-                    {{ range $key := $orderedKeys }}
-                    <option value="{{ printf "%d" $key }}"
-                            {{ if eq $deviceType (printf "%d" $key) }}
+                    {{ range .DeviceTypeChoices }}
+                    <option value="{{ printf "%d" .Value }}"
+                            {{ if eq $deviceType (printf "%d" .Value) }}
                             selected
                             {{ end }}>
-                        {{ index $choices $key }}
+                        {{ .Label }}
                     </option>
                     {{ end }}
                 </select>
