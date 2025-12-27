@@ -1226,6 +1226,9 @@
   "Device ID": {
     "other": "Device ID"
   },
+  "Optional": {
+    "other": "Optional"
+  },
   "Device API Key": {
     "other": "Device API Key"
   },
