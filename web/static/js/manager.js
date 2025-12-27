@@ -489,6 +489,12 @@ function saveAllDevicePreferences() {
 
 // ADDAPP FUNCTIONS START
 
+function preventSubmitOnEnter(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+  }
+}
+
 function searchApps(searchId, gridId) {
   debouncedSearch(searchId);
 }
