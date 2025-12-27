@@ -42,8 +42,8 @@
                 <select name="device_type" id="device_type" class="device-settings-input">
                     {{ $deviceType := .Form.DeviceType }}
                     {{ range .DeviceTypeChoices }}
-                    <option value="{{ printf "%d" .Value }}"
-                            {{ if eq $deviceType (printf "%d" .Value) }}
+                    <option value="{{ .Value.Slug }}"
+                            {{ if eq $deviceType .Value.Slug }}
                             selected
                             {{ end }}>
                         {{ .Label }}

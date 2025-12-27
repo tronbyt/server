@@ -169,13 +169,10 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	deviceTypeInt, err := strconv.Atoi(formData.DeviceType)
-	if err != nil {
-		slog.Error("Invalid device type", "error", err)
-		http.Error(w, "Invalid device type", http.StatusBadRequest)
-		return
+	deviceType, ok := data.StringToDeviceType[formData.DeviceType]
+	if !ok {
+		deviceType = data.DeviceOther
 	}
-	deviceType := data.DeviceType(deviceTypeInt)
 
 	// Create new device
 	newDevice := data.Device{
@@ -298,8 +295,10 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	device.Name = name
-	if deviceType, err := strconv.Atoi(r.FormValue("device_type")); err == nil {
-		device.Type = data.DeviceType(deviceType)
+	if dt, ok := data.StringToDeviceType[r.FormValue("device_type")]; ok {
+		device.Type = dt
+	} else {
+		device.Type = data.DeviceOther
 	}
 	device.ImgURL = s.sanitizeURL(r.FormValue("img_url"))
 	if device.ImgURL == "" {

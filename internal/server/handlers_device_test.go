@@ -22,7 +22,7 @@ func TestHandleCreateDevicePost(t *testing.T) {
 	// Prepare form data
 	form := url.Values{}
 	form.Add("name", "New Device")
-	form.Add("device_type", "0")
+	form.Add("device_type", "tidbyt_gen1")
 	form.Add("brightness", "2")
 
 	req, _ := http.NewRequest(http.MethodPost, "/devices/create", strings.NewReader(form.Encode()))
@@ -66,7 +66,7 @@ func TestHandleUpdateDevicePost(t *testing.T) {
 
 	form := url.Values{}
 	form.Add("name", "New Name")
-	form.Add("device_type", "1")
+	form.Add("device_type", "tidbyt_gen2")
 	form.Add("brightness", "5")
 	form.Add("default_interval", "10")
 	form.Add("color_filter", "redshift")
