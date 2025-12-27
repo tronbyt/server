@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="/static/css/firmware-simple.css">
 <div class="header-container">
     <h1 class="page-title">
-        {{ t .Localizer "Generate Firmware for" }} {{ .Device.Name }} - {{ index .DeviceTypeChoices (string .Device.Type) }}
+        {{ t .Localizer "Generate Firmware for" }} {{ .Device.Name }} - {{ index .DeviceTypeChoices .Device.Type }}
     </h1>
 </div>
 {{ if not .FirmwareBinsAvailable }}
