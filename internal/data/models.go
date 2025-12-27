@@ -54,19 +54,13 @@ var DeviceTypeToString = map[DeviceType]string{
 	DeviceOther:           "other",
 }
 
-var StringToDeviceType = map[string]DeviceType{
-	"unknown":                   DeviceUnknown,
-	"tidbyt_gen1":               DeviceTidbytGen1,
-	"tidbyt_gen2":               DeviceTidbytGen2,
-	"tronbyt_s3":                DeviceTronbytS3,
-	"tronbyt_s3_wide":           DeviceTronbytS3Wide,
-	"matrixportal_s3":           DeviceMatrixPortal,
-	"matrixportal_s3_waveshare": DeviceMatrixPortalWS,
-	"pixoticker":                DevicePixoticker,
-	"raspberrypi":               DeviceRaspberryPi,
-	"raspberrypi_wide":          DeviceRaspberryPiWide,
-	"other":                     DeviceOther,
-}
+var StringToDeviceType = func() map[string]DeviceType {
+	m := make(map[string]DeviceType)
+	for dt, s := range DeviceTypeToString {
+		m[s] = dt
+	}
+	return m
+}()
 
 // String returns the human-readable display name for the DeviceType.
 func (dt DeviceType) String() string {
