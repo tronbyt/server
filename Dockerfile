@@ -22,6 +22,14 @@ COPY --from=xx / /
 ARG TARGETPLATFORM
 RUN xx-apk add --no-cache gcc g++ libwebp-dev libwebp-static
 
+# Development Stage - Hot Reloading
+FROM builder AS dev
+RUN go install github.com/air-verse/air@latest
+CMD ["air"]
+
+# Production Build Stage
+FROM builder AS build-production
+
 # Copy source code
 COPY . .
 
@@ -43,12 +51,12 @@ FROM scratch
 WORKDIR /app
 
 # Copy CA certificates from builder so TLS works in the scratch image
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build-production /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 # Copy compiled binaries from builder
-COPY --from=builder /app/boot /boot
-COPY --from=builder /app/tronbyt-server /app/tronbyt-server
-COPY --from=builder /app/migrate /app/migrate
+COPY --from=build-production /app/boot /boot
+COPY --from=build-production /app/tronbyt-server /app/tronbyt-server
+COPY --from=build-production /app/migrate /app/migrate
 
 # Expose port
 EXPOSE 8000
