@@ -107,39 +107,24 @@ func (dt DeviceType) Value() (driver.Value, error) {
 
 func (dt *DeviceType) Scan(value any) error {
 	if value == nil {
-		*dt = DeviceOther // Or a default value
+		*dt = DeviceOther
 		return nil
 	}
+
+	var s string
 	switch v := value.(type) {
-	case int64:
-		*dt = DeviceType(v)
-	case int:
-		*dt = DeviceType(v)
 	case []byte:
-		s := string(v)
-		if val, ok := StringToDeviceType[s]; ok {
-			*dt = val
-		} else {
-			i, err := strconv.Atoi(s)
-			if err != nil {
-				*dt = DeviceOther
-			} else {
-				*dt = DeviceType(i)
-			}
-		}
+		s = string(v)
 	case string:
-		if val, ok := StringToDeviceType[v]; ok {
-			*dt = val
-		} else {
-			i, err := strconv.Atoi(v)
-			if err != nil {
-				*dt = DeviceOther
-			} else {
-				*dt = DeviceType(i)
-			}
-		}
+		s = v
 	default:
 		return errors.New("failed to scan DeviceType")
+	}
+
+	if val, ok := StringToDeviceType[s]; ok {
+		*dt = val
+	} else {
+		*dt = DeviceOther
 	}
 	return nil
 }
@@ -558,7 +543,7 @@ type Device struct {
 	ID                    string      `gorm:"primaryKey"              json:"id"` // 8-char hex
 	Username              string      `gorm:"index"                   json:"username"`
 	Name                  string      `json:"name"`
-	Type                  DeviceType  `gorm:"default:0"   json:"type"`
+	Type                  DeviceType  `gorm:"type:text"               json:"type"`
 	APIKey                string      `gorm:"uniqueIndex"             json:"api_key"`
 	ImgURL                string      `json:"img_url"`
 	WsURL                 string      `json:"ws_url"`
