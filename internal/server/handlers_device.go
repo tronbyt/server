@@ -253,16 +253,19 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	// Check if specific firmware exists for this device
 	firmwareAvailable := false
 	firmwareVersion := "Unknown"
-	binName := device.Type.FirmwareFilename(device.SwapColors)
-	if binName != "" {
-		firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
-		if _, err := os.Stat(firmwarePath); err == nil {
-			firmwareAvailable = true
+	// Only offer firmware over HTTPS (the device requires it)
+	if r.URL.Scheme == "https" || r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		binName := device.Type.FirmwareFilename(device.SwapColors)
+		if binName != "" {
+			firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
+			if _, err := os.Stat(firmwarePath); err == nil {
+				firmwareAvailable = true
 
-			// Read version
-			v := s.GetFirmwareVersion()
-			if v != "" {
-				firmwareVersion = v
+				// Read version
+				v := s.GetFirmwareVersion()
+				if v != "" {
+					firmwareVersion = v
+				}
 			}
 		}
 	}
