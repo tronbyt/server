@@ -41,31 +41,19 @@ func (lu *LegacyUser) ToDataUser() data.User {
 
 // ToDataDevice converts a LegacyDevice to the modern data.Device format.
 func (ld *LegacyDevice) ToDataDevice(username string) data.Device {
-	stringToDeviceType := map[string]data.DeviceType{
-		"tidbyt_gen1":               data.DeviceTidbytGen1,
-		"tidbyt_gen2":               data.DeviceTidbytGen2,
-		"tronbyt_s3":                data.DeviceTronbytS3,
-		"tronbyt_s3_wide":           data.DeviceTronbytS3Wide,
-		"matrixportal_s3":           data.DeviceMatrixPortal,
-		"matrixportal_s3_waveshare": data.DeviceMatrixPortalWS,
-		"pixoticker":                data.DevicePixoticker,
-		"raspberrypi":               data.DeviceRaspberryPi,
-		"raspberrypi_wide":          data.DeviceRaspberryPiWide,
-		"other":                     data.DeviceOther,
-	}
-	deviceType, ok := stringToDeviceType[ld.Type]
+	deviceType, ok := data.StringToDeviceType[ld.Type]
 	if !ok {
 		deviceType = data.DeviceOther
 	}
 
 	nd := data.Device{
-		ID:       ld.ID,
-		Username: username,
-		Name:     ld.Name,
-		Type:     deviceType,
-		APIKey:   ld.APIKey,
-		ImgURL:   ld.ImgURL,
-		WsURL:    ld.WsURL,
+		ID:                    ld.ID,
+		Username:              username,
+		Name:                  ld.Name,
+		Type:                  deviceType,
+		APIKey:                ld.APIKey,
+		ImgURL:                ld.ImgURL,
+		WsURL:                 ld.WsURL,
 		Notes:                 ld.Notes,
 		CustomBrightnessScale: ld.CustomBrightnessScale,
 		NightModeEnabled:      ld.NightModeEnabled,

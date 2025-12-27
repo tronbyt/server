@@ -21,10 +21,11 @@ func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 
 	localizer := s.getLocalizer(r)
 	s.renderTemplate(w, r, "create", TemplateData{
-		User:              user,
-		DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-		Localizer:         localizer,
-		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil)}, // Default brightness 20%
+		User:               user,
+		DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+		OrderedDeviceTypes: data.OrderedDeviceTypes,
+		Localizer:          localizer,
+		Form:               CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil)}, // Default brightness 20%
 	})
 }
 
@@ -57,11 +58,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		// Flash message
 		slog.Warn("Validation error: Device name required")
 		s.renderTemplate(w, r, "create", TemplateData{
-			User:              user,
-			Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name is required."})},
-			DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-			Localizer:         localizer,
-			Form:              formData,
+			User:               user,
+			Flashes:            []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name is required."})},
+			DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+			OrderedDeviceTypes: data.OrderedDeviceTypes,
+			Localizer:          localizer,
+			Form:               formData,
 		})
 		return
 	}
@@ -71,11 +73,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		if dev.Name == formData.Name {
 			slog.Warn("Validation error: Device name already exists", "name", formData.Name)
 			s.renderTemplate(w, r, "create", TemplateData{
-				User:              user,
-				Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name already exists."})},
-				DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-				Localizer:         localizer,
-				Form:              formData,
+				User:               user,
+				Flashes:            []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Name already exists."})},
+				DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+				OrderedDeviceTypes: data.OrderedDeviceTypes,
+				Localizer:          localizer,
+				Form:               formData,
 			})
 			return
 		}
@@ -88,11 +91,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		if !validDeviceID.MatchString(formData.DeviceID) {
 			slog.Warn("Validation error: Device ID contains invalid characters", "device_id", formData.DeviceID)
 			s.renderTemplate(w, r, "create", TemplateData{
-				User:              user,
-				Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid Device ID."})},
-				DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-				Localizer:         localizer,
-				Form:              formData,
+				User:               user,
+				Flashes:            []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid Device ID."})},
+				DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+				OrderedDeviceTypes: data.OrderedDeviceTypes,
+				Localizer:          localizer,
+				Form:               formData,
 			})
 			return
 		}
@@ -103,11 +107,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 			// Device ID already exists
 			slog.Warn("Validation error: Device ID already exists", "device_id", formData.DeviceID)
 			s.renderTemplate(w, r, "create", TemplateData{
-				User:              user,
-				Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid Device ID."})},
-				DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
-				Localizer:         localizer,
-				Form:              formData,
+				User:               user,
+				Flashes:            []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid Device ID."})},
+				DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+				OrderedDeviceTypes: data.OrderedDeviceTypes,
+				Localizer:          localizer,
+				Form:               formData,
 			})
 			return
 		}
@@ -179,12 +184,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	// Create new device
 	newDevice := data.Device{
-		ID:       deviceID,
-		Username: user.Username,
-		Name:     formData.Name,
-		Type:     deviceType,
-		APIKey:   apiKey,
-		ImgURL:   formData.ImgURL, // Can be overridden by default logic later
+		ID:                    deviceID,
+		Username:              user.Username,
+		Name:                  formData.Name,
+		Type:                  deviceType,
+		APIKey:                apiKey,
+		ImgURL:                formData.ImgURL, // Can be overridden by default logic later
 		WsURL:                 formData.WsURL,  // Can be overridden by default logic later
 		Notes:                 formData.Notes,
 		Brightness:            data.BrightnessFromUIScale(formData.Brightness, nil),
@@ -274,6 +279,7 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		User:               user,
 		Device:             device,
 		DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
+		OrderedDeviceTypes: data.OrderedDeviceTypes,
 		ColorFilterOptions: s.getColorFilterChoices(),
 		AvailableLocales:   locales,
 		DefaultImgURL:      s.getImageURL(r, device.ID),
