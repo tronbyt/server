@@ -40,11 +40,11 @@
             <div>
                 <label for="device_type" class="device-settings-label">{{ t .Localizer "Device Type" }}</label>
                 <select name="device_type" id="device_type" class="device-settings-input">
-                    {{ range $value, $name := .DeviceTypeChoices }}
-                    <option value="{{ $value }}"
-                            {{ if eq $.Form.DeviceType $value }}
-                            selected
-                            {{ end }}>{{ $name }}
+                    {{ $deviceType := $.Form.DeviceType }}
+                    {{ $choices := .DeviceTypeChoices }}
+                    {{ $orderedKeys := slice "tidbyt_gen1" "tidbyt_gen2" "tronbyt_s3" "tronbyt_s3_wide" "matrixportal_s3" "matrixportal_s3_waveshare" "pixoticker" "raspberrypi" "raspberrypi_wide" "other" }}
+                    {{ range $key := $orderedKeys }}
+                    <option value="{{ $key }}" {{ if eq $deviceType $key }} selected {{ end }}>{{ index $choices $key }}
                     </option>
                     {{ end }}
                 </select>
