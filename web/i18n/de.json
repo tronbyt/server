@@ -998,6 +998,9 @@
   "Descriptive name for this Tronbyt device": {
     "other": "Beschreibender Name für dieses Tronbyt-Gerät"
   },
+  "Leave blank to auto-generate.": {
+    "other": "Leer lassen für automatische Generierung."
+  },
   "Device Type": {
     "other": "Gerätetyp"
   },
