@@ -27,7 +27,8 @@ const (
 type DeviceType int
 
 const (
-	DeviceTidbytGen1 DeviceType = iota
+	DeviceUnknown DeviceType = iota
+	DeviceTidbytGen1
 	DeviceTidbytGen2
 	DeviceTronbytS3
 	DeviceTronbytS3Wide
@@ -40,6 +41,7 @@ const (
 )
 
 var DeviceTypeToString = map[DeviceType]string{
+	DeviceUnknown:         "unknown",
 	DeviceTidbytGen1:      "tidbyt_gen1",
 	DeviceTidbytGen2:      "tidbyt_gen2",
 	DeviceTronbytS3:       "tronbyt_s3",
@@ -53,6 +55,7 @@ var DeviceTypeToString = map[DeviceType]string{
 }
 
 var StringToDeviceType = map[string]DeviceType{
+	"unknown":                   DeviceUnknown,
 	"tidbyt_gen1":               DeviceTidbytGen1,
 	"tidbyt_gen2":               DeviceTidbytGen2,
 	"tronbyt_s3":                DeviceTronbytS3,
