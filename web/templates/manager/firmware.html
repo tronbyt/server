@@ -5,9 +5,7 @@
 {{ define "content" }}
 <link rel="stylesheet" href="/static/css/firmware-simple.css">
 <div class="header-container">
-    <h1 class="page-title">
-        {{ t .Localizer "Generate Firmware for" }} {{ .Device.Name }} - {{ index .DeviceTypeChoices .Device.Type }}
-    </h1>
+    <h1 class="page-title">{{ t .Localizer "Generate Firmware for" }} {{ .Device.Name }} - {{ .Device.Type.String }}</h1>
 </div>
 {{ if not .FirmwareBinsAvailable }}
 <div class="w3-panel w3-yellow w3-border w3-border-amber w3-round-large">
@@ -125,7 +123,7 @@
                                class="device-settings-input">
                     </td>
                 </tr>
-                {{ if eq .Device.Type "tidbyt_gen1" }}
+                {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
                 <tr>
                     <td>
                         <label for="swap_colors" class="device-settings-label">{{ t .Localizer "Swap Colors?" }}</label>

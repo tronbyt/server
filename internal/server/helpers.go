@@ -38,6 +38,11 @@ type ColorFilterOption struct {
 	Name  string
 }
 
+type DeviceTypeOption struct {
+	Value data.DeviceType
+	Label string
+}
+
 // TemplateData is a struct to pass data to HTML templates.
 type TemplateData struct {
 	User                *data.User
@@ -51,12 +56,11 @@ type TemplateData struct {
 	LatestReleaseURL string
 
 	// Page-specific data
-	Device             *data.Device
-	SystemApps         []apps.AppMetadata
-	CustomApps         []apps.AppMetadata
-	DeviceTypeChoices  map[data.DeviceType]string
-	OrderedDeviceTypes []data.DeviceType
-	Form               CreateDeviceFormData
+	Device            *data.Device
+	SystemApps        []apps.AppMetadata
+	CustomApps        []apps.AppMetadata
+	DeviceTypeChoices []DeviceTypeOption
+	Form              CreateDeviceFormData
 
 	// Repo Info for Admin/User Settings
 	SystemRepoInfo      *gitutils.RepoInfo
@@ -197,10 +201,8 @@ func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
 	return i18n.NewLocalizer(s.Bundle, accept, language.English.String())
 }
 
-// getDeviceTypeChoices returns a map of device type values to display names.
-func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[data.DeviceType]string {
-	choices := make(map[data.DeviceType]string)
-
+// getDeviceTypeChoices returns a slice of device type options with display names.
+func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeOption {
 	allDeviceTypes := []data.DeviceType{
 		data.DeviceTidbytGen1,
 		data.DeviceTidbytGen2,
@@ -214,8 +216,12 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[data.Device
 		data.DeviceOther,
 	}
 
+	choices := make([]DeviceTypeOption, 0, len(allDeviceTypes))
 	for _, dt := range allDeviceTypes {
-		choices[dt] = s.localizeOrID(localizer, dt.String())
+		choices = append(choices, DeviceTypeOption{
+			Value: dt,
+			Label: s.localizeOrID(localizer, dt.String()),
+		})
 	}
 	return choices
 }
