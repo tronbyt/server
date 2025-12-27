@@ -732,6 +732,9 @@ func (d *Device) OTACapable() bool {
 	if v == "" {
 		return false
 	}
+	if v == "dev" {
+		return true
+	}
 	if !strings.HasPrefix(v, "v") {
 		v = "v" + v
 	}
