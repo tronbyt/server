@@ -91,6 +91,7 @@ type TemplateData struct {
 // CreateDeviceFormData represents the form data for creating a device.
 type CreateDeviceFormData struct {
 	Name           string
+	DeviceID       string
 	DeviceType     string
 	ImgURL         string
 	WsURL          string

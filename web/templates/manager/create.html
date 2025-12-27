@@ -50,6 +50,18 @@
                 </select>
             </div>
         </div>
+        <div class="device-settings-row">
+            <div>
+                <label for="device_id" class="device-settings-label">
+                    {{ t .Localizer "Device ID" }} ({{ t .Localizer "Optional" }})
+                </label>
+                <input name="device_id"
+                       id="device_id"
+                       value="{{ .Form.DeviceID }}"
+                       class="device-settings-input">
+                <small class="small-text">{{ t .Localizer "Leave blank to auto-generate." }}</small>
+            </div>
+        </div>
     </div>
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Connection URLs" }}</h2>
