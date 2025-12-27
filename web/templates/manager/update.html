@@ -97,10 +97,12 @@
                 <select name="device_type" id="device_type" class="device-settings-input">
                     {{ $deviceType := .Device.Type }}
                     {{ $choices := .DeviceTypeChoices }}
-                    {{/* Ordered list of DeviceType integer values */}}
-                    {{ $orderedKeys := slice 0 1 2 3 4 5 6 7 8 9 }}
+                    {{ $orderedKeys := .OrderedDeviceTypes }}
                     {{ range $key := $orderedKeys }}
-                    <option value="{{ $key }}" {{ if eq $deviceType $key }} selected {{ end }}>
+                    <option value="{{ printf "%d" $key }}"
+                            {{ if eq $deviceType $key }}
+                            selected
+                            {{ end }}>
                         {{ index $choices $key }}
                     </option>
                     {{ end }}

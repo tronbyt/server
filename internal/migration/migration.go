@@ -80,26 +80,14 @@ func migrateDeviceType(db *gorm.DB) error {
 		slog.Info("AutoMigrated Device schema, creating new 'type' column")
 
 		// 3. Update data from 'type_old' to 'type'
-		stringToDeviceType := map[string]int{
-			"tidbyt_gen1":               0,
-			"tidbyt_gen2":               1,
-			"tronbyt_s3":                2,
-			"tronbyt_s3_wide":           3,
-			"matrixportal_s3":           4,
-			"matrixportal_s3_waveshare": 5,
-			"pixoticker":                6,
-			"raspberrypi":               7,
-			"raspberrypi_wide":          8,
-			"other":                     9,
-		}
-
+		// Use data.StringToDeviceType as source of truth
 		// Build a CASE statement for the update
 		var caseBuilder strings.Builder
 		caseBuilder.WriteString("CASE type_old ")
-		for s, i := range stringToDeviceType {
-			caseBuilder.WriteString(fmt.Sprintf("WHEN '%s' THEN %d ", s, i))
+		for s, dt := range data.StringToDeviceType {
+			caseBuilder.WriteString(fmt.Sprintf("WHEN '%s' THEN %d ", s, int(dt)))
 		}
-		caseBuilder.WriteString(fmt.Sprintf("ELSE %d END", 9)) // Default to 'other'
+		caseBuilder.WriteString(fmt.Sprintf("ELSE %d END", int(data.DeviceOther))) // Default to 'other'
 
 		// GORM's Update doesn't easily support updating from another column.
 		// We'll use raw SQL for this part.

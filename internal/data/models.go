@@ -39,7 +39,7 @@ const (
 	DeviceOther
 )
 
-var deviceTypeToString = map[DeviceType]string{
+var DeviceTypeToString = map[DeviceType]string{
 	DeviceTidbytGen1:      "tidbyt_gen1",
 	DeviceTidbytGen2:      "tidbyt_gen2",
 	DeviceTronbytS3:       "tronbyt_s3",
@@ -52,7 +52,7 @@ var deviceTypeToString = map[DeviceType]string{
 	DeviceOther:           "other",
 }
 
-var stringToDeviceType = map[string]DeviceType{
+var StringToDeviceType = map[string]DeviceType{
 	"tidbyt_gen1":               DeviceTidbytGen1,
 	"tidbyt_gen2":               DeviceTidbytGen2,
 	"tronbyt_s3":                DeviceTronbytS3,
@@ -63,6 +63,19 @@ var stringToDeviceType = map[string]DeviceType{
 	"raspberrypi":               DeviceRaspberryPi,
 	"raspberrypi_wide":          DeviceRaspberryPiWide,
 	"other":                     DeviceOther,
+}
+
+var OrderedDeviceTypes = []DeviceType{
+	DeviceTidbytGen1,
+	DeviceTidbytGen2,
+	DeviceTronbytS3,
+	DeviceTronbytS3Wide,
+	DeviceMatrixPortal,
+	DeviceMatrixPortalWS,
+	DevicePixoticker,
+	DeviceRaspberryPi,
+	DeviceRaspberryPiWide,
+	DeviceOther,
 }
 
 // String returns the human-readable display name for the DeviceType.
@@ -95,7 +108,7 @@ func (dt DeviceType) String() string {
 
 // Slug returns the URL-friendly slug for the DeviceType.
 func (dt DeviceType) Slug() string {
-	if s, ok := deviceTypeToString[dt]; ok {
+	if s, ok := DeviceTypeToString[dt]; ok {
 		return s
 	}
 	return "other"
@@ -123,7 +136,7 @@ func (dt *DeviceType) Scan(value any) error {
 		*dt = DeviceType(i)
 	case string:
 		// Handle legacy string values from DB
-		if val, ok := stringToDeviceType[v]; ok {
+		if val, ok := StringToDeviceType[v]; ok {
 			*dt = val
 		} else {
 			// Try converting string to int
@@ -149,7 +162,7 @@ func (dt *DeviceType) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	if val, ok := stringToDeviceType[s]; ok {
+	if val, ok := StringToDeviceType[s]; ok {
 		*dt = val
 	} else {
 		*dt = DeviceOther // Fallback for unknown strings

@@ -51,11 +51,12 @@ type TemplateData struct {
 	LatestReleaseURL string
 
 	// Page-specific data
-	Device            *data.Device
-	SystemApps        []apps.AppMetadata
-	CustomApps        []apps.AppMetadata
-	DeviceTypeChoices map[int]string
-	Form              CreateDeviceFormData
+	Device             *data.Device
+	SystemApps         []apps.AppMetadata
+	CustomApps         []apps.AppMetadata
+	DeviceTypeChoices  map[data.DeviceType]string
+	OrderedDeviceTypes []data.DeviceType
+	Form               CreateDeviceFormData
 
 	// Repo Info for Admin/User Settings
 	SystemRepoInfo      *gitutils.RepoInfo
@@ -197,8 +198,8 @@ func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
 }
 
 // getDeviceTypeChoices returns a map of device type values to display names.
-func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[int]string {
-	choices := make(map[int]string)
+func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[data.DeviceType]string {
+	choices := make(map[data.DeviceType]string)
 
 	allDeviceTypes := []data.DeviceType{
 		data.DeviceTidbytGen1,
@@ -214,7 +215,7 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) map[int]string 
 	}
 
 	for _, dt := range allDeviceTypes {
-		choices[int(dt)] = s.localizeOrID(localizer, dt.String())
+		choices[dt] = s.localizeOrID(localizer, dt.String())
 	}
 	return choices
 }
