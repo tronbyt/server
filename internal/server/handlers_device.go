@@ -33,6 +33,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// Parse form data
 	formData := CreateDeviceFormData{
 		Name:           r.FormValue("name"),
+		DeviceID:       r.FormValue("device_id"),
 		DeviceType:     r.FormValue("device_type"),
 		ImgURL:         r.FormValue("img_url"),
 		WsURL:          r.FormValue("ws_url"),
@@ -79,12 +80,35 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// Check if custom device ID already exists (across all users)
+	if formData.DeviceID != "" {
+		var existingDevice data.Device
+		if err := s.DB.Where("id = ?", formData.DeviceID).First(&existingDevice).Error; err == nil {
+			// Device ID already exists
+			slog.Warn("Validation error: Device ID already exists", "device_id", formData.DeviceID)
+			s.renderTemplate(w, r, "create", TemplateData{
+				User:              user,
+				Flashes:           []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid Device ID."})},
+				DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
+				Localizer:         localizer,
+				Form:              formData,
+			})
+			return
+		}
+	}
+
 	// Generate unique ID and API Key
-	deviceID, err := generateSecureToken(8)
-	if err != nil {
-		slog.Error("Failed to generate device ID", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	var deviceID string
+	if formData.DeviceID != "" {
+		deviceID = formData.DeviceID
+	} else {
+		var err error
+		deviceID, err = generateSecureToken(8)
+		if err != nil {
+			slog.Error("Failed to generate device ID", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 	apiKey, err := generateSecureToken(32)
 	if err != nil {

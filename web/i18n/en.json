@@ -179,6 +179,9 @@
   "Name is required.": {
     "other": "Name is required."
   },
+  "Invalid Device ID.": {
+    "other": "Invalid Device ID."
+  },
   "Invalid custom brightness scale format. Use 6 comma-separated values (0-100).": {
     "other": "Invalid custom brightness scale format. Use 6 comma-separated values (0-100)."
   },
