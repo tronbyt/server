@@ -179,6 +179,9 @@
   "Name is required.": {
     "other": "Name ist erforderlich."
   },
+  "Invalid Device ID.": {
+    "other": "Ungültige Geräte-ID."
+  },
   "Invalid custom brightness scale format. Use 6 comma-separated values (0-100).": {
     "other": "Ungültiges Format für die benutzerdefinierte Helligkeitsskala. Verwenden Sie 6 komma-getrennte Werte (0-100)."
   },

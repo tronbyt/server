@@ -20,7 +20,8 @@
                id="{{ .SearchID }}"
                placeholder="{{ t .Localizer "Search apps" }}"
                onkeyup="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
-               oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')" />
+               oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
+               onkeydown="preventSubmitOnEnter(event)" />
         <label class="control-label">
             <input type="checkbox"
                    id="hide_installed_{{ .SearchID }}"

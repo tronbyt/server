@@ -235,7 +235,7 @@ func main() {
 
 	// Sanitize data before migration (fixes v2.0.x empty email constraint issue)
 	if db.Migrator().HasTable(&data.User{}) {
-		if err := db.Model(&data.User{}).Where("email = ?", "").Update("email", nil).Error; err != nil {
+		if err := db.Model(&data.User{}).Where("email IN ?", []string{"", "none"}).Update("email", nil).Error; err != nil {
 			slog.Warn("Failed to sanitize empty emails", "error", err)
 		}
 	}
