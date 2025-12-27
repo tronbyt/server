@@ -24,8 +24,7 @@ RUN xx-apk add --no-cache gcc g++ libwebp-dev libwebp-static
 
 # Development Stage - Hot Reloading
 FROM builder AS dev
-RUN go install github.com/air-verse/air
-CMD ["air"]
+CMD ["go", "tool", "air"]
 
 # Production Build Stage
 FROM builder AS build-production
