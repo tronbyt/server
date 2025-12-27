@@ -490,7 +490,7 @@ function saveAllDevicePreferences() {
 // ADDAPP FUNCTIONS START
 
 function preventSubmitOnEnter(event) {
-  if (event.key === "Enter") {
+  if (event.key === "Enter" && !event.isComposing) {
     event.preventDefault();
   }
 }
