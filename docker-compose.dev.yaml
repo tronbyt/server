@@ -3,13 +3,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     init: true
     ports:
       - "${SERVER_PORT:-8000}:8000" # Map server port on the host to port 8000 in the container
     volumes:
-      - ./tronbyt_server:/app/tronbyt_server # for development
-      - ./data:/app/data # for development
+      - .:/app # mount entire project for air hot reloading
+      - ./data:/app/data # persist data
       - "/etc/localtime:/etc/localtime:ro" # used to sync docker with host time
+      - go_modules:/go/pkg/mod # persist downloaded go modules
+      - go_build_cache:/root/.cache/go-build # persist go build cache
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-${UID:-1000}}
@@ -18,3 +21,7 @@ services:
       - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
       - GITHUB_TOKEN
+
+volumes:
+  go_modules:
+  go_build_cache:
