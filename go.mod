@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/go-git/go-git/v6 v6.0.0-20251223211525-8cea26cfef49
+	github.com/go-git/go-git/v6 v6.0.0-20251224103503-78aff6aa5ea9
 	github.com/go-webauthn/webauthn v0.15.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
@@ -17,7 +17,7 @@ require (
 	github.com/quic-go/quic-go v0.58.0
 	github.com/stretchr/testify v1.11.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
-	github.com/tronbyt/pixlet v0.49.7
+	github.com/tronbyt/pixlet v0.49.8
 	golang.org/x/crypto v0.46.0
 	golang.org/x/mod v0.31.0
 	golang.org/x/text v0.32.0
