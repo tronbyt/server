@@ -115,10 +115,7 @@ func TestHandleDots(t *testing.T) {
 			rr.Header().Get("Content-Type"), "image/svg+xml")
 	}
 
-	expectedSVG := `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1" fill="#fff">
-<circle cx="0.500000" cy="0.500000" r="0.750000"/><circle cx="1.500000" cy="0.500000" r="0.750000"/></svg>
-`
+	expectedSVG := `<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1" fill="#fff"><defs><pattern id="dot" width="1" height="1" patternUnits="userSpaceOnUse"><circle cx=".5" cy=".5" r=".75"/></pattern></defs><rect width="100%" height="100%" fill="url(#dot)"/></svg>`
 
 	if rr.Body.String() != expectedSVG {
 		t.Errorf("handler returned unexpected body: got %v want %v",
