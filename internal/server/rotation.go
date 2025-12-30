@@ -179,29 +179,42 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 	nightModeActive := device.GetNightModeIsActive()
 	if nightModeActive && device.NightModeApp != "" {
 		nightIname := device.NightModeApp
-		for i, app := range device.Apps {
-			if app.Iname == nightIname {
-				// Found Night Mode app, return it immediately
-				return &device.Apps[i], device.LastAppIndex, nil
+		for i := range device.Apps {
+			if device.Apps[i].Iname == nightIname {
+				app := &device.Apps[i]
+				// Found Night Mode app, check if it's renderable before returning
+				if s.possiblyRender(ctx, app, device, user) && !app.EmptyLastRender {
+					return app, device.LastAppIndex, nil
+				}
+				slog.Warn("Night Mode App failed to render, falling back", "app", nightIname, "device", device.ID)
+				break // Stop looking for night app and fall through
 			}
 		}
-		slog.Warn("Night Mode App configured but not found on device, falling back", "app", nightIname, "device", device.ID)
 	}
 
 	// 2. Sticky Pin Logic
 	if device.PinnedApp != nil && *device.PinnedApp != "" {
 		pinnedIname := *device.PinnedApp
-		for i, app := range device.Apps {
-			if app.Iname == pinnedIname {
-				// Found pinned app, return it immediately
-				// We return device.LastAppIndex so the rotation index doesn't change while pinned
-				return &device.Apps[i], device.LastAppIndex, nil
+		foundPinned := false
+		for i := range device.Apps {
+			if device.Apps[i].Iname == pinnedIname {
+				foundPinned = true
+				app := &device.Apps[i]
+				// Found pinned app, check renderability
+				if s.possiblyRender(ctx, app, device, user) && !app.EmptyLastRender {
+					return app, device.LastAppIndex, nil
+				}
+				slog.Warn("Pinned App failed to render, falling back", "app", pinnedIname, "device", device.ID)
+				break // Found but failed, fall through to normal rotation without unpinning
 			}
 		}
-		// Pinned app not found (e.g. deleted), clear pin and continue
-		slog.Warn("Pinned app not found on device, clearing pin", "device", device.ID, "app", pinnedIname)
-		s.DB.Model(device).Update("pinned_app", nil)
-		device.PinnedApp = nil
+
+		if !foundPinned {
+			// Pinned app not found (e.g. deleted), clear pin and continue
+			slog.Warn("Pinned app not found on device, clearing pin", "device", device.ID, "app", pinnedIname)
+			s.DB.Model(device).Update("pinned_app", nil)
+			device.PinnedApp = nil
+		}
 	}
 
 	// Sort Apps
