@@ -184,6 +184,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		if app.AutoPin && success {
 			s.DB.Model(device).Update("pinned_app", app.Iname)
 			device.PinnedApp = &app.Iname
+
+			// Notify Dashboard
+			s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 		}
 
 		return success

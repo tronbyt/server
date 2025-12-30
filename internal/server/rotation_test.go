@@ -142,3 +142,79 @@ func TestDetermineNextApp_NightMode_NoAppSelected(t *testing.T) {
 		t.Errorf("Expected regular app (app-regular), got %s", app.Iname)
 	}
 }
+
+func TestDetermineNextApp_NightModePrecedence(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser_precedence"}
+	if err := s.DB.Create(&user).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	pinnedAppID := "app-pinned"
+	nightAppID := "app-night"
+
+	// Create a device with both Pinned App and Night Mode App
+	device := data.Device{
+		ID:               "device_precedence",
+		Username:         user.Username,
+		PinnedApp:        &pinnedAppID,
+		NightModeEnabled: true,
+		NightStart:       "00:00", // Always active
+		NightEnd:         "23:59",
+		NightModeApp:     nightAppID,
+		LastAppIndex:     -1,
+	}
+	if err := s.DB.Create(&device).Error; err != nil {
+		t.Fatalf("failed to create device: %v", err)
+	}
+
+	// Create Pinned App
+	if err := s.DB.Create(&data.App{
+		DeviceID: device.ID,
+		Iname:    pinnedAppID,
+		Name:     "Pinned App",
+		Enabled:  true,
+		Pushed:   true,
+		Order:    1,
+	}).Error; err != nil {
+		t.Fatalf("failed to create pinned app: %v", err)
+	}
+
+	// Create Night Mode App
+	if err := s.DB.Create(&data.App{
+		DeviceID: device.ID,
+		Iname:    nightAppID,
+		Name:     "Night App",
+		Enabled:  true,
+		Pushed:   true,
+		Order:    2,
+	}).Error; err != nil {
+		t.Fatalf("failed to create night app: %v", err)
+	}
+
+	// Reload device with apps
+	var d data.Device
+	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+		t.Fatalf("failed to reload device with apps: %v", err)
+	}
+
+	// 1. Verify Night Mode wins when active
+	app, _, err := s.determineNextApp(context.Background(), &d, &user)
+	if err != nil {
+		t.Fatalf("determineNextApp failed: %v", err)
+	}
+	if app == nil || app.Iname != nightAppID {
+		t.Errorf("Expected Night Mode app (%s) to take precedence, but got %v", nightAppID, app)
+	}
+
+	// 2. Verify Pinned App wins when Night Mode is inactive
+	d.NightModeEnabled = false
+	app, _, err = s.determineNextApp(context.Background(), &d, &user)
+	if err != nil {
+		t.Fatalf("determineNextApp failed (night mode disabled): %v", err)
+	}
+	if app == nil || app.Iname != pinnedAppID {
+		t.Errorf("Expected Pinned app (%s) to be displayed when night mode is inactive, but got %v", pinnedAppID, app)
+	}
+}

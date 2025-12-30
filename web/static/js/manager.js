@@ -174,7 +174,7 @@ function moveApp(deviceId, iname, direction) {
       } else {
         console.log('App moved successfully');
         // Refresh the apps list for this device and highlight the moved app
-        refreshAppsList(deviceId, iname);
+        refreshDeviceCard(deviceId, iname);
       }
     })
     .catch((error) => {
@@ -183,13 +183,14 @@ function moveApp(deviceId, iname, direction) {
     });
 }
 
-// Function to refresh only the apps list for a specific device
-function refreshAppsList(deviceId, movedAppIname = null) {
-  // Get the current apps list container
-  const appsListContainer = document.getElementById(`appsList-${deviceId}`);
-
-  // Store current view state
-  const isGridView = appsListContainer.classList.contains('apps-grid-view');
+// Function to refresh the entire device card
+function refreshDeviceCard(deviceId, movedAppIname = null) {
+  // Get the current device card container
+  const deviceCard = document.getElementById(`device-card-${deviceId}`);
+  if (!deviceCard) {
+    console.error(`Device card not found for device ${deviceId}`);
+    return;
+  }
 
   // Fetch the updated page content
   fetch(window.location.href)
@@ -199,44 +200,45 @@ function refreshAppsList(deviceId, movedAppIname = null) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
-      // Find the updated apps list for this device
-      const updatedAppsList = doc.getElementById(`appsList-${deviceId}`);
+      // Find the updated device card for this device
+      const updatedDeviceCard = doc.getElementById(`device-card-${deviceId}`);
 
-      if (updatedAppsList) {
-        // Replace the current apps list with the updated one
-        appsListContainer.innerHTML = updatedAppsList.innerHTML;
+      if (updatedDeviceCard) {
+        // Replace the current device card with the updated one
+        deviceCard.replaceWith(updatedDeviceCard);
 
-        // Restore the view state
-        if (isGridView) {
-          switchToGridView(deviceId);
-        } else {
-          switchToListView(deviceId);
-        }
+        // Restore the view state (list/grid/collapsed)
+        restoreDevicePreferences(deviceId);
 
-        // Reinitialize drag and drop for the new cards
+        // Reinitialize UI components
         initializeDragAndDrop();
+        initializeDeviceInfoToggles();
+        pollImageWithEtag(deviceId);
 
         // If an app was moved, highlight it with visual feedback
         if (movedAppIname) {
           // Find the moved app card in the updated content
-          const appCards = appsListContainer.querySelectorAll('.app-card');
-          appCards.forEach(card => {
-            // Check if this card has the moved app's iname
-            if (card.getAttribute('data-iname') === movedAppIname) {
-              // Add the moved class to trigger the animation
-              card.classList.add('app-card-moved');
+          const appsListContainer = document.getElementById(`appsList-${deviceId}`);
+          if (appsListContainer) {
+            const appCards = appsListContainer.querySelectorAll('.app-card');
+            appCards.forEach(card => {
+              // Check if this card has the moved app's iname
+              if (card.getAttribute('data-iname') === movedAppIname) {
+                // Add the moved class to trigger the animation
+                card.classList.add('app-card-moved');
 
-              // Remove the class after animation completes
-              setTimeout(() => {
-                card.classList.remove('app-card-moved');
-              }, 1500); // Match the animation duration
-            }
-          });
+                // Remove the class after animation completes
+                setTimeout(() => {
+                  card.classList.remove('app-card-moved');
+                }, 1500); // Match the animation duration
+              }
+            });
+          }
         }
       }
     })
     .catch(error => {
-      console.error('Error refreshing apps list:', error);
+      console.error('Error refreshing device card:', error);
       // Fallback: reload the entire page
       window.location.reload();
     });
@@ -257,7 +259,7 @@ function togglePin(deviceId, iname) {
       } else {
         console.log('Pin toggled successfully');
         // Refresh the apps list for this device
-        refreshAppsList(deviceId);
+        refreshDeviceCard(deviceId);
       }
     })
     .catch((error) => {
@@ -281,7 +283,7 @@ function toggleEnabled(deviceId, iname) {
       } else {
         console.log('Enabled status toggled successfully');
         // Refresh the apps list for this device
-        refreshAppsList(deviceId);
+        refreshDeviceCard(deviceId);
       }
     })
     .catch((error) => {
@@ -305,7 +307,7 @@ function duplicateApp(deviceId, iname) {
       } else {
         console.log('App duplicated successfully');
         // Refresh the apps list for this device
-        refreshAppsList(deviceId);
+        refreshDeviceCard(deviceId);
       }
     })
     .catch((error) => {
@@ -335,7 +337,7 @@ function deleteApp(deviceId, iname, redirectAfterDelete = false, confirmMessage 
         if (redirectAfterDelete) {
           window.location.href = "/";
         } else {
-          refreshAppsList(deviceId);
+          refreshDeviceCard(deviceId);
         }
       }
     })
@@ -373,7 +375,7 @@ function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname
       } else {
         console.log('App duplicated successfully to new device');
         // Refresh the apps list for the TARGET device
-        refreshAppsList(targetDeviceId);
+        refreshDeviceCard(targetDeviceId);
       }
     })
     .catch((error) => {
@@ -1291,7 +1293,7 @@ function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
       } else {
         console.log('Apps reordered successfully');
         // Refresh the apps list for this device and highlight the moved app
-        refreshAppsList(deviceId, draggedIname);
+        refreshDeviceCard(deviceId, draggedIname);
       }
     })
     .catch((error) => {
@@ -1666,7 +1668,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const appListContainers = document.querySelectorAll('[id^="appsList-"]');
     appListContainers.forEach(container => {
       const deviceId = container.id.replace('appsList-', '');
-      refreshAppsList(deviceId);
+      refreshDeviceCard(deviceId);
       pollImageWithEtag(deviceId);
     });
   }
@@ -1678,7 +1680,7 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshAll();
       } else if (msg.type === 'apps_changed' && msg.device_id) {
         console.log('Apps changed for device', msg.device_id);
-        refreshAppsList(msg.device_id);
+        refreshDeviceCard(msg.device_id);
         pollImageWithEtag(msg.device_id);
       } else if (msg.type === 'device_updated' && msg.device_id) {
         console.log('Device updated', msg.device_id);

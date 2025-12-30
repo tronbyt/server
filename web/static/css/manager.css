@@ -394,6 +394,22 @@ button.action.w3-button.w3-red {
   color: white;
 }
 
+.pinned-badge {
+  font-size: 0.5em;
+  vertical-align: middle;
+  background-color: #f59e0b;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: 10px;
+  font-weight: normal;
+}
+
+[data-theme="dark"] .pinned-badge {
+  background-color: #fbbf24;
+  color: #0f172a;
+}
+
 .status-badge.enabled {
   background-color: #10b981;
   color: white;
