@@ -1,6 +1,7 @@
 {{ define "device_card" }}
 <!-- Device Card Component -->
-<div class="w3-card-4 w3-padding device-container">
+<div id="device-card-{{ .Item.Device.ID }}"
+     class="w3-card-4 w3-padding device-container">
     <article>
         <div>
             <table width="100%">
@@ -11,7 +12,19 @@
                                 <a href="{{ .Item.Device.ImgURL }}" target="_blank" class="device-link">{{ .Item.Device.Name }}</a>
                                 {{ if and .Item.Device.PinnedApp (ne (deref .Item.Device.PinnedApp) "") }}
                                 <span class="pinned-badge">
-                                    <i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "Pinned:" }} {{ deref .Item.Device.PinnedApp }}
+                                    <i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "Pinned:" }}
+                                    {{ $pinned := deref .Item.Device.PinnedApp }}
+                                    {{ $pinnedName := "" }}
+                                    {{ range .Item.Device.Apps }}
+                                    {{ if eq .Iname $pinned }}
+                                    {{ $pinnedName = printf "%s-%s" .Name .Iname }}
+                                    {{ end }}
+                                    {{ end }}
+                                    {{ if ne $pinnedName "" }}
+                                    {{ $pinnedName }}
+                                {{ else }}
+                                    {{ $pinned }}
+                                    {{ end }}
                                 </span>
                                 {{ end }}
                             </h1>

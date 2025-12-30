@@ -175,6 +175,35 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 }
 
 func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user *data.User) (*data.App, int, error) {
+	// 1. Night Mode Logic (Highest Priority)
+	nightModeActive := device.GetNightModeIsActive()
+	if nightModeActive && device.NightModeApp != "" {
+		nightIname := device.NightModeApp
+		for i, app := range device.Apps {
+			if app.Iname == nightIname {
+				// Found Night Mode app, return it immediately
+				return &device.Apps[i], device.LastAppIndex, nil
+			}
+		}
+		slog.Warn("Night Mode App configured but not found on device, falling back", "app", nightIname, "device", device.ID)
+	}
+
+	// 2. Sticky Pin Logic
+	if device.PinnedApp != nil && *device.PinnedApp != "" {
+		pinnedIname := *device.PinnedApp
+		for i, app := range device.Apps {
+			if app.Iname == pinnedIname {
+				// Found pinned app, return it immediately
+				// We return device.LastAppIndex so the rotation index doesn't change while pinned
+				return &device.Apps[i], device.LastAppIndex, nil
+			}
+		}
+		// Pinned app not found (e.g. deleted), clear pin and continue
+		slog.Warn("Pinned app not found on device, clearing pin", "device", device.ID, "app", pinnedIname)
+		s.DB.Model(device).Update("pinned_app", nil)
+		device.PinnedApp = nil
+	}
+
 	// Sort Apps
 	apps := make([]data.App, len(device.Apps))
 	copy(apps, device.Apps)
@@ -185,26 +214,11 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 	// Create Expanded List (with Interstitials)
 	expanded := createExpandedAppsList(device, apps)
 
-	lastIndex := device.LastAppIndex
-
-	// Night Mode Pre-Check
-	nightModeActive := device.GetNightModeIsActive()
-	forceNightApp := false
-
-	if nightModeActive && device.NightModeApp != "" {
-		found := false
-		for _, a := range device.Apps {
-			if a.Iname == device.NightModeApp {
-				found = true
-				break
-			}
-		}
-		if found {
-			forceNightApp = true
-		} else {
-			slog.Warn("Night Mode App configured but not found on device, falling back to normal rotation", "app", device.NightModeApp, "device", device.ID)
-		}
+	if len(expanded) == 0 {
+		return nil, 0, nil
 	}
+
+	lastIndex := device.LastAppIndex
 
 	// Loop to find next valid app
 	for i := 0; i < len(expanded)*2; i++ {
@@ -212,16 +226,10 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 
 		candidate := expanded[nextIndex]
 
-		isPinned := device.PinnedApp != nil && *device.PinnedApp == candidate.Iname
-		isNightTarget := forceNightApp && device.NightModeApp == candidate.Iname
 		isInterstitialPos := device.InterstitialEnabled && nextIndex%2 == 1
 
 		shouldDisplay := false
-		if isPinned {
-			shouldDisplay = true
-		} else if forceNightApp {
-			shouldDisplay = isNightTarget
-		} else if isInterstitialPos {
+		if isInterstitialPos {
 			shouldDisplay = true
 			// Interstitial Logic: Skip if previous regular app (at index-1) is skipped
 			// Note: expanded list is always [App, Interstitial, App, Interstitial...]
@@ -233,10 +241,8 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 					shouldDisplay = false
 				}
 			}
-		} else {
-			if candidate.Enabled && IsAppScheduleActive(&candidate, device) {
-				shouldDisplay = true
-			}
+		} else if candidate.Enabled && IsAppScheduleActive(&candidate, device) {
+			shouldDisplay = true
 		}
 
 		if device.InterstitialApp != nil && *device.InterstitialApp == candidate.Iname && !isInterstitialPos {
@@ -248,10 +254,6 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		if shouldDisplay {
 			if s.possiblyRender(ctx, &candidate, device, user) && !candidate.EmptyLastRender {
 				return &candidate, nextIndex, nil
-			}
-
-			if isPinned {
-				s.DB.Model(device).Update("pinned_app", nil)
 			}
 		}
 
