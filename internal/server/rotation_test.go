@@ -218,3 +218,103 @@ func TestDetermineNextApp_NightModePrecedence(t *testing.T) {
 		t.Errorf("Expected Pinned app (%s) to be displayed when night mode is inactive, but got %v", pinnedAppID, app)
 	}
 }
+
+func TestDetermineNextApp_Pinning(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create a user
+	user := data.User{Username: "testuser_pin"}
+	if err := s.DB.Create(&user).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	pinnedAppID := "app-2"
+
+	// Create a device with Pinned App
+	device := data.Device{
+		ID:           "device_pin",
+		Username:     user.Username,
+		PinnedApp:    &pinnedAppID,
+		LastAppIndex: -1,
+	}
+	if err := s.DB.Create(&device).Error; err != nil {
+		t.Fatalf("failed to create device: %v", err)
+	}
+
+	// Create App 1
+	app1 := data.App{
+		DeviceID: device.ID,
+		Iname:    "app-1",
+		Name:     "App 1",
+		Enabled:  true,
+		Pushed:   true,
+		Order:    1,
+	}
+	if err := s.DB.Create(&app1).Error; err != nil {
+		t.Fatalf("failed to create app 1: %v", err)
+	}
+
+	// Create App 2 (Pinned)
+	app2 := data.App{
+		DeviceID: device.ID,
+		Iname:    pinnedAppID,
+		Name:     "App 2",
+		Enabled:  true,
+		Pushed:   true,
+		Order:    2,
+	}
+	if err := s.DB.Create(&app2).Error; err != nil {
+		t.Fatalf("failed to create app 2: %v", err)
+	}
+
+	// Reload device with apps
+	var d data.Device
+	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+		t.Fatalf("failed to reload device with apps: %v", err)
+	}
+
+	// 1. Verify Sticky Pinning
+	// It should return app-2 multiple times, regardless of "rotation"
+	for i := range 5 {
+		app, nextIndex, err := s.determineNextApp(context.Background(), &d, &user)
+		if err != nil {
+			t.Fatalf("determineNextApp failed: %v", err)
+		}
+		if app == nil {
+			t.Fatalf("expected an app, got nil")
+		}
+
+		if app.Iname != pinnedAppID {
+			t.Errorf("Iteration %d: Expected Pinned app (%s), got %s", i, pinnedAppID, app.Iname)
+		}
+
+		// Update LastAppIndex just like real server would, to ensure it doesn't break pinning
+		d.LastAppIndex = nextIndex
+	}
+
+	// 2. Verify Missing Pinned App Clears Pin
+	missingAppID := "app-missing"
+	d.PinnedApp = &missingAppID
+	// Update DB to match memory
+	s.DB.Model(&d).Update("pinned_app", missingAppID)
+
+	app, _, err := s.determineNextApp(context.Background(), &d, &user)
+	if err != nil {
+		t.Fatalf("determineNextApp failed with missing pin: %v", err)
+	}
+	if app == nil {
+		t.Fatal("expected an app (fallback to rotation), got nil")
+	}
+
+	// Verify pin is cleared in memory
+	if d.PinnedApp != nil {
+		t.Error("Expected d.PinnedApp to be nil after missing app check")
+	}
+
+	// Verify pin is cleared in DB
+	var dbDevice data.Device
+	s.DB.First(&dbDevice, "id = ?", d.ID)
+	if dbDevice.PinnedApp != nil {
+		t.Error("Expected DB PinnedApp to be nil after missing app check")
+	}
+}
