@@ -779,19 +779,26 @@ button.action.w3-button {
   order: 1;
   text-align: center;
   margin-bottom: 10px;
+  width: 100%;
+}
+
+.apps-grid-view .app-preview .app-img {
+  width: 100%;
+  aspect-ratio: 2/1;
+  display: block;
 }
 
 .apps-grid-view .app-preview .app-img img {
-  width: 180px;
-  height: 90px;
+  width: 100%;
+  height: 100%;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   object-fit: cover;
 }
 
 .apps-grid-view .inactive-overlay {
-  width: 180px;
-  height: 90px;
+  width: 100%;
+  height: 100%;
 }
 
 .apps-grid-view .inactive-badge-overlay {
@@ -891,16 +898,6 @@ button.action.w3-button {
     min-height: 240px;
   }
 
-  .apps-grid-view .app-preview .app-img img {
-    width: 140px;
-    height: 70px;
-  }
-
-  .apps-grid-view .inactive-overlay {
-    width: 140px;
-    height: 70px;
-  }
-
   .apps-grid-view .inactive-badge-overlay {
     font-size: 0.7em;
     padding: 3px 6px;
@@ -934,16 +931,6 @@ button.action.w3-button {
 
   .apps-grid-view .app-card {
     min-height: 200px;
-  }
-
-  .apps-grid-view .app-preview .app-img img {
-    width: 100px;
-    height: 50px;
-  }
-
-  .apps-grid-view .inactive-overlay {
-    width: 100px;
-    height: 50px;
   }
 
   .apps-grid-view .inactive-badge-overlay {
