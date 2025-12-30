@@ -50,7 +50,8 @@ type TemplateData struct {
 	Config              *config.TemplateConfig
 	Flashes             []string
 	DevicesWithUIScales []DeviceWithUIScale
-	Localizer           *i18n.Localizer // Pass Localizer directly
+	Item                *DeviceWithUIScale // For single item partials
+	Localizer           *i18n.Localizer    // Pass Localizer directly
 
 	UpdateAvailable  bool
 	LatestReleaseURL string
@@ -91,6 +92,7 @@ type TemplateData struct {
 	IsAutoLoginActive     bool // Indicate if single-user auto-login is active
 	UserCount             int  // Number of users, for registration logic
 	DeleteOnCancel        bool // Indicate if app should be deleted on cancel
+	Partial               string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.
@@ -169,6 +171,16 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	if !ok {
 		slog.Error("Template not found in map", "name", name)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Render partial if requested
+	if tmplData.Partial != "" {
+		err := tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
+		if err != nil {
+			slog.Error("Failed to render partial", "template", name, "partial", tmplData.Partial, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 

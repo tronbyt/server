@@ -21,10 +21,16 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleIndex called")
 	user := GetUser(r)
 
+	targetDeviceID := r.URL.Query().Get("device_id")
+	partial := r.URL.Query().Get("partial")
+
 	devicesWithUI := make([]DeviceWithUIScale, 0, len(user.Devices))
 
 	for i := range user.Devices {
 		device := &user.Devices[i]
+		if targetDeviceID != "" && device.ID != targetDeviceID {
+			continue
+		}
 		slog.Debug("handleIndex device", "id", device.ID, "apps_count", len(device.Apps))
 
 		// Sort Apps
@@ -45,7 +51,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	s.renderTemplate(w, r, "index", TemplateData{User: user, DevicesWithUIScales: devicesWithUI})
+	tmplData := TemplateData{User: user, DevicesWithUIScales: devicesWithUI}
+	if partial == "device_card" && len(devicesWithUI) == 1 {
+		tmplData.Partial = "device_card"
+		tmplData.Item = &devicesWithUI[0]
+	}
+
+	s.renderTemplate(w, r, "index", tmplData)
 }
 
 func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {

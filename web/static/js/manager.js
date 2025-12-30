@@ -192,8 +192,8 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     return;
   }
 
-  // Fetch the updated page content
-  fetch(window.location.href)
+  // Fetch the updated device card content
+  fetch(`/?device_id=${deviceId}&partial=device_card`)
     .then(response => response.text())
     .then(html => {
       // Create a temporary DOM element to parse the response
