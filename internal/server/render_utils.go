@@ -78,6 +78,9 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
 	// 1. Pushed App (Pre-rendered)
 	if app.Pushed {
+		if app.AutoPin {
+			s.handleAutoPin(app, device, user, true)
+		}
 		return true
 	}
 
@@ -182,37 +185,41 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 		// Handle Autopin
 		if app.AutoPin {
-			shouldNotify := false
-			if success {
-				// Pin if not already pinned
-				if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
-					if err := s.DB.Model(device).Update("pinned_app", app.Iname).Error; err != nil {
-						slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
-					} else {
-						device.PinnedApp = &app.Iname
-						shouldNotify = true
-					}
-				}
-			} else {
-				// Unpin if currently pinned to this app
-				if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-					if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
-						slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
-					} else {
-						device.PinnedApp = nil
-						shouldNotify = true
-					}
-				}
-			}
-
-			if shouldNotify {
-				s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
-			}
+			s.handleAutoPin(app, device, user, success)
 		}
 		return success
 	}
 
 	return true // Not time to render yet, assume existing is fine
+}
+
+func (s *Server) handleAutoPin(app *data.App, device *data.Device, user *data.User, success bool) {
+	shouldNotify := false
+	if success {
+		// Pin if not already pinned
+		if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
+			if err := s.DB.Model(device).Update("pinned_app", app.Iname).Error; err != nil {
+				slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
+			} else {
+				device.PinnedApp = &app.Iname
+				shouldNotify = true
+			}
+		}
+	} else {
+		// Unpin if currently pinned to this app
+		if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+			if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+				slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
+			} else {
+				device.PinnedApp = nil
+				shouldNotify = true
+			}
+		}
+	}
+
+	if shouldNotify && user != nil {
+		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+	}
 }
 
 func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []string {
