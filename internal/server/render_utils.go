@@ -186,16 +186,22 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			if success {
 				// Pin if not already pinned
 				if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
-					s.DB.Model(device).Update("pinned_app", app.Iname)
-					device.PinnedApp = &app.Iname
-					shouldNotify = true
+					if err := s.DB.Model(device).Update("pinned_app", app.Iname).Error; err != nil {
+						slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
+					} else {
+						device.PinnedApp = &app.Iname
+						shouldNotify = true
+					}
 				}
 			} else {
 				// Unpin if currently pinned to this app
 				if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-					s.DB.Model(device).Update("pinned_app", nil)
-					device.PinnedApp = nil
-					shouldNotify = true
+					if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+						slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
+					} else {
+						device.PinnedApp = nil
+						shouldNotify = true
+					}
 				}
 			}
 
