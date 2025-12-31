@@ -181,14 +181,28 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		app.RenderMessages = messages
 
 		// Handle Autopin
-		if app.AutoPin && success {
-			s.DB.Model(device).Update("pinned_app", app.Iname)
-			device.PinnedApp = &app.Iname
+		if app.AutoPin {
+			shouldNotify := false
+			if success {
+				// Pin if not already pinned
+				if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
+					s.DB.Model(device).Update("pinned_app", app.Iname)
+					device.PinnedApp = &app.Iname
+					shouldNotify = true
+				}
+			} else {
+				// Unpin if currently pinned to this app
+				if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+					s.DB.Model(device).Update("pinned_app", nil)
+					device.PinnedApp = nil
+					shouldNotify = true
+				}
+			}
 
-			// Notify Dashboard
-			s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+			if shouldNotify {
+				s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+			}
 		}
-
 		return success
 	}
 
