@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"testing"
+	"time"
 
 	"tronbyt-server/internal/data"
 )
@@ -316,5 +317,97 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 	s.DB.First(&dbDevice, "id = ?", d.ID)
 	if dbDevice.PinnedApp != nil {
 		t.Error("Expected DB PinnedApp to be nil after missing app check")
+	}
+}
+
+func TestDetermineNextApp_AutoPin(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "autouser"}
+	if err := s.DB.Create(&user).Error; err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	// Create device
+	device := data.Device{
+		ID:           "autodev",
+		Username:     user.Username,
+		LastAppIndex: -1,
+	}
+	if err := s.DB.Create(&device).Error; err != nil {
+		t.Fatalf("failed to create device: %v", err)
+	}
+
+	// Create AutoPin App
+	app := data.App{
+		DeviceID: device.ID,
+		Iname:    "autopin-app",
+		Name:     "AutoPin App",
+		Enabled:  true,
+		AutoPin:  true,
+		Pushed:   true, // Initially treated as successful render
+		Order:    1,
+	}
+	if err := s.DB.Create(&app).Error; err != nil {
+		t.Fatalf("failed to create autopin app: %v", err)
+	}
+
+	// Reload device with apps
+	var d data.Device
+	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+		t.Fatalf("failed to reload device with apps: %v", err)
+	}
+
+	// 1. Successful Render -> Auto Pin
+	// Pushed=true bypasses rendering and success is assumed.
+	_, _, err := s.determineNextApp(context.Background(), &d, &user)
+	if err != nil {
+		t.Fatalf("determineNextApp failed: %v", err)
+	}
+
+	if d.PinnedApp == nil || *d.PinnedApp != app.Iname {
+		t.Errorf("Expected app %s to be auto-pinned, but got %v", app.Iname, d.PinnedApp)
+	}
+
+	// Check DB
+	var dbDevice data.Device
+	s.DB.First(&dbDevice, "id = ?", d.ID)
+	if dbDevice.PinnedApp == nil || *dbDevice.PinnedApp != app.Iname {
+		t.Error("Auto-pin not reflected in DB")
+	}
+
+	// 2. Failed Render -> Auto Unpin
+	// We must simulate a render failure. determineNextApp calls possiblyRender.
+	// possiblyRender returns success=false if EmptyLastRender is true.
+	// Note: Pushed=true always returns true in possiblyRender. We need to set Pushed=false and Path!="" to trigger render logic.
+
+	app.Pushed = false
+	appPath := "test.star"
+	app.Path = &appPath
+	app.EmptyLastRender = true
+	// LastRender must be old enough to trigger a new render
+	app.LastRender = time.Now().Add(-1 * time.Hour)
+	s.DB.Save(&app)
+
+	// Reload d for determineNextApp loop
+	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+		t.Fatalf("failed to reload device: %v", err)
+	}
+
+	// determineNextApp will call possiblyRender for the pinned app.
+	// We expect it to fail (EmptyLastRender=true) and then unpin.
+	_, _, err = s.determineNextApp(context.Background(), &d, &user)
+	if err != nil {
+		t.Fatalf("determineNextApp failed on unpin cycle: %v", err)
+	}
+
+	if d.PinnedApp != nil {
+		t.Errorf("Expected app to be unpinned after render failure, but still pinned to %v", *d.PinnedApp)
+	}
+
+	// Check DB
+	s.DB.First(&dbDevice, "id = ?", d.ID)
+	if dbDevice.PinnedApp != nil {
+		t.Error("Auto-unpin not reflected in DB")
 	}
 }
