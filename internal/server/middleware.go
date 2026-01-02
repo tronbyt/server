@@ -51,9 +51,17 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 
 		// 1. Try to find User by API Key
 		var user data.User
-		if err := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
+		userResult := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
 			return db.Order("name ASC")
-		}).Preload("Devices.Apps").First(&user, "api_key = ?", apiKey).Error; err == nil {
+		}).Preload("Devices.Apps").Limit(1).Find(&user, "api_key = ?", apiKey)
+
+		if userResult.Error != nil {
+			slog.Error("API auth: database error when finding user by key", "error", userResult.Error)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		if userResult.RowsAffected > 0 {
 			ctx := context.WithValue(r.Context(), userContextKey, &user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
@@ -61,11 +69,19 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 
 		// 2. Try to find Device by API Key
 		var device data.Device
-		if err := s.DB.First(&device, "api_key = ?", apiKey).Error; err == nil {
+		deviceResult := s.DB.Preload("Apps").Limit(1).Find(&device, "api_key = ?", apiKey)
+		if deviceResult.Error != nil {
+			slog.Error("API auth: database error when finding device by key", "error", deviceResult.Error)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		if deviceResult.RowsAffected > 0 {
 			var owner data.User
 			if err := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
 				return db.Order("name ASC")
 			}).Preload("Devices.Apps").First(&owner, "username = ?", device.Username).Error; err != nil {
+				slog.Error("API auth: database error finding device owner", "username", device.Username, "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -76,6 +92,7 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		slog.Info("API authentication failed")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	})
 }
@@ -243,11 +260,6 @@ func GetApp(r *http.Request) *data.App {
 		panic("GetApp called without RequireApp middleware")
 	}
 	return a
-}
-
-// APIAuth is a helper to wrap APIAuthMiddleware for ServeMux which expects generic handler.
-func (s *Server) APIAuth(next http.HandlerFunc) http.HandlerFunc {
-	return s.APIAuthMiddleware(next).ServeHTTP
 }
 
 func LoggingMiddleware(next http.Handler) http.Handler {
