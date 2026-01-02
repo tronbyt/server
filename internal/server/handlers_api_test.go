@@ -488,3 +488,86 @@ func TestHandleDeleteInstallationAPI(t *testing.T) {
 		t.Errorf("App was not deleted")
 	}
 }
+
+func TestHandlePatchDeviceDeviceKey(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	installID := "testapp"
+
+	// Create a dummy app for the device
+	dummyApp := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Test App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	if err := s.DB.Create(&dummyApp).Error; err != nil {
+		t.Fatalf("Failed to create dummy app: %v", err)
+	}
+
+	// Patch pinnedApp using device key
+	update := DeviceUpdate{PinnedApp: &installID}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	// Verify updated device state
+	var device data.Device
+	if err := s.DB.First(&device, "id = ?", deviceID).Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	if device.PinnedApp == nil || *device.PinnedApp != installID {
+		t.Errorf("Expected pinnedApp %s, got %v", installID, device.PinnedApp)
+	}
+}
+
+func TestHandleListInstallationsDeviceKey(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+
+	// Add a dummy app to the device
+	dummyApp := data.App{
+		DeviceID:    deviceID,
+		Iname:       "dummyapp",
+		Name:        "Dummy App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	if err := s.DB.Create(&dummyApp).Error; err != nil {
+		t.Fatalf("Failed to create dummy app: %v", err)
+	}
+
+	req := newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s/installations", deviceID), apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v",
+			rr.Code, http.StatusOK)
+	}
+
+	var response struct {
+		Installations []AppPayload `json:"installations"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(response.Installations) != 1 {
+		t.Errorf("Expected 1 installation, got %d", len(response.Installations))
+	}
+}

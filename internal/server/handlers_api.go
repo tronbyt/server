@@ -175,11 +175,7 @@ type PushAppData struct {
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
-	user, err := UserFromContext(r.Context())
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	user := GetUser(r)
 
 	// If using an API key associated with a specific device, this endpoint might not make sense
 	// or should return only that device. The legacy behavior (Python) returns all devices for the user.
@@ -198,28 +194,8 @@ func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	user, userErr := UserFromContext(r.Context())
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if userErr == nil && user != nil {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	user := GetUser(r)
+	device := GetDevice(r)
 
 	var dataReq PushAppData
 	if err := json.NewDecoder(r.Body).Decode(&dataReq); err != nil {
@@ -308,38 +284,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetDevice(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		http.Error(w, "Device ID required", http.StatusBadRequest)
-		return
-	}
-
-	user, err := UserFromContext(r.Context())
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var device *data.Device
-
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden: Device Key mismatch", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
-				break
-			}
-		}
-		if device == nil {
-			http.Error(w, "Device not found", http.StatusNotFound)
-			return
-		}
-	}
+	device := GetDevice(r)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(s.toDevicePayload(device)); err != nil {
@@ -349,30 +294,7 @@ func (s *Server) handleGetDevice(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListInstallations(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	user, _ := UserFromContext(r.Context())
-	var device *data.Device
-
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
-				break
-			}
-		}
-	}
-
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	installations := make([]AppPayload, 0, len(device.Apps))
 	for i := range device.Apps {
@@ -390,28 +312,9 @@ func (s *Server) handleListInstallations(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handleGetInstallation(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.PathValue("id")
 	iname := r.PathValue("iname")
 
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != deviceID {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == deviceID {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	var app *data.App
 	for i := range device.Apps {
@@ -440,28 +343,7 @@ type PushData struct {
 }
 
 func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	user, userErr := UserFromContext(r.Context())
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if userErr == nil && user != nil {
-		for i := range user.Devices {
-			if user.Devices[i].ID == id {
-				device = &user.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	var dataReq PushData
 	if err := json.NewDecoder(r.Body).Decode(&dataReq); err != nil {
@@ -561,29 +443,8 @@ func (s *Server) ensurePushedApp(deviceID, installID string) error {
 }
 
 func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
 	// Auth handled by middleware, get device
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != id {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == id {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	var update DeviceUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
@@ -663,9 +524,8 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Notify Dashboard
-	if user, err := UserFromContext(r.Context()); err == nil {
-		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
-	}
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(s.toDevicePayload(device)); err != nil {
@@ -682,28 +542,9 @@ type InstallationUpdate struct {
 }
 
 func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.PathValue("id")
 	iname := r.PathValue("iname")
 
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != deviceID {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == deviceID {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
+	device := GetDevice(r)
 
 	var app *data.App
 	for i := range device.Apps {
@@ -776,9 +617,8 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Notify Dashboard
-	if user, err := UserFromContext(r.Context()); err == nil {
-		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
-	}
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(app); err != nil {
@@ -787,29 +627,9 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {
-	deviceID := r.PathValue("id")
 	iname := filepath.Base(r.PathValue("iname"))
 
-	var device *data.Device
-	if d, err := DeviceFromContext(r.Context()); err == nil {
-		if d.ID != deviceID {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		device = d
-	} else if u, err := UserFromContext(r.Context()); err == nil {
-		for i := range u.Devices {
-			if u.Devices[i].ID == deviceID {
-				device = &u.Devices[i]
-				break
-			}
-		}
-	}
-	if device == nil {
-		http.Error(w, "Device not found", http.StatusNotFound)
-		return
-	}
-
+	device := GetDevice(r)
 	if err := s.DB.Where("device_id = ? AND iname = ?", device.ID, iname).Delete(&data.App{}).Error; err != nil {
 		http.Error(w, "Failed to delete app", http.StatusInternalServerError)
 		return
@@ -830,9 +650,8 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Notify Dashboard
-	if user, err := UserFromContext(r.Context()); err == nil {
-		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
-	}
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("App deleted.")); err != nil {
@@ -881,14 +700,14 @@ func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))
-	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetDevice)))
-	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(http.HandlerFunc(s.handlePushImage)))
-	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(http.HandlerFunc(s.handlePushApp)))
-	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(http.HandlerFunc(s.handleListInstallations)))
-	s.Router.Handle("GET /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handleGetInstallation)))
-	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchDevice)))
-	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handlePatchInstallation)))
-	s.Router.Handle("DELETE /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(http.HandlerFunc(s.handleDeleteInstallationAPI)))
+	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetDevice)))
+	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(s.RequireDevice(s.handlePushImage)))
+	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(s.RequireDevice(s.handlePushApp)))
+	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(s.RequireDevice(s.handleListInstallations)))
+	s.Router.Handle("GET /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetInstallation)))
+	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handlePatchDevice)))
+	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handlePatchInstallation)))
+	s.Router.Handle("DELETE /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handleDeleteInstallationAPI)))
 
 	s.Router.HandleFunc("GET /dots", s.handleDots)
 }
