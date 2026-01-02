@@ -75,7 +75,7 @@ nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
 nav ul li a, nav ul li span, nav header .action { display: block; padding: 0.5rem; color: var(--link-color); } /* Ensure nav links use link color */
 
 .content { padding: 0 1rem 1rem; }
-.content > header { border-bottom: 1px solid var(--secondary-color); display: flex; align-items:flex-end; }
+.content > header { display: flex; align-items:flex-end; }
 .content > header h1 { flex: auto; margin: 1rem 0 0.25rem 0; } /* Uses h1 style */
 .flash {
   margin: 1em 0;
@@ -136,10 +136,10 @@ input[type=submit] {
   image-rendering: crisp-edges;
   -webkit-mask-image: url('/dots');
   -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: cover;
+  -webkit-mask-size: contain;
   mask-image: url('/dots');
   mask-repeat: no-repeat;
-  mask-size: cover;
+  mask-size: contain;
   width: 100%;
   height: 100%;
 }
