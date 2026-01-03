@@ -237,12 +237,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		installationID = dataReq.InstallationIDAlt
 	}
 	if installationID != "" {
-		for i := range device.Apps {
-			if device.Apps[i].Iname == installationID {
-				existingApp = &device.Apps[i]
-				break
-			}
-		}
+		existingApp = device.GetApp(installationID)
 	}
 
 	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, appPath, dataReq.Config)
@@ -316,13 +311,7 @@ func (s *Server) handleGetInstallation(w http.ResponseWriter, r *http.Request) {
 
 	device := GetDevice(r)
 
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
+	app := device.GetApp(iname)
 	if app == nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return
@@ -466,14 +455,7 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if update.NightModeApp != nil {
 		if *update.NightModeApp != "" {
-			appExists := false
-			for _, app := range device.Apps {
-				if app.Iname == *update.NightModeApp {
-					appExists = true
-					break
-				}
-			}
-			if !appExists {
+			if device.GetApp(*update.NightModeApp) == nil {
 				http.Error(w, "Night mode app not found", http.StatusBadRequest)
 				return
 			}
@@ -485,14 +467,7 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if update.PinnedApp != nil {
 		if *update.PinnedApp != "" {
-			appExists := false
-			for _, app := range device.Apps {
-				if app.Iname == *update.PinnedApp {
-					appExists = true
-					break
-				}
-			}
-			if !appExists {
+			if device.GetApp(*update.PinnedApp) == nil {
 				http.Error(w, "Pinned app not found", http.StatusBadRequest)
 				return
 			}
@@ -546,13 +521,7 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 
 	device := GetDevice(r)
 
-	var app *data.App
-	for i := range device.Apps {
-		if device.Apps[i].Iname == iname {
-			app = &device.Apps[i]
-			break
-		}
-	}
+	app := device.GetApp(iname)
 	if app == nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return

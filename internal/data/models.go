@@ -741,3 +741,13 @@ func (d *Device) OTACapable() bool {
 
 	return semver.Compare(v, minOTAFirmwareVersion) >= 0
 }
+
+// GetApp looks up an app by its iname (installation ID) in the device's Apps list.
+func (d *Device) GetApp(iname string) *App {
+	for i := range d.Apps {
+		if d.Apps[i].Iname == iname {
+			return &d.Apps[i]
+		}
+	}
+	return nil
+}

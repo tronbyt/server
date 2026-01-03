@@ -623,14 +623,14 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 
 	// Unpin if pinned
 	if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-		if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
 			slog.Error("Failed to unpin app being deleted", "error", err)
 		}
 	}
 
 	// Unset Night Mode App if it matches
 	if device.NightModeApp == app.Iname {
-		if err := s.DB.Model(device).Update("night_mode_app", "").Error; err != nil {
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("night_mode_app", "").Error; err != nil {
 			slog.Error("Failed to unset night mode app being deleted", "error", err)
 		}
 	}
@@ -676,11 +676,11 @@ func (s *Server) handleTogglePin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newPinned == "" {
-		if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
 			slog.Error("Failed to unpin app", "error", err)
 		}
 	} else {
-		if err := s.DB.Model(device).Update("pinned_app", newPinned).Error; err != nil {
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", newPinned).Error; err != nil {
 			slog.Error("Failed to pin app", "error", err)
 		}
 	}
