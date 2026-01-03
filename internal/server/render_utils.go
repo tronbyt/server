@@ -198,7 +198,7 @@ func (s *Server) handleAutoPin(app *data.App, device *data.Device, user *data.Us
 	if success {
 		// Pin if not already pinned
 		if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
-			if err := s.DB.Model(device).Update("pinned_app", app.Iname).Error; err != nil {
+			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", app.Iname).Error; err != nil {
 				slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
 			} else {
 				device.PinnedApp = &app.Iname
@@ -208,7 +208,7 @@ func (s *Server) handleAutoPin(app *data.App, device *data.Device, user *data.Us
 	} else {
 		// Unpin if currently pinned to this app
 		if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-			if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
 				slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
 			} else {
 				device.PinnedApp = nil

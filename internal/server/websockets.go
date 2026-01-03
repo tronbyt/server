@@ -68,7 +68,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	// Update protocol type if different from current
 	if device.Info.ProtocolType != data.ProtocolWS {
 		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
-		s.DB.Model(&device).Update("info", data.JSONMap{"protocol_type": data.ProtocolWS})
+		s.DB.Model(&data.Device{ID: device.ID}).Update("info", data.JSONMap{"protocol_type": data.ProtocolWS})
 	}
 	ch := s.Broadcaster.Subscribe(deviceID)
 	defer s.Broadcaster.Unsubscribe(deviceID, ch)
@@ -89,7 +89,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update LastSeen
-			if err := s.DB.Model(&device).Update("last_seen", time.Now()).Error; err != nil {
+			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("last_seen", time.Now()).Error; err != nil {
 				slog.Error("Failed to update last_seen", "error", err)
 			}
 
@@ -103,7 +103,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				device.Info.MACAddress = msg.ClientInfo.MACAddress
 
-				if err := s.DB.Model(&device).Update("info", device.Info).Error; err != nil {
+				if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
 					slog.Error("Failed to update device info", "error", err)
 				}
 			}
@@ -115,7 +115,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					slog.Info("First 'queued' message, setting protocol_version to 1", "device", deviceID)
 					newVersion := 1
 					device.Info.ProtocolVersion = &newVersion
-					if err := s.DB.Model(&device).Update("info", device.Info).Error; err != nil {
+					if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
 						slog.Error("Failed to update device info (protocol version)", "error", err)
 					}
 				}
@@ -164,7 +164,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				return
 			}
 			// Clear pending update to avoid loops
-			if err := s.DB.Model(&device).Update("pending_update_url", "").Error; err != nil {
+			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pending_update_url", "").Error; err != nil {
 				slog.Error("Failed to clear pending update", "error", err)
 			} else {
 				device.PendingUpdateURL = ""

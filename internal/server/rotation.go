@@ -70,7 +70,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	now := time.Now()
 	updates["last_seen"] = now
 
-	if err := s.DB.Model(device).Updates(updates).Error; err != nil {
+	if err := s.DB.Model(&data.Device{ID: device.ID}).Updates(updates).Error; err != nil {
 		slog.Error("Failed to update device state (last_app_index/last_seen)", "error", err)
 	} else {
 		if hasIndexUpdate {
@@ -216,7 +216,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		if !foundPinned {
 			// Pinned app not found (e.g. deleted), clear pin and continue
 			slog.Warn("Pinned app not found on device, clearing pin", "device", device.ID, "app", pinnedIname)
-			if err := s.DB.Model(device).Update("pinned_app", nil).Error; err != nil {
+			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
 				slog.Error("Failed to clear invalid pinned app", "device", device.ID, "error", err)
 			} else {
 				device.PinnedApp = nil
