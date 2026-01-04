@@ -185,7 +185,7 @@ func tmplDerefOr(v any, def string) string {
 	return fmt.Sprintf("%v", rv.Interface())
 }
 
-func tmplIsPinned(device *data.Device, iname string) bool {
+func tmplIsPinned(device data.Device, iname string) bool {
 	if device.PinnedApp == nil {
 		return false
 	}

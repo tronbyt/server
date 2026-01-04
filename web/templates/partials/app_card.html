@@ -1,7 +1,9 @@
 {{ define "app_card" }}
 <!-- App Card Component -->
 <div class="w3-card-4 w3-padding app-card"
+     {{ if not .ReadOnly }}
      draggable="true"
+     {{ end }}
      data-iname="{{ .App.Iname }}">
     <div class="app-card-content">
         <!-- Left: Preview Image -->
@@ -54,6 +56,7 @@
                 <p>{{ t .Localizer "Notes:" }} {{ .App.Notes }}</p>
                 {{ end }}
             </div>
+            {{ if not .ReadOnly }}
             <div class="app-actions">
                 <!-- Primary Actions Row -->
                 <div class="app-actions-primary">
@@ -69,13 +72,12 @@
                             onclick="duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}')">
                         <i class="fa-solid fa-copy" aria-hidden="true"></i> {{ t .Localizer "Duplicate" }}
                     </button>
-                    {{ if gt (len .DevicesWithUIScales) 1 }}
+                    {{ if gt (len .Devices) 1 }}
                     <div class="copy-to-dropdown">
                         <select class="action w3-button w3-indigo w3-round custom-select"
                                 onchange="if(this.value) { duplicateAppToDevice('{{ .Device.ID }}', '{{ .App.Iname }}', this.value, null, false); this.selectedIndex=0; }">
                             <option value="" disabled selected>{{ t .Localizer "Copy to..." }}</option>
-                            {{ range $item := .DevicesWithUIScales }}
-                            {{ $target_device := $item.Device }}
+                            {{ range $target_device := .Devices }}
                             {{ if ne $target_device.ID $.Device.ID }}
                             <option value="{{ $target_device.ID }}">{{ $target_device.Name }}</option>
                             {{ end }}
@@ -123,6 +125,7 @@
                     {{ end }}
                 </div>
             </div>
+            {{ end }}
         </div>
     </div>
 </div>

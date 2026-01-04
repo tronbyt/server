@@ -15,8 +15,8 @@
    href="/devices/create"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "New Tronbyt" }}</a>
 <hr>
 {{ end }}
-{{ range .DevicesWithUIScales }}
-{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "DevicesWithUIScales" $.DevicesWithUIScales) }}
+{{ range .Devices }}
+{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices) }}
 <hr>
 {{ end }}
 {{ end }}

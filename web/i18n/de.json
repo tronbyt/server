@@ -650,6 +650,18 @@
   "Delete User?": {
     "other": "Benutzer löschen?"
   },
+  "Delete User": {
+    "other": "Benutzer löschen"
+  },
+  "No devices found for this user.": {
+    "other": "Keine Geräte für diesen Benutzer gefunden."
+  },
+  "Failed to delete user": {
+    "other": "Benutzer konnte nicht gelöscht werden"
+  },
+  "Error deleting user": {
+    "other": "Fehler beim Löschen des Benutzers"
+  },
   "Edit": {
     "other": "Bearbeiten"
   },
