@@ -27,6 +27,16 @@
                                     {{ end }}
                                 </span>
                                 {{ end }}
+                                {{ if .Item.Device.GetNightModeIsActive }}
+                                <span class="night-mode-badge"
+                                      title="{{ t .Localizer "Night Mode Active" }}">
+                                    <i class="fa-solid fa-moon" aria-hidden="true"></i> {{ t .Localizer "Night Mode" }}
+                                </span>
+                                {{ else if .Item.Device.GetDimModeIsActive }}
+                                <span class="dim-mode-badge" title="{{ t .Localizer "Dim Mode Active" }}">
+                                    <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i> {{ t .Localizer "Dim Mode" }}
+                                </span>
+                                {{ end }}
                             </h1>
                         </header>
                     </td>

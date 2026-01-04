@@ -1178,6 +1178,12 @@
   "Night Mode Configuration": {
     "other": "Night Mode Configuration"
   },
+  "Night Mode Active": {
+    "other": "Night Mode Active"
+  },
+  "Night Mode": {
+    "other": "Night Mode"
+  },
   "Night Start Time": {
     "other": "Night Start Time"
   },
@@ -1201,6 +1207,12 @@
   },
   "Dim Mode Settings": {
     "other": "Dim Mode Settings"
+  },
+  "Dim Mode Active": {
+    "other": "Dim Mode Active"
+  },
+  "Dim Mode": {
+    "other": "Dim Mode"
   },
   "Dim Start Time": {
     "other": "Dim Start Time"
