@@ -1178,6 +1178,12 @@
   "Night Mode Configuration": {
     "other": "Nachtmodus Konfiguration"
   },
+  "Night Mode Active": {
+    "other": "Nachtmodus aktiv"
+  },
+  "Night Mode": {
+    "other": "Nachtmodus"
+  },
   "Night Start Time": {
     "other": "Nachtmodus Startzeit"
   },
@@ -1201,6 +1207,12 @@
   },
   "Dim Mode Settings": {
     "other": "Dimm-Modus-Einstellungen"
+  },
+  "Dim Mode Active": {
+    "other": "Dimm-Modus aktiv"
+  },
+  "Dim Mode": {
+    "other": "Dimm-Modus"
   },
   "Dim Start Time": {
     "other": "Dimm-Startzeit"
