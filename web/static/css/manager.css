@@ -414,36 +414,36 @@ button.action.w3-button.w3-red {
   color: #0f172a;
 }
 
-.night-mode-badge {
+.night-mode-badge,
+.dim-mode-badge {
   font-size: 0.5em;
   vertical-align: middle;
-  background-color: #3f51b5;
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
   margin-left: 10px;
   font-weight: normal;
+}
+
+[data-theme="dark"] .night-mode-badge,
+[data-theme="dark"] .dim-mode-badge {
+  color: #0f172a;
+}
+
+.night-mode-badge {
+  background-color: #3f51b5;
 }
 
 [data-theme="dark"] .night-mode-badge {
   background-color: #7986cb;
-  color: #0f172a;
 }
 
 .dim-mode-badge {
-  font-size: 0.5em;
-  vertical-align: middle;
   background-color: #607d8b;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  margin-left: 10px;
-  font-weight: normal;
 }
 
 [data-theme="dark"] .dim-mode-badge {
   background-color: #90a4ae;
-  color: #0f172a;
 }
 
 .status-badge.enabled {
