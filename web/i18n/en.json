@@ -650,6 +650,18 @@
   "Delete User?": {
     "other": "Delete User?"
   },
+  "Delete User": {
+    "other": "Delete User"
+  },
+  "No devices found for this user.": {
+    "other": "No devices found for this user."
+  },
+  "Failed to delete user": {
+    "other": "Failed to delete user"
+  },
+  "Error deleting user": {
+    "other": "Error deleting user"
+  },
   "Edit": {
     "other": "Edit"
   },

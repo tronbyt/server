@@ -1,6 +1,6 @@
 {{ define "device_card" }}
 <!-- Device Card Component -->
-<div id="device-card-{{ .Item.Device.ID }}"
+<div id="device-card-{{ .Item.ID }}"
      class="w3-card-4 w3-padding device-container">
     <article>
         <div>
@@ -9,13 +9,13 @@
                     <td colspan="2">
                         <header>
                             <h1>
-                                <a href="{{ .Item.Device.ImgURL }}" target="_blank" class="device-link">{{ .Item.Device.Name }}</a>
-                                {{ if and .Item.Device.PinnedApp (ne (deref .Item.Device.PinnedApp) "") }}
+                                <a href="{{ .Item.ImgURL }}" target="_blank" class="device-link">{{ .Item.Name }}</a>
+                                {{ if and .Item.PinnedApp (ne (deref .Item.PinnedApp) "") }}
                                 <span class="pinned-badge">
                                     <i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "Pinned:" }}
-                                    {{ $pinned := deref .Item.Device.PinnedApp }}
+                                    {{ $pinned := deref .Item.PinnedApp }}
                                     {{ $pinnedName := "" }}
-                                    {{ range .Item.Device.Apps }}
+                                    {{ range .Item.Apps }}
                                     {{ if eq .Iname $pinned }}
                                     {{ $pinnedName = printf "%s-%s" .Name .Iname }}
                                     {{ end }}
@@ -27,12 +27,12 @@
                                     {{ end }}
                                 </span>
                                 {{ end }}
-                                {{ if .Item.Device.GetNightModeIsActive }}
+                                {{ if .Item.GetNightModeIsActive }}
                                 <span class="night-mode-badge"
                                       title="{{ t .Localizer "Night Mode Active" }}">
                                     <i class="fa-solid fa-moon" aria-hidden="true"></i> {{ t .Localizer "Night Mode" }}
                                 </span>
-                                {{ else if .Item.Device.GetDimModeIsActive }}
+                                {{ else if .Item.GetDimModeIsActive }}
                                 <span class="dim-mode-badge" title="{{ t .Localizer "Dim Mode Active" }}">
                                     <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i> {{ t .Localizer "Dim Mode" }}
                                 </span>
@@ -42,9 +42,9 @@
                     </td>
                     <td rowspan="4" width="40%">
                         <div class="app-img">
-                            <img id="currentWebp-{{ .Item.Device.ID }}"
-                                 data-src="/devices/{{ .Item.Device.ID }}/current"
-                                 src="/devices/{{ .Item.Device.ID }}/current"
+                            <img id="currentWebp-{{ .Item.ID }}"
+                                 data-src="/devices/{{ .Item.ID }}/current"
+                                 src="/devices/{{ .Item.ID }}/current"
                                  alt="{{ t .Localizer "Preview" }}"
                                  width="128"
                                  height="64">
@@ -53,44 +53,43 @@
                         <div class="device-info-box">
                             <button class="device-info-toggle"
                                     aria-expanded="false"
-                                    aria-controls="device-info-content-{{ .Item.Device.ID }}">
+                                    aria-controls="device-info-content-{{ .Item.ID }}">
                                 <i class="fas fa-chevron-down"></i> {{ t .Localizer "Device Info" }}
                             </button>
-                            <div id="device-info-content-{{ .Item.Device.ID }}"
-                                 class="device-info-content">
+                            <div id="device-info-content-{{ .Item.ID }}" class="device-info-content">
                                 <table class="device-info-table">
-                                    {{ if .Item.Device.Info.FirmwareVersion }}
+                                    {{ if .Item.Info.FirmwareVersion }}
                                     <tr>
                                         <td>{{ t $.Localizer "Firmware Version:" }}</td>
-                                        <td>{{ .Item.Device.Info.FirmwareVersion }}</td>
+                                        <td>{{ .Item.Info.FirmwareVersion }}</td>
                                     </tr>
                                     {{ end }}
-                                    {{ if .Item.Device.Info.FirmwareType }}
+                                    {{ if .Item.Info.FirmwareType }}
                                     <tr>
                                         <td>{{ t $.Localizer "Firmware Type:" }}</td>
-                                        <td>{{ .Item.Device.Info.FirmwareType }}</td>
+                                        <td>{{ .Item.Info.FirmwareType }}</td>
                                     </tr>
                                     {{ end }}
-                                    {{ if .Item.Device.Info.ProtocolVersion }}
+                                    {{ if .Item.Info.ProtocolVersion }}
                                     <tr>
                                         <td>{{ t $.Localizer "Protocol Version:" }}</td>
-                                        <td>{{ deref .Item.Device.Info.ProtocolVersion }}</td>
+                                        <td>{{ deref .Item.Info.ProtocolVersion }}</td>
                                     </tr>
                                     {{ end }}
-                                    {{ if .Item.Device.Info.MACAddress }}
+                                    {{ if .Item.Info.MACAddress }}
                                     <tr>
                                         <td>{{ t $.Localizer "MAC Address:" }}</td>
-                                        <td>{{ .Item.Device.Info.MACAddress }}</td>
+                                        <td>{{ .Item.Info.MACAddress }}</td>
                                     </tr>
                                     {{ end }}
                                     <tr>
                                         <td>{{ t $.Localizer "Protocol Type:" }}</td>
-                                        <td>{{ .Item.Device.Info.ProtocolType }}</td>
+                                        <td>{{ .Item.Info.ProtocolType }}</td>
                                     </tr>
-                                    {{ if .Item.Device.LastSeen }}
+                                    {{ if .Item.LastSeen }}
                                     <tr>
                                         <td>{{ t $.Localizer "Last Seen:" }}</td>
-                                        <td>{{ timeago $.Localizer .Item.Device.LastSeen }}</td>
+                                        <td>{{ timeago $.Localizer .Item.LastSeen }}</td>
                                     </tr>
                                     {{ end }}
                                 </table>
@@ -102,48 +101,56 @@
                     <td>
                         <label>{{ t .Localizer "Brightness" }}</label>
                         =
-                        <span id="brightnessValue-{{ .Item.Device.ID }}">{{ .Item.BrightnessUI }}</span>
-                        <div class="brightness-panel" id="brightness-panel-{{ .Item.Device.ID }}">
+                        <span id="brightnessValue-{{ .Item.ID }}">{{ .Item.BrightnessUIScale }}</span>
+                        {{ if not .ReadOnly }}
+                        <div class="brightness-panel" id="brightness-panel-{{ .Item.ID }}">
                             {{ range $i := seq 0 5 }}
                             <button type="button"
-                                    class="brightness-btn {{ if eq $.Item.BrightnessUI $i }}active{{ end }}"
+                                    class="brightness-btn {{ if eq $.Item.BrightnessUIScale $i }}active{{ end }}"
                                     data-brightness="{{ $i }}"
-                                    onclick="setBrightness('{{ $.Item.Device.ID }}', {{ $i }})">{{ $i }}</button>
+                                    onclick="setBrightness('{{ $.Item.ID }}', {{ $i }})">{{ $i }}</button>
                             {{ end }}
                         </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label for="default_interval-{{ .Item.Device.ID }}">{{ t .Localizer "App Cycle Time (Seconds)" }}</label>
-                        = <span id="intervalValue-{{ .Item.Device.ID }}">{{
-                        .Item.Device.DefaultInterval }} </span> s
-                        <br>
-                        <input type="range"
-                               name="default_interval"
-                               id="default_interval-{{ .Item.Device.ID }}"
-                               min="1"
-                               max="30"
-                               value="{{ .Item.Device.DefaultInterval }}"
-                               oninput="updateIntervalValue('{{ .Item.Device.ID }}', this.value)"
-                               onmouseup="updateInterval('{{ .Item.Device.ID }}', this.value)">
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <a class="w3-button w3-teal w3-round"
-                           style="min-width: 100px"
-                           href="/devices/{{ .Item.Device.ID }}/addapp"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "Add App" }}</a>
-                        <a class="w3-button w3-teal w3-round"
-                           style="min-width: 100px"
-                           href="/devices/{{ .Item.Device.ID }}/update"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t .Localizer "Edit Device" }}</a>
-                        {{ if .Item.Device.Type.SupportsFirmware }}
-                        <a class="w3-button w3-teal w3-round"
-                           style="min-width: 100px"
-                           href="/devices/{{ .Item.Device.ID }}/firmware"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Firmware" }}</a>
                         {{ end }}
                     </td>
                 </tr>
+                <tr>
+                    <td>
+                        <label for="default_interval-{{ .Item.ID }}">{{ t .Localizer "App Cycle Time (Seconds)" }}</label>
+                        = <span id="intervalValue-{{ .Item.ID }}">{{
+                        .Item.DefaultInterval }} </span> s
+                        <br>
+                        <input type="range"
+                               name="default_interval"
+                               id="default_interval-{{ .Item.ID }}"
+                               min="1"
+                               max="30"
+                               value="{{ .Item.DefaultInterval }}"
+                               {{ if .ReadOnly }}
+                               disabled
+                               {{ else }}
+                               oninput="updateIntervalValue('{{ .Item.ID }}', this.value)"
+                               onmouseup="updateInterval('{{ .Item.ID }}', this.value)"
+                               {{ end }}>
+                    </td>
+                </tr>
+                {{ if not .ReadOnly }}
+                <tr>
+                    <td>
+                        <a class="w3-button w3-teal w3-round"
+                           style="min-width: 100px"
+                           href="/devices/{{ .Item.ID }}/addapp"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "Add App" }}</a>
+                        <a class="w3-button w3-teal w3-round"
+                           style="min-width: 100px"
+                           href="/devices/{{ .Item.ID }}/update"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t .Localizer "Edit Device" }}</a>
+                        {{ if .Item.Type.SupportsFirmware }}
+                        <a class="w3-button w3-teal w3-round"
+                           style="min-width: 100px"
+                           href="/devices/{{ .Item.ID }}/firmware"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Firmware" }}</a>
+                        {{ end }}
+                    </td>
+                </tr>
+                {{ end }}
             </table>
             <!-- View Toggle Row -->
             <div class="view-toggle-row"
@@ -154,32 +161,34 @@
                      style="display: flex;
                             align-items: center">
                     <span style="margin-right: 10px; font-weight: bold;">{{ t .Localizer "View:" }}</span>
-                    <button id="listViewBtn-{{ .Item.Device.ID }}"
+                    <button id="listViewBtn-{{ .Item.ID }}"
                             class="w3-button w3-blue w3-round view-toggle-btn active"
-                            onclick="switchToListView('{{ .Item.Device.ID }}')"
+                            onclick="switchToListView('{{ .Item.ID }}')"
                             title="{{ t .Localizer "List View" }}">
                         <i class="fas fa-list"></i> {{ t .Localizer "List" }}
                     </button>
-                    <button id="gridViewBtn-{{ .Item.Device.ID }}"
+                    <button id="gridViewBtn-{{ .Item.ID }}"
                             class="w3-button w3-blue w3-round view-toggle-btn"
-                            onclick="switchToGridView('{{ .Item.Device.ID }}')"
+                            onclick="switchToGridView('{{ .Item.ID }}')"
                             title="{{ t .Localizer "Grid View" }}">
                         <i class="fas fa-th"></i> {{ t .Localizer "Grid" }}
                     </button>
-                    <button id="collapsedViewBtn-{{ .Item.Device.ID }}"
+                    <button id="collapsedViewBtn-{{ .Item.ID }}"
                             class="w3-button w3-blue w3-round view-toggle-btn"
-                            onclick="switchToCollapsedView('{{ .Item.Device.ID }}')"
+                            onclick="switchToCollapsedView('{{ .Item.ID }}')"
                             title="{{ t .Localizer "Collapsed View" }}">
                         <i class="fas fa-chevron-up"></i> {{ t .Localizer "Collapsed" }}
                     </button>
                 </div>
+                {{ if not .ReadOnly }}
                 <div class="instruction-text" style="color: #666; font-style: italic;">
                     {{ t .Localizer "Drag apps to reorder or copy from/to another device" }}
                 </div>
+                {{ end }}
             </div>
-            <div id="appsList-{{ .Item.Device.ID }}" class="visible apps-list-view">
-                {{ range .Item.Device.Apps }}
-                {{ template "app_card" (dict "App" . "Device" $.Item.Device "Localizer" $.Localizer "DevicesWithUIScales" $.DevicesWithUIScales) }}
+            <div id="appsList-{{ .Item.ID }}" class="visible apps-list-view">
+                {{ range .Item.Apps }}
+                {{ template "app_card" (dict "App" . "Device" $.Item "Localizer" $.Localizer "Devices" $.Devices "ReadOnly" $.ReadOnly) }}
                 <hr class="list-view-separator">
                 {{ end }}
             </div>

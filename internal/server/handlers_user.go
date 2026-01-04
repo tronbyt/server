@@ -24,37 +24,34 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	targetDeviceID := r.URL.Query().Get("device_id")
 	partial := r.URL.Query().Get("partial")
 
-	devicesWithUI := make([]DeviceWithUIScale, 0, len(user.Devices))
-
-	for i := range user.Devices {
-		device := &user.Devices[i]
-		if targetDeviceID != "" && device.ID != targetDeviceID {
-			continue
+	// Filter devices if targetDeviceID is set, otherwise use all
+	var devices []data.Device
+	if targetDeviceID != "" {
+		for i := range user.Devices {
+			if user.Devices[i].ID == targetDeviceID {
+				// This creates a new slice that points to the original device, avoiding a copy.
+				devices = user.Devices[i : i+1]
+				break
+			}
 		}
+	} else {
+		devices = user.Devices
+	}
+
+	for i := range devices {
+		device := &devices[i]
 		slog.Debug("handleIndex device", "id", device.ID, "apps_count", len(device.Apps))
 
 		// Sort Apps
 		sort.Slice(device.Apps, func(i, j int) bool {
 			return device.Apps[i].Order < device.Apps[j].Order
 		})
-
-		// Calculate UI Brightness
-		var customScale map[int]int
-		if device.CustomBrightnessScale != "" {
-			customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
-		}
-		bUI := device.Brightness.UIScale(customScale)
-
-		devicesWithUI = append(devicesWithUI, DeviceWithUIScale{
-			Device:       device,
-			BrightnessUI: bUI,
-		})
 	}
 
-	tmplData := TemplateData{User: user, DevicesWithUIScales: devicesWithUI}
-	if partial == "device_card" && len(devicesWithUI) == 1 {
+	tmplData := TemplateData{User: user, Devices: devices}
+	if partial == "device_card" && len(devices) == 1 {
 		tmplData.Partial = "device_card"
-		tmplData.Item = &devicesWithUI[0]
+		tmplData.Item = &devices[0]
 	}
 
 	s.renderTemplate(w, r, "index", tmplData)
@@ -74,10 +71,12 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sort Apps for each device
+	// Sort Apps for each user's devices
 	for i := range users {
-		for j := range users[i].Devices {
-			dev := &users[i].Devices[j]
+		u := &users[i]
+		// Sort apps for each device
+		for j := range u.Devices {
+			dev := &u.Devices[j]
 			sort.Slice(dev.Apps, func(a, b int) bool {
 				return dev.Apps[a].Order < dev.Apps[b].Order
 			})

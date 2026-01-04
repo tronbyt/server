@@ -27,12 +27,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type DeviceWithUIScale struct {
-	Device            *data.Device
-	BrightnessUI      int
-	NightBrightnessUI int
-}
-
 type ColorFilterOption struct {
 	Value string
 	Name  string
@@ -45,13 +39,13 @@ type DeviceTypeOption struct {
 
 // TemplateData is a struct to pass data to HTML templates.
 type TemplateData struct {
-	User                *data.User
-	Users               []data.User // For admin view
-	Config              *config.TemplateConfig
-	Flashes             []string
-	DevicesWithUIScales []DeviceWithUIScale
-	Item                *DeviceWithUIScale // For single item partials
-	Localizer           *i18n.Localizer    // Pass Localizer directly
+	User      *data.User
+	Users     []data.User // For admin view
+	Config    *config.TemplateConfig
+	Flashes   []string
+	Devices   []data.Device
+	Item      *data.Device    // For single item partials
+	Localizer *i18n.Localizer // Pass Localizer directly
 
 	UpdateAvailable  bool
 	LatestReleaseURL string
@@ -92,6 +86,7 @@ type TemplateData struct {
 	IsAutoLoginActive     bool // Indicate if single-user auto-login is active
 	UserCount             int  // Number of users, for registration logic
 	DeleteOnCancel        bool // Indicate if app should be deleted on cancel
+	ReadOnly              bool // Indicate if the view should be read-only
 	Partial               string
 }
 

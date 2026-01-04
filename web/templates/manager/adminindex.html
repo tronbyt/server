@@ -3,7 +3,10 @@
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Tronbyt Manager" }}{{ end }}
 {{ define "header" }}
-<h1>{{ t .Localizer "Tronbyt Manager" }}</h1>
+<!-- Add viewport meta tag -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Include external CSS and JS -->
+<link rel="stylesheet" href="/static/css/manager.css">
 {{ end }}
 {{ define "content" }}
 {{ if .User }}
@@ -13,88 +16,25 @@
 <hr>
 {{ end }}
 {{ range .Users }}
-<div class="w3-card-4 w3-padding">
-    <header>
-        <h1>{{ .Username }}</h1>
-        {{ if ne .Username $.User.Username }}
-        <button class="w3-button w3-red w3-round"
-                onclick="deleteUser('{{ .Username }}')">
-            <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete" }}
-        </button>
-        {{ end }}
-    </header>
-    {{ if .Devices }}
-    {{ range .Devices }}
-    <div class="w3-card-4 w3-padding">
-        <article>
-            <header>
-                <h1>{{ .Name }}</h1>
-                <table>
-                    <tr>
-                        <td>
-                            <a class="w3-button w3-teal w3-round"
-                               style="min-width: 100px"
-                               href="/devices/{{ .ID }}/update"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t $.Localizer "Edit" }}</a>
-                            <a class="w3-button w3-teal w3-round"
-                               style="min-width: 100px"
-                               href="/devices/{{ .ID }}/addapp"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t $.Localizer "Add App" }}</a>
-                        </td>
-                    </tr>
-                </table>
-            </header>
-            <p class="body">{{ t $.Localizer "API ID:" }} {{ .ImgURL }}</p>
-            {{ if .Notes }}
-            <p class="body">{{ t $.Localizer "Notes:" }} {{ .Notes }}</p>
-            {{ end }}
-            {{ if .Apps }}
-            {{ $device := . }}
-            {{ range .Apps }}
-            <div class="w3-card-4 w3-padding">
-                <table width="100%">
-                    <tr width="100%">
-                        <td>
-                            <div class="post">
-                                <header>
-                                    <h1>{{ .Iname }} &nbsp({{ t $.Localizer "installation id" }})</h1>
-                                    <h1>
-                                        {{ if .Enabled }}
-                                        <enabled>&nbsp -- {{ t $.Localizer "Enabled" }} --</enabled>
-                                    {{ else }}
-                                        <disabled>&nbsp -- {{ t $.Localizer "Disabled" }} --</disabled>
-                                        {{ end }}
-                                    </h1>
-                                </header>
-                                <p class="body">{{ t $.Localizer "App:" }} {{ .Name }}</p>
-                                <p class="body">{{ t $.Localizer "Render Interval (minutes):" }} {{ .UInterval }}</p>
-                                <p class="body">{{ t $.Localizer "Display Time (secs):" }} {{ .DisplayTime }}</p>
-                                {{ if .Notes }}
-                                <p class="body">{{ t $.Localizer "Notes:" }} {{ .Notes }}</p>
-                                {{ end }}
-                            </div>
-                        </td>
-                        <td>
-                            <br>
-                            <div class="app-img">
-                                <img width="400"
-                                     height="200"
-                                     src="/devices/{{ $device.ID }}/{{ .Iname }}/appwebp"
-                                     alt="{{ t $.Localizer "Preview" }}">
-                            </div>
-                            <br>
-                            {{ t $.Localizer "Last Rendered:" }} {{ duration .LastRenderDur }}
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <hr>
-            {{ end }}
-            {{ end }}
-        </article>
-    </div>
-    <hr>
-    {{ end }}
+<div class="w3-container w3-blue-grey w3-padding w3-round user-header">
+    <h2 class="user-header-title">{{ .Username }}</h2>
+    {{ if ne .Username $.User.Username }}
+    <button class="w3-button w3-red w3-round"
+            onclick="deleteUser('{{ .Username }}')">
+        <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete User" }}
+    </button>
     {{ end }}
 </div>
+{{ if .Devices }}
+{{ $userDevices := .Devices }}
+{{ range .Devices }}
+{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $userDevices "ReadOnly" true) }}
+<hr>
+{{ end }}
+{{ else }}
+<p class="no-devices-message">{{ t $.Localizer "No devices found for this user." }}</p>
+<hr>
+{{ end }}
 {{ end }}
 <script>
     function deleteUser(username) {
@@ -106,11 +46,11 @@
             if (response.ok || response.redirected) {
                 window.location.reload();
             } else {
-                alert('Failed to delete user');
+                alert('{{ t .Localizer "Failed to delete user" }}');
             }
         }).catch(err => {
             console.error(err);
-            alert('Error deleting user');
+            alert('{{ t .Localizer "Error deleting user" }}');
         });
     }
 </script>

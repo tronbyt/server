@@ -636,7 +636,7 @@ func (d *Device) GetTimezone() string {
 }
 
 // GetNightModeIsActive checks if night mode is currently active for a device.
-func (d *Device) GetNightModeIsActive() bool {
+func (d Device) GetNightModeIsActive() bool {
 	if !d.NightModeEnabled {
 		return false
 	}
@@ -672,7 +672,7 @@ func (d *Device) GetNightModeIsActive() bool {
 }
 
 // GetDimModeIsActive checks if dim mode is active (dimming without full night mode).
-func (d *Device) GetDimModeIsActive() bool {
+func (d Device) GetDimModeIsActive() bool {
 	dimTime := d.DimTime
 	if dimTime == nil || *dimTime == "" {
 		return false
@@ -750,4 +750,13 @@ func (d *Device) GetApp(iname string) *App {
 		}
 	}
 	return nil
+}
+
+// BrightnessUIScale returns the current brightness level (0-5) for the UI.
+func (d Device) BrightnessUIScale() int {
+	var customScale map[int]int
+	if d.CustomBrightnessScale != "" {
+		customScale = ParseCustomBrightnessScale(d.CustomBrightnessScale)
+	}
+	return d.Brightness.UIScale(customScale)
 }
