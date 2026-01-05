@@ -601,6 +601,16 @@ func (dt DeviceType) SupportsFirmware() bool {
 	}
 }
 
+func (dt DeviceType) SupportsOTA() bool {
+	switch dt {
+	// DevicePixoticker is intentionally omitted (not enough flash memory)
+	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+		return true
+	default:
+		return false
+	}
+}
+
 func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 	switch dt {
 	case DeviceTidbytGen1:
@@ -725,7 +735,7 @@ func (d *Device) GetEffectiveBrightness() int {
 }
 
 func (d *Device) OTACapable() bool {
-	if !d.Type.SupportsFirmware() {
+	if !d.Type.SupportsOTA() {
 		return false
 	}
 	v := d.Info.FirmwareVersion
