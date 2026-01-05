@@ -101,6 +101,18 @@ nav ul li a, nav ul li span, nav header .action { display: block; padding: 0.5re
   border: 1px solid var(--input-border); /* Add border for consistency */
   padding: 0.5em; /* Add some padding */
 }
+
+/* Reset styles for checkboxes and radio buttons */
+.content input[type="checkbox"],
+.content input[type="radio"] {
+  width: auto;
+  margin-bottom: 0;
+  padding: 0;
+  background: initial;
+  border: initial;
+  appearance: auto;
+  -webkit-appearance: auto;
+}
 .content button { /* Style generic buttons */
   background: var(--button-bg);
   color: var(--button-text);

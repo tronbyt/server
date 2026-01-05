@@ -15,6 +15,7 @@ import (
 // --- Enums & Value Types ---
 
 const minOTAFirmwareVersion = "v1.4.6"
+const minFirmwareFeaturesVersion = "v1.5.0"
 
 type ThemePreference string
 
@@ -392,11 +393,18 @@ func (l *DeviceLocation) Scan(value any) error {
 
 // DeviceInfo stores firmware and protocol details.
 type DeviceInfo struct {
-	FirmwareVersion string       `json:"firmware_version"`
-	FirmwareType    string       `json:"firmware_type"`
-	ProtocolVersion *int         `json:"protocol_version"`
-	MACAddress      string       `json:"mac_address"`
-	ProtocolType    ProtocolType `json:"protocol_type"`
+	FirmwareVersion    string       `json:"firmware_version"`
+	FirmwareType       string       `json:"firmware_type"`
+	ProtocolVersion    *int         `json:"protocol_version"`
+	MACAddress         string       `json:"mac_address"`
+	ProtocolType       ProtocolType `json:"protocol_type"`
+	SSID               string       `json:"ssid"`
+	WifiPowerSave      int          `json:"wifi_power_save"`
+	SkipDisplayVersion bool         `json:"skip_display_version"`
+	APMode             bool         `json:"ap_mode"`
+	PreferIPv6         bool         `json:"prefer_ipv6"`
+	SwapColors         bool         `json:"swap_colors"`
+	ImageURL           string       `json:"image_url"`
 }
 
 func (i DeviceInfo) Value() (driver.Value, error) {
@@ -750,6 +758,24 @@ func (d *Device) OTACapable() bool {
 	}
 
 	return semver.Compare(v, minOTAFirmwareVersion) >= 0
+}
+
+func (d *Device) SupportsFirmwareFeatures() bool {
+	if d.Info.ProtocolType != ProtocolWS {
+		return false
+	}
+	v := d.Info.FirmwareVersion
+	if v == "" {
+		return false
+	}
+	if v == "dev" {
+		return true
+	}
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+
+	return semver.Compare(v, minFirmwareFeaturesVersion) >= 0
 }
 
 // GetApp looks up an app by its iname (installation ID) in the device's Apps list.

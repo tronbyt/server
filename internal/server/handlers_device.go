@@ -854,3 +854,61 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 	slog.Info("New device imported successfully", "device_id", newDevice.ID, "username", user.Username)
 	s.flashAndRedirect(w, r, "New device imported successfully", "/", http.StatusSeeOther)
 }
+
+func (s *Server) handleRebootDevice(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	// Send reboot command as JSON
+	payload := map[string]bool{"reboot": true}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal reboot payload", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
+
+	localizer := s.getLocalizer(r)
+	msg := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Reboot command sent to device."})
+	s.flashAndRedirect(w, r, msg, fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+}
+
+func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+	payload := make(map[string]any)
+
+	// Boolean fields
+	boolFields := []string{"skip_display_version", "prefer_ipv6", "ap_mode", "swap_colors"}
+	for _, field := range boolFields {
+		if val := r.FormValue(field); val != "" {
+			payload[field] = val == "true"
+		}
+	}
+
+	// Integer fields
+	if val := r.FormValue("wifi_power_save"); val != "" {
+		if i, err := strconv.Atoi(val); err == nil {
+			payload["wifi_power_save"] = i
+		}
+	}
+
+	// String fields
+	if val := r.FormValue("image_url"); val != "" {
+		payload["image_url"] = val
+	}
+
+	if len(payload) == 0 {
+		http.Error(w, "No settings provided", http.StatusBadRequest)
+		return
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal firmware settings payload", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
+
+	w.WriteHeader(http.StatusOK)
+}

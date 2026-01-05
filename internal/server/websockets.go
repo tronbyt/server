@@ -26,10 +26,17 @@ type WSMessage struct {
 }
 
 type ClientInfo struct {
-	FirmwareVersion string `json:"firmware_version"`
-	FirmwareType    string `json:"firmware_type"`
-	ProtocolVersion *int   `json:"protocol_version"`
-	MACAddress      string `json:"mac"`
+	FirmwareVersion    string `json:"firmware_version"`
+	FirmwareType       string `json:"firmware_type"`
+	ProtocolVersion    *int   `json:"protocol_version"`
+	MACAddress         string `json:"mac"`
+	SSID               string `json:"ssid"`
+	WifiPowerSave      int    `json:"wifi_power_save"`
+	SkipDisplayVersion bool   `json:"skip_display_version"`
+	APMode             bool   `json:"ap_mode"`
+	PreferIPv6         bool   `json:"prefer_ipv6"`
+	SwapColors         bool   `json:"swap_colors"`
+	ImageURL           string `json:"image_url"`
 }
 
 type WSEvent struct {
@@ -37,6 +44,10 @@ type WSEvent struct {
 	DeviceID string `json:"device_id,omitempty"`
 	AppID    string `json:"app_id,omitempty"`
 	Payload  any    `json:"payload,omitempty"`
+}
+
+type DeviceCommandMessage struct {
+	Payload []byte
 }
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
@@ -68,6 +79,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	// Update protocol type if different from current
 	if device.Info.ProtocolType != data.ProtocolWS {
 		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
+		device.Info.ProtocolType = data.ProtocolWS
 		s.DB.Model(&data.Device{ID: device.ID}).Update("info", data.JSONMap{"protocol_type": data.ProtocolWS})
 	}
 	ch := s.Broadcaster.Subscribe(deviceID)
@@ -102,6 +114,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					device.Info.ProtocolVersion = msg.ClientInfo.ProtocolVersion
 				}
 				device.Info.MACAddress = msg.ClientInfo.MACAddress
+				device.Info.SSID = msg.ClientInfo.SSID
+				device.Info.WifiPowerSave = msg.ClientInfo.WifiPowerSave
+				device.Info.SkipDisplayVersion = msg.ClientInfo.SkipDisplayVersion
+				device.Info.APMode = msg.ClientInfo.APMode
+				device.Info.PreferIPv6 = msg.ClientInfo.PreferIPv6
+				device.Info.SwapColors = msg.ClientInfo.SwapColors
+				device.Info.ImageURL = msg.ClientInfo.ImageURL
 
 				if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
 					slog.Error("Failed to update device info", "error", err)
@@ -133,7 +152,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh)
 }
 
-func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
+func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}) {
 	var pendingImage []byte
 	device := *initialDevice
 	lastSentBrightness := -1
@@ -279,16 +298,42 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 				}
 				// If just Queued, we keep waiting for Displaying.
-			case data := <-broadcastCh:
+			case val := <-broadcastCh:
 				// Update available (Reload device first)
 				if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
 					slog.Error("Device gone", "id", initialDevice.ID)
 					return
 				}
 
-				if len(data) > 0 {
+				var isCommand bool
+				var isImage bool
+				var cmdPayload []byte
+				var imgData []byte
+
+				switch v := val.(type) {
+				case DeviceCommandMessage:
+					isCommand = true
+					cmdPayload = v.Payload
+				case []byte:
+					if len(v) > 0 {
+						isImage = true
+						imgData = v
+					}
+				}
+
+				if isCommand {
+					// It's a command, send it directly as JSON (TextMessage)
+					if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+						slog.Error("Failed to write command to WS", "error", err)
+						return
+					}
+					// Don't interrupt the current app for settings changes, unless it's a reboot (which the device handles)
+					continue
+				}
+
+				if isImage {
 					// Pushed Image: Interrupt and send
-					pendingImage = data
+					pendingImage = imgData
 					interrupted = true
 					waiting = false
 					sendImmediate = true
@@ -365,7 +410,12 @@ func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-done:
 			return
-		case data := <-ch:
+		case val := <-ch:
+			var data []byte
+			if b, ok := val.([]byte); ok {
+				data = b
+			}
+
 			// Forward the event data (JSON) to the client
 			if len(data) == 0 {
 				// Fallback for legacy calls sending nil: trigger generic refresh

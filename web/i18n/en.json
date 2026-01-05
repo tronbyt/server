@@ -1558,5 +1558,56 @@
   },
   "User repository refreshed successfully.": {
     "other": "User repository refreshed successfully."
+  },
+  "Firmware Features": {
+    "other": "Firmware Features"
+  },
+  "MAC Address": {
+    "other": "MAC Address"
+  },
+  "WiFi SSID": {
+    "other": "WiFi SSID"
+  },
+  "WiFi SSID:": {
+    "other": "WiFi SSID:"
+  },
+  "Sync current Image URL to device via WebSocket": {
+    "other": "Sync current Image URL to device via WebSocket"
+  },
+  "Swap Colors": {
+    "other": "Swap Colors"
+  },
+  "WiFi Power Save": {
+    "other": "WiFi Power Save"
+  },
+  "Minimum": {
+    "other": "Minimum"
+  },
+  "Maximum": {
+    "other": "Maximum"
+  },
+  "Skip Display Version": {
+    "other": "Skip Display Version"
+  },
+  "Prefer IPv6": {
+    "other": "Prefer IPv6"
+  },
+  "AP Mode (Hotspot)": {
+    "other": "AP Mode (Hotspot)"
+  },
+  "Reboot Device": {
+    "other": "Reboot Device"
+  },
+  "Are you sure you want to reboot the device?": {
+    "other": "Are you sure you want to reboot the device?"
+  },
+  "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device.": {
+    "other": "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device."
+  },
+  "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device.": {
+    "other": "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device."
+  },
+  "Reboot command sent to device.": {
+    "other": "Reboot command sent to device."
   }
 }
