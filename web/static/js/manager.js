@@ -269,8 +269,15 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     });
 }
 
-// AJAX function to toggle pin status
+// AJAX function to toggle pin status with partial UI update (no full refresh)
 function togglePin(deviceId, iname) {
+  // First, determine current state from UI before making the call
+  const compactCard = document.getElementById(`app-card-${iname}`);
+  const fullCard = document.getElementById(`app-card-full-${iname}`);
+  const currentBtn = compactCard?.querySelector('.btn-pin');
+  const wasPinned = currentBtn ? currentBtn.classList.contains('is-pinned') : false;
+  const willBePinned = !wasPinned;
+
   fetch(`/devices/${deviceId}/${iname}/toggle_pin`, {
     method: 'POST',
     headers: {
@@ -281,20 +288,89 @@ function togglePin(deviceId, iname) {
       if (!response.ok) {
         console.error('Failed to toggle pin');
         alert('Failed to toggle pin. Please try again.');
-      } else {
-        console.log('Pin toggled successfully');
-        // Refresh the apps list for this device
-        refreshDeviceCard(deviceId);
+        throw new Error('Failed to toggle pin');
       }
+
+      // Update compact view
+      if (compactCard) {
+        // Update pin button
+        const pinBtn = compactCard.querySelector('.btn-pin');
+        if (pinBtn) {
+          pinBtn.classList.toggle('is-pinned', willBePinned);
+          pinBtn.setAttribute('aria-label', willBePinned ? 'Unpin' : 'Pin');
+        }
+
+        // Update status badge to show PINNED
+        const statusArea = compactCard.querySelector('.compact-status');
+        if (statusArea) {
+          const currentBadge = statusArea.querySelector('.badge');
+          if (willBePinned) {
+            if (currentBadge) {
+              currentBadge.className = 'badge black';
+              currentBadge.textContent = 'PINNED';
+            }
+          } else {
+            // Restore to ENABLED/DISABLED based on play button state
+            const playBtn = compactCard.querySelector('.btn-play');
+            const isEnabled = playBtn?.classList.contains('is-enabled');
+            if (currentBadge) {
+              currentBadge.className = isEnabled ? 'badge is-enabled' : 'badge gray';
+              currentBadge.textContent = isEnabled ? 'ENABLED' : 'DISABLED';
+            }
+          }
+        }
+      }
+
+      // Update full view
+      if (fullCard) {
+        // Update pin button
+        const pinBtn = fullCard.querySelector('.btn-action-sm.btn-pin');
+        if (pinBtn) {
+          pinBtn.classList.toggle('is-pinned', willBePinned);
+          const label = pinBtn.querySelector('span');
+          if (label) {
+            label.textContent = willBePinned ? 'Unpin' : 'Pin';
+          }
+        }
+
+        // Update header badge
+        const headerBadges = fullCard.querySelector('.card-header .flex.items-center.gap-3');
+        if (headerBadges) {
+          let pinnedBadge = headerBadges.querySelector('.badge.black');
+          if (willBePinned && !pinnedBadge) {
+            // Add PINNED badge
+            const badge = document.createElement('div');
+            badge.className = 'badge black';
+            badge.textContent = 'PINNED';
+            headerBadges.appendChild(badge);
+          } else if (!willBePinned && pinnedBadge && pinnedBadge.textContent === 'PINNED') {
+            // Remove PINNED badge (but keep AUTOPIN if present)
+            pinnedBadge.remove();
+          }
+        }
+      }
+
+      // Re-initialize Lucide icons
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      }
+
+      console.log('Pin status toggled successfully to:', willBePinned);
     })
     .catch((error) => {
       console.error('Unexpected error:', error);
-      alert('An error occurred while toggling pin. Please try again.');
     });
 }
 
-// AJAX function to toggle enabled status
+// AJAX function to toggle enabled status with partial UI update (no full refresh)
 function toggleEnabled(deviceId, iname) {
+  // First, determine current state from UI before making the call
+  const compactCard = document.getElementById(`app-card-${iname}`);
+  const fullCard = document.getElementById(`app-card-full-${iname}`);
+  const currentBtn = compactCard?.querySelector('.btn-play');
+  const wasEnabled = currentBtn ? currentBtn.classList.contains('is-enabled') : false;
+  const willBeEnabled = !wasEnabled;
+
   fetch(`/devices/${deviceId}/${iname}/toggle_enabled`, {
     method: 'POST',
     headers: {
@@ -305,15 +381,73 @@ function toggleEnabled(deviceId, iname) {
       if (!response.ok) {
         console.error('Failed to toggle enabled status');
         alert('Failed to toggle enabled status. Please try again.');
-      } else {
-        console.log('Enabled status toggled successfully');
-        // Refresh the apps list for this device
-        refreshDeviceCard(deviceId);
+        throw new Error('Failed to toggle enabled status');
       }
+
+      // Update compact view
+      if (compactCard) {
+        // Update status badge (only if not pinned)
+        const statusBadge = compactCard.querySelector('.compact-status .badge');
+        if (statusBadge && !statusBadge.classList.contains('black')) {
+          statusBadge.classList.toggle('is-enabled', willBeEnabled);
+          statusBadge.classList.toggle('gray', !willBeEnabled);
+          statusBadge.textContent = willBeEnabled ? 'ENABLED' : 'DISABLED';
+        }
+
+        // Update play/pause button
+        const playBtn = compactCard.querySelector('.btn-play');
+        if (playBtn) {
+          playBtn.classList.toggle('is-enabled', willBeEnabled);
+          // Update icon
+          const playIcon = playBtn.querySelector('[data-lucide="play"]');
+          const pauseIcon = playBtn.querySelector('[data-lucide="pause"]');
+          if (playIcon && pauseIcon) {
+            playIcon.style.display = willBeEnabled ? 'none' : '';
+            pauseIcon.style.display = willBeEnabled ? '' : 'none';
+          }
+          // Update aria-label
+          playBtn.setAttribute('aria-label', willBeEnabled ? 'Disable' : 'Enable');
+        }
+      }
+
+      // Update full view
+      if (fullCard) {
+        // Update status display in header
+        const statusDisplay = fullCard.querySelector('.status-display');
+        if (statusDisplay) {
+          statusDisplay.classList.toggle('is-enabled', willBeEnabled);
+          const statusText = statusDisplay.querySelector('span');
+          if (statusText) {
+            statusText.textContent = willBeEnabled ? 'ENABLED' : 'DISABLED';
+          }
+        }
+
+        // Update large play button
+        const playBtnLg = fullCard.querySelector('.btn-action-lg.btn-play');
+        if (playBtnLg) {
+          playBtnLg.classList.toggle('is-enabled', willBeEnabled);
+          const playIcon = playBtnLg.querySelector('[data-lucide="play"]');
+          const pauseIcon = playBtnLg.querySelector('[data-lucide="pause"]');
+          if (playIcon && pauseIcon) {
+            playIcon.style.display = willBeEnabled ? 'none' : '';
+            pauseIcon.style.display = willBeEnabled ? '' : 'none';
+          }
+          const label = playBtnLg.querySelector('span');
+          if (label) {
+            label.textContent = willBeEnabled ? 'Disable' : 'Enable';
+          }
+        }
+      }
+
+      // Re-initialize Lucide icons in case new icons were added
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      }
+
+      console.log('Enabled status toggled successfully to:', willBeEnabled);
     })
     .catch((error) => {
       console.error('Unexpected error:', error);
-      alert('An error occurred while toggling enabled status. Please try again.');
     });
 }
 

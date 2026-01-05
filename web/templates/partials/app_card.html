@@ -6,7 +6,7 @@
      ============================================ -->
 
 <!-- COMPACT VIEW (Default) -->
-<div class="card-container hover-bg compact-view"
+<div class="card-container hover-bg compact-view app-card"
      id="app-card-{{ .App.Iname }}"
      draggable="true"
      data-iname="{{ .App.Iname }}"
@@ -117,8 +117,9 @@
 </div>
 
 <!-- FULL VIEW (Expanded - Hidden by default) -->
-<div class="card-container full-view hidden"
+<div class="card-container full-view hidden app-card"
      id="app-card-full-{{ .App.Iname }}"
+     draggable="true"
      data-iname="{{ .App.Iname }}"
      data-expanded="true">
 

@@ -214,7 +214,7 @@
     display: flex !important;
     border-left: 1px solid var(--neutral-200) !important;
     flex-shrink: 0 !important;
-    align-items: center !important;  /* Center items vertically */
+    align-items: stretch !important;  /* Stretch buttons to fill height */
 }
 
 [data-theme="dark"] .compact-actions {
@@ -241,16 +241,20 @@
 }
 
 .thumb-box.compact {
-    width: 5rem !important;
-    height: 5rem !important;
+    width: 6rem !important;
+    min-height: 3rem !important;  /* 2:1 aspect ratio at minimum */
+    height: auto !important;
 }
 
 .thumb-box .thumb-image {
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
+    aspect-ratio: 2 / 1 !important;
     object-fit: contain !important;
     display: block !important;
     image-rendering: pixelated !important;
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: crisp-edges !important;
 }
 
 .thumb-overlay {
@@ -408,9 +412,12 @@
 .led-panel .preview-image {
     width: 100% !important;
     height: auto !important;
+    aspect-ratio: 2 / 1 !important;
     object-fit: contain !important;
     display: block !important;
     image-rendering: pixelated !important;
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: crisp-edges !important;
 }
 
 /* ===========================================
@@ -504,8 +511,8 @@ button.btn-action-lg {
 }
 
 [data-theme="dark"] .btn-action-lg.btn-play.is-enabled:hover {
-    background-color: var(--orange-500) !important;
-    border-color: var(--orange-500) !important;
+    background-color: #c2410c !important;  /* Darker orange on hover */
+    border-color: #c2410c !important;
 }
 
 .btn-action-lg.btn-play.is-enabled svg,
@@ -568,12 +575,10 @@ button.btn-action-lg {
 
 /* ===========================================
    Toolbar Buttons (Compact View)
+   Matches design examples: padding: 0.75rem without fixed dimensions
    =========================================== */
 .btn-tool {
-    width: 48px !important;
-    height: 48px !important;
-    min-width: 48px !important;
-    padding: 0 !important;
+    padding: 0.75rem !important;
     border: none !important;
     border-right: 1px solid var(--neutral-200) !important;
     color: var(--neutral-700) !important;
@@ -585,6 +590,7 @@ button.btn-action-lg {
     text-decoration: none !important;
     font-family: var(--font-mono) !important;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    min-height: 100% !important;  /* Fill parent height */
 }
 
 .btn-tool i,
@@ -593,7 +599,8 @@ button.btn-action-lg {
     height: 16px !important;
     font-size: 16px !important;
     display: block !important;
-    margin: 0 !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;  /* Reset any margins */
 }
 
 .btn-tool:hover {
@@ -637,7 +644,7 @@ button.btn-action-lg {
 }
 
 [data-theme="dark"] .btn-tool.btn-play.is-enabled:hover {
-    background-color: var(--orange-500) !important;
+    background-color: #c2410c !important;  /* Even darker orange on hover */
 }
 
 .btn-tool.btn-pin.is-pinned {
@@ -656,6 +663,15 @@ button.btn-action-lg {
 
 .btn-tool.btn-trash:hover i {
     color: var(--red-600) !important;
+}
+
+[data-theme="dark"] .btn-tool.btn-trash:hover {
+    background-color: var(--red-600) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-tool.btn-trash:hover i {
+    color: #ffffff !important;
 }
 
 /* ===========================================
@@ -682,6 +698,21 @@ button.btn-action-lg {
     border-color: var(--red-600) !important;
 }
 
+[data-theme="dark"] .btn-delete {
+    border-color: var(--red-600) !important;
+    color: var(--red-500) !important;
+}
+
+[data-theme="dark"] .btn-delete:hover {
+    background-color: var(--red-600) !important;
+    border-color: var(--red-600) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-delete:hover i {
+    color: #ffffff !important;
+}
+
 /* ===========================================
    Dropdown Menu
    =========================================== */
@@ -689,13 +720,14 @@ button.btn-action-lg {
     position: absolute !important;
     top: 100% !important;
     left: 0 !important;
-    right: 0 !important;
+    right: auto !important;
     margin-top: 0.25rem !important;
     background-color: var(--white) !important;
     border: 1px solid var(--neutral-900) !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-    z-index: 50 !important;
+    z-index: 1000 !important;  /* Higher z-index to ensure visibility */
     min-width: 180px !important;
+    max-width: 250px !important;
 }
 
 .dropdown-item {
@@ -717,6 +749,22 @@ button.btn-action-lg {
 
 .dropdown-item:last-child {
     border-bottom: none !important;
+}
+
+[data-theme="dark"] .dropdown-menu {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-primary) !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .dropdown-item {
+    color: var(--text-secondary) !important;
+    border-bottom-color: var(--border-secondary) !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
 }
 
 /* ===========================================
