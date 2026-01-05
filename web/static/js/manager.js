@@ -5,6 +5,11 @@ let hideInstalled = false;
 let showBroken = false;
 let isProcessing = false;
 
+// Global variables for drag-and-drop
+let draggedElement = null;
+let draggedDeviceId = null;
+let draggedIname = null;
+
 // Debounce function
 function debounce(func, wait) {
   let timeout;
@@ -157,34 +162,25 @@ function pollImageWithEtag(deviceId) {
 
 // AJAX function to move apps without page reload
 function moveApp(deviceId, iname, direction) {
-  const formData = new URLSearchParams();
-  formData.append('direction', direction);
-
-  fetch(`/devices/${deviceId}/${iname}/moveapp?direction=${direction}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: formData.toString()
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to move app');
-        alert('Failed to move app. Please try again.');
-      } else {
-        console.log('App moved successfully');
-        // Refresh the apps list for this device and highlight the moved app
-        refreshDeviceCard(deviceId, iname);
-      }
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-      alert('An error occurred while moving the app. Please try again.');
-    });
+  console.log('moveApp called:', deviceId, iname, direction);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${deviceId}/${iname}/moveapp?direction=${direction}`;
+  
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'direction';
+  input.value = direction;
+  form.appendChild(input);
+  
+  document.body.appendChild(form);
+  form.submit();
 }
 
 // Function to refresh the entire device card
 function refreshDeviceCard(deviceId, movedAppIname = null) {
+  console.log('refreshDeviceCard called for device:', deviceId);
+
   // Get the current device card container
   const deviceCard = document.getElementById(`device-card-${deviceId}`);
   if (!deviceCard) {
@@ -200,21 +196,35 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
       expandedApps.push(iname);
     }
   });
+  console.log('Expanded apps before refresh:', expandedApps);
 
-  // Fetch the updated device card content
-  fetch(`/?device_id=${deviceId}&partial=device_card`)
-    .then(response => response.text())
+  // Fetch the updated device card content with cache-busting
+  fetch(`/?device_id=${deviceId}&partial=device_card&_t=${Date.now()}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  })
+    .then(response => {
+      console.log('Fetch response status:', response.status);
+      return response.text();
+    })
     .then(html => {
+      console.log('Received HTML length:', html.length);
+
       // Create a temporary DOM element to parse the response
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
       // Find the updated device card for this device
       const updatedDeviceCard = doc.getElementById(`device-card-${deviceId}`);
+      console.log('Found updated device card:', !!updatedDeviceCard);
 
       if (updatedDeviceCard) {
         // Replace the current device card with the updated one
         deviceCard.replaceWith(updatedDeviceCard);
+        console.log('Device card replaced successfully');
 
         // Restore the view state (list/grid/collapsed)
         restoreDevicePreferences(deviceId);
@@ -223,10 +233,12 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
         initializeDragAndDrop();
         initializeDeviceInfoToggles();
         pollImageWithEtag(deviceId);
+        console.log('UI components reinitialized');
 
         // Re-initialize Lucide icons after DOM replacement
         if (window.lucide && typeof lucide.createIcons === 'function') {
           lucide.createIcons();
+          console.log('Lucide icons reinitialized');
         }
 
         // Restore expanded app cards
@@ -260,7 +272,12 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
             });
           }
         }
+      } else {
+        console.error('Updated device card not found in response HTML');
+        // Fallback: reload the page
+        window.location.reload();
       }
+
     })
     .catch(error => {
       console.error('Error refreshing device card:', error);
@@ -269,210 +286,34 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     });
 }
 
-// AJAX function to toggle pin status with partial UI update (no full refresh)
+// Simple form-based toggle for pin status
 function togglePin(deviceId, iname) {
-  // First, determine current state from UI before making the call
-  const compactCard = document.getElementById(`app-card-${iname}`);
-  const fullCard = document.getElementById(`app-card-full-${iname}`);
-  const currentBtn = compactCard?.querySelector('.btn-pin');
-  const wasPinned = currentBtn ? currentBtn.classList.contains('is-pinned') : false;
-  const willBePinned = !wasPinned;
-
-  fetch(`/devices/${deviceId}/${iname}/toggle_pin`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to toggle pin');
-        alert('Failed to toggle pin. Please try again.');
-        throw new Error('Failed to toggle pin');
-      }
-
-      // Update compact view
-      if (compactCard) {
-        // Update pin button
-        const pinBtn = compactCard.querySelector('.btn-pin');
-        if (pinBtn) {
-          pinBtn.classList.toggle('is-pinned', willBePinned);
-          pinBtn.setAttribute('aria-label', willBePinned ? 'Unpin' : 'Pin');
-        }
-
-        // Update status badge to show PINNED
-        const statusArea = compactCard.querySelector('.compact-status');
-        if (statusArea) {
-          const currentBadge = statusArea.querySelector('.badge');
-          if (willBePinned) {
-            if (currentBadge) {
-              currentBadge.className = 'badge black';
-              currentBadge.textContent = 'PINNED';
-            }
-          } else {
-            // Restore to ENABLED/DISABLED based on play button state
-            const playBtn = compactCard.querySelector('.btn-play');
-            const isEnabled = playBtn?.classList.contains('is-enabled');
-            if (currentBadge) {
-              currentBadge.className = isEnabled ? 'badge is-enabled' : 'badge gray';
-              currentBadge.textContent = isEnabled ? 'ENABLED' : 'DISABLED';
-            }
-          }
-        }
-      }
-
-      // Update full view
-      if (fullCard) {
-        // Update pin button
-        const pinBtn = fullCard.querySelector('.btn-action-sm.btn-pin');
-        if (pinBtn) {
-          pinBtn.classList.toggle('is-pinned', willBePinned);
-          const label = pinBtn.querySelector('span');
-          if (label) {
-            label.textContent = willBePinned ? 'Unpin' : 'Pin';
-          }
-        }
-
-        // Update header badge
-        const headerBadges = fullCard.querySelector('.card-header .flex.items-center.gap-3');
-        if (headerBadges) {
-          let pinnedBadge = headerBadges.querySelector('.badge.black');
-          if (willBePinned && !pinnedBadge) {
-            // Add PINNED badge
-            const badge = document.createElement('div');
-            badge.className = 'badge black';
-            badge.textContent = 'PINNED';
-            headerBadges.appendChild(badge);
-          } else if (!willBePinned && pinnedBadge && pinnedBadge.textContent === 'PINNED') {
-            // Remove PINNED badge (but keep AUTOPIN if present)
-            pinnedBadge.remove();
-          }
-        }
-      }
-
-      // Re-initialize Lucide icons
-      if (window.lucide && typeof lucide.createIcons === 'function') {
-        lucide.createIcons();
-      }
-
-      console.log('Pin status toggled successfully to:', willBePinned);
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-    });
+  console.log('togglePin called:', deviceId, iname);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${deviceId}/${iname}/toggle_pin`;
+  document.body.appendChild(form);
+  form.submit();
 }
 
-// AJAX function to toggle enabled status with partial UI update (no full refresh)
+// Simple form-based toggle for enabled status
 function toggleEnabled(deviceId, iname) {
-  // First, determine current state from UI before making the call
-  const compactCard = document.getElementById(`app-card-${iname}`);
-  const fullCard = document.getElementById(`app-card-full-${iname}`);
-  const currentBtn = compactCard?.querySelector('.btn-play');
-  const wasEnabled = currentBtn ? currentBtn.classList.contains('is-enabled') : false;
-  const willBeEnabled = !wasEnabled;
-
-  fetch(`/devices/${deviceId}/${iname}/toggle_enabled`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to toggle enabled status');
-        alert('Failed to toggle enabled status. Please try again.');
-        throw new Error('Failed to toggle enabled status');
-      }
-
-      // Update compact view
-      if (compactCard) {
-        // Update status badge (only if not pinned)
-        const statusBadge = compactCard.querySelector('.compact-status .badge');
-        if (statusBadge && !statusBadge.classList.contains('black')) {
-          statusBadge.classList.toggle('is-enabled', willBeEnabled);
-          statusBadge.classList.toggle('gray', !willBeEnabled);
-          statusBadge.textContent = willBeEnabled ? 'ENABLED' : 'DISABLED';
-        }
-
-        // Update play/pause button
-        const playBtn = compactCard.querySelector('.btn-play');
-        if (playBtn) {
-          playBtn.classList.toggle('is-enabled', willBeEnabled);
-          // Update icon
-          const playIcon = playBtn.querySelector('[data-lucide="play"]');
-          const pauseIcon = playBtn.querySelector('[data-lucide="pause"]');
-          if (playIcon && pauseIcon) {
-            playIcon.style.display = willBeEnabled ? 'none' : '';
-            pauseIcon.style.display = willBeEnabled ? '' : 'none';
-          }
-          // Update aria-label
-          playBtn.setAttribute('aria-label', willBeEnabled ? 'Disable' : 'Enable');
-        }
-      }
-
-      // Update full view
-      if (fullCard) {
-        // Update status display in header
-        const statusDisplay = fullCard.querySelector('.status-display');
-        if (statusDisplay) {
-          statusDisplay.classList.toggle('is-enabled', willBeEnabled);
-          const statusText = statusDisplay.querySelector('span');
-          if (statusText) {
-            statusText.textContent = willBeEnabled ? 'ENABLED' : 'DISABLED';
-          }
-        }
-
-        // Update large play button
-        const playBtnLg = fullCard.querySelector('.btn-action-lg.btn-play');
-        if (playBtnLg) {
-          playBtnLg.classList.toggle('is-enabled', willBeEnabled);
-          const playIcon = playBtnLg.querySelector('[data-lucide="play"]');
-          const pauseIcon = playBtnLg.querySelector('[data-lucide="pause"]');
-          if (playIcon && pauseIcon) {
-            playIcon.style.display = willBeEnabled ? 'none' : '';
-            pauseIcon.style.display = willBeEnabled ? '' : 'none';
-          }
-          const label = playBtnLg.querySelector('span');
-          if (label) {
-            label.textContent = willBeEnabled ? 'Disable' : 'Enable';
-          }
-        }
-      }
-
-      // Re-initialize Lucide icons in case new icons were added
-      if (window.lucide && typeof lucide.createIcons === 'function') {
-        lucide.createIcons();
-      }
-
-      console.log('Enabled status toggled successfully to:', willBeEnabled);
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-    });
+  console.log('toggleEnabled called:', deviceId, iname);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${deviceId}/${iname}/toggle_enabled`;
+  document.body.appendChild(form);
+  form.submit();
 }
 
-// AJAX function to duplicate an app
+// Simple form-based duplicate for an app
 function duplicateApp(deviceId, iname) {
-  fetch(`/devices/${deviceId}/${iname}/duplicate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to duplicate app');
-        alert('Failed to duplicate app. Please try again.');
-      } else {
-        console.log('App duplicated successfully');
-        // Refresh the apps list for this device
-        refreshDeviceCard(deviceId);
-      }
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-      alert('An error occurred while duplicating the app. Please try again.');
-    });
+  console.log('duplicateApp called:', deviceId, iname);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${deviceId}/${iname}/duplicate`;
+  document.body.appendChild(form);
+  form.submit();
 }
 
 // AJAX function to delete an app
@@ -480,30 +321,12 @@ function deleteApp(deviceId, iname, redirectAfterDelete = false, confirmMessage 
   if (!confirm(confirmMessage || 'Delete App?')) {
     return;
   }
-
-  fetch(`/devices/${deviceId}/${iname}/delete`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    }
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to delete app');
-        alert('Failed to delete app. Please try again.');
-      } else {
-        console.log('App deleted successfully');
-        if (redirectAfterDelete) {
-          window.location.href = "/";
-        } else {
-          refreshDeviceCard(deviceId);
-        }
-      }
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-      alert('An error occurred while deleting the app. Please try again.');
-    });
+  console.log('deleteApp called:', deviceId, iname);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${deviceId}/${iname}/delete`;
+  document.body.appendChild(form);
+  form.submit();
 }
 
 function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname, insertAfter) {
@@ -514,33 +337,26 @@ function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname
     return;
   }
 
-  const formData = new URLSearchParams();
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${targetDeviceId}/apps/duplicate_from/${sourceDeviceId}/${iname}`;
+  
   if (targetIname) {
-    formData.append('target_iname', targetIname);
+    const input1 = document.createElement('input');
+    input1.type = 'hidden';
+    input1.name = 'target_iname';
+    input1.value = targetIname;
+    form.appendChild(input1);
   }
-  formData.append('insert_after', insertAfter ? 'true' : 'false');
-
-  fetch(`/devices/${targetDeviceId}/apps/duplicate_from/${sourceDeviceId}/${iname}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: formData.toString()
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to duplicate app to device');
-        alert('Failed to duplicate app to device. Please try again.');
-      } else {
-        console.log('App duplicated successfully to new device');
-        // Refresh the apps list for the TARGET device
-        refreshDeviceCard(targetDeviceId);
-      }
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-      alert('An error occurred while duplicating the app. Please try again.');
-    });
+  
+  const input2 = document.createElement('input');
+  input2.type = 'hidden';
+  input2.name = 'insert_after';
+  input2.value = insertAfter ? 'true' : 'false';
+  form.appendChild(input2);
+  
+  document.body.appendChild(form);
+  form.submit();
 }
 
 // AJAX function to preview an app
@@ -1083,6 +899,7 @@ function setupVirtualScrolling() {
 function initializeDragAndDrop() {
   // Find all app cards and make them draggable
   const appCards = document.querySelectorAll('.app-card');
+  console.log('initializeDragAndDrop: Found', appCards.length, 'app cards');
   appCards.forEach(card => {
     setupDragAndDrop(card);
   });
@@ -1433,32 +1250,30 @@ function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
     return;
   }
 
-  const formData = new URLSearchParams();
-  formData.append('dragged_iname', draggedIname);
-  formData.append('target_iname', targetIname);
-  formData.append('insert_after', insertAfter ? 'true' : 'false');
-
-  fetch(`/devices/${deviceId}/reorder_apps`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: formData.toString()
-  })
-    .then(response => {
-      if (!response.ok) {
-        console.error('Failed to reorder apps');
-        alert('Failed to reorder apps. Please try again.');
-      } else {
-        console.log('Apps reordered successfully');
-        // Refresh the apps list for this device and highlight the moved app
-        refreshDeviceCard(deviceId, draggedIname);
-      }
-    })
-    .catch((error) => {
-      console.error('Unexpected error:', error);
-      alert('An error occurred while reordering apps. Please try again.');
-    });
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/devices/${deviceId}/reorder_apps`;
+  
+  const input1 = document.createElement('input');
+  input1.type = 'hidden';
+  input1.name = 'dragged_iname';
+  input1.value = draggedIname;
+  form.appendChild(input1);
+  
+  const input2 = document.createElement('input');
+  input2.type = 'hidden';
+  input2.name = 'target_iname';
+  input2.value = targetIname;
+  form.appendChild(input2);
+  
+  const input3 = document.createElement('input');
+  input3.type = 'hidden';
+  input3.name = 'insert_after';
+  input3.value = insertAfter ? 'true' : 'false';
+  form.appendChild(input3);
+  
+  document.body.appendChild(form);
+  form.submit();
 }
 
 

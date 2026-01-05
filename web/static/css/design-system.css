@@ -225,24 +225,26 @@
    Thumb Box (Preview)
    =========================================== */
 .thumb-box {
-    background-color: var(--neutral-900) !important;
-    border-right: 1px solid var(--neutral-200) !important;
+    background-color: #000000 !important;
+    border: 1px solid var(--neutral-300) !important;
+    border-radius: 0.25rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-shrink: 0 !important;
-    padding: 0.5rem !important;
+    padding: 0.25rem !important;
     position: relative !important;
+    overflow: hidden !important;
 }
 
 [data-theme="dark"] .thumb-box {
-    background-color: var(--black) !important;
-    border-right-color: var(--neutral-300) !important;
+    background-color: #000000 !important;
+    border-color: var(--neutral-600) !important;
 }
 
 .thumb-box.compact {
-    width: 6rem !important;
-    min-height: 3rem !important;  /* 2:1 aspect ratio at minimum */
+    width: 5rem !important;
+    min-height: 2.5rem !important;
     height: auto !important;
 }
 
@@ -252,9 +254,17 @@
     aspect-ratio: 2 / 1 !important;
     object-fit: contain !important;
     display: block !important;
+    background: #000000 !important;
     image-rendering: pixelated !important;
     image-rendering: -moz-crisp-edges !important;
     image-rendering: crisp-edges !important;
+    /* LED dot mask effect - same as Currently Displaying App */
+    -webkit-mask-image: url('/dots') !important;
+    -webkit-mask-repeat: no-repeat !important;
+    -webkit-mask-size: contain !important;
+    mask-image: url('/dots') !important;
+    mask-repeat: no-repeat !important;
+    mask-size: contain !important;
 }
 
 .thumb-overlay {
@@ -415,9 +425,17 @@
     aspect-ratio: 2 / 1 !important;
     object-fit: contain !important;
     display: block !important;
+    background: #000000 !important;
     image-rendering: pixelated !important;
     image-rendering: -moz-crisp-edges !important;
     image-rendering: crisp-edges !important;
+    /* LED dot mask effect - same as Currently Displaying App */
+    -webkit-mask-image: url('/dots') !important;
+    -webkit-mask-repeat: no-repeat !important;
+    -webkit-mask-size: contain !important;
+    mask-image: url('/dots') !important;
+    mask-repeat: no-repeat !important;
+    mask-size: contain !important;
 }
 
 /* ===========================================
