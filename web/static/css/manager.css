@@ -277,7 +277,13 @@ button.action.w3-button.w3-red {
   color: white;
 }
 
-/* App Card Layout Styles */
+/* ============================================
+   OLD DESIGN - App Card Layout Styles
+   ⚠️  DEPRECATED - Will be replaced with design-system.css
+   TODO: Remove after migrating to app_card_new.html
+   ============================================ */
+
+/* DISABLED - Conflicts with new design system
 .app-card {
   margin-bottom: 15px;
   border-radius: 8px;
@@ -290,6 +296,7 @@ button.action.w3-button.w3-red {
   gap: 20px;
   min-height: 150px;
 }
+*/
 
 .app-preview {
   flex: 0 0 256px;

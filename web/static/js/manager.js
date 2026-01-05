@@ -192,6 +192,15 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     return;
   }
 
+  // Track which app cards are currently expanded (before DOM replacement)
+  const expandedApps = [];
+  deviceCard.querySelectorAll('.full-view:not(.hidden)').forEach(fullView => {
+    const iname = fullView.dataset.iname;
+    if (iname) {
+      expandedApps.push(iname);
+    }
+  });
+
   // Fetch the updated device card content
   fetch(`/?device_id=${deviceId}&partial=device_card`)
     .then(response => response.text())
@@ -214,6 +223,22 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
         initializeDragAndDrop();
         initializeDeviceInfoToggles();
         pollImageWithEtag(deviceId);
+
+        // Re-initialize Lucide icons after DOM replacement
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+          lucide.createIcons();
+        }
+
+        // Restore expanded app cards
+        expandedApps.forEach(iname => {
+          const compactCard = document.getElementById(`app-card-${iname}`);
+          const fullCard = document.getElementById(`app-card-full-${iname}`);
+          if (compactCard && fullCard) {
+            compactCard.classList.add('hidden');
+            compactCard.dataset.expanded = 'true';
+            fullCard.classList.remove('hidden');
+          }
+        });
 
         // If an app was moved, highlight it with visual feedback
         if (movedAppIname) {

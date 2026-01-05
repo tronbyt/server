@@ -1,6 +1,7 @@
 {{ define "base" }}<!DOCTYPE html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ block "title" . }}{{ end }} - {{ t .Localizer "Tronbyt Manager" }}</title>
     <script>
     // Inline script to set initial theme and prevent FOUC
     (function () {
@@ -18,17 +19,22 @@
       // The full theme.js script will later synchronize the select dropdown and localStorage if needed.
     })();
     </script>
+    <link rel="icon" href="/static/favicon.ico">
+    <!-- OLD CSS - Load first -->
+    <link rel="stylesheet" href="/static/css/w3.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/partials.css">
+    <link rel="stylesheet" href="/static/css/manager.css">
+    <!-- NEW DESIGN SYSTEM - Load last to take precedence -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
+    <!-- Lucide Icons (bundled locally for reliability) -->
+    <script src="/static/js/lucide.min.js"></script>
+    <link rel="stylesheet" href="/static/css/fontawesome.min.css">
+    <link rel="stylesheet" href="/static/css/brands.min.css">
+    <link rel="stylesheet" href="/static/css/solid.min.css">
 </head>
-<title>{{ block "title" . }}{{ end }} - {{ t .Localizer "Tronbyt Manager" }}</title>
-<link rel="icon" href="/static/favicon.ico">
-<link rel="stylesheet" href="/static/css/w3.css">
-<link rel="stylesheet" href="/static/css/style.css">
-<link rel="stylesheet" href="/static/css/base.css">
-<link rel="stylesheet" href="/static/css/common.css">
-<link rel="stylesheet" href="/static/css/partials.css">
-<link rel="stylesheet" href="/static/css/fontawesome.min.css">
-<link rel="stylesheet" href="/static/css/brands.min.css">
-<link rel="stylesheet" href="/static/css/solid.min.css">
 <nav>
     <button class="hamburger" id="hamburgerButton">
         <span>&nbsp;</span>
@@ -267,6 +273,8 @@
     });
   });
 </script>
+<!-- NEW DESIGN SYSTEM - App card expand/collapse functionality -->
+<script src="/static/js/app-card.js"></script>
 <script src="/static/js/manager.js" defer></script>
 <script src="/static/js/theme.js" defer></script>
 {{ end }}

@@ -27,3 +27,4 @@ messages.pot
 .terraform.lock.hcl
 
 CLAUDE.md
+/tmp/*

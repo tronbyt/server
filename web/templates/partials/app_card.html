@@ -1,126 +1,274 @@
 {{ define "app_card" }}
-<!-- App Card Component -->
-<div class="w3-card-4 w3-padding app-card"
+<!-- ============================================
+     NEW DESIGN SYSTEM - App Card Component
+     COMPACT VIEW (Default) & FULL VIEW (Expanded)
+     Uses Lucide Icons via data-lucide attribute
+     ============================================ -->
+
+<!-- COMPACT VIEW (Default) -->
+<div class="card-container hover-bg compact-view"
+     id="app-card-{{ .App.Iname }}"
      draggable="true"
-     data-iname="{{ .App.Iname }}">
-    <div class="app-card-content">
-        <!-- Left: Preview Image -->
-        <div class="app-preview">
-            <div class="app-img">
-                <img src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+     data-iname="{{ .App.Iname }}"
+     data-expanded="false"
+     onclick="toggleAppCardView('{{ .App.Iname }}', event)">
+
+    <div class="compact-row">
+        <!-- Preview Thumbnail -->
+        <div class="thumb-box compact">
+            <img class="thumb-image"
+                 src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+                 alt="{{ t .Localizer "Preview" }}"
+                 loading="lazy">
+
+            {{ if .App.EmptyLastRender }}
+            <div class="thumb-overlay">
+                <span class="thumb-overlay-badge">
+                    <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                    {{ t .Localizer "INACTIVE" }}
+                </span>
+            </div>
+            {{ end }}
+        </div>
+
+        <!-- Info Section -->
+        <div class="compact-info">
+            <h3 class="font-bold">{{ .App.Name }}-{{ .App.Iname }}</h3>
+            <div class="flex items-center gap-4 text-xs text-secondary">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="refresh-cw" class="meta-icon"></i>
+                    <span>{{ .App.UInterval }}m</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="clock" class="meta-icon"></i>
+                    <span>
+                    {{ if .App.EmptyLastRender }}
+                        {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
+                    {{ else }}
+                        {{ timeago .Localizer .App.LastRender }}
+                    {{ end }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Badge (Display Only - NOT clickable) -->
+        <div class="compact-status">
+            {{ if isPinned .Device .App.Iname }}
+                <div class="badge black">{{ t .Localizer "PINNED" }}</div>
+            {{ else }}
+                <div class="badge {{ if .App.Enabled }}is-enabled{{ else }}gray{{ end }}">
+                    {{ if .App.Enabled }}{{ t .Localizer "ENABLED" }}{{ else }}{{ t .Localizer "DISABLED" }}{{ end }}
+                </div>
+            {{ end }}
+        </div>
+
+        <!-- Compact Actions Toolbar -->
+        <div class="compact-actions">
+            <!-- Play/Pause -->
+            <button class="btn-tool btn-play {{ if .App.Enabled }}is-enabled{{ end }}"
+                    onclick="event.stopPropagation(); toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}');"
+                    aria-label="{{ if .App.Enabled }}{{ t .Localizer "Disable" }}{{ else }}{{ t .Localizer "Enable" }}{{ end }}">
+                <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}"></i>
+            </button>
+
+            <!-- Edit -->
+            <a class="btn-tool"
+               href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"
+               onclick="event.stopPropagation();"
+               aria-label="{{ t .Localizer "Edit" }}">
+                <i data-lucide="edit-3"></i>
+            </a>
+
+            <!-- Preview (WS only) -->
+            {{ if eq .Device.Info.ProtocolType "WS" }}
+            <button class="btn-tool"
+                    onclick="event.stopPropagation(); previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', null, this);"
+                    aria-label="{{ t .Localizer "Preview" }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <path d="M8 21h8M12 17v4"/>
+                </svg>
+            </button>
+            {{ end }}
+
+            <!-- Pin/Unpin -->
+            <button class="btn-tool btn-pin {{ if isPinned .Device .App.Iname }}is-pinned{{ end }}"
+                    onclick="event.stopPropagation(); togglePin('{{ .Device.ID }}', '{{ .App.Iname }}');"
+                    aria-label="{{ if isPinned .Device .App.Iname }}{{ t .Localizer "Unpin" }}{{ else }}{{ t .Localizer "Pin" }}{{ end }}">
+                <i data-lucide="pin"></i>
+            </button>
+
+            <!-- Duplicate -->
+            <button class="btn-tool"
+                    onclick="event.stopPropagation(); duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}');"
+                    aria-label="{{ t .Localizer "Duplicate" }}">
+                <i data-lucide="copy"></i>
+            </button>
+
+            <!-- Delete -->
+            <button class="btn-tool btn-trash"
+                    onclick="event.stopPropagation(); deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }});"
+                    aria-label="{{ t .Localizer "Delete" }}">
+                <i data-lucide="trash-2"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- FULL VIEW (Expanded - Hidden by default) -->
+<div class="card-container full-view hidden"
+     id="app-card-full-{{ .App.Iname }}"
+     data-iname="{{ .App.Iname }}"
+     data-expanded="true">
+
+    <!-- Header (Click to collapse) -->
+    <div class="card-header border-b" onclick="collapseAppCard('{{ .App.Iname }}')">
+        <div class="flex items-center justify-between" style="margin-bottom: 0.75rem;">
+            <div class="flex items-center gap-3">
+                <h2 class="card-title">{{ .App.Name }}-{{ .App.Iname }}</h2>
+                {{ if isPinned .Device .App.Iname }}
+                <div class="badge black">{{ t .Localizer "PINNED" }}</div>
+                {{ end }}
+                {{ if and .App.AutoPin (or (isPinned .Device .App.Iname) .App.Enabled) }}
+                <div class="badge black">{{ t .Localizer "AUTOPIN" }}</div>
+                {{ end }}
+            </div>
+            <!-- Status Display (NOT clickable - just shows current state) -->
+            <div class="status-display {{ if .App.Enabled }}is-enabled{{ end }}">
+                <span>{{ if .App.Enabled }}{{ t .Localizer "ENABLED" }}{{ else }}{{ t .Localizer "DISABLED" }}{{ end }}</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6 text-sm header-meta-row">
+            <div class="flex items-center gap-2">
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                <span class="text-secondary">{{ t .Localizer "Interval:" }}</span>
+                <span class="font-medium">{{ .App.UInterval }} min</span>
+            </div>
+            <div class="divider-vertical"></div>
+            <div class="flex items-center gap-2">
+                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                <span class="text-secondary">{{ t .Localizer "Last rendered:" }}</span>
+                <span class="font-medium">
+                    {{ if .App.EmptyLastRender }}
+                        {{ t .Localizer "No output for:" }} {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
+                    {{ else }}
+                        {{ timeago .Localizer .App.LastRender }}
+                    {{ end }}
+                </span>
+                {{ if not .App.EmptyLastRender }}
+                <span class="text-secondary text-xs">({{ duration .App.LastRenderDur }})</span>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Content: Preview + Actions -->
+    <div class="view-content-wrapper">
+        <!-- Preview Area -->
+        <div class="preview-area border-r flex items-center justify-center">
+            <div class="led-panel">
+                <img class="preview-image"
+                     src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
                      alt="{{ t .Localizer "Preview" }}"
-                     width="128"
-                     height="64">
+                     loading="lazy">
+
                 {{ if .App.EmptyLastRender }}
-                <div class="inactive-overlay">
-                    <span class="inactive-badge-overlay"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ t .Localizer "INACTIVE" }}</span>
+                <div class="thumb-overlay">
+                    <span class="thumb-overlay-badge">
+                        <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                        {{ t .Localizer "INACTIVE" }}
+                    </span>
                 </div>
                 {{ end }}
             </div>
         </div>
-        <!-- Middle: App Info and Action Buttons -->
-        <div class="app-info">
-            <div class="app-header">
-                <h3>{{ .App.Name }}-{{ .App.Iname }}</h3>
-                <div class="app-status">
-                    {{ if isPinned .Device .App.Iname }}
-                    <span class="status-badge pinned"><i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "PINNED" }}</span>
-                {{ else }}
-                    {{ if .App.Enabled }}
-                    <span class="status-badge enabled"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ t .Localizer "ENABLED" }}</span>
-                {{ else }}
-                    <span class="status-badge disabled"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ t .Localizer "DISABLED" }}</span>
-                    {{ end }}
-                    {{ end }}
-                    {{ if and .App.AutoPin (or (isPinned .Device .App.Iname) .App.Enabled) }}
-                    <span class="status-badge autopin"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> {{ t .Localizer "AUTOPIN" }}</span>
+
+        <!-- Actions Area -->
+        <div class="actions-area">
+            <div class="flex flex-col gap-3">
+                <!-- Primary Actions -->
+                <div class="grid-3">
+                    <button class="btn-action-lg btn-play {{ if .App.Enabled }}is-enabled{{ end }}"
+                            onclick="event.stopPropagation(); toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}');">
+                        <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}" style="width: 20px; height: 20px;"></i>
+                        <span class="font-medium">{{ if .App.Enabled }}{{ t .Localizer "Disable" }}{{ else }}{{ t .Localizer "Enable" }}{{ end }}</span>
+                    </button>
+
+                    <a class="btn-action-lg"
+                       href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"
+                       onclick="event.stopPropagation();">
+                        <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+                        <span class="font-medium">{{ t .Localizer "Edit" }}</span>
+                    </a>
+
+                    {{ if eq .Device.Info.ProtocolType "WS" }}
+                    <button class="btn-action-lg"
+                            onclick="event.stopPropagation(); previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', null, this);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <path d="M8 21h8M12 17v4"/>
+                        </svg>
+                        <span class="font-medium">{{ t .Localizer "Preview" }}</span>
+                    </button>
                     {{ end }}
                 </div>
-            </div>
-            <div class="app-details">
-                <p class="app-render-info">
-                    {{ t .Localizer "Interval:" }} {{ .App.UInterval }} min |
-                    {{ if .App.EmptyLastRender }}
-                    {{ t .Localizer "No output for:" }} {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
-                {{ else }}
-                    {{ t .Localizer "Last:" }} {{ timeago .Localizer .App.LastRender }}
-                    ({{ t .Localizer "in" }} {{ duration .App.LastRenderDur }})
-                    {{ end }}
-                </p>
-                {{ if ne .App.DisplayTime 0 }}
-                <p>{{ t .Localizer "Display Time (secs):" }} {{ .App.DisplayTime }}</p>
-                {{ end }}
-                {{ if .App.Notes }}
-                <p>{{ t .Localizer "Notes:" }} {{ .App.Notes }}</p>
-                {{ end }}
-            </div>
-            <div class="app-actions">
-                <!-- Primary Actions Row -->
-                <div class="app-actions-primary">
-                    <a class="action w3-button w3-blue w3-round"
-                       href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t .Localizer "Edit" }}</a>
-                    {{ if eq .Device.Info.ProtocolType "WS" }}
-                    <button class="action w3-button w3-blue w3-round"
-                            onclick="previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', null, this)">
-                        <i class="fa-solid fa-play" aria-hidden="true"></i> {{ t .Localizer "Preview" }}
+
+                <!-- Secondary Actions -->
+                <div class="grid-5">
+                    <button class="btn-action-sm btn-pin {{ if isPinned .Device .App.Iname }}is-pinned{{ end }}"
+                            onclick="event.stopPropagation(); togglePin('{{ .Device.ID }}', '{{ .App.Iname }}');">
+                        <i data-lucide="pin"></i>
+                        <span>{{ if isPinned .Device .App.Iname }}{{ t .Localizer "Unpin" }}{{ else }}{{ t .Localizer "Pin" }}{{ end }}</span>
                     </button>
-                    {{ end }}
-                    <button class="action w3-button w3-green w3-round"
-                            onclick="duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}')">
-                        <i class="fa-solid fa-copy" aria-hidden="true"></i> {{ t .Localizer "Duplicate" }}
+
+                    <button class="btn-action-sm"
+                            onclick="event.stopPropagation(); moveApp('{{ .Device.ID }}', '{{ .App.Iname }}', 'top');">
+                        <i data-lucide="chevron-up"></i>
+                        <span>{{ t .Localizer "Top" }}</span>
                     </button>
+
+                    <button class="btn-action-sm"
+                            onclick="event.stopPropagation(); moveApp('{{ .Device.ID }}', '{{ .App.Iname }}', 'bottom');">
+                        <i data-lucide="chevron-down"></i>
+                        <span>{{ t .Localizer "Bottom" }}</span>
+                    </button>
+
+                    <button class="btn-action-sm"
+                            onclick="event.stopPropagation(); duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}');">
+                        <i data-lucide="copy"></i>
+                        <span>{{ t .Localizer "Duplicate" }}</span>
+                    </button>
+
                     {{ if gt (len .DevicesWithUIScales) 1 }}
-                    <div class="copy-to-dropdown">
-                        <select class="action w3-button w3-indigo w3-round custom-select"
-                                onchange="if(this.value) { duplicateAppToDevice('{{ .Device.ID }}', '{{ .App.Iname }}', this.value, null, false); this.selectedIndex=0; }">
-                            <option value="" disabled selected>{{ t .Localizer "Copy to..." }}</option>
+                    <div class="relative">
+                        <button class="btn-action-sm w-full" onclick="event.stopPropagation(); toggleDeviceMenu('{{ .App.Iname }}');">
+                            <i data-lucide="send"></i>
+                            <span>{{ t .Localizer "Copy to" }}</span>
+                        </button>
+                        <div id="device-menu-{{ .App.Iname }}" class="dropdown-menu hidden">
                             {{ range $item := .DevicesWithUIScales }}
                             {{ $target_device := $item.Device }}
                             {{ if ne $target_device.ID $.Device.ID }}
-                            <option value="{{ $target_device.ID }}">{{ $target_device.Name }}</option>
+                            <button class="dropdown-item" 
+                                    onclick="event.stopPropagation(); duplicateAppToDevice('{{ $.Device.ID }}', '{{ $.App.Iname }}', '{{ $target_device.ID }}', null, false);">
+                                {{ $target_device.Name }}
+                            </button>
                             {{ end }}
                             {{ end }}
-                        </select>
-                        <i class="fa fa-caret-down custom-select-arrow"></i>
+                        </div>
                     </div>
                     {{ end }}
-                    <button class="action w3-button w3-red w3-round"
-                            onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }})">
-                        <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
-                    </button>
                 </div>
-                <!-- Secondary Actions Row -->
-                <div class="app-actions-secondary">
-                    <button class="action w3-button w3-blue w3-round app-btn-no-hover"
-                            onclick="moveApp('{{ .Device.ID }}', '{{ .App.Iname }}', 'top')">
-                        <i class="fa-solid fa-angles-up" aria-hidden="true"></i> {{ t .Localizer "Top" }}
+
+                <!-- Delete Section -->
+                <div class="border-t" style="padding-top: 0.5rem;">
+                    <button class="btn-delete"
+                            onclick="event.stopPropagation(); deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }});">
+                        <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                        <span>{{ t .Localizer "Delete App" }}</span>
                     </button>
-                    <button class="action w3-button w3-blue w3-round app-btn-no-hover"
-                            onclick="moveApp('{{ .Device.ID }}', '{{ .App.Iname }}', 'bottom')">
-                        <i class="fa-solid fa-angles-down" aria-hidden="true"></i> {{ t .Localizer "Bottom" }}
-                    </button>
-                    {{ if isPinned .Device .App.Iname }}
-                    <button class="action w3-button w3-orange w3-round app-btn-no-hover"
-                            onclick="togglePin('{{ .Device.ID }}', '{{ .App.Iname }}')">
-                        <i class="fa-solid fa-thumbtack-slash" aria-hidden="true"></i> {{ t .Localizer "Unpin" }}
-                    </button>
-                {{ else }}
-                    <button class="action w3-button w3-green w3-round app-btn-no-hover"
-                            onclick="togglePin('{{ .Device.ID }}', '{{ .App.Iname }}')">
-                        <i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "Pin" }}
-                    </button>
-                    {{ if .App.Enabled }}
-                    <button class="action w3-button w3-orange w3-round app-btn-no-hover"
-                            onclick="toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}')">
-                        <i class="fa-solid fa-pause" aria-hidden="true"></i> {{ t .Localizer "Disable" }}
-                    </button>
-                {{ else }}
-                    <button class="action w3-button w3-green w3-round app-btn-no-hover"
-                            onclick="toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}')">
-                        <i class="fa-solid fa-play" aria-hidden="true"></i> {{ t .Localizer "Enable" }}
-                    </button>
-                    {{ end }}
-                    {{ end }}
                 </div>
             </div>
         </div>
