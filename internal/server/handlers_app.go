@@ -301,10 +301,12 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid app path", http.StatusBadRequest)
 			return
 		} else {
-			schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
-			if err != nil {
-				slog.Error("Failed to get app schema", "error", err)
-				// Fall through with empty schema
+			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+				schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
+				if err != nil {
+					slog.Error("Failed to get app schema", "error", err)
+					// Fall through with empty schema
+				}
 			}
 		}
 	}
