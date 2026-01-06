@@ -54,10 +54,7 @@
 
             <!-- BRIGHTNESS CONTROL - Instrument-Style Button Grid -->
             <div class="control-group">
-                <div class="control-header">
-                    <label class="control-label">{{ t .Localizer "BRIGHTNESS" }}</label>
-                    <span id="brightnessValue-{{ .Item.ID }}" class="readout-value">{{ .Item.BrightnessUIScale }}</span>
-                </div>
+                <label class="control-label">{{ t .Localizer "BRIGHTNESS" }}</label>
                 {{ if not .ReadOnly }}
                 <div class="brightness-grid">
                     {{ range $i := seq 0 5 }}
@@ -70,14 +67,11 @@
                 {{ end }}
             </div>
 
-            <!-- APP CYCLE TIME - Precision Slider with Monospace Readout -->
+            <!-- APP CYCLE TIME - Precision Slider with Inline Value -->
             <div class="control-group">
-                <div class="control-header">
-                    <label class="control-label" for="default_interval-{{ .Item.ID }}">
-                        {{ t .Localizer "APP CYCLE TIME" }}
-                    </label>
-                    <span id="intervalValue-{{ .Item.ID }}" class="readout-value">{{ .Item.DefaultInterval }}s</span>
-                </div>
+                <label class="control-label" for="default_interval-{{ .Item.ID }}">
+                    {{ t .Localizer "APP CYCLE TIME" }}
+                </label>
                 <div class="slider-container">
                     <span class="slider-label-min">1s</span>
                     <input type="range"
@@ -94,7 +88,7 @@
                            onchange="updateInterval('{{ .Item.ID }}', this.value)"
                            ontouchend="updateInterval('{{ .Item.ID }}', this.value)"
                            {{ end }}>
-                    <span class="slider-label-max">30s</span>
+                    <span id="intervalValue-{{ .Item.ID }}" class="slider-value-label">{{ .Item.DefaultInterval }}s</span>
                 </div>
             </div>
 

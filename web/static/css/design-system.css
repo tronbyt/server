@@ -1121,6 +1121,21 @@ button.btn-action-lg {
     flex-shrink: 0 !important;
 }
 
+/* Dynamic value label - emphasized current value */
+.slider-value-label {
+    font-size: 0.875rem !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 700 !important;
+    color: var(--neutral-900) !important;
+    min-width: 2.5rem !important;
+    text-align: right !important;
+    flex-shrink: 0 !important;
+}
+
+[data-theme="dark"] .slider-value-label {
+    color: var(--neutral-800) !important;
+}
+
 .cycle-time-slider {
     flex: 1 !important;
     height: 4px !important;
