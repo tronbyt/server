@@ -2633,7 +2633,7 @@ button.btn-action-lg {
     color: var(--neutral-900) !important;
 }
 
-/* Filter Sort Controls - TE Style */
+/* Filter Sort Controls - TE Style (Simple) */
 .filter-sort-controls {
     border: 1px solid var(--neutral-300) !important;
     border-radius: 0 !important;
@@ -2686,19 +2686,19 @@ button.btn-action-lg {
 .filter-sort-controls .control-label {
     display: flex !important;
     align-items: center !important;
-    gap: 0.375rem !important;
+    gap: 0.5rem !important;
     cursor: pointer !important;
     font-family: var(--font-mono) !important;
-    font-size: 0.75rem !important;
-    font-weight: 500 !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
     color: var(--neutral-700) !important;
     white-space: nowrap !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.02em !important;
+    letter-spacing: 0.05em !important;
 }
 
 [data-theme="dark"] .filter-sort-controls .control-label {
-    color: var(--neutral-700) !important;
+    color: var(--neutral-600) !important;
 }
 
 .filter-sort-controls .control-checkbox {
@@ -2730,6 +2730,34 @@ button.btn-action-lg {
     background-color: var(--bg-primary) !important;
     color: var(--neutral-900) !important;
 }
+
+/* App Group Version Info - TE Style */
+.app-group > span {
+    font-family: var(--font-mono) !important;
+    font-size: 0.6875rem !important;
+    color: var(--neutral-500) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.02em !important;
+}
+
+.app-group > span a {
+    color: var(--orange-500) !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+}
+
+.app-group > span a:hover {
+    text-decoration: underline !important;
+}
+
+[data-theme="dark"] .app-group > span {
+    color: var(--neutral-600) !important;
+}
+
+[data-theme="dark"] .app-group > span a {
+    color: var(--orange-500) !important;
+}
+
 
 /* App Grid */
 .app-grid {
@@ -2827,7 +2855,9 @@ button.btn-action-lg {
 }
 
 [data-theme="dark"] .supports-2x-badge {
-    background-color: var(--neutral-700) !important;
+    background-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+    border: 1px solid var(--neutral-400) !important;
 }
 
 /* Selected State */
