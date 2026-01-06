@@ -55,7 +55,7 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 				db.Order("name ASC")
 				return nil
 			}).
-			Preload("Devices.Apps").
+			Preload("Devices.Apps", nil).
 			Where("api_key = ?", apiKey).
 			First(r.Context())
 
@@ -66,13 +66,13 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 				return
 			}
 		} else {
-			ctx := context.WithValue(r.Context(), userContextKey, user)
+			ctx := context.WithValue(r.Context(), userContextKey, &user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 
 		// 2. Try to find Device by API Key
-		device, err := gorm.G[data.Device](s.DB).Preload("Apps").Where("api_key = ?", apiKey).First(r.Context())
+		device, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("api_key = ?", apiKey).First(r.Context())
 		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				slog.Error("API auth: database error when finding device by key", "error", err)
@@ -85,7 +85,7 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 					db.Order("name ASC")
 					return nil
 				}).
-				Preload("Devices.Apps").
+				Preload("Devices.Apps", nil).
 				Where("username = ?", device.Username).
 				First(r.Context())
 
@@ -95,8 +95,8 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userContextKey, owner)
-			ctx = context.WithValue(ctx, deviceContextKey, device)
+			ctx := context.WithValue(r.Context(), userContextKey, &owner)
+			ctx = context.WithValue(ctx, deviceContextKey, &device)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
@@ -123,7 +123,7 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 				db.Order("name ASC")
 				return nil
 			}).
-			Preload("Devices.Apps").
+			Preload("Devices.Apps", nil).
 			Where("username = ?", username).
 			First(r.Context())
 
@@ -137,7 +137,7 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), userContextKey, user)
+		ctx := context.WithValue(r.Context(), userContextKey, &user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }

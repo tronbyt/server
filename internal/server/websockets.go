@@ -51,8 +51,10 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user data.User
-	s.DB.First(&user, "username = ?", device.Username)
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
+	if err != nil {
+		slog.Error("User for device not found in WS handler", "username", device.Username, "error", err)
+	}
 
 	conn, err := s.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -281,16 +283,18 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 				}
 				// If just Queued, we keep waiting for Displaying.
-			case data := <-broadcastCh:
+			case payload := <-broadcastCh:
 				// Update available (Reload device first)
-				if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
+				reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
+				if err != nil {
 					slog.Error("Device gone", "id", initialDevice.ID)
 					return
 				}
+				device = reloaded
 
-				if len(data) > 0 {
+				if len(payload) > 0 {
 					// Pushed Image: Interrupt and send
-					pendingImage = data
+					pendingImage = payload
 					interrupted = true
 					waiting = false
 					sendImmediate = true
@@ -393,8 +397,8 @@ func (s *Server) SetupWebsocketRoutes() {
 }
 
 func (s *Server) reloadDevice(deviceID string) (*data.Device, error) {
-	var device data.Device
-	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
+	device, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("device not found: %s", deviceID)
 		}

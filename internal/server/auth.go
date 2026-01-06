@@ -304,7 +304,7 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, r, "edit", TemplateData{
-		User:                user,
+		User:                &user,
 		FirmwareVersion:     firmwareVersion,
 		SystemRepoInfo:      systemRepoInfo,
 		UserRepoInfo:        userRepoInfo,
@@ -336,7 +336,7 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		valid, _, err := auth.VerifyPassword(user.Password, oldPassword)
 		if err != nil || !valid {
 			localizer := s.getLocalizer(r)
-			s.renderTemplate(w, r, "edit", TemplateData{User: user, Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid old password"})}})
+			s.renderTemplate(w, r, "edit", TemplateData{User: &user, Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid old password"})}})
 			return
 		}
 
@@ -365,12 +365,13 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if needsSave {
-		updates := map[string]interface{}{
-			"password": user.Password,
-			"email":    user.Email,
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "password", user.Password); err != nil {
+			slog.Error("Failed to update user password", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
-		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Updates(r.Context(), updates); err != nil {
-			slog.Error("Failed to update user profile", "error", err)
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "email", user.Email); err != nil {
+			slog.Error("Failed to update user email", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
