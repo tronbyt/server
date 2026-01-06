@@ -35,24 +35,9 @@
 
 /* ===========================================
    CSS Variables - Dark Mode
-   From dark-design-example.html
+   Controlled ONLY by [data-theme="dark"] selector
+   User's explicit theme choice takes precedence
    =========================================== */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --white: #171717;
-        --black: #000000;
-        --neutral-50: #0a0a0a;
-        --neutral-100: #171717;
-        --neutral-200: #262626;
-        --neutral-300: #404040;
-        --neutral-400: #525252;
-        --neutral-500: #737373;
-        --neutral-600: #a3a3a3;
-        --neutral-700: #d4d4d4;
-        --neutral-900: #fafafa;
-        --red-50: #450a0a;
-    }
-}
 
 [data-theme="dark"] {
     /* Backgrounds */
