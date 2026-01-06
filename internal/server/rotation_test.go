@@ -405,17 +405,14 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	// LastRender must be old enough to trigger a new render
 	app.LastRender = time.Now().Add(-1 * time.Hour)
 	
-	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "pushed", false); err != nil {
-		t.Fatalf("failed to update app pushed: %v", err)
+	updates := map[string]any{
+		"pushed":            false,
+		"path":              app.Path,
+		"empty_last_render": true,
+		"last_render":       app.LastRender,
 	}
-	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "path", app.Path); err != nil {
-		t.Fatalf("failed to update app path: %v", err)
-	}
-	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "empty_last_render", true); err != nil {
-		t.Fatalf("failed to update app empty_last_render: %v", err)
-	}
-	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_render", app.LastRender); err != nil {
-		t.Fatalf("failed to update app last_render: %v", err)
+	if err := s.DB.Model(&data.App{}).Where("id = ?", app.ID).Updates(updates).Error; err != nil {
+		t.Fatalf("failed to update app: %v", err)
 	}
 
 	// Reload d for determineNextApp loop
