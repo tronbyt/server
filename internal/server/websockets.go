@@ -54,6 +54,8 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	user, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
 	if err != nil {
 		slog.Error("User for device not found in WS handler", "username", device.Username, "error", err)
+		http.Error(w, "Internal Server Error: device owner not found", http.StatusInternalServerError)
+		return
 	}
 
 	conn, err := s.Upgrader.Upgrade(w, r, nil)
