@@ -1,337 +1,351 @@
-# Integration Guide: Quick Start
+# Integration Guide: Teenage Engineering-Inspired Design System
+
+## 🎯 Design Philosophy
+
+**Inspiration**: Teenage Engineering  
+**Aesthetic**: Sharp & Clean, Instrument-Like Precision
+
+### Core Principles
+
+1. **Sharp & Clean**: No rounded corners—just crisp, rectangular borders
+2. **Focused Palette**: High-contrast, monochrome palette with monospace fonts
+3. **Instrument Feel**: Precise, functional, focused on content
+4. **Mobile Friendly**: Natural stacking layout for touch interfaces
+
+---
 
 ## 🚀 Quick Integration (3 Steps)
 
-### Step 1: Add CSS and JS to Your Base Template
+### Step 1: Add CSS to Your Base Template
 
-Add these lines to your HTML `<head>` (before other CSS files):
+Add to your HTML `<head>` (before other CSS files):
 
 ```html
-<!-- Design System -->
+<!-- Teenage Engineering-Inspired Design System -->
 <link rel="stylesheet" href="/static/css/design-system.css">
 ```
 
-Add before closing `</body>`:
+### Step 2: Use the App Card Template
 
-```html
-<!-- App Card JavaScript -->
-<script src="/static/js/app-card-new.js"></script>
-```
-
-### Step 2: Use the New App Card Template
-
-In your Go template where you render app cards, use:
+In your Go template where you render app cards:
 
 ```go
 {{ template "app_card" . }}
 ```
 
-Make sure it points to `/web/templates/partials/app_card_new.html`
+Points to: `/web/templates/partials/app_card.html`
 
 ### Step 3: Test!
 
-Visit your app page and:
-- See compact view by default (horizontal row)
+Visit your app page and verify:
+- Compact view by default (horizontal row)
 - Click any card to expand to full view
-- Click again to collapse
-- Press ESC to collapse all cards
+- Sharp, rectangular borders (no rounded corners)
+- Monospace typography throughout
+- Mobile: Actions stack naturally below content
 
 **That's it!** ✅
 
 ---
 
-## 📁 New Files Created
+## 🎨 Design Language
 
-### CSS & Design Tokens
-```
-/web/static/css/design-system.css          (717 lines)
-```
-- 60+ design tokens (colors, typography, spacing, etc.)
-- Compact view styles
-- Full view styles
-- Light/dark mode support
-- Mobile responsive breakpoints
-- BEM-based class names
+### Visual Identity
 
-### Templates
 ```
-/web/templates/partials/app_card_new.html  (267 lines)
+Sharp Edges          Monospace Type       High Contrast
+┌────────┐          ENABLED              ■■■□□□
+│        │          DISABLED             ███░░░
+│  CARD  │          Title-123            Black/White
+│        │          5min • 2h ago        Orange Accent
+└────────┘          
 ```
-- Compact view (default): horizontal row with preview, title, meta, badge, toolbar
-- Full view (expanded): large preview, detailed metadata, full action grid
-- Supports all existing features: drag & drop, i18n, etc.
-- 2:1 aspect ratio for preview images
 
-### JavaScript
-```
-/web/static/js/app-card-new.js             (107 lines)
-```
-- `toggleAppCardView(iname, event)` - Main toggle function
-- `expandAppCard(iname)` - Programmatically expand a card
-- `collapseAppCard(iname)` - Programmatically collapse a card
-- `collapseAllAppCards()` - Collapse all expanded cards
-- ESC key support
+### Typography
 
-### Documentation
+- **Font Family**: `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas`
+- **Style**: All caps for labels (ENABLED, DISABLED, PINNED)
+- **Hierarchy**: Bold weights for titles, regular for metadata
+
+### Color Palette
+
+**Light Mode**:
+- Background: `#ffffff` (white)
+- Text: `#171717` (near-black)
+- Borders: `#404040` (dark gray)
+- Accent: `#f97316` (orange)
+
+**Dark Mode**:
+- Background: `#0a0a0a` (near-black)
+- Text: `#fafafa` (off-white)
+- Borders: `#404040` (medium gray)
+- Accent: `#ea580c` (darker orange)
+
+### Borders & Corners
+
+- **Border Radius**: `0` (sharp, rectangular)
+- **Border Width**: `1px` (crisp lines)
+- **Border Style**: `solid` (clean, no dashed/dotted)
+
+---
+
+## 📱 Mobile-First Approach
+
+### Desktop Layout
 ```
-/DESIGN_SYSTEM.md          - Complete design token reference
-/MIGRATION_GUIDE.md        - Step-by-step migration instructions
-/INTEGRATION_GUIDE.md      - This file (quick start)
+┌──────────────────────────────────────────────────┐
+│ [Thumb] Title-123  5min•2h  [ENABLED] [▶][✏][📌] │
+└──────────────────────────────────────────────────┘
+```
+
+### Mobile Layout (Stacked)
+```
+┌──────────────────────────┐
+│ [Thumb] Title-123        │
+│         5min • 2h ago    │
+│         [ENABLED]        │
+├──────────────────────────┤
+│ [▶] [✏] [📌] [📋] [🗑]  │
+└──────────────────────────┘
+```
+
+**Why Stacking?**
+- Better touch targets (no cramped horizontal space)
+- Natural reading flow (top to bottom)
+- Easier one-handed operation
+- Clearer visual hierarchy
+
+---
+
+## 🏗 Component Structure
+
+### Compact View (Default)
+
+```html
+<div class="card-container hover-bg compact-view">
+  <div class="compact-row">
+    <!-- Preview Thumbnail -->
+    <div class="thumb-box compact">
+      <img class="thumb-image" src="...">
+    </div>
+    
+    <!-- Info Section -->
+    <div class="compact-info">
+      <h3>Title-123</h3>
+      <div>5 min • 2h ago</div>
+    </div>
+    
+    <!-- Status Badge -->
+    <div class="compact-status">
+      <div class="badge is-enabled">ENABLED</div>
+    </div>
+    
+    <!-- Actions Toolbar -->
+    <div class="compact-actions">
+      <button class="btn-tool">▶</button>
+      <button class="btn-tool">✏</button>
+      <!-- ... -->
+    </div>
+  </div>
+</div>
+```
+
+### Full View (Expanded)
+
+```html
+<div class="card-container full-view">
+  <!-- Header with metadata -->
+  <div class="card-header border-b">
+    <h2 class="card-title">Title-123</h2>
+    <div class="header-meta-row">
+      Interval: 5 min • Last rendered: 2h ago
+    </div>
+  </div>
+  
+  <!-- Content: Preview + Actions -->
+  <div class="view-content-wrapper">
+    <div class="preview-area">
+      <div class="led-panel">
+        <img class="preview-image" src="...">
+      </div>
+    </div>
+    
+    <div class="actions-area">
+      <!-- Primary actions (3-column grid) -->
+      <div class="grid-3">
+        <button class="btn-action-lg">Enable</button>
+        <button class="btn-action-lg">Edit</button>
+        <button class="btn-action-lg">Preview</button>
+      </div>
+      
+      <!-- Secondary actions (5-column grid) -->
+      <div class="grid-5">
+        <button class="btn-action-sm">Pin</button>
+        <button class="btn-action-sm">Top</button>
+        <!-- ... -->
+      </div>
+    </div>
+  </div>
+</div>
 ```
 
 ---
 
-## 🎨 Design System Features
+## 🎯 Key CSS Classes
 
-### ✅ Compact View (Default)
+### Layout Classes
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ [Preview] Title-123          5 min • 2h ago   [ENABLED]  [▶][✏][👁][📌][📋][🗑] │
-│  (80x80)                                                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Class | Purpose |
+|-------|---------|
+| `.card-container` | Main card wrapper (sharp borders, no radius) |
+| `.compact-row` | Horizontal layout for compact view |
+| `.compact-info` | Title and metadata section |
+| `.compact-status` | Status badge container |
+| `.compact-actions` | Toolbar with icon buttons |
 
-- Small preview (80×80px with 2:1 aspect ratio image)
-- Title and metadata
-- Status badge
-- Icon-only toolbar (play, edit, preview, pin, duplicate, delete)
-- Click anywhere to expand
+### Button Classes
 
-### ✅ Full View (Expanded)
+| Class | Purpose |
+|-------|---------|
+| `.btn-tool` | Compact toolbar button (icon-only) |
+| `.btn-action-lg` | Large action button (icon + label) |
+| `.btn-action-sm` | Small action button (icon + label) |
+| `.btn-delete` | Delete button (red accent) |
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│ Title-123  [PINNED]                            [ENABLED/DISABLED] │
-│ ⟳ Interval: 5 min  •  🕐 Last rendered: 2h ago (0.554s)           │
-├──────────────┬────────────────────────────────────────────────────┤
-│              │  [Enable]  [Edit]  [Preview]                       │
-│   Preview    │  [Pin]  [Top]  [Bottom]  [Duplicate]  [Copy to▼]  │
-│   (256x128)  │  ────────────────────────────────────────────────  │
-│              │  [Delete App]                                      │
-└──────────────┴────────────────────────────────────────────────────┘
-```
+### State Classes
 
-- Large preview (256×128px, 2:1 ratio)
-- Detailed metadata with icons
-- Enable/disable toggle button
-- All actions with labels
-- Click anywhere to collapse
+| Class | Purpose |
+|-------|---------|
+| `.is-enabled` | Orange accent for enabled state |
+| `.is-pinned` | Black/white invert for pinned state |
+| `.hidden` | Hide element |
 
 ---
 
 ## 🌓 Light & Dark Mode
 
-The design system automatically switches based on OS preference:
-
-**Light Mode**:
-- White/off-white backgrounds
-- Dark borders and text
-- Clean, minimal aesthetic
-
-**Dark Mode**:
-- Dark backgrounds (#0a0a0a, #171717)
-- Light text (#fafafa)
-- Subtle borders (#404040)
-
-No configuration needed - just works!
-
----
-
-## 📱 Mobile Responsive
-
-### Compact View (Mobile)
-- Toolbar wraps to bottom row
-- Preview shrinks to 64×64px
-- Full width buttons
-
-### Full View (Mobile)
-- Preview stacks on top
-- Actions below preview
-- 3-column grid (instead of 5)
-- Larger touch targets
-
-Breakpoint: `768px`
-
----
-
-## 🎯 Using Design Tokens
-
-You can use the design system tokens in your own components:
+Automatic switching via `prefers-color-scheme`:
 
 ```css
-/* Custom component using design tokens */
-.my-component {
-    background-color: var(--surface-base);
-    color: var(--text-primary);
-    padding: var(--space-4);
-    border-radius: var(--radius-md);
-    font-family: var(--font-mono);
-    border: var(--border-width-thin) solid var(--border-primary);
+/* Light Mode (Default) */
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --neutral-900: #171717;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white: #171717;
+    --black: #000000;
+    --neutral-900: #fafafa;
+  }
 }
 ```
 
-**Common Tokens**:
-
-```css
-/* Colors */
---bg-primary, --bg-secondary, --bg-tertiary
---text-primary, --text-secondary, --text-tertiary
---accent-orange-500, --accent-red-500
-
-/* Spacing (4px grid) */
---space-1 (4px), --space-2 (8px), --space-3 (12px), --space-4 (16px)
-
-/* Typography */
---font-mono, --font-sans
---font-size-xs, --font-size-sm, --font-size-base
---font-weight-medium, --font-weight-bold
-
-/* Borders & Radius */
---border-primary, --border-secondary
---radius-sm, --radius-md, --radius-lg
-
-/* Effects */
---shadow-md, --transition-base
-```
-
-See `DESIGN_SYSTEM.md` for complete reference (60+ tokens).
+**No JavaScript required** - pure CSS media queries.
 
 ---
 
-## 🔧 JavaScript API
+## 📐 Design Tokens
 
-### Expand/Collapse Functions
+### Spacing (No Grid System)
 
-```javascript
-// Toggle a specific card
-toggleAppCardView('app-123', event);
+Direct padding/margin values:
+- `0.5rem` (8px)
+- `0.75rem` (12px)
+- `1rem` (16px)
+- `1.5rem` (24px)
 
-// Programmatically expand
-expandAppCard('app-123');
+### Typography Scale
 
-// Programmatically collapse
-collapseAppCard('app-123');
+```css
+--font-mono: ui-monospace, SFMono-Regular, ...;
 
-// Collapse all expanded cards
-collapseAllAppCards();
+/* Sizes */
+font-size: 0.75rem;   /* 12px - Small labels */
+font-size: 0.875rem;  /* 14px - Body text */
+font-size: 1.5rem;    /* 24px - Card titles */
 ```
 
-### Keyboard Shortcuts
+### Color Variables
 
-- **ESC**: Collapse all expanded cards
+```css
+/* Neutrals */
+--neutral-50, --neutral-100, --neutral-200
+--neutral-300, --neutral-400, --neutral-500
+--neutral-600, --neutral-700, --neutral-900
+
+/* Accents */
+--orange-500: #f97316;  /* Primary accent */
+--orange-600: #ea580c;  /* Hover state */
+--red-500: #ef4444;     /* Delete action */
+--red-600: #dc2626;     /* Delete hover */
+```
 
 ---
 
 ## ✨ Maintained Features
 
-All existing functionality is preserved:
+All existing functionality preserved:
 
-✅ Drag & drop reordering
-✅ Enable/disable apps
-✅ Pin/unpin functionality
-✅ Preview (WebSocket devices)
-✅ Edit configuration
-✅ Duplicate apps
-✅ Copy to other devices
-✅ Move to top/bottom
-✅ Delete apps
-✅ i18n translations
-✅ Accessibility (ARIA labels)
-✅ Responsive design
-
----
-
-## 🗂 Code Organization
-
-### BEM Naming Convention
-
-```html
-<!-- Block: Component root -->
-<div class="app-card">
-
-    <!-- Element: Child of block -->
-    <div class="app-card__preview">
-        <img class="app-card__preview-image">
-    </div>
-
-    <!-- Modifier: Variant -->
-    <span class="app-card__badge app-card__badge--enabled">
-
-    <!-- State: Dynamic state -->
-    <button class="app-card__action-btn is-enabled">
-
-</div>
-```
-
-**Pattern**:
-- `.block` - Root component
-- `.block__element` - Child (uses `__`)
-- `.block__element--modifier` - Variant (uses `--`)
-- `.is-state` - JavaScript state (uses `.is-`)
+✅ Drag & drop reordering  
+✅ Enable/disable apps  
+✅ Pin/unpin functionality  
+✅ Preview (WebSocket devices)  
+✅ Edit configuration  
+✅ Duplicate apps  
+✅ Copy to other devices  
+✅ Move to top/bottom  
+✅ Delete apps  
+✅ i18n translations  
+✅ Accessibility (ARIA labels)  
+✅ Responsive design  
 
 ---
 
 ## 🚨 Troubleshooting
 
-### Card won't expand
-→ Check that `app-card-new.js` is loaded. Look for console errors.
+### Rounded corners appearing
+→ Check for conflicting CSS. Design system uses `border-radius: 0 !important`.
 
-### Styles look wrong
-→ Ensure `design-system.css` loads **before** other CSS files.
+### Wrong font family
+→ Ensure `design-system.css` loads before other CSS files.
 
-### Dark mode not working
-→ Change your **OS theme**, not just browser. Uses `prefers-color-scheme`.
+### Mobile layout not stacking
+→ Test at `<640px` width. Use browser DevTools responsive mode.
 
-### Preview image is cropped
-→ Make sure you're using `app_card_new.html`, not old `app_card.html`.
+### Dark mode not switching
+→ Change **OS theme** (System Preferences), not browser theme.
 
 ---
 
-## 📊 File Structure
+## 📚 File Reference
 
 ```
-/web
-├── static/
-│   ├── css/
-│   │   ├── design-system.css          ← NEW: Design tokens + components
-│   │   └── manager.css                 ← OLD: Marked with deprecation comments
-│   └── js/
-│       └── app-card-new.js             ← NEW: Expand/collapse logic
-└── templates/
-    └── partials/
-        ├── app_card.html               ← OLD: Marked for cleanup
-        └── app_card_new.html           ← NEW: Compact + Full views
+/web/static/css/design-system.css
+  - Sharp borders (no border-radius)
+  - Monospace typography
+  - Mobile stacking layout (@media max-width: 640px)
+  - Light/dark mode support
 
-/tmp/
-├── dark-design-example.html            ← Reference design (dark mode)
-└── light-design-example.html           ← Reference design (light mode)
-
-/
-├── DESIGN_SYSTEM.md                    ← Complete token reference
-├── MIGRATION_GUIDE.md                  ← Step-by-step migration
-└── INTEGRATION_GUIDE.md                ← This file (quick start)
+/web/templates/partials/app_card.html
+  - Compact view (horizontal on desktop)
+  - Full view (expandable)
+  - Mobile-friendly stacking
 ```
 
 ---
 
 ## 🎓 Next Steps
 
-1. **Integrate** - Follow Step 1-3 above
-2. **Test** - Check compact/full views, mobile, dark mode
-3. **Extend** - Use design tokens for other components
-4. **Clean up** - Remove old code after testing (see MIGRATION_GUIDE.md)
+1. **Review** the migrated `app_card.html` component
+2. **Apply** the design language to other templates
+3. **Follow** `MIGRATION_GUIDE.md` for step-by-step instructions
+4. **Reference** this guide when creating new components
 
 ---
 
-## 📚 Additional Resources
-
-- **Design Token Reference**: See `DESIGN_SYSTEM.md`
-- **Migration Guide**: See `MIGRATION_GUIDE.md`
-- **Example Designs**:
-  - `/tmp/dark-design-example.html`
-  - `/tmp/light-design-example.html`
-
----
-
-**Questions?** Check the documentation or create a GitHub issue.
+**Design Inspiration**: Teenage Engineering  
+**Focus**: Content over decoration, precision over flair

@@ -26,5 +26,5 @@ messages.pot
 .terraform/
 .terraform.lock.hcl
 
-CLAUDE.md
+
 /tmp/*
