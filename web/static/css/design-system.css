@@ -1059,7 +1059,9 @@ button.btn-action-lg {
 .brightness-btn {
     padding: 0.75rem !important;
     border: 1px solid var(--neutral-300) !important;
+    border-radius: 0 !important;
     background: none !important;
+    box-shadow: none !important;
     font-family: var(--font-mono) !important;
     font-size: 1rem !important;
     font-weight: 700 !important;

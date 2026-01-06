@@ -29,9 +29,8 @@ const debouncedSearch = debounce(() => {
 
 
 
-// Function to update the numeric display in real-time (on slider move)
+// Function to update the button active state in real-time
 function updateBrightnessValue(deviceId, brightness) {
-  document.getElementById(`brightnessValue-${deviceId}`).innerText = brightness;
   // Update active button state
   const deviceCard = document.getElementById(`device-card-${deviceId}`);
   if (deviceCard) {
