@@ -240,6 +240,19 @@ func main() {
 		}
 	}
 
+	// Fix timezone issues
+	if db.Migrator().HasTable(&data.Device{}) {
+		devices := []data.Device{}
+		if err := db.Model(&data.Device{}).Where("location LIKE '%\"timezone\":\"None\"'").Find(&devices); err != nil {
+			slog.Warn("Failed to get devices with illegal timestamps", "error", err)
+		} else {
+			for _, device := range devices {
+				device.Location.Timezone = ""
+				db.Save(&device)
+			}
+		}
+	}
+
 	// AutoMigrate (ensure schema exists)
 	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
 		slog.Error("Failed to migrate schema", "error", err)
