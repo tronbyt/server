@@ -5,4 +5,7 @@ services:
   image:
     url: ghcr.io/tronbyt/server:2
   plan: free
+  envVars:
+  - key: PORT
+    value: 8000
 version: "1"
