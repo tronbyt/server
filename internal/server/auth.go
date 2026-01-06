@@ -146,7 +146,12 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRegisterGet(w http.ResponseWriter, r *http.Request) {
-	count, _ := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	count, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	if err != nil {
+		slog.Error("Failed to count users for registration check", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	if s.Config.EnableUserRegistration != "1" && count > 0 {
 		session, _ := s.Store.Get(r, "session-name")
@@ -176,7 +181,12 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	email := r.FormValue("email")
 
-	count, _ := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	count, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	if err != nil {
+		slog.Error("Failed to count users for registration", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	localizer := s.getLocalizer(r)
 

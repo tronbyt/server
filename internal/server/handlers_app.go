@@ -770,7 +770,6 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save new order
-	// Save new order
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		for i := range appsList {
 			if appsList[i].Order != i {
@@ -798,18 +797,8 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	originalApp := GetApp(r)
 
-	// Determine insert position (after original app)
-	targetIdx := -1
-	for i, app := range device.Apps {
-		if app.Iname == originalApp.Iname {
-			targetIdx = i
-			break
-		}
-	}
-
-	insertAfter := targetIdx != -1
-
-	if err := s.performAppDuplication(r.Context(), user, device, originalApp, device, originalApp.Iname, insertAfter); err != nil {
+	// insertAfter is implicitly true for simple duplication
+	if err := s.performAppDuplication(r.Context(), user, device, originalApp, device, originalApp.Iname, true); err != nil {
 		slog.Error("Failed to duplicate app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -1453,35 +1442,35 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 			return err
 		}
 
-		// Calculate insertion index in the list based on targetAppIname
-		insertPos := len(currentApps) // Default append
+		// Calculate insertion order
+		insertOrder := 0
+		if len(currentApps) > 0 {
+			insertOrder = currentApps[len(currentApps)-1].Order + 1 // Default append
+		}
+
 		if targetAppIname != "" {
-			for i, app := range currentApps {
+			for _, app := range currentApps {
 				if app.Iname == targetAppIname {
 					if insertAfter {
-						insertPos = i + 1
+						insertOrder = app.Order + 1
 					} else {
-						insertPos = i
+						insertOrder = app.Order
 					}
 					break
 				}
 			}
 		}
 
-		// Bounds check
-		if insertPos > len(currentApps) {
-			insertPos = len(currentApps)
-		}
-
-		duplicatedApp.Order = insertPos
+		duplicatedApp.Order = insertOrder
 		if err := gorm.G[data.App](tx).Create(ctx, &duplicatedApp); err != nil {
 			return err
 		}
 
 		// Efficient SQL update for subsequent apps
-		if err := tx.Model(&data.App{}).
-			Where("device_id = ? AND \"order\" >= ? AND id != ?", targetDevice.ID, insertPos, duplicatedApp.ID).
-			UpdateColumn("order", gorm.Expr("? + ?", clause.Column{Name: "order"}, 1)).Error; err != nil {
+		if _, err := gorm.G[data.App](tx).
+			Where("device_id = ? AND id != ?", targetDevice.ID, duplicatedApp.ID).
+			Where(gorm.Expr("? >= ?", clause.Column{Name: "order"}, insertOrder)).
+			Update(ctx, "order", gorm.Expr("? + ?", clause.Column{Name: "order"}, 1)); err != nil {
 			return err
 		}
 
