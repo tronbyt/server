@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var validDeviceIDRe = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
 func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
@@ -84,8 +86,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// Validate and check custom device ID if provided
 	if formData.DeviceID != "" {
 		// Validate device ID format (alphanumeric only)
-		validDeviceID := regexp.MustCompile(`^[a-zA-Z0-9]+$`)
-		if !validDeviceID.MatchString(formData.DeviceID) {
+		if !validDeviceIDRe.MatchString(formData.DeviceID) {
 			slog.Warn("Validation error: Device ID contains invalid characters", "device_id", formData.DeviceID)
 			s.renderTemplate(w, r, "create", TemplateData{
 				User:              user,
@@ -794,18 +795,53 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	// Generate NEW ID and API Key
-	deviceID, err := generateSecureToken(8)
-	if err != nil {
-		slog.Error("Failed to generate device ID", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	// Determine Device ID
+	var deviceID string
+	if importedDevice.ID != "" {
+		// Validate ID format
+		if validDeviceIDRe.MatchString(importedDevice.ID) {
+			// Check if exists
+			var exists int64
+			s.DB.Model(&data.Device{}).Where("id = ?", importedDevice.ID).Count(&exists)
+			if exists == 0 {
+				deviceID = importedDevice.ID
+			}
+		}
 	}
-	apiKey, err := generateSecureToken(32)
-	if err != nil {
-		slog.Error("Failed to generate API key", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	if deviceID == "" {
+		var err error
+		deviceID, err = generateSecureToken(8)
+		if err != nil {
+			slog.Error("Failed to generate device ID", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Determine API Key
+	apiKey := importedDevice.APIKey
+	if apiKey != "" {
+		// Check for uniqueness
+		var exists int64
+		s.DB.Model(&data.Device{}).Where("api_key = ?", apiKey).Count(&exists)
+		if exists > 0 {
+			apiKey = "" // Collision, generate new
+		} else {
+			// Check User API keys too?
+			s.DB.Model(&data.User{}).Where("api_key = ?", apiKey).Count(&exists)
+			if exists > 0 {
+				apiKey = ""
+			}
+		}
+	}
+	if apiKey == "" {
+		var err error
+		apiKey, err = generateSecureToken(32)
+		if err != nil {
+			slog.Error("Failed to generate API key", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Prepare new device

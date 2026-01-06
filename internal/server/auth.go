@@ -20,9 +20,8 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 	if username, ok := session.Values["username"].(string); ok {
 		// Validate user exists in DB
 		var user data.User
-		// Use Find to avoid logging error if user not found
-		result := s.DB.Limit(1).Find(&user, "username = ?", username)
-		if result.Error == nil && result.RowsAffected > 0 {
+		// Use First (logger configured to ignore not found)
+		if err := s.DB.First(&user, "username = ?", username).Error; err == nil {
 			// User exists, redirect to home
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return

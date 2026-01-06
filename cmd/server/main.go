@@ -66,7 +66,7 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 	}
 
 	gormConfig := &gorm.Config{
-		Logger: data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond),
+		Logger: data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
 	}
 
 	if strings.HasPrefix(dsn, "postgres") || strings.Contains(dsn, "host=") {

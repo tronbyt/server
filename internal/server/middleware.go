@@ -56,9 +56,11 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		}).Preload("Devices.Apps").Limit(1).Find(&user, "api_key = ?", apiKey)
 
 		if userResult.Error != nil {
-			slog.Error("API auth: database error when finding user by key", "error", userResult.Error)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+			if !errors.Is(userResult.Error, gorm.ErrRecordNotFound) {
+				slog.Error("API auth: database error when finding user by key", "error", userResult.Error)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		if userResult.RowsAffected > 0 {
@@ -69,11 +71,13 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 
 		// 2. Try to find Device by API Key
 		var device data.Device
-		deviceResult := s.DB.Preload("Apps").Limit(1).Find(&device, "api_key = ?", apiKey)
+		deviceResult := s.DB.Preload("Apps").First(&device, "api_key = ?", apiKey)
 		if deviceResult.Error != nil {
-			slog.Error("API auth: database error when finding device by key", "error", deviceResult.Error)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+			if !errors.Is(deviceResult.Error, gorm.ErrRecordNotFound) {
+				slog.Error("API auth: database error when finding device by key", "error", deviceResult.Error)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		if deviceResult.RowsAffected > 0 {
@@ -109,12 +113,16 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 
 		var user data.User
 		// Preload everything we might need
-		// Use Limit(1).Find to avoid GORM "record not found" error log for stale sessions
+		// Use First (logger configured to ignore not found)
 		result := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
 			return db.Order("name ASC")
-		}).Preload("Devices.Apps").Limit(1).Find(&user, "username = ?", username)
+		}).Preload("Devices.Apps").First(&user, "username = ?", username)
 		if result.Error != nil {
-			slog.Error("Database error checking session user", "username", username, "error", result.Error)
+			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				slog.Error("Database error checking session user", "username", username, "error", result.Error)
+			} else {
+				slog.Info("User in session not found in DB", "username", username)
+			}
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
 		}

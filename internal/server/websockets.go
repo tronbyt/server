@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"tronbyt-server/internal/data"
 
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
 const (
@@ -44,7 +46,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 
 	device, err := s.reloadDevice(deviceID)
 	if err != nil {
-		slog.Warn("WS connection rejected: device not found", "id", deviceID, "error", err)
+		slog.Warn("WS connection rejected", "id", deviceID, "error", err)
 		http.Error(w, "Device not found", http.StatusNotFound)
 		return
 	}
@@ -393,7 +395,10 @@ func (s *Server) SetupWebsocketRoutes() {
 func (s *Server) reloadDevice(deviceID string) (*data.Device, error) {
 	var device data.Device
 	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
-		return nil, fmt.Errorf("device gone: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("device not found: %s", deviceID)
+		}
+		return nil, fmt.Errorf("reload device: %w", err)
 	}
 	return &device, nil
 }
