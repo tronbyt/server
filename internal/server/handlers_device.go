@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var validDeviceIDRe = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
 func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
@@ -84,8 +86,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// Validate and check custom device ID if provided
 	if formData.DeviceID != "" {
 		// Validate device ID format (alphanumeric only)
-		validDeviceID := regexp.MustCompile(`^[a-zA-Z0-9]+$`)
-		if !validDeviceID.MatchString(formData.DeviceID) {
+		if !validDeviceIDRe.MatchString(formData.DeviceID) {
 			slog.Warn("Validation error: Device ID contains invalid characters", "device_id", formData.DeviceID)
 			s.renderTemplate(w, r, "create", TemplateData{
 				User:              user,
@@ -798,7 +799,7 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 	var deviceID string
 	if importedDevice.ID != "" {
 		// Validate ID format
-		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, importedDevice.ID); matched {
+		if validDeviceIDRe.MatchString(importedDevice.ID) {
 			// Check if exists
 			var exists int64
 			s.DB.Model(&data.Device{}).Where("id = ?", importedDevice.ID).Count(&exists)
