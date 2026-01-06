@@ -1699,7 +1699,11 @@ document.addEventListener('DOMContentLoaded', function () {
         pollImageWithEtag(msg.device_id);
       } else if (msg.type === 'device_deleted' && msg.device_id) {
         console.log('Device deleted', msg.device_id);
-        window.location.reload();
+        if (window.location.pathname.startsWith('/devices/' + msg.device_id)) {
+          window.location.href = "/";
+        } else {
+          window.location.reload();
+        }
       }
     } catch (e) {
       if (event.data === 'refresh') {
