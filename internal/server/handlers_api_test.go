@@ -49,8 +49,12 @@ func newTestServerAPI(t *testing.T) *Server {
 	ctx := context.Background()
 
 	// Pre-seed settings to avoid "record not found" logs during NewServer
-	gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "secret_key", Value: "testsecret"})
-	gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "system_apps_repo", Value: ""})
+	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "secret_key", Value: "testsecret"}); err != nil {
+		t.Fatalf("Failed to seed secret_key: %v", err)
+	}
+	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "system_apps_repo", Value: ""}); err != nil {
+		t.Fatalf("Failed to seed system_apps_repo: %v", err)
+	}
 
 	cfg := &config.Settings{}
 

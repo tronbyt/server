@@ -6,14 +6,17 @@ import (
 	"time"
 
 	"tronbyt-server/internal/data"
+
+	"gorm.io/gorm"
 )
 
 func TestDetermineNextApp_NightMode(t *testing.T) {
 	s := newTestServer(t)
+	ctx := context.Background()
 
 	// Create a user
 	user := data.User{Username: "testuser"}
-	if err := s.DB.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
@@ -26,7 +29,7 @@ func TestDetermineNextApp_NightMode(t *testing.T) {
 		NightEnd:         "23:59",
 		NightModeApp:     "app-night",
 	}
-	if err := s.DB.Create(&device).Error; err != nil {
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
 		t.Fatalf("failed to create device: %v", err)
 	}
 
@@ -39,7 +42,7 @@ func TestDetermineNextApp_NightMode(t *testing.T) {
 		Pushed:   true, // Bypass rendering check
 		Order:    1,
 	}
-	if err := s.DB.Create(&appRegular).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(ctx, &appRegular); err != nil {
 		t.Fatalf("failed to create regular app: %v", err)
 	}
 
@@ -52,13 +55,13 @@ func TestDetermineNextApp_NightMode(t *testing.T) {
 		Pushed:   true,  // Bypass rendering check
 		Order:    2,
 	}
-	if err := s.DB.Create(&appNight).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(ctx, &appNight); err != nil {
 		t.Fatalf("failed to create night app: %v", err)
 	}
 
 	// Reload device with apps
-	var d data.Device
-	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+	d, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
 		t.Fatalf("failed to reload device with apps: %v", err)
 	}
 
@@ -70,12 +73,13 @@ func TestDetermineNextApp_NightMode(t *testing.T) {
 	d.LastAppIndex = -1
 
 	for i := range 10 {
-		app, nextIndex, err := s.determineNextApp(context.Background(), &d, &user)
+		app, nextIndex, err := s.determineNextApp(ctx, &d, &user)
 		if err != nil {
 			t.Fatalf("determineNextApp failed: %v", err)
 		}
 		if app == nil {
 			t.Fatalf("expected an app, got nil")
+			return
 		}
 
 		if app.Iname != "app-night" {
@@ -89,10 +93,11 @@ func TestDetermineNextApp_NightMode(t *testing.T) {
 
 func TestDetermineNextApp_NightMode_NoAppSelected(t *testing.T) {
 	s := newTestServer(t)
+	ctx := context.Background()
 
 	// Create a user
 	user := data.User{Username: "testuser"}
-	if err := s.DB.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
@@ -105,7 +110,7 @@ func TestDetermineNextApp_NightMode_NoAppSelected(t *testing.T) {
 		NightEnd:         "23:59",
 		NightModeApp:     "", // Empty!
 	}
-	if err := s.DB.Create(&device).Error; err != nil {
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
 		t.Fatalf("failed to create device: %v", err)
 	}
 
@@ -118,25 +123,26 @@ func TestDetermineNextApp_NightMode_NoAppSelected(t *testing.T) {
 		Pushed:   true,
 		Order:    1,
 	}
-	if err := s.DB.Create(&appRegular).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(ctx, &appRegular); err != nil {
 		t.Fatalf("failed to create regular app: %v", err)
 	}
 
 	// Reload device with apps
-	var d data.Device
-	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+	d, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
 		t.Fatalf("failed to reload device with apps: %v", err)
 	}
 
 	d.LastAppIndex = -1
 
 	// Should return the regular app
-	app, _, err := s.determineNextApp(context.Background(), &d, &user)
+	app, _, err := s.determineNextApp(ctx, &d, &user)
 	if err != nil {
 		t.Fatalf("determineNextApp failed: %v", err)
 	}
 	if app == nil {
 		t.Fatal("expected an app (fallback to rotation), got nil")
+		return
 	}
 
 	if app.Iname != "app-regular" {
@@ -146,9 +152,10 @@ func TestDetermineNextApp_NightMode_NoAppSelected(t *testing.T) {
 
 func TestDetermineNextApp_NightModePrecedence(t *testing.T) {
 	s := newTestServer(t)
+	ctx := context.Background()
 
 	user := data.User{Username: "testuser_precedence"}
-	if err := s.DB.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
@@ -166,42 +173,42 @@ func TestDetermineNextApp_NightModePrecedence(t *testing.T) {
 		NightModeApp:     nightAppID,
 		LastAppIndex:     -1,
 	}
-	if err := s.DB.Create(&device).Error; err != nil {
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
 		t.Fatalf("failed to create device: %v", err)
 	}
 
 	// Create Pinned App
-	if err := s.DB.Create(&data.App{
+	if err := gorm.G[data.App](s.DB).Create(ctx, &data.App{
 		DeviceID: device.ID,
 		Iname:    pinnedAppID,
 		Name:     "Pinned App",
 		Enabled:  true,
 		Pushed:   true,
 		Order:    1,
-	}).Error; err != nil {
+	}); err != nil {
 		t.Fatalf("failed to create pinned app: %v", err)
 	}
 
 	// Create Night Mode App
-	if err := s.DB.Create(&data.App{
+	if err := gorm.G[data.App](s.DB).Create(ctx, &data.App{
 		DeviceID: device.ID,
 		Iname:    nightAppID,
 		Name:     "Night App",
 		Enabled:  true,
 		Pushed:   true,
 		Order:    2,
-	}).Error; err != nil {
+	}); err != nil {
 		t.Fatalf("failed to create night app: %v", err)
 	}
 
 	// Reload device with apps
-	var d data.Device
-	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+	d, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
 		t.Fatalf("failed to reload device with apps: %v", err)
 	}
 
 	// 1. Verify Night Mode wins when active
-	app, _, err := s.determineNextApp(context.Background(), &d, &user)
+	app, _, err := s.determineNextApp(ctx, &d, &user)
 	if err != nil {
 		t.Fatalf("determineNextApp failed: %v", err)
 	}
@@ -211,7 +218,7 @@ func TestDetermineNextApp_NightModePrecedence(t *testing.T) {
 
 	// 2. Verify Pinned App wins when Night Mode is inactive
 	d.NightModeEnabled = false
-	app, _, err = s.determineNextApp(context.Background(), &d, &user)
+	app, _, err = s.determineNextApp(ctx, &d, &user)
 	if err != nil {
 		t.Fatalf("determineNextApp failed (night mode disabled): %v", err)
 	}
@@ -222,10 +229,11 @@ func TestDetermineNextApp_NightModePrecedence(t *testing.T) {
 
 func TestDetermineNextApp_Pinning(t *testing.T) {
 	s := newTestServer(t)
+	ctx := context.Background()
 
 	// Create a user
 	user := data.User{Username: "testuser_pin"}
-	if err := s.DB.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
@@ -238,7 +246,7 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 		PinnedApp:    &pinnedAppID,
 		LastAppIndex: -1,
 	}
-	if err := s.DB.Create(&device).Error; err != nil {
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
 		t.Fatalf("failed to create device: %v", err)
 	}
 
@@ -251,7 +259,7 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 		Pushed:   true,
 		Order:    1,
 	}
-	if err := s.DB.Create(&app1).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(ctx, &app1); err != nil {
 		t.Fatalf("failed to create app 1: %v", err)
 	}
 
@@ -264,25 +272,26 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 		Pushed:   true,
 		Order:    2,
 	}
-	if err := s.DB.Create(&app2).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(ctx, &app2); err != nil {
 		t.Fatalf("failed to create app 2: %v", err)
 	}
 
 	// Reload device with apps
-	var d data.Device
-	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+	d, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
 		t.Fatalf("failed to reload device with apps: %v", err)
 	}
 
 	// 1. Verify Sticky Pinning
 	// It should return app-2 multiple times, regardless of "rotation"
 	for i := range 5 {
-		app, nextIndex, err := s.determineNextApp(context.Background(), &d, &user)
+		app, nextIndex, err := s.determineNextApp(ctx, &d, &user)
 		if err != nil {
 			t.Fatalf("determineNextApp failed: %v", err)
 		}
 		if app == nil {
 			t.Fatalf("expected an app, got nil")
+			return
 		}
 
 		if app.Iname != pinnedAppID {
@@ -297,14 +306,17 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 	missingAppID := "app-missing"
 	d.PinnedApp = &missingAppID
 	// Update DB to match memory
-	s.DB.Model(&d).Update("pinned_app", missingAppID)
+	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", d.ID).Update(ctx, "pinned_app", missingAppID); err != nil {
+		t.Fatalf("failed to update device: %v", err)
+	}
 
-	app, _, err := s.determineNextApp(context.Background(), &d, &user)
+	app, _, err := s.determineNextApp(ctx, &d, &user)
 	if err != nil {
 		t.Fatalf("determineNextApp failed with missing pin: %v", err)
 	}
 	if app == nil {
 		t.Fatal("expected an app (fallback to rotation), got nil")
+		return
 	}
 
 	// Verify pin is cleared in memory
@@ -313,8 +325,10 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 	}
 
 	// Verify pin is cleared in DB
-	var dbDevice data.Device
-	s.DB.First(&dbDevice, "id = ?", d.ID)
+	dbDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", d.ID).First(ctx)
+	if err != nil {
+		t.Fatalf("failed to fetch device from DB: %v", err)
+	}
 	if dbDevice.PinnedApp != nil {
 		t.Error("Expected DB PinnedApp to be nil after missing app check")
 	}
@@ -322,9 +336,10 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 
 func TestDetermineNextApp_AutoPin(t *testing.T) {
 	s := newTestServer(t)
+	ctx := context.Background()
 
 	user := data.User{Username: "autouser"}
-	if err := s.DB.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
@@ -334,7 +349,7 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 		Username:     user.Username,
 		LastAppIndex: -1,
 	}
-	if err := s.DB.Create(&device).Error; err != nil {
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
 		t.Fatalf("failed to create device: %v", err)
 	}
 
@@ -348,19 +363,19 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 		Pushed:   true, // Initially treated as successful render
 		Order:    1,
 	}
-	if err := s.DB.Create(&app).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(ctx, &app); err != nil {
 		t.Fatalf("failed to create autopin app: %v", err)
 	}
 
 	// Reload device with apps
-	var d data.Device
-	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+	d, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
 		t.Fatalf("failed to reload device with apps: %v", err)
 	}
 
 	// 1. Successful Render -> Auto Pin
 	// Pushed=true bypasses rendering and success is assumed.
-	_, _, err := s.determineNextApp(context.Background(), &d, &user)
+	_, _, err = s.determineNextApp(ctx, &d, &user)
 	if err != nil {
 		t.Fatalf("determineNextApp failed: %v", err)
 	}
@@ -370,8 +385,10 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	}
 
 	// Check DB
-	var dbDevice data.Device
-	s.DB.First(&dbDevice, "id = ?", d.ID)
+	dbDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", d.ID).First(ctx)
+	if err != nil {
+		t.Fatalf("failed to fetch device from DB: %v", err)
+	}
 	if dbDevice.PinnedApp == nil || *dbDevice.PinnedApp != app.Iname {
 		t.Error("Auto-pin not reflected in DB")
 	}
@@ -387,16 +404,29 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	app.EmptyLastRender = true
 	// LastRender must be old enough to trigger a new render
 	app.LastRender = time.Now().Add(-1 * time.Hour)
-	s.DB.Save(&app)
+	
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "pushed", false); err != nil {
+		t.Fatalf("failed to update app pushed: %v", err)
+	}
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "path", app.Path); err != nil {
+		t.Fatalf("failed to update app path: %v", err)
+	}
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "empty_last_render", true); err != nil {
+		t.Fatalf("failed to update app empty_last_render: %v", err)
+	}
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_render", app.LastRender); err != nil {
+		t.Fatalf("failed to update app last_render: %v", err)
+	}
 
 	// Reload d for determineNextApp loop
-	if err := s.DB.Preload("Apps").First(&d, "id = ?", device.ID).Error; err != nil {
+	d, err = gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
 		t.Fatalf("failed to reload device: %v", err)
 	}
 
 	// determineNextApp will call possiblyRender for the pinned app.
 	// We expect it to fail (EmptyLastRender=true) and then unpin.
-	_, _, err = s.determineNextApp(context.Background(), &d, &user)
+	_, _, err = s.determineNextApp(ctx, &d, &user)
 	if err != nil {
 		t.Fatalf("determineNextApp failed on unpin cycle: %v", err)
 	}
@@ -406,7 +436,10 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	}
 
 	// Check DB
-	s.DB.First(&dbDevice, "id = ?", d.ID)
+	dbDevice, err = gorm.G[data.Device](s.DB).Where("id = ?", d.ID).First(ctx)
+	if err != nil {
+		t.Fatalf("failed to fetch device from DB: %v", err)
+	}
 	if dbDevice.PinnedApp != nil {
 		t.Error("Auto-unpin not reflected in DB")
 	}

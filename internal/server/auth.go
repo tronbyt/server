@@ -102,7 +102,9 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Upgrading password hash", "username", username)
 		newHash, err := auth.HashPassword(password)
 		if err == nil {
-			gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "password", newHash)
+			if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "password", newHash); err != nil {
+				slog.Error("Failed to upgrade password hash", "error", err)
+			}
 		} else {
 			slog.Error("Failed to upgrade password hash", "error", err)
 		}
