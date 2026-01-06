@@ -368,7 +368,10 @@ func TestHandlePatchDevice(t *testing.T) {
 	deviceID := "testdevice"
 
 	// Initial device state
-	device, _ := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch initial device state: %v", err)
+	}
 	originalBrightness := device.Brightness
 
 	// Patch brightness
@@ -385,7 +388,10 @@ func TestHandlePatchDevice(t *testing.T) {
 	}
 
 	// Verify updated device state
-	device, _ = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	device, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated device state: %v", err)
+	}
 	if device.Brightness != data.Brightness(newBrightness) {
 		t.Errorf("Expected brightness %d, got %d", newBrightness, device.Brightness)
 	}
@@ -404,7 +410,10 @@ func TestHandlePatchDevice(t *testing.T) {
 	}
 
 	// Verify updated device state
-	device, _ = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	device, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated device state: %v", err)
+	}
 	if device.DefaultInterval != newInterval {
 		t.Errorf("Expected interval %d, got %d", newInterval, device.DefaultInterval)
 	}
@@ -451,7 +460,10 @@ func TestHandlePatchInstallation(t *testing.T) {
 	}
 
 	// Verify updated app state
-	app, _ = gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	app, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated app state: %v", err)
+	}
 	if app.Enabled != newEnabled {
 		t.Errorf("Expected app enabled to be %t, got %t", newEnabled, app.Enabled)
 	}

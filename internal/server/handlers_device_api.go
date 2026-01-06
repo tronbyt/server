@@ -47,7 +47,12 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := UserFromContext(r.Context())
 	if user == nil {
-		owner, _ := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
+		owner, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
+		if err != nil {
+			slog.Error("Failed to find device owner", "username", device.Username, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		user = &owner
 	}
 

@@ -374,11 +374,11 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Update credential counters and flags
-	updates := data.WebAuthnCredential{
-		SignCount:      credential.Authenticator.SignCount,
-		CloneWarning:   credential.Authenticator.CloneWarning,
-		BackupEligible: credential.Flags.BackupEligible,
-		BackupState:    credential.Flags.BackupState,
+	updates := map[string]interface{}{
+		"sign_count":      credential.Authenticator.SignCount,
+		"clone_warning":   credential.Authenticator.CloneWarning,
+		"backup_eligible": credential.Flags.BackupEligible,
+		"backup_state":    credential.Flags.BackupState,
 	}
 	if _, err := gorm.G[data.WebAuthnCredential](s.DB).Where("id = ?", cred.ID).Updates(r.Context(), updates); err != nil {
 		slog.Error("Failed to update credential", "error", err)

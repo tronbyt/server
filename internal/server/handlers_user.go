@@ -360,7 +360,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
-		if _, err := gorm.G[data.User](tx).Where("username = ?", currentUser.Username).Updates(r.Context(), currentUser); err != nil {
+		if _, err := gorm.G[data.User](tx).Where("username = ?", currentUser.Username).Select("*").Updates(r.Context(), currentUser); err != nil {
 			return err
 		}
 
