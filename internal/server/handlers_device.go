@@ -794,18 +794,53 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	// Generate NEW ID and API Key
-	deviceID, err := generateSecureToken(8)
-	if err != nil {
-		slog.Error("Failed to generate device ID", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	// Determine Device ID
+	var deviceID string
+	if importedDevice.ID != "" {
+		// Validate ID format
+		if matched, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, importedDevice.ID); matched {
+			// Check if exists
+			var exists int64
+			s.DB.Model(&data.Device{}).Where("id = ?", importedDevice.ID).Count(&exists)
+			if exists == 0 {
+				deviceID = importedDevice.ID
+			}
+		}
 	}
-	apiKey, err := generateSecureToken(32)
-	if err != nil {
-		slog.Error("Failed to generate API key", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	if deviceID == "" {
+		var err error
+		deviceID, err = generateSecureToken(8)
+		if err != nil {
+			slog.Error("Failed to generate device ID", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Determine API Key
+	apiKey := importedDevice.APIKey
+	if apiKey != "" {
+		// Check for uniqueness
+		var exists int64
+		s.DB.Model(&data.Device{}).Where("api_key = ?", apiKey).Count(&exists)
+		if exists > 0 {
+			apiKey = "" // Collision, generate new
+		} else {
+			// Check User API keys too?
+			s.DB.Model(&data.User{}).Where("api_key = ?", apiKey).Count(&exists)
+			if exists > 0 {
+				apiKey = ""
+			}
+		}
+	}
+	if apiKey == "" {
+		var err error
+		apiKey, err = generateSecureToken(32)
+		if err != nil {
+			slog.Error("Failed to generate API key", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Prepare new device

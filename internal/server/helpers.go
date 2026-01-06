@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -24,6 +25,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"gorm.io/gorm"
 	"gopkg.in/yaml.v3"
 )
 
@@ -494,12 +496,12 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 
 func (s *Server) getSetting(key string) (string, error) {
 	var setting data.Setting
-	result := s.DB.Limit(1).Find(&setting, "key = ?", key)
-	if result.Error != nil {
-		return "", result.Error
-	}
-	if result.RowsAffected == 0 {
-		return "", nil
+	err := s.DB.First(&setting, "key = ?", key).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
 	}
 	return setting.Value, nil
 }

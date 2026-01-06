@@ -60,18 +60,21 @@
   aspect-ratio: 2 / 1;
   overflow: hidden;
   border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--app-img-bg);
 }
 
 .lazy-image {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: relative;
+  width: 128px !important;
+  height: 64px !important;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: 2;
+  image-rendering: pixelated;
 }
 
 .lazy-image.loaded {
@@ -198,9 +201,8 @@
 .app-item img {
   transform: translateZ(0);
   will-change: transform;
-  width: 100%;
-  height: 100%;
   object-fit: contain;
+  image-rendering: pixelated;
 }
 
 /* Optimize text rendering */
