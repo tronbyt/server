@@ -931,6 +931,693 @@ button.btn-action-lg {
 }
 
 /* ===========================================
+   DEVICE CARD - Teenage Engineering Control Panel
+   =========================================== */
+
+.device-card-container {
+    background-color: var(--white) !important;
+    border: 1px solid var(--neutral-700) !important;
+    padding: 1.5rem !important;
+    margin-bottom: 2rem !important;
+    font-family: var(--font-mono) !important;
+}
+
+[data-theme="dark"] .device-card-container {
+    border-color: var(--neutral-400) !important;
+}
+
+/* Device Header */
+.device-header {
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 1px solid var(--neutral-300) !important;
+}
+
+[data-theme="dark"] .device-header {
+    border-bottom-color: var(--neutral-400) !important;
+}
+
+.device-name {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    margin: 0 0 0.5rem 0 !important;
+    font-family: var(--font-mono) !important;
+    text-transform: uppercase !important;
+    letter-spacing: -0.025em !important;
+}
+
+.device-link {
+    color: var(--neutral-900) !important;
+    text-decoration: none !important;
+}
+
+.device-link:hover {
+    color: var(--orange-500) !important;
+}
+
+[data-theme="dark"] .device-link {
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .device-link:hover {
+    color: var(--orange-500) !important;
+}
+
+.device-badges {
+    display: flex !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap !important;
+}
+
+/* Device Control Panel - Two Column Layout */
+.device-control-panel {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+@media (max-width: 768px) {
+    .device-control-panel {
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem !important;
+    }
+    
+    /* Show preview section first on mobile */
+    .device-preview-section {
+        order: -1 !important;
+    }
+    
+    .device-controls {
+        order: 1 !important;
+    }
+}
+
+.device-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+}
+
+.control-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+}
+
+.control-label {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--neutral-600) !important;
+    font-family: var(--font-mono) !important;
+}
+
+[data-theme="dark"] .control-label {
+    color: var(--neutral-600) !important;
+}
+
+.readout-value {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    font-family: var(--font-mono) !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .readout-value {
+    color: var(--neutral-900) !important;
+}
+
+/* Brightness Grid */
+.brightness-grid {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 0.5rem !important;
+}
+
+.brightness-btn {
+    padding: 0.75rem !important;
+    border: 1px solid var(--neutral-300) !important;
+    background: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: var(--neutral-900) !important;
+    cursor: pointer !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    min-width: 3rem !important;
+}
+
+.brightness-btn:hover {
+    border-color: var(--neutral-900) !important;
+    background-color: var(--neutral-50) !important;
+}
+
+.brightness-btn.active {
+    background-color: var(--orange-500) !important;
+    border-color: var(--orange-500) !important;
+    color: #ffffff !important;
+}
+
+.brightness-btn.active:hover {
+    background-color: var(--orange-600) !important;
+    border-color: var(--orange-600) !important;
+}
+
+[data-theme="dark"] .brightness-btn {
+    border-color: var(--neutral-500) !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .brightness-btn:hover {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--neutral-600) !important;
+}
+
+[data-theme="dark"] .brightness-btn.active {
+    background-color: var(--orange-600) !important;
+    border-color: var(--orange-600) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .brightness-btn.active:hover {
+    background-color: #c2410c !important;
+    border-color: #c2410c !important;
+}
+
+/* Cycle Time Slider */
+.slider-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+}
+
+.slider-label-min,
+.slider-label-max {
+    font-size: 0.75rem !important;
+    font-family: var(--font-mono) !important;
+    color: var(--neutral-500) !important;
+    flex-shrink: 0 !important;
+}
+
+.cycle-time-slider {
+    flex: 1 !important;
+    height: 4px !important;
+    background: var(--neutral-200) !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+}
+
+[data-theme="dark"] .cycle-time-slider {
+    background: var(--neutral-400) !important;
+}
+
+/* Slider track - WebKit */
+.cycle-time-slider::-webkit-slider-runnable-track {
+    width: 100% !important;
+    height: 4px !important;
+    background: linear-gradient(to right,
+        var(--orange-500) 0%,
+        var(--orange-500) var(--slider-value, 50%),
+        var(--neutral-200) var(--slider-value, 50%),
+        var(--neutral-200) 100%) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider::-webkit-slider-runnable-track {
+    background: linear-gradient(to right,
+        var(--orange-600) 0%,
+        var(--orange-600) var(--slider-value, 50%),
+        var(--neutral-400) var(--slider-value, 50%),
+        var(--neutral-400) 100%) !important;
+}
+
+/* Slider track - Firefox */
+.cycle-time-slider::-moz-range-track {
+    width: 100% !important;
+    height: 4px !important;
+    background: var(--neutral-200) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider::-moz-range-track {
+    background: var(--neutral-400) !important;
+}
+
+.cycle-time-slider::-moz-range-progress {
+    height: 4px !important;
+    background: var(--orange-500) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider::-moz-range-progress {
+    background: var(--orange-600) !important;
+}
+
+/* Slider thumb - WebKit */
+.cycle-time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 16px !important;
+    height: 16px !important;
+    background: var(--neutral-900) !important;
+    border: 2px solid var(--white) !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.cycle-time-slider:hover::-webkit-slider-thumb {
+    background: var(--orange-500) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider::-webkit-slider-thumb {
+    background: var(--neutral-900) !important;
+    border-color: var(--bg-primary) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider:hover::-webkit-slider-thumb {
+    background: var(--orange-600) !important;
+}
+
+/* Slider thumb - Firefox */
+.cycle-time-slider::-moz-range-thumb {
+    width: 16px !important;
+    height: 16px !important;
+    background: var(--neutral-900) !important;
+    border: 2px solid var(--white) !important;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.cycle-time-slider:hover::-moz-range-thumb {
+    background: var(--orange-500) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider::-moz-range-thumb {
+    background: var(--neutral-900) !important;
+    border-color: var(--bg-primary) !important;
+}
+
+[data-theme="dark"] .cycle-time-slider:hover::-moz-range-thumb {
+    background: var(--orange-600) !important;
+}
+
+/* Device Actions */
+.device-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+}
+
+.btn-device-action {
+    padding: 0.75rem 1rem !important;
+    border: 1px solid var(--neutral-300) !important;
+    background: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: var(--neutral-900) !important;
+    text-decoration: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    cursor: pointer !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    white-space: nowrap !important;
+}
+
+.btn-device-action:hover {
+    border-color: var(--neutral-900) !important;
+    background-color: var(--neutral-50) !important;
+}
+
+[data-theme="dark"] .btn-device-action {
+    border-color: var(--neutral-500) !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .btn-device-action:hover {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--neutral-600) !important;
+}
+
+/* Device Preview Section */
+.device-preview-section {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+}
+
+.currently-displaying {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+}
+
+.preview-label {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--neutral-600) !important;
+    font-family: var(--font-mono) !important;
+}
+
+[data-theme="dark"] .preview-label {
+    color: var(--neutral-600) !important;
+}
+
+/* Device Info Box */
+.device-info-box {
+    border: 1px solid var(--neutral-300) !important;
+    overflow: hidden !important;
+}
+
+[data-theme="dark"] .device-info-box {
+    border-color: var(--neutral-500) !important;
+}
+
+.device-info-toggle {
+    width: 100% !important;
+    padding: 0.75rem 1rem !important;
+    background: none !important;
+    border: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--neutral-900) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.device-info-toggle:hover {
+    background-color: var(--neutral-50) !important;
+}
+
+[data-theme="dark"] .device-info-toggle {
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .device-info-toggle:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.device-info-toggle i {
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.device-info-toggle[aria-expanded="true"] i {
+    transform: rotate(180deg) !important;
+}
+
+.device-info-content {
+    max-height: 0 !important;
+    overflow: hidden !important;
+    transition: max-height 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.device-info-content.is-expanded {
+    max-height: 500px !important;
+    border-top: 1px solid var(--neutral-300) !important;
+}
+
+[data-theme="dark"] .device-info-content.is-expanded {
+    border-top-color: var(--neutral-500) !important;
+}
+
+.device-info-table {
+    width: 100% !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+}
+
+.device-info-table tr {
+    border-bottom: 1px solid var(--neutral-200) !important;
+}
+
+[data-theme="dark"] .device-info-table tr {
+    border-bottom-color: var(--neutral-400) !important;
+}
+
+.device-info-table tr:last-child {
+    border-bottom: none !important;
+}
+
+.device-info-table td {
+    padding: 0.75rem 1rem !important;
+}
+
+.info-label {
+    color: var(--neutral-600) !important;
+    font-weight: 500 !important;
+}
+
+[data-theme="dark"] .info-label {
+    color: var(--neutral-600) !important;
+}
+
+.info-value {
+    color: var(--neutral-900) !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="dark"] .info-value {
+    color: var(--neutral-700) !important;
+}
+
+/* View Toggle Section */
+.view-toggle-section {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 1rem 0 !important;
+    border-top: 1px solid var(--neutral-300) !important;
+    border-bottom: 1px solid var(--neutral-300) !important;
+    margin-bottom: 1.5rem !important;
+    gap: 1rem !important;
+    flex-wrap: wrap !important;
+}
+
+[data-theme="dark"] .view-toggle-section {
+    border-top-color: var(--neutral-400) !important;
+    border-bottom-color: var(--neutral-400) !important;
+}
+
+.view-toggle-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+}
+
+.view-toggle-label {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--neutral-600) !important;
+    font-family: var(--font-mono) !important;
+}
+
+[data-theme="dark"] .view-toggle-label {
+    color: var(--neutral-600) !important;
+}
+
+.view-toggle-buttons {
+    display: flex !important;
+    gap: 0.5rem !important;
+}
+
+.btn-view-toggle {
+    padding: 0.5rem 1rem !important;
+    border: 1px solid var(--neutral-300) !important;
+    background: none !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: var(--neutral-900) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-view-toggle:hover {
+    border-color: var(--neutral-900) !important;
+    background-color: var(--neutral-50) !important;
+}
+
+.btn-view-toggle.active {
+    background-color: var(--orange-500) !important;
+    border-color: var(--orange-500) !important;
+    color: #ffffff !important;
+}
+
+.btn-view-toggle.active:hover {
+    background-color: var(--orange-600) !important;
+    border-color: var(--orange-600) !important;
+}
+
+[data-theme="dark"] .btn-view-toggle {
+    border-color: var(--neutral-500) !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .btn-view-toggle:hover {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--neutral-600) !important;
+}
+
+[data-theme="dark"] .btn-view-toggle.active {
+    background-color: var(--orange-600) !important;
+    border-color: var(--orange-600) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-view-toggle.active:hover {
+    background-color: #c2410c !important;
+    border-color: #c2410c !important;
+}
+
+.drag-instruction {
+    font-size: 0.75rem !important;
+    color: var(--neutral-500) !important;
+    font-family: var(--font-mono) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+}
+
+[data-theme="dark"] .drag-instruction {
+    color: var(--neutral-600) !important;
+}
+
+/* Apps List */
+.apps-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+}
+
+/* Mobile Responsive - Device Card */
+@media (max-width: 640px) {
+    .device-card-container {
+        padding: 1rem !important;
+    }
+
+    .device-name {
+        font-size: 1.25rem !important;
+    }
+
+    /* Keep brightness grid as 6 columns on mobile - don't stack */
+    .brightness-grid {
+        grid-template-columns: repeat(6, 1fr) !important;
+        gap: 0.25rem !important;
+    }
+
+    .brightness-btn {
+        padding: 0.5rem 0.25rem !important;
+        font-size: 0.875rem !important;
+        min-width: 2rem !important;
+    }
+
+    .view-toggle-buttons {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .btn-view-toggle {
+        justify-content: center !important;
+    }
+
+    .device-action-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .drag-instruction-bar {
+        font-size: 0.6875rem !important;
+    }
+}
+
+/* ===========================================
+   Device Card - Additional Styles
+   =========================================== */
+
+/* Control Header - Label + Value side by side */
+.control-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Device Header Row */
+.device-header-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+}
+
+@media (min-width: 640px) {
+    .device-header-row {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+}
+
+/* Device Action Grid */
+.device-action-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+}
+
+@media (max-width: 768px) {
+    .device-action-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Device LED Panel - Larger for device preview */
+.device-led-panel {
+    aspect-ratio: 2 / 1 !important;
+    width: 100% !important;
+}
+
+.device-preview-image {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+/* Drag Instruction Bar */
+.drag-instruction-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 0 !important;
+    margin-top: 1rem !important;
+    border-top: 1px solid var(--neutral-300) !important;
+    font-size: 0.75rem !important;
+    color: var(--neutral-500) !important;
+    font-family: var(--font-mono) !important;
+}
+
+[data-theme="dark"] .drag-instruction-bar {
+    border-top-color: var(--neutral-400) !important;
+    color: var(--neutral-600) !important;
+}
+
+/* ===========================================
    Mobile Responsive
    =========================================== */
 @media (max-width: 640px) {

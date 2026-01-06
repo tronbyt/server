@@ -33,18 +33,29 @@ const debouncedSearch = debounce(() => {
 function updateBrightnessValue(deviceId, brightness) {
   document.getElementById(`brightnessValue-${deviceId}`).innerText = brightness;
   // Update active button state
-  const buttons = document.querySelectorAll(`#brightness-panel-${deviceId} .brightness-btn`);
-  buttons.forEach(btn => {
-    if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
+  const deviceCard = document.getElementById(`device-card-${deviceId}`);
+  if (deviceCard) {
+    const buttons = deviceCard.querySelectorAll('.brightness-btn');
+    buttons.forEach(btn => {
+      if (parseInt(btn.dataset.brightness) === parseInt(brightness)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
 }
 
 function updateIntervalValue(deviceId, interval) {
-  document.getElementById(`intervalValue-${deviceId}`).innerText = interval;
+  document.getElementById(`intervalValue-${deviceId}`).innerText = interval + 's';
+  // Update the slider progress bar CSS variable
+  const slider = document.getElementById(`default_interval-${deviceId}`);
+  if (slider) {
+    const min = parseInt(slider.min) || 1;
+    const max = parseInt(slider.max) || 30;
+    const percentage = ((interval - min) / (max - min)) * 100;
+    slider.style.setProperty('--slider-value', percentage + '%');
+  }
 }
 
 // Function to send the value to the server only when the slider is released
