@@ -372,11 +372,11 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if needsSave {
-		updates := map[string]any{
-			"password": user.Password,
-			"email":    user.Email,
+		updates := data.User{
+			Password: user.Password,
+			Email:    user.Email,
 		}
-		if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Updates(updates).Error; err != nil {
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email").Updates(r.Context(), updates); err != nil {
 			slog.Error("Failed to update user profile", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return

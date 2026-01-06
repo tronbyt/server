@@ -405,13 +405,13 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	// LastRender must be old enough to trigger a new render
 	app.LastRender = time.Now().Add(-1 * time.Hour)
 	
-	updates := map[string]any{
-		"pushed":            false,
-		"path":              app.Path,
-		"empty_last_render": true,
-		"last_render":       app.LastRender,
+	updates := data.App{
+		Pushed:          false,
+		Path:            app.Path,
+		EmptyLastRender: true,
+		LastRender:      app.LastRender,
 	}
-	if err := s.DB.Model(&data.App{}).Where("id = ?", app.ID).Updates(updates).Error; err != nil {
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Select("Pushed", "Path", "EmptyLastRender", "LastRender").Updates(ctx, updates); err != nil {
 		t.Fatalf("failed to update app: %v", err)
 	}
 
