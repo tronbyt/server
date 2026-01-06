@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -26,6 +27,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gopkg.in/yaml.v3"
 )
 
@@ -133,8 +135,12 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	session, _ := s.Store.Get(r, "session-name")
 	if tmplData.User == nil {
 		if username, ok := session.Values["username"].(string); ok {
-			var user data.User
-			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err == nil {
+			user, err := gorm.G[data.User](s.DB).
+				Preload("Devices", nil).
+				Preload("Devices.Apps", nil).
+				Where("username = ?", username).
+				First(r.Context())
+			if err == nil {
 				tmplData.User = &user
 			}
 		}
@@ -495,8 +501,7 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 }
 
 func (s *Server) getSetting(key string) (string, error) {
-	var setting data.Setting
-	err := s.DB.First(&setting, "key = ?", key).Error
+	setting, err := gorm.G[data.Setting](s.DB).Where("key = ?", key).First(context.Background())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", nil
@@ -507,7 +512,8 @@ func (s *Server) getSetting(key string) (string, error) {
 }
 
 func (s *Server) setSetting(key, value string) error {
-	return s.DB.Save(&data.Setting{Key: key, Value: value}).Error
+	setting := data.Setting{Key: key, Value: value}
+	return gorm.G[data.Setting](s.DB, clause.OnConflict{UpdateAll: true}).Create(context.Background(), &setting)
 }
 
 func (s *Server) notifyDashboard(username string, event WSEvent) {

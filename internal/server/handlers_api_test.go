@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,9 +46,15 @@ func newTestServerAPI(t *testing.T) *Server {
 		t.Fatalf("Failed to migrate DB: %v", err)
 	}
 
+	ctx := context.Background()
+
 	// Pre-seed settings to avoid "record not found" logs during NewServer
-	db.Create(&data.Setting{Key: "secret_key", Value: "testsecret"})
-	db.Create(&data.Setting{Key: "system_apps_repo", Value: ""})
+	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "secret_key", Value: "testsecret"}); err != nil {
+		t.Fatalf("Failed to seed secret_key: %v", err)
+	}
+	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "system_apps_repo", Value: ""}); err != nil {
+		t.Fatalf("Failed to seed system_apps_repo: %v", err)
+	}
 
 	cfg := &config.Settings{}
 
@@ -61,7 +68,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		Email:    stringPtr("admin@example.com"),
 		APIKey:   "admin_test_api_key",
 	}
-	if err := db.Create(&adminUser).Error; err != nil {
+	if err := gorm.G[data.User](db).Create(ctx, &adminUser); err != nil {
 		t.Fatalf("Failed to create admin user: %v", err)
 	}
 
@@ -71,7 +78,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		Email:    stringPtr("test@example.com"),
 		APIKey:   "test_api_key",
 	}
-	if err := db.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](db).Create(ctx, &user); err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
@@ -82,7 +89,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		Type:     data.DeviceTidbytGen1,
 		APIKey:   "device_api_key",
 	}
-	if err := db.Create(&device).Error; err != nil {
+	if err := gorm.G[data.Device](db).Create(ctx, &device); err != nil {
 		t.Fatalf("Failed to create test device: %v", err)
 	}
 
@@ -202,8 +209,8 @@ func TestHandlePushImage(t *testing.T) {
 	}
 
 	// Verify the app was created and image saved
-	var app data.App
-	if err := s.DB.Where("device_id = ? AND iname = ?", deviceID, installID).First(&app).Error; err != nil {
+	app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, installID).First(context.Background())
+	if err != nil {
 		t.Fatalf("Expected app to be created, but got error: %v", err)
 	}
 
@@ -286,7 +293,7 @@ func TestHandleListInstallations(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 	}
-	if err := s.DB.Create(&dummyApp).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &dummyApp); err != nil {
 		t.Fatalf("Failed to create dummy app: %v", err)
 	}
 
@@ -328,7 +335,7 @@ func TestHandleGetInstallation(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 	}
-	if err := s.DB.Create(&dummyApp).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &dummyApp); err != nil {
 		t.Fatalf("Failed to create dummy app: %v", err)
 	}
 
@@ -361,8 +368,10 @@ func TestHandlePatchDevice(t *testing.T) {
 	deviceID := "testdevice"
 
 	// Initial device state
-	var device data.Device
-	s.DB.First(&device, "id = ?", deviceID)
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch initial device state: %v", err)
+	}
 	originalBrightness := device.Brightness
 
 	// Patch brightness
@@ -379,7 +388,10 @@ func TestHandlePatchDevice(t *testing.T) {
 	}
 
 	// Verify updated device state
-	s.DB.First(&device, "id = ?", deviceID)
+	device, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated device state: %v", err)
+	}
 	if device.Brightness != data.Brightness(newBrightness) {
 		t.Errorf("Expected brightness %d, got %d", newBrightness, device.Brightness)
 	}
@@ -398,7 +410,10 @@ func TestHandlePatchDevice(t *testing.T) {
 	}
 
 	// Verify updated device state
-	s.DB.First(&device, "id = ?", deviceID)
+	device, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated device state: %v", err)
+	}
 	if device.DefaultInterval != newInterval {
 		t.Errorf("Expected interval %d, got %d", newInterval, device.DefaultInterval)
 	}
@@ -427,7 +442,7 @@ func TestHandlePatchInstallation(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 	}
-	if err := s.DB.Create(&app).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
 		t.Fatalf("Failed to create dummy app: %v", err)
 	}
 
@@ -445,7 +460,10 @@ func TestHandlePatchInstallation(t *testing.T) {
 	}
 
 	// Verify updated app state
-	s.DB.First(&app, "iname = ?", installID)
+	app, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated app state: %v", err)
+	}
 	if app.Enabled != newEnabled {
 		t.Errorf("Expected app enabled to be %t, got %t", newEnabled, app.Enabled)
 	}
@@ -468,7 +486,7 @@ func TestHandleDeleteInstallationAPI(t *testing.T) {
 		Order:       0,
 		Path:        nil, // Important for cleanup not to try to delete a non-existent file
 	}
-	if err := s.DB.Create(&app).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
 		t.Fatalf("Failed to create dummy app: %v", err)
 	}
 
@@ -483,8 +501,7 @@ func TestHandleDeleteInstallationAPI(t *testing.T) {
 	}
 
 	// Verify app is deleted
-	var deletedApp data.App
-	if err := s.DB.Where("device_id = ? AND iname = ?", deviceID, installID).First(&deletedApp).Error; err == nil {
+	if _, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, installID).First(context.Background()); err == nil {
 		t.Errorf("App was not deleted")
 	}
 }
@@ -505,7 +522,7 @@ func TestHandlePatchDeviceDeviceKey(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 	}
-	if err := s.DB.Create(&dummyApp).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &dummyApp); err != nil {
 		t.Fatalf("Failed to create dummy app: %v", err)
 	}
 
@@ -522,8 +539,8 @@ func TestHandlePatchDeviceDeviceKey(t *testing.T) {
 	}
 
 	// Verify updated device state
-	var device data.Device
-	if err := s.DB.First(&device, "id = ?", deviceID).Error; err != nil {
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
 		t.Fatalf("Failed to fetch device: %v", err)
 	}
 	if device.PinnedApp == nil || *device.PinnedApp != installID {
@@ -546,7 +563,7 @@ func TestHandleListInstallationsDeviceKey(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 	}
-	if err := s.DB.Create(&dummyApp).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &dummyApp); err != nil {
 		t.Fatalf("Failed to create dummy app: %v", err)
 	}
 

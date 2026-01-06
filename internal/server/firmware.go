@@ -10,9 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/firmware"
 
 	"log/slog"
+
+	"gorm.io/gorm"
 )
 
 func (s *Server) UpdateFirmwareBinaries() error {
@@ -237,7 +240,7 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	// Ensure baseURL has no trailing slash, but /static/firmware/ does
 	updateURL := fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), binName)
 
-	if err := s.DB.Model(device).Update("pending_update_url", updateURL).Error; err != nil {
+	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", updateURL); err != nil {
 		slog.Error("Failed to save pending update", "error", err)
 		s.flashAndRedirect(w, r, "Internal Error", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return

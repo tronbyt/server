@@ -18,6 +18,7 @@ import (
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/sumup/aaguids-go"
+	"gorm.io/gorm"
 )
 
 // WebAuthnUser is a wrapper for data.User to satisfy webauthn.User interface.
@@ -90,8 +91,8 @@ func (s *Server) handleWebAuthnRegisterBegin(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var user data.User
-	if err := s.DB.Preload("Credentials").First(&user, "username = ?", username).Error; err != nil {
+	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Where("username = ?", username).First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -179,8 +180,8 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var user data.User
-	if err := s.DB.First(&user, "username = ?", username).Error; err != nil {
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -233,7 +234,7 @@ func (s *Server) handleWebAuthnRegisterFinish(w http.ResponseWriter, r *http.Req
 		BackupState:    credential.Flags.BackupState,
 	}
 
-	if err := s.DB.Create(&newCred).Error; err != nil {
+	if err := gorm.G[data.WebAuthnCredential](s.DB).Create(r.Context(), &newCred); err != nil {
 		http.Error(w, "Failed to save credential", http.StatusInternalServerError)
 		return
 	}
@@ -316,8 +317,8 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 		paddedID += strings.Repeat("=", 4-m)
 	}
 
-	var cred data.WebAuthnCredential
-	if err := s.DB.Preload("User").Where("id = ? OR id = ?", parse.ID, paddedID).First(&cred).Error; err != nil {
+	cred, err := gorm.G[data.WebAuthnCredential](s.DB).Preload("User", nil).Where("id = ? OR id = ?", parse.ID, paddedID).First(r.Context())
+	if err != nil {
 		slog.Warn("Login credential not found", "id", parse.ID, "padded_id", paddedID, "error", err)
 		http.Error(w, "Credential not found", http.StatusUnauthorized)
 		return
@@ -325,8 +326,10 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 
 	// 4. Construct WebAuthnUser
 	// We need to load all credentials for this user so library can verify
-	var userCreds []data.WebAuthnCredential
-	s.DB.Where("user_id = ?", cred.UserID).Find(&userCreds)
+	userCreds, err := gorm.G[data.WebAuthnCredential](s.DB).Where("user_id = ?", cred.UserID).Find(r.Context())
+	if err != nil {
+		slog.Error("Failed to find user credentials", "user_id", cred.UserID, "error", err)
+	}
 	cred.User.Credentials = userCreds // Attach credentials to user object
 
 	waCredentials := make([]webauthn.Credential, 0, 1) // Expecting 1 or 0
@@ -371,11 +374,13 @@ func (s *Server) handleWebAuthnLoginFinish(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Update credential counters and flags
-	cred.SignCount = credential.Authenticator.SignCount
-	cred.CloneWarning = credential.Authenticator.CloneWarning
-	cred.BackupEligible = credential.Flags.BackupEligible
-	cred.BackupState = credential.Flags.BackupState
-	if err := s.DB.Save(&cred).Error; err != nil {
+	updates := data.WebAuthnCredential{
+		SignCount:      credential.Authenticator.SignCount,
+		CloneWarning:   credential.Authenticator.CloneWarning,
+		BackupEligible: credential.Flags.BackupEligible,
+		BackupState:    credential.Flags.BackupState,
+	}
+	if _, err := gorm.G[data.WebAuthnCredential](s.DB).Where("id = ?", cred.ID).Select("SignCount", "CloneWarning", "BackupEligible", "BackupState").Updates(r.Context(), updates); err != nil {
 		slog.Error("Failed to update credential", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -412,7 +417,7 @@ func (s *Server) handleDeleteWebAuthnCredential(w http.ResponseWriter, r *http.R
 	// Let's assume the ID is passed as is or query param. Using path param is cleaner if safe.
 	// We'll pass it as a path param.
 
-	if err := s.DB.Where("id = ? AND user_id = ?", id, username).Delete(&data.WebAuthnCredential{}).Error; err != nil {
+	if _, err := gorm.G[data.WebAuthnCredential](s.DB).Where("id = ? AND user_id = ?", id, username).Delete(r.Context()); err != nil {
 		slog.Error("Failed to delete credential", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

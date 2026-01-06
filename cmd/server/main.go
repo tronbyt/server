@@ -28,6 +28,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/prometheus"
 )
 
 func runHealthCheck(url string) error {
@@ -66,7 +67,8 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 	}
 
 	gormConfig := &gorm.Config{
-		Logger: data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
+		Logger:      data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
+		PrepareStmt: true, // Enable prepared statement caching for performance
 	}
 
 	if strings.HasPrefix(dsn, "postgres") || strings.Contains(dsn, "host=") {
@@ -82,6 +84,17 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
 				slog.Warn("Failed to set WAL mode for SQLite", "error", err)
 			}
+		}
+	}
+
+	if err == nil {
+		if err := db.Use(prometheus.New(prometheus.Config{
+			DBName:          "tronbyt",
+			RefreshInterval: 15,
+			StartServer:     false,
+			HTTPServerPort:  8080,
+		})); err != nil {
+			slog.Warn("Failed to register GORM prometheus plugin", "error", err)
 		}
 	}
 
