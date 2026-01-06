@@ -162,25 +162,34 @@ function pollImageWithEtag(deviceId) {
 
 // AJAX function to move apps without page reload
 function moveApp(deviceId, iname, direction) {
-  console.log('moveApp called:', deviceId, iname, direction);
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${deviceId}/${iname}/moveapp?direction=${direction}`;
-  
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'direction';
-  input.value = direction;
-  form.appendChild(input);
-  
-  document.body.appendChild(form);
-  form.submit();
+  const formData = new URLSearchParams();
+  formData.append('direction', direction);
+
+  fetch(`/devices/${deviceId}/${iname}/moveapp?direction=${direction}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to move app');
+        alert('Failed to move app. Please try again.');
+      } else {
+        console.log('App moved successfully');
+        // Refresh the apps list for this device and highlight the moved app
+        refreshDeviceCard(deviceId, iname);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while moving the app. Please try again.');
+    });
 }
 
 // Function to refresh the entire device card
 function refreshDeviceCard(deviceId, movedAppIname = null) {
-  console.log('refreshDeviceCard called for device:', deviceId);
-
   // Get the current device card container
   const deviceCard = document.getElementById(`device-card-${deviceId}`);
   if (!deviceCard) {
@@ -188,43 +197,20 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     return;
   }
 
-  // Track which app cards are currently expanded (before DOM replacement)
-  const expandedApps = [];
-  deviceCard.querySelectorAll('.full-view:not(.hidden)').forEach(fullView => {
-    const iname = fullView.dataset.iname;
-    if (iname) {
-      expandedApps.push(iname);
-    }
-  });
-  console.log('Expanded apps before refresh:', expandedApps);
-
-  // Fetch the updated device card content with cache-busting
-  fetch(`/?device_id=${deviceId}&partial=device_card&_t=${Date.now()}`, {
-    cache: 'no-store',
-    headers: {
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
-    }
-  })
-    .then(response => {
-      console.log('Fetch response status:', response.status);
-      return response.text();
-    })
+  // Fetch the updated device card content
+  fetch(`/?device_id=${deviceId}&partial=device_card`)
+    .then(response => response.text())
     .then(html => {
-      console.log('Received HTML length:', html.length);
-
       // Create a temporary DOM element to parse the response
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
       // Find the updated device card for this device
       const updatedDeviceCard = doc.getElementById(`device-card-${deviceId}`);
-      console.log('Found updated device card:', !!updatedDeviceCard);
 
       if (updatedDeviceCard) {
         // Replace the current device card with the updated one
         deviceCard.replaceWith(updatedDeviceCard);
-        console.log('Device card replaced successfully');
 
         // Restore the view state (list/grid/collapsed)
         restoreDevicePreferences(deviceId);
@@ -233,24 +219,11 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
         initializeDragAndDrop();
         initializeDeviceInfoToggles();
         pollImageWithEtag(deviceId);
-        console.log('UI components reinitialized');
 
         // Re-initialize Lucide icons after DOM replacement
         if (window.lucide && typeof lucide.createIcons === 'function') {
           lucide.createIcons();
-          console.log('Lucide icons reinitialized');
         }
-
-        // Restore expanded app cards
-        expandedApps.forEach(iname => {
-          const compactCard = document.getElementById(`app-card-${iname}`);
-          const fullCard = document.getElementById(`app-card-full-${iname}`);
-          if (compactCard && fullCard) {
-            compactCard.classList.add('hidden');
-            compactCard.dataset.expanded = 'true';
-            fullCard.classList.remove('hidden');
-          }
-        });
 
         // If an app was moved, highlight it with visual feedback
         if (movedAppIname) {
@@ -272,12 +245,7 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
             });
           }
         }
-      } else {
-        console.error('Updated device card not found in response HTML');
-        // Fallback: reload the page
-        window.location.reload();
       }
-
     })
     .catch(error => {
       console.error('Error refreshing device card:', error);
@@ -286,34 +254,76 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     });
 }
 
-// Simple form-based toggle for pin status
+// AJAX function to toggle pin status
 function togglePin(deviceId, iname) {
-  console.log('togglePin called:', deviceId, iname);
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${deviceId}/${iname}/toggle_pin`;
-  document.body.appendChild(form);
-  form.submit();
+  fetch(`/devices/${deviceId}/${iname}/toggle_pin`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to toggle pin');
+        alert('Failed to toggle pin. Please try again.');
+      } else {
+        console.log('Pin toggled successfully');
+        // Refresh the apps list for this device
+        refreshDeviceCard(deviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while toggling pin. Please try again.');
+    });
 }
 
-// Simple form-based toggle for enabled status
+// AJAX function to toggle enabled status
 function toggleEnabled(deviceId, iname) {
-  console.log('toggleEnabled called:', deviceId, iname);
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${deviceId}/${iname}/toggle_enabled`;
-  document.body.appendChild(form);
-  form.submit();
+  fetch(`/devices/${deviceId}/${iname}/toggle_enabled`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to toggle enabled status');
+        alert('Failed to toggle enabled status. Please try again.');
+      } else {
+        console.log('Enabled status toggled successfully');
+        // Refresh the apps list for this device
+        refreshDeviceCard(deviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while toggling enabled status. Please try again.');
+    });
 }
 
-// Simple form-based duplicate for an app
+// AJAX function to duplicate an app
 function duplicateApp(deviceId, iname) {
-  console.log('duplicateApp called:', deviceId, iname);
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${deviceId}/${iname}/duplicate`;
-  document.body.appendChild(form);
-  form.submit();
+  fetch(`/devices/${deviceId}/${iname}/duplicate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to duplicate app');
+        alert('Failed to duplicate app. Please try again.');
+      } else {
+        console.log('App duplicated successfully');
+        // Refresh the apps list for this device
+        refreshDeviceCard(deviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while duplicating app. Please try again.');
+    });
 }
 
 // AJAX function to delete an app
@@ -321,12 +331,31 @@ function deleteApp(deviceId, iname, redirectAfterDelete = false, confirmMessage 
   if (!confirm(confirmMessage || 'Delete App?')) {
     return;
   }
-  console.log('deleteApp called:', deviceId, iname);
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${deviceId}/${iname}/delete`;
-  document.body.appendChild(form);
-  form.submit();
+
+  fetch(`/devices/${deviceId}/${iname}/delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to delete app');
+        alert('Failed to delete app. Please try again.');
+      } else {
+        console.log('App deleted successfully');
+        if (redirectAfterDelete) {
+          window.location.href = '/';
+        } else {
+          // Refresh the apps list for this device
+          refreshDeviceCard(deviceId);
+        }
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while deleting app. Please try again.');
+    });
 }
 
 function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname, insertAfter) {
@@ -337,26 +366,33 @@ function duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, targetIname
     return;
   }
 
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${targetDeviceId}/apps/duplicate_from/${sourceDeviceId}/${iname}`;
-  
+  const formData = new URLSearchParams();
   if (targetIname) {
-    const input1 = document.createElement('input');
-    input1.type = 'hidden';
-    input1.name = 'target_iname';
-    input1.value = targetIname;
-    form.appendChild(input1);
+    formData.append('target_iname', targetIname);
   }
-  
-  const input2 = document.createElement('input');
-  input2.type = 'hidden';
-  input2.name = 'insert_after';
-  input2.value = insertAfter ? 'true' : 'false';
-  form.appendChild(input2);
-  
-  document.body.appendChild(form);
-  form.submit();
+  formData.append('insert_after', insertAfter ? 'true' : 'false');
+
+  fetch(`/devices/${targetDeviceId}/apps/duplicate_from/${sourceDeviceId}/${iname}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to duplicate app to device');
+        alert('Failed to duplicate app to device. Please try again.');
+      } else {
+        console.log('App duplicated successfully to new device');
+        // Refresh the apps list for the TARGET device
+        refreshDeviceCard(targetDeviceId);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while duplicating the app. Please try again.');
+    });
 }
 
 // AJAX function to preview an app
@@ -1250,30 +1286,32 @@ function reorderApps(deviceId, draggedIname, targetIname, insertAfter) {
     return;
   }
 
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `/devices/${deviceId}/reorder_apps`;
-  
-  const input1 = document.createElement('input');
-  input1.type = 'hidden';
-  input1.name = 'dragged_iname';
-  input1.value = draggedIname;
-  form.appendChild(input1);
-  
-  const input2 = document.createElement('input');
-  input2.type = 'hidden';
-  input2.name = 'target_iname';
-  input2.value = targetIname;
-  form.appendChild(input2);
-  
-  const input3 = document.createElement('input');
-  input3.type = 'hidden';
-  input3.name = 'insert_after';
-  input3.value = insertAfter ? 'true' : 'false';
-  form.appendChild(input3);
-  
-  document.body.appendChild(form);
-  form.submit();
+  const formData = new URLSearchParams();
+  formData.append('dragged_iname', draggedIname);
+  formData.append('target_iname', targetIname);
+  formData.append('insert_after', insertAfter ? 'true' : 'false');
+
+  fetch(`/devices/${deviceId}/reorder_apps`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(response => {
+      if (!response.ok) {
+        console.error('Failed to reorder apps');
+        alert('Failed to reorder apps. Please try again.');
+      } else {
+        console.log('Apps reordered successfully');
+        // Refresh the apps list for this device with visual feedback
+        refreshDeviceCard(deviceId, draggedIname);
+      }
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      alert('An error occurred while reordering apps. Please try again.');
+    });
 }
 
 

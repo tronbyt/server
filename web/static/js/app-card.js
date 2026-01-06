@@ -1,72 +1,18 @@
 /* --- App Card Interaction Logic --- */
-/* Handles expand/collapse and icon initialization */
+/* Handles expand/collapse functionality */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize Lucide icons immediately and with retry
-    initLucideIcons();
+    // Initialize Lucide icons on page load
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+        console.log('Lucide icons initialized');
+    }
 
     // Initialize click handlers for full view headers (collapse on click)
     document.querySelectorAll('.full-view .card-header').forEach(header => {
         header.style.cursor = 'pointer';
     });
-
-    // Set up MutationObserver to automatically create icons when new elements are added
-    setupIconObserver();
 });
-
-// Initialize Lucide icons with retry mechanism
-function initLucideIcons(retries = 10) {
-    if (window.lucide && typeof lucide.createIcons === 'function') {
-        lucide.createIcons();
-        console.log('Lucide icons initialized');
-        return true;
-    } else if (retries > 0) {
-        // Script might be loading, retry after 200ms
-        setTimeout(() => initLucideIcons(retries - 1), 200);
-        console.log('Waiting for Lucide to load... retries left:', retries);
-        return false;
-    } else {
-        console.error('Lucide icons failed to load');
-        return false;
-    }
-}
-
-// Helper to refresh Lucide icons after DOM updates
-function refreshIcons() {
-    if (window.lucide && typeof lucide.createIcons === 'function') {
-        lucide.createIcons();
-    }
-}
-
-// Set up MutationObserver to auto-create icons when DOM changes
-function setupIconObserver() {
-    if (!window.MutationObserver) return;
-
-    const observer = new MutationObserver((mutations) => {
-        let hasNewIcons = false;
-        mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    // Check if the node or its children have data-lucide attributes
-                    if (node.hasAttribute && node.hasAttribute('data-lucide')) {
-                        hasNewIcons = true;
-                    } else if (node.querySelector && node.querySelector('[data-lucide]')) {
-                        hasNewIcons = true;
-                    }
-                }
-            });
-        });
-
-        if (hasNewIcons) {
-            refreshIcons();
-        }
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-}
 
 /**
  * Toggle between compact and full view

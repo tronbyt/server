@@ -226,8 +226,8 @@
    =========================================== */
 .thumb-box {
     background-color: #000000 !important;
-    border: 1px solid var(--neutral-300) !important;
-    border-radius: 0.25rem !important;
+    border:.1px solid var(--neutral-700) !important;
+    border-radius: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
