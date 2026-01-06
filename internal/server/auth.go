@@ -10,6 +10,7 @@ import (
 	"tronbyt-server/internal/gitutils"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"gorm.io/gorm"
 )
 
 func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
@@ -19,9 +20,8 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 	session, _ := s.Store.Get(r, "session-name")
 	if username, ok := session.Values["username"].(string); ok {
 		// Validate user exists in DB
-		var user data.User
 		// Use First (logger configured to ignore not found)
-		if err := s.DB.First(&user, "username = ?", username).Error; err == nil {
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(r.Context()); err == nil {
 			// User exists, redirect to home
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
@@ -41,8 +41,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		var count int64
 		if err := s.DB.Model(&data.User{}).Count(&count).Error; err == nil && count == 1 {
 			if s.isTrustedNetwork(r) {
-				var user data.User
-				s.DB.First(&user)
+				user, _ := gorm.G[data.User](s.DB).First(r.Context())
 				session.Values["username"] = user.Username
 				session.Options.MaxAge = 86400 * 30
 				if err := s.saveSession(w, r, session); err != nil {
@@ -76,8 +75,8 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	var user data.User
-	if err := s.DB.First(&user, "username = ?", username).Error; err != nil {
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(r.Context())
+	if err != nil {
 		slog.Warn("Login failed: user not found", "username", username)
 		localizer := s.getLocalizer(r)
 		s.renderTemplate(w, r, "login", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username or password"})}})
@@ -103,7 +102,7 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Upgrading password hash", "username", username)
 		newHash, err := auth.HashPassword(password)
 		if err == nil {
-			s.DB.Model(&user).Update("password", newHash)
+			gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "password", newHash)
 		} else {
 			slog.Error("Failed to upgrade password hash", "error", err)
 		}
@@ -150,8 +149,8 @@ func (s *Server) handleRegisterGet(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
 		}
-		var user data.User
-		if err := s.DB.First(&user, "username = ?", currentUsername).Error; err != nil || !user.IsAdmin {
+		user, err := gorm.G[data.User](s.DB).Where("username = ?", currentUsername).First(r.Context())
+		if err != nil || !user.IsAdmin {
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
 		}
@@ -183,8 +182,8 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		var currentUser data.User
-		if err := s.DB.First(&currentUser, "username = ?", currentUsername).Error; err != nil || !currentUser.IsAdmin {
+		currentUser, err := gorm.G[data.User](s.DB).Where("username = ?", currentUsername).First(r.Context())
+		if err != nil || !currentUser.IsAdmin {
 			http.Error(w, localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "User registration is not enabled."}), http.StatusForbidden)
 			return
 		}
@@ -195,8 +194,7 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var existing data.User
-	if err := s.DB.First(&existing, "username = ?", username).Error; err == nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(r.Context()); err == nil {
 		s.renderTemplate(w, r, "register", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Username already exists"})}})
 		return
 	}
@@ -215,8 +213,7 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 	} else {
 		session, _ := s.Store.Get(r, "session-name")
 		if currentUsername, ok := session.Values["username"].(string); ok {
-			var currentUser data.User
-			if err := s.DB.First(&currentUser, "username = ?", currentUsername).Error; err == nil {
+			if currentUser, err := gorm.G[data.User](s.DB).Where("username = ?", currentUsername).First(r.Context()); err == nil {
 				requesterIsAdmin = currentUser.IsAdmin
 			}
 		}
@@ -244,7 +241,7 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 		IsAdmin:  isAdmin,
 	}
 
-	if err := s.DB.Create(&newUser).Error; err != nil {
+	if err := gorm.G[data.User](s.DB).Create(r.Context(), &newUser); err != nil {
 		slog.Error("Failed to create user", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -272,8 +269,8 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user data.User
-	if err := s.DB.Preload("Credentials").First(&user, "username = ?", username).Error; err != nil {
+	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Where("username = ?", username).First(r.Context())
+	if err != nil {
 		slog.Error("Failed to fetch user for edit", "username", username, "error", err)
 		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 		return
@@ -307,7 +304,7 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, r, "edit", TemplateData{
-		User:                &user,
+		User:                user,
 		FirmwareVersion:     firmwareVersion,
 		SystemRepoInfo:      systemRepoInfo,
 		UserRepoInfo:        userRepoInfo,
@@ -323,8 +320,8 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user data.User
-	if err := s.DB.First(&user, "username = ?", username).Error; err != nil {
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -339,7 +336,7 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		valid, _, err := auth.VerifyPassword(user.Password, oldPassword)
 		if err != nil || !valid {
 			localizer := s.getLocalizer(r)
-			s.renderTemplate(w, r, "edit", TemplateData{User: &user, Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid old password"})}})
+			s.renderTemplate(w, r, "edit", TemplateData{User: user, Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid old password"})}})
 			return
 		}
 
@@ -368,7 +365,11 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if needsSave {
-		if err := s.DB.Save(&user).Error; err != nil {
+		updates := map[string]interface{}{
+			"password": user.Password,
+			"email":    user.Email,
+		}
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Updates(r.Context(), updates); err != nil {
 			slog.Error("Failed to update user profile", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -392,7 +393,7 @@ func (s *Server) handleGenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("api_key", apiKey).Error; err != nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", username).Update(r.Context(), "api_key", apiKey); err != nil {
 		slog.Error("Failed to update API key", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -415,7 +416,7 @@ func (s *Server) handleSetAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.DB.Model(&data.User{}).Where("username = ?", username).Update("api_key", apiKey).Error; err != nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", username).Update(r.Context(), "api_key", apiKey); err != nil {
 		slog.Error("Failed to update API key", "error", err)
 	}
 

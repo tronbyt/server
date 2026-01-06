@@ -99,8 +99,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Check if device ID already exists (across all users)
-		var existingDevice data.Device
-		if err := s.DB.Where("id = ?", formData.DeviceID).First(&existingDevice).Error; err == nil {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", formData.DeviceID).First(r.Context()); err == nil {
 			// Device ID already exists
 			slog.Warn("Validation error: Device ID already exists", "device_id", formData.DeviceID)
 			s.renderTemplate(w, r, "create", TemplateData{
@@ -207,7 +206,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Save to DB
-	if err := s.DB.Create(&newDevice).Error; err != nil {
+	if err := gorm.G[data.Device](s.DB).Create(r.Context(), &newDevice); err != nil {
 		slog.Error("Failed to save new device to DB", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -516,11 +515,11 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	// Cascading delete in transaction
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps
-		if err := tx.Where("device_id = ?", device.ID).Delete(&data.App{}).Error; err != nil {
+		if _, err := gorm.G[data.App](tx).Where("device_id = ?", device.ID).Delete(r.Context()); err != nil {
 			return err
 		}
 		// 2. Delete Device
-		if err := tx.Delete(device).Error; err != nil {
+		if _, err := gorm.G[data.Device](tx).Where("id = ?", device.ID).Delete(r.Context()); err != nil {
 			return err
 		}
 		return nil

@@ -50,48 +50,53 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// 1. Try to find User by API Key
-		var user data.User
-		userResult := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC")
-		}).Preload("Devices.Apps").Limit(1).Find(&user, "api_key = ?", apiKey)
+		user, err := gorm.G[data.User](s.DB).
+			Preload("Devices", func(db gorm.PreloadBuilder) error {
+				db.Order("name ASC")
+				return nil
+			}).
+			Preload("Devices.Apps").
+			Where("api_key = ?", apiKey).
+			First(r.Context())
 
-		if userResult.Error != nil {
-			if !errors.Is(userResult.Error, gorm.ErrRecordNotFound) {
-				slog.Error("API auth: database error when finding user by key", "error", userResult.Error)
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				slog.Error("API auth: database error when finding user by key", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
-		}
-
-		if userResult.RowsAffected > 0 {
-			ctx := context.WithValue(r.Context(), userContextKey, &user)
+		} else {
+			ctx := context.WithValue(r.Context(), userContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 
 		// 2. Try to find Device by API Key
-		var device data.Device
-		deviceResult := s.DB.Preload("Apps").First(&device, "api_key = ?", apiKey)
-		if deviceResult.Error != nil {
-			if !errors.Is(deviceResult.Error, gorm.ErrRecordNotFound) {
-				slog.Error("API auth: database error when finding device by key", "error", deviceResult.Error)
+		device, err := gorm.G[data.Device](s.DB).Preload("Apps").Where("api_key = ?", apiKey).First(r.Context())
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				slog.Error("API auth: database error when finding device by key", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
-		}
+		} else {
+			owner, err := gorm.G[data.User](s.DB).
+				Preload("Devices", func(db gorm.PreloadBuilder) error {
+					db.Order("name ASC")
+					return nil
+				}).
+				Preload("Devices.Apps").
+				Where("username = ?", device.Username).
+				First(r.Context())
 
-		if deviceResult.RowsAffected > 0 {
-			var owner data.User
-			if err := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
-				return db.Order("name ASC")
-			}).Preload("Devices.Apps").First(&owner, "username = ?", device.Username).Error; err != nil {
+			if err != nil {
 				slog.Error("API auth: database error finding device owner", "username", device.Username, "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userContextKey, &owner)
-			ctx = context.WithValue(ctx, deviceContextKey, &device)
+			ctx := context.WithValue(r.Context(), userContextKey, owner)
+			ctx = context.WithValue(ctx, deviceContextKey, device)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
@@ -111,15 +116,20 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		var user data.User
 		// Preload everything we might need
 		// Use First (logger configured to ignore not found)
-		result := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC")
-		}).Preload("Devices.Apps").First(&user, "username = ?", username)
-		if result.Error != nil {
-			if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				slog.Error("Database error checking session user", "username", username, "error", result.Error)
+		user, err := gorm.G[data.User](s.DB).
+			Preload("Devices", func(db gorm.PreloadBuilder) error {
+				db.Order("name ASC")
+				return nil
+			}).
+			Preload("Devices.Apps").
+			Where("username = ?", username).
+			First(r.Context())
+
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				slog.Error("Database error checking session user", "username", username, "error", err)
 			} else {
 				slog.Info("User in session not found in DB", "username", username)
 			}
@@ -127,13 +137,7 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		if result.RowsAffected == 0 {
-			slog.Info("User in session not found in DB", "username", username)
-			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), userContextKey, &user)
+		ctx := context.WithValue(r.Context(), userContextKey, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
