@@ -128,7 +128,7 @@
    =========================================== */
 .card-container {
     background-color: var(--white) !important;
-    border: 1px solid var(--neutral-300) !important;
+    border: 1px solid var(--neutral-700) !important;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
     overflow: hidden !important;
     font-family: var(--font-mono) !important;
@@ -666,6 +666,11 @@ button.btn-action-lg {
     border-color: var(--neutral-700) !important;
 }
 
+.btn-action-sm.btn-pin.is-pinned:hover i,
+.btn-action-sm.btn-pin.is-pinned:hover svg {
+    color: var(--white) !important;
+}
+
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned {
     background-color: #fafafa !important;
     border-color: #fafafa !important;
@@ -679,6 +684,11 @@ button.btn-action-lg {
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned:hover {
     background-color: #e5e5e5 !important;
     border-color: #e5e5e5 !important;
+}
+
+[data-theme="dark"] .btn-action-sm.btn-pin.is-pinned:hover i,
+[data-theme="dark"] .btn-action-sm.btn-pin.is-pinned:hover svg {
+    color: #171717 !important;
 }
 
 /* ===========================================
@@ -780,6 +790,11 @@ button.btn-action-lg {
     background-color: var(--neutral-700) !important;
 }
 
+.btn-tool.btn-pin.is-pinned:hover i,
+.btn-tool.btn-pin.is-pinned:hover svg {
+    color: var(--white) !important;
+}
+
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned {
     background-color: #fafafa !important;
     color: #171717 !important;
@@ -791,6 +806,11 @@ button.btn-action-lg {
 
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned:hover {
     background-color: #e5e5e5 !important;
+}
+
+[data-theme="dark"] .btn-tool.btn-pin.is-pinned:hover i,
+[data-theme="dark"] .btn-tool.btn-pin.is-pinned:hover svg {
+    color: #171717 !important;
 }
 
 .btn-tool.btn-trash:hover {
