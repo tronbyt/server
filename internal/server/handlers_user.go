@@ -361,7 +361,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if _, err := gorm.G[data.User](tx).Where("username = ?", currentUser.Username).
-			Select("Password", "Email", "IsAdmin", "APIKey", "ThemePreference", "SystemRepoURL", "AppRepoURL").
+			Select("Email", "APIKey", "ThemePreference", "SystemRepoURL", "AppRepoURL").
 			Updates(r.Context(), currentUser); err != nil {
 			return err
 		}
