@@ -197,6 +197,15 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
     return;
   }
 
+  // Save which app cards are currently expanded
+  const expandedApps = [];
+  deviceCard.querySelectorAll('.app-card.compact-view[data-expanded="true"]').forEach(card => {
+    const iname = card.dataset.iname;
+    if (iname) {
+      expandedApps.push(iname);
+    }
+  });
+
   // Fetch the updated device card content
   fetch(`/?device_id=${deviceId}&partial=device_card`)
     .then(response => response.text())
@@ -214,6 +223,11 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
 
         // Restore the view state (list/grid/collapsed)
         restoreDevicePreferences(deviceId);
+
+        // Restore expanded state for app cards
+        expandedApps.forEach(iname => {
+          expandAppCard(iname);
+        });
 
         // Reinitialize UI components
         initializeDragAndDrop();
