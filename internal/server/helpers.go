@@ -26,9 +26,9 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"gopkg.in/yaml.v3"
 )
 
 type ColorFilterOption struct {
@@ -147,8 +147,8 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	}
 
 	// Calculate IsAutoLoginActive
-	var userCount int64
-	if err := s.DB.Model(&data.User{}).Count(&userCount).Error; err != nil {
+	userCount, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	if err != nil {
 		slog.Error("Failed to count users for auto-login check", "error", err)
 	} else {
 		tmplData.IsAutoLoginActive = (s.Config.SingleUserAutoLogin == "1" && userCount == 1)
@@ -179,7 +179,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 
 	// Render partial if requested
 	if tmplData.Partial != "" {
-		err := tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
+		err = tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
 		if err != nil {
 			slog.Error("Failed to render partial", "template", name, "partial", tmplData.Partial, "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -188,7 +188,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	}
 
 	// Execute pre-parsed template
-	err := tmpl.ExecuteTemplate(w, name, tmplData)
+	err = tmpl.ExecuteTemplate(w, name, tmplData)
 	if err != nil {
 		slog.Error("Failed to render template", "template", name, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

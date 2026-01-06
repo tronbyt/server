@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"tronbyt-server/internal/data"
+
+	"gorm.io/gorm"
 )
 
 func TestHandleCreateDevicePost(t *testing.T) {
@@ -119,12 +121,11 @@ func TestHandleDeleteDevice(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
 	}
 
-	var count int64
-	s.DB.Model(&data.Device{}).Where("id = ?", "testdevice").Count(&count)
+	count, _ := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").Count(context.Background(), "*")
 	if count != 0 {
 		t.Errorf("Device not deleted")
 	}
-	s.DB.Model(&data.App{}).Where("device_id = ?", "testdevice").Count(&count)
+	count, _ = gorm.G[data.App](s.DB).Where("device_id = ?", "testdevice").Count(context.Background(), "*")
 	if count != 0 {
 		t.Errorf("App not deleted (cascade failed)")
 	}
