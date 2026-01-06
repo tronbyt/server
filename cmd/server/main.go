@@ -81,8 +81,13 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 		slog.Info("Using SQLite DB", "path", dsn)
 		db, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 		if err == nil {
+			// Enable WAL mode for better concurrency
 			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
 				slog.Warn("Failed to set WAL mode for SQLite", "error", err)
+			}
+			// Set busy timeout to prevent "database is locked" errors
+			if err := db.Exec("PRAGMA busy_timeout=5000;").Error; err != nil {
+				slog.Warn("Failed to set busy timeout for SQLite", "error", err)
 			}
 		}
 	}
