@@ -277,4 +277,12 @@
 <script src="/static/js/app-card.js"></script>
 <script src="/static/js/manager.js" defer></script>
 <script src="/static/js/theme.js" defer></script>
+<!-- Initialize Lucide icons globally -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+</script>
 {{ end }}
