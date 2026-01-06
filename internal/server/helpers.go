@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -24,14 +26,10 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gopkg.in/yaml.v3"
 )
-
-type DeviceWithUIScale struct {
-	Device            *data.Device
-	BrightnessUI      int
-	NightBrightnessUI int
-}
 
 type ColorFilterOption struct {
 	Value string
@@ -45,13 +43,13 @@ type DeviceTypeOption struct {
 
 // TemplateData is a struct to pass data to HTML templates.
 type TemplateData struct {
-	User                *data.User
-	Users               []data.User // For admin view
-	Config              *config.TemplateConfig
-	Flashes             []string
-	DevicesWithUIScales []DeviceWithUIScale
-	Item                *DeviceWithUIScale // For single item partials
-	Localizer           *i18n.Localizer    // Pass Localizer directly
+	User      *data.User
+	Users     []data.User // For admin view
+	Config    *config.TemplateConfig
+	Flashes   []string
+	Devices   []data.Device
+	Item      *data.Device    // For single item partials
+	Localizer *i18n.Localizer // Pass Localizer directly
 
 	UpdateAvailable  bool
 	LatestReleaseURL string
@@ -92,6 +90,7 @@ type TemplateData struct {
 	IsAutoLoginActive     bool // Indicate if single-user auto-login is active
 	UserCount             int  // Number of users, for registration logic
 	DeleteOnCancel        bool // Indicate if app should be deleted on cancel
+	ReadOnly              bool // Indicate if the view should be read-only
 	Partial               string
 }
 
@@ -136,8 +135,12 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	session, _ := s.Store.Get(r, "session-name")
 	if tmplData.User == nil {
 		if username, ok := session.Values["username"].(string); ok {
-			var user data.User
-			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err == nil {
+			user, err := gorm.G[data.User](s.DB).
+				Preload("Devices", nil).
+				Preload("Devices.Apps", nil).
+				Where("username = ?", username).
+				First(r.Context())
+			if err == nil {
 				tmplData.User = &user
 			}
 		}
@@ -498,19 +501,19 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 }
 
 func (s *Server) getSetting(key string) (string, error) {
-	var setting data.Setting
-	result := s.DB.Limit(1).Find(&setting, "key = ?", key)
-	if result.Error != nil {
-		return "", result.Error
-	}
-	if result.RowsAffected == 0 {
-		return "", nil
+	setting, err := gorm.G[data.Setting](s.DB).Where("key = ?", key).First(context.Background())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
 	}
 	return setting.Value, nil
 }
 
 func (s *Server) setSetting(key, value string) error {
-	return s.DB.Save(&data.Setting{Key: key, Value: value}).Error
+	setting := data.Setting{Key: key, Value: value}
+	return gorm.G[data.Setting](s.DB, clause.OnConflict{UpdateAll: true}).Create(context.Background(), &setting)
 }
 
 func (s *Server) notifyDashboard(username string, event WSEvent) {

@@ -28,6 +28,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/prometheus"
 )
 
 func runHealthCheck(url string) error {
@@ -66,7 +67,8 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 	}
 
 	gormConfig := &gorm.Config{
-		Logger: data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond),
+		Logger:      data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
+		PrepareStmt: true, // Enable prepared statement caching for performance
 	}
 
 	if strings.HasPrefix(dsn, "postgres") || strings.Contains(dsn, "host=") {
@@ -82,6 +84,17 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
 				slog.Warn("Failed to set WAL mode for SQLite", "error", err)
 			}
+		}
+	}
+
+	if err == nil {
+		if err := db.Use(prometheus.New(prometheus.Config{
+			DBName:          "tronbyt",
+			RefreshInterval: 15,
+			StartServer:     false,
+			HTTPServerPort:  8080,
+		})); err != nil {
+			slog.Warn("Failed to register GORM prometheus plugin", "error", err)
 		}
 	}
 
@@ -237,6 +250,19 @@ func main() {
 	if db.Migrator().HasTable(&data.User{}) {
 		if err := db.Model(&data.User{}).Where("email IN ?", []string{"", "none"}).Update("email", nil).Error; err != nil {
 			slog.Warn("Failed to sanitize empty emails", "error", err)
+		}
+	}
+
+	// Fix timezone issues
+	if db.Migrator().HasTable(&data.Device{}) {
+		devices := []data.Device{}
+		if err := db.Model(&data.Device{}).Where("location LIKE '%\"timezone\":\"None\"'").Find(&devices); err != nil {
+			slog.Warn("Failed to get devices with illegal timestamps", "error", err)
+		} else {
+			for _, device := range devices {
+				device.Location.Timezone = ""
+				db.Save(&device)
+			}
 		}
 	}
 

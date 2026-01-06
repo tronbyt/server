@@ -157,7 +157,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 	newApp.Order = maxOrder + 1
 
-	if err := s.DB.Create(&newApp).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(r.Context(), &newApp); err != nil {
 		slog.Error("Failed to save app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -301,10 +301,12 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid app path", http.StatusBadRequest)
 			return
 		} else {
-			schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
-			if err != nil {
-				slog.Error("Failed to get app schema", "error", err)
-				// Fall through with empty schema
+			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+				schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
+				if err != nil {
+					slog.Error("Failed to get app schema", "error", err)
+					// Fall through with empty schema
+				}
 			}
 		}
 	}
@@ -636,7 +638,7 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete App
-	if err := s.DB.Delete(app).Error; err != nil {
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Delete(r.Context()); err != nil {
 		slog.Error("Failed to delete app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -1297,8 +1299,8 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 
 	// user.Devices is already preloaded by RequireLogin -> RequireDevice -> RequireUser, but GetUser in current implementation doesn't preload.
 	// We need to fetch user with devices and apps here.
-	var userWithDevices data.User
-	if err := s.DB.Preload("Devices.Apps").First(&userWithDevices, "username = ?", user.Username).Error; err != nil {
+	userWithDevices, err := gorm.G[data.User](s.DB).Preload("Devices.Apps", nil).Where("username = ?", user.Username).First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -1447,8 +1449,8 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 	// Determine new order and insert into DB using transaction
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// Fetch current apps for target device to ensure up-to-date order
-		var currentApps []data.App
-		if err := tx.Where("device_id = ?", targetDevice.ID).Order("\"order\" ASC").Find(&currentApps).Error; err != nil {
+		currentApps, err := gorm.G[data.App](tx).Where("device_id = ?", targetDevice.ID).Order("\"order\" ASC").Find(ctx)
+		if err != nil {
 			return err
 		}
 
@@ -1468,7 +1470,7 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 		}
 
 		duplicatedApp.Order = insertPos
-		if err := tx.Create(&duplicatedApp).Error; err != nil {
+		if err := gorm.G[data.App](tx).Create(ctx, &duplicatedApp); err != nil {
 			return err
 		}
 
@@ -1487,9 +1489,11 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 	}
 
 	// Reload app to ensure ID is set
-	if err := s.DB.Where("device_id = ? AND iname = ?", targetDevice.ID, newIname).First(&duplicatedApp).Error; err != nil {
+	reloaded, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", targetDevice.ID, newIname).First(ctx)
+	if err != nil {
 		return fmt.Errorf("failed to reload duplicated app: %w", err)
 	}
+	duplicatedApp = reloaded
 
 	// Pushed App Image Copying
 	if originalApp.Pushed {

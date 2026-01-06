@@ -60,6 +60,15 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		filters = s.getEffectiveFilters(device, app)
 	}
 
+	// 2. Static WebP App
+	if strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+		content, err := os.ReadFile(appPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read static webp app: %w", err)
+		}
+		return content, nil, nil
+	}
+
 	return renderer.Render(
 		ctx,
 		appPath,

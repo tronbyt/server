@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -120,7 +121,7 @@ func migrateUser(db *gorm.DB, lUser legacy.LegacyUser) error {
 	user.IsAdmin = (lUser.Username == "admin")
 
 	// Save User (and cascading Devices/Apps)
-	if err := db.Create(&user).Error; err != nil {
+	if err := gorm.G[data.User](db).Create(context.Background(), &user); err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
 

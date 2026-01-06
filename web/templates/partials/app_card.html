@@ -242,15 +242,14 @@
                         <span>{{ t .Localizer "Duplicate" }}</span>
                     </button>
 
-                    {{ if gt (len .DevicesWithUIScales) 1 }}
+                    {{ if gt (len .Devices) 1 }}
                     <div class="relative">
                         <button class="btn-action-sm w-full" onclick="event.stopPropagation(); toggleDeviceMenu('{{ .App.Iname }}');">
                             <i data-lucide="send"></i>
                             <span>{{ t .Localizer "Copy to" }}</span>
                         </button>
                         <div id="device-menu-{{ .App.Iname }}" class="dropdown-menu hidden">
-                            {{ range $item := .DevicesWithUIScales }}
-                            {{ $target_device := $item.Device }}
+                            {{ range $target_device := .Devices }}
                             {{ if ne $target_device.ID $.Device.ID }}
                             <button class="dropdown-item" 
                                     onclick="event.stopPropagation(); duplicateAppToDevice('{{ $.Device.ID }}', '{{ $.App.Iname }}', '{{ $target_device.ID }}', null, false);">

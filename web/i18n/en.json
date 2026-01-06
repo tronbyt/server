@@ -650,6 +650,18 @@
   "Delete User?": {
     "other": "Delete User?"
   },
+  "Delete User": {
+    "other": "Delete User"
+  },
+  "No devices found for this user.": {
+    "other": "No devices found for this user."
+  },
+  "Failed to delete user": {
+    "other": "Failed to delete user"
+  },
+  "Error deleting user": {
+    "other": "Error deleting user"
+  },
   "Edit": {
     "other": "Edit"
   },
@@ -1178,6 +1190,12 @@
   "Night Mode Configuration": {
     "other": "Night Mode Configuration"
   },
+  "Night Mode Active": {
+    "other": "Night Mode Active"
+  },
+  "Night Mode": {
+    "other": "Night Mode"
+  },
   "Night Start Time": {
     "other": "Night Start Time"
   },
@@ -1201,6 +1219,12 @@
   },
   "Dim Mode Settings": {
     "other": "Dim Mode Settings"
+  },
+  "Dim Mode Active": {
+    "other": "Dim Mode Active"
+  },
+  "Dim Mode": {
+    "other": "Dim Mode"
   },
   "Dim Start Time": {
     "other": "Dim Start Time"

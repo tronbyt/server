@@ -12,6 +12,8 @@ import (
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
+
+	"gorm.io/gorm"
 )
 
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
@@ -108,12 +110,11 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([]byte, *data.App, error) {
 	// Re-fetch device with Apps if missing
 	if len(device.Apps) == 0 {
-		s.DB.Preload("Apps").First(device, "id = ?", device.ID)
+		reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+		if err == nil {
+			*device = reloaded
+		}
 	}
-
-	// User
-	var user data.User
-	s.DB.First(&user, "username = ?", device.Username)
 
 	// Priority 1: Check DisplayingApp (Real-time confirmation from WS devices)
 	if device.DisplayingApp != nil && *device.DisplayingApp != "" {

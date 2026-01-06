@@ -207,10 +207,15 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 				continue // Skip to next app directory
 			}
 			var starFile string
+			var webpFile string
 			for _, f := range files {
 				if filepath.Ext(f.Name()) == ".star" {
 					starFile = f.Name()
 					break
+				}
+				// Also check for a webp file with the same name as the app
+				if f.Name() == appName+".webp" {
+					webpFile = f.Name()
 				}
 			}
 
@@ -235,6 +240,17 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 					userApp.Date = info.ModTime().Format("2006-01-02 15:04")
 				}
 
+				apps = append(apps, userApp)
+			} else if webpFile != "" {
+				// No .star file, but we have a .webp file matching the app name
+				userApp.FileName = webpFile
+				userApp.Path = filepath.Join("users", username, subDir, appName, webpFile)
+				userApp.Preview = webpFile
+
+				// Use file mod time as date
+				if info, err := os.Stat(filepath.Join(appDir, webpFile)); err == nil {
+					userApp.Date = info.ModTime().Format("2006-01-02 15:04")
+				}
 				apps = append(apps, userApp)
 			}
 		}

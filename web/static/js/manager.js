@@ -207,7 +207,7 @@ function refreshDeviceCard(deviceId, movedAppIname = null) {
   });
 
   // Fetch the updated device card content
-  fetch(`/?device_id=${deviceId}&partial=device_card`)
+  fetch(`/?device_id=${deviceId}&partial=device_card`, { headers: { 'Cache-Control': 'no-cache' } })
     .then(response => response.text())
     .then(html => {
       // Create a temporary DOM element to parse the response
@@ -1527,6 +1527,8 @@ function restoreDevicePreferences(deviceId) {
   const listBtn = document.getElementById(`listViewBtn-${deviceId}`);
   const gridBtn = document.getElementById(`gridViewBtn-${deviceId}`);
   const collapsedBtn = document.getElementById(`collapsedViewBtn-${deviceId}`);
+
+  if (!appsList || !listBtn || !gridBtn || !collapsedBtn) return;
 
   // Restore view mode
   if (prefs.viewMode === 'grid') {

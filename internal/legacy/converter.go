@@ -76,7 +76,7 @@ func (ld *LegacyDevice) ToDataDevice(username string) data.Device {
 	if ld.DimTime != nil {
 		nd.DimTime = ld.DimTime
 	}
-	if ld.Timezone != nil {
+	if ld.Timezone != nil && strings.ToLower(*ld.Timezone) != "none" {
 		nd.Timezone = ld.Timezone
 	}
 	if ld.Locale != nil {
@@ -101,7 +101,7 @@ func (ld *LegacyDevice) ToDataDevice(username string) data.Device {
 			Lat:         ParseFloat(ld.Location.Lat),
 			Lng:         ParseFloat(ld.Location.Lng),
 		}
-		if ld.Location.Timezone != nil {
+		if ld.Location.Timezone != nil && strings.ToLower(*ld.Location.Timezone) != "none" {
 			nd.Location.Timezone = *ld.Location.Timezone
 		}
 	}
