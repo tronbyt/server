@@ -38,8 +38,8 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 
 	// Auto-Login Check
 	if s.Config.SingleUserAutoLogin == "1" {
-		var count int64
-		if err := s.DB.Model(&data.User{}).Count(&count).Error; err == nil && count == 1 {
+		count, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+		if err == nil && count == 1 {
 			if s.isTrustedNetwork(r) {
 				user, err := gorm.G[data.User](s.DB).First(r.Context())
 				if err != nil {
@@ -59,8 +59,8 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var count int64
-	if err := s.DB.Model(&data.User{}).Count(&count).Error; err != nil {
+	count, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	if err != nil {
 		slog.Error("Failed to count users", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -146,8 +146,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRegisterGet(w http.ResponseWriter, r *http.Request) {
-	var count int64
-	s.DB.Model(&data.User{}).Count(&count)
+	count, _ := gorm.G[data.User](s.DB).Count(r.Context(), "*")
 
 	if s.Config.EnableUserRegistration != "1" && count > 0 {
 		session, _ := s.Store.Get(r, "session-name")
@@ -177,8 +176,7 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	email := r.FormValue("email")
 
-	var count int64
-	s.DB.Model(&data.User{}).Count(&count)
+	count, _ := gorm.G[data.User](s.DB).Count(r.Context(), "*")
 
 	localizer := s.getLocalizer(r)
 

@@ -800,8 +800,7 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 		// Validate ID format
 		if validDeviceIDRe.MatchString(importedDevice.ID) {
 			// Check if exists
-			var exists int64
-			s.DB.Model(&data.Device{}).Where("id = ?", importedDevice.ID).Count(&exists)
+			exists, _ := gorm.G[data.Device](s.DB).Where("id = ?", importedDevice.ID).Count(r.Context(), "*")
 			if exists == 0 {
 				deviceID = importedDevice.ID
 			}
@@ -821,13 +820,12 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 	apiKey := importedDevice.APIKey
 	if apiKey != "" {
 		// Check for uniqueness
-		var exists int64
-		s.DB.Model(&data.Device{}).Where("api_key = ?", apiKey).Count(&exists)
+		exists, _ := gorm.G[data.Device](s.DB).Where("api_key = ?", apiKey).Count(r.Context(), "*")
 		if exists > 0 {
 			apiKey = "" // Collision, generate new
 		} else {
 			// Check User API keys too?
-			s.DB.Model(&data.User{}).Where("api_key = ?", apiKey).Count(&exists)
+			exists, _ := gorm.G[data.User](s.DB).Where("api_key = ?", apiKey).Count(r.Context(), "*")
 			if exists > 0 {
 				apiKey = ""
 			}

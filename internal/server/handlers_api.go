@@ -403,12 +403,12 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 }
 
 func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string) error {
-	var count int64
-	err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", deviceID, installID).Count(&count).Error
+	// Check if install exists
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, installID).Count(ctx, "*")
 	if err != nil {
+		slog.Error("Failed to check if app exists for image push", "error", err)
 		return err
 	}
-
 	if count > 0 {
 		return nil
 	}
