@@ -168,21 +168,14 @@ func TestHandleGetDevice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to fetch device: %v", err)
 	}
-	ssid := "Test SSID"
-	wifiPowerSave := 1
-	skipDisplayVersion := true
-	apMode := true
-	preferIPv6 := true
-	swapColors := true
-	imageURL := "http://example.com/image.png"
 
-	device.Info.SSID = &ssid
-	device.Info.WifiPowerSave = &wifiPowerSave
-	device.Info.SkipDisplayVersion = &skipDisplayVersion
-	device.Info.APMode = &apMode
-	device.Info.PreferIPv6 = &preferIPv6
-	device.Info.SwapColors = &swapColors
-	device.Info.ImageURL = &imageURL
+	device.Info.SSID = stringPtr("Test SSID")
+	device.Info.WifiPowerSave = intPtr(1)
+	device.Info.SkipDisplayVersion = boolPtr(true)
+	device.Info.APMode = boolPtr(true)
+	device.Info.PreferIPv6 = boolPtr(true)
+	device.Info.SwapColors = boolPtr(true)
+	device.Info.ImageURL = stringPtr("http://example.com/image.png")
 	if err := s.DB.Save(device).Error; err != nil {
 		t.Fatalf("Failed to update device info: %v", err)
 	}
@@ -213,16 +206,16 @@ func TestHandleGetDevice(t *testing.T) {
 		t.Errorf("Expected WifiPowerSave 1, got %v", payload.Info.WifiPowerSave)
 	}
 	if payload.Info.SkipDisplayVersion == nil || !*payload.Info.SkipDisplayVersion {
-		t.Error("Expected SkipDisplayVersion true")
+		t.Errorf("Expected SkipDisplayVersion to be true, got %v", payload.Info.SkipDisplayVersion)
 	}
 	if payload.Info.APMode == nil || !*payload.Info.APMode {
-		t.Error("Expected APMode true")
+		t.Errorf("Expected APMode to be true, got %v", payload.Info.APMode)
 	}
 	if payload.Info.PreferIPv6 == nil || !*payload.Info.PreferIPv6 {
-		t.Error("Expected PreferIPv6 true")
+		t.Errorf("Expected PreferIPv6 to be true, got %v", payload.Info.PreferIPv6)
 	}
 	if payload.Info.SwapColors == nil || !*payload.Info.SwapColors {
-		t.Error("Expected SwapColors true")
+		t.Errorf("Expected SwapColors to be true, got %v", payload.Info.SwapColors)
 	}
 	if payload.Info.ImageURL == nil || *payload.Info.ImageURL != "http://example.com/image.png" {
 		t.Errorf("Expected ImageURL 'http://example.com/image.png', got '%v'", payload.Info.ImageURL)

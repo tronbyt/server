@@ -568,12 +568,17 @@ func stringPtr(s string) *string {
 	return &s
 }
 
+func intPtr(i int) *int {
+	return &i
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+var rebootPayloadJSON = []byte(`{"reboot":true}`)
+
 func (s *Server) sendRebootCommand(deviceID string) error {
-	payload := map[string]bool{"reboot": true}
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal reboot payload: %w", err)
-	}
-	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: jsonPayload})
+	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: rebootPayloadJSON})
 	return nil
 }
