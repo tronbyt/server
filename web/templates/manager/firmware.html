@@ -108,7 +108,7 @@
         <!-- WiFi Configuration -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "WiFi Configuration" }}</h2>
-            <div class="form-grid">
+            <div class="form-grid gap-x-8">
                 <div class="form-field">
                     <label for="wifi_ap" class="field-label field-required">{{ t .Localizer "WiFi Network Name (SSID)" }}</label>
                     <input name="wifi_ap" id="wifi_ap" required class="field-input" placeholder="2.4GHz WiFi only">
@@ -120,7 +120,7 @@
                 </div>
 
                 {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
-                <div class="form-field-checkbox col-span-full mt-2">
+                <div class="form-field-checkbox col-span-full mt-4">
                     <label for="swap_colors" class="checkbox-label">
                         <input type="checkbox" name="swap_colors" id="swap_colors">
                         <span>{{ t .Localizer "Swap Colors (Fix for some Tidbyt Gen 1 displays)" }}</span>
