@@ -132,8 +132,8 @@
                 </div>
 
                 {{ if .User.AppRepoURL }}
-                <div class="flex gap-2">
-                    <form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i class=\'data-lucide=loader-2\'></i>';">
+                <div class="flex gap-2 flex-wrap">
+                    <form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2></i>'; ">
                         <button type="submit" class="btn-secondary">
                             <i data-lucide="rotate-cw"></i> {{ t .Localizer "Refresh" }}
                         </button>
@@ -279,12 +279,12 @@
         <div class="form-grid gap-y-10">
             <div class="form-field col-span-full">
                 <h3 class="field-label text-sm mb-4">{{ t .Localizer "Export Configuration" }}</h3>
-                <div class="inset-panel flex justify-between items-center bg-secondary">
-                    <div>
+                <div class="inset-panel flex flex-wrap justify-between items-center gap-4 bg-secondary">
+                    <div class="flex-1 min-w-0">
                          <p class="text-sm font-bold">{{ t .Localizer "Export Settings" }}</p>
                          <p class="field-hint mt-1">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</p>
                     </div>
-                     <a href="/export_user_config" class="btn-secondary">
+                     <a href="/export_user_config" class="btn-secondary flex-shrink-0">
                         <i data-lucide="download"></i> {{ t .Localizer "Export" }}
                     </a>
                 </div>

@@ -4189,6 +4189,12 @@ nav li a:hover {
     background-color: var(--bg-tertiary) !important;
 }
 
+@media (max-width: 640px) {
+    .inset-panel {
+        padding: 1rem !important;
+    }
+}
+
 .subsection-title {
     font-size: 1rem !important;
     font-weight: 600 !important;
@@ -4208,6 +4214,18 @@ nav li a:hover {
     display: grid !important;
     grid-template-columns: 1fr auto !important;
     gap: 1rem !important;
+}
+
+@media (max-width: 640px) {
+    .grid-repo {
+        grid-template-columns: 1fr !important;
+    }
+    .grid-repo button,
+    .grid-repo .btn-create,
+    .grid-repo .btn-secondary {
+        width: 100% !important;
+        justify-content: center !important;
+    }
 }
 
 /* Auth Icons */
