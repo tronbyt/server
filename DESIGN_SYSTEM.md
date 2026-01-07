@@ -220,6 +220,55 @@ CSS Variables: `--btn-danger-bg`, `--btn-danger-text`, `--btn-danger-border`, `-
 }
 ```
 
+### Device Panel Layout
+
+The device control panel uses consistent grid patterns for visual alignment.
+
+#### Brightness Grid
+```css
+.brightness-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+}
+
+.brightness-btn {
+    padding: 0.875rem 0.75rem;  /* Taller for visual weight */
+    min-height: 3rem;
+}
+```
+
+#### Action Button Grid
+```css
+.device-action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);  /* Equal width columns */
+    gap: 0.5rem;
+}
+```
+
+#### View Toggle Grid
+```css
+.view-toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, auto);  /* Auto-fit to content */
+    gap: 0.5rem;
+    justify-content: start;
+}
+```
+
+#### Section Spacing
+All control groups use consistent vertical spacing:
+```css
+.device-controls {
+    gap: 1.5rem;  /* Between sections */
+}
+
+.control-group {
+    gap: 0.5rem;  /* Between label and content */
+}
+```
+
 ---
 
 ## Icons

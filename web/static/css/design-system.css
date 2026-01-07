@@ -1168,7 +1168,7 @@ button.btn-action-lg {
 }
 
 .brightness-btn {
-    padding: 0.75rem !important;
+    padding: 0.875rem 0.5rem !important;
     border: 1px solid var(--neutral-300) !important;
     border-radius: 0 !important;
     background: none !important;
@@ -1179,7 +1179,7 @@ button.btn-action-lg {
     color: var(--neutral-900) !important;
     cursor: pointer !important;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-    min-width: 3rem !important;
+    min-height: 2.75rem !important;
 }
 
 .brightness-btn:hover {
@@ -1269,7 +1269,7 @@ button.btn-action-lg {
 /* Slider track - WebKit */
 .cycle-time-slider::-webkit-slider-runnable-track {
     width: 100% !important;
-    height: 4px !important;
+    height: 6px !important;
     background: linear-gradient(to right,
         var(--orange-500) 0%,
         var(--orange-500) var(--slider-value, 50%),
@@ -1288,7 +1288,7 @@ button.btn-action-lg {
 /* Slider track - Firefox */
 .cycle-time-slider::-moz-range-track {
     width: 100% !important;
-    height: 4px !important;
+    height: 6px !important;
     background: var(--neutral-200) !important;
 }
 
@@ -1297,7 +1297,7 @@ button.btn-action-lg {
 }
 
 .cycle-time-slider::-moz-range-progress {
-    height: 4px !important;
+    height: 6px !important;
     background: var(--orange-500) !important;
 }
 
@@ -1315,7 +1315,7 @@ button.btn-action-lg {
     border: 2px solid var(--white) !important;
     cursor: pointer !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
-    margin-top: -5px !important;  /* Center on 4px track: (14-4)/2 = 5 */
+    margin-top: -4px !important;  /* Center on 6px track: (14-6)/2 = 4 */
 }
 
 .cycle-time-slider:hover::-webkit-slider-thumb {
@@ -1567,7 +1567,7 @@ button.btn-action-lg {
 }
 
 .btn-view-toggle {
-    padding: 0.5rem 1rem !important;
+    padding: 0.625rem 1rem !important;
     border: 1px solid var(--neutral-300) !important;
     background: none !important;
     font-family: var(--font-mono) !important;
@@ -1576,7 +1576,7 @@ button.btn-action-lg {
     text-transform: uppercase !important;
     color: var(--neutral-900) !important;
     cursor: pointer !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     gap: 0.375rem !important;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
