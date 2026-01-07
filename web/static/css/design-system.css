@@ -1221,30 +1221,32 @@ button.btn-action-lg {
 .slider-container {
     display: flex !important;
     align-items: center !important;
-    gap: 0.75rem !important;
+    gap: 0.5rem !important;
 }
 
-.slider-label-min,
-.slider-label-max {
-    font-size: 0.75rem !important;
+/* Labels: Same font size, consistent styling */
+.slider-label-min {
+    font-size: var(--font-size-sm) !important;
     font-family: var(--font-mono) !important;
     color: var(--neutral-500) !important;
     flex-shrink: 0 !important;
+    min-width: 1.5rem !important;
+    text-align: right !important;
 }
 
-/* Dynamic value label - emphasized current value */
+/* Dynamic value label - emphasized current value, same font size */
 .slider-value-label {
-    font-size: 0.875rem !important;
+    font-size: var(--font-size-sm) !important;
     font-family: var(--font-mono) !important;
     font-weight: 700 !important;
     color: var(--neutral-900) !important;
-    min-width: 2.5rem !important;
-    text-align: right !important;
+    min-width: 2rem !important;
+    text-align: left !important;
     flex-shrink: 0 !important;
 }
 
 [data-theme="dark"] .slider-value-label {
-    color: var(--neutral-800) !important;
+    color: var(--neutral-900) !important;
 }
 
 .cycle-time-slider {
@@ -1254,6 +1256,7 @@ button.btn-action-lg {
     outline: none !important;
     -webkit-appearance: none !important;
     appearance: none !important;
+    margin: 0 !important;
 }
 
 [data-theme="dark"] .cycle-time-slider {
@@ -1299,16 +1302,17 @@ button.btn-action-lg {
     background: var(--orange-600) !important;
 }
 
-/* Slider thumb - WebKit */
+/* Slider thumb - WebKit: centered with margin-top offset */
 .cycle-time-slider::-webkit-slider-thumb {
     -webkit-appearance: none !important;
     appearance: none !important;
-    width: 16px !important;
-    height: 16px !important;
+    width: 14px !important;
+    height: 14px !important;
     background: var(--neutral-900) !important;
     border: 2px solid var(--white) !important;
     cursor: pointer !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+    margin-top: -5px !important;  /* Center on 4px track: (14-4)/2 = 5 */
 }
 
 .cycle-time-slider:hover::-webkit-slider-thumb {
@@ -1324,10 +1328,10 @@ button.btn-action-lg {
     background: var(--orange-600) !important;
 }
 
-/* Slider thumb - Firefox */
+/* Slider thumb - Firefox: centered automatically */
 .cycle-time-slider::-moz-range-thumb {
-    width: 16px !important;
-    height: 16px !important;
+    width: 14px !important;
+    height: 14px !important;
     background: var(--neutral-900) !important;
     border: 2px solid var(--white) !important;
     border-radius: 0 !important;
