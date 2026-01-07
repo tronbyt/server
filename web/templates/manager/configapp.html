@@ -3,371 +3,717 @@
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
 {{ define "header" }}
+<link rel="stylesheet" href="/static/css/configapp-simple.css">
+<link rel="stylesheet" href="/static/css/updateapp-simple.css">
 <script src="/static/js/location.js"></script>
-<div class="page-header">
-    <div class="flex justify-between items-center gap-4" style="flex-wrap: wrap;">
-        <h1 class="page-title">{{ t .Localizer "Configuring" }} {{ .App.Iname }} ({{ .App.Name }})</h1>
-        <div class="flex items-center gap-2">
-            <button id="toggleConfigBtn" type="button" class="btn-secondary">
-                <i data-lucide="file-code"></i> <span class="button-label">{{ t .Localizer "Show App Config" }}</span>
-            </button>
-            <button id="toggleDebugBtn" type="button" class="btn-secondary">
-                <i data-lucide="bug"></i> <span class="button-label">{{ t .Localizer "Show Render Debug" }}</span>
-            </button>
-        </div>
-    </div>
-</div>
+<h1>{{ t .Localizer "Configuring" }} {{ .App.Iname }} ({{ .App.Name }})</h1>
 {{ end }}
 {{ define "content" }}
-<div class="form-panel">
-    
-    <div class="form-actions" style="margin-bottom: 2rem; justify-content: flex-end;">
-        <button type="submit" form="dynamicForm" class="btn-save" id="saveButton">
-            <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+<!-- Navigation and Toggle Buttons -->
+<div class="flex-container">
+    <!-- Toggle Buttons -->
+    <div class="toggle-buttons">
+        <button id="toggleConfigBtn"
+                class="w3-button"
+                style="background-color: var(--primary-color);
+                       color: white">
+            <i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show App Config" }}</span>
         </button>
-        <button type="button" class="btn-secondary" id="cancelButtonTop">
-            <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+        <button id="toggleDebugBtn"
+                class="w3-button"
+                style="background-color: var(--primary-color);
+                       color: white">
+            <i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show Render Debug" }}</span>
         </button>
     </div>
-
-    <div id="configContent" class="hidden" style="margin-bottom: 1rem;">
-        <pre class="flash" id="configContentPre" style="max-height: 300px; overflow: auto;"></pre>
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button type="submit"
+                form="dynamicForm"
+                class="w3-button w3-green w3-round"
+                id="saveButton">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+        </button>
+        <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop">
+            <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ t .Localizer "Cancel" }}
+        </button>
     </div>
-    <div id="debugContent" class="hidden" style="margin-bottom: 1rem;">
-        <pre class="flash" style="max-height: 300px; overflow: auto;">{{ range .App.RenderMessages }}{{ . }}
+</div>
+<!-- Config Content -->
+<div id="configContent" class="hidden">
+    <pre class="flash" id="configContentPre"></pre>
+</div>
+<!-- Debug Content -->
+<div id="debugContent" class="hidden">
+    <pre class="flash">{{ range .App.RenderMessages }}{{ . }}
 {{ end }}</pre>
-    </div>
-
-    <div class="form-section">
-        <div class="flex gap-4 items-start flex-wrap">
-            <div style="flex: 0 0 auto;">
-                <div class="led-panel" style="width: fit-content;">
-                    <img id="previewImage"
-                         src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
-                         alt="{{ t .Localizer "Preview" }}"
-                         width="128"
-                         height="64"
-                         style="image-rendering: pixelated; display: block;">
-                    <div class="skeleton-loader"></div>
-                </div>
-            </div>
-            <div style="flex: 1; min-width: 200px;">
-                {{ if .AppMetadata }}
-                <div class="app-metadata">
-                    <h3 class="section-title" style="margin-bottom: 0.5rem;">{{ t .Localizer "About" }}</h3>
-                    {{ if .AppMetadata.Summary }}
-                    <p class="font-bold" style="margin-bottom: 0.5rem;">{{ .AppMetadata.Summary }}</p>
+</div>
+<!-- App Preview -->
+<div class="app-img">
+    <img id="previewImage"
+         src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+         alt="{{ t .Localizer "Preview" }}"
+         width="128"
+         height="64">
+    <div class="skeleton-loader"></div>
+</div>
+{{ if .AppMetadata }}
+<div class="app-metadata">
+    {{ if .AppMetadata.Summary }}
+    <p class="app-summary">{{ .AppMetadata.Summary }}</p>
+    {{ end }}
+    {{ if .AppMetadata.Desc }}
+    <div class="app-desc">{{ .AppMetadata.Desc }}</div>
+    {{ end }}
+</div>
+{{ end }}
+<form method="post" id="dynamicForm">
+    <!-- Schema Config Section -->
+    <h2>{{ t .Localizer "App Configuration" }}</h2>
+    <table id="schemaConfigContainer"
+           class="form-table"
+           style="border-spacing: 0 15px">
+        <!-- Schema fields will be injected here -->
+    </table>
+    <hr>
+    <!-- App Settings Section -->
+    <h2>{{ t .Localizer "Settings" }}</h2>
+    <table class="form-table">
+        <!-- Name (ReadOnly) -->
+        <tr>
+            <td>
+                <label>{{ t .Localizer "Name" }}</label>
+            </td>
+            <td>
+                <input type="text"
+                       id="name"
+                       name="name"
+                       class="form-control"
+                       value="{{ .App.Name }}"
+                       readonly>
+            </td>
+        </tr>
+        <!-- Enabled Status -->
+        <tr>
+            <td>
+                <label for="enabled">{{ t .Localizer "Enabled" }}</label>
+                <small>{{ t .Localizer "Enable or disable this app" }}</small>
+            </td>
+            <td>
+                <input name="enabled"
+                       type="checkbox"
+                       id="enabled"
+                       class="form-control"
+                       {{ if .App.Enabled }}
+                       checked
+                       {{ end }}
+                       data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
+            </td>
+        </tr>
+        <!-- Autopin Status -->
+        <tr>
+            <td>
+                <label for="autopin">{{ t .Localizer "Autopin" }}</label>
+                <small>{{ t .Localizer "Automatically pin this app when it renders successfully" }}</small>
+            </td>
+            <td>
+                <input name="autopin"
+                       type="checkbox"
+                       id="autopin"
+                       class="form-control"
+                       {{ if .App.AutoPin }}
+                       checked
+                       {{ end }}
+                       data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
+            </td>
+        </tr>
+        <!-- Render Interval -->
+        <tr>
+            <td>
+                <label for="uinterval">{{ t .Localizer "Render Interval Minutes" }}</label>
+                <small>{{ t .Localizer "Update every X minutes" }}</small>
+            </td>
+            <td>
+                <input type="number"
+                       name="uinterval"
+                       id="uinterval"
+                       min="0"
+                       class="form-control"
+                       value="{{ .App.UInterval }}"
+                       data-default="{{ .App.UInterval }}"
+                       required>
+            </td>
+        </tr>
+        <!-- Display Time -->
+        <tr>
+            <td>
+                <label for="display_time">{{ t .Localizer "Display Time Seconds" }}</label>
+                <small>{{ t .Localizer "0 for device default" }}</small>
+            </td>
+            <td>
+                <input type="number"
+                       name="display_time"
+                       id="display_time"
+                       min="0"
+                       class="form-control"
+                       value="{{ .App.DisplayTime }}"
+                       data-default="{{ .App.DisplayTime }}">
+            </td>
+        </tr>
+        <!-- Color Filter -->
+        <tr>
+            <td>
+                <label for="color_filter">{{ t .Localizer "Color Filter" }}</label>
+                <span class="tooltip-icon" title="{{ t .Localizer "ColorFilterTooltip" }}">ⓘ</span>
+                <small>{{ t .Localizer "Override device color filter" }}</small>
+            </td>
+            <td>
+                <select name="color_filter" id="color_filter" class="form-control">
+                    {{ range .ColorFilterOptions }}
+                    <option value="{{ .Value }}"
+                            {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}
+                            selected
+                            {{ end }}>{{ t $.Localizer .Name }}
+                    </option>
                     {{ end }}
-                    {{ if .AppMetadata.Desc }}
-                    <div class="text-secondary text-sm">{{ .AppMetadata.Desc }}</div>
-                    {{ end }}
-                </div>
-                {{ end }}
-            </div>
-        </div>
-    </div>
-
-    <form method="post" id="dynamicForm">
-        <div class="form-section">
-            <h3 class="section-title">{{ t .Localizer "App Configuration" }}</h3>
-            <div id="schemaConfigContainer" class="form-grid">
-                <!-- Schema fields injected here -->
-            </div>
-        </div>
-
-        <div class="form-section">
-            <h3 class="section-title">{{ t .Localizer "Settings" }}</h3>
-            <div class="form-grid">
-                <div class="form-field">
-                    <label class="field-label">{{ t .Localizer "Name" }}</label>
-                    <input type="text" id="name" name="name" class="field-input" value="{{ .App.Name }}" readonly>
-                </div>
-
-                <div class="form-field">
-                    <label class="field-label" for="uinterval">{{ t .Localizer "Render Interval (Minutes)" }} <span class="field-required"></span></label>
-                    <input type="number" name="uinterval" id="uinterval" min="0" class="field-input" value="{{ .App.UInterval }}" data-default="{{ .App.UInterval }}" required>
-                    <span class="field-hint">{{ t .Localizer "Update every X minutes" }}</span>
-                </div>
-
-                <div class="form-field">
-                    <label class="field-label" for="display_time">{{ t .Localizer "Display Time (Seconds)" }}</label>
-                    <input type="number" name="display_time" id="display_time" min="0" class="field-input" value="{{ .App.DisplayTime }}" data-default="{{ .App.DisplayTime }}">
-                    <span class="field-hint">{{ t .Localizer "0 for device default" }}</span>
-                </div>
-
-                <div class="form-field">
-                    <label class="field-label" for="color_filter">{{ t .Localizer "Color Filter" }}</label>
-                    <select name="color_filter" id="color_filter" class="field-select field-input">
-                        {{ range .ColorFilterOptions }}
-                        <option value="{{ .Value }}" {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
-                        {{ end }}
-                    </select>
-                </div>
-
-                <div class="form-field" style="grid-column: 1 / -1;">
-                    <label class="field-label" for="notes">{{ t .Localizer "Notes" }}</label>
-                    <input name="notes" id="notes" class="field-input" value="{{ .App.Notes }}" data-default="{{ .App.Notes }}">
-                </div>
-
-                <div class="form-field-checkbox" style="grid-column: 1 / -1;">
-                    <label class="checkbox-label" for="enabled">
-                        <input name="enabled" type="checkbox" id="enabled" {{ if .App.Enabled }}checked{{ end }} data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
-                        <span>{{ t .Localizer "Enabled" }}</span>
-                    </label>
-                </div>
-
-                <div class="form-field-checkbox" style="grid-column: 1 / -1;">
-                    <label class="checkbox-label" for="autopin">
-                        <input name="autopin" type="checkbox" id="autopin" {{ if .App.AutoPin }}checked{{ end }} data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
-                        <span>{{ t .Localizer "Autopin" }}</span>
-                    </label>
-                    <span class="field-hint" style="margin-left: 1.5rem;">{{ t .Localizer "Automatically pin this app when it renders successfully" }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-section">
-            <h3 class="section-title">{{ t .Localizer "Schedule" }}</h3>
-            <div class="form-grid">
-                <div class="form-field">
-                    <label class="field-label" for="start_time">{{ t .Localizer "Start Time" }}</label>
-                    <input type="time" name="start_time" id="start_time" class="field-input" value="{{ deref .App.StartTime }}" data-default="{{ deref .App.StartTime }}">
-                </div>
-                <div class="form-field">
-                    <label class="field-label" for="end_time">{{ t .Localizer "End Time" }}</label>
-                    <input type="time" name="end_time" id="end_time" class="field-input" value="{{ deref .App.EndTime }}" data-default="{{ deref .App.EndTime }}">
-                </div>
-            </div>
-
-            <div id="legacy_schedule" style="margin-top: 1.5rem;">
-                <label class="field-label">{{ t .Localizer "Active Days (Weekly)" }}</label>
-                <div class="flex flex-wrap gap-4 mt-2">
-                    {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
-                    <div class="form-field-checkbox" style="margin-bottom: 0;">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="days" value="{{ $day }}" {{ if or (contains $.App.Days $day) (eq (len $.App.Days) 0) }}checked{{ end }}>
-                            <span style="text-transform: capitalize;">{{ t $.Localizer $day }}</span>
-                        </label>
-                    </div>
-                    {{ end }}
-                </div>
-                <span class="field-hint">{{ t .Localizer "(none selected is ALL selected)" }}</span>
-            </div>
-
-            <div class="form-field-checkbox" style="margin-top: 2rem;">
-                 <label class="checkbox-label" for="use_custom_recurrence">
-                    <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence" {{ if .App.UseCustomRecurrence }}checked{{ end }} onchange="toggleCustomRecurrence()">
-                    <span>{{ t .Localizer "Use Custom Recurrence" }}</span>
+                </select>
+            </td>
+        </tr>
+        <!-- Notes -->
+        <tr>
+            <td>
+                <label for="notes">{{ t .Localizer "Notes" }}</label>
+                <small>{{ t .Localizer "Optional notes about this app" }}</small>
+            </td>
+            <td>
+                <input name="notes"
+                       id="notes"
+                       class="form-control"
+                       value="{{ .App.Notes }}"
+                       data-default="{{ .App.Notes }}">
+            </td>
+        </tr>
+    </table>
+    <hr>
+    <!-- Schedule Section -->
+    <div class="schedule-section">
+        <h2>{{ t .Localizer "Schedule" }}</h2>
+        <table class="form-table">
+            <!-- Start Time -->
+            <tr>
+                <td>
+                    <label for="start_time">{{ t .Localizer "Start Time" }}</label>
+                    <small>{{ t .Localizer "When the app should start displaying" }}</small>
+                </td>
+                <td>
+                    <input type="time"
+                           name="start_time"
+                           id="start_time"
+                           class="form-control"
+                           value="{{ deref .App.StartTime }}"
+                           data-default="{{ deref .App.StartTime }}">
+                </td>
+            </tr>
+            <!-- End Time -->
+            <tr>
+                <td>
+                    <label for="end_time">{{ t .Localizer "End Time" }}</label>
+                    <small>{{ t .Localizer "When the app should stop displaying" }}</small>
+                </td>
+                <td>
+                    <input type="time"
+                           name="end_time"
+                           id="end_time"
+                           class="form-control"
+                           value="{{ deref .App.EndTime }}"
+                           data-default="{{ deref .App.EndTime }}">
+                </td>
+            </tr>
+        </table>
+        <!-- Legacy Schedule (Default) -->
+        <div id="legacy_schedule">
+            <h3>{{ t .Localizer "Active Days" }}</h3>
+            <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
+            <div style="margin-top: 10px;">
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="monday"
+                           {{ if or (contains .App.Days "monday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Monday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="tuesday"
+                           {{ if or (contains .App.Days "tuesday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Tuesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="wednesday"
+                           {{ if or (contains .App.Days "wednesday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Wednesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="thursday"
+                           {{ if or (contains .App.Days "thursday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Thursday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="friday"
+                           {{ if or (contains .App.Days "friday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Friday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="saturday"
+                           {{ if or (contains .App.Days "saturday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Saturday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="days"
+                           value="sunday"
+                           {{ if or (contains .App.Days "sunday") (eq (len .App.Days) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Sunday" }}
                 </label>
             </div>
-
-             <div id="custom_recurrence" class="custom-recurrence-section" style="display: none; margin-top: 1rem; border-top: 1px solid var(--neutral-200); padding-top: 1rem;">
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label class="field-label" for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
-                        <select name="recurrence_type" id="recurrence_type" class="field-select field-input" onchange="toggleRecurrenceOptions()">
-                            <option value="daily" {{ if eq (string .App.RecurrenceType) "daily" }}selected{{ end }}>{{ t .Localizer "Daily" }}</option>
-                            <option value="weekly" {{ if eq (string .App.RecurrenceType) "weekly" }}selected{{ end }}>{{ t .Localizer "Weekly" }}</option>
-                            <option value="monthly" {{ if eq (string .App.RecurrenceType) "monthly" }}selected{{ end }}>{{ t .Localizer "Monthly" }}</option>
-                            <option value="yearly" {{ if eq (string .App.RecurrenceType) "yearly" }}selected{{ end }}>{{ t .Localizer "Yearly" }}</option>
-                        </select>
+        </div>
+    </div>
+    <!-- Custom Recurrence Toggle -->
+    <div style="margin: 20px 0;">
+        <label for="use_custom_recurrence"
+               style="display: flex;
+                      align-items: center;
+                      gap: 10px">
+            <input type="checkbox"
+                   name="use_custom_recurrence"
+                   id="use_custom_recurrence"
+                   {{ if .App.UseCustomRecurrence }}
+                   checked
+                   {{ end }}
+                   onchange="toggleCustomRecurrence()">
+            <div>
+                <strong>{{ t .Localizer "Use Custom Recurrence" }}</strong>
+                <small style="display: block;
+                              color: var(--post-about-text);
+                              margin-top: 5px">
+                    {{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}
+                </small>
+            </div>
+        </label>
+    </div>
+    <!-- Custom Recurrence Section -->
+    <div id="custom_recurrence"
+         class="custom-recurrence-section"
+         style="display: none">
+        <h3>{{ t .Localizer "Custom Recurrence" }}</h3>
+        <table class="form-table">
+            <!-- Frequency -->
+            <tr>
+                <td>
+                    <label for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
+                    <small>{{ t .Localizer "How often the app should run" }}</small>
+                </td>
+                <td>
+                    <select name="recurrence_type"
+                            id="recurrence_type"
+                            class="form-control"
+                            onchange="toggleRecurrenceOptions()">
+                        <option value="daily"
+                                {{ if eq (string .App.RecurrenceType) "daily" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Daily" }}
+                        </option>
+                        <option value="weekly"
+                                {{ if eq (string .App.RecurrenceType) "weekly" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Weekly" }}
+                        </option>
+                        <option value="monthly"
+                                {{ if eq (string .App.RecurrenceType) "monthly" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Monthly" }}
+                        </option>
+                        <option value="yearly"
+                                {{ if eq (string .App.RecurrenceType) "yearly" }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Yearly" }}
+                        </option>
+                    </select>
+                </td>
+            </tr>
+            <!-- Repeat Interval -->
+            <tr>
+                <td>
+                    <label for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
+                    <small>{{ t .Localizer "Interval between occurrences" }}</small>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number"
+                               name="recurrence_interval"
+                               id="recurrence_interval"
+                               min="1"
+                               max="52"
+                               class="form-control"
+                               value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}"
+                               style="width: 100px">
+                        <span id="interval_unit">{{ t .Localizer "days" }}</span>
                     </div>
-                    <div class="form-field">
-                        <label class="field-label" for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
-                        <div class="flex items-center gap-2">
-                            <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52" class="field-input" value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}" style="width: 80px;">
-                            <span id="interval_unit" class="text-sm">{{ t .Localizer "days" }}</span>
-                        </div>
-                    </div>
-                    <div class="form-field">
-                        <label class="field-label" for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
-                        <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="field-input" value="{{ deref .App.RecurrenceStartDate }}">
-                    </div>
-                    <div class="form-field">
-                         <label class="field-label" for="recurrence_end_date">{{ t .Localizer "End Date" }} <span class="field-optional">({{ t .Localizer "Optional" }})</span></label>
-                        <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="field-input" value="{{ deref .App.RecurrenceEndDate }}">
-                    </div>
-                </div>
+                </td>
+            </tr>
+            <!-- Start Date -->
+            <tr>
+                <td>
+                    <label for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
+                    <small>{{ t .Localizer "When the recurrence should begin" }}</small>
+                </td>
+                <td>
+                    <input type="date"
+                           name="recurrence_start_date"
+                           id="recurrence_start_date"
+                           class="form-control"
+                           value="{{ deref .App.RecurrenceStartDate }}">
+                </td>
+            </tr>
+            <!-- End Date -->
+            <tr>
+                <td>
+                    <label for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
+                    <small>{{ t .Localizer "When the recurrence should stop" }}</small>
+                </td>
+                <td>
+                    <input type="date"
+                           name="recurrence_end_date"
+                           id="recurrence_end_date"
+                           class="form-control"
+                           value="{{ deref .App.RecurrenceEndDate }}">
+                </td>
+            </tr>
+        </table>
+        <!-- Weekly Options -->
+        <div id="weekly_options" style="display: none; margin-top: 20px;">
+            <h4>{{ t .Localizer "Weekly Options" }}</h4>
+            <label for="weekdays">{{ t .Localizer "Active Days" }}</label>
+            <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
+            <div style="margin-top: 10px;">
+                {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
+                {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="monday"
+                           {{ if or (contains $weekdays "monday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Monday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="tuesday"
+                           {{ if or (contains $weekdays "tuesday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Tuesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="wednesday"
+                           {{ if or (contains $weekdays "wednesday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Wednesday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="thursday"
+                           {{ if or (contains $weekdays "thursday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Thursday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="friday"
+                           {{ if or (contains $weekdays "friday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Friday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="saturday"
+                           {{ if or (contains $weekdays "saturday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Saturday" }}
+                </label>
+                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
+                    <input type="checkbox"
+                           name="weekdays"
+                           value="sunday"
+                           {{ if or (contains $weekdays "sunday") (eq (len $weekdays) 0) }}
+                           checked
+                           {{ end }}> {{ t .Localizer "Sunday" }}
+                </label>
             </div>
         </div>
-
-        <div class="form-actions" style="margin-top: 2rem;">
-            <button type="submit" class="btn-save">
-                <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
-            </button>
-            <button type="button" class="btn-secondary" id="resetButton">
-                <i data-lucide="rotate-ccw"></i> {{ t .Localizer "Reset" }}
-            </button>
-            {{ if eq .Device.Info.ProtocolType "WS" }}
-            <button type="button" class="btn-secondary" id="previewButton">
-                <i data-lucide="eye"></i> {{ t .Localizer "Preview" }}
-            </button>
-            {{ end }}
-            <button type="button" class="btn-secondary" onclick="exportConfig()">
-                <i data-lucide="download"></i> {{ t .Localizer "Export Config" }}
-            </button>
-            <button type="button" class="btn-secondary" onclick="document.getElementById('importConfigInput').click()">
-                <i data-lucide="upload"></i> {{ t .Localizer "Import Config" }}
-            </button>
-            <button type="button" class="btn-delete" id="deleteButton" onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
-                <i data-lucide="trash-2"></i> {{ t .Localizer "Delete" }}
+        <!-- Monthly Options -->
+        <div id="monthly_options" style="display: none; margin-top: 20px;">
+            <h4>{{ t .Localizer "Monthly Options" }}</h4>
+            <table class="form-table">
+                <!-- Monthly Pattern -->
+                <tr>
+                    <td>
+                        <label for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
+                        <small>{{ t .Localizer "Choose how to specify the monthly occurrence" }}</small>
+                    </td>
+                    <td>
+                        <select name="monthly_pattern" id="monthly_pattern" class="form-control">
+                            {{ $dom := index .App.RecurrencePattern "day_of_month" }}
+                            {{ $dow := index .App.RecurrencePattern "day_of_week" }}
+                            {{ $current_pattern := "day_of_month" }}
+                            {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
+                            <option value="day_of_month"
+                                    {{ if eq $current_pattern "day_of_month" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Day of Month" }}
+                            </option>
+                            <option value="day_of_week"
+                                    {{ if eq $current_pattern "day_of_week" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Day of Week" }}
+                            </option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+            <!-- Day of Month Option -->
+            <div id="day_of_month_option">
+                <table class="form-table">
+                    <tr>
+                        <td>
+                            <label for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
+                            <small>{{ t .Localizer "Which day of the month (1-31)" }}</small>
+                        </td>
+                        <td>
+                            <input type="number"
+                                   name="day_of_month"
+                                   id="day_of_month"
+                                   min="1"
+                                   max="31"
+                                   class="form-control"
+                                   value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <!-- Day of Week Option -->
+            <div id="day_of_week_option" style="display: none;">
+                <table class="form-table">
+                    <tr>
+                        <td>
+                            <label for="day_of_week_pattern">{{ t .Localizer "Day of Week Pattern" }}</label>
+                            <small>{{ t .Localizer "Which occurrence of which day" }}</small>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <select name="week_occurrence" id="week_occurrence" class="form-control">
+                                    <option value="first">{{ t .Localizer "First" }}</option>
+                                    <option value="second">{{ t .Localizer "Second" }}</option>
+                                    <option value="third">{{ t .Localizer "Third" }}</option>
+                                    <option value="fourth">{{ t .Localizer "Fourth" }}</option>
+                                    <option value="last">{{ t .Localizer "Last" }}</option>
+                                </select>
+                                <select name="week_day" id="week_day" class="form-control">
+                                    <option value="monday">{{ t .Localizer "Monday" }}</option>
+                                    <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
+                                    <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
+                                    <option value="thursday">{{ t .Localizer "Thursday" }}</option>
+                                    <option value="friday">{{ t .Localizer "Friday" }}</option>
+                                    <option value="saturday">{{ t .Localizer "Saturday" }}</option>
+                                    <option value="sunday">{{ t .Localizer "Sunday" }}</option>
+                                </select>
+                                <!-- Hidden input to combine the values for form submission -->
+                                <input type="hidden"
+                                       name="day_of_week_pattern"
+                                       id="day_of_week_pattern"
+                                       value="{{ if $dow }}{{ $dow }}{{ end }}">
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="button-container">
+        <button type="submit" class="w3-button w3-green w3-round">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+        </button>
+        <button type="button" class="w3-button w3-blue w3-round" id="resetButton">
+            <i class="fa-solid fa-rotate-left"></i> {{ t .Localizer "Reset" }}
+        </button>
+        {{ if eq .Device.Info.ProtocolType "WS" }}
+        <button type="button" class="w3-button w3-blue w3-round" id="previewButton">
+            <i class="fa-solid fa-eye"></i> {{ t .Localizer "Preview" }}
+        </button>
+        {{ end }}
+        <button type="button"
+                class="w3-button w3-grey w3-round"
+                onclick="exportConfig()">
+            <i class="fa-solid fa-download"></i> {{ t .Localizer "Export Config" }}
+        </button>
+        <button type="button"
+                class="w3-button w3-grey w3-round"
+                onclick="document.getElementById('importConfigInput').click()">
+            <i class="fa-solid fa-upload"></i> {{ t .Localizer "Import Config" }}
+        </button>
+        <button type="button" class="w3-button w3-red w3-round" id="cancelButton">
+            <i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}
+        </button>
+        <button type="button"
+                class="w3-button w3-red w3-round"
+                id="deleteButton"
+                onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
+            <i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}
+        </button>
+    </div>
+</form>
+<input type="file"
+       id="importConfigInput"
+       style="display:none"
+       accept=".json"
+       onchange="importConfig(this)">
+<!-- API Examples Section -->
+<div id="apiUsageContent">
+    <div class="api-section">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h2>{{ t .Localizer "API Usage" }}</h2>
+            <button id="toggleApiUsageBtn"
+                    class="w3-button"
+                    style="background-color: var(--primary-color);
+                           color: white">
+                <i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show API Usage" }}</span>
             </button>
         </div>
-    </form>
-</div>
-
-<input type="file" id="importConfigInput" style="display:none" accept=".json" onchange="importConfig(this)">
-
-<div class="form-panel" style="margin-top: 2rem;">
-    <div id="apiUsageContent" class="form-section">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="section-title" style="margin-bottom: 0;">{{ t .Localizer "API Usage" }}</h3>
-            <button id="toggleApiUsageBtn" class="btn-ghost">
-                <i data-lucide="code"></i> <span class="button-label">{{ t .Localizer "Show API Usage" }}</span>
-            </button>
-        </div>
-        <div class="api-usage-details collapsed hidden" style="margin-top: 1rem;">
-             <p class="field-hint">{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
-             <div class="code-block" style="background:#f5f5f5; padding:1rem; border-radius:4px; margin-bottom:1rem; overflow-x:auto;">
-                 <strong>{{ t .Localizer "Enable App" }}</strong>
-                 <pre style="margin:0;">curl -X PATCH \
+        <div class="api-usage-details collapsed">
+            <p>{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
+            <!-- Enable App -->
+            <div style="margin-bottom: 20px;">
+                <h3>{{ t .Localizer "Enable App" }}</h3>
+                <pre>curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
-             </div>
-         </div>
+            </div>
+            <!-- Disable App -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: var(--danger-text);">{{ t .Localizer "Disable App" }}</h3>
+                <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}' \
+  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+            </div>
+            <!-- Pin App -->
+            <div style="margin-bottom: 20px;">
+                <h3>{{ t .Localizer "Pin App" }}</h3>
+                <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"pinnedApp": "{{ .App.Iname }}"}' \
+  /v0/devices/{{ .Device.ID }}</pre>
+            </div>
+            <!-- Unpin App -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: var(--danger-text);">{{ t .Localizer "Unpin App" }}</h3>
+                <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"pinnedApp": ""}' \
+  /v0/devices/{{ .Device.ID }}</pre>
+            </div>
+            <small>
+                <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
+            </small>
+        </div>
     </div>
 </div>
-
 <script>
+  // Make the schema and config objects available to JavaScript
   const schema = {{ .Schema }};
-  const config = {{ .AppConfig | json }};
+  const config = {{ .AppConfig | json }} || {};
   const deleteOnCancel = {{ .DeleteOnCancel }};
+
+  // Device Location
   const deviceLocation = {{ if .Device.Location }}{{ json .Device.Location }}{{ else }}null{{ end }};
 
-  function createFormFields(schema, config) {
-    const container = document.getElementById('schemaConfigContainer');
-    container.innerHTML = ''; 
-    if (!schema || !schema.schema) return;
+  // Initialize toggle buttons for config and debug content
+  function initializeToggleButtons() {
+    const toggleConfigBtn = document.getElementById("toggleConfigBtn");
+    const configContent = document.getElementById("configContent");
+    const toggleDebugBtn = document.getElementById("toggleDebugBtn");
+    const debugContent = document.getElementById("debugContent");
 
-    schema.schema.forEach(field => {
-      if (field.type === "generated") return;
+    if (toggleConfigBtn && configContent) {
+      toggleConfigBtn.addEventListener("click", function () {
+        toggleContent(configContent, toggleConfigBtn,
+          "{{ t .Localizer "Hide App Config" }}", "{{ t .Localizer "Show App Config" }}", 'hidden');
+      });
+    }
 
-      const fieldDiv = document.createElement("div");
-      
-      const label = document.createElement("label");
-      label.className = "field-label";
-      const inputId = "schema_" + field.id;
-      label.htmlFor = inputId;
-      
-      const labelText = document.createElement("span");
-      labelText.style.display = "inline-flex";
-      labelText.style.alignItems = "center";
-      labelText.style.gap = "0.5rem";
+    if (toggleDebugBtn && debugContent) {
+      toggleDebugBtn.addEventListener("click", function () {
+        toggleContent(debugContent, toggleDebugBtn,
+          "{{ t .Localizer "Hide Render Debug" }}", "{{ t .Localizer "Show Render Debug" }}", 'hidden');
+      });
+    }
 
-      if (field.icon) {
-          const icon = document.createElement("i");
-          icon.setAttribute("data-lucide", field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`));
-          labelText.appendChild(icon);
-      }
-      labelText.appendChild(document.createTextNode(field.name));
-      
-      let input;
-      if (field.type === "boolean" || field.type === "toggle") {
-          fieldDiv.className = "form-field-checkbox"; // Corrected class
-          const labelWrapper = document.createElement("label");
-          labelWrapper.className = "checkbox-label";
-          labelWrapper.htmlFor = inputId;
+    const toggleApiUsageBtn = document.getElementById("toggleApiUsageBtn");
+    const apiUsageDetails = document.querySelector("#apiUsageContent .api-usage-details");
 
-          input = document.createElement("input");
-          input.type = "checkbox";
-          input.id = inputId;
-          input.dataset.configId = field.id; 
-          input.checked = config[field.id] === "true" || config[field.id] === true;
-          input.addEventListener('change', handleConfigUpdate);
-
-          labelWrapper.appendChild(input);
-          labelWrapper.appendChild(labelText); 
-          fieldDiv.appendChild(labelWrapper);
-          
+    if (toggleApiUsageBtn && apiUsageDetails) {
+      // Set initial button text based on initial collapsed state
+      const label = toggleApiUsageBtn.querySelector(".button-label");
+      if (apiUsageDetails.classList.contains("collapsed")) {
+        label.textContent = "{{ t .Localizer "Show API Usage" }}";
       } else {
-          fieldDiv.className = "form-field";
-          label.appendChild(labelText);
-          fieldDiv.appendChild(label);
-          
-          if (field.type === "select") { 
-              input = document.createElement("select");
-              input.className = "field-select field-input";
-              input.id = inputId;
-              input.dataset.configId = field.id;
-              
-              if (field.options) {
-                  field.options.forEach(opt => {
-                      const option = document.createElement("option");
-                      option.value = opt.value;
-                      option.textContent = opt.label;
-                      if (config[field.id] === opt.value) option.selected = true;
-                      input.appendChild(option);
-                  });
-              }
-              input.addEventListener('change', handleConfigUpdate);
-          } else {
-              input = document.createElement("input");
-              input.className = "field-input";
-              input.id = inputId;
-              input.dataset.configId = field.id; 
-              input.value = config[field.id] !== undefined ? config[field.id] : (field.default || "");
-              input.addEventListener('input', handleConfigUpdate);
+        label.textContent = "{{ t .Localizer "Hide API Usage" }}";
+      }
 
-              if (field.type === "text") input.type = "text";
-              else if (field.type === "number") input.type = "number";
-              else if (field.type === "password") input.type = "password";
-              else if (field.type === "color") input.type = "color";
-              else if (field.type === "datetime") input.type = "datetime-local";
-              else input.type = "text";
-          }
-          fieldDiv.appendChild(input);
-      }
-      
-      if (field.description) {
-         const desc = document.createElement("span");
-         desc.className = "field-hint";
-         desc.textContent = field.description;
-         fieldDiv.appendChild(desc);
-      }
-      
-      container.appendChild(fieldDiv);
-      if (typeof lucide !== 'undefined') lucide.createIcons({ root: fieldDiv });
-    });
-  }
-  
-  function toggleContent(content, button, hideText, showText, className) {
-    if (content.classList.contains(className)) {
-        content.classList.remove(className);
-    } else {
-        content.classList.add(className);
+      toggleApiUsageBtn.addEventListener("click", function () {
+        toggleContent(apiUsageDetails, toggleApiUsageBtn,
+          "{{ t .Localizer "Hide API Usage" }}", "{{ t .Localizer "Show API Usage" }}", 'collapsed');
+      });
     }
   }
 
-  function initializeToggleButtons() {
-       const toggleApiUsageBtn = document.getElementById("toggleApiUsageBtn");
-       const apiUsageDetails = document.querySelector("#apiUsageContent .api-usage-details");
-       if (toggleApiUsageBtn && apiUsageDetails) {
-            toggleApiUsageBtn.addEventListener("click", () => {
-                toggleContent(apiUsageDetails, toggleApiUsageBtn, null, null, "hidden");
-            });
-       }
-       const toggleConfigBtn = document.getElementById("toggleConfigBtn");
-       const configContent = document.getElementById("configContent");
-       if(toggleConfigBtn) toggleConfigBtn.addEventListener("click", () => {
-           toggleContent(configContent, toggleConfigBtn, null, null, "hidden");
-       });
-       const toggleDebugBtn = document.getElementById("toggleDebugBtn");
-       const debugContent = document.getElementById("debugContent");
-       if(toggleDebugBtn) toggleDebugBtn.addEventListener("click", () => {
-           toggleContent(debugContent, toggleDebugBtn, null, null, "hidden");
-       });
+  // Generic function to toggle content visibility
+  function toggleContent(content, button, hideText, showText, className) {
+    const label = button.querySelector(".button-label");
+    const target = label || button;
+    if (content.classList.contains(className)) {
+      content.classList.remove(className);
+      target.textContent = hideText;
+    } else {
+      content.classList.add(className);
+      target.textContent = showText;
+    }
   }
 
   function debounce(func, wait) {
@@ -379,78 +725,925 @@
       }, wait);
     };
   }
-  
+
+  // Function to update the config text and preview image
   const updateConfigAndPreview = debounce(() => {
     const configContentPre = document.getElementById("configContentPre");
     const previewImage = document.getElementById("previewImage");
     if (configContentPre) configContentPre.textContent = JSON.stringify(config, null, 2);
 
-    if (typeof previewApp === 'function') {
-        previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', config, null, null)
-        .then(() => {
-             if(previewImage) {
-                 const currentSrc = previewImage.src.split('?')[0];
-                 const encodedConfig = encodeURIComponent(JSON.stringify(config));
-                 previewImage.src = `${currentSrc}?config=${encodedConfig}&t=${new Date().getTime()}`;
-             }
-        });
-    }
+    // Trigger backend preview (POST to update ephemeral, then GET with config param)
+    previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', config, null, null)
+    .then(() => {
+         // Refresh image with cache busting AND pass current config as query param
+         if(previewImage) {
+             const currentSrc = previewImage.src.split('?')[0];
+             const encodedConfig = encodeURIComponent(JSON.stringify(config));
+             previewImage.src = `${currentSrc}?config=${encodedConfig}&t=${new Date().getTime()}`;
+             // Note: The 'load' event listener below will handle hiding the skeleton
+             // when the new image is actually loaded.
+             previewImage.classList.remove('loaded'); // Reset to show skeleton during load
+         }
+    });
   }, 500);
 
+  // Centralized config update handler
   function handleConfigUpdate(event) {
     const target = event.target;
+    // We expect dataset.configId for schema fields
     const configId = target.dataset.configId;
-    if (!configId) return;
-    
+
+    if (!configId) {
+        // Not a schema config field
+        return;
+    }
+
+    if (target.hasAttribute("data-ignore-config")) {
+      return;
+    }
     if (target.type === "checkbox") {
       config[configId] = target.checked ? "true" : "false";
+    } else if (target.type === "select-one") {
+      config[configId] = target.value;
+    } else if (target.type === "color") {
+      config[configId] = target.value;
+    } else if (target.type === "datetime-local") {
+      config[configId] = new Date(target.value).toISOString();
     } else {
       config[configId] = target.value;
     }
     updateConfigAndPreview();
   }
-  
-  function toggleCustomRecurrence() {
-      const checkbox = document.getElementById('use_custom_recurrence');
-      const section = document.getElementById('custom_recurrence');
-      const legacy = document.getElementById('legacy_schedule');
-      if(checkbox.checked) {
-          section.style.display = 'block';
-          if(legacy) legacy.style.display = 'none';
-      } else {
-          section.style.display = 'none';
-          if(legacy) legacy.style.display = 'block';
-      }
-  }
-  
-  function toggleRecurrenceOptions() {}
-  
-  window.toggleCustomRecurrence = toggleCustomRecurrence;
-  window.toggleRecurrenceOptions = toggleRecurrenceOptions;
 
-  document.addEventListener('DOMContentLoaded', function() {
-      createFormFields(schema, config);
-      initializeToggleButtons();
-      
-      const cancelAction = () => {
-          if (deleteOnCancel) {
-              if(confirm('{{ t .Localizer "Cancel configuration? This will delete the unconfigured app." }}')) {
-                   fetch(`/devices/{{ .Device.ID }}/{{ .App.Iname }}/delete`, { method: 'POST' })
-                   .then(() => window.location.href = `/`)
-                   .catch(e => { console.error(e); window.location.href = `/`; });
-              }
-          } else {
-              window.history.back();
+  function createFormFields(schema, config) {
+    const rows = [];
+    if (!schema || !schema.schema) return rows;
+
+    schema.schema.forEach(field => {
+      if (field.type === "generated") return;
+
+      const row = document.createElement("tr");
+
+      // Label
+      const labelCell = document.createElement("td");
+      const label = document.createElement("label");
+      const inputId = "schema_" + field.id;
+      label.htmlFor = inputId;
+      // Icon handling if available in schema
+      if (field.icon) {
+          const icon = document.createElement("i");
+          icon.className = `fa fa-${field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
+          label.appendChild(icon);
+          label.appendChild(document.createTextNode(" "));
+      }
+      label.appendChild(document.createTextNode(field.name));
+      labelCell.appendChild(label);
+      if (field.description) {
+          labelCell.appendChild(document.createElement("br"));
+          const desc = document.createElement("small");
+          desc.textContent = field.description;
+          labelCell.appendChild(desc);
+      }
+      row.appendChild(labelCell);
+
+      // Input
+      const inputCell = document.createElement("td");
+      let inputElement;
+
+      switch (field.type) {
+        case "text":
+          inputElement = document.createElement("input");
+          inputElement.type = field.secret ? "password" : "text";
+          inputElement.value = config[field.id] || field.default || "";
+          inputElement.className = "form-control";
+          break;
+        case "color":
+          inputElement = document.createElement("input");
+          inputElement.type = "color";
+          inputElement.value = config[field.id] || field.default || "#000000";
+          inputElement.className = "form-control form-control-color";
+          if (field.palette) {
+              const div = createColorPaletteButtons(field, inputElement);
+              inputCell.appendChild(div);
           }
+          break;
+        case "onoff":
+          inputElement = document.createElement("input");
+          inputElement.type = "checkbox";
+          const val = config[field.id];
+          const isChecked = val === "true" || val === true || (!val && field.default === "true");
+          inputElement.checked = isChecked;
+          inputElement.className = "form-control";
+          config[field.id] = isChecked ? "true" : "false";
+          break;
+        case "datetime":
+          inputElement = document.createElement("input");
+          inputElement.type = "datetime-local";
+          inputElement.value = (config[field.id] || field.default || "").replace("Z", "");
+          inputElement.className = "form-control";
+          if (!config[field.id] && field.default) {
+            config[field.id] = field.default;
+          }
+          break;
+        case "dropdown":
+          inputElement = document.createElement("select");
+          inputElement.className = "form-control";
+          if (field.options) {
+            field.options.forEach(opt => {
+               const o = document.createElement("option");
+               o.value = opt.value;
+               o.textContent = opt.display;
+               if (config[field.id] === opt.value) o.selected = true;
+               inputElement.appendChild(o);
+            });
+          }
+          if (!config[field.id] && field.default) {
+              inputElement.value = field.default;
+              config[field.id] = field.default;
+          }
+          break;
+        case "location":
+          inputElement = createLocationField(field, config);
+          break;
+        case "locationbased":
+          inputElement = createLocationBasedField(field, config);
+          break;
+        case "png":
+          inputElement = createImageUploadField(field, config);
+          break;
+        case "typeahead":
+          inputElement = createTypeaheadField(field, config);
+          break;
+        default:
+          inputElement = document.createElement("input");
+          inputElement.value = config[field.id] || "";
+          inputElement.className = "form-control";
+      }
+
+      if (inputElement) {
+          inputElement.id = inputId;
+          inputElement.dataset.configId = field.id;
+          const eventType = (inputElement.type === 'checkbox' || inputElement.tagName === 'SELECT') ? 'change' : 'input';
+
+          if (!inputElement.hasAttribute("data-ignore-config")) {
+             inputElement.addEventListener(eventType, handleConfigUpdate);
+          }
+
+          let elementToAppend = inputElement;
+
+          if (field.type === "text" && field.secret) {
+              const secretContainer = document.createElement("div");
+              secretContainer.className = "secret-input-container";
+
+              const toggleButton = document.createElement("button");
+              toggleButton.type = "button";
+              toggleButton.className = "secret-toggle-button";
+
+              const icon = document.createElement("i");
+              icon.className = "fa fa-eye";
+              toggleButton.appendChild(icon);
+
+              toggleButton.addEventListener("click", () => {
+                  inputElement.type = inputElement.type === "password" ? "text" : "password";
+                  icon.className = inputElement.type === "password" ? "fa fa-eye-slash" : "fa fa-eye";
+              });
+
+              secretContainer.appendChild(inputElement);
+              secretContainer.appendChild(toggleButton);
+              elementToAppend = secretContainer;
+          }
+
+          inputCell.appendChild(elementToAppend);
+      }
+      row.appendChild(inputCell);
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  function createGeneratedFormFields(schema, config) {
+    if (!schema || !schema.schema) {
+      return;
+    }
+
+    schema.schema
+      .filter(field => field.type === "generated")
+      .forEach(field => createGeneratedField(field, config));
+  }
+
+  function createLocationSearchElements(field, config) {
+    const container = document.createElement("div");
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.id = `${field.id}_search`;
+    searchInput.placeholder = "{{ t .Localizer "Enter a location" }}";
+    searchInput.setAttribute("data-ignore-config", "true");
+    searchInput.className = "form-control";
+
+    container.appendChild(searchInput);
+
+    const resultsList = document.createElement("ul");
+    resultsList.id = `${field.id}_results`;
+    resultsList.style.listStyleType = "none";
+    resultsList.style.padding = "0";
+    container.appendChild(resultsList);
+
+    return { container, searchInput, resultsList };
+  }
+
+  function createLocationField(field, config) {
+    const { container, searchInput, resultsList } = createLocationSearchElements(field);
+
+    let initialLocationJsonString = config[field.id] || (deviceLocation !== null ? JSON.stringify(deviceLocation) : undefined) || field.default || "{}";
+    if (typeof initialLocationJsonString !== 'string') {
+      initialLocationJsonString = JSON.stringify(initialLocationJsonString);
+    }
+
+    try {
+      const parsedLoc = JSON.parse(initialLocationJsonString);
+      if (parsedLoc && parsedLoc.description) {
+        searchInput.value = parsedLoc.description;
+      } else {
+        searchInput.value = "";
+      }
+    } catch (e) {
+      console.warn("Could not parse initial location", e);
+      searchInput.value = "";
+    }
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = "schema_" + field.id;
+    hiddenInput.dataset.configId = field.id;
+    hiddenInput.name = field.id;
+    hiddenInput.value = initialLocationJsonString;
+    container.appendChild(hiddenInput);
+
+    enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
+      // location is a JSON string
+      try {
+          config[field.id] = JSON.parse(location);
+      } catch (e) {
+          config[field.id] = location;
+      }
+      updateConfigAndPreview();
+    });
+
+    return container;
+  }
+
+  function createLocationBasedField(field, config) {
+    const { container, searchInput, resultsList } = createLocationSearchElements(field);
+
+    if (deviceLocation) {
+        if (deviceLocation.description) {
+            searchInput.value = deviceLocation.description;
+        }
+    } else {
+        searchInput.value = "";
+    }
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = `${field.id}_location`;
+    hiddenInput.name = `${field.id}_location`;
+    hiddenInput.value = JSON.stringify(deviceLocation);
+    hiddenInput.setAttribute("data-ignore-config", "true");
+    container.appendChild(hiddenInput);
+
+    const dropdown = document.createElement("select");
+    dropdown.id = "schema_" + field.id;
+    dropdown.dataset.configId = field.id;
+    dropdown.name = field.id;
+    dropdown.className = "form-control";
+    container.appendChild(dropdown);
+
+    dropdown.addEventListener("change", handleConfigUpdate);
+
+    enableLocationSearch(searchInput, resultsList, hiddenInput, async locationQueryJson => {
+      const currentOptionJsonString = JSON.stringify(config[field.id]);
+      await fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString);
+    });
+
+    if (deviceLocation) {
+      const currentOptionJsonString = JSON.stringify(config[field.id]);
+      fetchOptionsForLocation(field, JSON.stringify(deviceLocation), dropdown, currentOptionJsonString);
+    }
+
+    return container;
+  }
+
+  function createImageUploadField(field, config) {
+    const container = document.createElement("div");
+
+    const uploadLabel = document.createElement("label");
+    uploadLabel.htmlFor = `${field.id}_upload`;
+    uploadLabel.textContent = "{{ t .Localizer "Upload Image" }}";
+    container.appendChild(uploadLabel);
+
+    const uploadInput = document.createElement("input");
+    uploadInput.type = "file";
+    uploadInput.id = `${field.id}_upload`;
+    uploadInput.setAttribute("data-ignore-config", "true");
+    uploadInput.accept = "image/png, image/jpeg, image/gif, image/svg+xml, image/webp";
+    container.appendChild(uploadInput);
+
+    const hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.id = "schema_" + field.id;
+    hiddenInput.dataset.configId = field.id;
+    hiddenInput.name = field.id;
+    hiddenInput.value = config[field.id] || "";
+    container.appendChild(hiddenInput);
+
+    const previewImage = document.createElement("img");
+    previewImage.id = `${field.id}_preview`;
+    previewImage.src = config[field.id] ? `data:image/png;base64,${config[field.id]}` : "";
+    previewImage.alt = "{{ t .Localizer "Preview" }}";
+    previewImage.style.maxWidth = "100%";
+    previewImage.style.height = "auto";
+    previewImage.style.marginTop = "10px";
+    previewImage.style.display = config[field.id] ? "inline" : "none";
+    container.appendChild(previewImage);
+
+    uploadInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const maxSize = 500 * 1024;
+      if (file.size > maxSize) {
+        alert("{{ t .Localizer "File size exceeds 500KB limit. Please upload a smaller image." }}");
+        uploadInput.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const base64Data = e.target.result.split(",")[1];
+        hiddenInput.value = base64Data;
+        previewImage.src = e.target.result;
+        previewImage.style.display = "inline";
+        config[field.id] = base64Data;
+        updateConfigAndPreview();
       };
-      
-      const cancelButton = document.getElementById('cancelButton');
-      if (cancelButton) cancelButton.addEventListener('click', cancelAction);
-      
-      const cancelButtonTop = document.getElementById('cancelButtonTop');
-      if (cancelButtonTop) cancelButtonTop.addEventListener('click', cancelAction);
-      
-      if (typeof lucide !== 'undefined') lucide.createIcons();
+      reader.readAsDataURL(file);
+    });
+
+    return container;
+  }
+
+  function createTypeaheadField(field, config) {
+    let inputElement = document.createElement("div");
+
+    const typeaheadInput = document.createElement("input");
+    typeaheadInput.type = "text";
+    typeaheadInput.id = `${field.id}_typeahead`;
+    typeaheadInput.setAttribute("data-ignore-config", "true");
+    typeaheadInput.placeholder = "{{ t .Localizer "Start typing..." }}";
+    typeaheadInput.className = "form-control";
+    inputElement.appendChild(typeaheadInput);
+
+    const hiddenTypeaheadInput = document.createElement("input");
+    hiddenTypeaheadInput.type = "hidden";
+    hiddenTypeaheadInput.id = "schema_" + field.id;
+    hiddenTypeaheadInput.dataset.configId = field.id;
+    hiddenTypeaheadInput.name = field.id;
+    hiddenTypeaheadInput.value = JSON.stringify(config[field.id] || {});
+    inputElement.appendChild(hiddenTypeaheadInput);
+
+    const typeaheadResults = document.createElement("ul");
+    typeaheadResults.id = `${field.id}_results`;
+    typeaheadResults.style.listStyleType = "none";
+    typeaheadResults.style.padding = "0";
+    typeaheadResults.style.margin = "0";
+    typeaheadResults.style.border = "1px solid #ccc";
+    typeaheadResults.style.maxHeight = "150px";
+    typeaheadResults.style.overflowY = "auto";
+    typeaheadResults.style.display = "none";
+    inputElement.appendChild(typeaheadResults);
+
+    typeaheadInput.addEventListener("input", async function () {
+      const query = typeaheadInput.value.trim();
+      if (!query) {
+        typeaheadResults.style.display = "none";
+        typeaheadResults.innerHTML = "";
+        return;
+      }
+
+      try {
+        const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
+        const response = await fetch(handlerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: field.id, param: query, config: config })
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch typeahead options");
+
+        const options = await response.json();
+        typeaheadResults.innerHTML = "";
+
+        options.forEach(option => {
+          const listItem = document.createElement("li");
+          listItem.textContent = option.display;
+          listItem.style.cursor = "pointer";
+          listItem.style.padding = "5px";
+          listItem.addEventListener("click", () => {
+            typeaheadInput.value = option.display;
+            hiddenTypeaheadInput.value = JSON.stringify(option);
+            typeaheadResults.style.display = "none";
+            typeaheadResults.innerHTML = "";
+            config[field.id] = option;
+            updateConfigAndPreview();
+          });
+          typeaheadResults.appendChild(listItem);
+        });
+        typeaheadResults.style.display = "block";
+      } catch (error) {
+        console.error("Error fetching typeahead options:", error);
+      }
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!inputElement.contains(event.target)) {
+        typeaheadResults.style.display = "none";
+      }
+    });
+    return inputElement;
+  }
+
+  function createGeneratedField(field, config) {
+    const sourceField = document.getElementById("schema_" + field.source);
+    if (!sourceField) {
+      console.warn(`Source field with id "schema_${field.source}" not found for generated field "${field.id}"`);
+      return;
+    }
+
+    const updateGeneratedFields = async () => {
+      let sourceValue = sourceField.value;
+      if (sourceField.type === "checkbox") {
+        sourceValue = sourceField.checked ? "true" : "false";
+      }
+      try {
+        const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
+        const response = await fetch(handlerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: field.id, param: sourceValue, config: config })
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch generated fields");
+
+        const generatedFields = await response.json();
+
+        // Clear existing rows
+        const existingRows = document.querySelectorAll(`[data-generated-field="${field.id}"]`);
+        existingRows.forEach(row => row.remove());
+
+        // Note: generatedFields is a full schema object with a 'schema' array
+        const generatedInput = createFormFields(generatedFields, config);
+        const formTable = document.getElementById("schemaConfigContainer");
+        generatedInput.forEach(row => {
+          row.setAttribute("data-generated-field", field.id);
+          formTable.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Error fetching generated fields:", error);
+      }
+    };
+
+    // Need to bind to correct event
+    const eventType = (sourceField.type === 'checkbox' || sourceField.tagName === 'SELECT') ? 'change' : 'input';
+    sourceField.addEventListener(eventType, updateGeneratedFields);
+
+    updateGeneratedFields();
+  }
+
+  function createColorPaletteButtons(field, inputElement) {
+    const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
+    const div = document.createElement('div');
+    div.className = 'palette';
+    if(field.palette) {
+        field.palette.forEach(color => {
+            if (!hexColorRegex.test(color)) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w3-button';
+            btn.style.setProperty('--color', color);
+            btn.style.backgroundColor = color; // Fallback
+            btn.style.width = '20px';
+            btn.style.height = '20px';
+            btn.style.margin = '2px';
+            btn.addEventListener('click', () => {
+                if (color.length === 4) {
+                    color = '#' + [...color.slice(1)].map(c => c + c).join('');
+                }
+                inputElement.value = color;
+                inputElement.dispatchEvent(new Event('input'));
+            })
+            div.appendChild(btn);
+        });
+    }
+    return div;
+  }
+
+  async function fetchOptionsForLocation(field, locationQueryJson, dropdown, currentOptionJsonString) {
+    try {
+      const handlerUrl = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema_handler/" + field.handler;
+      const response = await fetch(handlerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: field.id, param: locationQueryJson, config: config })
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch options");
+
+      const options = await response.json();
+      dropdown.innerHTML = "";
+
+      let selectedIndex = 0;
+      let currentOptionFromConfig = null;
+
+      if (typeof currentOptionJsonString === 'string' && currentOptionJsonString !== 'undefined') {
+        try {
+          currentOptionFromConfig = JSON.parse(currentOptionJsonString);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (options && options.length > 0) {
+        options.forEach((option, index) => {
+          const opt = document.createElement("option");
+          opt.value = JSON.stringify(option);
+          opt.textContent = option.display;
+          dropdown.appendChild(opt);
+
+          if (currentOptionFromConfig && JSON.stringify(option) === JSON.stringify(currentOptionFromConfig)) {
+            selectedIndex = index;
+          }
+        });
+        dropdown.selectedIndex = selectedIndex;
+      } else {
+        const noOpt = document.createElement("option");
+        noOpt.textContent = "{{ t .Localizer "No options available for this location" }}";
+        noOpt.value = "";
+        noOpt.disabled = true;
+        dropdown.appendChild(noOpt);
+      }
+      dropdown.dispatchEvent(new Event("change"));
+    } catch (error) {
+      console.error(`Error fetching options for field ${field.id}:`, error);
+      dropdown.innerHTML = "";
+      const errOpt = document.createElement("option");
+      errOpt.textContent = "{{ t .Localizer "Error loading options" }}";
+      errOpt.value = "";
+      errOpt.disabled = true;
+      dropdown.appendChild(errOpt);
+    }
+  }
+
+  // Recurrence Logic
+  function initializeRecurrenceOptions() {
+    toggleCustomRecurrence();
+
+    const monthlyPatternSelect = document.getElementById("monthly_pattern");
+    if (monthlyPatternSelect) {
+      monthlyPatternSelect.addEventListener("change", toggleMonthlyPatternOptions);
+      toggleMonthlyPatternOptions();
+    }
+
+    const weekOccurrenceSelect = document.getElementById("week_occurrence");
+    const weekDaySelect = document.getElementById("week_day");
+    if (weekOccurrenceSelect && weekDaySelect) {
+      weekOccurrenceSelect.addEventListener("change", updateDayOfWeekPattern);
+      weekDaySelect.addEventListener("change", updateDayOfWeekPattern);
+
+      // Initialize if value exists
+      const hiddenPattern = document.getElementById("day_of_week_pattern");
+      if(hiddenPattern && hiddenPattern.value) {
+          const parts = hiddenPattern.value.split('_');
+          if(parts.length === 2) {
+              weekOccurrenceSelect.value = parts[0];
+              weekDaySelect.value = parts[1];
+          }
+      }
+      updateDayOfWeekPattern();
+    }
+  }
+
+  function toggleCustomRecurrence() {
+    const useCustom = document.getElementById("use_custom_recurrence").checked;
+    const legacySchedule = document.getElementById("legacy_schedule");
+    const customRecurrence = document.getElementById("custom_recurrence");
+
+    if (useCustom) {
+      legacySchedule.style.display = "none";
+      customRecurrence.style.display = "block";
+      toggleRecurrenceOptions();
+    } else {
+      legacySchedule.style.display = "block";
+      customRecurrence.style.display = "none";
+    }
+  }
+
+  function toggleRecurrenceOptions() {
+    const type = document.getElementById("recurrence_type").value;
+    const weeklyOptions = document.getElementById("weekly_options");
+    const monthlyOptions = document.getElementById("monthly_options");
+    const intervalUnit = document.getElementById("interval_unit");
+
+    weeklyOptions.style.display = type === 'weekly' ? 'block' : 'none';
+    monthlyOptions.style.display = type === 'monthly' ? 'block' : 'none';
+
+    switch (type) {
+      case "daily": intervalUnit.textContent = "{{ t .Localizer "days" }}"; break;
+      case "weekly": intervalUnit.textContent = "{{ t .Localizer "weeks" }}"; break;
+      case "monthly": intervalUnit.textContent = "{{ t .Localizer "months" }}"; break;
+      case "yearly": intervalUnit.textContent = "{{ t .Localizer "years" }}"; break;
+    }
+  }
+
+  function toggleMonthlyPatternOptions() {
+    const monthlyPattern = document.getElementById("monthly_pattern").value;
+    const dayOfMonthOption = document.getElementById("day_of_month_option");
+    const dayOfWeekOption = document.getElementById("day_of_week_option");
+
+    if (monthlyPattern === "day_of_month") {
+      dayOfMonthOption.style.display = "block";
+      dayOfWeekOption.style.display = "none";
+    } else {
+      dayOfMonthOption.style.display = "none";
+      dayOfWeekOption.style.display = "block";
+    }
+  }
+
+  function updateDayOfWeekPattern() {
+    const occurrence = document.getElementById("week_occurrence").value;
+    const day = document.getElementById("week_day").value;
+    const hiddenField = document.getElementById("day_of_week_pattern");
+
+    if (occurrence && day) {
+      hiddenField.value = occurrence + "_" + day;
+    }
+  }
+
+  function collectSettings() {
+      const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
+      const weekdays = Array.from(document.querySelectorAll('input[name="weekdays"]:checked')).map(cb => cb.value);
+
+      // Collect settings
+      const settings = {
+          enabled: document.getElementById('enabled').checked,
+          autopin: document.getElementById('autopin').checked,
+          uinterval: parseInt(document.getElementById('uinterval').value),
+          display_time: parseInt(document.getElementById('display_time').value),
+          notes: document.getElementById('notes').value,
+          start_time: document.getElementById('start_time').value,
+          end_time: document.getElementById('end_time').value,
+          color_filter: document.getElementById('color_filter').value,
+          days: days,
+
+          use_custom_recurrence: document.getElementById('use_custom_recurrence').checked,
+          recurrence_type: document.getElementById('recurrence_type').value,
+          recurrence_interval: parseInt(document.getElementById('recurrence_interval').value),
+          recurrence_start_date: document.getElementById('recurrence_start_date').value,
+          recurrence_end_date: document.getElementById('recurrence_end_date').value,
+          weekdays: weekdays,
+
+          // Monthly pattern construction
+          monthly_pattern: document.getElementById('monthly_pattern') ? document.getElementById('monthly_pattern').value : null,
+          day_of_month: document.getElementById('day_of_month') ? parseInt(document.getElementById('day_of_month').value) : null,
+          day_of_week_pattern: document.getElementById('day_of_week_pattern') ? document.getElementById('day_of_week_pattern').value : null,
+
+          config: config
+      };
+
+      // Construct recurrence_pattern object
+      if (settings.use_custom_recurrence) {
+         settings.recurrence_pattern = {};
+         if (settings.recurrence_type === 'weekly') {
+             settings.recurrence_pattern.weekdays = weekdays;
+         } else if (settings.recurrence_type === 'monthly') {
+             if (settings.monthly_pattern === 'day_of_month') {
+                 settings.recurrence_pattern.day_of_month = settings.day_of_month;
+             } else {
+                 settings.recurrence_pattern.day_of_week = settings.day_of_week_pattern;
+             }
+         }
+      }
+      return settings;
+  }
+
+  function exportConfig() {
+      const settings = collectSettings();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "app_config_{{ .App.Iname }}.json");
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  }
+
+  function importConfig(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          try {
+              const settings = JSON.parse(e.target.result);
+
+              // Field Mappings for simple values and checkboxes
+              const fieldMappings = {
+                  enabled: { type: 'checked' },
+                  autopin: { type: 'checked' },
+                  uinterval: { type: 'value', default: '' },
+                  display_time: { type: 'value', default: '' },
+                  notes: { type: 'value', default: '' },
+                  start_time: { type: 'value', default: '' },
+                  end_time: { type: 'value', default: '' },
+                  color_filter: { type: 'value', default: 'inherit' },
+                  use_custom_recurrence: { type: 'checked' },
+                  recurrence_type: { type: 'value', default: 'daily' },
+                  recurrence_interval: { type: 'value', default: '1' },
+                  recurrence_start_date: { type: 'value', default: '' },
+                  recurrence_end_date: { type: 'value', default: '' },
+              };
+
+              // Apply standard mappings
+              for (const [key, config] of Object.entries(fieldMappings)) {
+                  const element = document.getElementById(key);
+                  if (element) {
+                      if (config.type === 'checked') {
+                          element.checked = !!settings[key];
+                      } else {
+                          element.value = settings[key] ?? config.default;
+                      }
+                  }
+              }
+
+              // Days
+              document.querySelectorAll('input[name="days"]').forEach(cb => {
+                  cb.checked = Array.isArray(settings.days) && settings.days.includes(cb.value);
+              });
+
+              // Toggle Recurrence UI based on imported values
+              toggleCustomRecurrence();
+              toggleRecurrenceOptions();
+
+              // Weekdays
+              document.querySelectorAll('input[name="weekdays"]').forEach(cb => {
+                  cb.checked = Array.isArray(settings.weekdays) && settings.weekdays.includes(cb.value);
+              });
+
+              // Monthly pattern
+              if (settings.monthly_pattern) {
+                  const el = document.getElementById('monthly_pattern');
+                  if (el) {
+                      el.value = settings.monthly_pattern;
+                      toggleMonthlyPatternOptions();
+                  }
+              }
+
+              const domEl = document.getElementById('day_of_month');
+              if (domEl) domEl.value = settings.day_of_month ?? '';
+
+              if (settings.day_of_week_pattern) {
+                  const parts = settings.day_of_week_pattern.split('_');
+                  if (parts.length === 2) {
+                      const occEl = document.getElementById('week_occurrence');
+                      const dayEl = document.getElementById('week_day');
+                      if (occEl) occEl.value = parts[0];
+                      if (dayEl) dayEl.value = parts[1];
+                      updateDayOfWeekPattern();
+                  }
+              }
+
+              // Config object - Update global config object and UI
+              if (settings.config && typeof settings.config === 'object') {
+                  Object.assign(config, settings.config);
+
+                  // Update UI fields
+                  for (const [key, value] of Object.entries(settings.config)) {
+                      // Handle potential nulls in config object
+                      const safeValue = value ?? '';
+                      const input = document.querySelector(`[data-config-id="${key}"]`);
+                      if (input) {
+                          if (input.type === 'checkbox') {
+                              input.checked = safeValue === 'true' || safeValue === true;
+                          } else {
+                              input.value = safeValue;
+                          }
+                          // Trigger change event for dependent fields (like generated fields)
+                          input.dispatchEvent(new Event('change'));
+                          input.dispatchEvent(new Event('input'));
+                      }
+                  }
+              }
+
+              updateConfigAndPreview();
+              alert("{{ t .Localizer "Config imported successfully. Click Save to apply changes." }}");
+
+          } catch (err) {
+              console.error(err);
+              alert("{{ t .Localizer "Error parsing config file." }}");
+          }
+          // Reset input
+          input.value = '';
+      };
+      reader.readAsText(file);
+  }
+
+  function deleteApp(deviceId, iname, deleteOnCancel) {
+      fetch(`/devices/${deviceId}/${iname}/delete`, {
+        method: 'POST'
+      }).then(() => {
+           window.location.href = "/";
+      }).catch(() => {
+        alert("{{ t .Localizer "Error deleting app." }}");
+        window.location.href = "/";
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const previewImage = document.getElementById('previewImage');
+    if (previewImage) {
+        previewImage.addEventListener('load', () => {
+            previewImage.classList.add('loaded');
+        });
+        // Handle cached images
+        if (previewImage.complete) {
+            previewImage.classList.add('loaded');
+        }
+    }
+
+    const form = document.getElementById("dynamicForm");
+    const formTable = document.getElementById("schemaConfigContainer");
+
+    // Generate schema fields
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => {
+      formTable.appendChild(row);
+    });
+
+    // Create generated fields
+    createGeneratedFormFields(schema, config);
+
+    initializeToggleButtons();
+    initializeRecurrenceOptions();
+    updateConfigAndPreview();
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const settings = collectSettings();
+
+      fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      }).then(response => {
+        if (response.ok) {
+          window.location.href = "/";
+        } else {
+          alert("Error saving config");
+        }
+      });
+    });
+
+    // Preview Button logic
+    const previewButton = document.getElementById("previewButton");
+    if(previewButton) {
+        previewButton.addEventListener("click", (event) => {
+            previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', config, event.currentTarget, { previewing: '{{ t .Localizer "Previewing..." }}', sent: '{{ t .Localizer "Sent" }}', failed: '{{ t .Localizer "Failed" }}' })
+            .then(() => {
+                 // Refresh image with cache busting
+                 const img = document.getElementById("previewImage");
+                 if(img) img.src = img.src.split('?')[0] + '?t=' + new Date().getTime();
+            });
+        });
+    }
+
+    // Cancel buttons
+    const cancelButton = document.getElementById("cancelButton");
+    if (cancelButton) cancelButton.addEventListener("click", () => {
+        if (deleteOnCancel) {
+            deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true);
+        } else {
+            window.location.href = "/";
+        }
+    });
+    const cancelButtonTop = document.getElementById("cancelButtonTop");
+    if (cancelButtonTop) cancelButtonTop.addEventListener("click", () => {
+        if (deleteOnCancel) {
+            deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true);
+        } else {
+            window.location.href = "/";
+        }
+    });
   });
 </script>
 {{ end }}
