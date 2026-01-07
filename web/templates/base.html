@@ -35,7 +35,9 @@
         <span>&nbsp;</span>
     </button>
     <h1>
-        <a href="/" class="no-underline text-inherit">{{ t .Localizer "Tronbyt Manager" }}</a>
+        <a href="/" class="no-underline text-inherit">
+            {{ t .Localizer "Tronbyt Manager" }}
+        </a>
     </h1>
     <ul>
         {{ if .User }}
@@ -65,23 +67,11 @@
         <li class="theme-toggle-container">
             <div class="theme-toggle">
                 <label for="theme-select">{{ t .Localizer "Theme:" }}</label>
-                <select id="theme-select" name="theme">
-                    <option value="light"
-                            {{ if eq (string .User.ThemePreference) "light" }}
-                            selected
-                            {{ end }}>{{ t .Localizer "Light" }}
-                    </option>
-                    <option value="dark"
-                            {{ if eq (string .User.ThemePreference) "dark" }}
-                            selected
-                            {{ end }}>{{ t .Localizer "Dark" }}
-                    </option>
-                    <option value="system"
-                            {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
-                            selected
-                            {{ end }}>{{ t .Localizer "System" }}
-                    </option>
-                </select>
+                <div class="theme-toggle-group" id="theme-group">
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "light" }}active{{ end }}" data-theme-value="light">{{ t .Localizer "Light" }}</button>
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "dark" }}active{{ end }}" data-theme-value="dark">{{ t .Localizer "Dark" }}</button>
+                    <button type="button" class="theme-btn {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}active{{ end }}" data-theme-value="system">{{ t .Localizer "System" }}</button>
+                </div>
             </div>
         </li>
     {{ else }}
@@ -93,7 +83,7 @@
             <a href="/auth/register">{{ t .Localizer "Create User" }}</a>
         </li>
         {{ end }}
-        {{ end }}
+    {{ end }}
     </ul>
 </nav>
 <!-- Mobile Menu Overlay -->
@@ -104,7 +94,9 @@
         <h1>
             <a href="/"
                onclick="closeMobileMenu()"
-               class="no-underline text-inherit">{{ t .Localizer "Tronbyt Manager" }}</a>
+               class="no-underline text-inherit">
+                {{ t .Localizer "Tronbyt Manager" }}
+            </a>
         </h1>
         <button class="mobile-menu-close" id="mobileMenuClose">×</button>
     </div>
@@ -134,23 +126,11 @@
     <li class="theme-toggle-container">
         <div class="theme-toggle">
             <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
-            <select id="mobile-theme-select" name="theme">
-                <option value="light"
-                        {{ if eq (string .User.ThemePreference) "light" }}
-                        selected
-                        {{ end }}>{{ t .Localizer "Light" }}
-                </option>
-                <option value="dark"
-                        {{ if eq (string .User.ThemePreference) "dark" }}
-                        selected
-                        {{ end }}>{{ t .Localizer "Dark" }}
-                </option>
-                <option value="system"
-                        {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
-                        selected
-                        {{ end }}>{{ t .Localizer "System" }}
-                </option>
-            </select>
+                <div class="theme-toggle-group" id="mobile-theme-group">
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "light" }}active{{ end }}" data-theme-value="light">{{ t .Localizer "Light" }}</button>
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "dark" }}active{{ end }}" data-theme-value="dark">{{ t .Localizer "Dark" }}</button>
+                    <button type="button" class="theme-btn {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}active{{ end }}" data-theme-value="system">{{ t .Localizer "System" }}</button>
+                </div>
         </div>
     </li>
 {{ else }}
@@ -162,7 +142,7 @@
         <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
     </li>
     {{ end }}
-    {{ end }}
+{{ end }}
     </ul>
 </div>
 <section class="content">
