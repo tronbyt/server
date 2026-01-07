@@ -1609,5 +1609,14 @@
   },
   "Reboot command sent to device.": {
     "other": "Reboot command sent to device."
+  },
+  "Install Custom Firmware": {
+    "other": "Install Custom Firmware"
+  },
+  "Upload and install a custom firmware binary (.bin).": {
+    "other": "Upload and install a custom firmware binary (.bin)."
+  },
+  "Install custom firmware? The device will reboot.": {
+    "other": "Install custom firmware? The device will reboot."
   }
 }

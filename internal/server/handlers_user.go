@@ -136,7 +136,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps for all user's devices
-		var deviceIDs []string
+		deviceIDs := make([]string, 0, len(targetUser.Devices))
 		for _, d := range targetUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}
@@ -347,7 +347,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// Delete existing devices and apps
-		var deviceIDs []string
+		deviceIDs := make([]string, 0, len(currentUser.Devices))
 		for _, d := range currentUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}

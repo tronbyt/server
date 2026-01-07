@@ -644,13 +644,14 @@
             </tr>
         </table>
     </div>
-    {{ if and .FirmwareAvailable .Device.OTACapable }}
+    {{ if .Device.OTACapable }}
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Firmware Update" }}</h2>
         <div style="padding: 10px;">
             <p>
                 <strong>{{ t .Localizer "Device Version" }}:</strong> {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
             </p>
+            {{ if .FirmwareAvailable }}
             <p>
                 <strong>{{ t .Localizer "Available Version" }}:</strong> {{ if .FirmwareVersion }}{{ .FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
             </p>
@@ -676,6 +677,19 @@
                 <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Latest Firmware" }}
             </button>
             <small class="small-text" style="display: block; margin-top: 5px;">{{ t .Localizer "Updates the device to the latest version available on the server." }}</small>
+        {{ else }}
+            <p>{{ t .Localizer "No official firmware builds available on the server." }}</p>
+            {{ end }}
+            <div style="margin-top: 15px;
+                        border-top: 1px solid #ddd;
+                        padding-top: 15px">
+                <button type="button"
+                        class="w3-button w3-orange config-management-btn"
+                        onclick="document.getElementById('custom_firmware_file').click();">
+                    <i class="fa-solid fa-file-arrow-up"></i> {{ t .Localizer "Install Custom Firmware" }}
+                </button>
+                <small class="small-text" style="display: block; margin-top: 5px;">{{ t .Localizer "Upload and install a custom firmware binary (.bin)." }}</small>
+            </div>
         </div>
     </div>
     {{ end }}
@@ -692,7 +706,7 @@
                         <div style="display: flex; gap: 5px; align-items: center;">
                             <input type="text"
                                    id="reported_img_url"
-                                   value="{{ .Device.Info.ImageURL }}"
+                                   value="{{ derefOr .Device.Info.ImageURL "" }}"
                                    class="device-settings-input"
                                    style="flex: 1;
                                           font-size: 0.85em;
@@ -722,7 +736,7 @@
                     <td>
                         <label class="switch">
                             <input type="checkbox"
-                                   {{ if .Device.Info.SwapColors }}
+                                   {{ if derefOr .Device.Info.SwapColors false }}
                                    checked
                                    {{ end }}
                                    onchange="updateFirmwareSettings({swap_colors: this.checked})">
@@ -737,11 +751,20 @@
                     <td>
                         <select class="device-settings-input"
                                 onchange="updateFirmwareSettings({wifi_power_save: this.value})">
-                            <option value="0" {{ if eq .Device.Info.WifiPowerSave 0 }}selected{{ end }}>{{ t .Localizer "None" }}
+                            <option value="0"
+                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "None" }}
                             </option>
-                            <option value="1" {{ if eq .Device.Info.WifiPowerSave 1 }}selected{{ end }}>{{ t .Localizer "Minimum" }}
+                            <option value="1"
+                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Minimum" }}
                             </option>
-                            <option value="2" {{ if eq .Device.Info.WifiPowerSave 2 }}selected{{ end }}>{{ t .Localizer "Maximum" }}
+                            <option value="2"
+                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Maximum" }}
                             </option>
                         </select>
                     </td>
@@ -753,7 +776,7 @@
                     <td>
                         <label class="switch">
                             <input type="checkbox"
-                                   {{ if .Device.Info.SkipDisplayVersion }}
+                                   {{ if derefOr .Device.Info.SkipDisplayVersion false }}
                                    checked
                                    {{ end }}
                                    onchange="updateFirmwareSettings({skip_display_version: this.checked})">
@@ -768,7 +791,7 @@
                     <td>
                         <label class="switch">
                             <input type="checkbox"
-                                   {{ if .Device.Info.PreferIPv6 }}
+                                   {{ if derefOr .Device.Info.PreferIPv6 false }}
                                    checked
                                    {{ end }}
                                    onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
@@ -783,7 +806,7 @@
                     <td>
                         <label class="switch">
                             <input type="checkbox"
-                                   {{ if .Device.Info.APMode }}
+                                   {{ if derefOr .Device.Info.APMode false }}
                                    checked
                                    {{ end }}
                                    onchange="updateFirmwareSettings({ap_mode: this.checked})">
@@ -949,5 +972,15 @@
            id="import_config_file"
            onchange="if(confirm('{{ t .Localizer "This will overwrite all current settings and apps. Continue?" }}')) { this.form.submit(); } else { this.value = ''; }"
            accept=".json">
+</form>
+<form action="/devices/{{ .Device.ID }}/ota"
+      method="post"
+      enctype="multipart/form-data"
+      style="display: none">
+    <input type="file"
+           name="firmware_file"
+           id="custom_firmware_file"
+           onchange="if(confirm('{{ t .Localizer "Install custom firmware? The device will reboot." }}')) { this.form.submit(); } else { this.value = ''; }"
+           accept=".bin">
 </form>
 {{ end }}
