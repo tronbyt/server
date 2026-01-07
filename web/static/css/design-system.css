@@ -781,23 +781,23 @@ button.btn-action-lg {
 }
 
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned {
-    background-color: var(--neutral-50) !important;
-    border-color: var(--neutral-50) !important;
-    color: var(--neutral-900) !important;
+    background-color: var(--neutral-900) !important;
+    border-color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
 }
 
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned i {
-    color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
 }
 
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned:hover {
-    background-color: var(--neutral-200) !important;
-    border-color: var(--neutral-200) !important;
+    background-color: var(--neutral-800) !important;
+    border-color: var(--neutral-800) !important;
 }
 
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned:hover i,
 [data-theme="dark"] .btn-action-sm.btn-pin.is-pinned:hover svg {
-    color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
 }
 
 /* ===========================================
@@ -905,21 +905,21 @@ button.btn-action-lg {
 }
 
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned {
-    background-color: var(--neutral-50) !important;
-    color: var(--neutral-900) !important;
+    background-color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
 }
 
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned i {
-    color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
 }
 
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned:hover {
-    background-color: var(--neutral-200) !important;
+    background-color: var(--neutral-800) !important;
 }
 
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned:hover i,
 [data-theme="dark"] .btn-tool.btn-pin.is-pinned:hover svg {
-    color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
 }
 
 .btn-tool.btn-trash:hover {
@@ -1222,25 +1222,26 @@ button.btn-action-lg {
     display: flex !important;
     align-items: center !important;
     gap: 0.5rem !important;
+    width: 100% !important;
 }
 
-/* Labels: Same font size, consistent styling */
+/* Left label: compact, muted */
 .slider-label-min {
     font-size: var(--font-size-sm) !important;
     font-family: var(--font-mono) !important;
     color: var(--neutral-500) !important;
     flex-shrink: 0 !important;
-    min-width: 1.5rem !important;
+    min-width: 1rem !important;
     text-align: right !important;
 }
 
-/* Dynamic value label - emphasized current value, same font size */
+/* Right value label: same font size, bold */
 .slider-value-label {
     font-size: var(--font-size-sm) !important;
     font-family: var(--font-mono) !important;
     font-weight: 700 !important;
     color: var(--neutral-900) !important;
-    min-width: 2rem !important;
+    min-width: 1.75rem !important;
     text-align: left !important;
     flex-shrink: 0 !important;
 }
