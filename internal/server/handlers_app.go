@@ -28,6 +28,7 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // AppManifest reflects a subset of manifest.yaml for internal updates.
@@ -157,7 +158,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 	newApp.Order = maxOrder + 1
 
-	if err := s.DB.Create(&newApp).Error; err != nil {
+	if err := gorm.G[data.App](s.DB).Create(r.Context(), &newApp); err != nil {
 		slog.Error("Failed to save app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -301,10 +302,12 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid app path", http.StatusBadRequest)
 			return
 		} else {
-			schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
-			if err != nil {
-				slog.Error("Failed to get app schema", "error", err)
-				// Fall through with empty schema
+			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+				schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
+				if err != nil {
+					slog.Error("Failed to get app schema", "error", err)
+					// Fall through with empty schema
+				}
 			}
 		}
 	}
@@ -621,38 +624,45 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	app := GetApp(r)
 
-	// Unpin if pinned
-	if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
-			slog.Error("Failed to unpin app being deleted", "error", err)
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		// Unpin if pinned
+		if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+			if _, err := gorm.G[data.Device](tx).Where("id = ?", device.ID).Update(r.Context(), "pinned_app", nil); err != nil {
+				return err
+			}
 		}
-	}
 
-	// Unset Night Mode App if it matches
-	if device.NightModeApp == app.Iname {
-		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("night_mode_app", "").Error; err != nil {
-			slog.Error("Failed to unset night mode app being deleted", "error", err)
+		// Unset Night Mode App if it matches
+		if device.NightModeApp == app.Iname {
+			if _, err := gorm.G[data.Device](tx).Where("id = ?", device.ID).Update(r.Context(), "night_mode_app", ""); err != nil {
+				return err
+			}
 		}
-	}
 
-	// Delete App
-	if err := s.DB.Delete(app).Error; err != nil {
+		// Delete App
+		if _, err := gorm.G[data.App](tx).Where("id = ?", app.ID).Delete(r.Context()); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		slog.Error("Failed to delete app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Clean up webp
+	// Clean up webp (outside transaction, as file system ops can't be rolled back easily)
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	if err != nil {
 		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
-	for _, match := range matches {
-		if err := os.Remove(match); err != nil {
-			slog.Error("Failed to remove app webp file", "path", match, "error", err)
+		// Don't error out the request if file cleanup fails, but log it
+	} else {
+		matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
+		for _, match := range matches {
+			if err := os.Remove(match); err != nil {
+				slog.Error("Failed to remove app webp file", "path", match, "error", err)
+			}
 		}
 	}
 
@@ -676,11 +686,11 @@ func (s *Server) handleTogglePin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newPinned == "" {
-		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pinned_app", nil); err != nil {
 			slog.Error("Failed to unpin app", "error", err)
 		}
 	} else {
-		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", newPinned).Error; err != nil {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pinned_app", newPinned); err != nil {
 			slog.Error("Failed to pin app", "error", err)
 		}
 	}
@@ -696,7 +706,7 @@ func (s *Server) handleToggleEnabled(w http.ResponseWriter, r *http.Request) {
 	app := GetApp(r)
 
 	app.Enabled = !app.Enabled
-	if err := s.DB.Model(app).Update("enabled", app.Enabled).Error; err != nil {
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(r.Context(), "enabled", app.Enabled); err != nil {
 		slog.Error("Failed to toggle enabled", "error", err)
 		http.Error(w, "Failed to toggle enabled status", http.StatusInternalServerError)
 		return
@@ -763,7 +773,7 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		for i := range appsList {
 			if appsList[i].Order != i {
-				if err := tx.Model(&appsList[i]).Update("order", i).Error; err != nil {
+				if _, err := gorm.G[data.App](tx).Where("id = ?", appsList[i].ID).Update(r.Context(), "order", i); err != nil {
 					return err
 				}
 			}
@@ -787,18 +797,8 @@ func (s *Server) handleDuplicateApp(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	originalApp := GetApp(r)
 
-	// Determine insert position (after original app)
-	targetIdx := -1
-	for i, app := range device.Apps {
-		if app.Iname == originalApp.Iname {
-			targetIdx = i
-			break
-		}
-	}
-
-	insertAfter := targetIdx != -1
-
-	if err := s.performAppDuplication(r.Context(), user, device, originalApp, device, targetIdx, insertAfter); err != nil {
+	// insertAfter is implicitly true for simple duplication
+	if err := s.performAppDuplication(r.Context(), user, device, originalApp, device, originalApp.Iname, true); err != nil {
 		slog.Error("Failed to duplicate app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -862,18 +862,7 @@ func (s *Server) handleDuplicateAppToDevice(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Determine target index based on targetIname
-	targetIdx := -1
-	if targetIname != "" {
-		for i, app := range targetDevice.Apps {
-			if app.Iname == targetIname {
-				targetIdx = i
-				break
-			}
-		}
-	}
-
-	if err := s.performAppDuplication(r.Context(), user, sourceDevice, originalApp, targetDevice, targetIdx, insertAfter); err != nil {
+	if err := s.performAppDuplication(r.Context(), user, sourceDevice, originalApp, targetDevice, targetIname, insertAfter); err != nil {
 		slog.Error("Failed to duplicate app", "error", err)
 		http.Error(w, fmt.Sprintf("Failed to duplicate app: %v", err), http.StatusInternalServerError)
 		return
@@ -933,10 +922,11 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 		appsList[targetIdx] = app
 	}
 
+	// Save new order
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		for i := range appsList {
 			if appsList[i].Order != i {
-				if err := tx.Model(&appsList[i]).Update("order", i).Error; err != nil {
+				if _, err := gorm.G[data.App](tx).Where("id = ?", appsList[i].ID).Update(r.Context(), "order", i); err != nil {
 					return err
 				}
 			}
@@ -1297,8 +1287,8 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 
 	// user.Devices is already preloaded by RequireLogin -> RequireDevice -> RequireUser, but GetUser in current implementation doesn't preload.
 	// We need to fetch user with devices and apps here.
-	var userWithDevices data.User
-	if err := s.DB.Preload("Devices.Apps").First(&userWithDevices, "username = ?", user.Username).Error; err != nil {
+	userWithDevices, err := gorm.G[data.User](s.DB).Preload("Devices.Apps", nil).Where("username = ?", user.Username).First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -1416,7 +1406,7 @@ func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, b
 	}
 }
 
-func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetIdx int, insertAfter bool) error {
+func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetAppIname string, insertAfter bool) error {
 	newIname, err := generateUniqueIname(s.DB, targetDevice.ID)
 	if err != nil {
 		return fmt.Errorf("failed to generate unique iname: %w", err)
@@ -1447,35 +1437,40 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 	// Determine new order and insert into DB using transaction
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// Fetch current apps for target device to ensure up-to-date order
-		var currentApps []data.App
-		if err := tx.Where("device_id = ?", targetDevice.ID).Order("\"order\" ASC").Find(&currentApps).Error; err != nil {
+		currentApps, err := gorm.G[data.App](tx).Where("device_id = ?", targetDevice.ID).Order(clause.OrderByColumn{Column: clause.Column{Name: "order"}, Desc: false}).Find(ctx)
+		if err != nil {
 			return err
 		}
 
-		// Calculate insertion index in the list
-		insertPos := len(currentApps) // Default append
-		if targetIdx != -1 {
-			if insertAfter {
-				insertPos = targetIdx + 1
-			} else {
-				insertPos = targetIdx
+		// Calculate insertion order
+		insertOrder := 0
+		if len(currentApps) > 0 {
+			insertOrder = currentApps[len(currentApps)-1].Order + 1 // Default append
+		}
+
+		if targetAppIname != "" {
+			for _, app := range currentApps {
+				if app.Iname == targetAppIname {
+					if insertAfter {
+						insertOrder = app.Order + 1
+					} else {
+						insertOrder = app.Order
+					}
+					break
+				}
 			}
 		}
 
-		// Bounds check
-		if insertPos > len(currentApps) {
-			insertPos = len(currentApps)
-		}
-
-		duplicatedApp.Order = insertPos
-		if err := tx.Create(&duplicatedApp).Error; err != nil {
+		duplicatedApp.Order = insertOrder
+		if err := gorm.G[data.App](tx).Create(ctx, &duplicatedApp); err != nil {
 			return err
 		}
 
 		// Efficient SQL update for subsequent apps
-		if err := tx.Model(&data.App{}).
-			Where("device_id = ? AND \"order\" >= ? AND id != ?", targetDevice.ID, insertPos, duplicatedApp.ID).
-			UpdateColumn("order", gorm.Expr("\"order\" + ?", 1)).Error; err != nil {
+		if _, err := gorm.G[data.App](tx).
+			Where("device_id = ? AND id != ?", targetDevice.ID, duplicatedApp.ID).
+			Where(gorm.Expr("? >= ?", clause.Column{Name: "order"}, insertOrder)).
+			Update(ctx, "order", gorm.Expr("? + ?", clause.Column{Name: "order"}, 1)); err != nil {
 			return err
 		}
 
@@ -1487,9 +1482,11 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 	}
 
 	// Reload app to ensure ID is set
-	if err := s.DB.Where("device_id = ? AND iname = ?", targetDevice.ID, newIname).First(&duplicatedApp).Error; err != nil {
+	reloaded, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", targetDevice.ID, newIname).First(ctx)
+	if err != nil {
 		return fmt.Errorf("failed to reload duplicated app: %w", err)
 	}
+	duplicatedApp = reloaded
 
 	// Pushed App Image Copying
 	if originalApp.Pushed {

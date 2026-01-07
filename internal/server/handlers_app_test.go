@@ -16,6 +16,8 @@ import (
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
+
+	"gorm.io/gorm"
 )
 
 func TestHandleAddAppPost(t *testing.T) {
@@ -444,7 +446,9 @@ func TestHandleDeleteApp_UnpinsApp(t *testing.T) {
 	s.DB.Create(&app)
 
 	// Pin the app
-	s.DB.Model(&device).Update("pinned_app", iname)
+	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "pinned_app", iname); err != nil {
+		t.Fatalf("failed to pin app: %v", err)
+	}
 
 	// Verify it is pinned
 	var dev data.Device
@@ -471,8 +475,7 @@ func TestHandleDeleteApp_UnpinsApp(t *testing.T) {
 	}
 
 	// Verify app is deleted
-	var count int64
-	s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", "testdevice", iname).Count(&count)
+	count, _ := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", "testdevice", iname).Count(context.Background(), "*")
 	if count != 0 {
 		t.Errorf("App was not deleted")
 	}
@@ -502,7 +505,9 @@ func TestHandleDeleteApp_NotPinned(t *testing.T) {
 	s.DB.Create(&app)
 
 	// Ensure NOT pinned
-	s.DB.Model(&device).Update("pinned_app", nil)
+	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "pinned_app", nil); err != nil {
+		t.Fatalf("failed to unpin app: %v", err)
+	}
 
 	// Create request
 	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/"+iname+"/delete", nil)
@@ -522,8 +527,7 @@ func TestHandleDeleteApp_NotPinned(t *testing.T) {
 	}
 
 	// Verify app is deleted
-	var count int64
-	s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", "testdevice", iname).Count(&count)
+	count, _ := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", "testdevice", iname).Count(context.Background(), "*")
 	if count != 0 {
 		t.Errorf("App was not deleted")
 	}

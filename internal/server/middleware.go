@@ -50,37 +50,46 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// 1. Try to find User by API Key
-		var user data.User
-		userResult := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC")
-		}).Preload("Devices.Apps").Limit(1).Find(&user, "api_key = ?", apiKey)
+		user, err := gorm.G[data.User](s.DB).
+			Preload("Devices", func(db gorm.PreloadBuilder) error {
+				db.Order("name ASC")
+				return nil
+			}).
+			Preload("Devices.Apps", nil).
+			Where("api_key = ?", apiKey).
+			First(r.Context())
 
-		if userResult.Error != nil {
-			slog.Error("API auth: database error when finding user by key", "error", userResult.Error)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		if userResult.RowsAffected > 0 {
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				slog.Error("API auth: database error when finding user by key", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+		} else {
 			ctx := context.WithValue(r.Context(), userContextKey, &user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 
 		// 2. Try to find Device by API Key
-		var device data.Device
-		deviceResult := s.DB.Preload("Apps").Limit(1).Find(&device, "api_key = ?", apiKey)
-		if deviceResult.Error != nil {
-			slog.Error("API auth: database error when finding device by key", "error", deviceResult.Error)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
+		device, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("api_key = ?", apiKey).First(r.Context())
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				slog.Error("API auth: database error when finding device by key", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			owner, err := gorm.G[data.User](s.DB).
+				Preload("Devices", func(db gorm.PreloadBuilder) error {
+					db.Order("name ASC")
+					return nil
+				}).
+				Preload("Devices.Apps", nil).
+				Where("username = ?", device.Username).
+				First(r.Context())
 
-		if deviceResult.RowsAffected > 0 {
-			var owner data.User
-			if err := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
-				return db.Order("name ASC")
-			}).Preload("Devices.Apps").First(&owner, "username = ?", device.Username).Error; err != nil {
+			if err != nil {
 				slog.Error("API auth: database error finding device owner", "username", device.Username, "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
@@ -107,20 +116,23 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		var user data.User
 		// Preload everything we might need
-		// Use Limit(1).Find to avoid GORM "record not found" error log for stale sessions
-		result := s.DB.Preload("Devices", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC")
-		}).Preload("Devices.Apps").Limit(1).Find(&user, "username = ?", username)
-		if result.Error != nil {
-			slog.Error("Database error checking session user", "username", username, "error", result.Error)
-			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-			return
-		}
+		// Use First (logger configured to ignore not found)
+		user, err := gorm.G[data.User](s.DB).
+			Preload("Devices", func(db gorm.PreloadBuilder) error {
+				db.Order("name ASC")
+				return nil
+			}).
+			Preload("Devices.Apps", nil).
+			Where("username = ?", username).
+			First(r.Context())
 
-		if result.RowsAffected == 0 {
-			slog.Info("User in session not found in DB", "username", username)
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				slog.Error("Database error checking session user", "username", username, "error", err)
+			} else {
+				slog.Info("User in session not found in DB", "username", username)
+			}
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
 		}

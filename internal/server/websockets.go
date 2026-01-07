@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"tronbyt-server/internal/data"
 
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
 const (
@@ -55,13 +57,17 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 
 	device, err := s.reloadDevice(deviceID)
 	if err != nil {
-		slog.Warn("WS connection rejected: device not found", "id", deviceID, "error", err)
+		slog.Warn("WS connection rejected", "id", deviceID, "error", err)
 		http.Error(w, "Device not found", http.StatusNotFound)
 		return
 	}
 
-	var user data.User
-	s.DB.First(&user, "username = ?", device.Username)
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
+	if err != nil {
+		slog.Error("User for device not found in WS handler", "username", device.Username, "error", err)
+		http.Error(w, "Internal Server Error: device owner not found", http.StatusInternalServerError)
+		return
+	}
 
 	conn, err := s.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -79,8 +85,10 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	// Update protocol type if different from current
 	if device.Info.ProtocolType != data.ProtocolWS {
 		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
-		device.Info.ProtocolType = data.ProtocolWS
-		s.DB.Model(&data.Device{ID: device.ID}).Update("info", data.JSONMap{"protocol_type": data.ProtocolWS})
+    device.Info.ProtocolType = data.ProtocolWS
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "info", data.JSONMap{"protocol_type": data.ProtocolWS}); err != nil {
+			slog.Error("Failed to update protocol_type", "error", err)
+		}
 	}
 	ch := s.Broadcaster.Subscribe(deviceID)
 	defer s.Broadcaster.Unsubscribe(deviceID, ch)
@@ -101,7 +109,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update LastSeen
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("last_seen", time.Now()).Error; err != nil {
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "last_seen", time.Now()); err != nil {
 				slog.Error("Failed to update last_seen", "error", err)
 			}
 
@@ -122,7 +130,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				device.Info.SwapColors = msg.ClientInfo.SwapColors
 				device.Info.ImageURL = msg.ClientInfo.ImageURL
 
-				if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 					slog.Error("Failed to update device info", "error", err)
 				}
 			}
@@ -134,7 +142,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					slog.Info("First 'queued' message, setting protocol_version to 1", "device", deviceID)
 					newVersion := 1
 					device.Info.ProtocolVersion = &newVersion
-					if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+					if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 						slog.Error("Failed to update device info (protocol version)", "error", err)
 					}
 				}
@@ -183,7 +191,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				return
 			}
 			// Clear pending update to avoid loops
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pending_update_url", "").Error; err != nil {
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_update_url", ""); err != nil {
 				slog.Error("Failed to clear pending update", "error", err)
 			} else {
 				device.PendingUpdateURL = ""
@@ -288,7 +296,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					if app != nil {
 						slog.Debug("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
 						// Only now do we update the database that the device is truly displaying this app.
-						if err := s.DB.Model(&data.Device{ID: device.ID}).Update("displaying_app", app.Iname).Error; err != nil {
+						if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "displaying_app", app.Iname); err != nil {
 							slog.Error("Failed to update displaying_app", "device", device.ID, "error", err)
 						}
 						// Notify Dashboard
@@ -300,10 +308,12 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				// If just Queued, we keep waiting for Displaying.
 			case val := <-broadcastCh:
 				// Update available (Reload device first)
-				if err := s.DB.Preload("Apps").First(&device, "id = ?", initialDevice.ID).Error; err != nil {
+				reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
+				if err != nil {
 					slog.Error("Device gone", "id", initialDevice.ID)
 					return
 				}
+				device = reloaded
 
 				var isCommand bool
 				var isImage bool
@@ -441,9 +451,12 @@ func (s *Server) SetupWebsocketRoutes() {
 }
 
 func (s *Server) reloadDevice(deviceID string) (*data.Device, error) {
-	var device data.Device
-	if err := s.DB.Preload("Apps").First(&device, "id = ?", deviceID).Error; err != nil {
-		return nil, fmt.Errorf("device gone: %w", err)
+	device, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("device not found: %s", deviceID)
+		}
+		return nil, fmt.Errorf("reload device: %w", err)
 	}
 	return &device, nil
 }

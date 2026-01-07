@@ -64,8 +64,11 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var users []data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").Find(&users).Error; err != nil {
+	users, err := gorm.G[data.User](s.DB).
+		Preload("Devices", nil).
+		Preload("Devices.Apps", nil).
+		Find(r.Context())
+	if err != nil {
 		slog.Error("Failed to list users", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -108,8 +111,8 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var targetUser data.User
-	if err := s.DB.Preload("Devices").First(&targetUser, "username = ?", targetUsername).Error; err != nil {
+	targetUser, err := gorm.G[data.User](s.DB).Preload("Devices", nil).Where("username = ?", targetUsername).First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -131,30 +134,30 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to remove user apps directory", "username", targetUsername, "error", err)
 	}
 
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps for all user's devices
 		var deviceIDs []string
 		for _, d := range targetUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}
 		if len(deviceIDs) > 0 {
-			if err := tx.Where("device_id IN ?", deviceIDs).Delete(&data.App{}).Error; err != nil {
+			if _, err := gorm.G[data.App](tx).Where("device_id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
 			}
 		}
 
 		// 2. Delete Devices
-		if err := tx.Where("username = ?", targetUsername).Delete(&data.Device{}).Error; err != nil {
+		if _, err := gorm.G[data.Device](tx).Where("username = ?", targetUsername).Delete(r.Context()); err != nil {
 			return err
 		}
 
 		// 3. Delete Credentials
-		if err := tx.Where("user_id = ?", targetUsername).Delete(&data.WebAuthnCredential{}).Error; err != nil {
+		if _, err := gorm.G[data.WebAuthnCredential](tx).Where("user_id = ?", targetUsername).Delete(r.Context()); err != nil {
 			return err
 		}
 
 		// 4. Delete User
-		if err := tx.Delete(&targetUser).Error; err != nil {
+		if _, err := gorm.G[data.User](tx).Where("username = ?", targetUsername).Delete(r.Context()); err != nil {
 			return err
 		}
 		return nil
@@ -187,7 +190,7 @@ func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("theme_preference", theme).Error; err != nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "theme_preference", theme); err != nil {
 		slog.Error("Failed to update theme preference", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -205,7 +208,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
 	repoURL := r.FormValue("app_repo_url")
-	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("app_repo_url", repoURL).Error; err != nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "app_repo_url", repoURL); err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
 		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/auth/edit", http.StatusSeeOther)
 		return
@@ -247,8 +250,13 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) {
 	userContext := GetUser(r)
 
-	var user data.User
-	if err := s.DB.Preload("Devices").Preload("Devices.Apps").Preload("Credentials").First(&user, "username = ?", userContext.Username).Error; err != nil {
+	user, err := gorm.G[data.User](s.DB).
+		Preload("Devices", nil).
+		Preload("Devices.Apps", nil).
+		Preload("Credentials", nil).
+		Where("username = ?", userContext.Username).
+		First(r.Context())
+	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
@@ -308,8 +316,8 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	var currentUser data.User
-	if err := s.DB.Preload("Devices").First(&currentUser, "username = ?", userContext.Username).Error; err != nil {
+	currentUser, err := gorm.G[data.User](s.DB).Preload("Devices", nil).Where("username = ?", userContext.Username).First(r.Context())
+	if err != nil {
 		slog.Error("User not found during import", "username", userContext.Username, "error", err)
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
@@ -344,15 +352,17 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 			deviceIDs = append(deviceIDs, d.ID)
 		}
 		if len(deviceIDs) > 0 {
-			if err := tx.Where("device_id IN ?", deviceIDs).Delete(&data.App{}).Error; err != nil {
+			if _, err := gorm.G[data.App](tx).Where("device_id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
 			}
-			if err := tx.Where("id IN ?", deviceIDs).Delete(&data.Device{}).Error; err != nil {
+			if _, err := gorm.G[data.Device](tx).Where("id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
 			}
 		}
 
-		if err := tx.Save(&currentUser).Error; err != nil {
+		if _, err := gorm.G[data.User](tx).Where("username = ?", currentUser.Username).
+			Select("Email", "APIKey", "ThemePreference", "SystemRepoURL", "AppRepoURL").
+			Updates(r.Context(), currentUser); err != nil {
 			return err
 		}
 
@@ -363,7 +373,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 				dev.Apps[i].ID = 0
 			}
 
-			if err := tx.Create(&dev).Error; err != nil {
+			if err := gorm.G[data.Device](tx).Create(r.Context(), &dev); err != nil {
 				return err
 			}
 		}

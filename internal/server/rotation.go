@@ -12,6 +12,8 @@ import (
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
+
+	"gorm.io/gorm"
 )
 
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
@@ -61,16 +63,22 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	// 5. Save State
-	updates := map[string]any{}
+	now := time.Now()
+	deviceUpdates := data.Device{
+		LastSeen: &now,
+	}
+
+	q := gorm.G[data.Device](s.DB).Where("id = ?", device.ID)
 	hasIndexUpdate := false
 	if nextIndex != device.LastAppIndex {
-		updates["last_app_index"] = nextIndex
+		deviceUpdates.LastAppIndex = nextIndex
+		q = q.Select("LastSeen", "LastAppIndex")
 		hasIndexUpdate = true
+	} else {
+		q = q.Select("LastSeen")
 	}
-	now := time.Now()
-	updates["last_seen"] = now
 
-	if err := s.DB.Model(&data.Device{ID: device.ID}).Updates(updates).Error; err != nil {
+	if _, err := q.Updates(ctx, deviceUpdates); err != nil {
 		slog.Error("Failed to update device state (last_app_index/last_seen)", "error", err)
 	} else {
 		if hasIndexUpdate {
@@ -108,12 +116,11 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([]byte, *data.App, error) {
 	// Re-fetch device with Apps if missing
 	if len(device.Apps) == 0 {
-		s.DB.Preload("Apps").First(device, "id = ?", device.ID)
+		reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(ctx)
+		if err == nil {
+			*device = reloaded
+		}
 	}
-
-	// User
-	var user data.User
-	s.DB.First(&user, "username = ?", device.Username)
 
 	// Priority 1: Check DisplayingApp (Real-time confirmation from WS devices)
 	if device.DisplayingApp != nil && *device.DisplayingApp != "" {
@@ -214,9 +221,9 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		}
 
 		if !foundPinned {
-			// Pinned app not found (e.g. deleted), clear pin and continue
+			// Pinned app not found (e.g. delivered/deleted), clear pin and continue
 			slog.Warn("Pinned app not found on device, clearing pin", "device", device.ID, "app", pinnedIname)
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pinned_app", nil); err != nil {
 				slog.Error("Failed to clear invalid pinned app", "device", device.ID, "error", err)
 			} else {
 				device.PinnedApp = nil

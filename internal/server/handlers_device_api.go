@@ -27,8 +27,8 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Fallback: Fetch from DB directly (No Auth required for device operation)
-		var d data.Device
-		if err := s.DB.Preload("Apps").First(&d, "id = ?", id).Error; err == nil {
+		d, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", id).First(r.Context())
+		if err == nil {
 			device = &d
 		}
 	}
@@ -39,25 +39,29 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(device.Apps) == 0 {
-		var reloaded data.Device
-		if err := s.DB.Preload("Apps").First(&reloaded, "id = ?", device.ID).Error; err == nil {
+		reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(r.Context())
+		if err == nil {
 			device = &reloaded
 		}
 	}
 
 	user, _ := UserFromContext(r.Context())
 	if user == nil {
-		var owner data.User
-		s.DB.First(&owner, "username = ?", device.Username)
+		owner, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
+		if err != nil {
+			slog.Error("Failed to find device owner", "username", device.Username, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		user = &owner
 	}
 
 	// Update device info if needed
 	// We use a transaction with locking to avoid race conditions with other requests
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		var freshDevice data.Device
 		// Lock the row to ensure we read the latest state and no one else updates it
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&freshDevice, "id = ?", device.ID).Error; err != nil {
+		freshDevice, err := gorm.G[data.Device](tx, clause.Locking{Strength: "UPDATE"}).Where("id = ?", device.ID).First(r.Context())
+		if err != nil {
 			return err
 		}
 
@@ -78,7 +82,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if updated {
-			if err := tx.Model(&freshDevice).Update("info", freshDevice.Info).Error; err != nil {
+			if _, err := gorm.G[data.Device](tx).Where("id = ?", freshDevice.ID).Update(r.Context(), "info", freshDevice.Info); err != nil {
 				return err
 			}
 			// Update the in-memory device object so subsequent logic uses the new values
@@ -102,7 +106,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	// For HTTP devices, we assume "Sent" equals "Displaying" (or roughly so).
 	// We update DisplayingApp here so the Preview uses the explicit field instead of fallback.
 	if app != nil {
-		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("displaying_app", app.Iname).Error; err != nil {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "displaying_app", app.Iname); err != nil {
 			slog.Error("Failed to update displaying_app for HTTP device", "device", device.ID, "error", err)
 		}
 	}
@@ -117,7 +121,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Tronbyt-OTA-URL", updateURL)
 
 		// Clear pending update
-		if err := s.DB.Model(device).Update("pending_update_url", "").Error; err != nil {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", ""); err != nil {
 			slog.Error("Failed to clear pending update", "error", err)
 		} else {
 			device.PendingUpdateURL = ""

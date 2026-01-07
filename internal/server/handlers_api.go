@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"tronbyt-server/internal/data"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"gorm.io/gorm"
 )
 
 // --- API Handlers ---
@@ -257,7 +259,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 
 	if installationID != "" {
 		// Ensure app record exists
-		if err := s.ensurePushedApp(device.ID, installationID); err != nil {
+		if err := s.ensurePushedApp(r.Context(), device.ID, installationID); err != nil {
 			slog.Error("Failed to ensure pushed app", "error", err)
 		}
 	}
@@ -352,7 +354,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if installID != "" {
-		if err := s.ensurePushedApp(device.ID, installID); err != nil {
+		if err := s.ensurePushedApp(r.Context(), device.ID, installID); err != nil {
 			slog.Error("Error adding pushed app", "error", err)
 		}
 	}
@@ -400,13 +402,13 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 	return os.WriteFile(path, data, 0644)
 }
 
-func (s *Server) ensurePushedApp(deviceID, installID string) error {
-	var count int64
-	err := s.DB.Model(&data.App{}).Where("device_id = ? AND iname = ?", deviceID, installID).Count(&count).Error
+func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string) error {
+	// Check if install exists
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, installID).Count(ctx, "*")
 	if err != nil {
+		slog.Error("Failed to check if app exists for image push", "error", err)
 		return err
 	}
-
 	if count > 0 {
 		return nil
 	}
@@ -428,7 +430,7 @@ func (s *Server) ensurePushedApp(deviceID, installID string) error {
 	}
 	newApp.Order = maxOrder + 1
 
-	return s.DB.Create(&newApp).Error
+	return gorm.G[data.App](s.DB).Create(ctx, &newApp)
 }
 
 func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
@@ -599,7 +601,7 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	iname := filepath.Base(r.PathValue("iname"))
 
 	device := GetDevice(r)
-	if err := s.DB.Where("device_id = ? AND iname = ?", device.ID, iname).Delete(&data.App{}).Error; err != nil {
+	if _, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", device.ID, iname).Delete(r.Context()); err != nil {
 		http.Error(w, "Failed to delete app", http.StatusInternalServerError)
 		return
 	}

@@ -16,6 +16,7 @@ import (
 	"tronbyt-server/web"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"gorm.io/gorm"
 )
 
 // RenderApp consolidates the logic for rendering an app for a device.
@@ -60,6 +61,15 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		filters = s.getEffectiveFilters(device, app)
 	}
 
+	// 2. Static WebP App
+	if strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+		content, err := os.ReadFile(appPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read static webp app: %w", err)
+		}
+		return content, nil, nil
+	}
+
 	return renderer.Render(
 		ctx,
 		appPath,
@@ -79,7 +89,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	// 1. Pushed App (Pre-rendered)
 	if app.Pushed {
 		if app.AutoPin {
-			s.handleAutoPin(app, device, user, true)
+			s.handleAutoPin(ctx, app, device, user, true)
 		}
 		return true
 	}
@@ -147,22 +157,28 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 		// Update App State in DB - This is our atomic check-and-update.
 		// If the app was deleted while we were rendering, RowsAffected will be 0.
-		updates := map[string]any{
-			"last_render":       now,
-			"last_render_dur":   renderDur,
-			"empty_last_render": !success,
-			"render_messages":   data.StringSlice(messages),
+		appUpdates := data.App{
+			LastRender:      now,
+			LastRenderDur:   renderDur,
+			EmptyLastRender: !success,
+			RenderMessages:  data.StringSlice(messages),
 		}
+
+		q := gorm.G[data.App](s.DB).Where("id = ?", app.ID)
 		if success {
-			updates["last_successful_render"] = now
+			appUpdates.LastSuccessfulRender = &now
+			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender")
+		} else {
+			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages")
 		}
-		result := s.DB.Model(&data.App{}).Where("id = ?", app.ID).Updates(updates)
-		if result.Error != nil {
-			slog.Error("Failed to update app state in DB", "app", appBasename, "error", result.Error)
+
+		rowsAffected, err := q.Updates(ctx, appUpdates)
+		if err != nil {
+			slog.Error("Failed to update app state in DB", "app", appBasename, "error", err)
 			return false
 		}
 
-		if result.RowsAffected == 0 {
+		if rowsAffected == 0 {
 			slog.Info("App no longer exists in DB, aborting", "app", appBasename)
 			return false
 		}
@@ -185,7 +201,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 		// Handle Autopin
 		if app.AutoPin {
-			s.handleAutoPin(app, device, user, success)
+			s.handleAutoPin(ctx, app, device, user, success)
 		}
 		return success
 	}
@@ -193,12 +209,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	return true // Not time to render yet, assume existing is fine
 }
 
-func (s *Server) handleAutoPin(app *data.App, device *data.Device, user *data.User, success bool) {
+func (s *Server) handleAutoPin(ctx context.Context, app *data.App, device *data.Device, user *data.User, success bool) {
 	shouldNotify := false
 	if success {
 		// Pin if not already pinned
 		if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", app.Iname).Error; err != nil {
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pinned_app", app.Iname); err != nil {
 				slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
 			} else {
 				device.PinnedApp = &app.Iname
@@ -208,7 +224,7 @@ func (s *Server) handleAutoPin(app *data.App, device *data.Device, user *data.Us
 	} else {
 		// Unpin if currently pinned to this app
 		if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pinned_app", nil).Error; err != nil {
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pinned_app", nil); err != nil {
 				slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
 			} else {
 				device.PinnedApp = nil

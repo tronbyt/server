@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -25,6 +27,8 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
 	"gopkg.in/yaml.v3"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ColorFilterOption struct {
@@ -131,16 +135,20 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	session, _ := s.Store.Get(r, "session-name")
 	if tmplData.User == nil {
 		if username, ok := session.Values["username"].(string); ok {
-			var user data.User
-			if err := s.DB.Preload("Devices").Preload("Devices.Apps").First(&user, "username = ?", username).Error; err == nil {
+			user, err := gorm.G[data.User](s.DB).
+				Preload("Devices", nil).
+				Preload("Devices.Apps", nil).
+				Where("username = ?", username).
+				First(r.Context())
+			if err == nil {
 				tmplData.User = &user
 			}
 		}
 	}
 
 	// Calculate IsAutoLoginActive
-	var userCount int64
-	if err := s.DB.Model(&data.User{}).Count(&userCount).Error; err != nil {
+	userCount, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	if err != nil {
 		slog.Error("Failed to count users for auto-login check", "error", err)
 	} else {
 		tmplData.IsAutoLoginActive = (s.Config.SingleUserAutoLogin == "1" && userCount == 1)
@@ -171,7 +179,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 
 	// Render partial if requested
 	if tmplData.Partial != "" {
-		err := tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
+		err = tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
 		if err != nil {
 			slog.Error("Failed to render partial", "template", name, "partial", tmplData.Partial, "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -180,7 +188,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	}
 
 	// Execute pre-parsed template
-	err := tmpl.ExecuteTemplate(w, name, tmplData)
+	err = tmpl.ExecuteTemplate(w, name, tmplData)
 	if err != nil {
 		slog.Error("Failed to render template", "template", name, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -493,19 +501,19 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 }
 
 func (s *Server) getSetting(key string) (string, error) {
-	var setting data.Setting
-	result := s.DB.Limit(1).Find(&setting, "key = ?", key)
-	if result.Error != nil {
-		return "", result.Error
-	}
-	if result.RowsAffected == 0 {
-		return "", nil
+	setting, err := gorm.G[data.Setting](s.DB).Where("key = ?", key).First(context.Background())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
 	}
 	return setting.Value, nil
 }
 
 func (s *Server) setSetting(key, value string) error {
-	return s.DB.Save(&data.Setting{Key: key, Value: value}).Error
+	setting := data.Setting{Key: key, Value: value}
+	return gorm.G[data.Setting](s.DB, clause.OnConflict{UpdateAll: true}).Create(context.Background(), &setting)
 }
 
 func (s *Server) notifyDashboard(username string, event WSEvent) {
