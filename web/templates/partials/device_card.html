@@ -82,6 +82,12 @@
                                         <td>{{ .Item.Info.MACAddress }}</td>
                                     </tr>
                                     {{ end }}
+                                    {{ if .Item.Info.SSID }}
+                                    <tr>
+                                        <td>{{ t $.Localizer "WiFi SSID:" }}</td>
+                                        <td>{{ .Item.Info.SSID }}</td>
+                                    </tr>
+                                    {{ end }}
                                     <tr>
                                         <td>{{ t $.Localizer "Protocol Type:" }}</td>
                                         <td>{{ .Item.Info.ProtocolType }}</td>

@@ -266,6 +266,9 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/update", s.RequireLogin(s.RequireDevice(s.handleUpdateDevicePost)))
 	s.Router.HandleFunc("POST /devices/{id}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteDevice)))
 	s.Router.HandleFunc("POST /devices/{id}/import_config", s.RequireLogin(s.RequireDevice(s.handleImportDeviceConfig)))
+	s.Router.HandleFunc("POST /devices/{id}/reboot", s.RequireLogin(s.RequireDevice(s.handleRebootDevice)))
+
+	s.Router.HandleFunc("POST /devices/{id}/update_firmware_settings", s.RequireLogin(s.RequireDevice(s.handleUpdateFirmwareSettings)))
 
 	// Websocket routes
 	s.SetupWebsocketRoutes()

@@ -679,6 +679,214 @@
         </div>
     </div>
     {{ end }}
+    {{ if .Device.SupportsFirmwareFeatures }}
+    <div class="device-settings-section">
+        <h2>{{ t .Localizer "Firmware Features" }}</h2>
+        <div style="padding: 10px;">
+            <table class="device-settings-table">
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "Image URL" }}</label>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <input type="text"
+                                   id="reported_img_url"
+                                   value="{{ .Device.Info.ImageURL }}"
+                                   class="device-settings-input"
+                                   style="flex: 1;
+                                          font-size: 0.85em;
+                                          margin-bottom: 0">
+                            <button type="button"
+                                    class="w3-button w3-small w3-blue"
+                                    style="margin: 0;
+                                           display: flex;
+                                           align-items: center;
+                                           justify-content: center;
+                                           height: 35px"
+                                    onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
+                                    title="{{ t .Localizer "Sync current Image URL to device via WebSocket" }}">
+                                <i class="fa-solid fa-sync"></i>
+                            </button>
+                        </div>
+                        <p class="small-text" style="color: var(--danger-text); margin-top: 5px">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "Swap Colors" }}</label>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox"
+                                   {{ if .Device.Info.SwapColors }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({swap_colors: this.checked})">
+                            <span class="slider round"></span>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "WiFi Power Save" }}</label>
+                    </td>
+                    <td>
+                        <select class="device-settings-input"
+                                onchange="updateFirmwareSettings({wifi_power_save: this.value})">
+                            <option value="0" {{ if eq .Device.Info.WifiPowerSave 0 }}selected{{ end }}>{{ t .Localizer "None" }}
+                            </option>
+                            <option value="1" {{ if eq .Device.Info.WifiPowerSave 1 }}selected{{ end }}>{{ t .Localizer "Minimum" }}
+                            </option>
+                            <option value="2" {{ if eq .Device.Info.WifiPowerSave 2 }}selected{{ end }}>{{ t .Localizer "Maximum" }}
+                            </option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "Skip Display Version" }}</label>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox"
+                                   {{ if .Device.Info.SkipDisplayVersion }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({skip_display_version: this.checked})">
+                            <span class="slider round"></span>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "Prefer IPv6" }}</label>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox"
+                                   {{ if .Device.Info.PreferIPv6 }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
+                            <span class="slider round"></span>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "AP Mode (Hotspot)" }}</label>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox"
+                                   {{ if .Device.Info.APMode }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({ap_mode: this.checked})">
+                            <span class="slider round"></span>
+                        </label>
+                        <p class="small-text" style="color: var(--danger-text); margin-top: 5px">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <div style="margin-top: 15px;">
+                <button type="button"
+                        class="w3-button w3-deep-orange config-management-btn"
+                        onclick="rebootDevice()">
+                    <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
+                </button>
+            </div>
+        </div>
+        <script>
+            function updateFirmwareSettings(settings) {
+                const params = new URLSearchParams();
+                for (const [key, value] of Object.entries(settings)) {
+                    params.append(key, value);
+                }
+
+                fetch(`/devices/{{ .Device.ID }}/update_firmware_settings`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params.toString()
+                }).then(response => {
+                    if (response.ok) {
+                        console.log("Settings updated");
+                    } else {
+                        alert("Failed to update settings");
+                    }
+                });
+            }
+
+            function rebootDevice() {
+                 if (confirm('{{ t .Localizer "Are you sure you want to reboot the device?" }}')) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/devices/{{ .Device.ID }}/reboot';
+                    document.body.appendChild(form);
+                    form.submit();
+                 }
+            }
+        </script>
+        <style>
+            /* Simple switch toggle style */
+            .switch {
+              position: relative;
+              display: inline-block;
+              width: 40px;
+              height: 20px;
+            }
+            .switch input {
+              opacity: 0;
+              width: 0;
+              height: 0;
+            }
+            .slider {
+              position: absolute;
+              cursor: pointer;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: #ccc;
+              transition: .4s;
+            }
+            .slider:before {
+              position: absolute;
+              content: "";
+              height: 16px;
+              width: 16px;
+              left: 2px;
+              bottom: 2px;
+              background-color: white;
+              transition: .4s;
+            }
+            input:checked + .slider {
+              background-color: #2196F3;
+            }
+            input:focus + .slider {
+              box-shadow: 0 0 1px #2196F3;
+            }
+            input:checked + .slider:before {
+              transform: translateX(20px);
+            }
+            .slider.round {
+              border-radius: 20px;
+            }
+            .slider.round:before {
+              border-radius: 50%;
+            }
+        </style>
+    </div>
+    {{ end }}
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Configuration Management" }}</h2>
         <div class="config-management-container">
