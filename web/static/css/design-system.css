@@ -447,7 +447,9 @@
 .status-badge.badge {
     padding: 0.125rem 0.5rem !important;
     font-size: 0.75rem !important;
-    display: inline-block !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
     border-radius: 0 !important;
     font-weight: 400 !important;
     text-transform: uppercase !important;
