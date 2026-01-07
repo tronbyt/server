@@ -4,38 +4,42 @@
 {{ define "title" }}{{ t .Localizer "Firmware" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
-    <h1 class="page-title">{{ t .Localizer "Generate Firmware for" }} {{ .Device.Name }} - {{ .Device.Type.String }}</h1>
+    <h1 class="page-title">{{ t .Localizer "Generate Firmware" }}: {{ .Device.Name }}</h1>
 </div>
 {{ end }}
 {{ define "content" }}
-<div class="form-panel">
+<div class="dashboard-container">
 
     {{ if not .FirmwareBinsAvailable }}
-    <div class="alert alert-warning">
-        <i data-lucide="alert-triangle"></i>
+    <div class="alert alert-warning border-danger bg-secondary p-4 mb-6">
+        <i data-lucide="alert-triangle" class="text-danger"></i>
         <div class="alert-content">
-            <strong>{{ t .Localizer "FIRMWARE FILES NOT AVAILABLE" }}</strong>
+            <strong class="text-danger">{{ t .Localizer "FIRMWARE FILES NOT AVAILABLE" }}</strong>
             <p>{{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}</p>
             {{ if .User.IsAdmin }}
-            <p><strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }} <a href="/auth/edit#firmware-management" style="text-decoration: underline;">{{ t .Localizer "Admin page" }}</a> {{ t .Localizer "to download the latest firmware files." }}</p>
+            <p class="mt-2 text-sm">
+                <strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }} 
+                <a href="/auth/edit#firmware-management" class="text-link text-inherit font-bold underline">{{ t .Localizer "Admin page" }}</a> 
+                {{ t .Localizer "to download the latest firmware files." }}
+            </p>
             {{ else }}
-            <p>{{ t .Localizer "Please contact your administrator to download the firmware files." }}</p>
+            <p class="mt-2 text-sm">{{ t .Localizer "Please contact your administrator to download the firmware files." }}</p>
             {{ end }}
         </div>
     </div>
     {{ end }}
 
     {{ if .FirmwareVersion }}
-    <div class="alert alert-info">
-        <i data-lucide="info"></i>
+    <div class="alert alert-info border-primary bg-secondary p-4 mb-6">
+        <i data-lucide="info" class="text-secondary"></i>
         <div class="alert-content">
-             <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; width: 100%;">
-                <div>
+             <div class="flex flex-wrap justify-between items-center w-full gap-3">
+                <div class="text-sm">
                     <strong>{{ t .Localizer "Firmware Image Version" }}:</strong> {{ .FirmwareVersion }}
                 </div>
                 {{ if .User.IsAdmin }}
-                <a href="/auth/edit#firmware-management" class="btn-ghost" style="padding: 0; height: auto;">
-                    <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+                <a href="/auth/edit#firmware-management" class="btn-secondary py-1 px-3 min-h-0 text-xs shadow-none">
+                    <i data-lucide="settings" class="icon-sm"></i>
                     {{ t .Localizer "Manage Firmware" }}
                 </a>
                 {{ end }}
@@ -44,83 +48,96 @@
     </div>
     {{ end }}
 
-    <form method="post" id="firmware-form" class="form-section">
-        <h3 class="section-title">{{ t .Localizer "Firmware Generation" }}</h3>
-        
-        <div class="alert alert-success">
-            <i data-lucide="download"></i>
-            <div class="alert-content">
-                <strong>{{ t .Localizer "Download ESP Flasher" }}</strong>
-                <p>
-                    {{ t .Localizer "Download ESP Flasher here" }}: <a href="https://github.com/Jason2866/ESP_Flasher/releases" target="_blank" class="text-link">ESP Flasher</a>
-                </p>
-                <p class="text-sm mt-2">
-                    {{ t .Localizer "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher." }}
-                </p>
-                <p class="text-sm text-secondary mt-2">
-                    <i>{{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}
-                        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank" class="text-link">CP210x Drivers</a>, 
-                        <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank" class="text-link">CH34x Drivers</a>
-                    </i>
-                </p>
+    <form method="post" id="firmware-form">
+        <!-- Flasher Instructions -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Preparation" }}</h2>
+            <div class="alert alert-info border-primary bg-secondary p-4 mb-4">
+                <i data-lucide="download" class="text-secondary"></i>
+                <div class="alert-content">
+                    <strong class="text-secondary">{{ t .Localizer "Download ESP Flasher" }}</strong>
+                    <p class="mt-1">
+                        {{ t .Localizer "Download ESP Flasher here" }}: 
+                        <a href="https://github.com/Jason2866/ESP_Flasher/releases" target="_blank" class="text-link font-bold underline">Jason2866/ESP_Flasher</a>
+                    </p>
+                    <p class="text-sm mt-3 text-secondary">
+                        {{ t .Localizer "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher." }}
+                    </p>
+                    <p class="text-xs text-muted mt-3 font-mono">
+                        <i data-lucide="info" class="icon-sm inline align-text-bottom mr-1"></i>
+                        {{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}
+                        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank" class="text-link text-inherit underline">CP210x</a>, 
+                        <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank" class="text-link text-inherit underline">CH34x</a>
+                    </p>
+                </div>
             </div>
         </div>
 
         <input type="hidden" name="id" id="id" value="{{ .Device.ID }}">
 
-        <h4 class="field-label mt-8 mb-4">{{ t .Localizer "Connection Settings" }}</h4>
-        <div class="form-grid">
-            <div class="form-field" style="grid-column: 1 / -1;">
-                <label class="field-label">{{ t .Localizer "Connection Type" }}</label>
-                <div class="flex flex-wrap gap-4 mt-2">
-                    <label class="checkbox-label">
-                        <input type="radio" name="url_variant" id="variant_ws" value="ws">
-                        <span>WebSocket</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="radio" name="url_variant" id="variant_http" value="http">
-                        <span>HTTP</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="radio" name="url_variant" id="variant_custom" value="custom">
-                        <span>Custom</span>
-                    </label>
+        <!-- Connection Settings -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Connection Settings" }}</h2>
+            <div class="form-grid">
+                <div class="form-field col-span-full">
+                    <label class="field-label mb-2">{{ t .Localizer "Connection Type" }}</label>
+                    <div class="flex flex-wrap gap-6 mt-1">
+                        <label class="checkbox-label" for="variant_ws">
+                            <input type="radio" name="url_variant" id="variant_ws" value="ws">
+                            <span>WebSocket</span>
+                        </label>
+                        <label class="checkbox-label" for="variant_http">
+                            <input type="radio" name="url_variant" id="variant_http" value="http">
+                            <span>HTTP</span>
+                        </label>
+                        <label class="checkbox-label" for="variant_custom">
+                            <input type="radio" name="url_variant" id="variant_custom" value="custom">
+                            <span>Custom</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-field col-span-full">
+                    <label for="img_url" class="field-label">{{ t .Localizer "Image URL" }}</label>
+                    <input name="img_url" id="img_url" class="field-input field-mono max-w-2xl">
+                    <span class="field-hint">{{ t .Localizer "The URL the device will use to fetch images." }}</span>
                 </div>
             </div>
+        </div>
 
-            <div class="form-field" style="grid-column: 1 / -1;">
-                <label for="img_url" class="field-label">{{ t .Localizer "Image URL" }}</label>
-                <input name="img_url" id="img_url" class="field-input" value="{{ .Device.ImgURL }}">
-                <span class="field-hint">{{ t .Localizer "The URL the device will use to fetch images." }}</span>
+        <!-- WiFi Configuration -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "WiFi Configuration" }}</h2>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="wifi_ap" class="field-label field-required">{{ t .Localizer "WiFi Network Name (SSID)" }}</label>
+                    <input name="wifi_ap" id="wifi_ap" required class="field-input" placeholder="2.4GHz WiFi only">
+                </div>
+
+                <div class="form-field">
+                    <label for="wifi_password" class="field-label field-required">{{ t .Localizer "WiFi Password" }}</label>
+                    <input name="wifi_password" id="wifi_password" required class="field-input">
+                </div>
+
+                {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
+                <div class="form-field-checkbox col-span-full mt-2">
+                    <label for="swap_colors" class="checkbox-label">
+                        <input type="checkbox" name="swap_colors" id="swap_colors">
+                        <span>{{ t .Localizer "Swap Colors (Fix for some Tidbyt Gen 1 displays)" }}</span>
+                    </label>
+                </div>
+                {{ end }}
             </div>
         </div>
 
-        <h4 class="field-label mt-8 mb-4">{{ t .Localizer "WiFi Configuration" }}</h4>
-        <div class="form-grid">
-            <div class="form-field">
-                <label for="wifi_ap" class="field-label">{{ t .Localizer "WiFi Network Name (SSID)" }} <span class="field-required"></span></label>
-                <input name="wifi_ap" id="wifi_ap" required class="field-input" placeholder="2.4GHz WiFi only">
-            </div>
-
-            <div class="form-field">
-                <label for="wifi_password" class="field-label">{{ t .Localizer "WiFi Password" }} <span class="field-required"></span></label>
-                <input name="wifi_password" id="wifi_password" required class="field-input">
-            </div>
-
-            {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
-            <div class="form-field-checkbox" style="grid-column: 1 / -1;">
-                <label for="swap_colors" class="checkbox-label">
-                    <input type="checkbox" name="swap_colors" id="swap_colors">
-                    <span>{{ t .Localizer "Swap Colors?" }}</span>
-                </label>
-            </div>
-            {{ end }}
-        </div>
-
-        <div class="form-actions mt-8">
+        <!-- Action Bar -->
+        <div class="form-actions justify-end gap-3 mt-10">
             <button class="btn-create" type="submit">
                 <i data-lucide="cpu"></i>
                 {{ t .Localizer "Generate Firmware File" }}
+            </button>
+             <button type="button" class="btn-secondary" onclick="window.history.back()">
+               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
             </button>
         </div>
     </form>
@@ -132,10 +149,12 @@
         const httpRadio = document.getElementById('variant_http');
         const wsRadio = document.getElementById('variant_ws');
         const customRadio = document.getElementById('variant_custom');
+        
         // Resolve absolute URLs
         const origin = window.location.origin;
         const httpPath = "{{ .Device.ImgURL }}";
         const wsPath = "{{ .Device.WsURL }}";
+        const defaultPath = "{{ .Device.ImgURL }}";
 
         const httpVal = httpPath.startsWith("http") ? httpPath : (origin + httpPath);
         const wsVal = wsPath.startsWith("ws") ? wsPath : (origin.replace("http", "ws") + wsPath);
@@ -144,14 +163,12 @@
             if (httpRadio.checked || wsRadio.checked) {
                 input.value = httpRadio.checked ? httpVal : wsVal;
                 input.readOnly = true;
-                // Add disabled look
-                input.classList.add('disabled-input');
-                input.style.backgroundColor = 'var(--neutral-100)';
+                // Style as readonly/disabled
+                input.classList.add('bg-tertiary', 'text-secondary');
             } else if (customRadio.checked) {
-                input.value = "";
+                input.value = defaultPath.startsWith("http") ? defaultPath : (origin + defaultPath);
                 input.readOnly = false;
-                input.classList.remove('disabled-input');
-                input.style.backgroundColor = '';
+                input.classList.remove('bg-tertiary', 'text-secondary');
             }
         }
 
@@ -159,12 +176,11 @@
             radio.addEventListener('change', updateUrl);
         });
 
-        // Initialize
+        // Initialize state
         wsRadio.checked = true;
         updateUrl();
     })();
 
-    // Initialize Lucide icons
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
@@ -172,3 +188,4 @@
     });
 </script>
 {{ end }}
+
