@@ -946,16 +946,16 @@ button.btn-action-lg {
    Delete Button
    =========================================== */
 .btn-delete {
-    width: 100% !important;
-    border: 1px solid var(--red-300) !important;
-    padding: 0.75rem !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    border: 1px solid var(--red-300) !important;
     font-size: 0.75rem !important;
     color: var(--red-600) !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
     background: none !important;
     cursor: pointer !important;
     font-family: var(--font-mono) !important;
@@ -984,6 +984,83 @@ button.btn-action-lg {
 
 [data-theme="dark"] .btn-delete:hover i {
     color: var(--neutral-900) !important;
+}
+
+/* ===========================================
+   Save Button (Primary - like pinned state)
+   =========================================== */
+.btn-save {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem 1.25rem !important;
+    background-color: var(--neutral-900) !important;
+    border: 1px solid var(--neutral-900) !important;
+    color: var(--white) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    cursor: pointer !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-save:hover {
+    background-color: var(--neutral-700) !important;
+    border-color: var(--neutral-700) !important;
+}
+
+.btn-save i {
+    color: var(--white) !important;
+}
+
+[data-theme="dark"] .btn-save {
+    background-color: var(--neutral-900) !important;
+    border-color: var(--neutral-900) !important;
+    color: var(--text-inverse) !important;
+}
+
+[data-theme="dark"] .btn-save:hover {
+    background-color: var(--neutral-800) !important;
+    border-color: var(--neutral-800) !important;
+}
+
+[data-theme="dark"] .btn-save i {
+    color: var(--text-inverse) !important;
+}
+
+/* ===========================================
+   Accent Button (Orange highlight for imports)
+   =========================================== */
+.btn-accent {
+    background-color: var(--orange-500) !important;
+    border-color: var(--orange-500) !important;
+    color: var(--white) !important;
+}
+
+.btn-accent:hover {
+    background-color: var(--orange-600) !important;
+    border-color: var(--orange-600) !important;
+}
+
+.btn-accent i {
+    color: var(--white) !important;
+}
+
+[data-theme="dark"] .btn-accent {
+    background-color: var(--orange-500) !important;
+    border-color: var(--orange-500) !important;
+    color: var(--white) !important;
+}
+
+[data-theme="dark"] .btn-accent:hover {
+    background-color: var(--orange-600) !important;
+    border-color: var(--orange-600) !important;
+}
+
+[data-theme="dark"] .btn-accent i {
+    color: var(--white) !important;
 }
 
 /* ===========================================

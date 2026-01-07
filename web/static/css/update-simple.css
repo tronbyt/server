@@ -1,13 +1,24 @@
-/* Update Device Page - Unique Styles Only */
+/* Update Device Page - TE Design System Styles */
 
+/* Page Title */
 .page-title {
   margin: 0;
-  font-size: 1.5em;
+  font-size: 1.5rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--neutral-900);
 }
 
+/* Header Layout */
 .header-buttons {
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+#header-buttons {
+  display: flex;
+  gap: 0.5rem;
   align-items: center;
 }
 
@@ -16,218 +27,459 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 10px;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--neutral-200);
   width: 100%;
 }
 
-.form-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: var(--content-bg);
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+/* "Device Settings" Main Heading - Use design system colors */
+#device-form > h1 {
+  font-size: 1.25rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--neutral-900);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
 }
 
-.form-container h2 {
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-  color: var(--page-text);
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
-  color: var(--page-text);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  font-size: 1rem;
-  background-color: var(--input-bg);
-  color: var(--input-text);
-}
-
-.form-group input[type="range"] {
-  width: calc(100% - 50px);
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.form-group output {
-  display: inline-block;
-  width: 50px;
-  text-align: center;
-  font-weight: bold;
-  color: var(--page-text);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-}
-
-.form-actions .w3-button {
-  padding: 10px 20px;
-  font-size: 1rem;
-}
-
-.config-links {
-  margin-top: 30px;
-  text-align: center;
-}
-
-.config-links a {
-  margin: 0 10px;
-}
-
-small {
-  color: var(--post-about-text);
-}
-
-/* Device settings form styles */
+/* Device Settings Sections */
 .device-settings-section {
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border: 1px solid var(--neutral-200);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background-color: var(--white);
+}
+
+.device-settings-section h2 {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--neutral-900);
+  letter-spacing: 0.05em;
+}
+
+.device-settings-section h3 {
+  margin: 1rem 0 0.75rem 0;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--neutral-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .device-settings-row {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
-}
-
-.device-settings-row > div {
-  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .device-settings-label {
   display: block;
-  margin-bottom: 5px;
-  font-size: 0.9em;
+  margin-bottom: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--neutral-600);
+  font-family: var(--font-mono);
 }
 
-.device-settings-input {
+/* All inputs - Orange focus, consistent height */
+.device-settings-input,
+input[type="text"],
+input[type="number"],
+input[type="time"],
+select,
+textarea {
   width: 100%;
-  padding: 8px;
+  padding: 0.625rem;
+  min-height: 2.5rem;
+  border: 1px solid var(--neutral-300);
+  background-color: var(--white);
+  color: var(--neutral-900);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  outline: none;
+  box-sizing: border-box;
 }
 
-textarea.device-example-command-input {
-  width: 100%;
-  font-family: monospace;
-  font-size: 0.9em;
-  min-height: auto;
+.device-settings-input:focus,
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="time"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 1px var(--orange-500);
 }
 
 .device-settings-section-divider {
-  border-top: 1px solid var(--border-color);
-  padding-top: 15px;
+  border-top: 1px solid var(--neutral-200);
+  padding-top: 1rem;
+  margin-top: 1rem;
 }
 
-.url-input-container {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.url-input-container input {
-  flex: 1;
-  padding: 8px;
-}
-
-.url-reset-btn {
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
+/* Table Layout */
 .device-settings-table {
   width: 100%;
-  border-spacing: 0 10px;
+  border-spacing: 0 0.75rem;
 }
 
 .device-settings-table td:first-child {
   width: 30%;
   vertical-align: top;
-  padding-right: 15px;
+  padding-right: 1rem;
 }
 
 .device-settings-table td:last-child {
   width: 70%;
 }
 
+/* Textarea */
+textarea.device-example-command-input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  padding: 0.625rem;
+  border: 1px solid var(--neutral-300);
+  background-color: var(--bg-tertiary);
+  color: var(--neutral-900);
+  min-height: auto;
+}
+
+/* URL Input Container */
+.url-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.url-input-container input {
+  flex: 1;
+  padding: 0.625rem;
+  border: 1px solid var(--neutral-300);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--neutral-900);
+  background-color: var(--white);
+  outline: none;
+}
+
+.url-input-container input:focus {
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 1px var(--orange-500);
+}
+
+/* Range Slider Container - layout only, uses cycle-time-slider for styling */
 .range-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.75rem;
+  width: 100%;
 }
 
-.range-container input[type="range"] {
+/* Override base.css styles for sliders in range-container */
+.range-container .cycle-time-slider {
   flex: 1;
+  max-width: none;
+  height: auto;
+  margin: 0;
 }
 
 .range-output {
-  min-width: 30px;
+  min-width: 2.5rem;
   text-align: center;
-  font-weight: bold;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--neutral-900);
+  font-size: 0.875rem;
 }
 
+/* Select Dropdown */
 .select-container {
-  width: 300px;
-  padding: 8px;
+  width: 100%;
+  max-width: 300px;
+  padding: 0.625rem;
+  border: 1px solid var(--neutral-300);
+  background-color: var(--white);
+  color: var(--neutral-900);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  outline: none;
 }
 
+.select-container:focus {
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 1px var(--orange-500);
+}
+
+/* Checkbox - Orange accent */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--neutral-400);
+  background-color: var(--white);
+  cursor: pointer;
+  vertical-align: middle;
+  position: relative;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--orange-500);
+  border-color: var(--orange-500);
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--white);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--orange-300);
+}
+
+/* Small/Helper Text */
 .small-text {
-  color: var(--post-about-text);
-  font-size: 0.8em;
+  color: var(--neutral-500);
+  font-size: 0.75rem;
   display: block;
-  margin-top: 5px;
+  margin-top: 0.375rem;
+  font-family: var(--font-mono);
 }
 
+/* Notes Input */
 .notes-input {
-  width: 400px;
-  padding: 8px;
+  width: 100%;
+  max-width: 400px;
+  padding: 0.625rem;
+  border: 1px solid var(--neutral-300);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--neutral-900);
+  background-color: var(--white);
+  outline: none;
 }
 
+.notes-input:focus {
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 1px var(--orange-500);
+}
+
+/* Config Management Container */
 .config-management-container {
   display: flex;
-  gap: 10px;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Button Container (Footer) - Side by side, auto-width */
+.button-container {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--neutral-200);
   align-items: center;
 }
 
-.config-management-btn {
-  padding: 8px 16px;
-  font-size: 14px;
+/* Override btn-delete width for this page */
+.button-container .btn-delete {
+  width: auto;
 }
 
-/* Override brightness styles for update page (dark theme default) */
-.brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
-.brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }
-.brightness-btn[data-brightness="2"] { background-color: #555; color: #ccc; border-color: #666; }
-.brightness-btn[data-brightness="3"] { background-color: #777; color: #eee; border-color: #888; }
-.brightness-btn[data-brightness="4"] { background-color: #999; color: #fff; border-color: #aaa; }
-.brightness-btn[data-brightness="5"] { background-color: #bbb; color: #fff; border-color: #ccc; }
-
-.brightness-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(255,255,255,0.2);
+/* Brightness Panel - Reuse brightness-grid from design system */
+.brightness-panel {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+  max-width: 300px;
 }
 
-.brightness-btn.active {
-  border-color: #377ba8;
-  border-width: 3px;
-  box-shadow: 0 0 8px rgba(55, 123, 168, 0.5);
+/* Tooltip Icon */
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.75rem;
+  color: var(--neutral-500);
+  cursor: help;
+  margin-left: 0.25rem;
+}
+
+/* Custom brightness scale inputs grid */
+#custom_brightness_inputs > div:first-child {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 0.75rem !important;
+}
+
+#custom_brightness_inputs input[type="number"] {
+  width: 70px !important;
+  padding: 0.5rem !important;
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .page-title,
+[data-theme="dark"] #device-form > h1 {
+  color: var(--neutral-900);
+}
+
+[data-theme="dark"] .device-settings-section {
+  border-color: var(--neutral-300);
+  background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .device-settings-section h2 {
+  color: var(--neutral-900);
+}
+
+[data-theme="dark"] .device-settings-section h3 {
+  color: var(--neutral-600);
+}
+
+[data-theme="dark"] .device-settings-input,
+[data-theme="dark"] .select-container,
+[data-theme="dark"] .notes-input,
+[data-theme="dark"] .url-input-container input,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] select {
+  background-color: var(--bg-tertiary);
+  border-color: var(--neutral-300);
+  color: var(--neutral-900);
+}
+
+[data-theme="dark"] textarea.device-example-command-input {
+  background-color: var(--bg-tertiary);
+  border-color: var(--neutral-300);
+  color: var(--neutral-900);
+}
+
+[data-theme="dark"] .header-container,
+[data-theme="dark"] .button-container,
+[data-theme="dark"] .device-settings-section-divider {
+  border-color: var(--neutral-300);
+}
+
+[data-theme="dark"] .range-output {
+  color: var(--neutral-900);
+}
+
+[data-theme="dark"] input[type="checkbox"] {
+  background-color: var(--bg-tertiary);
+  border-color: var(--neutral-400);
+}
+
+[data-theme="dark"] input[type="checkbox"]:checked {
+  background-color: var(--orange-500);
+  border-color: var(--orange-500);
+}
+
+/* Dark mode focus states - still orange */
+[data-theme="dark"] .device-settings-input:focus,
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] input[type="number"]:focus,
+[data-theme="dark"] input[type="time"]:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] .select-container:focus,
+[data-theme="dark"] .notes-input:focus,
+[data-theme="dark"] .url-input-container input:focus {
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 1px var(--orange-500);
+}
+
+/* ===========================================
+   Native Select Dropdown - No border-radius
+   =========================================== */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23737373' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+}
+
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a3a3a3' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+}
+
+/* ===========================================
+   Checkbox Label Styling - Proper alignment and size
+   =========================================== */
+label[style*="cursor: pointer"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  font-size: 0.8125rem !important;
+  font-family: var(--font-mono) !important;
+  color: var(--neutral-700) !important;
+}
+
+label[style*="cursor: pointer"] span {
+  margin-left: 0 !important;
+}
+
+[data-theme="dark"] label[style*="cursor: pointer"] {
+  color: var(--neutral-600) !important;
+}
+
+/* Checkbox proper vertical alignment */
+input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* ===========================================
+   Default System Scale Info Box
+   =========================================== */
+div[style*="background-color: #f5f5f5"] {
+  background-color: var(--neutral-100) !important;
+  color: var(--neutral-700) !important;
+  border-radius: 0 !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem !important;
+  padding: 0.75rem !important;
+  border: 1px solid var(--neutral-200) !important;
+}
+
+[data-theme="dark"] div[style*="background-color: #f5f5f5"] {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--neutral-600) !important;
+  border-color: var(--neutral-300) !important;
+}
+
+/* Custom brightness help text */
+#custom_brightness_inputs div[style*="color: #666"] {
+  color: var(--neutral-500) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem !important;
+}
+
+[data-theme="dark"] #custom_brightness_inputs div[style*="color: #666"] {
+  color: var(--neutral-500) !important;
 }

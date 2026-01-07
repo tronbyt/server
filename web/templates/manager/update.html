@@ -46,36 +46,6 @@
         });
     }
 
-    // Move buttons to header on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const headerButtons = document.getElementById('header-buttons');
-        const form = document.getElementById('device-form');
-
-        // Create Save button
-        const saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'w3-button w3-green config-management-btn';
-        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}';
-        saveBtn.onclick = function() {
-            saveDeviceForm();
-        };
-
-        // Create Delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.className = 'w3-button w3-red config-management-btn';
-        deleteBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}';
-        deleteBtn.onclick = function() {
-            if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) {
-                form.action = "/devices/{{ .Device.ID }}/delete";
-                form.method = 'post';
-                form.submit();
-            }
-        };
-
-        headerButtons.appendChild(saveBtn);
-        headerButtons.appendChild(deleteBtn);
-    });
 </script>
 {{ end }}
 {{ define "content" }}
@@ -121,10 +91,10 @@
                                    value="{{ .Device.ImgURL }}"
                                    oninput="updateExampleCommands()">
                             <button type="button"
-                                    class="w3-button w3-small w3-gray url-reset-btn"
+                                    class="btn-action-sm url-reset-btn"
                                     onclick="resetImgUrl()"
                                     title="{{ t .Localizer "Reset to default" }}">
-                                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{ t .Localizer "Reset" }}
+                                <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i> {{ t .Localizer "Reset" }}
                             </button>
                         </div>
                     </td>
@@ -137,10 +107,10 @@
                         <div class="url-input-container">
                             <input name="ws_url" id="ws_url" value="{{ .Device.WsURL }}">
                             <button type="button"
-                                    class="w3-button w3-small w3-gray url-reset-btn"
+                                    class="btn-action-sm url-reset-btn"
                                     onclick="resetWsUrl()"
                                     title="{{ t .Localizer "Reset to default" }}">
-                                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{ t .Localizer "Reset" }}
+                                <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i> {{ t .Localizer "Reset" }}
                             </button>
                         </div>
                     </td>
@@ -168,6 +138,7 @@
                 <td>
                     <div class="range-container">
                         <input type="range"
+                               class="cycle-time-slider"
                                name="default_interval"
                                id="default_interval"
                                min="1"
@@ -671,9 +642,9 @@
             </div>
             {{ end }}
             <button type="button"
-                    class="w3-button w3-blue config-management-btn"
+                    class="btn-action-sm"
                     onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
-                <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Latest Firmware" }}
+                <i data-lucide="cloud-download" style="width: 16px; height: 16px;"></i> {{ t .Localizer "Install Latest Firmware" }}
             </button>
             <small class="small-text" style="display: block; margin-top: 5px;">{{ t .Localizer "Updates the device to the latest version available on the server." }}</small>
         </div>
@@ -683,27 +654,27 @@
         <h2>{{ t .Localizer "Configuration Management" }}</h2>
         <div class="config-management-container">
             <button type="button"
-                    class="w3-button w3-blue config-management-btn"
+                    class="btn-action-sm"
                     onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
-                <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export Configuration" }}
+                <i data-lucide="download" style="width: 16px; height: 16px;"></i> {{ t .Localizer "Export Configuration" }}
             </button>
             <button type="button"
-                    class="w3-button w3-orange config-management-btn"
+                    class="btn-action-sm"
                     onclick="document.getElementById('import_config_file').click();">
-                <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
+                <i data-lucide="upload" style="width: 16px; height: 16px;"></i> {{ t .Localizer "Import Configuration" }}
             </button>
         </div>
     </div>
     <div class="button-container">
         <button type="button"
-                class="w3-button w3-green config-management-btn"
+                class="btn-save"
                 onclick="saveDeviceForm();">
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+            <i data-lucide="save" style="width: 16px; height: 16px;"></i> {{ t .Localizer "Save" }}
         </button>
         <button type="button"
-                class="w3-button w3-red config-management-btn"
+                class="btn-delete"
                 onclick="if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) { this.form.action = '/devices/{{ .Device.ID }}/delete'; this.form.method = 'post'; this.form.submit(); }">
-            <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
+            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> {{ t .Localizer "Delete" }}
         </button>
     </div>
     <script>
