@@ -8,16 +8,17 @@
 </div>
 {{ end }}
 {{ define "content" }}
-<div class="form-panel" id="addapp_page_identifier">
+<div class="dashboard-container" id="addapp_page_identifier">
+    
     <!-- Loading indicator -->
     <div id="loading-indicator" class="loading-container">
         <div class="loading-spinner"></div>
         <p class="text-neutral-500 font-mono text-sm mt-4">{{ t .Localizer "Loading apps..." }}</p>
     </div>
-    
+
     <!-- Action Bar -->
-    <div class="flex justify-end mb-8">
-        <a class="btn-secondary" href="/devices/{{ .Device.ID }}/uploadapp">
+    <div class="flex justify-end mb-8 pt-4">
+        <a class="btn-create" href="/devices/{{ .Device.ID }}/uploadapp">
             <i data-lucide="cloud-upload"></i>
             <span>{{ t .Localizer "Upload app" }}</span>
         </a>
@@ -25,7 +26,7 @@
 
     <!-- App Catalog -->
     {{ if .CustomApps }}
-    <div class="form-section">
+    <div class="mb-8">
         {{ template "app_list_grid" (dict
             "Title" (t .Localizer "Custom Apps")
             "SearchID" "custom_search"
@@ -39,7 +40,7 @@
     </div>
     {{ end }}
 
-    <div class="form-section">
+    <div class="mb-8">
         {{ template "app_list_grid" (dict
             "Title" (t .Localizer "System Apps")
             "SearchID" "system_search"
@@ -56,7 +57,7 @@
     </div>
 
     <!-- Configuration Form (Hidden but technically used by JS logic) -->
-    <form method="post" id="main_form" class="form-section" style="display: none;">
+    <form method="post" id="main_form" class="form-section hidden" style="display: none;">
         <h3 class="section-title">{{ t .Localizer "Default Configuration" }}</h3>
         
         <input type="hidden" name="name" id="selected_app">

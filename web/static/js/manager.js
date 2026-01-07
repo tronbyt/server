@@ -1750,11 +1750,19 @@ document.addEventListener('DOMContentLoaded', function () {
   dashboardWs.onerror = (error) => { console.error('Dashboard WebSocket error:', error); };
 
   // Addapp specific initializations (if on addapp page)
+  // Addapp specific initializations (if on addapp page)
   if (document.getElementById('addapp_page_identifier')) { // A unique ID for the addapp page content
+    console.log('Manager.js: Initializing Add App Page...');
     setTimeout(() => {
       document.body.classList.add('content-loaded');
       const loadingIndicator = document.getElementById('loading-indicator');
-      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (loadingIndicator) {
+        console.log('Manager.js: Hiding loading indicator');
+        loadingIndicator.style.display = 'none';
+        
+        // Also ensure visibility is hidden just in case style is stubborn
+        loadingIndicator.style.visibility = 'hidden';
+      }
       isInitialLoad = false;
       setupVirtualScrolling();
       setupLazyLoading();

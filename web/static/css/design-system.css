@@ -2650,7 +2650,7 @@ input[type="checkbox"]:focus {
 
 /* Loading Indicator */
 .loading-container {
-    display: flex !important;
+    display: flex;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
