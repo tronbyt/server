@@ -657,12 +657,72 @@ func (s *Server) handleRebootDeviceAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// FirmwareSettingsUpdate represents the updatable firmware settings via API.
+type FirmwareSettingsUpdate struct {
+	SkipDisplayVersion *bool   `json:"skipDisplayVersion"`
+	PreferIPv6         *bool   `json:"preferIPv6"`
+	APMode             *bool   `json:"apMode"`
+	SwapColors         *bool   `json:"swapColors"`
+	WifiPowerSave      *int    `json:"wifiPowerSave"`
+	ImageURL           *string `json:"imageUrl"`
+}
+
+func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	var update FirmwareSettingsUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	payload := make(map[string]any)
+
+	if update.SkipDisplayVersion != nil {
+		payload["skip_display_version"] = *update.SkipDisplayVersion
+	}
+	if update.PreferIPv6 != nil {
+		payload["prefer_ipv6"] = *update.PreferIPv6
+	}
+	if update.APMode != nil {
+		payload["ap_mode"] = *update.APMode
+	}
+	if update.SwapColors != nil {
+		payload["swap_colors"] = *update.SwapColors
+	}
+	if update.WifiPowerSave != nil {
+		payload["wifi_power_save"] = *update.WifiPowerSave
+	}
+	if update.ImageURL != nil {
+		payload["image_url"] = *update.ImageURL
+	}
+
+	if len(payload) == 0 {
+		http.Error(w, "No settings provided", http.StatusBadRequest)
+		return
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal firmware settings payload", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
+
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte("Firmware settings updated.")); err != nil {
+		slog.Error("Failed to write response", "error", err)
+	}
+}
+
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetDevice)))
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(s.RequireDevice(s.handlePushImage)))
 	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(s.RequireDevice(s.handlePushApp)))
+	s.Router.Handle("POST /v0/devices/{id}/update_firmware_settings", s.APIAuthMiddleware(s.RequireDevice(s.handleUpdateFirmwareSettingsAPI)))
 	s.Router.Handle("POST /v0/devices/{id}/reboot", s.APIAuthMiddleware(s.RequireDevice(s.handleRebootDeviceAPI)))
 	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(s.RequireDevice(s.handleListInstallations)))
 	s.Router.Handle("GET /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetInstallation)))
