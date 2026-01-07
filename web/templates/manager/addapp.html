@@ -9,6 +9,11 @@
 {{ end }}
 {{ define "content" }}
 <div class="form-panel" id="addapp_page_identifier">
+    <!-- Loading indicator -->
+    <div id="loading-indicator" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p class="text-neutral-500 font-mono text-sm mt-4">{{ t .Localizer "Loading apps..." }}</p>
+    </div>
     
     <!-- Action Bar -->
     <div class="flex justify-end mb-8">

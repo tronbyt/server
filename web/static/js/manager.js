@@ -607,7 +607,7 @@ function sortItems(items, sortTypeParam = null) {
 function showAllItems(grid) {
   const allItems = Array.from(grid.getElementsByClassName('app-tile'));
   allItems.forEach(item => {
-    item.style.display = 'block';
+    item.style.display = '';
   });
 }
 
@@ -681,7 +681,7 @@ function applyFilters() {
           // Add sorted items to fragment
           sortedItems.forEach((item, index) => {
             fragment.appendChild(item);
-            item.style.display = 'block';
+            item.style.display = '';
           });
 
           // Append all at once to reduce reflows
@@ -829,7 +829,7 @@ function setupVirtualScrolling() {
       requestAnimationFrame(() => {
         for (let i = nextStart; i < nextEnd; i++) {
           if (items[i]) {
-            items[i].style.display = 'block';
+            items[i].style.display = '';
           }
         }
         visibleEnd = nextEnd;
@@ -862,7 +862,7 @@ function setupVirtualScrolling() {
       requestAnimationFrame(() => {
         for (let i = nextStart; i < nextEnd; i++) {
           if (filteredItems[i]) {
-            filteredItems[i].style.display = 'block';
+            filteredItems[i].style.display = '';
           }
         }
         grid._virtualScrolling.visibleEnd = nextEnd;
