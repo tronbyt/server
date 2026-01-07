@@ -398,13 +398,13 @@ type DeviceInfo struct {
 	ProtocolVersion    *int         `json:"protocol_version"`
 	MACAddress         string       `json:"mac_address"`
 	ProtocolType       ProtocolType `json:"protocol_type"`
-	SSID               string       `json:"ssid"`
-	WifiPowerSave      int          `json:"wifi_power_save"`
-	SkipDisplayVersion bool         `json:"skip_display_version"`
-	APMode             bool         `json:"ap_mode"`
-	PreferIPv6         bool         `json:"prefer_ipv6"`
-	SwapColors         bool         `json:"swap_colors"`
-	ImageURL           string       `json:"image_url"`
+	SSID               *string      `json:"ssid"`
+	WifiPowerSave      *int         `json:"wifi_power_save"`
+	SkipDisplayVersion *bool        `json:"skip_display_version"`
+	APMode             *bool        `json:"ap_mode"`
+	PreferIPv6         *bool        `json:"prefer_ipv6"`
+	SwapColors         *bool        `json:"swap_colors"`
+	ImageURL           *string      `json:"image_url"`
 }
 
 func (i DeviceInfo) Value() (driver.Value, error) {

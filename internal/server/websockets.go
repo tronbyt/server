@@ -28,17 +28,17 @@ type WSMessage struct {
 }
 
 type ClientInfo struct {
-	FirmwareVersion    string `json:"firmware_version"`
-	FirmwareType       string `json:"firmware_type"`
-	ProtocolVersion    *int   `json:"protocol_version"`
-	MACAddress         string `json:"mac"`
-	SSID               string `json:"ssid"`
-	WifiPowerSave      int    `json:"wifi_power_save"`
-	SkipDisplayVersion bool   `json:"skip_display_version"`
-	APMode             bool   `json:"ap_mode"`
-	PreferIPv6         bool   `json:"prefer_ipv6"`
-	SwapColors         bool   `json:"swap_colors"`
-	ImageURL           string `json:"image_url"`
+	FirmwareVersion    string  `json:"firmware_version"`
+	FirmwareType       string  `json:"firmware_type"`
+	ProtocolVersion    *int    `json:"protocol_version"`
+	MACAddress         string  `json:"mac"`
+	SSID               *string `json:"ssid"`
+	WifiPowerSave      *int    `json:"wifi_power_save"`
+	SkipDisplayVersion *bool   `json:"skip_display_version"`
+	APMode             *bool   `json:"ap_mode"`
+	PreferIPv6         *bool   `json:"prefer_ipv6"`
+	SwapColors         *bool   `json:"swap_colors"`
+	ImageURL           *string `json:"image_url"`
 }
 
 type WSEvent struct {
@@ -85,7 +85,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	// Update protocol type if different from current
 	if device.Info.ProtocolType != data.ProtocolWS {
 		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
-    device.Info.ProtocolType = data.ProtocolWS
+		device.Info.ProtocolType = data.ProtocolWS
 		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "info", data.JSONMap{"protocol_type": data.ProtocolWS}); err != nil {
 			slog.Error("Failed to update protocol_type", "error", err)
 		}
@@ -122,13 +122,28 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					device.Info.ProtocolVersion = msg.ClientInfo.ProtocolVersion
 				}
 				device.Info.MACAddress = msg.ClientInfo.MACAddress
-				device.Info.SSID = msg.ClientInfo.SSID
-				device.Info.WifiPowerSave = msg.ClientInfo.WifiPowerSave
-				device.Info.SkipDisplayVersion = msg.ClientInfo.SkipDisplayVersion
-				device.Info.APMode = msg.ClientInfo.APMode
-				device.Info.PreferIPv6 = msg.ClientInfo.PreferIPv6
-				device.Info.SwapColors = msg.ClientInfo.SwapColors
-				device.Info.ImageURL = msg.ClientInfo.ImageURL
+
+				if msg.ClientInfo.SSID != nil {
+					device.Info.SSID = msg.ClientInfo.SSID
+				}
+				if msg.ClientInfo.WifiPowerSave != nil {
+					device.Info.WifiPowerSave = msg.ClientInfo.WifiPowerSave
+				}
+				if msg.ClientInfo.SkipDisplayVersion != nil {
+					device.Info.SkipDisplayVersion = msg.ClientInfo.SkipDisplayVersion
+				}
+				if msg.ClientInfo.APMode != nil {
+					device.Info.APMode = msg.ClientInfo.APMode
+				}
+				if msg.ClientInfo.PreferIPv6 != nil {
+					device.Info.PreferIPv6 = msg.ClientInfo.PreferIPv6
+				}
+				if msg.ClientInfo.SwapColors != nil {
+					device.Info.SwapColors = msg.ClientInfo.SwapColors
+				}
+				if msg.ClientInfo.ImageURL != nil {
+					device.Info.ImageURL = msg.ClientInfo.ImageURL
+				}
 
 				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 					slog.Error("Failed to update device info", "error", err)

@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	"tronbyt-server/internal/apps"
@@ -77,21 +75,35 @@ type Interstitial struct {
 
 // DeviceInfo represents device firmware and protocol information in the API payload.
 type DeviceInfo struct {
-	FirmwareVersion string `json:"firmwareVersion"`
-	FirmwareType    string `json:"firmwareType"`
-	ProtocolVersion *int   `json:"protocolVersion"`
-	MACAddress      string `json:"macAddress"`
-	ProtocolType    string `json:"protocolType"`
+	FirmwareVersion    string  `json:"firmwareVersion"`
+	FirmwareType       string  `json:"firmwareType"`
+	ProtocolVersion    *int    `json:"protocolVersion,omitempty"`
+	MACAddress         string  `json:"macAddress"`
+	ProtocolType       string  `json:"protocolType"`
+	SSID               *string `json:"ssid,omitempty"`
+	WifiPowerSave      *int    `json:"wifiPowerSave,omitempty"`
+	SkipDisplayVersion *bool   `json:"skipDisplayVersion,omitempty"`
+	APMode             *bool   `json:"apMode,omitempty"`
+	PreferIPv6         *bool   `json:"preferIPv6,omitempty"`
+	SwapColors         *bool   `json:"swapColors,omitempty"`
+	ImageURL           *string `json:"imageUrl,omitempty"`
 }
 
 // toDevicePayload converts a data.Device model to a DevicePayload for API responses.
 func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 	info := DeviceInfo{
-		FirmwareVersion: d.Info.FirmwareVersion,
-		FirmwareType:    d.Info.FirmwareType,
-		ProtocolVersion: d.Info.ProtocolVersion,
-		MACAddress:      d.Info.MACAddress,
-		ProtocolType:    string(d.Info.ProtocolType),
+		FirmwareVersion:    d.Info.FirmwareVersion,
+		FirmwareType:       d.Info.FirmwareType,
+		ProtocolVersion:    d.Info.ProtocolVersion,
+		MACAddress:         d.Info.MACAddress,
+		ProtocolType:       string(d.Info.ProtocolType),
+		SSID:               d.Info.SSID,
+		WifiPowerSave:      d.Info.WifiPowerSave,
+		SkipDisplayVersion: d.Info.SkipDisplayVersion,
+		APMode:             d.Info.APMode,
+		PreferIPv6:         d.Info.PreferIPv6,
+		SwapColors:         d.Info.SwapColors,
+		ImageURL:           d.Info.ImageURL,
 	}
 
 	var lastSeen *string
@@ -630,41 +642,18 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
-	widthStr := r.URL.Query().Get("w")
-	heightStr := r.URL.Query().Get("h")
-	radiusStr := r.URL.Query().Get("r")
+func (s *Server) handleRebootDeviceAPI(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
 
-	width := 64
-	height := 32
-	radius := 0.3
-
-	if wVal, err := strconv.Atoi(widthStr); err == nil && wVal > 0 {
-		width = wVal
-	}
-	if hVal, err := strconv.Atoi(heightStr); err == nil && hVal > 0 {
-		height = hVal
-	}
-	if rVal, err := strconv.ParseFloat(radiusStr, 64); err == nil && rVal > 0 {
-		radius = rVal
-	}
-
-	etag := fmt.Sprintf("\"%d-%d-%g\"", width, height, radius)
-	w.Header().Set("ETag", etag)
-	w.Header().Set("Cache-Control", "public, max-age=31536000")
-
-	if r.Header.Get("If-None-Match") == etag {
-		w.WriteHeader(http.StatusNotModified)
+	if err := s.sendRebootCommand(device.ID); err != nil {
+		slog.Error("Failed to send reboot command", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/svg+xml")
-
-	rStr := strings.TrimPrefix(fmt.Sprintf("%g", radius), "0")
-	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" fill="#fff"><defs><pattern id="dot" width="1" height="1" patternUnits="userSpaceOnUse"><circle cx=".5" cy=".5" r="%s"/></pattern></defs><rect width="100%%" height="100%%" fill="url(#dot)"/></svg>`, width, height, rStr)
-
-	if _, err := w.Write([]byte(svg)); err != nil {
-		slog.Error("Failed to write dots SVG", "error", err)
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte("Reboot command sent.")); err != nil {
+		slog.Error("Failed to write response", "error", err)
 	}
 }
 
@@ -674,11 +663,10 @@ func (s *Server) SetupAPIRoutes() {
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetDevice)))
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(s.RequireDevice(s.handlePushImage)))
 	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(s.RequireDevice(s.handlePushApp)))
+	s.Router.Handle("POST /v0/devices/{id}/reboot", s.APIAuthMiddleware(s.RequireDevice(s.handleRebootDeviceAPI)))
 	s.Router.Handle("GET /v0/devices/{id}/installations", s.APIAuthMiddleware(s.RequireDevice(s.handleListInstallations)))
 	s.Router.Handle("GET /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetInstallation)))
 	s.Router.Handle("PATCH /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handlePatchDevice)))
 	s.Router.Handle("PATCH /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handlePatchInstallation)))
 	s.Router.Handle("DELETE /v0/devices/{id}/installations/{iname}", s.APIAuthMiddleware(s.RequireDevice(s.handleDeleteInstallationAPI)))
-
-	s.Router.HandleFunc("GET /dots", s.handleDots)
 }

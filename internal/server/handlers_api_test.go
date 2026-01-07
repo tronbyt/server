@@ -163,6 +163,30 @@ func TestHandleGetDevice(t *testing.T) {
 	apiKey := "test_api_key"
 	deviceID := "testdevice"
 
+	// Update device with new Info fields
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	ssid := "Test SSID"
+	wifiPowerSave := 1
+	skipDisplayVersion := true
+	apMode := true
+	preferIPv6 := true
+	swapColors := true
+	imageURL := "http://example.com/image.png"
+
+	device.Info.SSID = &ssid
+	device.Info.WifiPowerSave = &wifiPowerSave
+	device.Info.SkipDisplayVersion = &skipDisplayVersion
+	device.Info.APMode = &apMode
+	device.Info.PreferIPv6 = &preferIPv6
+	device.Info.SwapColors = &swapColors
+	device.Info.ImageURL = &imageURL
+	if err := s.DB.Save(device).Error; err != nil {
+		t.Fatalf("Failed to update device info: %v", err)
+	}
+
 	req := newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, nil)
 	rr := httptest.NewRecorder()
 
@@ -180,6 +204,28 @@ func TestHandleGetDevice(t *testing.T) {
 
 	if payload.ID != deviceID {
 		t.Errorf("Expected device ID %s, got %s", deviceID, payload.ID)
+	}
+	// Verify new fields
+	if payload.Info.SSID == nil || *payload.Info.SSID != "Test SSID" {
+		t.Errorf("Expected SSID 'Test SSID', got '%v'", payload.Info.SSID)
+	}
+	if payload.Info.WifiPowerSave == nil || *payload.Info.WifiPowerSave != 1 {
+		t.Errorf("Expected WifiPowerSave 1, got %v", payload.Info.WifiPowerSave)
+	}
+	if payload.Info.SkipDisplayVersion == nil || !*payload.Info.SkipDisplayVersion {
+		t.Error("Expected SkipDisplayVersion true")
+	}
+	if payload.Info.APMode == nil || !*payload.Info.APMode {
+		t.Error("Expected APMode true")
+	}
+	if payload.Info.PreferIPv6 == nil || !*payload.Info.PreferIPv6 {
+		t.Error("Expected PreferIPv6 true")
+	}
+	if payload.Info.SwapColors == nil || !*payload.Info.SwapColors {
+		t.Error("Expected SwapColors true")
+	}
+	if payload.Info.ImageURL == nil || *payload.Info.ImageURL != "http://example.com/image.png" {
+		t.Errorf("Expected ImageURL 'http://example.com/image.png', got '%v'", payload.Info.ImageURL)
 	}
 }
 
@@ -586,5 +632,25 @@ func TestHandleListInstallationsDeviceKey(t *testing.T) {
 
 	if len(response.Installations) != 1 {
 		t.Errorf("Expected 1 installation, got %d", len(response.Installations))
+	}
+}
+
+func TestHandleRebootDeviceAPI(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/reboot", deviceID), apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	if rr.Body.String() != "Reboot command sent." {
+		t.Errorf("Expected body 'Reboot command sent.', got '%s'", rr.Body.String())
 	}
 }

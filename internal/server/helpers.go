@@ -563,3 +563,17 @@ func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
 	}
 	return fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, deviceID)
 }
+
+func stringPtr(s string) *string {
+	return &s
+}
+
+func (s *Server) sendRebootCommand(deviceID string) error {
+	payload := map[string]bool{"reboot": true}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal reboot payload: %w", err)
+	}
+	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: jsonPayload})
+	return nil
+}
