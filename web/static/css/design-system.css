@@ -3483,6 +3483,324 @@ input[type="checkbox"]:focus {
 }
 
 /* ===========================================
+   UPDATE PAGE - Device Settings Styles
+   (Consolidated from update-simple.css)
+   =========================================== */
+
+/* Header Layout */
+.header-container {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 1px solid var(--neutral-200) !important;
+    width: 100% !important;
+}
+
+.header-buttons,
+#header-buttons {
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+}
+
+[data-theme="dark"] .header-container {
+    border-bottom-color: var(--neutral-400) !important;
+}
+
+/* Device Settings Sections */
+.device-settings-section {
+    border: 1px solid var(--neutral-200) !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+    background-color: var(--white) !important;
+}
+
+.device-settings-section h2 {
+    margin: 0 0 1rem 0 !important;
+    font-size: 0.875rem !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: var(--neutral-900) !important;
+    letter-spacing: 0.05em !important;
+}
+
+.device-settings-section h3 {
+    margin: 1rem 0 0.75rem 0 !important;
+    font-size: 0.75rem !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 600 !important;
+    color: var(--neutral-600) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+[data-theme="dark"] .device-settings-section {
+    border-color: var(--neutral-400) !important;
+    background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .device-settings-section h2 {
+    color: var(--neutral-700) !important;
+}
+
+[data-theme="dark"] .device-settings-section h3 {
+    color: var(--neutral-600) !important;
+}
+
+/* Device Settings Row */
+.device-settings-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Device Settings Label */
+.device-settings-label {
+    display: block !important;
+    margin-bottom: 0.375rem !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--neutral-600) !important;
+    font-family: var(--font-mono) !important;
+}
+
+/* Device Settings Table */
+.device-settings-table {
+    width: 100% !important;
+    border-spacing: 0 0.75rem !important;
+}
+
+.device-settings-table td:first-child {
+    width: 30% !important;
+    vertical-align: top !important;
+    padding-right: 1rem !important;
+}
+
+.device-settings-table td:last-child {
+    width: 70% !important;
+}
+
+/* Section Divider */
+.device-settings-section-divider {
+    border-top: 1px solid var(--neutral-200) !important;
+    padding-top: 1rem !important;
+    margin-top: 1rem !important;
+}
+
+[data-theme="dark"] .device-settings-section-divider {
+    border-top-color: var(--neutral-400) !important;
+}
+
+/* URL Input Container */
+.url-input-container {
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+}
+
+.url-input-container input {
+    flex: 1 !important;
+    padding: 0.625rem !important;
+    border: 1px solid var(--neutral-300) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.875rem !important;
+    color: var(--neutral-900) !important;
+    background-color: var(--white) !important;
+    outline: none !important;
+}
+
+.url-input-container input:focus {
+    border-color: var(--orange-500) !important;
+    box-shadow: 0 0 0 1px var(--orange-500) !important;
+}
+
+[data-theme="dark"] .url-input-container input {
+    border-color: var(--neutral-500) !important;
+    background-color: var(--bg-primary) !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .url-input-container input:focus {
+    border-color: var(--orange-500) !important;
+}
+
+/* URL Reset Button */
+.url-reset-btn {
+    flex-shrink: 0 !important;
+    padding: 0.5rem 0.75rem !important;
+    border: 1px solid var(--neutral-300) !important;
+    background: none !important;
+    color: var(--neutral-600) !important;
+    font-size: 0.6875rem !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+}
+
+.url-reset-btn:hover {
+    border-color: var(--orange-500) !important;
+    color: var(--orange-600) !important;
+    background-color: var(--orange-50) !important;
+}
+
+.url-reset-btn i {
+    color: inherit !important;
+}
+
+[data-theme="dark"] .url-reset-btn {
+    border-color: var(--neutral-500) !important;
+    color: var(--neutral-600) !important;
+}
+
+[data-theme="dark"] .url-reset-btn:hover {
+    border-color: var(--orange-500) !important;
+    color: var(--orange-500) !important;
+    background-color: rgba(249, 115, 22, 0.1) !important;
+}
+
+/* Range Slider Container */
+.range-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+}
+
+.range-container .cycle-time-slider {
+    flex: 1 !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 !important;
+}
+
+.range-output {
+    min-width: 2.5rem !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.875rem !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .range-output {
+    color: var(--neutral-700) !important;
+}
+
+/* Textarea - Example Commands */
+textarea.device-example-command-input {
+    width: 100% !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.8125rem !important;
+    padding: 0.625rem !important;
+    border: 1px solid var(--neutral-300) !important;
+    background-color: var(--bg-tertiary) !important;
+    color: var(--neutral-900) !important;
+    min-height: auto !important;
+}
+
+[data-theme="dark"] textarea.device-example-command-input {
+    border-color: var(--neutral-500) !important;
+    background-color: var(--bg-tertiary) !important;
+    color: var(--neutral-700) !important;
+}
+
+/* Button Container (Save/Delete Footer) */
+.button-container {
+    display: flex !important;
+    gap: 0.75rem !important;
+    margin-top: 1.5rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid var(--neutral-200) !important;
+    align-items: center !important;
+}
+
+.button-container .btn-delete {
+    width: auto !important;
+}
+
+[data-theme="dark"] .button-container {
+    border-top-color: var(--neutral-400) !important;
+}
+
+/* Config Management Container */
+.config-management-container {
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+
+/* Select Container */
+.select-container {
+    max-width: 300px !important;
+}
+
+.select-container select {
+    width: 100% !important;
+}
+
+/* Brightness Panel */
+.brightness-panel {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 0.5rem !important;
+    max-width: 300px !important;
+}
+
+/* Small/Helper Text */
+.small-text {
+    color: var(--neutral-500) !important;
+    font-size: 0.75rem !important;
+    font-family: var(--font-mono) !important;
+}
+
+[data-theme="dark"] .small-text {
+    color: var(--neutral-500) !important;
+}
+
+/* Global Input Dark Theme Styles */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .notes-input,
+[data-theme="dark"] .select-container {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--neutral-500) !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] input[type="number"]:focus,
+[data-theme="dark"] input[type="time"]:focus,
+[data-theme="dark"] input[type="email"]:focus,
+[data-theme="dark"] input[type="password"]:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] .notes-input:focus,
+[data-theme="dark"] .select-container:focus {
+    border-color: var(--orange-500) !important;
+    box-shadow: 0 0 0 1px var(--orange-500) !important;
+}
+
+
+/* ===========================================
    GLOBAL MOBILE RESPONSIVE STYLES
    =========================================== */
 
@@ -3570,9 +3888,8 @@ input[type="checkbox"]:focus {
         font-size: 1.25rem !important;
     }
 
-    /* Brightness grid - 3 columns on mobile */
+    /* Brightness grid - keep 6 columns, just full width on mobile */
     .brightness-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
         max-width: 100% !important;
     }
 
@@ -3598,10 +3915,7 @@ input[type="checkbox"]:focus {
         font-size: 1rem !important;
     }
 
-    /* Brightness grid - 2 columns on very small */
-    .brightness-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
+
 
     /* Smaller buttons */
     .btn-create,
@@ -3703,9 +4017,8 @@ input[type="checkbox"]:focus {
         width: 100% !important;
     }
 
-    /* Brightness panel mobile - 3 columns */
+    /* Brightness panel - keep 6 columns, just full width on mobile */
     .brightness-panel {
-        grid-template-columns: repeat(3, 1fr) !important;
         max-width: 100% !important;
     }
 
@@ -3736,10 +4049,7 @@ input[type="checkbox"]:focus {
         font-size: 0.6875rem !important;
     }
 
-    /* Brightness panel mobile - 2 columns on very small */
-    .brightness-panel {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
+
 }
 
 
