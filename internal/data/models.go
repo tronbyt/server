@@ -239,7 +239,7 @@ func (b Brightness) UIScale(customScale map[int]int) int {
 	if customScale != nil {
 		// Use custom scale
 		// Sort keys to find brackets
-		var keys []int
+		keys := make([]int, 0, len(customScale))
 		for k := range customScale {
 			keys = append(keys, k)
 		}
@@ -250,7 +250,7 @@ func (b Brightness) UIScale(customScale map[int]int) int {
 			Level   int
 			Percent int
 		}
-		var pairs []scalePair
+		pairs := make([]scalePair, 0, len(keys))
 		for _, k := range keys {
 			pairs = append(pairs, scalePair{k, customScale[k]})
 		}

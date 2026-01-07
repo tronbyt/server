@@ -78,6 +78,25 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		return err
 	}
 
+	// Cleanup old custom firmware uploads
+	if files, err := os.ReadDir(firmwareDir); err == nil {
+		for _, f := range files {
+			if strings.HasPrefix(f.Name(), "custom_") {
+				info, err := f.Info()
+				if err != nil {
+					slog.Warn("Failed to get file info for custom firmware", "file", f.Name(), "error", err)
+					continue
+				}
+				// Cleanup files older than 24 hours
+				if time.Since(info.ModTime()) > 24*time.Hour {
+					if err := os.Remove(filepath.Join(firmwareDir, f.Name())); err != nil {
+						slog.Warn("Failed to delete old custom firmware", "file", f.Name(), "error", err)
+					}
+				}
+			}
+		}
+	}
+
 	versionFile := filepath.Join(firmwareDir, "firmware_version.txt")
 	currentVersion := ""
 	if data, err := os.ReadFile(versionFile); err == nil {
@@ -222,23 +241,79 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	binName := device.Type.FirmwareFilename(device.SwapColors)
-	if binName == "" {
-		s.flashAndRedirect(w, r, "OTA not supported for this device type", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
-		return
+	var updateURL string
+
+	// Check if a file was uploaded
+	if err := r.ParseMultipartForm(32 << 20); err == nil { // 32 MB max memory
+		file, _, err := r.FormFile("firmware_file")
+		if err == nil {
+			defer func() {
+				if err := file.Close(); err != nil {
+					slog.Error("Failed to close uploaded firmware file", "error", err)
+				}
+			}()
+
+			// Save to temp file in firmware dir
+			firmwareDir := filepath.Join(s.DataDir, "firmware")
+			if err := os.MkdirAll(firmwareDir, 0755); err != nil {
+				slog.Error("Failed to create firmware dir", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			// Use a random filename to avoid conflicts and caching
+			randomStr, err := generateSecureToken(8)
+			if err != nil {
+				slog.Error("Failed to generate secure token for firmware filename", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			tempFilename := fmt.Sprintf("custom_%s_%s.bin", device.ID, randomStr)
+			tempFilePath := filepath.Join(firmwareDir, tempFilename)
+
+			out, err := os.Create(tempFilePath)
+			if err != nil {
+				slog.Error("Failed to create temp firmware file", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			defer func() {
+				if err := out.Close(); err != nil {
+					slog.Error("Failed to close temp firmware file", "error", err)
+				}
+			}()
+
+			if _, err := io.Copy(out, file); err != nil {
+				slog.Error("Failed to save uploaded firmware", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			baseURL := s.GetBaseURL(r)
+			updateURL = fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), tempFilename)
+			slog.Info("Custom firmware uploaded", "device", device.ID, "url", updateURL)
+		}
 	}
 
-	firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
-	if _, err := os.Stat(firmwarePath); os.IsNotExist(err) {
-		s.flashAndRedirect(w, r, "Firmware binary not found. Please update firmware binaries in Admin settings.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
-		return
-	}
+	if updateURL == "" {
+		binName := device.Type.FirmwareFilename(device.SwapColors)
+		if binName == "" {
+			s.flashAndRedirect(w, r, "OTA not supported for this device type", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
 
-	// Construct URL
-	// Using the new /static/firmware/ route
-	baseURL := s.GetBaseURL(r)
-	// Ensure baseURL has no trailing slash, but /static/firmware/ does
-	updateURL := fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), binName)
+		firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
+		if _, err := os.Stat(firmwarePath); os.IsNotExist(err) {
+			s.flashAndRedirect(w, r, "Firmware binary not found. Please update firmware binaries in Admin settings.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
+
+		// Construct URL
+		// Using the new /static/firmware/ route
+		baseURL := s.GetBaseURL(r)
+		// Ensure baseURL has no trailing slash, but /static/firmware/ does
+		updateURL = fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), binName)
+	}
 
 	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", updateURL); err != nil {
 		slog.Error("Failed to save pending update", "error", err)
@@ -248,7 +323,14 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	device.PendingUpdateURL = updateURL
 
 	// Notify Device (to wake up WS loop)
-	s.Broadcaster.Notify(device.ID, nil)
+	payload := map[string]string{"ota_url": updateURL}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("Failed to marshal OTA payload", "error", err)
+		s.flashAndRedirect(w, r, "Internal Error", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
 
 	s.flashAndRedirect(w, r, "OTA Update queued. Device should update shortly.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 }
