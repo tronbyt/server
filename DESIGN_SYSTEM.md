@@ -1,403 +1,262 @@
-# Design System v1.0
+# Tronbyt Design System
 
 ## Overview
 
-This is a lightweight, framework-free design system built on systematic design tokens. The system is built using vanilla CSS, HTML, and semantic class naming following the BEM methodology.
+This design system is inspired by **Teenage Engineering** - clean, instrument-like interfaces with sharp edges, monospace typography, and a minimal color palette.
 
 ---
 
-## Phase 1: Design Token Reference
+## Color Palette
 
-### Color Palette
+All colors MUST use CSS variables. No hardcoded hex values.
 
-#### Backgrounds
+### Core Colors
 
-| Token | Light Mode | Dark Mode | Usage |
-|-------|-----------|-----------|-------|
-| `--bg-primary` | `#fafafa` | `#0a0a0a` | Page background |
-| `--bg-secondary` | `#ffffff` | `#171717` | Card backgrounds |
-| `--bg-tertiary` | `#f5f5f5` | `#262626` | Hover states, elevated elements |
-| `--bg-elevated` | `#ffffff` | `#262626` | Overlays, modals |
+| Variable | Light Mode | Dark Mode | Usage |
+|----------|------------|-----------|-------|
+| `--white` | `#ffffff` | `#171717` | Card backgrounds |
+| `--black` | `#000000` | `#000000` | LED displays, pure black |
+| `--bg-primary` | `#ffffff` | `#0a0a0a` | Page background |
+| `--bg-secondary` | `#fafafa` | `#171717` | Card backgrounds |
+| `--bg-tertiary` | `#f5f5f5` | `#262626` | Elevated/hover states |
 
-#### Borders
+### Neutral Palette
 
-| Token | Light Mode | Dark Mode | Usage |
-|-------|-----------|-----------|-------|
-| `--border-primary` | `#171717` | `#404040` | Main borders, card outlines |
-| `--border-secondary` | `#e5e5e5` | `#525252` | Dividers, subtle separators |
-| `--border-tertiary` | `#d4d4d4` | `#737373` | Nested dividers |
-| `--border-subtle` | `#f5f5f5` | `#262626` | Barely visible separators |
+| Variable | Light Mode | Dark Mode | Usage |
+|----------|------------|-----------|-------|
+| `--neutral-50` | `#fafafa` | `#0a0a0a` | Subtle backgrounds |
+| `--neutral-100` | `#f5f5f5` | `#171717` | Light backgrounds |
+| `--neutral-200` | `#e5e5e5` | `#262626` | Borders, dividers |
+| `--neutral-300` | `#d4d4d4` | `#404040` | Main borders |
+| `--neutral-400` | `#a3a3a3` | `#525252` | Subtle dividers, disabled |
+| `--neutral-500` | `#737373` | `#737373` | Muted text, icons |
+| `--neutral-600` | `#525252` | `#a3a3a3` | Secondary text |
+| `--neutral-700` | `#404040` | `#d4d4d4` | Body text |
+| `--neutral-900` | `#171717` | `#fafafa` | Primary text, headings |
 
-#### Text
+### Accent Colors
 
-| Token | Light Mode | Dark Mode | Usage |
-|-------|-----------|-----------|-------|
-| `--text-primary` | `#171717` | `#fafafa` | Headings, primary content |
-| `--text-secondary` | `#737373` | `#a3a3a3` | Supporting text, labels |
-| `--text-tertiary` | `#a3a3a3` | `#737373` | Muted text, placeholders |
-| `--text-disabled` | `#d4d4d4` | `#525252` | Disabled state text |
-| `--text-inverse` | `#ffffff` | `#0a0a0a` | Text on dark/light backgrounds |
+| Variable | Value | Usage |
+|----------|-------|-------|
+| `--orange-300` | `#fdba74` | Light accent backgrounds |
+| `--orange-400` | `#fb923c` | Hover states |
+| `--orange-500` | `#f97316` | Primary accent (active, selected) |
+| `--orange-600` | `#ea580c` | Dark accent hover |
 
-#### Accents
+### Danger Colors (Delete only)
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--accent-orange-500` | `#f97316` | Primary action color |
-| `--accent-orange-600` | `#ea580c` | Hover state for orange |
-| `--accent-red-500` | `#ef4444` | Destructive actions, errors |
-| `--accent-red-600` | `#dc2626` | Hover state for red |
-| `--accent-blue-400` | `#60a5fa` | Informational elements |
-| `--accent-yellow-300` | `#fcd34d` | Warnings, highlights |
-
-#### Semantic States
-
-| Token | Light Mode | Dark Mode | Usage |
-|-------|-----------|-----------|-------|
-| `--state-enabled` | `#171717` | `#000000` | Enabled badge background |
-| `--state-disabled` | `#e5e5e5` | `#404040` | Disabled badge background |
-| `--state-pinned` | `#171717` | `#fafafa` | Pinned state background |
-| `--state-active` | `#f97316` | `#f97316` | Active/playing state |
-| `--state-error` | `#ef4444` | `#ef4444` | Error states |
+| Variable | Value | Usage |
+|----------|-------|-------|
+| `--red-50` | `#fef2f2` / `#450a0a` | Danger hover background |
+| `--red-300` | `#fca5a5` | Danger borders |
+| `--red-500` | `#ef4444` | Danger primary |
+| `--red-600` | `#dc2626` | Danger hover |
 
 ---
 
-### Typography
+## Typography
 
-#### Font Families
+| Property | Value |
+|----------|-------|
+| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace` |
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, ...` | Primary interface font |
-| `--font-sans` | `-apple-system, BlinkMacSystemFont, ...` | Alternative sans-serif |
+### Text Styles
 
-#### Font Sizes
-
-| Token | Value | Pixels | Usage |
-|-------|-------|--------|-------|
-| `--font-size-xs` | `0.75rem` | 12px | Small labels, metadata |
-| `--font-size-sm` | `0.875rem` | 14px | Body text, buttons |
-| `--font-size-base` | `1rem` | 16px | Base body text |
-| `--font-size-lg` | `1.125rem` | 18px | Subheadings |
-| `--font-size-xl` | `1.25rem` | 20px | Card titles |
-| `--font-size-2xl` | `1.5rem` | 24px | Page headings |
-
-#### Font Weights
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--font-weight-normal` | `400` | Body text |
-| `--font-weight-medium` | `500` | Buttons, labels |
-| `--font-weight-semibold` | `600` | Badges, emphasis |
-| `--font-weight-bold` | `700` | Headings, strong emphasis |
-
-#### Line Heights
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--line-height-tight` | `1.25` | Headings, compact text |
-| `--line-height-normal` | `1.5` | Body text |
-| `--line-height-relaxed` | `1.625` | Long-form content |
+| Class/Usage | Font Size | Font Weight | Text Transform |
+|-------------|-----------|-------------|----------------|
+| `.control-label` | `0.6875rem` | 700 | UPPERCASE |
+| `.badge` | `0.625rem` | 600 | UPPERCASE |
+| Button labels | `0.6875rem` | 600 | UPPERCASE |
+| Body text | `0.875rem` | 400 | none |
 
 ---
 
-### Layout & Geometry
+## Border System
 
-#### Border Radius
+| Variable | Light Mode | Dark Mode | Usage |
+|----------|------------|-----------|-------|
+| `--border-primary` | `var(--neutral-200)` | `#404040` | Card borders |
+| `--border-secondary` | `var(--neutral-300)` | `#525252` | Subtle dividers |
 
-| Token | Value | Pixels | Usage |
-|-------|-------|--------|-------|
-| `--radius-none` | `0` | 0px | Sharp corners |
-| `--radius-sm` | `0.125rem` | 2px | Subtle rounding |
-| `--radius-md` | `0.25rem` | 4px | Standard components |
-| `--radius-lg` | `0.5rem` | 8px | Cards, panels |
-| `--radius-full` | `9999px` | — | Pills, circles |
-
-#### Border Width
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--border-width-thin` | `1px` | Default borders |
-| `--border-width-medium` | `2px` | Emphasis borders |
-| `--border-width-thick` | `4px` | Heavy borders |
-
-#### Spacing Scale (4px Grid)
-
-| Token | Value | Pixels | Usage |
-|-------|-------|--------|-------|
-| `--space-0` | `0` | 0px | No spacing |
-| `--space-1` | `0.25rem` | 4px | Tight spacing |
-| `--space-2` | `0.5rem` | 8px | Compact padding |
-| `--space-3` | `0.75rem` | 12px | Standard gaps |
-| `--space-4` | `1rem` | 16px | Medium padding |
-| `--space-5` | `1.25rem` | 20px | Comfortable spacing |
-| `--space-6` | `1.5rem` | 24px | Large gaps |
-| `--space-8` | `2rem` | 32px | Section spacing |
-| `--space-10` | `2.5rem` | 40px | Large sections |
-| `--space-12` | `3rem` | 48px | Page-level spacing |
+**Border radius**: `0` (ALWAYS - TE design uses sharp corners)
 
 ---
 
-### Effects
-
-#### Shadows
+## Spacing Scale
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px 0 rgba(0,0,0,0.05)` | Subtle depth |
-| `--shadow-base` | `0 1px 3px 0 rgba(0,0,0,0.1)` | Default elevation |
-| `--shadow-md` | `0 4px 6px -1px rgba(0,0,0,0.1)` | Cards, dropdowns |
-| `--shadow-lg` | `0 10px 15px -3px rgba(0,0,0,0.1)` | Modals, popovers |
-
-#### Transitions
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--transition-fast` | `100ms cubic-bezier(0.4,0,0.2,1)` | Quick feedback |
-| `--transition-base` | `150ms cubic-bezier(0.4,0,0.2,1)` | Standard transitions |
-| `--transition-slow` | `300ms cubic-bezier(0.4,0,0.2,1)` | Deliberate animations |
+| `--space-xs` | `0.25rem` | Tight gaps |
+| `--space-sm` | `0.5rem` | Small gaps, button gaps |
+| `--space-md` | `0.75rem` | Medium padding |
+| `--space-lg` | `1rem` | Large padding |
+| `--space-xl` | `1.5rem` | Section spacing |
 
 ---
 
-## Phase 2: Component Architecture
+## Button Types
 
-### App Card Component
+### Save/Primary Button
 
-The App Card is the first atomic component in our design system. It follows a systematic, token-based approach.
+| State | Light Mode | Dark Mode |
+|-------|------------|-----------|
+| **Default** | `bg: #171717` `text: #ffffff` | `bg: #fafafa` `text: #171717` |
+| **Hover** | `bg: #404040` | `bg: #e5e5e5` |
 
-#### Component Structure
+CSS Class: `.btn-pin.is-pinned`
+CSS Variables: `--btn-primary-bg`, `--btn-primary-text`, `--btn-primary-hover-bg`
 
-```
-.app-card
-├── .app-card__preview (2:1 aspect ratio container)
-│   ├── .app-card__preview-image
-│   └── .app-card__preview-overlay (conditional)
-│       └── .app-card__preview-overlay-badge
-├── .app-card__info
-│   ├── .app-card__title
-│   └── .app-card__meta
-│       └── .app-card__meta-item (repeatable)
-├── .app-card__status
-│   └── .app-card__badge (with modifiers)
-└── .app-card__actions
-    └── .app-card__action-btn (repeatable, with modifiers)
-```
+### Secondary Button
 
-#### BEM Naming Convention
+| State | Light Mode | Dark Mode |
+|-------|------------|-----------|
+| **Default** | `bg: #e5e5e5` `text: #404040` | `bg: #262626` `text: #d4d4d4` |
+| **Hover** | `bg: #d4d4d4` | `bg: #404040` |
 
-- **Block**: `.app-card` — The root component
-- **Element**: `.app-card__preview` — Child element (uses `__`)
-- **Modifier**: `.app-card__badge--enabled` — Variant state (uses `--`)
-- **State**: `.is-enabled` — JavaScript-driven state (uses `.is-`)
+CSS Class: `.btn-action-sm`, `.btn-tool`
+CSS Variables: `--btn-secondary-bg`, `--btn-secondary-text`, `--btn-secondary-hover-bg`
 
-#### The Preview Rule
+### Active/Selected State (Orange accent)
 
-The preview image container maintains a **strict 2:1 aspect ratio**:
+| State | Light Mode | Dark Mode |
+|-------|------------|-----------|
+| **Active** | `bg: #f97316` `text: #ffffff` | `bg: #f97316` `text: #ffffff` |
+| **Hover** | `bg: #ea580c` | `bg: #ea580c` |
+| **Deep Hover** | `bg: #c2410c` | `bg: #c2410c` |
 
+CSS Class: `.is-enabled`, `.active`, `.brightness-btn.active`
+CSS Variables: `--state-active-bg`, `--state-active-text`, `--state-active-hover-bg`, `--state-active-deep-hover-bg`
+
+### Danger/Delete Button
+
+| State | Light Mode | Dark Mode |
+|-------|------------|-----------|
+| **Default** | `border: #fca5a5` `text: #dc2626` `bg: transparent` | `border: #dc2626` `text: #f87171` |
+| **Hover** | `bg: #fef2f2` `border: #dc2626` | `bg: #dc2626` `text: #ffffff` |
+
+CSS Class: `.btn-delete`
+CSS Variables: `--btn-danger-bg`, `--btn-danger-text`, `--btn-danger-border`, `--btn-danger-hover-bg`
+
+---
+
+## Component Reference
+
+### Card Container
 ```css
-.app-card__preview {
-    width: 10rem;   /* 160px */
-    height: 5rem;   /* 80px - maintains 2:1 ratio */
+.card-container {
+    background: var(--white);
+    border: 1px solid var(--neutral-200);
+    border-radius: 0;
 }
 ```
 
-The image uses `object-fit: contain` to ensure the **full image is visible** without cropping:
-
+### Badge
 ```css
-.app-card__preview-image {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+.badge {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0;
+}
+
+.badge.black {
+    background: var(--neutral-900);
+    color: var(--white);
+}
+
+.badge.gray {
+    background: var(--neutral-200);
+    color: var(--neutral-700);
+}
+
+.badge.is-enabled {
+    background: var(--green-500);
+    color: var(--white);
 }
 ```
 
-#### Badge Variants
-
-| Class | Usage |
-|-------|-------|
-| `.app-card__badge--enabled` | Enabled state with orange border |
-| `.app-card__badge--disabled` | Disabled gray state |
-| `.app-card__badge--pinned` | Pinned state |
-| `.app-card__badge--autopin` | Auto-pin indicator |
-
-#### Action Button States
-
-| Class | Usage |
-|-------|-------|
-| `.app-card__action-btn--play.is-enabled` | Orange background when enabled |
-| `.app-card__action-btn--pin.is-pinned` | Inverted colors when pinned |
-| `.app-card__action-btn--delete:hover` | Red background on hover |
-
----
-
-## Implementation Guide
-
-### Step 1: Include the Design System
-
-Add to your HTML `<head>`:
-
-```html
-<link rel="stylesheet" href="/static/css/design-system.css">
-```
-
-### Step 2: Update Template Reference
-
-Replace the old app card template with the new one:
-
-```go
-// In your Go template file
-{{ template "app_card" . }}
-```
-
-### Step 3: Maintain Existing Functionality
-
-The redesigned card maintains all existing functionality:
-
-- ✅ Click-to-expand interaction
-- ✅ Drag-and-drop support
-- ✅ Enable/disable toggle
-- ✅ Pin/unpin functionality
-- ✅ Edit, preview, duplicate, delete actions
-- ✅ Inactive overlay for empty renders
-- ✅ Localization support
-- ✅ Accessibility (ARIA labels)
-
----
-
-## Design Principles
-
-### 1. Token-Driven Everything
-
-Every visual property references a design token. Never use hard-coded values in component styles.
-
-**Good:**
+### Small Action Button
 ```css
-.my-component {
-    color: var(--text-primary);
-    padding: var(--space-4);
+.btn-action-sm {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--neutral-200);
+    border-radius: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: var(--white);
+    color: var(--neutral-700);
 }
 ```
 
-**Bad:**
+### Tool Button (Icon only)
 ```css
-.my-component {
-    color: #171717;
-    padding: 16px;
+.btn-tool {
+    padding: 0.75rem;
+    border: 1px solid var(--neutral-200);
+    border-radius: 0;
+    background: var(--white);
+    color: var(--neutral-500);
 }
 ```
 
-### 2. Automatic Dark Mode
+### Dropdown Menu
+```css
+.dropdown-menu {
+    position: absolute;
+    border: 1px solid var(--neutral-300);
+    border-radius: 0;
+    background: var(--white);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
 
-The system uses `prefers-color-scheme` to automatically switch between light and dark modes. Components inherit the correct tokens.
-
-### 3. Systematic Spacing
-
-Always use the 4px spacing scale (`--space-*`). This ensures visual consistency.
-
-### 4. Semantic Class Names
-
-Use BEM methodology for clarity:
-- `.block` — Component root
-- `.block__element` — Child component
-- `.block__element--modifier` — Variant
-- `.is-state` — Dynamic state
-
-### 5. No Frameworks Required
-
-This system uses only vanilla CSS Grid and Flexbox. No CSS framework dependencies.
-
----
-
-## Browser Support
-
-- ✅ Modern browsers (Chrome, Firefox, Safari, Edge)
-- ✅ CSS Custom Properties (variables)
-- ✅ CSS Grid & Flexbox
-- ✅ `prefers-color-scheme` media query
-
----
-
-## Migration Path
-
-To migrate existing components to the design system:
-
-1. **Audit current styles** — Identify hard-coded colors, spacing, typography
-2. **Map to tokens** — Replace values with design tokens
-3. **Adopt BEM naming** — Rename classes to follow BEM convention
-4. **Test dark mode** — Verify components work in both light and dark modes
-5. **Remove framework dependencies** — Replace W3.CSS, Bootstrap, etc.
-
----
-
-## Next Steps
-
-### Expand the Component Library
-
-Build additional atomic components:
-- Buttons (primary, secondary, destructive)
-- Form inputs (text, select, checkbox)
-- Modals and dialogs
-- Navigation components
-- Data tables
-
-### Create Composition Patterns
-
-Document how to combine atomic components into larger patterns:
-- App list view (multiple cards)
-- Settings panels
-- Dashboard layouts
-
-### Establish Design Review Process
-
-Before adding new components:
-1. Extract tokens if new values are needed
-2. Follow BEM naming convention
-3. Ensure dark mode compatibility
-4. Test responsive behavior
-5. Document usage in this guide
-
----
-
-## File Structure
-
-```
-/web
-├── static/
-│   └── css/
-│       └── design-system.css          # Design tokens + App Card component
-└── templates/
-    └── partials/
-        ├── app_card.html               # Original (deprecated)
-        └── app_card_redesign.html      # New systematic version
+.dropdown-item {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--neutral-700);
+}
 ```
 
 ---
 
-## Maintenance
+## Icons
 
-### Adding New Tokens
+**Icon Library**: Lucide Icons (via `data-lucide` attribute)
 
-When adding new tokens:
-
-1. Add to the `:root` section in `design-system.css`
-2. Add dark mode override in `@media (prefers-color-scheme: dark)`
-3. Document in this file under the appropriate section
-4. Update the design token table
-
-### Versioning
-
-This design system follows semantic versioning:
-
-- **Major**: Breaking changes to token names or component structure
-- **Minor**: New components or non-breaking token additions
-- **Patch**: Bug fixes, documentation updates
-
-**Current Version**: `1.0.0`
+**Standard Sizes**:
+- Small: `14px × 14px` (badges, inline)
+- Medium: `16px × 16px` (buttons)
+- Large: `18px × 18px` (action buttons)
 
 ---
 
-## Credits
+## Do's and Don'ts
 
-**Design Philosophy**: Minimalist, high-performance, framework-free
-**Inspiration**: Apple/Meta design systems
-**Aesthetic**: Clean, systematic, maintainable
-**Built for**: Millions of users, low resource consumption
+### ✅ DO
+- Use CSS variables for ALL colors
+- Use `border-radius: 0` (sharp corners)
+- Use monospace font for controls
+- Use UPPERCASE for labels and badges
+- Use Lucide icons consistently
+
+### ❌ DON'T
+- Use hardcoded hex colors in component CSS
+- Use rounded corners
+- Mix icon libraries (no Font Awesome)
+- Use green except for success states
+- Use blue except for links
+
+---
+
+## Migration Checklist
+
+When updating existing components:
+
+1. [ ] Replace hardcoded hex colors with CSS variables
+2. [ ] Remove `border-radius` (or set to 0)
+3. [ ] Replace Font Awesome icons with Lucide
+4. [ ] Update button classes to TE system
+5. [ ] Ensure dark mode support via `[data-theme="dark"]`
