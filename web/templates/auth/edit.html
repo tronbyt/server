@@ -12,85 +12,91 @@
 
     <!-- System Administration (Admins Only) -->
     {{ if .User.IsAdmin }}
-    <div class="form-panel mb-8">
+    <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "System Administration" }}</h2>
         
-        <!-- System Apps Repo -->
-        <h3 class="subsection-title">{{ t .Localizer "System Apps Repository" }}</h3>
-            <div class="inset-panel">
-                <div class="grid-repo items-start">
-                     <div class="form-field">
-                        <label class="field-label">{{ t .Localizer "Current Repository" }}</label>
-                        {{ if .SystemRepoInfo }}
-                        <div>
-                            <div>
-                                <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-link" id="system-repo-url-link">{{ .SystemRepoInfo.URL }}</a>
+        <div class="form-grid gap-y-8">
+            <!-- System Apps Repo -->
+            <div class="form-field col-span-full">
+                <h3 class="field-label text-sm mb-4">{{ t .Localizer "System Apps Repository" }}</h3>
+                <div class="inset-panel">
+                    <div class="grid-repo items-start">
+                         <div class="form-field">
+                            <label class="field-label text-xs">{{ t .Localizer "Current Repository" }}</label>
+                            {{ if .SystemRepoInfo }}
+                            <div class="mt-1">
+                                <div>
+                                    <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-link font-bold" id="system-repo-url-link">{{ .SystemRepoInfo.URL }}</a>
+                                </div>
+                                <div class="field-hint text-xs mt-1" id="system-repo-branch"><strong>{{ t .Localizer "Branch" }}:</strong> {{ .SystemRepoInfo.Branch }}</div>
+                                <div class="field-hint text-xs">
+                                    <strong>{{ t .Localizer "Commit" }}:</strong>
+                                    <a href="{{ .SystemRepoInfo.CommitURL }}" target="_blank" class="text-link font-mono" title="{{ .SystemRepoInfo.CommitHash }}" id="system-repo-commit-link">
+                                        {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
+                                    </a>
+                                    {{ if .SystemRepoInfo.CommitDate }}
+                                    <span id="system-repo-commit-date" class="ml-2 opacity-70">{{ .SystemRepoInfo.CommitDate }}</span>
+                                    {{ end }}
+                                </div>
                             </div>
-                            <div class="field-hint" id="system-repo-branch">{{ t .Localizer "Branch" }}: {{ .SystemRepoInfo.Branch }}</div>
-                            <div class="field-hint">
-                                {{ t .Localizer "Commit" }}:
-                                <a href="{{ .SystemRepoInfo.CommitURL }}" target="_blank" class="text-link" title="{{ .SystemRepoInfo.CommitHash }}" id="system-repo-commit-link">
-                                    {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
-                                </a>
-                                {{ if .SystemRepoInfo.CommitDate }}
-                                <span id="system-repo-commit-date" class="ml-2">{{ .SystemRepoInfo.CommitDate }}</span>
-                                {{ end }}
-                            </div>
-                        </div>
-                        {{ else }}
-                        <div class="field-hint">{{ t .Localizer "No system repository configured." }}</div>
-                        {{ end }}
-                     </div>
-                     
-                    <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
-                        <button type="submit" class="btn-secondary">
-                            <i data-lucide="rotate-cw"></i> {{ t .Localizer "Refresh" }}
-                        </button>
-                    </form>
-                </div>
-
-                <div class="mt-4 pt-4 border-t">
-                    <form method="post" action="/set_system_repo" class="grid-repo items-end">
-                        <div class="form-field">
-                            <label for="app_repo_url" class="field-label">{{ t .Localizer "Change Repository URL" }}</label>
-                            <input name="app_repo_url" id="app_repo_url" required value="{{ .GlobalSystemRepoURL }}" class="field-input">
-                            <span class="field-hint">{{ t .Localizer "Replacing existing system repo will delete the previous repo and break any apps using it." }}</span>
-                        </div>
-                        <button type="submit" class="btn-save mb-0">
-                            <i data-lucide="save"></i> {{ t .Localizer "Save" }}
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-        <!-- Firmware Management -->
-        <h3 class="subsection-title mt-8">{{ t .Localizer "Firmware Management" }} <span id="firmware-management"></span></h3>
-        <div class="inset-panel">
-            <div class="grid-repo items-start">
-                <div class="form-field">
-                    <label class="field-label">{{ t .Localizer "Current Firmware" }}</label>
-                    {{ if .FirmwareVersion }}
-                    <div>
-                        <div id="firmware-version"><strong>{{ t .Localizer "Version" }}:</strong> {{ .FirmwareVersion }}</div>
-                        <div class="field-hint">{{ t .Localizer "Firmware is automatically updated when the server starts." }}</div>
+                            {{ else }}
+                            <div class="field-hint">{{ t .Localizer "No system repository configured." }}</div>
+                            {{ end }}
+                         </div>
+                         
+                        <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
+                            <button type="submit" class="btn-secondary">
+                                <i data-lucide="rotate-cw"></i> {{ t .Localizer "Refresh" }}
+                            </button>
+                        </form>
                     </div>
-                    {{ else }}
-                    <div class="field-hint">{{ t .Localizer "No firmware version information available" }}</div>
-                    {{ end }}
-                </div>
 
-                <form method="post" action="/update_firmware" onsubmit="event.preventDefault(); updateFirmware(this);">
-                    <button type="submit" class="btn-secondary">
-                        <i {{ if .FirmwareVersion }}data-lucide="rotate-cw"{{ else }}data-lucide="download"{{ end }}></i> 
-                        {{ if .FirmwareVersion }}{{ t .Localizer "Update" }}{{ else }}{{ t .Localizer "Download" }}{{ end }}
-                    </button>
-                </form>
+                    <div class="mt-6 pt-6 border-t">
+                        <form method="post" action="/set_system_repo" class="grid-repo items-end">
+                            <div class="form-field">
+                                <label for="app_repo_url" class="field-label text-xs">{{ t .Localizer "Change Repository URL" }}</label>
+                                <input name="app_repo_url" id="app_repo_url" required value="{{ .GlobalSystemRepoURL }}" class="field-input field-mono">
+                                <span class="field-hint mt-2">{{ t .Localizer "Replacing existing system repo will delete the previous repo and break any apps using it." }}</span>
+                            </div>
+                            <button type="submit" class="btn-create mb-0">
+                                <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            
-            <div class="alert alert-info mt-4">
-                <i data-lucide="info"></i>
-                <div class="alert-content">
-                    <p>{{ t .Localizer "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware." }}</p>
+
+            <!-- Firmware Management -->
+            <div class="form-field col-span-full">
+                <h3 class="field-label text-sm mb-4">{{ t .Localizer "Firmware Management" }}</h3>
+                <div class="inset-panel">
+                    <div class="grid-repo items-start">
+                        <div class="form-field">
+                            <label class="field-label text-xs">{{ t .Localizer "Current Firmware" }}</label>
+                            {{ if .FirmwareVersion }}
+                            <div class="mt-1">
+                                <div id="firmware-version" class="font-mono text-sm"><strong>{{ t .Localizer "Version" }}:</strong> {{ .FirmwareVersion }}</div>
+                                <div class="field-hint text-xs mt-1">{{ t .Localizer "Firmware is automatically updated when the server starts." }}</div>
+                            </div>
+                            {{ else }}
+                            <div class="field-hint">{{ t .Localizer "No firmware version information available" }}</div>
+                            {{ end }}
+                        </div>
+
+                        <form method="post" action="/update_firmware" onsubmit="event.preventDefault(); updateFirmware(this);">
+                            <button type="submit" class="btn-secondary">
+                                <i {{ if .FirmwareVersion }}data-lucide="rotate-cw"{{ else }}data-lucide="download"{{ end }}></i> 
+                                {{ if .FirmwareVersion }}{{ t .Localizer "Update" }}{{ else }}{{ t .Localizer "Download" }}{{ end }}
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="alert alert-info mt-6 bg-secondary border-neutral-200">
+                        <i data-lucide="info" class="text-muted"></i>
+                        <div class="alert-content">
+                            <p class="text-xs">{{ t .Localizer "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware." }}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -98,25 +104,25 @@
     {{ end }}
 
     <!-- User Custom Repo -->
-    <div class="form-panel mb-8">
+    <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Custom Apps Repository" }}</h2>
         <div class="inset-panel">
             <div class="grid-repo items-start">
                 <div class="form-field">
-                    <label class="field-label">{{ t .Localizer "Current Repository" }}</label>
+                    <label class="field-label text-xs">{{ t .Localizer "Current Repository" }}</label>
                     {{ if .UserRepoInfo }}
-                    <div>
+                    <div class="mt-1">
                          <div>
-                            <a href="{{ .UserRepoInfo.URL }}" target="_blank" class="text-link">{{ .UserRepoInfo.URL }}</a>
+                            <a href="{{ .UserRepoInfo.URL }}" target="_blank" class="text-link font-bold">{{ .UserRepoInfo.URL }}</a>
                         </div>
-                        <div class="field-hint">{{ t .Localizer "Branch" }}: {{ .UserRepoInfo.Branch }}</div>
-                        <div class="field-hint">
-                            {{ t .Localizer "Commit" }}:
-                            <a href="{{ .UserRepoInfo.CommitURL }}" target="_blank" class="text-link" title="{{ .UserRepoInfo.CommitHash }}">
+                        <div class="field-hint text-xs mt-1"><strong>{{ t .Localizer "Branch" }}:</strong> {{ .UserRepoInfo.Branch }}</div>
+                        <div class="field-hint text-xs">
+                            <strong>{{ t .Localizer "Commit" }}:</strong>
+                            <a href="{{ .UserRepoInfo.CommitURL }}" target="_blank" class="text-link font-mono" title="{{ .UserRepoInfo.CommitHash }}">
                                 {{ if .UserRepoInfo.CommitMessage }}{{ .UserRepoInfo.CommitMessage }}{{ else }}{{ substr .UserRepoInfo.CommitHash 0 8 }}{{ end }}
                             </a>
                             {{ if .UserRepoInfo.CommitDate }}
-                            <span class="ml-2">{{ .UserRepoInfo.CommitDate }}</span>
+                            <span class="ml-2 opacity-70">{{ .UserRepoInfo.CommitDate }}</span>
                             {{ end }}
                         </div>
                     </div>
@@ -142,14 +148,14 @@
                 {{ end }}
             </div>
 
-            <div class="mt-4 pt-4 border-t">
+            <div class="mt-6 pt-6 border-t">
                  <form method="post" action="/set_user_repo" class="grid-repo items-end">
                      <div class="form-field">
-                        <label for="user_repo_url" class="field-label">{{ t .Localizer "Change Repository URL" }}</label>
-                        <input name="app_repo_url" id="user_repo_url" required value="{{ .User.AppRepoURL }}" class="field-input">
-                        <span class="field-hint">{{ t .Localizer "Replacing an existing custom repo will delete the previous repo and break any apps using it." }}</span>
+                        <label for="user_repo_url" class="field-label text-xs">{{ t .Localizer "Change Repository URL" }}</label>
+                        <input name="app_repo_url" id="user_repo_url" required value="{{ .User.AppRepoURL }}" class="field-input field-mono">
+                        <span class="field-hint mt-2">{{ t .Localizer "Replacing an existing custom repo will delete the previous repo and break any apps using it." }}</span>
                      </div>
-                     <button type="submit" class="btn-save mb-0">
+                     <button type="submit" class="btn-create mb-0">
                         <i data-lucide="save"></i> {{ t .Localizer "Save" }}
                      </button>
                  </form>
@@ -158,148 +164,168 @@
     </div>
 
     <!-- Security Settings -->
-    <div class="form-panel mb-8">
+    <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Security Settings" }}</h2>
         
-        <!-- Profile Info -->
-        <h3 class="subsection-title">{{ t .Localizer "Profile Information" }}</h3>
-        <form method="post" class="form-section">
-            <div class="form-grid">
-                <div class="form-field">
-                    <label for="email" class="field-label">{{ t .Localizer "Email Address" }}</label>
-                    <input type="email" name="email" id="email" value="{{ if .User.Email }}{{ .User.Email }}{{ end }}" class="field-input">
-                </div>
-            </div>
-
-            <h4 class="font-bold text-sm mt-4 mb-2">{{ t .Localizer "Change Password" }}</h4>
-            <div class="form-grid">
-                <div class="form-field">
-                    <label for="old_password" class="field-label">{{ t .Localizer "Old Password" }}</label>
-                    <input type="password" name="old_password" id="old_password" class="field-input">
-                </div>
-                <div class="form-field">
-                    <label for="password" class="field-label">{{ t .Localizer "New Password" }}</label>
-                    <input type="password" name="password" id="password" class="field-input">
-                </div>
-            </div>
-
-            <div class="form-actions mt-4">
-                <button type="submit" class="btn-save">
-                    <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
-                </button>
-            </div>
-        </form>
-
-        <hr class="mt-8 mb-8 border-t">
-
-        <!-- API Key -->
-        <h3 class="subsection-title">{{ t .Localizer "API Key" }}</h3>
-        <div class="grid-repo items-end">
-            <form method="post" action="/auth/set_api_key" style="display: contents;">
-                <div class="form-field">
-                    <label for="api_key" class="field-label">{{ t .Localizer "User API Key" }}</label>
-                    <input type="text" name="api_key" id="api_key" required value="{{ .User.APIKey }}" class="field-input">
-                </div>
-                <button type="submit" class="btn-save mb-0" onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
-                    <i data-lucide="save"></i> {{ t .Localizer "Save" }}
-                </button>
-            </form>
-        </div>
-        
-        <form method="post" action="/auth/generate_api_key" class="mt-2">
-            <button type="submit" class="btn-secondary" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
-                <i data-lucide="rotate-cw"></i> {{ t .Localizer "Generate New API Key" }}
-            </button>
-        </form>
-
-        <hr class="mt-8 mb-8 border-t">
-
-        <!-- Passkeys -->
-        <h3 class="subsection-title">{{ t .Localizer "Passkeys" }}</h3>
-        <div id="webauthn-settings-container">
-            <div class="card-list mb-4">
-                {{ range .User.Credentials }}
-                <div class="card-item flex justify-between items-center p-4 border border-neutral-200 rounded mb-2">
-                    <div class="flex items-center gap-2">
-                        {{ $iconLight := webauthn_icon .Authenticator false }}
-                        {{ $iconDark := webauthn_icon .Authenticator true }}
-                        {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
-                        <div class="authenticator-icon-container">
-                            <img src="{{ $iconLight }}" alt="Auth Icon" class="auth-icon-light authenticator-icon">
-                            <img src="{{ $iconDark }}" alt="Auth Icon" class="auth-icon-dark authenticator-icon">
+        <div class="form-grid gap-y-10">
+            <!-- Profile Info -->
+            <div class="form-field col-span-full">
+                <h3 class="field-label text-sm mb-4">{{ t .Localizer "Profile Information" }}</h3>
+                <form method="post" class="inset-panel">
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="email" class="field-label text-xs">{{ t .Localizer "Email Address" }}</label>
+                            <input type="email" name="email" id="email" value="{{ if .User.Email }}{{ .User.Email }}{{ end }}" class="field-input">
                         </div>
-                        {{ else if or $iconLight $iconDark }}
-                        <img src="{{ or $iconLight $iconDark }}" alt="Auth Icon" class="authenticator-icon">
-                        {{ else }}
-                        <i data-lucide="key"></i>
-                        {{ end }}
-                        <span class="font-medium">{{ or .Name .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
                     </div>
-                    <button onclick="deletePasskey('{{ .ID }}')" class="btn-delete-icon" title="{{ t $.Localizer "Delete Passkey" }}">
-                        <i data-lucide="trash-2"></i>
+
+                    <h4 class="field-label text-xs mt-8 mb-4">{{ t .Localizer "Change Password" }}</h4>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="old_password" class="field-label text-xs">{{ t .Localizer "Old Password" }}</label>
+                            <input type="password" name="old_password" id="old_password" class="field-input">
+                        </div>
+                        <div class="form-field">
+                            <label for="password" class="field-label text-xs">{{ t .Localizer "New Password" }}</label>
+                            <input type="password" name="password" id="password" class="field-input">
+                        </div>
+                    </div>
+
+                    <div class="form-actions mt-8 flex justify-end">
+                        <button type="submit" class="btn-create">
+                            <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- API Key -->
+            <div class="form-field col-span-full">
+                <h3 class="field-label text-sm mb-4">{{ t .Localizer "API Key" }}</h3>
+                <div class="inset-panel">
+                    <div class="grid-repo items-end">
+                        <form method="post" action="/auth/set_api_key" style="display: contents;">
+                            <div class="form-field">
+                                <label for="api_key" class="field-label text-xs">{{ t .Localizer "User API Key" }}</label>
+                                <input type="text" name="api_key" id="api_key" required value="{{ .User.APIKey }}" class="field-input field-mono">
+                            </div>
+                            <button type="submit" class="btn-create mb-0" onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
+                                <i data-lucide="save"></i> {{ t .Localizer "Update" }}
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t flex justify-start">
+                        <form method="post" action="/auth/generate_api_key">
+                            <button type="submit" class="btn-secondary" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
+                                <i data-lucide="rotate-cw"></i> {{ t .Localizer "Generate New API Key" }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Passkeys -->
+    <div class="form-section">
+        <h2 class="section-title">{{ t .Localizer "Passkeys" }}</h2>
+        <div class="inset-panel" id="webauthn-settings-container">
+            <div class="card-list mb-6">
+                {{ range .User.Credentials }}
+                <div class="card-item flex justify-between items-center p-4 border border-neutral-200 bg-secondary mb-2">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-8 h-8 border border-neutral-300 bg-tertiary">
+                            {{ $iconLight := webauthn_icon .Authenticator false }}
+                            {{ $iconDark := webauthn_icon .Authenticator true }}
+                            {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
+                                <img src="{{ $iconLight }}" alt="Auth Icon" class="auth-icon-light authenticator-icon">
+                                <img src="{{ $iconDark }}" alt="Auth Icon" class="auth-icon-dark authenticator-icon">
+                            {{ else if or $iconLight $iconDark }}
+                                <img src="{{ or $iconLight $iconDark }}" alt="Auth Icon" class="authenticator-icon">
+                            {{ else }}
+                                <i data-lucide="key" class="icon-sm"></i>
+                            {{ end }}
+                        </div>
+                        <span class="font-mono text-sm font-bold">{{ or .Name .Authenticator }}{{ if ne .AttestationType "none" }} <span class="opacity-60 font-normal">({{ .AttestationType }})</span>{{ end }}</span>
+                    </div>
+                    <button onclick="deletePasskey('{{ .ID }}')" class="btn-delete px-3 py-2" title="{{ t $.Localizer "Delete Passkey" }}">
+                        <i data-lucide="trash-2" class="icon-sm mr-0"></i>
                     </button>
                 </div>
                 {{ else }}
-                <p class="field-hint">{{ t .Localizer "No passkeys registered." }}</p>
+                <p class="field-hint mb-4">{{ t .Localizer "No passkeys registered." }}</p>
                 {{ end }}
             </div>
             
-             <button onclick="registerPasskey()" class="btn-secondary" {{ if gt (len .User.Credentials) 0 }}disabled title="{{ t .Localizer "Only one passkey allowed" }}"{{ end }}>
-                <i data-lucide="fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
-            </button>
-             {{ if gt (len .User.Credentials) 0 }}
-            <p class="field-hint mt-2"><i data-lucide="info" class="icon-sm inline align-middle"></i> {{ t .Localizer "Only one passkey can be registered at a time. Delete the existing one to add a new device." }}</p>
-            {{ end }}
+            <div class="flex flex-col gap-3">
+                <button onclick="registerPasskey()" class="btn-secondary w-fit" {{ if gt (len .User.Credentials) 0 }}disabled title="{{ t .Localizer "Only one passkey allowed" }}"{{ end }}>
+                    <i data-lucide="fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
+                </button>
+                {{ if gt (len .User.Credentials) 0 }}
+                <p class="text-xs text-secondary font-mono">
+                    <i data-lucide="info" class="icon-sm inline align-text-bottom mr-1"></i> 
+                    {{ t .Localizer "Only one passkey can be registered at a time. Delete the existing one to add a new device." }}
+                </p>
+                {{ end }}
+            </div>
         </div>
     </div>
 
     <!-- Data Management -->
-    <div class="form-panel mb-8">
+    <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Data Management" }}</h2>
         
-        <div class="form-section">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="subsection-title mb-2">{{ t .Localizer "Export Configuration" }}</h3>
-                     <p class="field-hint">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</p>
+        <div class="form-grid gap-y-10">
+            <div class="form-field col-span-full">
+                <h3 class="field-label text-sm mb-4">{{ t .Localizer "Export Configuration" }}</h3>
+                <div class="inset-panel flex justify-between items-center bg-secondary">
+                    <div>
+                         <p class="text-sm font-bold">{{ t .Localizer "Export Settings" }}</p>
+                         <p class="field-hint mt-1">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</p>
+                    </div>
+                     <a href="/export_user_config" class="btn-secondary">
+                        <i data-lucide="download"></i> {{ t .Localizer "Export" }}
+                    </a>
                 </div>
-                 <a href="/export_user_config" class="btn-secondary">
-                    <i data-lucide="download"></i> {{ t .Localizer "Export" }}
-                </a>
             </div>
 
-            <hr class="mt-4 mb-4 border-t">
-
-             <div>
-                <h3 class="subsection-title mb-2">{{ t .Localizer "Import Configuration" }}</h3>
-                 <p class="field-hint mb-4">{{ t .Localizer "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password." }}</p>
-            </div>
-            
-            <form method="post" action="/import_user_config" enctype="multipart/form-data" class="grid-repo items-end">
-                <div class="form-field">
-                    <label for="file" class="field-label">{{ t .Localizer "Select JSON File" }}</label>
-                    <input type="file" name="file" id="file" accept=".json" required class="field-input p-2">
+            <div class="form-field col-span-full">
+                <h3 class="field-label text-sm mb-4">{{ t .Localizer "Import Configuration" }}</h3>
+                <div class="inset-panel border-warning bg-tertiary">
+                     <p class="text-sm font-bold mb-2">{{ t .Localizer "Important Note" }}</p>
+                     <p class="field-hint mb-6 flex items-start gap-2">
+                        <i data-lucide="alert-triangle" class="icon-sm text-orange-500 flex-shrink-0 mt-0.5"></i>
+                        {{ t .Localizer "Importing a configuration will replace your current settings, but preserve your login credentials." }}
+                     </p>
+                    
+                    <form method="post" action="/import_user_config" enctype="multipart/form-data" class="grid-repo items-end">
+                        <div class="form-field">
+                            <label for="file" class="field-label text-xs">{{ t .Localizer "Select JSON File" }}</label>
+                            <input type="file" name="file" id="file" accept=".json" required class="field-input p-2 font-mono text-xs">
+                        </div>
+                        <button type="submit" class="btn-secondary mb-0">
+                            <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
+                        </button>
+                    </form>
                 </div>
-                <button type="submit" class="btn-secondary mb-0">
-                    <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 
     <!-- About Server -->
-    <div class="text-center mt-8 text-neutral-500 text-sm">
+    <div class="text-center mt-12 pb-12 text-neutral-500">
         {{ if .UpdateAvailable }}
-        <div class="mb-4">
-            <a href="{{ .LatestReleaseURL }}" target="_blank" class="text-link font-bold flex items-center justify-center gap-2" style="color: var(--red-600) !important;">
-                <i data-lucide="arrow-up-circle"></i> {{ t .Localizer "Update available!" }}
+        <div class="mb-6">
+            <a href="{{ .LatestReleaseURL }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 border border-orange-500 text-orange-500 font-bold text-xs uppercase tracking-widest no-underline hover:bg-orange-500 hover:text-white transition-all">
+                <i data-lucide="arrow-up-circle" class="icon-sm"></i> {{ t .Localizer "Update available!" }}
             </a>
         </div>
         {{ end }}
-        <div>
-            {{ t .Localizer "Server" }} {{ .ServerVersion }}
+        <div class="font-mono text-[10px] uppercase tracking-widest opacity-60">
+            {{ t .Localizer "Tronbyt Server" }} — v{{ .ServerVersion }}
             {{ if .CommitHash }} 
-                (<a href="https://github.com/tronbyt/server/tree/{{ .CommitHash }}" target="_blank" class="text-link font-mono">{{ substr .CommitHash 0 7 }}</a>)
+                // <a href="https://github.com/tronbyt/server/tree/{{ .CommitHash }}" target="_blank" class="text-link">{{ substr .CommitHash 0 7 }}</a>
             {{ end }}
         </div>
     </div>
