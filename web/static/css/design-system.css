@@ -4020,3 +4020,10 @@ nav li a:hover {
 .flex-wrap { flex-wrap: wrap !important; }
 .w-auto { width: auto !important; }
 
+
+.max-w-md { max-width: 28rem !important; }
+.max-w-lg { max-width: 32rem !important; }
+
+.icon-hover-info { transition: color 0.15s !important; }
+.icon-hover-info:hover { color: var(--neutral-900) !important; }
+[data-theme="dark"] .icon-hover-info:hover { color: var(--neutral-400) !important; }

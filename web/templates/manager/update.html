@@ -46,12 +46,12 @@
 </script>
 {{ end }}
 {{ define "content" }}
-<div class="form-panel">
+<div class="dashboard-container">
     <form method="post" id="device-form">
         
         <!-- Action Bar Top -->
-        <div class="form-actions mb-8 flex justify-end">
-            <button type="button" class="btn-save" onclick="saveDeviceForm();">
+        <div class="form-actions mb-8 flex justify-end gap-2">
+            <button type="button" class="btn-create" onclick="saveDeviceForm();">
                 <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
             </button>
             <button type="button" class="btn-secondary" onclick="window.history.back()">
@@ -85,7 +85,7 @@
 
                 <div class="form-field">
                     <label for="img_url" class="field-label">{{ t .Localizer "Image URL" }}</label>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 max-w-md">
                         <input name="img_url" id="img_url" value="{{ .Device.ImgURL }}" oninput="updateExampleCommands()" class="field-input field-mono">
                         <button type="button" class="btn-secondary" onclick="resetImgUrl()" title="{{ t .Localizer "Reset to default" }}">
                             <i data-lucide="rotate-ccw"></i>
@@ -95,7 +95,7 @@
 
                 <div class="form-field">
                     <label for="ws_url" class="field-label">{{ t .Localizer "WebSocket URL" }}</label>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 max-w-md">
                         <input name="ws_url" id="ws_url" value="{{ .Device.WsURL }}" class="field-input field-mono">
                         <button type="button" class="btn-secondary" onclick="resetWsUrl()" title="{{ t .Localizer "Reset to default" }}">
                             <i data-lucide="rotate-ccw"></i>
@@ -120,17 +120,25 @@
             <h2 class="section-title">{{ t .Localizer "Display Settings" }}</h2>
             <div class="form-grid">
                 <div class="form-field">
-                    <label for="default_interval" class="field-label">{{ t .Localizer "App Cycle Time (Seconds)" }}</label>
-                    <div class="range-container">
-                        <input type="range" class="cycle-time-slider" name="default_interval" id="default_interval" min="1" max="30" value="{{ .Device.DefaultInterval }}" oninput="this.nextElementSibling.value = this.value">
-                        <output class="range-output">{{ .Device.DefaultInterval }}</output>
+                     <label class="field-label" for="default_interval">{{ t .Localizer "App Cycle Time (Seconds)" }}</label>
+                    <div class="slider-container">
+                        <span class="slider-label-min">1s</span>
+                        <input type="range"
+                               name="default_interval"
+                               class="cycle-time-slider"
+                               id="default_interval"
+                               min="1"
+                               max="30"
+                               value="{{ .Device.DefaultInterval }}"
+                               oninput="updateIntervalDisplay(this.value)">
+                        <span id="intervalValue" class="slider-value-label">{{ .Device.DefaultInterval }}s</span>
                     </div>
                 </div>
 
                 <div class="form-field">
                     <label for="color_filter" class="field-label">
                         {{ t .Localizer "Color Filter" }}
-                         <i data-lucide="info" class="icon-sm text-neutral-500 cursor-help" title="{{ t .Localizer "ColorFilterTooltip" }}"></i>
+                         <i data-lucide="info" class="icon-sm text-neutral-500 cursor-help icon-hover-info" title="{{ t .Localizer "ColorFilterTooltip" }}"></i>
                     </label>
                     <select name="color_filter" id="color_filter" class="field-select field-input">
                         {{ range .ColorFilterOptions }}
@@ -179,18 +187,33 @@
                             {{ end }}
                         </div>
                         <input type="hidden" name="custom_brightness_scale" id="custom_brightness_scale_hidden" value="{{ .Device.CustomBrightnessScale }}">
-                         <div class="alert alert-info mt-2 p-2">
-                            <i data-lucide="info" class="icon-sm"></i>
-                            <div class="alert-content text-xs">
-                                <strong>{{ t .Localizer "Default scale" }}:</strong> 0, 3, 5, 12, 35, 100
-                            </div>
-                        </div>
+                         <p class="text-neutral-500 text-xs mt-2 font-mono">
+                            <i data-lucide="info" class="icon-sm inline align-text-bottom mr-1"></i>
+                            <strong>{{ t .Localizer "Default scale" }}:</strong> 0, 3, 5, 12, 35, 100
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
         <script>
+            function updateIntervalDisplay(val) {
+                document.getElementById('intervalValue').innerText = val + 's';
+                const slider = document.getElementById('default_interval');
+                const min = parseInt(slider.min) || 1;
+                const max = parseInt(slider.max) || 30;
+                const percentage = ((val - min) / (max - min)) * 100;
+                slider.style.setProperty('--slider-value', percentage + '%');
+            }
+            
+            // Initialize slider on load
+            document.addEventListener('DOMContentLoaded', function() {
+                 const slider = document.getElementById('default_interval');
+                 if(slider) {
+                     updateIntervalDisplay(slider.value);
+                 }
+            });
+
             function toggleCustomBrightnessInputs() {
                 const checkbox = document.getElementById('use_custom_brightness_scale');
                 const inputs = document.getElementById('custom_brightness_inputs');
@@ -445,6 +468,7 @@
          </div>
     </form>
 </div>
+
 
 <form action="/devices/{{ .Device.ID }}/import_config" method="post" enctype="multipart/form-data" style="display: none">
     <input type="file" name="file" id="import_config_file" onchange="if(confirm('{{ t .Localizer "Overwrite all current settings and apps?" }}')) { this.form.submit(); } else { this.value = ''; }" accept=".json">
