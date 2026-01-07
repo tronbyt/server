@@ -13,8 +13,11 @@
         <div class="loading-spinner"></div>
         <p>{{ t .Localizer "Loading apps..." }}</p>
     </div>
-    <a class="w3-button w3-purple w3-round w3-padding"
-       href="/devices/{{ .Device.ID }}/uploadapp"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Upload app" }}</a>
+    <a class="btn-accent"
+       href="/devices/{{ .Device.ID }}/uploadapp">
+        <i data-lucide="cloud-upload" style="width: 18px; height: 18px;"></i>
+        <span>{{ t .Localizer "Upload app" }}</span>
+    </a>
     <form method="post" id="main_form">
         <label for="name">{{ t .Localizer "App Selection" }}</label>
         {{ if .CustomApps }}
@@ -62,8 +65,9 @@
                required>
         <label for="notes">{{ t .Localizer "Notes" }}</label>
         <textarea name="notes" id="notes"></textarea>
-        <button type="submit" class="w3-button w3-green">
-            <i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ t .Localizer "Configure" }}
+        <button type="submit" class="btn-create">
+            <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+            <span>{{ t .Localizer "Configure" }}</span>
         </button>
     </form>
 </div>

@@ -302,7 +302,7 @@ input[type="checkbox"]:focus {
 
 /* Override btn-delete width for this page */
 .button-container .btn-delete {
-  width: auto;
+  width: auto !important;
 }
 
 /* Brightness Panel - Reuse brightness-grid from design system */
@@ -483,3 +483,147 @@ div[style*="background-color: #f5f5f5"] {
 [data-theme="dark"] #custom_brightness_inputs div[style*="color: #666"] {
   color: var(--neutral-500) !important;
 }
+
+/* ===========================================
+   RESET BUTTON - Compact Inline Style
+   =========================================== */
+
+.url-reset-btn {
+  flex-shrink: 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  border: 1px solid var(--neutral-300) !important;
+  background: none !important;
+  color: var(--neutral-600) !important;
+  font-size: 0.6875rem !important;
+  white-space: nowrap !important;
+}
+
+.url-reset-btn:hover {
+  border-color: var(--orange-500) !important;
+  color: var(--orange-600) !important;
+  background-color: var(--orange-50) !important;
+}
+
+.url-reset-btn i {
+  color: inherit !important;
+}
+
+[data-theme="dark"] .url-reset-btn {
+  border-color: var(--neutral-500) !important;
+  color: var(--neutral-600) !important;
+}
+
+[data-theme="dark"] .url-reset-btn:hover {
+  border-color: var(--orange-500) !important;
+  color: var(--orange-500) !important;
+  background-color: rgba(249, 115, 22, 0.1) !important;
+}
+
+/* ===========================================
+   MOBILE RESPONSIVE STYLES
+   =========================================== */
+
+@media (max-width: 768px) {
+  /* Stack table rows vertically */
+  .device-settings-table,
+  .device-settings-table tbody,
+  .device-settings-table tr,
+  .device-settings-table td {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .device-settings-table td:first-child {
+    width: 100% !important;
+    padding-right: 0 !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .device-settings-table td:last-child {
+    width: 100% !important;
+  }
+
+  .device-settings-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* URL input container stacking */
+  .url-input-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .url-input-container input {
+    width: 100% !important;
+  }
+
+  .url-reset-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Button container stacking */
+  .button-container {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  .button-container .btn-save,
+  .button-container .btn-delete {
+    width: 100% !important;
+  }
+
+  /* Config management container */
+  .config-management-container {
+    flex-direction: column !important;
+  }
+
+  .config-management-container button {
+    width: 100% !important;
+  }
+
+  /* Header container mobile */
+  .header-container {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  #header-buttons {
+    width: 100% !important;
+    flex-direction: column !important;
+  }
+
+  #header-buttons button,
+  #header-buttons a {
+    width: 100% !important;
+  }
+
+  /* Brightness panel mobile - 3 columns */
+  .brightness-panel {
+    grid-template-columns: repeat(3, 1fr) !important;
+    max-width: 100% !important;
+  }
+
+  /* Select containers full width */
+  .select-container {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even smaller screens */
+  .device-settings-section {
+    padding: 1rem !important;
+  }
+
+  .section-title,
+  .device-settings-section h2 {
+    font-size: 0.75rem !important;
+  }
+
+  /* Brightness panel mobile - 2 columns on very small */
+  .brightness-panel {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+

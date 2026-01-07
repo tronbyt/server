@@ -2,55 +2,107 @@
 {{ template "base" . }}
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Register" }}{{ end }}
+{{ define "header" }}
+<div class="page-header">
+    <h1 class="page-title">{{ t .Localizer "REGISTER" }}</h1>
+</div>
+{{ end }}
 {{ define "content" }}
-<h1>{{ t .Localizer "Register" }}</h1>
-{{ if eq .Config.SingleUserAutoLogin "1" }}
-<div class="w3-panel w3-orange w3-border w3-border-orange w3-round-large"
-     style="margin-bottom: 20px">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 24px;">⚠️</span>
-        <div style="flex: 1;">
+<div class="form-panel auth-panel">
+
+    <!-- Single-User Auto-Login Warning -->
+    {{ if eq .Config.SingleUserAutoLogin "1" }}
+    <div class="alert alert-warning">
+        <i data-lucide="alert-triangle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+        <div class="alert-content">
             <strong>{{ t .Localizer "SINGLE-USER AUTO-LOGIN MODE ACTIVE" }}</strong>
-            <div style="font-size: 0.9em;">{{ t .Localizer "Authentication is disabled for private network access" }}</div>
+            <span>{{ t .Localizer "Authentication is disabled for private network access" }}</span>
         </div>
-        <span style="font-size: 24px;">⚠️</span>
+        <i data-lucide="alert-triangle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
     </div>
+    {{ end }}
+
+    <!-- Flash Messages -->
+    {{ if .Flashes }}
+    <div class="alert alert-error">
+        <i data-lucide="x-circle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+        <div class="alert-content">
+            {{ range .Flashes }}
+            <p>{{ . }}</p>
+            {{ end }}
+        </div>
+    </div>
+    {{ end }}
+
+    <form method="post" class="auth-form">
+        <!-- Username -->
+        <div class="form-field">
+            <label for="username" class="field-label field-required">{{ t .Localizer "USERNAME" }}</label>
+            <input name="username"
+                   id="username"
+                   type="text"
+                   required
+                   class="field-input"
+                   placeholder="{{ t .Localizer "Alpha-numeric only" }}">
+            <span class="field-hint">{{ t .Localizer "No special characters or symbols" }}</span>
+        </div>
+
+        <!-- Password -->
+        <div class="form-field">
+            <label for="password" class="field-label field-required">{{ t .Localizer "PASSWORD" }}</label>
+            <input name="password"
+                   id="password"
+                   type="password"
+                   required
+                   class="field-input">
+        </div>
+
+        <!-- Email -->
+        <div class="form-field">
+            <label for="email" class="field-label">
+                {{ t .Localizer "EMAIL" }}
+                <span class="field-optional">({{ t .Localizer "Optional" }})</span>
+            </label>
+            <input name="email"
+                   id="email"
+                   type="email"
+                   class="field-input"
+                   placeholder="{{ t .Localizer "email@example.com" }}">
+        </div>
+
+        <!-- Admin Checkbox (only for admins creating users) -->
+        {{ if and .User .User.IsAdmin }}
+        <div class="form-field form-field-checkbox">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_admin" id="is_admin">
+                <span>{{ t .Localizer "Administrator" }}</span>
+            </label>
+            <span class="field-hint">{{ t .Localizer "Grant administrator privileges to this user" }}</span>
+        </div>
+        {{ end }}
+
+        <!-- Submit Button -->
+        <div class="form-actions">
+            {{ if eq .UserCount 0 }}
+            <button type="submit" class="btn-create">
+                <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+                <span>{{ t .Localizer "Create Admin User" }}</span>
+            </button>
+            {{ else }}
+            <button type="submit" class="btn-create">
+                <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+                <span>{{ t .Localizer "Register" }}</span>
+            </button>
+            {{ end }}
+        </div>
+    </form>
 </div>
-{{ end }}
-{{ if .Flashes }}
-<div class="w3-panel w3-red">
-    {{ range .Flashes }}
-    <p>{{ . }}</p>
-    {{ end }}
-</div>
-{{ end }}
-<form method="post">
-    <label for="username">{{ t .Localizer "Username (alpha-numeric only, no symbols please.)" }}</label>
-    <input class="w3-input w3-border" name="username" id="username" required>
-    <br>
-    <label for="password">{{ t .Localizer "Password" }}</label>
-    <input class="w3-input w3-border"
-           type="password"
-           name="password"
-           id="password"
-           required>
-    <br>
-    <label for="email">{{ t .Localizer "Email Address (optional)" }}</label>
-    <input class="w3-input w3-border" type="email" name="email" id="email">
-    <br>
-    {{ if and .User .User.IsAdmin }}
-    <label for="is_admin">{{ t .Localizer "Administrator" }}</label>
-    <input class="w3-check" type="checkbox" name="is_admin" id="is_admin">
-    <br>
-    {{ end }}
-    {{ if eq .UserCount 0 }}
-    <button type="submit" class="w3-button w3-green">
-        <i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Create Admin User" }}
-    </button>
-{{ else }}
-    <button type="submit" class="w3-button w3-green">
-        <i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Register" }}
-    </button>
-    {{ end }}
-</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+</script>
 {{ end }}

@@ -31,7 +31,7 @@
             
             <div class="form-grid">
                 <div class="form-field">
-                    <label for="name" class="field-label">{{ t .Localizer "NAME" }}</label>
+                    <label for="name" class="field-label field-required">{{ t .Localizer "NAME" }}</label>
                     <input name="name"
                            id="name"
                            type="text"
@@ -155,22 +155,30 @@
         <!-- HIDDEN FIELDS -->
         <input type="hidden" name="api_key" id="api_key">
 
+        <!-- CONFIGURATION MANAGEMENT SECTION -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "CONFIGURATION MANAGEMENT" }}</h2>
+            <div class="config-management-container">
+                <button type="button"
+                        class="btn-action-sm"
+                        onclick="document.getElementById('import-file').click();">
+                    <i data-lucide="upload" style="width: 16px; height: 16px;"></i>
+                    {{ t .Localizer "Import Configuration" }}
+                </button>
+            </div>
+            <span class="field-hint">{{ t .Localizer "Import device settings from a previously exported configuration file." }}</span>
+        </div>
+
         <!-- ACTION BUTTONS -->
         <div class="form-actions">
-            <button type="submit" class="btn-primary">
-                <i data-lucide="save" style="width: 18px; height: 18px;"></i>
+            <button type="submit" class="btn-create">
+                <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i>
                 <span>{{ t .Localizer "Create Device" }}</span>
             </button>
-            <button type="button"
-                    class="btn-secondary"
-                    onclick="document.getElementById('import-file').click();">
-                <i data-lucide="upload" style="width: 18px; height: 18px;"></i>
-                <span>{{ t .Localizer "Import Configuration" }}</span>
-            </button>
-            <a href="/" class="btn-ghost">
+            <button type="button" class="btn-secondary" onclick="window.location.href='/';">
                 <i data-lucide="x" style="width: 18px; height: 18px;"></i>
                 <span>{{ t .Localizer "Cancel" }}</span>
-            </a>
+            </button>
         </div>
 
     </form>
