@@ -2,10 +2,6 @@ package server
 
 import "testing"
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestParseTimeInput(t *testing.T) {
 	tests := []struct {
 		input    string

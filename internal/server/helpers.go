@@ -563,3 +563,22 @@ func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
 	}
 	return fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, deviceID)
 }
+
+func stringPtr(s string) *string {
+	return &s
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+var rebootPayloadJSON = []byte(`{"reboot":true}`)
+
+func (s *Server) sendRebootCommand(deviceID string) error {
+	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: rebootPayloadJSON})
+	return nil
+}

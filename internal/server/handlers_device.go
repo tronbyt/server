@@ -891,15 +891,11 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleRebootDevice(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	// Send reboot command as JSON
-	payload := map[string]bool{"reboot": true}
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("Failed to marshal reboot payload", "error", err)
+	if err := s.sendRebootCommand(device.ID); err != nil {
+		slog.Error("Failed to send reboot command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
 
 	localizer := s.getLocalizer(r)
 	msg := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Reboot command sent to device."})
