@@ -6,12 +6,17 @@
 <div class="page-header">
     <div class="flex justify-between items-center gap-4 flex-wrap">
         <h1 class="page-title">{{ t .Localizer "Admin Dashboard" }}</h1>
-        {{ if .User }}
-        <a class="btn-create" href="/devices/create">
-            <i data-lucide="plus-circle"></i> 
-            {{ t .Localizer "New Tronbyt" }}
-        </a>
-        {{ end }}
+        <div class="flex gap-2">
+            <button type="button" class="btn-secondary" onclick="window.location.reload()" title="{{ t .Localizer "Refresh" }}">
+                <i data-lucide="rotate-ccw" class="icon-sm"></i>
+            </button>
+            {{ if .User }}
+            <a class="btn-create" href="/devices/create">
+                <i data-lucide="plus-circle"></i> 
+                {{ t .Localizer "New Tronbyt" }}
+            </a>
+            {{ end }}
+        </div>
     </div>
 </div>
 {{ end }}

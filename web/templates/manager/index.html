@@ -4,7 +4,7 @@
 {{ define "title" }}{{ t .Localizer "Home" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
-    <div class="flex justify-between items-center gap-4" style="flex-wrap: wrap;">
+    <div class="flex justify-between items-center gap-4 flex-wrap">
         <h1 class="page-title">{{ t .Localizer "Dashboard" }}</h1>
         {{ if .User }}
         <a class="btn-create" href="/devices/create">

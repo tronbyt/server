@@ -34,68 +34,71 @@
     </div>
     {{ end }}
 
-    <form method="post" class="auth-form">
-        <!-- Username -->
-        <div class="form-field">
-            <label for="username" class="field-label field-required">{{ t .Localizer "USERNAME" }}</label>
-            <input name="username"
-                   id="username"
-                   type="text"
-                   required
-                   class="field-input"
-                   placeholder="{{ t .Localizer "Alpha-numeric only" }}">
-            <span class="field-hint">{{ t .Localizer "No special characters or symbols" }}</span>
-        </div>
+    <div class="form-section">
+        <h2 class="section-title">{{ t .Localizer "Create Account" }}</h2>
+        <form method="post" class="auth-form">
+            <!-- Username -->
+            <div class="form-field">
+                <label for="username" class="field-label field-required">{{ t .Localizer "USERNAME" }}</label>
+                <input name="username"
+                       id="username"
+                       type="text"
+                       required
+                       class="field-input"
+                       placeholder="{{ t .Localizer "Alpha-numeric only" }}">
+                <span class="field-hint">{{ t .Localizer "No special characters or symbols" }}</span>
+            </div>
 
-        <!-- Password -->
-        <div class="form-field">
-            <label for="password" class="field-label field-required">{{ t .Localizer "PASSWORD" }}</label>
-            <input name="password"
-                   id="password"
-                   type="password"
-                   required
-                   class="field-input">
-        </div>
+            <!-- Password -->
+            <div class="form-field">
+                <label for="password" class="field-label field-required">{{ t .Localizer "PASSWORD" }}</label>
+                <input name="password"
+                       id="password"
+                       type="password"
+                       required
+                       class="field-input">
+            </div>
 
-        <!-- Email -->
-        <div class="form-field">
-            <label for="email" class="field-label">
-                {{ t .Localizer "EMAIL" }}
-                <span class="field-optional">({{ t .Localizer "Optional" }})</span>
-            </label>
-            <input name="email"
-                   id="email"
-                   type="email"
-                   class="field-input"
-                   placeholder="{{ t .Localizer "email@example.com" }}">
-        </div>
+            <!-- Email -->
+            <div class="form-field">
+                <label for="email" class="field-label">
+                    {{ t .Localizer "EMAIL" }}
+                    <span class="field-optional">({{ t .Localizer "Optional" }})</span>
+                </label>
+                <input name="email"
+                       id="email"
+                       type="email"
+                       class="field-input"
+                       placeholder="{{ t .Localizer "email@example.com" }}">
+            </div>
 
-        <!-- Admin Checkbox (only for admins creating users) -->
-        {{ if and .User .User.IsAdmin }}
-        <div class="form-field form-field-checkbox">
-            <label class="checkbox-label">
-                <input type="checkbox" name="is_admin" id="is_admin">
-                <span>{{ t .Localizer "Administrator" }}</span>
-            </label>
-            <span class="field-hint">{{ t .Localizer "Grant administrator privileges to this user" }}</span>
-        </div>
-        {{ end }}
-
-        <!-- Submit Button -->
-        <div class="form-actions">
-            {{ if eq .UserCount 0 }}
-            <button type="submit" class="btn-create">
-                <i data-lucide="user-plus"></i>
-                {{ t .Localizer "Create Admin User" }}
-            </button>
-            {{ else }}
-            <button type="submit" class="btn-create">
-                <i data-lucide="user-plus"></i>
-                {{ t .Localizer "Register" }}
-            </button>
+            <!-- Admin Checkbox (only for admins creating users) -->
+            {{ if and .User .User.IsAdmin }}
+            <div class="form-field form-field-checkbox">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_admin" id="is_admin">
+                    <span>{{ t .Localizer "Administrator" }}</span>
+                </label>
+                <span class="field-hint">{{ t .Localizer "Grant administrator privileges to this user" }}</span>
+            </div>
             {{ end }}
-        </div>
-    </form>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+                {{ if eq .UserCount 0 }}
+                <button type="submit" class="btn-create">
+                    <i data-lucide="user-plus"></i>
+                    {{ t .Localizer "Create Admin User" }}
+                </button>
+                {{ else }}
+                <button type="submit" class="btn-create">
+                    <i data-lucide="user-plus"></i>
+                    {{ t .Localizer "Register" }}
+                </button>
+                {{ end }}
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
