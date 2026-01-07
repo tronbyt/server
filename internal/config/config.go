@@ -34,6 +34,7 @@ type TemplateConfig struct {
 	SingleUserAutoLogin    string
 	SystemAppsAutoRefresh  string
 	Production             string
+	BaseURL                string
 }
 
 func LoadSettings() (*Settings, error) {

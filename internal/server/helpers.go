@@ -26,9 +26,9 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"gopkg.in/yaml.v3"
 )
 
 type ColorFilterOption struct {
@@ -115,6 +115,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 			SingleUserAutoLogin:    s.Config.SingleUserAutoLogin,
 			SystemAppsAutoRefresh:  s.Config.SystemAppsAutoRefresh,
 			Production:             s.Config.Production,
+			BaseURL:                s.GetBaseURL(r),
 		}
 	}
 

@@ -3,657 +3,406 @@
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
 {{ define "header" }}
-<link rel="stylesheet" href="/static/css/configapp-simple.css">
-<link rel="stylesheet" href="/static/css/updateapp-simple.css">
 <script src="/static/js/location.js"></script>
-<h1>{{ t .Localizer "Configuring" }} {{ .App.Iname }} ({{ .App.Name }})</h1>
+<div class="page-header">
+    <h1 class="page-title">{{ t .Localizer "Configuring" }}: {{ .App.Name }}</h1>
+</div>
 {{ end }}
 {{ define "content" }}
-<!-- Navigation and Toggle Buttons -->
-<div class="flex-container">
-    <!-- Toggle Buttons -->
-    <div class="toggle-buttons">
-        <button id="toggleConfigBtn"
-                class="w3-button"
-                style="background-color: var(--primary-color);
-                       color: white">
-            <i class="fa-solid fa-file-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show App Config" }}</span>
-        </button>
-        <button id="toggleDebugBtn"
-                class="w3-button"
-                style="background-color: var(--primary-color);
-                       color: white">
-            <i class="fa-solid fa-bug" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show Render Debug" }}</span>
-        </button>
-    </div>
-    <!-- Action Buttons -->
-    <div class="action-buttons">
-        <button type="submit"
-                form="dynamicForm"
-                class="w3-button w3-green w3-round"
-                id="saveButton">
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
-        </button>
-        <button type="button" class="w3-button w3-red w3-round" id="cancelButtonTop">
-            <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ t .Localizer "Cancel" }}
-        </button>
-    </div>
-</div>
-<!-- Config Content -->
-<div id="configContent" class="hidden">
-    <pre class="flash" id="configContentPre"></pre>
-</div>
-<!-- Debug Content -->
-<div id="debugContent" class="hidden">
-    <pre class="flash">{{ range .App.RenderMessages }}{{ . }}
-{{ end }}</pre>
-</div>
-<!-- App Preview -->
-<div class="app-img">
-    <img id="previewImage"
-         src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
-         alt="{{ t .Localizer "Preview" }}"
-         width="128"
-         height="64">
-    <div class="skeleton-loader"></div>
-</div>
-{{ if .AppMetadata }}
-<div class="app-metadata">
-    {{ if .AppMetadata.Summary }}
-    <p class="app-summary">{{ .AppMetadata.Summary }}</p>
-    {{ end }}
-    {{ if .AppMetadata.Desc }}
-    <div class="app-desc">{{ .AppMetadata.Desc }}</div>
-    {{ end }}
-</div>
-{{ end }}
-<form method="post" id="dynamicForm">
-    <!-- Schema Config Section -->
-    <h2>{{ t .Localizer "App Configuration" }}</h2>
-    <table id="schemaConfigContainer"
-           class="form-table"
-           style="border-spacing: 0 15px">
-        <!-- Schema fields will be injected here -->
-    </table>
-    <hr>
-    <!-- App Settings Section -->
-    <h2>{{ t .Localizer "Settings" }}</h2>
-    <table class="form-table">
-        <!-- Name (ReadOnly) -->
-        <tr>
-            <td>
-                <label>{{ t .Localizer "Name" }}</label>
-            </td>
-            <td>
-                <input type="text"
-                       id="name"
-                       name="name"
-                       class="form-control"
-                       value="{{ .App.Name }}"
-                       readonly>
-            </td>
-        </tr>
-        <!-- Enabled Status -->
-        <tr>
-            <td>
-                <label for="enabled">{{ t .Localizer "Enabled" }}</label>
-                <small>{{ t .Localizer "Enable or disable this app" }}</small>
-            </td>
-            <td>
-                <input name="enabled"
-                       type="checkbox"
-                       id="enabled"
-                       class="form-control"
-                       {{ if .App.Enabled }}
-                       checked
-                       {{ end }}
-                       data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
-            </td>
-        </tr>
-        <!-- Autopin Status -->
-        <tr>
-            <td>
-                <label for="autopin">{{ t .Localizer "Autopin" }}</label>
-                <small>{{ t .Localizer "Automatically pin this app when it renders successfully" }}</small>
-            </td>
-            <td>
-                <input name="autopin"
-                       type="checkbox"
-                       id="autopin"
-                       class="form-control"
-                       {{ if .App.AutoPin }}
-                       checked
-                       {{ end }}
-                       data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
-            </td>
-        </tr>
-        <!-- Render Interval -->
-        <tr>
-            <td>
-                <label for="uinterval">{{ t .Localizer "Render Interval Minutes" }}</label>
-                <small>{{ t .Localizer "Update every X minutes" }}</small>
-            </td>
-            <td>
-                <input type="number"
-                       name="uinterval"
-                       id="uinterval"
-                       min="0"
-                       class="form-control"
-                       value="{{ .App.UInterval }}"
-                       data-default="{{ .App.UInterval }}"
-                       required>
-            </td>
-        </tr>
-        <!-- Display Time -->
-        <tr>
-            <td>
-                <label for="display_time">{{ t .Localizer "Display Time Seconds" }}</label>
-                <small>{{ t .Localizer "0 for device default" }}</small>
-            </td>
-            <td>
-                <input type="number"
-                       name="display_time"
-                       id="display_time"
-                       min="0"
-                       class="form-control"
-                       value="{{ .App.DisplayTime }}"
-                       data-default="{{ .App.DisplayTime }}">
-            </td>
-        </tr>
-        <!-- Color Filter -->
-        <tr>
-            <td>
-                <label for="color_filter">{{ t .Localizer "Color Filter" }}</label>
-                <span class="tooltip-icon" title="{{ t .Localizer "ColorFilterTooltip" }}">ⓘ</span>
-                <small>{{ t .Localizer "Override device color filter" }}</small>
-            </td>
-            <td>
-                <select name="color_filter" id="color_filter" class="form-control">
-                    {{ range .ColorFilterOptions }}
-                    <option value="{{ .Value }}"
-                            {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}
-                            selected
-                            {{ end }}>{{ t $.Localizer .Name }}
-                    </option>
-                    {{ end }}
-                </select>
-            </td>
-        </tr>
-        <!-- Notes -->
-        <tr>
-            <td>
-                <label for="notes">{{ t .Localizer "Notes" }}</label>
-                <small>{{ t .Localizer "Optional notes about this app" }}</small>
-            </td>
-            <td>
-                <input name="notes"
-                       id="notes"
-                       class="form-control"
-                       value="{{ .App.Notes }}"
-                       data-default="{{ .App.Notes }}">
-            </td>
-        </tr>
-    </table>
-    <hr>
-    <!-- Schedule Section -->
-    <div class="schedule-section">
-        <h2>{{ t .Localizer "Schedule" }}</h2>
-        <table class="form-table">
-            <!-- Start Time -->
-            <tr>
-                <td>
-                    <label for="start_time">{{ t .Localizer "Start Time" }}</label>
-                    <small>{{ t .Localizer "When the app should start displaying" }}</small>
-                </td>
-                <td>
-                    <input type="time"
-                           name="start_time"
-                           id="start_time"
-                           class="form-control"
-                           value="{{ deref .App.StartTime }}"
-                           data-default="{{ deref .App.StartTime }}">
-                </td>
-            </tr>
-            <!-- End Time -->
-            <tr>
-                <td>
-                    <label for="end_time">{{ t .Localizer "End Time" }}</label>
-                    <small>{{ t .Localizer "When the app should stop displaying" }}</small>
-                </td>
-                <td>
-                    <input type="time"
-                           name="end_time"
-                           id="end_time"
-                           class="form-control"
-                           value="{{ deref .App.EndTime }}"
-                           data-default="{{ deref .App.EndTime }}">
-                </td>
-            </tr>
-        </table>
-        <!-- Legacy Schedule (Default) -->
-        <div id="legacy_schedule">
-            <h3>{{ t .Localizer "Active Days" }}</h3>
-            <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
-            <div style="margin-top: 10px;">
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="monday"
-                           {{ if or (contains .App.Days "monday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Monday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="tuesday"
-                           {{ if or (contains .App.Days "tuesday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Tuesday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="wednesday"
-                           {{ if or (contains .App.Days "wednesday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Wednesday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="thursday"
-                           {{ if or (contains .App.Days "thursday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Thursday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="friday"
-                           {{ if or (contains .App.Days "friday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Friday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="saturday"
-                           {{ if or (contains .App.Days "saturday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Saturday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="days"
-                           value="sunday"
-                           {{ if or (contains .App.Days "sunday") (eq (len .App.Days) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Sunday" }}
-                </label>
-            </div>
+<div class="dashboard-container">
+    <!-- Top Action Bar -->
+    <div class="form-actions mb-8 flex justify-between gap-3">
+        <div class="flex gap-2">
+            <button id="toggleConfigBtn" type="button" class="btn-secondary">
+                <i data-lucide="file-code"></i> <span class="button-label">{{ t .Localizer "Config" }}</span>
+            </button>
+            <button id="toggleDebugBtn" type="button" class="btn-secondary">
+                <i data-lucide="bug"></i> <span class="button-label">{{ t .Localizer "Debug" }}</span>
+            </button>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit" form="dynamicForm" class="btn-create" id="saveButton">
+                <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+            </button>
+            <button type="button" class="btn-secondary" id="cancelButtonTop">
+                <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+            </button>
         </div>
     </div>
-    <!-- Custom Recurrence Toggle -->
-    <div style="margin: 20px 0;">
-        <label for="use_custom_recurrence"
-               style="display: flex;
-                      align-items: center;
-                      gap: 10px">
-            <input type="checkbox"
-                   name="use_custom_recurrence"
-                   id="use_custom_recurrence"
-                   {{ if .App.UseCustomRecurrence }}
-                   checked
-                   {{ end }}
-                   onchange="toggleCustomRecurrence()">
-            <div>
-                <strong>{{ t .Localizer "Use Custom Recurrence" }}</strong>
-                <small style="display: block;
-                              color: var(--post-about-text);
-                              margin-top: 5px">
-                    {{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}
-                </small>
-            </div>
-        </label>
+    <!-- Config Content -->
+    <div id="configContent" class="hidden mb-6">
+        <div class="inset-panel bg-tertiary">
+            <div class="field-label mb-2">{{ t .Localizer "Raw JSON Config" }}</div>
+            <pre class="text-xs font-mono overflow-auto max-h-60" id="configContentPre"></pre>
+        </div>
     </div>
-    <!-- Custom Recurrence Section -->
-    <div id="custom_recurrence"
-         class="custom-recurrence-section"
-         style="display: none">
-        <h3>{{ t .Localizer "Custom Recurrence" }}</h3>
-        <table class="form-table">
-            <!-- Frequency -->
-            <tr>
-                <td>
-                    <label for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
-                    <small>{{ t .Localizer "How often the app should run" }}</small>
-                </td>
-                <td>
-                    <select name="recurrence_type"
-                            id="recurrence_type"
-                            class="form-control"
-                            onchange="toggleRecurrenceOptions()">
-                        <option value="daily"
-                                {{ if eq (string .App.RecurrenceType) "daily" }}
-                                selected
-                                {{ end }}>{{ t .Localizer "Daily" }}
-                        </option>
-                        <option value="weekly"
-                                {{ if eq (string .App.RecurrenceType) "weekly" }}
-                                selected
-                                {{ end }}>{{ t .Localizer "Weekly" }}
-                        </option>
-                        <option value="monthly"
-                                {{ if eq (string .App.RecurrenceType) "monthly" }}
-                                selected
-                                {{ end }}>{{ t .Localizer "Monthly" }}
-                        </option>
-                        <option value="yearly"
-                                {{ if eq (string .App.RecurrenceType) "yearly" }}
-                                selected
-                                {{ end }}>{{ t .Localizer "Yearly" }}
-                        </option>
+    <!-- Debug Content -->
+    <div id="debugContent" class="hidden mb-6">
+        <div class="inset-panel bg-tertiary">
+            <div class="field-label mb-2">{{ t .Localizer "Render Messages" }}</div>
+            <pre class="text-xs font-mono overflow-auto max-h-60">{{ range .App.RenderMessages }}{{ . }}
+{{ else }}{{ t .Localizer "No debug logs available." }}{{ end }}</pre>
+        </div>
+    </div>
+
+    <!-- Preview & App Info -->
+    <div class="form-section">
+        <div class="flex flex-col md:flex-row gap-6 items-start">
+            <div class="flex flex-col items-center gap-2">
+                <div class="bg-black p-3 border border-neutral-800 rounded">
+                    <img id="previewImage"
+                         src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+                         alt="{{ t .Localizer "Preview" }}"
+                         width="256"
+                         height="128"
+                         style="image-rendering: pixelated; display: block;">
+                </div>
+                <span class="text-[10px] font-mono uppercase tracking-wider opacity-50">{{ .App.Iname }}</span>
+            </div>
+            {{ if .AppMetadata }}
+            <div class="flex-1">
+                {{ if .AppMetadata.Summary }}
+                <p class="font-bold mb-2">{{ .AppMetadata.Summary }}</p>
+                {{ end }}
+                {{ if .AppMetadata.Desc }}
+                <div class="text-secondary text-sm leading-relaxed">{{ .AppMetadata.Desc }}</div>
+                {{ end }}
+                {{ if .AppMetadata.Author }}
+                <div class="mt-3 pt-3 border-t border-neutral-300 dark:border-neutral-700 text-xs font-mono opacity-60">
+                    {{ t .Localizer "Author" }}: {{ .AppMetadata.Author }}
+                </div>
+                {{ end }}
+            </div>
+            {{ end }}
+        </div>
+    </div>
+
+    <form method="post" id="dynamicForm">
+        <!-- Schema Config Section -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "App Configuration" }}</h2>
+            <div id="schemaConfigContainer" class="form-grid">
+                <!-- Schema fields will be injected here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- App Settings Section -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Display Settings" }}</h2>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label class="field-label" for="uinterval">{{ t .Localizer "Render Interval (Minutes)" }}</label>
+                    <input type="number" name="uinterval" id="uinterval" min="0" class="field-input"
+                           value="{{ .App.UInterval }}" data-default="{{ .App.UInterval }}" required>
+                    <span class="field-hint">{{ t .Localizer "Update every X minutes" }}</span>
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label" for="display_time">{{ t .Localizer "Display Time (Seconds)" }}</label>
+                    <input type="number" name="display_time" id="display_time" min="0" class="field-input"
+                           value="{{ .App.DisplayTime }}" data-default="{{ .App.DisplayTime }}">
+                    <span class="field-hint">{{ t .Localizer "0 for device default" }}</span>
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label" for="color_filter">
+                        {{ t .Localizer "Color Filter" }}
+                        <span class="icon-hover-info ml-1" title="{{ t .Localizer "ColorFilterTooltip" }}">
+                            <i data-lucide="info" class="icon-sm text-muted"></i>
+                        </span>
+                    </label>
+                    <select name="color_filter" id="color_filter" class="field-select field-input">
+                        {{ range .ColorFilterOptions }}
+                        <option value="{{ .Value }}" {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
+                        {{ end }}
                     </select>
-                </td>
-            </tr>
-            <!-- Repeat Interval -->
-            <tr>
-                <td>
-                    <label for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
-                    <small>{{ t .Localizer "Interval between occurrences" }}</small>
-                </td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="number"
-                               name="recurrence_interval"
-                               id="recurrence_interval"
-                               min="1"
-                               max="52"
-                               class="form-control"
-                               value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}"
-                               style="width: 100px">
-                        <span id="interval_unit">{{ t .Localizer "days" }}</span>
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label" for="notes">{{ t .Localizer "Notes" }}</label>
+                    <input name="notes" id="notes" class="field-input"
+                           value="{{ .App.Notes }}" data-default="{{ .App.Notes }}"
+                           placeholder="{{ t .Localizer "Optional reference name" }}">
+                </div>
+
+                <div class="form-field col-span-full">
+                    <div class="flex flex-wrap gap-6">
+                        <div class="form-field-checkbox">
+                            <label class="checkbox-label" for="enabled">
+                                <input name="enabled" type="checkbox" id="enabled" {{ if .App.Enabled }}checked{{ end }}
+                                       data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
+                                <span>{{ t .Localizer "Enabled" }}</span>
+                            </label>
+                        </div>
+                        <div class="form-field-checkbox">
+                            <label class="checkbox-label" for="autopin">
+                                <input name="autopin" type="checkbox" id="autopin" {{ if .App.AutoPin }}checked{{ end }}
+                                       data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
+                                <span>{{ t .Localizer "Auto-pin successful renders" }}</span>
+                            </label>
+                        </div>
                     </div>
-                </td>
-            </tr>
-            <!-- Start Date -->
-            <tr>
-                <td>
-                    <label for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
-                    <small>{{ t .Localizer "When the recurrence should begin" }}</small>
-                </td>
-                <td>
-                    <input type="date"
-                           name="recurrence_start_date"
-                           id="recurrence_start_date"
-                           class="form-control"
+                </div>
+            </div>
+        </div>
+        <!-- Schedule Section -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Schedule" }}</h2>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label class="field-label" for="start_time">{{ t .Localizer "Daily Start Time" }}</label>
+                    <input type="time" name="start_time" id="start_time" class="field-input"
+                           value="{{ deref .App.StartTime }}" data-default="{{ deref .App.StartTime }}">
+                </div>
+                <div class="form-field">
+                    <label class="field-label" for="end_time">{{ t .Localizer "Daily End Time" }}</label>
+                    <input type="time" name="end_time" id="end_time" class="field-input"
+                           value="{{ deref .App.EndTime }}" data-default="{{ deref .App.EndTime }}">
+                </div>
+            </div>
+
+            <!-- Legacy Schedule (Default) -->
+            <div id="legacy_schedule" class="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+                <label class="field-label mb-4 block">{{ t .Localizer "Active Days" }}</label>
+                <div class="flex flex-wrap gap-x-6 gap-y-3">
+                    {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="days" value="{{ $day }}" {{ if or (contains $.App.Days $day) (eq (len $.App.Days) 0) }}checked{{ end }}>
+                        <span class="capitalize">{{ t $.Localizer $day }}</span>
+                    </label>
+                    {{ end }}
+                </div>
+                <span class="field-hint mt-3 block">{{ t .Localizer "If no days are selected, the app will run every day." }}</span>
+            </div>
+
+            <!-- Custom Recurrence Toggle -->
+            <div class="form-field-checkbox mt-6">
+                <label class="checkbox-label" for="use_custom_recurrence">
+                    <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence"
+                           {{ if .App.UseCustomRecurrence }}checked{{ end }} onchange="toggleCustomRecurrence()">
+                    <span>{{ t .Localizer "Use Custom Recurrence" }}</span>
+                </label>
+                <span class="field-hint ml-6">{{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}</span>
+            </div>
+        </div>
+        <!-- Custom Recurrence Section -->
+        <div id="custom_recurrence" class="form-section hidden mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+            <h3 class="section-title">{{ t .Localizer "Custom Recurrence" }}</h3>
+            <div class="form-grid">
+                <!-- Frequency -->
+                <div class="form-field">
+                    <label class="field-label" for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
+                    <select name="recurrence_type" id="recurrence_type" class="field-select field-input" onchange="toggleRecurrenceOptions()">
+                        <option value="daily" {{ if eq (string .App.RecurrenceType) "daily" }}selected{{ end }}>{{ t .Localizer "Daily" }}</option>
+                        <option value="weekly" {{ if eq (string .App.RecurrenceType) "weekly" }}selected{{ end }}>{{ t .Localizer "Weekly" }}</option>
+                        <option value="monthly" {{ if eq (string .App.RecurrenceType) "monthly" }}selected{{ end }}>{{ t .Localizer "Monthly" }}</option>
+                        <option value="yearly" {{ if eq (string .App.RecurrenceType) "yearly" }}selected{{ end }}>{{ t .Localizer "Yearly" }}</option>
+                    </select>
+                </div>
+
+                <!-- Repeat Interval -->
+                <div class="form-field">
+                    <label class="field-label" for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52"
+                               class="field-input" style="width: 80px;"
+                               value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}">
+                        <span id="interval_unit" class="text-secondary">{{ t .Localizer "days" }}</span>
+                    </div>
+                </div>
+
+                <!-- Start Date -->
+                <div class="form-field">
+                    <label class="field-label" for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
+                    <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="field-input"
                            value="{{ deref .App.RecurrenceStartDate }}">
-                </td>
-            </tr>
-            <!-- End Date -->
-            <tr>
-                <td>
-                    <label for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
-                    <small>{{ t .Localizer "When the recurrence should stop" }}</small>
-                </td>
-                <td>
-                    <input type="date"
-                           name="recurrence_end_date"
-                           id="recurrence_end_date"
-                           class="form-control"
+                </div>
+
+                <!-- End Date -->
+                <div class="form-field">
+                    <label class="field-label" for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
+                    <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="field-input"
                            value="{{ deref .App.RecurrenceEndDate }}">
-                </td>
-            </tr>
-        </table>
-        <!-- Weekly Options -->
-        <div id="weekly_options" style="display: none; margin-top: 20px;">
-            <h4>{{ t .Localizer "Weekly Options" }}</h4>
-            <label for="weekdays">{{ t .Localizer "Active Days" }}</label>
-            <small>{{ t .Localizer "(none selected is ALL selected)" }}</small>
-            <div style="margin-top: 10px;">
+                </div>
+            </div>
+
+            <!-- Weekly Options -->
+            <div id="weekly_options" class="hidden mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                <label class="field-label mb-4 block">{{ t .Localizer "Active Days for Weekly" }}</label>
                 {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
                 {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="monday"
-                           {{ if or (contains $weekdays "monday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Monday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="tuesday"
-                           {{ if or (contains $weekdays "tuesday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Tuesday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="wednesday"
-                           {{ if or (contains $weekdays "wednesday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Wednesday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="thursday"
-                           {{ if or (contains $weekdays "thursday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Thursday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="friday"
-                           {{ if or (contains $weekdays "friday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Friday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="saturday"
-                           {{ if or (contains $weekdays "saturday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Saturday" }}
-                </label>
-                <label style="display: inline-block; margin-right: 15px; margin-bottom: 5px">
-                    <input type="checkbox"
-                           name="weekdays"
-                           value="sunday"
-                           {{ if or (contains $weekdays "sunday") (eq (len $weekdays) 0) }}
-                           checked
-                           {{ end }}> {{ t .Localizer "Sunday" }}
-                </label>
+                <div class="flex flex-wrap gap-x-6 gap-y-3">
+                    {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="weekdays" value="{{ $day }}" {{ if or (contains $weekdays $day) (eq (len $weekdays) 0) }}checked{{ end }}>
+                        <span class="capitalize">{{ t $.Localizer $day }}</span>
+                    </label>
+                    {{ end }}
+                </div>
             </div>
-        </div>
-        <!-- Monthly Options -->
-        <div id="monthly_options" style="display: none; margin-top: 20px;">
-            <h4>{{ t .Localizer "Monthly Options" }}</h4>
-            <table class="form-table">
-                <!-- Monthly Pattern -->
-                <tr>
-                    <td>
-                        <label for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
-                        <small>{{ t .Localizer "Choose how to specify the monthly occurrence" }}</small>
-                    </td>
-                    <td>
-                        <select name="monthly_pattern" id="monthly_pattern" class="form-control">
-                            {{ $dom := index .App.RecurrencePattern "day_of_month" }}
-                            {{ $dow := index .App.RecurrencePattern "day_of_week" }}
-                            {{ $current_pattern := "day_of_month" }}
-                            {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
-                            <option value="day_of_month"
-                                    {{ if eq $current_pattern "day_of_month" }}
-                                    selected
-                                    {{ end }}>{{ t .Localizer "Day of Month" }}
-                            </option>
-                            <option value="day_of_week"
-                                    {{ if eq $current_pattern "day_of_week" }}
-                                    selected
-                                    {{ end }}>{{ t .Localizer "Day of Week" }}
-                            </option>
+
+            <!-- Monthly Options -->
+            <div id="monthly_options" class="hidden mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                {{ $dom := index .App.RecurrencePattern "day_of_month" }}
+                {{ $dow := index .App.RecurrencePattern "day_of_week" }}
+                {{ $current_pattern := "day_of_month" }}
+                {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label" for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
+                        <select name="monthly_pattern" id="monthly_pattern" class="field-select field-input" onchange="toggleMonthlyPatternOptions()">
+                            <option value="day_of_month" {{ if eq $current_pattern "day_of_month" }}selected{{ end }}>{{ t .Localizer "Day of Month" }}</option>
+                            <option value="day_of_week" {{ if eq $current_pattern "day_of_week" }}selected{{ end }}>{{ t .Localizer "Day of Week" }}</option>
                         </select>
-                    </td>
-                </tr>
-            </table>
-            <!-- Day of Month Option -->
-            <div id="day_of_month_option">
-                <table class="form-table">
-                    <tr>
-                        <td>
-                            <label for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
-                            <small>{{ t .Localizer "Which day of the month (1-31)" }}</small>
-                        </td>
-                        <td>
-                            <input type="number"
-                                   name="day_of_month"
-                                   id="day_of_month"
-                                   min="1"
-                                   max="31"
-                                   class="form-control"
-                                   value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <!-- Day of Week Option -->
-            <div id="day_of_week_option" style="display: none;">
-                <table class="form-table">
-                    <tr>
-                        <td>
-                            <label for="day_of_week_pattern">{{ t .Localizer "Day of Week Pattern" }}</label>
-                            <small>{{ t .Localizer "Which occurrence of which day" }}</small>
-                        </td>
-                        <td>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <select name="week_occurrence" id="week_occurrence" class="form-control">
-                                    <option value="first">{{ t .Localizer "First" }}</option>
-                                    <option value="second">{{ t .Localizer "Second" }}</option>
-                                    <option value="third">{{ t .Localizer "Third" }}</option>
-                                    <option value="fourth">{{ t .Localizer "Fourth" }}</option>
-                                    <option value="last">{{ t .Localizer "Last" }}</option>
-                                </select>
-                                <select name="week_day" id="week_day" class="form-control">
-                                    <option value="monday">{{ t .Localizer "Monday" }}</option>
-                                    <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
-                                    <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
-                                    <option value="thursday">{{ t .Localizer "Thursday" }}</option>
-                                    <option value="friday">{{ t .Localizer "Friday" }}</option>
-                                    <option value="saturday">{{ t .Localizer "Saturday" }}</option>
-                                    <option value="sunday">{{ t .Localizer "Sunday" }}</option>
-                                </select>
-                                <!-- Hidden input to combine the values for form submission -->
-                                <input type="hidden"
-                                       name="day_of_week_pattern"
-                                       id="day_of_week_pattern"
-                                       value="{{ if $dow }}{{ $dow }}{{ end }}">
-                            </div>
-                        </td>
-                    </tr>
-                </table>
+                    </div>
+
+                    <!-- Day of Month Option -->
+                    <div id="day_of_month_option" class="form-field">
+                        <label class="field-label" for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
+                        <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="field-input"
+                               value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}" style="width: 80px;">
+                        <span class="field-hint">{{ t .Localizer "Which day of the month (1-31)" }}</span>
+                    </div>
+                </div>
+
+                <!-- Day of Week Option -->
+                <div id="day_of_week_option" class="hidden form-grid mt-4">
+                    <div class="form-field">
+                        <label class="field-label">{{ t .Localizer "Day of Week Pattern" }}</label>
+                        <div class="flex gap-3 items-center">
+                            <select name="week_occurrence" id="week_occurrence" class="field-select field-input" onchange="updateDayOfWeekPattern()">
+                                <option value="first">{{ t .Localizer "First" }}</option>
+                                <option value="second">{{ t .Localizer "Second" }}</option>
+                                <option value="third">{{ t .Localizer "Third" }}</option>
+                                <option value="fourth">{{ t .Localizer "Fourth" }}</option>
+                                <option value="last">{{ t .Localizer "Last" }}</option>
+                            </select>
+                            <select name="week_day" id="week_day" class="field-select field-input" onchange="updateDayOfWeekPattern()">
+                                <option value="monday">{{ t .Localizer "Monday" }}</option>
+                                <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
+                                <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
+                                <option value="thursday">{{ t .Localizer "Thursday" }}</option>
+                                <option value="friday">{{ t .Localizer "Friday" }}</option>
+                                <option value="saturday">{{ t .Localizer "Saturday" }}</option>
+                                <option value="sunday">{{ t .Localizer "Sunday" }}</option>
+                            </select>
+                            <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="{{ if $dow }}{{ $dow }}{{ end }}">
+                        </div>
+                        <span class="field-hint">{{ t .Localizer "Example: First Monday of the month" }}</span>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="button-container">
-        <button type="submit" class="w3-button w3-green w3-round">
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
-        </button>
-        <button type="button" class="w3-button w3-blue w3-round" id="resetButton">
-            <i class="fa-solid fa-rotate-left"></i> {{ t .Localizer "Reset" }}
-        </button>
-        {{ if eq .Device.Info.ProtocolType "WS" }}
-        <button type="button" class="w3-button w3-blue w3-round" id="previewButton">
-            <i class="fa-solid fa-eye"></i> {{ t .Localizer "Preview" }}
-        </button>
-        {{ end }}
-        <button type="button"
-                class="w3-button w3-grey w3-round"
-                onclick="exportConfig()">
-            <i class="fa-solid fa-download"></i> {{ t .Localizer "Export Config" }}
-        </button>
-        <button type="button"
-                class="w3-button w3-grey w3-round"
-                onclick="document.getElementById('importConfigInput').click()">
-            <i class="fa-solid fa-upload"></i> {{ t .Localizer "Import Config" }}
-        </button>
-        <button type="button" class="w3-button w3-red w3-round" id="cancelButton">
-            <i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}
-        </button>
-        <button type="button"
-                class="w3-button w3-red w3-round"
-                id="deleteButton"
-                onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
-            <i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}
-        </button>
-    </div>
-</form>
+
+
+        <!-- Form Actions -->
+        <div class="form-section">
+            <div class="form-actions justify-between">
+                <div class="flex gap-3">
+                    <button type="submit" class="btn-create">
+                        <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+                    </button>
+                    {{ if eq .Device.Info.ProtocolType "WS" }}
+                    <button type="button" class="btn-secondary" id="previewButton">
+                        <i data-lucide="eye"></i> {{ t .Localizer "Preview" }}
+                    </button>
+                    {{ end }}
+                    <button type="button" class="btn-secondary" id="resetButton">
+                        <i data-lucide="rotate-ccw"></i> {{ t .Localizer "Reset" }}
+                    </button>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" class="btn-secondary" onclick="exportConfig()">
+                        <i data-lucide="download"></i>
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('importConfigInput').click()">
+                        <i data-lucide="upload"></i>
+                    </button>
+                    <button type="button" class="btn-secondary" id="cancelButton">
+                        <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+                    </button>
+                    <button type="button" class="btn-delete" id="deleteButton"
+                            onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
+                        <i data-lucide="trash-2"></i> {{ t .Localizer "Delete" }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
 <input type="file"
        id="importConfigInput"
        style="display:none"
        accept=".json"
-       onchange="importConfig(this)">
-<!-- API Examples Section -->
-<div id="apiUsageContent">
-    <div class="api-section">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <h2>{{ t .Localizer "API Usage" }}</h2>
-            <button id="toggleApiUsageBtn"
-                    class="w3-button"
-                    style="background-color: var(--primary-color);
-                           color: white">
-                <i class="fa-solid fa-code" aria-hidden="true"></i> <span class="button-label">{{ t .Localizer "Show API Usage" }}</span>
-            </button>
+       onchange="importConfig(this)">        <!-- Configuration Management -->
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
+            <div class="flex gap-3">
+                <button type="button" class="btn-secondary" onclick="exportConfig()">
+                    <i data-lucide="download"></i> {{ t .Localizer "Export Configuration" }}
+                </button>
+                <button type="button" class="btn-secondary" onclick="document.getElementById('importConfigInput').click()">
+                    <i data-lucide="upload"></i> {{ t .Localizer "Import Configuration" }}
+                </button>
+            </div>
         </div>
-        <div class="api-usage-details collapsed">
-            <p>{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
-            <!-- Enable App -->
-            <div style="margin-bottom: 20px;">
-                <h3>{{ t .Localizer "Enable App" }}</h3>
-                <pre>curl -X PATCH \
+
+        <!-- API Usage (Collapsible) -->
+        <div class="form-section" id="apiUsageSection">
+            <div class="flex items-center gap-3 mb-4">
+                <h2 class="section-title mb-0">{{ t .Localizer "API Usage" }}</h2>
+                <button id="toggleApiUsageBtn" type="button" class="btn-secondary text-sm">
+                    <i data-lucide="code"></i> <span class="button-label">{{ t .Localizer "Show" }}</span>
+                </button>
+            </div>
+            <div class="api-usage-details hidden">
+                <div class="inset-panel bg-tertiary">
+                    <p class="text-secondary mb-4">{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
+                    <!-- Enable App -->
+                    <div class="mb-6">
+                        <h4 class="field-label mb-2">{{ t .Localizer "Enable App" }}</h4>
+                        <pre class="text-xs font-mono overflow-auto">curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
-            </div>
-            <!-- Disable App -->
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: var(--danger-text);">{{ t .Localizer "Disable App" }}</h3>
-                <pre>curl -X PATCH \
+                    </div>
+                    <!-- Disable App -->
+                    <div class="mb-6">
+                        <h4 class="field-label mb-2 text-danger">{{ t .Localizer "Disable App" }}</h4>
+                        <pre class="text-xs font-mono overflow-auto">curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
-            </div>
-            <!-- Pin App -->
-            <div style="margin-bottom: 20px;">
-                <h3>{{ t .Localizer "Pin App" }}</h3>
-                <pre>curl -X PATCH \
+                    </div>
+                    <!-- Pin App -->
+                    <div class="mb-6">
+                        <h4 class="field-label mb-2">{{ t .Localizer "Pin App" }}</h4>
+                        <pre class="text-xs font-mono overflow-auto">curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": "{{ .App.Iname }}"}' \
   /v0/devices/{{ .Device.ID }}</pre>
-            </div>
-            <!-- Unpin App -->
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: var(--danger-text);">{{ t .Localizer "Unpin App" }}</h3>
-                <pre>curl -X PATCH \
+                    </div>
+                    <!-- Unpin App -->
+                    <div class="mb-4">
+                        <h4 class="field-label mb-2 text-danger">{{ t .Localizer "Unpin App" }}</h4>
+                        <pre class="text-xs font-mono overflow-auto">curl -X PATCH \
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": ""}' \
   /v0/devices/{{ .Device.ID }}</pre>
+                    </div>
+                    <p class="text-xs text-muted">
+                        <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
+                    </p>
+                </div>
             </div>
-            <small>
-                <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
-            </small>
         </div>
-    </div>
-</div>
+</div><!-- end dashboard-container -->
+
 <script>
   // Make the schema and config objects available to JavaScript
   const schema = {{ .Schema }};
@@ -685,20 +434,20 @@
     }
 
     const toggleApiUsageBtn = document.getElementById("toggleApiUsageBtn");
-    const apiUsageDetails = document.querySelector("#apiUsageContent .api-usage-details");
+    const apiUsageDetails = document.querySelector("#apiUsageSection .api-usage-details");
 
     if (toggleApiUsageBtn && apiUsageDetails) {
-      // Set initial button text based on initial collapsed state
+      // Set initial button text based on initial hidden state
       const label = toggleApiUsageBtn.querySelector(".button-label");
-      if (apiUsageDetails.classList.contains("collapsed")) {
-        label.textContent = "{{ t .Localizer "Show API Usage" }}";
+      if (apiUsageDetails.classList.contains("hidden")) {
+        label.textContent = "{{ t .Localizer "Show" }}";
       } else {
-        label.textContent = "{{ t .Localizer "Hide API Usage" }}";
+        label.textContent = "{{ t .Localizer "Hide" }}";
       }
 
       toggleApiUsageBtn.addEventListener("click", function () {
         toggleContent(apiUsageDetails, toggleApiUsageBtn,
-          "{{ t .Localizer "Hide API Usage" }}", "{{ t .Localizer "Show API Usage" }}", 'collapsed');
+          "{{ t .Localizer "Hide" }}", "{{ t .Localizer "Show" }}", 'hidden');
       });
     }
   }
@@ -776,38 +525,24 @@
   }
 
   function createFormFields(schema, config) {
-    const rows = [];
-    if (!schema || !schema.schema) return rows;
+    const fields = [];
+    if (!schema || !schema.schema) return fields;
 
     schema.schema.forEach(field => {
       if (field.type === "generated") return;
 
-      const row = document.createElement("tr");
+      const fieldDiv = document.createElement("div");
+      fieldDiv.className = "form-field";
 
       // Label
-      const labelCell = document.createElement("td");
       const label = document.createElement("label");
       const inputId = "schema_" + field.id;
       label.htmlFor = inputId;
-      // Icon handling if available in schema
-      if (field.icon) {
-          const icon = document.createElement("i");
-          icon.className = `fa fa-${field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
-          label.appendChild(icon);
-          label.appendChild(document.createTextNode(" "));
-      }
+      label.className = "field-label";
       label.appendChild(document.createTextNode(field.name));
-      labelCell.appendChild(label);
-      if (field.description) {
-          labelCell.appendChild(document.createElement("br"));
-          const desc = document.createElement("small");
-          desc.textContent = field.description;
-          labelCell.appendChild(desc);
-      }
-      row.appendChild(labelCell);
+      fieldDiv.appendChild(label);
 
       // Input
-      const inputCell = document.createElement("td");
       let inputElement;
 
       switch (field.type) {
@@ -815,39 +550,57 @@
           inputElement = document.createElement("input");
           inputElement.type = field.secret ? "password" : "text";
           inputElement.value = config[field.id] || field.default || "";
-          inputElement.className = "form-control";
+          inputElement.className = "field-input";
           break;
         case "color":
           inputElement = document.createElement("input");
           inputElement.type = "color";
           inputElement.value = config[field.id] || field.default || "#000000";
-          inputElement.className = "form-control form-control-color";
+          inputElement.className = "field-input";
+          inputElement.style.width = "60px";
+          inputElement.style.height = "2.5rem";
           if (field.palette) {
               const div = createColorPaletteButtons(field, inputElement);
-              inputCell.appendChild(div);
+              fieldDiv.appendChild(div);
           }
           break;
         case "onoff":
+          // Create checkbox with design system styling
+          const checkboxWrapper = document.createElement("div");
+          checkboxWrapper.className = "form-field-checkbox";
+          const checkboxLabel = document.createElement("label");
+          checkboxLabel.className = "checkbox-label";
           inputElement = document.createElement("input");
           inputElement.type = "checkbox";
           const val = config[field.id];
           const isChecked = val === "true" || val === true || (!val && field.default === "true");
           inputElement.checked = isChecked;
-          inputElement.className = "form-control";
           config[field.id] = isChecked ? "true" : "false";
-          break;
+          checkboxLabel.appendChild(inputElement);
+          const labelSpan = document.createElement("span");
+          labelSpan.textContent = field.name;
+          checkboxLabel.appendChild(labelSpan);
+          checkboxWrapper.appendChild(checkboxLabel);
+          // Replace regular label with checkbox wrapper structure
+          fieldDiv.innerHTML = "";
+          fieldDiv.appendChild(checkboxWrapper);
+          inputElement.id = inputId;
+          inputElement.dataset.configId = field.id;
+          inputElement.addEventListener('change', handleConfigUpdate);
+          fields.push(fieldDiv);
+          return; // Skip normal append logic
         case "datetime":
           inputElement = document.createElement("input");
           inputElement.type = "datetime-local";
           inputElement.value = (config[field.id] || field.default || "").replace("Z", "");
-          inputElement.className = "form-control";
+          inputElement.className = "field-input";
           if (!config[field.id] && field.default) {
             config[field.id] = field.default;
           }
           break;
         case "dropdown":
           inputElement = document.createElement("select");
-          inputElement.className = "form-control";
+          inputElement.className = "field-select field-input";
           if (field.options) {
             field.options.forEach(opt => {
                const o = document.createElement("option");
@@ -877,7 +630,7 @@
         default:
           inputElement = document.createElement("input");
           inputElement.value = config[field.id] || "";
-          inputElement.className = "form-control";
+          inputElement.className = "field-input";
       }
 
       if (inputElement) {
@@ -893,19 +646,17 @@
 
           if (field.type === "text" && field.secret) {
               const secretContainer = document.createElement("div");
-              secretContainer.className = "secret-input-container";
+              secretContainer.className = "flex gap-2 items-center";
 
               const toggleButton = document.createElement("button");
               toggleButton.type = "button";
-              toggleButton.className = "secret-toggle-button";
-
-              const icon = document.createElement("i");
-              icon.className = "fa fa-eye";
-              toggleButton.appendChild(icon);
+              toggleButton.className = "btn-secondary";
+              toggleButton.innerHTML = '<i data-lucide="eye"></i>';
 
               toggleButton.addEventListener("click", () => {
                   inputElement.type = inputElement.type === "password" ? "text" : "password";
-                  icon.className = inputElement.type === "password" ? "fa fa-eye-slash" : "fa fa-eye";
+                  toggleButton.innerHTML = inputElement.type === "password" ? '<i data-lucide="eye-off"></i>' : '<i data-lucide="eye"></i>';
+                  if (typeof lucide !== 'undefined') lucide.createIcons();
               });
 
               secretContainer.appendChild(inputElement);
@@ -913,13 +664,21 @@
               elementToAppend = secretContainer;
           }
 
-          inputCell.appendChild(elementToAppend);
+          fieldDiv.appendChild(elementToAppend);
+
+          // Add description/hint if present
+          if (field.description) {
+              const hint = document.createElement("span");
+              hint.className = "field-hint";
+              hint.textContent = field.description;
+              fieldDiv.appendChild(hint);
+          }
       }
-      row.appendChild(inputCell);
-      rows.push(row);
+      fields.push(fieldDiv);
     });
-    return rows;
+    return fields;
   }
+
 
   function createGeneratedFormFields(schema, config) {
     if (!schema || !schema.schema) {
@@ -939,7 +698,7 @@
     searchInput.id = `${field.id}_search`;
     searchInput.placeholder = "{{ t .Localizer "Enter a location" }}";
     searchInput.setAttribute("data-ignore-config", "true");
-    searchInput.className = "form-control";
+    searchInput.className = "field-input";
 
     container.appendChild(searchInput);
 
@@ -1016,7 +775,7 @@
     dropdown.id = "schema_" + field.id;
     dropdown.dataset.configId = field.id;
     dropdown.name = field.id;
-    dropdown.className = "form-control";
+    dropdown.className = "field-select field-input";
     container.appendChild(dropdown);
 
     dropdown.addEventListener("change", handleConfigUpdate);
@@ -1101,7 +860,7 @@
     typeaheadInput.id = `${field.id}_typeahead`;
     typeaheadInput.setAttribute("data-ignore-config", "true");
     typeaheadInput.placeholder = "{{ t .Localizer "Start typing..." }}";
-    typeaheadInput.className = "form-control";
+    typeaheadInput.className = "field-input";
     inputElement.appendChild(typeaheadInput);
 
     const hiddenTypeaheadInput = document.createElement("input");
@@ -1339,12 +1098,12 @@
     const customRecurrence = document.getElementById("custom_recurrence");
 
     if (useCustom) {
-      legacySchedule.style.display = "none";
-      customRecurrence.style.display = "block";
+      legacySchedule.classList.add("hidden");
+      customRecurrence.classList.remove("hidden");
       toggleRecurrenceOptions();
     } else {
-      legacySchedule.style.display = "block";
-      customRecurrence.style.display = "none";
+      legacySchedule.classList.remove("hidden");
+      customRecurrence.classList.add("hidden");
     }
   }
 
@@ -1354,8 +1113,13 @@
     const monthlyOptions = document.getElementById("monthly_options");
     const intervalUnit = document.getElementById("interval_unit");
 
-    weeklyOptions.style.display = type === 'weekly' ? 'block' : 'none';
-    monthlyOptions.style.display = type === 'monthly' ? 'block' : 'none';
+    // Hide all first
+    weeklyOptions.classList.add("hidden");
+    monthlyOptions.classList.add("hidden");
+
+    // Show relevant one
+    if (type === 'weekly') weeklyOptions.classList.remove("hidden");
+    if (type === 'monthly') monthlyOptions.classList.remove("hidden");
 
     switch (type) {
       case "daily": intervalUnit.textContent = "{{ t .Localizer "days" }}"; break;
@@ -1371,11 +1135,11 @@
     const dayOfWeekOption = document.getElementById("day_of_week_option");
 
     if (monthlyPattern === "day_of_month") {
-      dayOfMonthOption.style.display = "block";
-      dayOfWeekOption.style.display = "none";
+      dayOfMonthOption.classList.remove("hidden");
+      dayOfWeekOption.classList.add("hidden");
     } else {
-      dayOfMonthOption.style.display = "none";
-      dayOfWeekOption.style.display = "block";
+      dayOfMonthOption.classList.add("hidden");
+      dayOfWeekOption.classList.remove("hidden");
     }
   }
 

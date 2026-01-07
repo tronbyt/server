@@ -2760,15 +2760,49 @@ input[type="radio"]:checked::after {
     border: 4px solid var(--neutral-200) !important;
     border-top: 4px solid var(--orange-500) !important;
     border-radius: 50% !important;
-    width: 40px !important;
-    height: 40px !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
     animation: spin 1s linear infinite !important;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+/* Skeleton Loading */
+.skeleton {
+  background: var(--neutral-100);
+  background: linear-gradient(110deg, var(--neutral-100) 8%, var(--neutral-200) 18%, var(--neutral-100) 33%);
+  background-size: 200% 100%;
+  animation: 1.5s rotate-skeleton linear infinite;
+  border-radius: 0;
 }
+
+[data-theme="dark"] .skeleton {
+  background: var(--neutral-300);
+  background: linear-gradient(110deg, var(--neutral-300) 8%, var(--neutral-400) 18%, var(--neutral-300) 33%);
+  background-size: 200% 100%;
+}
+
+@keyframes rotate-skeleton {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+.skeleton-text {
+  height: 0.75rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.skeleton-input {
+  height: 2.5rem;
+  width: 100%;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+
 
 /* ===========================================
    APP CATALOG - Teenage Engineering Style
