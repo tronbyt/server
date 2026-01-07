@@ -3,72 +3,103 @@
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Add App" }}{{ end }}
 {{ define "header" }}
-<link rel="stylesheet" href="/static/css/addapp-simple.css">
-<h1>{{ t .Localizer "Add App" }}</h1>
+<div class="page-header">
+    <h1 class="page-title">{{ t .Localizer "Add App" }}</h1>
+</div>
 {{ end }}
 {{ define "content" }}
-<div id="addapp_page_identifier">
-    <!-- Loading indicator -->
-    <div id="loading-indicator" class="loading-container">
-        <div class="loading-spinner"></div>
-        <p>{{ t .Localizer "Loading apps..." }}</p>
+<div class="form-panel" id="addapp_page_identifier">
+    
+    <!-- Action Bar -->
+    <div class="flex justify-end mb-8">
+        <a class="btn-secondary" href="/devices/{{ .Device.ID }}/uploadapp">
+            <i data-lucide="cloud-upload"></i>
+            <span>{{ t .Localizer "Upload app" }}</span>
+        </a>
     </div>
-    <a class="btn-accent"
-       href="/devices/{{ .Device.ID }}/uploadapp">
-        <i data-lucide="cloud-upload" style="width: 18px; height: 18px;"></i>
-        <span>{{ t .Localizer "Upload app" }}</span>
-    </a>
-    <form method="post" id="main_form">
-        <label for="name">{{ t .Localizer "App Selection" }}</label>
-        {{ if .CustomApps }}
+
+    <!-- App Catalog -->
+    {{ if .CustomApps }}
+    <div class="form-section">
         {{ template "app_list_grid" (dict
-        "Title" (t .Localizer "Custom Apps")
-        "SearchID" "custom_search"
-        "GridID" "custom_app_grid"
-        "Apps" .CustomApps
-        "IsCustom" true
-        "DeviceID" .Device.ID
-        "Localizer" .Localizer
-        "ConfigProduction" .Config.Production
+            "Title" (t .Localizer "Custom Apps")
+            "SearchID" "custom_search"
+            "GridID" "custom_app_grid"
+            "Apps" .CustomApps
+            "IsCustom" true
+            "DeviceID" .Device.ID
+            "Localizer" .Localizer
+            "ConfigProduction" .Config.Production
         ) }}
-        <hr>
-        {{ end }}
+    </div>
+    {{ end }}
+
+    <div class="form-section">
         {{ template "app_list_grid" (dict
-        "Title" (t .Localizer "System Apps")
-        "SearchID" "system_search"
-        "GridID" "system_app_grid"
-        "Apps" .SystemApps
-        "ShowControls" true
-        "ShowVersion" true
-        "IsCustom" false
-        "DeviceID" .Device.ID
-        "Localizer" .Localizer
-        "SystemRepoInfo" .SystemRepoInfo
-        "ConfigProduction" .Config.Production
+            "Title" (t .Localizer "System Apps")
+            "SearchID" "system_search"
+            "GridID" "system_app_grid"
+            "Apps" .SystemApps
+            "ShowControls" true
+            "ShowVersion" true
+            "IsCustom" false
+            "DeviceID" .Device.ID
+            "Localizer" .Localizer
+            "SystemRepoInfo" .SystemRepoInfo
+            "ConfigProduction" .Config.Production
         ) }}
+    </div>
+
+    <!-- Configuration Form (Hidden but technically used by JS logic) -->
+    <form method="post" id="main_form" class="form-section" style="display: none;">
+        <h3 class="section-title">{{ t .Localizer "Default Configuration" }}</h3>
+        
         <input type="hidden" name="name" id="selected_app">
         <input type="hidden" name="path" id="selected_app_path">
-        <br>
-        <label for="uinterval">{{ t .Localizer "Render Interval (minutes)" }}</label>
-        <input name="uinterval"
-               type="number"
-               id="uinterval"
-               min="0"
-               value="10"
-               required>
-        <label for="display_time">{{ t .Localizer "Display Time (seconds)" }}</label>
-        <input name="display_time"
-               type="number"
-               id="display_time"
-               min="0"
-               value="0"
-               required>
-        <label for="notes">{{ t .Localizer "Notes" }}</label>
-        <textarea name="notes" id="notes"></textarea>
-        <button type="submit" class="btn-create">
-            <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
-            <span>{{ t .Localizer "Configure" }}</span>
-        </button>
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label class="field-label" for="uinterval">{{ t .Localizer "Render Interval (minutes)" }}</label>
+                <input name="uinterval"
+                       type="number"
+                       id="uinterval"
+                       class="field-input"
+                       min="0"
+                       value="10"
+                       required>
+            </div>
+            
+            <div class="form-field">
+                <label class="field-label" for="display_time">{{ t .Localizer "Display Time (seconds)" }}</label>
+                <input name="display_time"
+                       type="number"
+                       id="display_time"
+                       class="field-input"
+                       min="0"
+                       value="0"
+                       required>
+            </div>
+            
+             <div class="form-field">
+                <label class="field-label" for="notes">{{ t .Localizer "Notes" }}</label>
+                <textarea name="notes" id="notes" class="field-input" rows="3"></textarea>
+            </div>
+        </div>
     </form>
+    
+    <div class="alert alert-info">
+        <i data-lucide="info"></i>
+        <div class="alert-content">
+            <p>{{ t .Localizer "Click on an app above to add it to your device." }}</p>
+        </div>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+</script>
 {{ end }}

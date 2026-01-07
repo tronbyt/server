@@ -116,6 +116,28 @@ border-radius: 0 !important;  /* Always sharp corners */
 }
 ```
 
+### Button Hierarchy
+
+**Actions are visually coded by semantic color:**
+
+```
+Create ──→ Save ──→ Cancel ──→ Delete
+  🟠        ⬛       ⬜          🔴
+  New!      Keep    Nevermind   Gone!
+```
+
+- **Orange** (`.btn-create`) - CREATE, ENABLE, START - Generative actions that create new items
+- **Black** (`.btn-save`, `.btn-primary`) - SAVE, CONFIRM, SUBMIT - Finalizing actions that preserve changes
+- **Gray** (`.btn-secondary`, `.btn-cancel`) - CANCEL, IMPORT, SECONDARY - Neutral or alternate actions
+- **Red** (`.btn-delete`) - DELETE, DISABLE, STOP - Destructive actions that remove items
+
+**Examples:**
+- "Create Device" → `.btn-create` (orange)
+- "Save Changes" → `.btn-save` (black)
+- "Reset" → `.btn-secondary` (gray)
+- "Cancel" → `.btn-secondary` (gray)
+- "Delete" → `.btn-delete` (red)
+
 ### Migration Checklist
 
 When creating/updating UI components:
@@ -124,6 +146,8 @@ When creating/updating UI components:
 - [ ] Apply sharp `1px solid` borders
 - [ ] Use CSS variables for colors (dark mode support)
 - [ ] ALL CAPS for status labels (ENABLED, DISABLED, PINNED)
+- [ ] Choose correct button class based on action type (see Button Hierarchy above)
+- [ ] Use Lucide icons (`data-lucide="icon-name"`)
 - [ ] Test mobile layout (`<640px` width)
 - [ ] Verify dark mode (`prefers-color-scheme: dark`)
 

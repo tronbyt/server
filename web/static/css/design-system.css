@@ -144,7 +144,7 @@
     --neutral-600: #a3a3a3;
     --neutral-700: #d4d4d4;
     --neutral-800: #e5e5e5;
-    --neutral-900: #fafafa;
+    --neutral-900: #ffffff; /* Make text fully white in dark mode for contrast */
     
     /* Semantic Borders */
     --border-primary: #404040;
@@ -523,28 +523,7 @@
     color: var(--neutral-900) !important;
 }
 
-/* Legacy support */
-.btn-toggle-main {
-    padding: 0 0.75rem !important;
-    height: 1.5rem !important;
-    display: flex !important;
-    align-items: center !important;
-    font-size: 0.75rem !important;
-    font-weight: 500 !important;
-    border: 1px solid var(--neutral-300) !important;
-    color: var(--neutral-400) !important;
-    flex-shrink: 0 !important;
-    min-width: 100px !important;
-    justify-content: center !important;
-    background: none !important;
-    cursor: pointer !important;
-}
 
-.btn-toggle-main.is-enabled {
-    background-color: var(--neutral-900) !important;
-    border-color: var(--neutral-900) !important;
-    color: var(--white) !important;
-}
 
 /* ===========================================
    Preview Area (Full View)
@@ -820,6 +799,9 @@ button.btn-action-lg {
     font-family: var(--font-mono) !important;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
     min-height: 100% !important;  /* Fill parent height */
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    line-height: 1 !important;
 }
 
 .btn-tool i,
@@ -1668,6 +1650,7 @@ input[type="checkbox"]:focus {
     display: flex !important;
     flex-direction: column !important;
     gap: 1.5rem !important;
+    min-width: 0 !important;
 }
 
 .control-group {
@@ -1940,6 +1923,7 @@ input[type="checkbox"]:focus {
     display: flex !important;
     flex-direction: column !important;
     gap: 1rem !important;
+    min-width: 0 !important;
 }
 
 .currently-displaying {
@@ -3165,19 +3149,7 @@ input[type="checkbox"]:focus {
     border-color: var(--orange-600) !important;
 }
 
-/* Override for broken-app class (legacy class for JS) */
-.app-tile.broken-app,
-.app-item.broken-app {
-    border-color: var(--red-500) !important;
-    opacity: 0.7 !important;
-    cursor: not-allowed !important;
-}
 
-.app-tile.broken-app:hover,
-.app-item.broken-app:hover {
-    border-color: var(--red-600) !important;
-    transform: none !important;
-}
 
 /* ===========================================
    APP LIST GRID - TE Styling (CSS-only overrides)
@@ -3482,194 +3454,7 @@ input[type="checkbox"]:focus {
     transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* ===========================================
-   UPDATE PAGE - Device Settings Styles
-   (Consolidated from update-simple.css)
-   =========================================== */
 
-/* Header Layout */
-.header-container {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 1rem !important;
-    margin-bottom: 1rem !important;
-    padding-bottom: 1rem !important;
-    border-bottom: 1px solid var(--neutral-200) !important;
-    width: 100% !important;
-}
-
-.header-buttons,
-#header-buttons {
-    display: flex !important;
-    gap: 0.5rem !important;
-    align-items: center !important;
-}
-
-[data-theme="dark"] .header-container {
-    border-bottom-color: var(--neutral-400) !important;
-}
-
-/* Device Settings Sections */
-.device-settings-section {
-    border: 1px solid var(--neutral-200) !important;
-    padding: 1.5rem !important;
-    margin-bottom: 1.5rem !important;
-    background-color: var(--white) !important;
-}
-
-.device-settings-section h2 {
-    margin: 0 0 1rem 0 !important;
-    font-size: 0.875rem !important;
-    font-family: var(--font-mono) !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    color: var(--neutral-900) !important;
-    letter-spacing: 0.05em !important;
-}
-
-.device-settings-section h3 {
-    margin: 1rem 0 0.75rem 0 !important;
-    font-size: 0.75rem !important;
-    font-family: var(--font-mono) !important;
-    font-weight: 600 !important;
-    color: var(--neutral-600) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-}
-
-[data-theme="dark"] .device-settings-section {
-    border-color: var(--neutral-400) !important;
-    background-color: var(--bg-secondary) !important;
-}
-
-[data-theme="dark"] .device-settings-section h2 {
-    color: var(--neutral-700) !important;
-}
-
-[data-theme="dark"] .device-settings-section h3 {
-    color: var(--neutral-600) !important;
-}
-
-/* Device Settings Row */
-.device-settings-row {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 1rem !important;
-    margin-bottom: 1rem !important;
-}
-
-/* Device Settings Label */
-.device-settings-label {
-    display: block !important;
-    margin-bottom: 0.375rem !important;
-    font-size: 0.6875rem !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-    color: var(--neutral-600) !important;
-    font-family: var(--font-mono) !important;
-}
-
-/* Device Settings Table */
-.device-settings-table {
-    width: 100% !important;
-    border-spacing: 0 0.75rem !important;
-}
-
-.device-settings-table td:first-child {
-    width: 30% !important;
-    vertical-align: top !important;
-    padding-right: 1rem !important;
-}
-
-.device-settings-table td:last-child {
-    width: 70% !important;
-}
-
-/* Section Divider */
-.device-settings-section-divider {
-    border-top: 1px solid var(--neutral-200) !important;
-    padding-top: 1rem !important;
-    margin-top: 1rem !important;
-}
-
-[data-theme="dark"] .device-settings-section-divider {
-    border-top-color: var(--neutral-400) !important;
-}
-
-/* URL Input Container */
-.url-input-container {
-    display: flex !important;
-    gap: 0.5rem !important;
-    align-items: center !important;
-}
-
-.url-input-container input {
-    flex: 1 !important;
-    padding: 0.625rem !important;
-    border: 1px solid var(--neutral-300) !important;
-    font-family: var(--font-mono) !important;
-    font-size: 0.875rem !important;
-    color: var(--neutral-900) !important;
-    background-color: var(--white) !important;
-    outline: none !important;
-}
-
-.url-input-container input:focus {
-    border-color: var(--orange-500) !important;
-    box-shadow: 0 0 0 1px var(--orange-500) !important;
-}
-
-[data-theme="dark"] .url-input-container input {
-    border-color: var(--neutral-500) !important;
-    background-color: var(--bg-primary) !important;
-    color: var(--neutral-900) !important;
-}
-
-[data-theme="dark"] .url-input-container input:focus {
-    border-color: var(--orange-500) !important;
-}
-
-/* URL Reset Button */
-.url-reset-btn {
-    flex-shrink: 0 !important;
-    padding: 0.5rem 0.75rem !important;
-    border: 1px solid var(--neutral-300) !important;
-    background: none !important;
-    color: var(--neutral-600) !important;
-    font-size: 0.6875rem !important;
-    font-family: var(--font-mono) !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    white-space: nowrap !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.25rem !important;
-}
-
-.url-reset-btn:hover {
-    border-color: var(--orange-500) !important;
-    color: var(--orange-600) !important;
-    background-color: var(--orange-50) !important;
-}
-
-.url-reset-btn i {
-    color: inherit !important;
-}
-
-[data-theme="dark"] .url-reset-btn {
-    border-color: var(--neutral-500) !important;
-    color: var(--neutral-600) !important;
-}
-
-[data-theme="dark"] .url-reset-btn:hover {
-    border-color: var(--orange-500) !important;
-    color: var(--orange-500) !important;
-    background-color: rgba(249, 115, 22, 0.1) !important;
-}
 
 /* Range Slider Container */
 .range-container {
@@ -3699,77 +3484,7 @@ input[type="checkbox"]:focus {
     color: var(--neutral-700) !important;
 }
 
-/* Textarea - Example Commands */
-textarea.device-example-command-input {
-    width: 100% !important;
-    font-family: var(--font-mono) !important;
-    font-size: 0.8125rem !important;
-    padding: 0.625rem !important;
-    border: 1px solid var(--neutral-300) !important;
-    background-color: var(--bg-tertiary) !important;
-    color: var(--neutral-900) !important;
-    min-height: auto !important;
-}
 
-[data-theme="dark"] textarea.device-example-command-input {
-    border-color: var(--neutral-500) !important;
-    background-color: var(--bg-tertiary) !important;
-    color: var(--neutral-700) !important;
-}
-
-/* Button Container (Save/Delete Footer) */
-.button-container {
-    display: flex !important;
-    gap: 0.75rem !important;
-    margin-top: 1.5rem !important;
-    padding-top: 1.5rem !important;
-    border-top: 1px solid var(--neutral-200) !important;
-    align-items: center !important;
-}
-
-.button-container .btn-delete {
-    width: auto !important;
-}
-
-[data-theme="dark"] .button-container {
-    border-top-color: var(--neutral-400) !important;
-}
-
-/* Config Management Container */
-.config-management-container {
-    display: flex !important;
-    gap: 0.5rem !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-}
-
-/* Select Container */
-.select-container {
-    max-width: 300px !important;
-}
-
-.select-container select {
-    width: 100% !important;
-}
-
-/* Brightness Panel */
-.brightness-panel {
-    display: grid !important;
-    grid-template-columns: repeat(6, 1fr) !important;
-    gap: 0.5rem !important;
-    max-width: 300px !important;
-}
-
-/* Small/Helper Text */
-.small-text {
-    color: var(--neutral-500) !important;
-    font-size: 0.75rem !important;
-    font-family: var(--font-mono) !important;
-}
-
-[data-theme="dark"] .small-text {
-    color: var(--neutral-500) !important;
-}
 
 /* Global Input Dark Theme Styles */
 [data-theme="dark"] input[type="text"],
@@ -3930,103 +3645,35 @@ textarea.device-example-command-input {
     }
 }
 
-/* ===========================================
-   UPDATE PAGE MOBILE STYLES
-   (For .device-settings-* classes used in update.html)
-   =========================================== */
+/* Range Slider Container */
+.range-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+}
+
+.range-container .cycle-time-slider {
+    flex: 1 !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 !important;
+}
+
+.range-output {
+    min-width: 2.5rem !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.875rem !important;
+    color: var(--neutral-900) !important;
+}
+
+[data-theme="dark"] .range-output {
+    color: var(--neutral-700) !important;
+}
 
 @media (max-width: 768px) {
-    /* Device settings sections */
-    .device-settings-section {
-        padding: 1rem !important;
-        margin-bottom: 1rem !important;
-    }
-
-    .device-settings-section h2 {
-        font-size: 0.75rem !important;
-    }
-
-    /* Table to stacked layout */
-    .device-settings-table,
-    .device-settings-table tbody,
-    .device-settings-table tr,
-    .device-settings-table td {
-        display: block !important;
-        width: 100% !important;
-    }
-
-    .device-settings-table td:first-child {
-        width: 100% !important;
-        padding-right: 0 !important;
-        padding-bottom: 0.25rem !important;
-    }
-
-    .device-settings-table td:last-child {
-        width: 100% !important;
-    }
-
-    /* Settings row grid to single column */
-    .device-settings-row {
-        grid-template-columns: 1fr !important;
-        gap: 1rem !important;
-    }
-
-    /* URL input container stacking */
-    .url-input-container {
-        flex-direction: column !important;
-        align-items: stretch !important;
-    }
-
-    .url-input-container input {
-        width: 100% !important;
-    }
-
-    .url-reset-btn {
-        width: 100% !important;
-        justify-content: center !important;
-    }
-
-    /* Button container stacking */
-    .button-container {
-        flex-direction: column !important;
-        gap: 0.75rem !important;
-    }
-
-    .button-container .btn-save,
-    .button-container .btn-delete {
-        width: 100% !important;
-    }
-
-    /* Header container mobile */
-    .header-container {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 1rem !important;
-    }
-
-    #header-buttons,
-    .header-buttons {
-        width: 100% !important;
-        flex-direction: column !important;
-    }
-
-    #header-buttons button,
-    #header-buttons a,
-    .header-buttons button,
-    .header-buttons a {
-        width: 100% !important;
-    }
-
-    /* Brightness panel - keep 6 columns, just full width on mobile */
-    .brightness-panel {
-        max-width: 100% !important;
-    }
-
-    /* Select containers full width */
-    .select-container {
-        max-width: 100% !important;
-    }
-
     /* Range container */
     .range-container {
         flex-direction: column !important;
@@ -4039,17 +3686,284 @@ textarea.device-example-command-input {
     }
 }
 
-@media (max-width: 480px) {
-    /* Device settings even smaller */
-    .device-settings-section {
-        padding: 0.75rem !important;
-    }
-
-    .device-settings-section h2 {
-        font-size: 0.6875rem !important;
-    }
 
 
+/* Navigation Bar */
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--white);
+    border-bottom: 4px solid var(--black);
+    margin-bottom: 2rem;
 }
 
+[data-theme="dark"] nav {
+    background-color: var(--black);
+    border-bottom: 4px solid var(--neutral-300);
+}
+
+nav h1 {
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin: 0;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: -0.05em;
+    color: var(--black);
+}
+
+[data-theme="dark"] nav h1 {
+    color: #ffffff;
+}
+
+nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+
+nav li a {
+    text-decoration: none;
+    color: var(--neutral-900);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem; /* Increase touch target */
+}
+
+nav li a:hover {
+    color: var(--orange-500);
+}
+
+[data-theme="dark"] nav li a {
+    color: var(--white);
+}
+
+[data-theme="dark"] nav li a:hover {
+    color: var(--orange-500);
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    padding: 0 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    nav {
+        padding: 1rem;
+    }
+    
+    .dashboard-container {
+        padding: 0 1rem;
+    }
+
+    nav ul {
+        display: none; /* Hide desktop menu on mobile */
+    }
+
+    /* Hamburger Menu Button */
+    .hamburger {
+        display: block;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.5rem;
+    }
+
+    .hamburger span {
+        display: block;
+        width: 24px;
+        height: 2px;
+        background-color: var(--text-primary);
+        margin: 5px 0;
+        transition: 0.3s;
+    }
+    
+    /* Mobile Menu Styles */
+    .mobile-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 49;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .mobile-menu-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
+    .mobile-menu {
+        position: fixed;
+        top: 0;
+        left: -300px; /* Hidden by default */
+        width: 300px;
+        height: 100%;
+        background-color: var(--bg-primary);
+        z-index: 50;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        padding: 2rem;
+    }
+
+    .mobile-menu.active {
+        left: 0;
+    }
+
+    .mobile-menu ul {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+    }
+
+    .mobile-menu-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-primary);
+    }
+    
+    .mobile-menu-close {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 0.5rem;
+    }
+}
+
+/* Hide Hamburger on Desktop */
+@media (min-width: 769px) {
+    .hamburger, .mobile-menu, .mobile-menu-overlay {
+        display: none;
+    }
+}
+
+/* ===========================================
+   Added Utilities (Spacing & Sizing)
+   =========================================== */
+.m-0 { margin: 0 !important; }
+.mt-0 { margin-top: 0 !important; }
+.mb-0 { margin-bottom: 0 !important; }
+
+.mt-1 { margin-top: 0.25rem !important; }
+.mb-1 { margin-bottom: 0.25rem !important; }
+
+.mt-2 { margin-top: 0.5rem !important; }
+.mb-2 { margin-bottom: 0.5rem !important; }
+.ml-2 { margin-left: 0.5rem !important; }
+.mr-2 { margin-right: 0.5rem !important; }
+
+.mt-3 { margin-top: 0.75rem !important; }
+.mb-3 { margin-bottom: 0.75rem !important; }
+
+.mt-4 { margin-top: 1rem !important; }
+.mb-4 { margin-bottom: 1rem !important; }
+.ml-4 { margin-left: 1rem !important; }
+.mr-4 { margin-right: 1rem !important; }
+
+.mt-8 { margin-top: 2rem !important; }
+.mb-8 { margin-bottom: 2rem !important; }
+
+.p-0 { padding: 0 !important; }
+.pt-0 { padding-top: 0 !important; }
+.pb-0 { padding-bottom: 0 !important; }
+
+.p-2 { padding: 0.5rem !important; }
+.pt-2 { padding-top: 0.5rem !important; }
+.pb-2 { padding-bottom: 0.5rem !important; }
+
+.p-4 { padding: 1rem !important; }
+.pt-4 { padding-top: 1rem !important; }
+.pb-4 { padding-bottom: 1rem !important; }
+
+/* Icon Sizes */
+.icon-xs { width: 12px !important; height: 12px !important; }
+.icon-sm { width: 14px !important; height: 14px !important; }
+.icon-base { width: 16px !important; height: 16px !important; }
+.icon-md { width: 18px !important; height: 18px !important; }
+.icon-lg { width: 20px !important; height: 20px !important; }
+
+.text-link { color: var(--text-primary) !important; text-decoration: underline !important; }
+
+.text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
+.text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+
+.no-underline { text-decoration: none !important; }
+.text-inherit { color: inherit !important; }
+
+/* Inset Panels for Admin/Settings Sections */
+.inset-panel {
+    border: 1px solid var(--neutral-200) !important;
+    border-radius: 4px !important;
+    padding: 1.5rem !important;
+    background-color: var(--white) !important;
+}
+
+[data-theme="dark"] .inset-panel {
+    border-color: var(--neutral-200) !important; 
+    background-color: var(--bg-tertiary) !important;
+}
+
+.subsection-title {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 1rem !important;
+    color: var(--neutral-800) !important;
+}
+
+[data-theme="dark"] .subsection-title {
+    color: var(--neutral-900) !important; /* White in dark mode */
+}
+
+.items-start { align-items: flex-start !important; }
+.items-end { align-items: flex-end !important; }
+
+/* Custom Grid for Repo URL + Button */
+.grid-repo {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 1rem !important;
+}
+
+/* Auth Icons */
+.authenticator-icon { width: 20px; height: 20px; }
+.auth-icon-dark { display: none; }
+[data-theme="dark"] .auth-icon-light { display: none; }
+[data-theme="dark"] .auth-icon-dark { display: inline-block; }
+
+.col-span-full { grid-column: 1 / -1 !important; }
+
+.border-danger { border-color: var(--danger-color) !important; }
+.text-danger { color: var(--danger-color) !important; }
+
+.justify-end { justify-content: flex-end !important; }
+.justify-start { justify-content: flex-start !important; }
+
+.mb-6 { margin-bottom: 1.5rem !important; }
+.mt-6 { margin-top: 1.5rem !important; }
+
+.flex-wrap { flex-wrap: wrap !important; }
+.w-auto { width: auto !important; }
 

@@ -18,7 +18,7 @@
             <div class="device-badges">
                 {{ if and .Item.PinnedApp (ne (deref .Item.PinnedApp) "") }}
                 <span class="badge black">
-                    <i data-lucide="pin" style="width: 12px; height: 12px;"></i>
+                    <i data-lucide="pin" class="icon-xs"></i>
                     {{ t .Localizer "PINNED:" }}
                     {{ $pinned := deref .Item.PinnedApp }}
                     {{ $pinnedName := "" }}
@@ -33,12 +33,12 @@
 
                 {{ if .Item.GetNightModeIsActive }}
                 <span class="badge gray" title="{{ t .Localizer "Night Mode Active" }}">
-                    <i data-lucide="moon" style="width: 12px; height: 12px;"></i>
+                    <i data-lucide="moon" class="icon-xs"></i>
                     {{ t .Localizer "NIGHT MODE" }}
                 </span>
                 {{ else if .Item.GetDimModeIsActive }}
                 <span class="badge gray" title="{{ t .Localizer "Dim Mode Active" }}">
-                    <i data-lucide="circle-half" style="width: 12px; height: 12px;"></i>
+                    <i data-lucide="circle-half" class="icon-xs"></i>
                     {{ t .Localizer "DIM MODE" }}
                 </span>
                 {{ end }}
@@ -97,16 +97,16 @@
             <div class="control-group">
                 <div class="device-action-grid">
                     <a class="btn-device-action" href="/devices/{{ .Item.ID }}/addapp">
-                        <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i>
+                        <i data-lucide="plus-circle" class="icon-md"></i>
                         <span>{{ t .Localizer "Add App" }}</span>
                     </a>
                     <a class="btn-device-action" href="/devices/{{ .Item.ID }}/update">
-                        <i data-lucide="edit-3" style="width: 18px; height: 18px;"></i>
+                        <i data-lucide="edit-3" class="icon-md"></i>
                         <span>{{ t .Localizer "Edit Device" }}</span>
                     </a>
                     {{ if .Item.Type.SupportsFirmware }}
                     <a class="btn-device-action" href="/devices/{{ .Item.ID }}/firmware">
-                        <i data-lucide="cpu" style="width: 18px; height: 18px;"></i>
+                        <i data-lucide="cpu" class="icon-md"></i>
                         <span>{{ t .Localizer "Firmware" }}</span>
                     </a>
                     {{ end }}
@@ -122,14 +122,14 @@
                             class="btn-view-toggle active"
                             onclick="toggleAllAppsCompact('{{ .Item.ID }}')"
                             title="{{ t .Localizer "Collapse all app cards" }}">
-                        <i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>
+                        <i data-lucide="minimize-2" class="icon-base"></i>
                         <span>{{ t .Localizer "COMPACT" }}</span>
                     </button>
                     <button id="expandAllBtn-{{ .Item.ID }}"
                             class="btn-view-toggle"
                             onclick="toggleAllAppsExpanded('{{ .Item.ID }}')"
                             title="{{ t .Localizer "Expand all app cards" }}">
-                        <i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>
+                        <i data-lucide="maximize-2" class="icon-base"></i>
                         <span>{{ t .Localizer "EXPAND" }}</span>
                     </button>
                 </div>
@@ -157,7 +157,7 @@
                         aria-expanded="false"
                         aria-controls="device-info-content-{{ .Item.ID }}"
                         onclick="toggleDeviceInfo('{{ .Item.ID }}')">
-                    <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                    <i data-lucide="chevron-down" class="icon-sm"></i>
                     <span>{{ t .Localizer "DEVICE INFO" }}</span>
                 </button>
                 <div id="device-info-content-{{ .Item.ID }}" class="device-info-content">
@@ -205,7 +205,7 @@
     <!-- DRAG INSTRUCTION -->
     {{ if not .ReadOnly }}
     <div class="drag-instruction-bar">
-        <i data-lucide="grip-vertical" style="width: 14px; height: 14px;"></i>
+        <i data-lucide="grip-vertical" class="icon-sm"></i>
         <span>{{ t .Localizer "Drag apps to reorder or copy from/to another device" }}</span>
     </div>
     {{ end }}

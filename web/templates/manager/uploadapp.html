@@ -2,18 +2,43 @@
 {{ template "base" . }}
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Upload App" }}{{ end }}
+{{ define "header" }}
+<div class="page-header">
+    <h1 class="page-title">{{ t .Localizer "Upload App" }}</h1>
+</div>
+{{ end }}
 {{ define "content" }}
-<h1>{{ t .Localizer "Upload App" }}</h1>
-<div class="w3-card-4 w3-padding">
-    <form method="post" enctype="multipart/form-data">
-        <label>{{ t .Localizer "Select File (.star, .webp or .zip)" }}</label>
-        <input class="w3-input"
-               type="file"
-               name="file"
-               accept=".star,.webp,.zip"
-               required>
-        <br>
-        <button class="w3-button w3-green" type="submit">{{ t .Localizer "Upload" }}</button>
+<div class="form-panel">
+    <form method="post" enctype="multipart/form-data" class="auth-form">
+        <div class="form-field">
+            <label for="file" class="field-label field-required">{{ t .Localizer "SELECT FILE" }}</label>
+            <input type="file"
+                   name="file"
+                   id="file"
+                   accept=".star,.webp,.zip"
+                   required
+                   class="field-input">
+            <span class="field-hint">{{ t .Localizer "Supported formats: .star, .webp or .zip" }}</span>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-create">
+                <i data-lucide="upload"></i>
+                {{ t .Localizer "Upload" }}
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.history.back();">
+                <i data-lucide="x"></i>
+                {{ t .Localizer "Cancel" }}
+            </button>
+        </div>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+</script>
 {{ end }}

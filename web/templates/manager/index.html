@@ -3,19 +3,41 @@
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Home" }}{{ end }}
 {{ define "header" }}
-<!-- Add viewport meta tag -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- manager.css is now loaded in base.html -->
+<div class="page-header">
+    <div class="flex justify-between items-center gap-4" style="flex-wrap: wrap;">
+        <h1 class="page-title">{{ t .Localizer "Dashboard" }}</h1>
+        {{ if .User }}
+        <a class="btn-create" href="/devices/create">
+            <i data-lucide="plus-circle"></i> 
+            {{ t .Localizer "New Tronbyt" }}
+        </a>
+        {{ end }}
+    </div>
+</div>
 {{ end }}
 {{ define "content" }}
-{{ if .User }}
-<br>
-<a class="w3-button w3-purple w3-round w3-padding"
-   href="/devices/create"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "New Tronbyt" }}</a>
-<hr>
-{{ end }}
-{{ range .Devices }}
-{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices) }}
-<hr>
-{{ end }}
+<div class="dashboard-container">
+    {{ if not .Devices }}
+        <div class="alert alert-info">
+            <i data-lucide="info"></i>
+            <div class="alert-content">
+                <strong>{{ t .Localizer "No Devices Found" }}</strong>
+                <p>{{ t .Localizer "Get started by adding a new Tronbyt device." }}</p>
+            </div>
+        </div>
+    {{ end }}
+
+    <!-- Devices List -->
+    {{ range .Devices }}
+        {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "ReadOnly" false) }}
+    {{ end }}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+</script>
 {{ end }}

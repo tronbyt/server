@@ -20,14 +20,7 @@
     })();
     </script>
     <link rel="icon" href="/static/favicon.ico">
-    <!-- OLD CSS - Load first -->
-    <link rel="stylesheet" href="/static/css/w3.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/common.css">
-    <link rel="stylesheet" href="/static/css/partials.css">
-    <link rel="stylesheet" href="/static/css/manager.css">
-    <!-- NEW DESIGN SYSTEM - Load last to take precedence -->
+    <!-- NEW DESIGN SYSTEM -->
     <link rel="stylesheet" href="/static/css/design-system.css">
     <!-- Lucide Icons (bundled locally for reliability) -->
     <script src="/static/js/lucide.min.js"></script>
@@ -41,8 +34,8 @@
         <span>&nbsp;</span>
         <span>&nbsp;</span>
     </button>
-    <h1 class="w3-sans-serif">
-        <a href="/" style="text-decoration: none; color: inherit;">{{ t .Localizer "Tronbyt Manager" }}</a>
+    <h1>
+        <a href="/" class="no-underline text-inherit">{{ t .Localizer "Tronbyt Manager" }}</a>
     </h1>
     <ul>
         {{ if .User }}
@@ -111,8 +104,7 @@
         <h1>
             <a href="/"
                onclick="closeMobileMenu()"
-               style="text-decoration: none;
-                      color: inherit">{{ t .Localizer "Tronbyt Manager" }}</a>
+               class="no-underline text-inherit">{{ t .Localizer "Tronbyt Manager" }}</a>
         </h1>
         <button class="mobile-menu-close" id="mobileMenuClose">×</button>
     </div>
@@ -171,7 +163,7 @@
     </li>
     {{ end }}
     {{ end }}
-</ul>
+    </ul>
 </div>
 <section class="content">
     <header>

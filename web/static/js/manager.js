@@ -605,7 +605,7 @@ function sortItems(items, sortTypeParam = null) {
 
 // Function to show all items in a grid
 function showAllItems(grid) {
-  const allItems = Array.from(grid.getElementsByClassName('app-item'));
+  const allItems = Array.from(grid.getElementsByClassName('app-tile'));
   allItems.forEach(item => {
     item.style.display = 'block';
   });
@@ -613,7 +613,7 @@ function showAllItems(grid) {
 
 // Robust filtering system that handles all combinations
 function applyFilters() {
-  if (isInitialLoad || isProcessing) return;
+  if (isProcessing) return;
 
   isProcessing = true;
 
@@ -640,7 +640,7 @@ function applyFilters() {
         const currentSortType = sortSelect ? sortSelect.value : 'system';
 
         // Get all app items from the grid
-        const allItems = Array.from(grid.getElementsByClassName('app-item'));
+        const allItems = Array.from(grid.getElementsByClassName('app-tile'));
 
         // Filter items based on all criteria
         const filteredItems = allItems.filter(item => {
@@ -785,7 +785,7 @@ function setupVirtualScrolling() {
 
   grids.forEach(grid => {
     if (!grid) return;
-    const items = Array.from(grid.getElementsByClassName('app-item'));
+    const items = Array.from(grid.getElementsByClassName('app-tile'));
     if (!items || items.length <= ITEMS_PER_PAGE) return; // Skip if list is small
 
     let visibleStart = 0;
@@ -1763,17 +1763,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Event delegation for clicks on app items
     document.addEventListener('click', function (e) {
-      const appItem = e.target.closest('.app-item');
+      const appItem = e.target.closest('.app-tile');
       if (!appItem) return;
 
-      if (e.target.closest('.delete-upload-btn')) return;
+      if (e.target.closest('.tile-delete')) return;
 
       // Don't allow clicking on broken apps
-      if (appItem.classList.contains('broken-app')) {
+      if (appItem.classList.contains('is-broken')) {
         return;
       }
 
-      document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
+      document.querySelectorAll('.app-tile').forEach(i => i.classList.remove('selected'));
       appItem.classList.add('selected');
 
       document.getElementById('selected_app').value = appItem.getAttribute('data-value');

@@ -4,7 +4,7 @@
 {{ define "title" }}{{ t .Localizer "Log In" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
-    <h1 class="page-title">{{ t .Localizer "LOG IN" }}</h1>
+    <h1 class="page-title">{{ t .Localizer "Log In" }}</h1>
 </div>
 {{ end }}
 {{ define "content" }}
@@ -41,9 +41,9 @@
 
         <!-- Submit Button -->
         <div class="form-actions">
-            <button type="submit" class="btn-save">
-                <i data-lucide="log-in" style="width: 18px; height: 18px;"></i>
-                <span>{{ t .Localizer "Log In" }}</span>
+            <button type="submit" class="btn-primary">
+                <i data-lucide="log-in"></i>
+                {{ t .Localizer "Log In" }}
             </button>
         </div>
     </form>
@@ -53,9 +53,9 @@
         <div class="auth-divider">
             <span>{{ t .Localizer "OR" }}</span>
         </div>
-        <button onclick="loginWebAuthn()" class="btn-secondary" style="width: 100%;">
-            <i data-lucide="fingerprint" style="width: 18px; height: 18px;"></i>
-            <span>{{ t .Localizer "Sign in with Passkey" }}</span>
+        <button onclick="loginWebAuthn()" class="btn-secondary">
+            <i data-lucide="fingerprint"></i>
+            {{ t .Localizer "Sign in with Passkey" }}
         </button>
     </div>
 

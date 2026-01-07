@@ -125,7 +125,7 @@
 
     <!-- Header (Click to collapse) -->
     <div class="card-header border-b" onclick="collapseAppCard('{{ .App.Iname }}')">
-        <div class="flex items-center justify-between" style="margin-bottom: 0.75rem;">
+        <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
                 <h2 class="card-title">{{ .App.Name }}-{{ .App.Iname }}</h2>
                 {{ if isPinned .Device .App.Iname }}
@@ -143,13 +143,13 @@
 
         <div class="flex items-center gap-6 text-sm header-meta-row">
             <div class="flex items-center gap-2">
-                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
                 <span class="text-secondary">{{ t .Localizer "Interval:" }}</span>
                 <span class="font-medium">{{ .App.UInterval }} min</span>
             </div>
             <div class="divider-vertical"></div>
             <div class="flex items-center gap-2">
-                <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+                <i data-lucide="clock" class="icon-sm"></i>
                 <span class="text-secondary">{{ t .Localizer "Last rendered:" }}</span>
                 <span class="font-medium">
                     {{ if .App.EmptyLastRender }}
@@ -178,7 +178,7 @@
                 {{ if .App.EmptyLastRender }}
                 <div class="thumb-overlay">
                     <span class="thumb-overlay-badge">
-                        <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                        <i data-lucide="alert-triangle" class="icon-xs"></i>
                         {{ t .Localizer "INACTIVE" }}
                     </span>
                 </div>
@@ -193,14 +193,14 @@
                 <div class="grid-3">
                     <button class="btn-action-lg btn-play {{ if .App.Enabled }}is-enabled{{ end }}"
                             onclick="event.stopPropagation(); toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}');">
-                        <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}" style="width: 20px; height: 20px;"></i>
+                        <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}" class="icon-lg"></i>
                         <span class="font-medium">{{ if .App.Enabled }}{{ t .Localizer "Disable" }}{{ else }}{{ t .Localizer "Enable" }}{{ end }}</span>
                     </button>
 
                     <a class="btn-action-lg"
                        href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"
                        onclick="event.stopPropagation();">
-                        <i data-lucide="edit-3" style="width: 20px; height: 20px;"></i>
+                        <i data-lucide="edit-3" class="icon-lg"></i>
                         <span class="font-medium">{{ t .Localizer "Edit" }}</span>
                     </a>
 
@@ -263,10 +263,10 @@
                 </div>
 
                 <!-- Delete Section -->
-                <div class="border-t" style="padding-top: 0.5rem;">
+                <div class="border-t pt-2">
                     <button class="btn-delete"
                             onclick="event.stopPropagation(); deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }});">
-                        <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                        <i data-lucide="trash-2" class="icon-md"></i>
                         <span>{{ t .Localizer "Delete App" }}</span>
                     </button>
                 </div>
