@@ -89,7 +89,6 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 		}
 		db, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 		if err == nil {
-
 			// Enable WAL mode for better concurrency
 			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
 				slog.Warn("Failed to set WAL mode for SQLite", "error", err)
