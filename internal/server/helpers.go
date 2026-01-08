@@ -115,7 +115,6 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 			SingleUserAutoLogin:    s.Config.SingleUserAutoLogin,
 			SystemAppsAutoRefresh:  s.Config.SystemAppsAutoRefresh,
 			Production:             s.Config.Production,
-			BaseURL:                s.GetBaseURL(r),
 		}
 	}
 
