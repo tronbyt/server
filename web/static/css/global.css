@@ -140,6 +140,13 @@ html, body {
     --led-bg: var(--black);
     --led-frame: var(--neutral-900);
     
+    /* Radius Tokens */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-full: 9999px;
+    --radius-btn: var(--radius-md);
+
     /* Danger color alias */
     --danger-color: var(--red-600);
 }
@@ -375,9 +382,9 @@ html, body {
     padding: 0.75rem 1.25rem !important;
     min-height: 2.75rem !important;
     box-sizing: border-box !important;
-    line-height: 1 !important;
     background-color: var(--orange-500) !important;
     border: 1px solid var(--orange-500) !important;
+    border-radius: var(--radius-btn) !important;
     color: var(--white) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -393,7 +400,12 @@ html, body {
     border-color: var(--orange-600) !important;
 }
 
-.btn-create i { color: var(--white) !important; }
+.btn-create i,
+.btn-create svg { 
+    color: var(--white) !important; 
+    width: 1.25em !important; 
+    height: 1.25em !important; 
+}
 
 [data-theme="dark"] .btn-create {
     background-color: var(--orange-500) !important;
@@ -418,6 +430,7 @@ html, body {
     box-sizing: border-box !important;
     background-color: var(--neutral-900) !important;
     border: 1px solid var(--neutral-900) !important;
+    border-radius: var(--radius-btn) !important;
     color: var(--white) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -435,23 +448,33 @@ html, body {
 }
 
 .btn-save i,
-.btn-primary i { color: var(--white) !important; }
+.btn-primary i,
+.btn-save svg,
+.btn-primary svg { 
+    color: var(--white) !important; 
+    width: 1.25em !important; 
+    height: 1.25em !important;
+}
 
 [data-theme="dark"] .btn-save,
 [data-theme="dark"] .btn-primary {
-    background-color: var(--neutral-900) !important;
-    border-color: var(--neutral-900) !important;
-    color: var(--text-inverse) !important;
+    background-color: var(--white) !important;
+    border-color: var(--white) !important;
+    color: var(--black) !important;
 }
 
 [data-theme="dark"] .btn-save:hover,
 [data-theme="dark"] .btn-primary:hover {
-    background-color: var(--neutral-800) !important;
-    border-color: var(--neutral-800) !important;
+    background-color: var(--neutral-200) !important;
+    border-color: var(--neutral-200) !important;
 }
 
 [data-theme="dark"] .btn-save i,
-[data-theme="dark"] .btn-primary i { color: var(--text-inverse) !important; }
+[data-theme="dark"] .btn-primary i,
+[data-theme="dark"] .btn-save svg,
+[data-theme="dark"] .btn-primary svg { 
+    color: var(--black) !important; 
+}
 
 /* Cancel/Secondary Button (Gray - Neutral Actions) */
 .btn-cancel,
@@ -463,9 +486,9 @@ html, body {
     padding: 0.75rem 1.25rem !important;
     min-height: 2.75rem !important;
     box-sizing: border-box !important;
-    line-height: 1 !important;
-    background: none !important;
-    border: 1px solid var(--neutral-400) !important;
+    background: transparent !important;
+    border: 1px solid var(--neutral-300) !important;
+    border-radius: var(--radius-btn) !important;
     color: var(--neutral-700) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -479,34 +502,52 @@ html, body {
 .btn-cancel:hover,
 .btn-secondary:hover {
     background-color: var(--neutral-100) !important;
-    border-color: var(--neutral-500) !important;
+    border-color: var(--neutral-400) !important;
     color: var(--neutral-900) !important;
 }
 
 .btn-cancel i,
-.btn-secondary i { color: var(--neutral-600) !important; }
+.btn-secondary i,
+.btn-cancel svg,
+.btn-secondary svg { 
+    color: var(--neutral-600) !important; 
+    width: 1.25em !important; 
+    height: 1.25em !important;
+}
 
 .btn-cancel:hover i,
-.btn-secondary:hover i { color: var(--neutral-800) !important; }
+.btn-secondary:hover i,
+.btn-cancel:hover svg,
+.btn-secondary:hover svg { 
+    color: var(--neutral-800) !important; 
+}
 
 [data-theme="dark"] .btn-cancel,
 [data-theme="dark"] .btn-secondary {
-    border-color: var(--neutral-400) !important;
-    color: var(--neutral-800) !important;
+    border-color: var(--neutral-600) !important;
+    color: var(--neutral-300) !important;
 }
 
 [data-theme="dark"] .btn-cancel:hover,
 [data-theme="dark"] .btn-secondary:hover {
-    background-color: var(--neutral-200) !important;
-    border-color: var(--neutral-300) !important;
-    color: var(--neutral-900) !important;
+    background-color: var(--neutral-800) !important;
+    border-color: var(--neutral-500) !important;
+    color: var(--white) !important;
 }
 
 [data-theme="dark"] .btn-cancel i,
-[data-theme="dark"] .btn-secondary i { color: var(--neutral-600) !important; }
+[data-theme="dark"] .btn-secondary i,
+[data-theme="dark"] .btn-cancel svg,
+[data-theme="dark"] .btn-secondary svg { 
+    color: var(--neutral-400) !important; 
+}
 
 [data-theme="dark"] .btn-cancel:hover i,
-[data-theme="dark"] .btn-secondary:hover i { color: var(--neutral-800) !important; }
+[data-theme="dark"] .btn-secondary:hover i,
+[data-theme="dark"] .btn-cancel:hover svg,
+[data-theme="dark"] .btn-secondary:hover svg { 
+    color: var(--white) !important; 
+}
 
 /* Ghost Button (Text-only - Minimal emphasis) */
 .btn-ghost {
@@ -519,6 +560,7 @@ html, body {
     box-sizing: border-box !important;
     background: none !important;
     border: 1px solid transparent !important;
+    border-radius: var(--radius-btn) !important;
     color: var(--neutral-600) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -531,23 +573,38 @@ html, body {
 
 .btn-ghost:hover {
     background-color: var(--neutral-100) !important;
-    border-color: var(--neutral-300) !important;
+    border-color: transparent !important;
     color: var(--neutral-900) !important;
 }
 
-.btn-ghost i { color: var(--neutral-500) !important; }
-.btn-ghost:hover i { color: var(--neutral-700) !important; }
-
-[data-theme="dark"] .btn-ghost { color: var(--neutral-600) !important; }
-
-[data-theme="dark"] .btn-ghost:hover {
-    background-color: var(--bg-tertiary) !important;
-    border-color: var(--neutral-500) !important;
-    color: var(--neutral-800) !important;
+.btn-ghost i,
+.btn-ghost svg { 
+    color: var(--neutral-500) !important; 
+    width: 1.25em !important; 
+    height: 1.25em !important;
 }
 
-[data-theme="dark"] .btn-ghost i { color: var(--neutral-500) !important; }
-[data-theme="dark"] .btn-ghost:hover i { color: var(--neutral-700) !important; }
+.btn-ghost:hover i,
+.btn-ghost:hover svg { 
+    color: var(--neutral-700) !important; 
+}
+
+[data-theme="dark"] .btn-ghost { color: var(--neutral-400) !important; }
+
+[data-theme="dark"] .btn-ghost:hover {
+    background-color: var(--neutral-800) !important;
+    color: var(--white) !important;
+}
+
+[data-theme="dark"] .btn-ghost i,
+[data-theme="dark"] .btn-ghost svg { 
+    color: var(--neutral-500) !important; 
+}
+
+[data-theme="dark"] .btn-ghost:hover i,
+[data-theme="dark"] .btn-ghost:hover svg { 
+    color: var(--white) !important; 
+}
 
 /* Accent Button (Orange highlight) */
 .btn-accent {
@@ -560,6 +617,7 @@ html, body {
     box-sizing: border-box !important;
     background-color: var(--orange-500) !important;
     border: 1px solid var(--orange-500) !important;
+    border-radius: var(--radius-btn) !important;
     color: var(--white) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -575,9 +633,14 @@ html, body {
     border-color: var(--orange-600) !important;
 }
 
-.btn-accent i { color: var(--white) !important; }
+.btn-accent i,
+.btn-accent svg { 
+    color: var(--white) !important; 
+    width: 1.25em !important; 
+    height: 1.25em !important;
+}
 
-/* Delete Button */
+/* Delete Button - Enhanced */
 .btn-delete {
     display: flex !important;
     align-items: center !important;
@@ -586,35 +649,45 @@ html, body {
     width: 100% !important;
     padding: 0.75rem 1.25rem !important;
     border: 1px solid var(--red-300) !important;
+    border-radius: var(--radius-btn) !important;
     font-size: 0.75rem !important;
     color: var(--red-600) !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
-    background: none !important;
+    background-color: var(--red-50) !important; /* Tinted background by default */
     cursor: pointer !important;
     font-family: var(--font-mono) !important;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .btn-delete:hover {
-    background-color: var(--red-50) !important;
+    background-color: var(--red-100) !important; /* Slightly darker on hover */
     border-color: var(--red-600) !important;
 }
 
 [data-theme="dark"] .btn-delete {
-    border-color: var(--red-600) !important;
+    border-color: var(--red-900) !important;
     color: var(--red-400) !important;
+    background-color: rgba(153, 27, 27, 0.2) !important; /* Darker red tint */
 }
 
-[data-theme="dark"] .btn-delete i { color: var(--red-400) !important; }
+[data-theme="dark"] .btn-delete i,
+[data-theme="dark"] .btn-delete svg { 
+    color: var(--red-400) !important; 
+    width: 1.25em !important; 
+    height: 1.25em !important;
+}
 
 [data-theme="dark"] .btn-delete:hover {
-    background-color: var(--red-600) !important;
+    background-color: rgba(153, 27, 27, 0.4) !important;
     border-color: var(--red-600) !important;
-    color: var(--neutral-900) !important;
+    color: var(--white) !important;
 }
 
-[data-theme="dark"] .btn-delete:hover i { color: var(--neutral-900) !important; }
+[data-theme="dark"] .btn-delete:hover i,
+[data-theme="dark"] .btn-delete:hover svg { 
+    color: var(--white) !important; 
+}
 
 
 /* ===========================================
@@ -797,6 +870,24 @@ html, body {
 }
 
 [data-theme="dark"] .field-label { color: var(--neutral-600) !important; }
+
+/* Form Actions */
+.form-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid var(--border-primary) !important;
+}
+
+@media (max-width: 640px) {
+    .form-actions {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+}
 
 .field-optional {
     font-weight: 400 !important;

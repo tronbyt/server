@@ -50,15 +50,7 @@
 <div class="dashboard-container">
     <form method="post" id="device-form">
         
-        <!-- Action Bar Top -->
-        <div class="form-actions mb-8 flex justify-end gap-3">
-            <button type="button" class="btn-primary" onclick="saveDeviceForm();">
-                <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
-            </button>
-            <button type="button" class="btn-secondary" onclick="window.history.back()">
-               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
-            </button>
-        </div>
+        <!-- Action Bar Top REMOVED -->
 
         <!-- Basic Information -->
         <div class="form-section">
@@ -381,14 +373,37 @@
         <!-- Configuration Management -->
         <div class="form-section">
              <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
-             <div class="flex gap-3">
-                 <button type="button" class="btn-secondary" onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
-                    <i data-lucide="download"></i> {{ t .Localizer "Export Configuration" }}
-                 </button>
-                 <button type="button" class="btn-secondary" onclick="document.getElementById('import_config_file').click();">
-                    <i data-lucide="upload"></i> {{ t .Localizer "Import Configuration" }}
-                 </button>
+             <div class="flex flex-col md:flex-row gap-3">
+                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Export Configuration" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Backup device settings." }}</div>
+                    </div>
+                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
+                        <i data-lucide="download"></i> {{ t .Localizer "Export" }}
+                     </button>
+                </div>
+
+                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Import Configuration" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Restore device settings." }}</div>
+                    </div>
+                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('import_config_file').click();">
+                        <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
+                     </button>
+                </div>
              </div>
+        </div>
+
+        <!-- Main Form Actions -->
+        <div class="form-actions mt-8 pt-6 border-t border-neutral-200">
+             <button type="button" class="btn-primary" onclick="saveDeviceForm();">
+                <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
+            </button>
+            <button type="button" class="btn-secondary" onclick="window.history.back()">
+               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+            </button>
         </div>
 
         <!-- Danger Zone -->

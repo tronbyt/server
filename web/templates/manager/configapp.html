@@ -12,24 +12,7 @@
 {{ define "content" }}
 <div class="dashboard-container">
     <!-- Top Action Bar -->
-    <div class="form-actions mb-8 flex justify-between gap-3">
-        <div class="flex gap-2">
-            <button id="toggleConfigBtn" type="button" class="btn-secondary">
-                <i data-lucide="file-code"></i> <span class="button-label">{{ t .Localizer "Config" }}</span>
-            </button>
-            <button id="toggleDebugBtn" type="button" class="btn-secondary">
-                <i data-lucide="bug"></i> <span class="button-label">{{ t .Localizer "Debug" }}</span>
-            </button>
-        </div>
-        <div class="flex gap-2">
-            <button type="submit" form="dynamicForm" class="btn-create" id="saveButton">
-                <i data-lucide="save"></i> {{ t .Localizer "Save" }}
-            </button>
-            <button type="button" class="btn-secondary" id="cancelButtonTop">
-                <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
-            </button>
-        </div>
-    </div>
+    <!-- Top Action Bar REMOVED -->
     <!-- Config Content -->
     <div id="configContent" class="hidden mb-6">
         <div class="inset-panel bg-tertiary">
@@ -81,7 +64,17 @@
     <form method="post" id="dynamicForm">
         <!-- Schema Config Section -->
         <div class="form-section">
-            <h2 class="section-title">{{ t .Localizer "App Configuration" }}</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="section-title mb-0">{{ t .Localizer "App Configuration" }}</h2>
+                <div class="flex gap-2">
+                    <button id="toggleConfigBtn" type="button" class="btn-secondary btn-sm">
+                        <i data-lucide="file-code"></i> <span class="button-label">{{ t .Localizer "Config" }}</span>
+                    </button>
+                    <button id="toggleDebugBtn" type="button" class="btn-secondary btn-sm">
+                        <i data-lucide="bug"></i> <span class="button-label">{{ t .Localizer "Debug" }}</span>
+                    </button>
+                </div>
+            </div>
             <div id="schemaConfigContainer" class="form-grid">
                 <!-- Schema fields will be injected here by JavaScript -->
             </div>
@@ -297,55 +290,57 @@
         </div>
 
 
-        <!-- Form Actions -->
+        <!-- Configuration Management -->
         <div class="form-section">
-            <div class="form-actions justify-between">
-                <div class="flex gap-3">
-                    <button type="submit" class="btn-create">
-                        <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+             <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
+             <div class="flex flex-col md:flex-row gap-3">
+                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Export Configuration" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Backup app settings." }}</div>
+                    </div>
+                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="exportConfig()">
+                        <i data-lucide="download"></i> {{ t .Localizer "Export" }}
+                     </button>
+                </div>
+
+                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Import Configuration" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Restore app settings." }}</div>
+                    </div>
+                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('importConfigInput').click()">
+                        <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
+                     </button>
+                </div>
+             </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-section border-t pt-6 mt-6">
+            <div class="form-actions flex-col md:flex-row justify-between gap-4">
+                <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <button type="submit" class="btn-primary w-full md:w-auto justify-center">
+                        <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
                     </button>
                     {{ if eq .Device.Info.ProtocolType "WS" }}
-                    <button type="button" class="btn-secondary" id="previewButton">
+                    <button type="button" class="btn-secondary w-full md:w-auto justify-center" id="previewButton">
                         <i data-lucide="eye"></i> {{ t .Localizer "Preview" }}
                     </button>
                     {{ end }}
-                    <button type="button" class="btn-secondary" id="resetButton">
+                    <button type="button" class="btn-secondary w-full md:w-auto justify-center" id="resetButton">
                         <i data-lucide="rotate-ccw"></i> {{ t .Localizer "Reset" }}
                     </button>
                 </div>
-                <div class="flex gap-3">
-                    <button type="button" class="btn-secondary" onclick="exportConfig()">
-                        <i data-lucide="download"></i>
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('importConfigInput').click()">
-                        <i data-lucide="upload"></i>
-                    </button>
-                    <button type="button" class="btn-secondary" id="cancelButton">
+                <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <button type="button" class="btn-secondary w-full md:w-auto justify-center" id="cancelButton">
                         <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
                     </button>
-                    <button type="button" class="btn-delete" id="deleteButton"
+                    <button type="button" class="btn-delete w-full md:w-auto justify-center" id="deleteButton"
                             onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
-                        <i data-lucide="trash-2"></i> {{ t .Localizer "Delete" }}
+                        <i data-lucide="trash-2"></i> {{ t .Localizer "Delete App" }}
                     </button>
                 </div>
-            </div>
-        </div>
-    </form>
-
-<input type="file"
-       id="importConfigInput"
-       style="display:none"
-       accept=".json"
-       onchange="importConfig(this)">        <!-- Configuration Management -->
-        <div class="form-section">
-            <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
-            <div class="flex gap-3">
-                <button type="button" class="btn-secondary" onclick="exportConfig()">
-                    <i data-lucide="download"></i> {{ t .Localizer "Export Configuration" }}
-                </button>
-                <button type="button" class="btn-secondary" onclick="document.getElementById('importConfigInput').click()">
-                    <i data-lucide="upload"></i> {{ t .Localizer "Import Configuration" }}
-                </button>
             </div>
         </div>
 

@@ -159,15 +159,17 @@
         <!-- CONFIGURATION MANAGEMENT SECTION -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "CONFIGURATION MANAGEMENT" }}</h2>
-            <div class="config-management-container">
-                <button type="button"
-                        class="btn-action-sm"
-                        onclick="document.getElementById('import-file').click();">
-                    <i data-lucide="upload"></i>
-                    {{ t .Localizer "Import Configuration" }}
-                </button>
-            </div>
-            <span class="field-hint">{{ t .Localizer "Import device settings from a previously exported configuration file." }}</span>
+             <div class="flex flex-col md:flex-row gap-3">
+                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Import Configuration" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Import device settings from backup." }}</div>
+                    </div>
+                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('import-file').click();">
+                        <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
+                     </button>
+                </div>
+             </div>
         </div>
 
         <!-- ACTION BUTTONS -->
