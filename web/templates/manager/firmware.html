@@ -163,13 +163,9 @@
         function updateUrl() {
             if (httpRadio.checked || wsRadio.checked) {
                 input.value = httpRadio.checked ? httpVal : wsVal;
-                input.readOnly = true;
-                // Style as readonly/disabled
-                input.classList.add('bg-tertiary', 'text-secondary');
+                // input.readOnly = false; // logic removed to allow editing
             } else if (customRadio.checked) {
                 input.value = defaultPath.startsWith("http") ? defaultPath : (origin + defaultPath);
-                input.readOnly = false;
-                input.classList.remove('bg-tertiary', 'text-secondary');
             }
         }
 
