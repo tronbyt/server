@@ -1,6 +1,7 @@
 {{ define "configapp" }}
 {{ template "base" . }}
 {{ end }}
+{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
 {{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
 {{ define "header" }}
 <script src="/static/js/location.js"></script>

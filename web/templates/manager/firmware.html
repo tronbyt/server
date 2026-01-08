@@ -1,6 +1,7 @@
 {{ define "firmware" }}
 {{ template "base" . }}
 {{ end }}
+{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
 {{ define "title" }}{{ t .Localizer "Firmware" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
