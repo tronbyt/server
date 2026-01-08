@@ -130,15 +130,11 @@
     padding: 0 0.75rem !important;
     flex-shrink: 0 !important;
     display: flex !important;
-    padding: 0 0.75rem !important;
-    flex-shrink: 0 !important;
-    display: flex !important;
     align-items: center !important;
-    border-left: 1px solid var(--neutral-300) !important;
 }
 
 [data-theme="dark"] .compact-status {
-    border-left-color: var(--neutral-300) !important;
+    /* border-left-color: var(--neutral-300) !important; */
 }
 
 .compact-actions {
@@ -1617,4 +1613,27 @@ button.btn-action-lg {
 
 .compact-actions .btn-tool:last-child {
     border-right: none !important;
+}
+
+/* ===========================================
+   CRITICAL FIX: APP CARD BOX MODEL
+   Forces each app row to be a separate, detached card
+   =========================================== */
+.app-card {
+    /* display: block !important; -- REMOVED to fix duplicate full/compact view */
+    border: 1px solid var(--neutral-700) !important;
+    margin-bottom: 1rem !important;
+    border-radius: 4px !important;
+    background-color: var(--white) !important;
+    overflow: hidden !important;
+}
+
+[data-theme="dark"] .app-card {
+    background-color: var(--bg-secondary) !important; /* distinct card bg */
+    border-color: var(--neutral-600) !important;
+}
+
+/* Ensure gap between cards is respected if in flex container */
+.apps-list {
+    gap: 1rem !important;
 }
