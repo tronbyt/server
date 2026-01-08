@@ -337,11 +337,8 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 	newPassword := r.FormValue("password")
 	email := r.FormValue("email")
 	apiKey := r.FormValue("api_key")
-	userRepoURL := r.FormValue("user_repo_url")
-	systemRepoURL := r.FormValue("system_repo_url")
 
 	needsSave := false
-	selectFields := []string{}
 
 	if oldPassword != "" && newPassword != "" {
 		valid, _, err := auth.VerifyPassword(user.Password, oldPassword)
@@ -358,7 +355,6 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		}
 		user.Password = hash
 		needsSave = true
-		selectFields = append(selectFields, "Password")
 	}
 
 	// Update Email
@@ -374,43 +370,25 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		} else {
 			user.Email = &email
 		}
-		selectFields = append(selectFields, "Email")
 	}
 
-	// Update API Key (if provided and different)
+	// Update API Key (only if provided and different - empty means no change)
 	if apiKey != "" && apiKey != user.APIKey {
 		user.APIKey = apiKey
 		needsSave = true
-		selectFields = append(selectFields, "APIKey")
 	}
 
-	// Update User Repo URL (if changed)
-	if userRepoURL != user.AppRepoURL {
-		user.AppRepoURL = userRepoURL
-		needsSave = true
-		selectFields = append(selectFields, "AppRepoURL")
-	}
-
-	if needsSave && len(selectFields) > 0 {
-		// Convert selectFields to interface{} slice for Select
-		selectArgs := make([]interface{}, len(selectFields)-1)
-		for i := 1; i < len(selectFields); i++ {
-			selectArgs[i-1] = selectFields[i]
+	if needsSave {
+		updates := data.User{
+			Password: user.Password,
+			Email:    user.Email,
+			APIKey:   user.APIKey,
 		}
-		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select(selectFields[0], selectArgs...).Updates(r.Context(), user); err != nil {
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email", "APIKey").Updates(r.Context(), updates); err != nil {
 			slog.Error("Failed to update user profile", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-	}
-
-	// Handle System Repo URL (admin only, separate config setting)
-	if user.IsAdmin && systemRepoURL != "" && systemRepoURL != s.Config.SystemAppsRepo {
-		// This would require updating the server config - typically done via /set_system_repo
-		// For now, redirect to the proper endpoint or handle inline
-		slog.Info("System repo URL update requested via edit form", "url", systemRepoURL)
-		// The system repo URL changes should still go through /set_system_repo
-		// as it requires cloning the repo, not just saving a string
 	}
 
 	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
