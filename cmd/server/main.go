@@ -89,16 +89,6 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 		}
 		db, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 		if err == nil {
-			// Configure connection pool FIRST before any queries
-			// SQLite doesn't handle concurrent writes well, so we limit to 1 connection
-			sqlDB, dbErr := db.DB()
-			if dbErr != nil {
-				slog.Warn("Failed to get underlying sql.DB for SQLite", "error", dbErr)
-			} else {
-				sqlDB.SetMaxOpenConns(1)
-				sqlDB.SetMaxIdleConns(1)
-				sqlDB.SetConnMaxLifetime(0)
-			}
 
 			// Enable WAL mode for better concurrency
 			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
