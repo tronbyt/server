@@ -559,8 +559,8 @@
 <!-- Sticky Action Bar -->
 {{ template "sticky_actions" (dict 
     "Localizer" .Localizer 
-    "SaveType" "button" 
-    "SaveAction" "saveDeviceForm();" 
+    "SaveType" "submit" 
+    "SaveForm" "device-form" 
 ) }}
 
 <script>
@@ -625,32 +625,27 @@
         }
     });
 
-    function saveDeviceForm() {
-        console.log("saveDeviceForm called");
-        const useCustomScaleCheckbox = document.getElementById('use_custom_brightness_scale');
-        const hiddenInput = document.getElementById('custom_brightness_scale_hidden');
-
-        if (useCustomScaleCheckbox && useCustomScaleCheckbox.checked) {
-            const values = [];
-            for (let i = 0; i < 6; i++) {
-                const input = document.getElementById('brightness_level_' + i);
-                if (input) values.push(input.value);
-            }
-            if (hiddenInput) hiddenInput.value = values.join(',');
-        } else if (hiddenInput) {
-            hiddenInput.value = '';
-        }
-        
+    // Handle form submission logic (Custom Brightness Scale)
+    document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('device-form');
         if (form) {
-             if (form.reportValidity()) {
-                form.submit();
-            }
-        } else {
-            console.error("Form 'device-form' not found!");
-            alert("Error: Could not find form to save.");
+            form.addEventListener('submit', function() {
+                const useCustomScaleCheckbox = document.getElementById('use_custom_brightness_scale');
+                const hiddenInput = document.getElementById('custom_brightness_scale_hidden');
+
+                if (useCustomScaleCheckbox && useCustomScaleCheckbox.checked) {
+                    const values = [];
+                    for (let i = 0; i < 6; i++) {
+                        const input = document.getElementById('brightness_level_' + i);
+                        if (input) values.push(input.value);
+                    }
+                    if (hiddenInput) hiddenInput.value = values.join(',');
+                } else if (hiddenInput) {
+                    hiddenInput.value = '';
+                }
+            });
         }
-    }
+    });
 </script>
 
 <!-- Hidden form for config import -->
