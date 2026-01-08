@@ -1,0 +1,31 @@
+{{/* 
+  Sticky Action Bar Component
+  
+  Usage: {{ template "sticky_actions" . }}
+  
+  Expected data:
+  - .Localizer: for translations
+  - .SaveText: (optional) custom save button text, defaults to "Save Changes"
+  - .CancelURL: (optional) URL for cancel button, defaults to "/"
+  - .ShowDelete: (optional) if true, shows delete button
+  - .DeleteAction: (optional) onclick handler for delete
+  - .DeleteText: (optional) custom delete button text
+*/}}
+
+{{ define "sticky_actions" }}
+<div class="sticky-actions" id="stickyActions">
+    <div class="sticky-actions-inner">
+        <!-- Cancel (left on desktop, bottom on mobile) -->
+        <a href="{{ if .CancelURL }}{{ .CancelURL }}{{ else }}/{{ end }}" class="btn-secondary sticky-cancel">
+            <i data-lucide="x-circle"></i>
+            <span>{{ t .Localizer "Cancel" }}</span>
+        </a>
+        
+        <!-- Save (right on desktop, top on mobile) -->
+        <button type="submit" class="btn-primary sticky-save">
+            <i data-lucide="save"></i>
+            <span>{{ if .SaveText }}{{ .SaveText }}{{ else }}{{ t .Localizer "Save Changes" }}{{ end }}</span>
+        </button>
+    </div>
+</div>
+{{ end }}

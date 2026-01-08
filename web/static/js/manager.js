@@ -5,6 +5,53 @@ let hideInstalled = false;
 let showBroken = false;
 let isProcessing = false;
 
+// ===========================================
+// STICKY ACTION BAR
+// Handles keyboard detection and scroll behavior
+// ===========================================
+(function initStickyActions() {
+  const stickyBar = document.getElementById('stickyActions');
+  if (!stickyBar) return;
+  
+  let lastScrollY = window.scrollY;
+  let isKeyboardOpen = false;
+  const initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+  
+  // Detect virtual keyboard on mobile (viewport shrinks significantly)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const heightDiff = initialViewportHeight - window.visualViewport.height;
+      // If viewport shrunk by more than 150px, keyboard is likely open
+      isKeyboardOpen = heightDiff > 150;
+      stickyBar.classList.toggle('hidden', isKeyboardOpen);
+    });
+  }
+  
+  // Show on scroll up, hide on scroll down (mobile only)
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking && !isKeyboardOpen) {
+      window.requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        // Always show if near bottom of page
+        const nearBottom = window.innerHeight + currentScrollY >= document.body.offsetHeight - 100;
+        
+        if (nearBottom || currentScrollY < lastScrollY) {
+          stickyBar.classList.remove('hidden');
+        } else if (currentScrollY > lastScrollY && currentScrollY > 200) {
+          // Only hide after scrolling down past 200px (on mobile)
+          if (window.innerWidth < 768) {
+            stickyBar.classList.add('hidden');
+          }
+        }
+        lastScrollY = currentScrollY;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+})();
+
 // Global variables for drag-and-drop
 let draggedElement = null;
 let draggedDeviceId = null;

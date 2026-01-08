@@ -47,7 +47,7 @@
 </script>
 {{ end }}
 {{ define "content" }}
-<div class="dashboard-container">
+<div class="dashboard-container has-sticky-actions">
     <form method="post" id="device-form">
         
         <!-- Action Bar Top REMOVED -->
@@ -396,17 +396,8 @@
              </div>
         </div>
 
-        <!-- Main Form Actions -->
-        <div class="form-actions mt-8 pt-6 border-t border-neutral-200">
-             <button type="button" class="btn-primary" onclick="saveDeviceForm();">
-                <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
-            </button>
-            <button type="button" class="btn-secondary" onclick="window.history.back()">
-               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
-            </button>
-        </div>
-
-        <!-- Danger Zone -->
+        <!-- Danger Zone - separated by divider -->
+        <div class="border-t border-neutral-300 my-8"></div>
          <div class="form-section border-danger">
             <h2 class="section-title text-danger">{{ t .Localizer "Danger Zone" }}</h2>
             <div class="form-actions">
@@ -419,6 +410,20 @@
     
     <!-- Separate delete form to avoid Chrome issues -->
     <form id="delete-device-form" action="/devices/{{ .Device.ID }}/delete" method="post" style="display: none;"></form>
+</div>
+
+<!-- Sticky Action Bar -->
+<div class="sticky-actions" id="stickyActions">
+    <div class="sticky-actions-inner">
+        <a href="/" class="btn-secondary sticky-cancel">
+            <i data-lucide="arrow-left"></i>
+            <span>{{ t .Localizer "Cancel" }}</span>
+        </a>
+        <button type="button" class="btn-primary sticky-save" onclick="saveDeviceForm();">
+            <i data-lucide="save"></i>
+            <span>{{ t .Localizer "Save Changes" }}</span>
+        </button>
+    </div>
 </div>
 
 <script>

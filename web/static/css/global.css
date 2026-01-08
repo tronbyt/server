@@ -1638,3 +1638,79 @@ nav li a:hover { color: var(--orange-500); }
     .md\:flex-none { flex: none !important; }
     .md\:justify-between { justify-content: space-between !important; }
 }
+
+
+/* ===========================================
+   STICKY ACTION BAR
+   Always visible save/cancel bar at bottom
+   =========================================== */
+.sticky-actions {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    background-color: var(--bg-primary) !important;
+    border-top: 1px solid var(--neutral-300) !important;
+    padding: 0.75rem 1rem !important;
+    transform: translateY(0) !important;
+    transition: transform 0.2s ease-out !important;
+}
+
+.sticky-actions.hidden {
+    transform: translateY(100%) !important;
+}
+
+.sticky-actions-inner {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    gap: 0.5rem !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+}
+
+/* Mobile: stacked layout - Save on top, Cancel below */
+.sticky-actions .sticky-save {
+    width: 100% !important;
+    justify-content: center !important;
+}
+
+.sticky-actions .sticky-cancel {
+    width: 100% !important;
+    justify-content: center !important;
+}
+
+/* Desktop: side-by-side - Cancel left, Save right */
+@media (min-width: 768px) {
+    .sticky-actions {
+        padding: 1rem 2rem !important;
+    }
+    
+    .sticky-actions-inner {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+    
+    .sticky-actions .sticky-save,
+    .sticky-actions .sticky-cancel {
+        width: auto !important;
+    }
+}
+
+/* Dark mode */
+[data-theme="dark"] .sticky-actions {
+    background-color: var(--bg-secondary) !important;
+    border-top-color: var(--border-primary) !important;
+}
+
+/* Add padding to main content so it doesn't get hidden behind sticky bar */
+.has-sticky-actions {
+    padding-bottom: 5rem !important;
+}
+
+@media (min-width: 768px) {
+    .has-sticky-actions {
+        padding-bottom: 4rem !important;
+    }
+}
