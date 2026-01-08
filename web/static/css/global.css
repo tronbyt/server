@@ -839,6 +839,9 @@ html, body {
     padding: 1.5rem !important;
     margin-bottom: 1.5rem !important;
     background-color: var(--white) !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
 [data-theme="dark"] .form-section {
@@ -868,6 +871,8 @@ html, body {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 1.5rem !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
 }
 
 @media (max-width: 640px) {
@@ -883,6 +888,7 @@ html, body {
     flex-direction: column !important;
     gap: 0.375rem !important;
     margin-bottom: 1rem !important;
+    min-width: 0 !important;
 }
 
 .form-field:last-child { margin-bottom: 0 !important; }
@@ -931,6 +937,8 @@ html, body {
 
 .field-input {
     width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     padding: 0.75rem !important;
     border: 1px solid var(--neutral-300) !important;
     border-radius: 0 !important;
@@ -1672,6 +1680,16 @@ nav li a:hover { color: var(--orange-500); }
     .page-title { font-size: 1rem !important; }
     .btn-create, .btn-save, .btn-delete, .btn-cancel, .btn-secondary, .btn-primary {
         font-size: 0.6875rem !important; padding: 0.625rem 1rem !important; min-height: 2.5rem !important;
+    }
+    
+    /* Date/time inputs need special handling on mobile */
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
     }
 }
 
