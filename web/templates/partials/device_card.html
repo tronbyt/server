@@ -238,6 +238,9 @@ function toggleAllAppsCompact(deviceId) {
     // Update button states
     if (compactBtn) compactBtn.classList.add('active');
     if (expandBtn) expandBtn.classList.remove('active');
+
+    // Save preference
+    saveDeviceViewPreference(deviceId, 'compact');
 }
 
 // Toggle all app cards to expanded view
@@ -259,6 +262,14 @@ function toggleAllAppsExpanded(deviceId) {
     // Update button states
     if (expandBtn) expandBtn.classList.add('active');
     if (compactBtn) compactBtn.classList.remove('active');
+
+    // Save preference
+    saveDeviceViewPreference(deviceId, 'expanded');
+}
+
+// Save view preference to localStorage
+function saveDeviceViewPreference(deviceId, viewMode) {
+    localStorage.setItem(`device_view_pref_${deviceId}`, viewMode);
 }
 
 // Toggle device info visibility
@@ -286,6 +297,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const value = parseInt(slider.value) || min;
         const percentage = ((value - min) / (max - min)) * 100;
         slider.style.setProperty('--slider-value', percentage + '%');
+    });
+
+    // Restore view preferences for each device card
+    document.querySelectorAll('.device-card-container').forEach(card => {
+        const id = card.id.replace('device-card-', '');
+        const pref = localStorage.getItem(`device_view_pref_${id}`);
+        if (pref === 'expanded') {
+            toggleAllAppsExpanded(id);
+        }
+        // Default is compact, so we don't need to explicitly call compact unless we want to enforce it? 
+        // But the HTML is rendered as compact by default. 
+        // Just strictly validating 'expanded' is safer to avoid accidental double-toggling.
     });
 });
 </script>
