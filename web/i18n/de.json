@@ -920,6 +920,9 @@
   "Reset": {
     "other": "Zurücksetzen"
   },
+  "Reset all fields to their default values?": {
+    "other": "Alle Felder auf ihre Standardwerte zurücksetzen?"
+  },
   "Delete App?": {
     "other": "App löschen?"
   },
