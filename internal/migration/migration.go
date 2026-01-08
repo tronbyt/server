@@ -43,6 +43,11 @@ func MigrateLegacyDB(oldDBPath, newDBLocation, dataDir string) error {
 	} else {
 		slog.Info("Using SQLite for new DB")
 		newDB, err = gorm.Open(sqlite.Open(newDBLocation), &gorm.Config{})
+		if err == nil {
+			if err := newDB.Exec("PRAGMA busy_timeout=5000;").Error; err != nil {
+				slog.Warn("Failed to set busy timeout for new SQLite DB", "error", err)
+			}
+		}
 	}
 
 	if err != nil {
