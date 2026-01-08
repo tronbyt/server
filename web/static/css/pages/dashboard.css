@@ -1,5 +1,10 @@
-   Card Container
-   =========================================== */
+/**
+ * TRONBYT DESIGN SYSTEM - Add App Page Styles
+ * Styles for app catalog, app tiles, and app grid
+ */
+
+/* Card Container
+=========================================== */
 .card-container {
     background-color: var(--white) !important;
     border: 1px solid var(--neutral-700) !important;
