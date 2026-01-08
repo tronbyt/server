@@ -9,7 +9,7 @@
 </div>
 {{ end }}
 {{ define "content" }}
-<div class="dashboard-container">
+<div class="dashboard-container has-sticky-actions">
 
     <!-- System Administration (Admins Only) -->
     {{ if .User.IsAdmin }}
@@ -25,8 +25,8 @@
                      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                         <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .SystemRepoInfo.URL }}</a>
                         <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
-                            <button type="submit" class="btn-secondary btn-sm w-full md:w-auto justify-center">
-                                <i data-lucide="rotate-cw" class="icon-sm"></i> {{ t .Localizer "Refresh" }}
+                            <button type="submit" class="btn-secondary btn-sm px-2" title="{{ t .Localizer "Refresh" }}">
+                                <i data-lucide="rotate-cw" class="icon-sm"></i>
                             </button>
                         </form>
                     </div>
@@ -44,15 +44,10 @@
                  <div class="text-sm text-secondary italic mb-3">{{ t .Localizer "No system repository configured." }}</div>
                 {{ end }}
                 
-                <form method="post" action="/set_system_repo" class="flex flex-col md:flex-row gap-2 items-end">
-                    <div class="flex-1 w-full">
-                        <label for="app_repo_url" class="field-label text-xs mb-1.5">{{ t .Localizer "Change Repository URL" }}</label>
-                        <input name="app_repo_url" id="app_repo_url" required value="{{ .GlobalSystemRepoURL }}" class="field-input field-mono w-full">
-                    </div>
-                    <button type="submit" class="btn-secondary w-full md:w-auto justify-center mb-[1px]">
-                        <i data-lucide="save"></i> {{ t .Localizer "Save URL" }}
-                    </button>
-                </form>
+                <div class="flex flex-col gap-2">
+                    <label for="system_repo_url" class="field-label text-xs">{{ t .Localizer "Change Repository URL" }}</label>
+                    <input name="system_repo_url" id="system_repo_url" form="userSettingsForm" value="{{ .GlobalSystemRepoURL }}" class="field-input field-mono">
+                </div>
                  <p class="field-hint mt-1 text-warning">
                     <i data-lucide="alert-triangle" class="icon-xs inline mr-1"></i>
                     {{ t .Localizer "Replacing existing system repo will delete the previous repo and break any apps using it." }}
@@ -72,8 +67,8 @@
                             {{ end }}
                         </div>
                         <form method="post" action="/update_firmware" onsubmit="event.preventDefault(); updateFirmware(this);">
-                            <button type="submit" class="btn-secondary btn-sm w-full md:w-auto justify-center">
-                                <i {{ if .FirmwareVersion }}data-lucide="rotate-cw"{{ else }}data-lucide="download"{{ end }}></i> 
+                            <button type="submit" class="btn-primary w-full md:w-auto justify-center">
+                                <i data-lucide="download"></i> 
                                 {{ if .FirmwareVersion }}{{ t .Localizer "Update Firmware" }}{{ else }}{{ t .Localizer "Download Firmware" }}{{ end }}
                             </button>
                         </form>
@@ -100,8 +95,8 @@
                          {{ if .User.AppRepoURL }}
                         <div class="flex gap-2 w-full md:w-auto">
                              <form method="post" action="/refresh_user_repo" class="flex-1 md:flex-none" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2 class=icon-sm></i>'; ">
-                                <button type="submit" class="btn-secondary btn-sm w-full justify-center px-3">
-                                    <i data-lucide="rotate-cw" class="icon-sm"></i> {{ t .Localizer "Refresh" }}
+                                <button type="submit" class="btn-secondary btn-sm px-2" title="{{ t .Localizer "Refresh" }}">
+                                    <i data-lucide="rotate-cw" class="icon-sm"></i>
                                 </button>
                             </form>
                             <form method="post" action="/set_user_repo" class="flex-1 md:flex-none" onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
@@ -127,15 +122,10 @@
                  <div class="text-sm text-secondary italic mb-3">{{ t .Localizer "No custom repository configured." }}</div>
                 {{ end }}
 
-                <form method="post" action="/set_user_repo" class="flex flex-col md:flex-row gap-2 items-end">
-                    <div class="flex-1 w-full">
-                        <label for="user_repo_url" class="field-label text-xs mb-1.5">{{ t .Localizer "Set Repository URL" }}</label>
-                        <input name="app_repo_url" id="user_repo_url" required value="{{ .User.AppRepoURL }}" class="field-input field-mono w-full">
-                    </div>
-                    <button type="submit" class="btn-secondary w-full md:w-auto justify-center mb-[1px]">
-                        <i data-lucide="save"></i> {{ t .Localizer "Save URL" }}
-                    </button>
-                </form>
+                <div class="flex flex-col gap-2">
+                    <label for="user_repo_url" class="field-label text-xs">{{ t .Localizer "Set Repository URL" }}</label>
+                    <input name="user_repo_url" id="user_repo_url" form="userSettingsForm" value="{{ .User.AppRepoURL }}" class="field-input field-mono">
+                </div>
                  <p class="field-hint mt-1 text-warning">
                     <i data-lucide="alert-triangle" class="icon-xs inline mr-1"></i>
                     {{ t .Localizer "Replacing an existing custom repo will delete the previous repo and break any apps using it." }}
@@ -148,34 +138,27 @@
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Security Settings" }}</h2>
         
-        <form method="post">
+        <div class="form-grid">
+            <div class="form-field col-span-full">
+                <label for="email" class="field-label">{{ t .Localizer "Email Address" }}</label>
+                <input type="email" name="email" id="email" form="userSettingsForm" value="{{ if .User.Email }}{{ .User.Email }}{{ end }}" class="field-input max-w-lg">
+            </div>
+        </div>
+        
+        <div class="mt-6 pt-6 border-t border-neutral-200">
+            <h3 class="font-bold text-sm mb-4">{{ t .Localizer "Change Password" }}</h3>
             <div class="form-grid">
-                <div class="form-field col-span-full">
-                    <label for="email" class="field-label">{{ t .Localizer "Email Address" }}</label>
-                    <input type="email" name="email" id="email" value="{{ if .User.Email }}{{ .User.Email }}{{ end }}" class="field-input max-w-lg">
+                <div class="form-field">
+                    <label for="old_password" class="field-label">{{ t .Localizer "Old Password" }}</label>
+                    <input type="password" name="old_password" id="old_password" form="userSettingsForm" class="field-input">
+                </div>
+                
+                <div class="form-field">
+                    <label for="password" class="field-label">{{ t .Localizer "New Password" }}</label>
+                    <input type="password" name="password" id="password" form="userSettingsForm" class="field-input">
                 </div>
             </div>
-             <div class="mt-6 pt-6 border-t border-neutral-200">
-                <h3 class="font-bold text-sm mb-4">{{ t .Localizer "Change Password" }}</h3>
-                <div class="form-grid">
-                    <div class="form-field">
-                        <label for="old_password" class="field-label">{{ t .Localizer "Old Password" }}</label>
-                        <input type="password" name="old_password" id="old_password" class="field-input">
-                    </div>
-                    
-                    <div class="form-field">
-                        <label for="password" class="field-label">{{ t .Localizer "New Password" }}</label>
-                        <input type="password" name="password" id="password" class="field-input">
-                    </div>
-
-                    <div class="form-actions col-span-full mt-2 flex justify-end">
-                        <button type="submit" class="btn-primary">
-                            <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
-                        </button>
-                    </div>
-                </div>
-             </div>
-        </form>
+        </div>
 
         <!-- API Key Separated -->
         <div class="mt-8 pt-8 border-t border-neutral-200">
@@ -183,22 +166,21 @@
                 <div class="form-field col-span-full">
                      <label class="field-label">{{ t .Localizer "API Access" }}</label>
                      <div class="flex flex-col gap-4">
-                        <form method="post" action="/auth/set_api_key" class="flex flex-col md:flex-row gap-2 md:items-end">
-                            <div class="flex-1 w-full">
-                                <label for="api_key" class="field-label text-xs mb-1.5">{{ t .Localizer "Your API Key" }}</label>
-                                <input type="text" name="api_key" id="api_key" required value="{{ .User.APIKey }}" class="field-input field-mono w-full">
-                            </div>
-                            <button type="submit" class="btn-primary w-full md:w-auto" onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
-                                <i data-lucide="save"></i> {{ t .Localizer "Update" }}
-                            </button>
-                        </form>
+                        <div class="flex flex-col gap-2">
+                            <label for="api_key" class="field-label text-xs">{{ t .Localizer "Your API Key" }}</label>
+                            <input type="text" name="api_key" id="api_key" form="userSettingsForm" value="{{ .User.APIKey }}" class="field-input field-mono max-w-lg">
+                        </div>
                         
-                        <div class="flex justify-end">
+                        <div class="flex flex-col items-start gap-2">
                             <form method="post" action="/auth/generate_api_key">
-                                <button type="submit" class="btn-secondary btn-sm" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
-                                    <i data-lucide="refresh-cw"></i> {{ t .Localizer "Generate New Random Key" }}
+                                <button type="submit" class="btn-primary" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
+                                    <i data-lucide="rotate-cw"></i> {{ t .Localizer "Generate New Random Key" }}
                                 </button>
                             </form>
+                            <p class="field-hint text-warning">
+                                <i data-lucide="alert-triangle" class="icon-xs inline mr-1"></i>
+                                {{ t .Localizer "This will invalidate your current key." }}
+                            </p>
                         </div>
                      </div>
                 </div>
@@ -244,7 +226,7 @@
                 </div>
                 
                 <div class="flex flex-col items-start gap-2">
-                    <button onclick="registerPasskey()" class="btn-secondary" {{ if gt (len .User.Credentials) 0 }}disabled{{ end }}>
+                    <button onclick="registerPasskey()" class="btn-primary" {{ if gt (len .User.Credentials) 0 }}disabled{{ end }}>
                         <i data-lucide="fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
                     </button>
                     {{ if gt (len .User.Credentials) 0 }}
@@ -305,6 +287,23 @@
         </div>
     </div>
 
+</div><!-- end dashboard-container -->
+
+<!-- Hidden form that the sticky bar submits -->
+<form method="post" id="userSettingsForm"></form>
+
+<!-- Sticky Action Bar -->
+<div class="sticky-actions" id="stickyActions">
+    <div class="sticky-actions-inner">
+        <a href="/" class="btn-secondary sticky-cancel">
+            <i data-lucide="arrow-left"></i>
+            <span>{{ t .Localizer "Cancel" }}</span>
+        </a>
+        <button type="submit" form="userSettingsForm" class="btn-primary sticky-save">
+            <i data-lucide="save"></i>
+            <span>{{ t .Localizer "Save Changes" }}</span>
+        </button>
+    </div>
 </div>
 
 <script>
