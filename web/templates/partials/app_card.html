@@ -243,20 +243,20 @@
                     </button>
 
                     {{ if gt (len .Devices) 1 }}
-                    <div class="relative">
-                        <button class="btn-action-sm w-full" onclick="event.stopPropagation(); toggleDeviceMenu('{{ .App.Iname }}');">
-                            <i data-lucide="send"></i>
-                            <span>{{ t .Localizer "Copy to" }}</span>
-                        </button>
-                        <div id="device-menu-{{ .App.Iname }}" class="dropdown-menu hidden">
+                    <div class="relative btn-action-sm w-full p-0">
+                        <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                onchange="handleCopyTo(this, '{{ $.Device.ID }}', '{{ $.App.Iname }}')"
+                                title="{{ t .Localizer "Copy to..." }}">
+                            <option value="" disabled selected>Copy to</option>
                             {{ range $target_device := .Devices }}
                             {{ if ne $target_device.ID $.Device.ID }}
-                            <button class="dropdown-item" 
-                                    onclick="event.stopPropagation(); duplicateAppToDevice('{{ $.Device.ID }}', '{{ $.App.Iname }}', '{{ $target_device.ID }}', null, false);">
-                                {{ $target_device.Name }}
-                            </button>
+                            <option value="{{ $target_device.ID }}">{{ $target_device.Name }}</option>
                             {{ end }}
                             {{ end }}
+                        </select>
+                        <div class="flex items-center justify-center gap-2 w-full h-full pointer-events-none">
+                            <i data-lucide="send"></i>
+                            <span>{{ t .Localizer "Copy to" }}</span>
                         </div>
                     </div>
                     {{ end }}

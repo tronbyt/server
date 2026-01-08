@@ -1833,3 +1833,58 @@ function triggerOTA(deviceId, confirmMessage) {
     form.submit();
   }
 }
+
+// Function to toggle device menu dropdown
+function toggleDeviceMenu(iname) {
+  const menuId = `device-menu-${iname}`;
+  const menu = document.getElementById(menuId);
+  
+  // Close all other open menus first
+  document.querySelectorAll('.dropdown-menu').forEach(m => {
+    if (m.id !== menuId) {
+      m.classList.add('hidden');
+      m.classList.remove('show');
+    }
+  });
+
+  if (menu) {
+    if (menu.classList.contains('hidden')) {
+      menu.classList.remove('hidden');
+      menu.classList.add('show');
+    } else {
+      menu.classList.add('hidden');
+      menu.classList.remove('show');
+    }
+  }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+  if (!event.target.closest('.relative')) {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+      menu.classList.add('hidden');
+      menu.classList.remove('show');
+    });
+  }
+});
+
+// Handle Copy To select change
+function handleCopyTo(selectElement, sourceDeviceId, iname) {
+  const targetDeviceId = selectElement.value;
+  if (targetDeviceId) {
+    duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, null, false);
+    // Reset selection so it can be used again
+    selectElement.selectedIndex = 0;
+  }
+}
+
+
+// Handle Copy To select change
+function handleCopyTo(selectElement, sourceDeviceId, iname) {
+  const targetDeviceId = selectElement.value;
+  if (targetDeviceId) {
+    duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, null, false);
+    // Reset selection so it can be used again
+    selectElement.selectedIndex = 0;
+  }
+}

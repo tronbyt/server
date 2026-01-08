@@ -249,6 +249,13 @@ html, body {
 .text-muted { color: var(--text-muted) !important; }
 .text-danger { color: var(--danger-color) !important; }
 .relative { position: relative !important; }
+.absolute { position: absolute !important; }
+.inset-0 { top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; }
+.opacity-0 { opacity: 0 !important; }
+.z-10 { z-index: 10 !important; }
+.cursor-pointer { cursor: pointer !important; }
+.pointer-events-none { pointer-events: none !important; }
+
 .capitalize { text-transform: capitalize !important; }
 
 /* Background Utilities */

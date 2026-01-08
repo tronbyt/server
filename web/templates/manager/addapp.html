@@ -17,6 +17,15 @@
         <p class="text-neutral-500 font-mono text-sm mt-4">{{ t .Localizer "Loading apps..." }}</p>
     </div>
 
+
+    <!-- Instructions Alert -->
+    <div class="alert alert-info mb-6">
+        <i data-lucide="info"></i>
+        <div class="alert-content">
+            <p>{{ t .Localizer "Click on an app below to add it to your device." }}</p>
+        </div>
+    </div>
+
     <!-- Action Bar -->
     <div class="flex justify-end mb-8 pt-4">
         <a class="btn-create" href="/devices/{{ .Device.ID }}/uploadapp">
@@ -94,12 +103,7 @@
         </div>
     </form>
     
-    <div class="alert alert-info">
-        <i data-lucide="info"></i>
-        <div class="alert-content">
-            <p>{{ t .Localizer "Click on an app above to add it to your device." }}</p>
-        </div>
-    </div>
+
 </div>
 
 <script>
