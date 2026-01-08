@@ -132,13 +132,13 @@
         </div>
 
         <!-- Action Bar -->
-        <div class="form-actions justify-end gap-3 mt-10">
+        <div class="form-actions justify-between gap-3 mt-10">
+             <button type="button" class="btn-secondary" onclick="window.history.back()">
+               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+            </button>
             <button class="btn-create" type="submit">
                 <i data-lucide="cpu"></i>
                 {{ t .Localizer "Generate Firmware File" }}
-            </button>
-             <button type="button" class="btn-secondary" onclick="window.history.back()">
-               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
             </button>
         </div>
     </form>
