@@ -1928,14 +1928,3 @@ function handleCopyTo(selectElement, sourceDeviceId, iname) {
     selectElement.selectedIndex = 0;
   }
 }
-
-
-// Handle Copy To select change
-function handleCopyTo(selectElement, sourceDeviceId, iname) {
-  const targetDeviceId = selectElement.value;
-  if (targetDeviceId) {
-    duplicateAppToDevice(sourceDeviceId, iname, targetDeviceId, null, false);
-    // Reset selection so it can be used again
-    selectElement.selectedIndex = 0;
-  }
-}
