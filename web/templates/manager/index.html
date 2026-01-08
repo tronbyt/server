@@ -1,7 +1,9 @@
 {{ define "index" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Home" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
@@ -9,7 +11,7 @@
         <h1 class="page-title">{{ t .Localizer "Dashboard" }}</h1>
         {{ if .User }}
         <a class="btn-create" href="/devices/create">
-            <i data-lucide="plus-circle"></i> 
+            <i data-lucide="plus-circle"></i>
             {{ t .Localizer "New Tronbyt" }}
         </a>
         {{ end }}
@@ -19,21 +21,19 @@
 {{ define "content" }}
 <div class="dashboard-container">
     {{ if not .Devices }}
-        <div class="alert alert-info">
-            <i data-lucide="info"></i>
-            <div class="alert-content">
-                <strong>{{ t .Localizer "No Devices Found" }}</strong>
-                <p>{{ t .Localizer "Get started by adding a new Tronbyt device." }}</p>
-            </div>
+    <div class="alert alert-info">
+        <i data-lucide="info"></i>
+        <div class="alert-content">
+            <strong>{{ t .Localizer "No Devices Found" }}</strong>
+            <p>{{ t .Localizer "Get started by adding a new Tronbyt device." }}</p>
         </div>
+    </div>
     {{ end }}
-
     <!-- Devices List -->
     {{ range .Devices }}
-        {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "ReadOnly" false) }}
+    {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "ReadOnly" false) }}
     {{ end }}
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof lucide !== 'undefined') {

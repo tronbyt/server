@@ -1,7 +1,9 @@
 {{ define "register" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/auth.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/auth.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Register" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
@@ -10,23 +12,30 @@
 {{ end }}
 {{ define "content" }}
 <div class="form-panel auth-panel">
-
     <!-- Single-User Auto-Login Warning -->
     {{ if eq .Config.SingleUserAutoLogin "1" }}
     <div class="alert alert-warning">
-        <i data-lucide="alert-triangle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+        <i data-lucide="alert-triangle"
+           style="width: 20px;
+                  height: 20px;
+                  flex-shrink: 0"></i>
         <div class="alert-content">
             <strong>{{ t .Localizer "SINGLE-USER AUTO-LOGIN MODE ACTIVE" }}</strong>
             <span>{{ t .Localizer "Authentication is disabled for private network access" }}</span>
         </div>
-        <i data-lucide="alert-triangle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+        <i data-lucide="alert-triangle"
+           style="width: 20px;
+                  height: 20px;
+                  flex-shrink: 0"></i>
     </div>
     {{ end }}
-
     <!-- Flash Messages -->
     {{ if .Flashes }}
     <div class="alert alert-error">
-        <i data-lucide="x-circle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
+        <i data-lucide="x-circle"
+           style="width: 20px;
+                  height: 20px;
+                  flex-shrink: 0"></i>
         <div class="alert-content">
             {{ range .Flashes }}
             <p>{{ . }}</p>
@@ -34,7 +43,6 @@
         </div>
     </div>
     {{ end }}
-
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Create Account" }}</h2>
         <form method="post" class="auth-form" id="registerForm">
@@ -49,7 +57,6 @@
                        placeholder="{{ t .Localizer "Alpha-numeric only" }}">
                 <span class="field-hint">{{ t .Localizer "No special characters or symbols" }}</span>
             </div>
-
             <!-- Password -->
             <div class="form-field">
                 <label for="password" class="field-label field-required">{{ t .Localizer "PASSWORD" }}</label>
@@ -59,7 +66,6 @@
                        required
                        class="field-input">
             </div>
-
             <!-- Email -->
             <div class="form-field">
                 <label for="email" class="field-label">
@@ -72,7 +78,6 @@
                        class="field-input"
                        placeholder="{{ t .Localizer "email@example.com" }}">
             </div>
-
             <!-- Admin Checkbox (only for admins creating users) -->
             {{ if and .User .User.IsAdmin }}
             <div class="form-field form-field-checkbox">
@@ -83,14 +88,14 @@
                 <span class="field-hint">{{ t .Localizer "Grant administrator privileges to this user" }}</span>
             </div>
             {{ end }}
-
-
         </form>
     </div>
 </div>
-
 <!-- Action Buttons -->
-<div class="auth-panel" style="margin-top: 1rem; padding: 0 1rem; margin-bottom: 4rem;">
+<div class="auth-panel"
+     style="margin-top: 1rem;
+            padding: 0 1rem;
+            margin-bottom: 4rem">
     <div class="form-actions justify-between gap-3">
         <button type="button" class="btn-secondary" onclick="window.history.back()">
             <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
@@ -100,7 +105,7 @@
             <i data-lucide="user-plus"></i>
             {{ t .Localizer "Create Admin User" }}
         </button>
-        {{ else }}
+    {{ else }}
         <button type="submit" form="registerForm" class="btn-create">
             <i data-lucide="user-plus"></i>
             {{ t .Localizer "Register" }}
@@ -108,7 +113,6 @@
         {{ end }}
     </div>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof lucide !== 'undefined') {

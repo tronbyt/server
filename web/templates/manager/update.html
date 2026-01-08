@@ -1,7 +1,9 @@
 {{ define "update" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Edit Device" }}: {{ .Device.Name }}{{ end }}
 {{ define "header" }}
 <script src="/static/js/location.js"></script>
@@ -49,55 +51,69 @@
 {{ define "content" }}
 <div class="dashboard-container has-sticky-actions">
     <form method="post" id="device-form">
-        
         <!-- Action Bar Top REMOVED -->
-
         <!-- Basic Information -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Basic Information" }}</h2>
             <div class="form-grid">
                 <div class="form-field">
                     <label for="name" class="field-label field-required">{{ t .Localizer "Device Name" }}</label>
-                    <input name="name" id="name" value="{{ .Device.Name }}" required class="field-input">
+                    <input name="name"
+                           id="name"
+                           value="{{ .Device.Name }}"
+                           required
+                           class="field-input">
                 </div>
                 <div class="form-field">
                     <label for="device_type" class="field-label">{{ t .Localizer "Device Type" }}</label>
                     <select name="device_type" id="device_type" class="field-select field-input">
                         {{ $deviceType := .Device.Type }}
                         {{ range .DeviceTypeChoices }}
-                        <option value="{{ .Value.Slug }}" {{ if eq $deviceType.Slug .Value.Slug }}selected{{ end }}>
+                        <option value="{{ .Value.Slug }}"
+                                {{ if eq $deviceType.Slug .Value.Slug }}
+                                selected
+                                {{ end }}>
                             {{ .Label }}
                         </option>
                         {{ end }}
                     </select>
                 </div>
-                
                 <div class="form-field col-span-full mt-4">
-                     <h4 class="field-label text-sm mb-2">{{ t .Localizer "Connection URLs" }}</h4>
+                    <h4 class="field-label text-sm mb-2">{{ t .Localizer "Connection URLs" }}</h4>
                 </div>
-
                 <div class="form-field col-span-full">
                     <label for="img_url" class="field-label">{{ t .Localizer "Image URL" }}</label>
                     <div class="flex gap-2 max-w-3xl">
-                        <input name="img_url" id="img_url" value="{{ .Device.ImgURL }}" oninput="updateExampleCommands()" class="field-input field-mono flex-1">
-                        <button type="button" class="btn-secondary" onclick="resetImgUrl()" title="{{ t .Localizer "Reset to default" }}">
+                        <input name="img_url"
+                               id="img_url"
+                               value="{{ .Device.ImgURL }}"
+                               oninput="updateExampleCommands()"
+                               class="field-input field-mono flex-1">
+                        <button type="button"
+                                class="btn-secondary"
+                                onclick="resetImgUrl()"
+                                title="{{ t .Localizer "Reset to default" }}">
                             <i data-lucide="rotate-ccw" class="icon-sm"></i>
                         </button>
                     </div>
                 </div>
-
                 <div class="form-field col-span-full">
                     <label for="ws_url" class="field-label">{{ t .Localizer "WebSocket URL" }}</label>
                     <div class="flex gap-2 max-w-3xl">
-                        <input name="ws_url" id="ws_url" value="{{ .Device.WsURL }}" class="field-input field-mono flex-1">
-                        <button type="button" class="btn-secondary" onclick="resetWsUrl()" title="{{ t .Localizer "Reset to default" }}">
+                        <input name="ws_url"
+                               id="ws_url"
+                               value="{{ .Device.WsURL }}"
+                               class="field-input field-mono flex-1">
+                        <button type="button"
+                                class="btn-secondary"
+                                onclick="resetWsUrl()"
+                                title="{{ t .Localizer "Reset to default" }}">
                             <i data-lucide="rotate-ccw" class="icon-sm"></i>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Display Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Display Settings" }}</h2>
@@ -120,45 +136,60 @@
                         <span id="intervalValue-{{ .Device.ID }}" class="slider-value-label">{{ .Device.DefaultInterval }}s</span>
                     </div>
                 </div>
-
                 <div class="form-field">
                     <label for="color_filter" class="field-label">
                         {{ t .Localizer "Color Filter" }}
-                         <span class="icon-hover-info ml-1" title="{{ t .Localizer "ColorFilterTooltip" }}">
+                        <span class="icon-hover-info ml-1"
+                              title="{{ t .Localizer "ColorFilterTooltip" }}">
                             <i data-lucide="info" class="icon-sm text-muted"></i>
-                         </span>
+                        </span>
                     </label>
-                    <select name="color_filter" id="color_filter" class="field-select field-input">
+                    <select name="color_filter"
+                            id="color_filter"
+                            class="field-select field-input">
                         {{ range .ColorFilterOptions }}
-                        <option value="{{ .Value }}" {{ if eq (derefOr $.Device.ColorFilter "none") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
+                        <option value="{{ .Value }}"
+                                {{ if eq (derefOr $.Device.ColorFilter "none") .Value }}
+                                selected
+                                {{ end }}>{{ t $.Localizer .Name }}
+                        </option>
                         {{ end }}
                     </select>
                 </div>
             </div>
-
             <h3 class="field-label text-sm mt-8 mb-4">{{ t .Localizer "Brightness Settings" }}</h3>
-            
             <div class="form-grid">
                 <div class="form-field">
                     <label class="field-label">{{ t .Localizer "Brightness" }}</label>
-                    <input type="hidden" name="brightness" id="brightness" value="{{ .BrightnessUI }}">
+                    <input type="hidden"
+                           name="brightness"
+                           id="brightness"
+                           value="{{ .BrightnessUI }}">
                     <div class="brightness-grid" id="brightness-panel">
                         {{ range seq 0 5 }}
-                        <button type="button" class="brightness-btn {{ if eq $.BrightnessUI . }}active{{ end }}" data-brightness="{{ . }}" onclick="setBrightnessUpdate({{ . }})">{{ . }}</button>
+                        <button type="button"
+                                class="brightness-btn {{ if eq $.BrightnessUI . }}active{{ end }}"
+                                data-brightness="{{ . }}"
+                                onclick="setBrightnessUpdate({{ . }})">{{ . }}</button>
                         {{ end }}
                     </div>
                 </div>
-
                 <div class="form-field col-span-full">
                     <div class="form-field-checkbox">
                         <label class="checkbox-label" for="use_custom_brightness_scale">
-                            <input type="checkbox" name="use_custom_brightness_scale" id="use_custom_brightness_scale" {{ if ne .Device.CustomBrightnessScale "" }}checked{{ end }} onchange="toggleCustomBrightnessInputs()">
+                            <input type="checkbox"
+                                   name="use_custom_brightness_scale"
+                                   id="use_custom_brightness_scale"
+                                   {{ if ne .Device.CustomBrightnessScale "" }}
+                                   checked
+                                   {{ end }}
+                                   onchange="toggleCustomBrightnessInputs()">
                             <span>{{ t .Localizer "Use Custom Brightness Scale" }}</span>
                         </label>
-                         <span class="field-hint ml-4">{{ t .Localizer "Override default brightness scale (0-5)" }}</span>
+                        <span class="field-hint ml-4">{{ t .Localizer "Override default brightness scale (0-5)" }}</span>
                     </div>
-
-                    <div id="custom_brightness_inputs" class="mt-4 {{ if eq .Device.CustomBrightnessScale "" }}hidden{{ end }}">
+                    <div id="custom_brightness_inputs"
+                         class="mt-4 {{ if eq .Device.CustomBrightnessScale "" }}hidden{{ end }}">
                         <div class="grid gap-4 custom-grid-fill">
                             {{ $scaleValues := slice }}
                             {{ if ne .Device.CustomBrightnessScale "" }}
@@ -168,14 +199,22 @@
                             {{ range $i := seq 0 5 }}
                             <div class="form-field">
                                 <label class="field-label text-xs">{{ t $.Localizer "Level" }} {{ $i }} (0-100)</label>
-                                <input type="number" name="brightness_level_{{ $i }}" id="brightness_level_{{ $i }}"
+                                <input type="number"
+                                       name="brightness_level_{{ $i }}"
+                                       id="brightness_level_{{ $i }}"
                                        value="{{ if lt $i (len $scaleValues) }}{{ index $scaleValues $i | trim }}{{ else }}{{ index $defaultScale $i }}{{ end }}"
-                                       min="0" max="100" step="1" class="field-input">
+                                       min="0"
+                                       max="100"
+                                       step="1"
+                                       class="field-input">
                             </div>
                             {{ end }}
                         </div>
-                        <input type="hidden" name="custom_brightness_scale" id="custom_brightness_scale_hidden" value="{{ .Device.CustomBrightnessScale }}">
-                         <p class="text-secondary text-xs mt-3 font-mono">
+                        <input type="hidden"
+                               name="custom_brightness_scale"
+                               id="custom_brightness_scale_hidden"
+                               value="{{ .Device.CustomBrightnessScale }}">
+                        <p class="text-secondary text-xs mt-3 font-mono">
                             <i data-lucide="info" class="icon-sm inline align-text-bottom mr-1"></i>
                             <strong>{{ t .Localizer "Default scale" }}:</strong> 0, 3, 5, 12, 35, 100
                         </p>
@@ -183,25 +222,33 @@
                 </div>
             </div>
         </div>
-
         <!-- Interstitial App Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Interstitial App Settings" }}</h2>
             <div class="form-grid">
-               <div class="form-field-checkbox col-span-full">
+                <div class="form-field-checkbox col-span-full">
                     <label class="checkbox-label" for="interstitial_enabled">
-                        <input type="checkbox" name="interstitial_enabled" id="interstitial_enabled" {{ if .Device.InterstitialEnabled }}checked{{ end }}>
+                        <input type="checkbox"
+                               name="interstitial_enabled"
+                               id="interstitial_enabled"
+                               {{ if .Device.InterstitialEnabled }}
+                               checked
+                               {{ end }}>
                         <span>{{ t .Localizer "Enable Interstitial App" }}</span>
                     </label>
                     <span class="field-hint ml-4">{{ t .Localizer "Display an app between each regular app in rotation." }}</span>
                 </div>
-
                 <div class="form-field">
                     <label for="interstitial_app" class="field-label">{{ t .Localizer "Select App" }}</label>
-                    <select name="interstitial_app" id="interstitial_app" class="field-select field-input">
+                    <select name="interstitial_app"
+                            id="interstitial_app"
+                            class="field-select field-input">
                         <option value="None">{{ t .Localizer "None" }}</option>
                         {{ range .Device.Apps }}
-                        <option value="{{ .Iname }}" {{ if and $.Device.InterstitialApp (eq (deref $.Device.InterstitialApp) .Iname) }}selected{{ end }}>
+                        <option value="{{ .Iname }}"
+                                {{ if and $.Device.InterstitialApp (eq (deref $.Device.InterstitialApp) .Iname) }}
+                                selected
+                                {{ end }}>
                             {{ .Iname }} {{ .Name }}
                         </option>
                         {{ end }}
@@ -209,97 +256,141 @@
                 </div>
             </div>
         </div>
-
         <!-- Night Mode Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Night Mode Settings" }}</h2>
             <div class="form-grid">
-                 <div class="form-field-checkbox col-span-full">
+                <div class="form-field-checkbox col-span-full">
                     <label class="checkbox-label" for="night_mode_enabled">
-                        <input type="checkbox" name="night_mode_enabled" id="night_mode_enabled" {{ if .Device.NightModeEnabled }}checked{{ end }}>
+                        <input type="checkbox"
+                               name="night_mode_enabled"
+                               id="night_mode_enabled"
+                               {{ if .Device.NightModeEnabled }}
+                               checked
+                               {{ end }}>
                         <span>{{ t .Localizer "Enable Night Mode" }}</span>
                     </label>
                 </div>
-
                 <div class="form-field">
                     <label for="night_start" class="field-label">{{ t .Localizer "Start Time" }}</label>
-                    <input type="time" name="night_start" id="night_start" value="{{ if .Device.NightStart }}{{ .Device.NightStart }}{{ else }}22:00{{ end }}" class="field-input w-full max-w-full">
+                    <input type="time"
+                           name="night_start"
+                           id="night_start"
+                           value="{{ if .Device.NightStart }}{{ .Device.NightStart }}{{ else }}22:00{{ end }}"
+                           class="field-input w-full max-w-full">
                 </div>
-
                 <div class="form-field">
                     <label for="night_end" class="field-label">{{ t .Localizer "End Time" }}</label>
-                    <input type="time" name="night_end" id="night_end" value="{{ if .Device.NightEnd }}{{ .Device.NightEnd }}{{ else }}06:00{{ end }}" class="field-input w-full max-w-full">
+                    <input type="time"
+                           name="night_end"
+                           id="night_end"
+                           value="{{ if .Device.NightEnd }}{{ .Device.NightEnd }}{{ else }}06:00{{ end }}"
+                           class="field-input w-full max-w-full">
                 </div>
-
                 <div class="form-field">
                     <label class="field-label">{{ t .Localizer "Night Brightness" }}</label>
-                    <input type="hidden" name="night_brightness" id="night_brightness" value="{{ .NightBrightnessUI }}">
+                    <input type="hidden"
+                           name="night_brightness"
+                           id="night_brightness"
+                           value="{{ .NightBrightnessUI }}">
                     <div class="brightness-grid" id="night-brightness-panel">
                         {{ range seq 0 5 }}
-                        <button type="button" class="brightness-btn {{ if eq $.NightBrightnessUI . }}active{{ end }}" data-brightness="{{ . }}" onclick="setNightBrightnessUpdate({{ . }})">{{ . }}</button>
+                        <button type="button"
+                                class="brightness-btn {{ if eq $.NightBrightnessUI . }}active{{ end }}"
+                                data-brightness="{{ . }}"
+                                onclick="setNightBrightnessUpdate({{ . }})">{{ . }}</button>
                         {{ end }}
                     </div>
                 </div>
-
                 <div class="form-field">
                     <label for="night_mode_app" class="field-label">{{ t .Localizer "Night Mode App" }}</label>
-                    <select name="night_mode_app" id="night_mode_app" class="field-select field-input">
+                    <select name="night_mode_app"
+                            id="night_mode_app"
+                            class="field-select field-input">
                         <option value="None">{{ t .Localizer "None" }}</option>
                         {{ range .Device.Apps }}
-                        <option value="{{ .Iname }}" {{ if eq $.Device.NightModeApp .Iname }}selected{{ end }}>
+                        <option value="{{ .Iname }}"
+                                {{ if eq $.Device.NightModeApp .Iname }}
+                                selected
+                                {{ end }}>
                             {{ .Iname }} {{ .Name }}
                         </option>
                         {{ end }}
                     </select>
                 </div>
-
-                 <div class="form-field">
+                <div class="form-field">
                     <label for="night_color_filter" class="field-label">{{ t .Localizer "Night Color Filter" }}</label>
-                    <select name="night_color_filter" id="night_color_filter" class="field-select field-input">
+                    <select name="night_color_filter"
+                            id="night_color_filter"
+                            class="field-select field-input">
                         {{ range .ColorFilterOptions }}
-                        <option value="{{ .Value }}" {{ if eq (derefOr $.Device.NightColorFilter "none") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
+                        <option value="{{ .Value }}"
+                                {{ if eq (derefOr $.Device.NightColorFilter "none") .Value }}
+                                selected
+                                {{ end }}>{{ t $.Localizer .Name }}
+                        </option>
                         {{ end }}
                     </select>
                 </div>
             </div>
         </div>
-
         <!-- Dim Mode Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Dim Mode Settings" }}</h2>
-             <div class="form-grid">
+            <div class="form-grid">
                 <div class="form-field">
                     <label for="dim_time" class="field-label">{{ t .Localizer "Dim Start Time" }}</label>
-                    <input type="time" name="dim_time" id="dim_time" value="{{ deref .Device.DimTime }}" class="field-input">
+                    <input type="time"
+                           name="dim_time"
+                           id="dim_time"
+                           value="{{ deref .Device.DimTime }}"
+                           class="field-input">
                     <span class="field-hint">{{ t .Localizer "Leave empty to disable. Ends at Night End Time or 6:00 AM." }}</span>
                 </div>
-
                 <div class="form-field">
                     <label class="field-label">{{ t .Localizer "Dim Brightness" }}</label>
-                    <input type="hidden" name="dim_brightness" id="dim_brightness" value="{{ .DimBrightnessUI }}">
-                     <div class="brightness-grid" id="dim-brightness-panel">
+                    <input type="hidden"
+                           name="dim_brightness"
+                           id="dim_brightness"
+                           value="{{ .DimBrightnessUI }}">
+                    <div class="brightness-grid" id="dim-brightness-panel">
                         {{ range seq 0 5 }}
-                        <button type="button" class="brightness-btn {{ if eq $.DimBrightnessUI . }}active{{ end }}" data-brightness="{{ . }}" onclick="setDimBrightnessUpdate({{ . }})">{{ . }}</button>
+                        <button type="button"
+                                class="brightness-btn {{ if eq $.DimBrightnessUI . }}active{{ end }}"
+                                data-brightness="{{ . }}"
+                                onclick="setDimBrightnessUpdate({{ . }})">{{ . }}</button>
                         {{ end }}
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Location & API Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Location & API Settings" }}</h2>
             <div class="form-grid">
                 <div class="form-field">
                     <label for="location_search" class="field-label">{{ t .Localizer "Location" }}</label>
-                    <input type="text" id="location_search" placeholder="{{ t .Localizer "Enter a location" }}" value="{{ if .Device.Location }}{{ .Device.Location.Description }}{{ end }}" class="field-input">
-                    <ul id="location_results" class="location-results"></ul>
-                    <input type="hidden" name="location" id="location" value='{{ if .Device.Location }}{{ json .Device.Location }}{{ else }}{{ "{}" }}{{ end }}'>
+                    <input type="text"
+                           id="location_search"
+                           placeholder="{{ t .Localizer "Enter a location" }}"
+                           value="{{ if .Device.Location }}{{ .Device.Location.Description }}{{ end }}"
+                           class="field-input">
+                    <ul id="location_results" class="location-results">
+                    </ul>
+                    <input type="hidden"
+                           name="location"
+                           id="location"
+                           value='{{ if .Device.Location }}{{ json .Device.Location }}{{ else }}{{ "{}" }}{{ end }}'>
                 </div>
-
                 <div class="form-field">
                     <label for="locale" class="field-label">{{ t .Localizer "Locale" }}</label>
-                    <input type="text" name="locale" id="locale" value="{{ deref .Device.Locale }}" class="field-input" placeholder="e.g. en_US" list="locale-list">
+                    <input type="text"
+                           name="locale"
+                           id="locale"
+                           value="{{ deref .Device.Locale }}"
+                           class="field-input"
+                           placeholder="e.g. en_US"
+                           list="locale-list">
                     <datalist id="locale-list">
                         {{ range .AvailableLocales }}
                         <option value="{{ . }}"></option>
@@ -307,178 +398,213 @@
                     </datalist>
                 </div>
             </div>
-            
-             <h4 class="field-label font-bold text-sm mt-8 mb-4">{{ t .Localizer "API Configuration" }}</h4>
-             <div class="form-grid">
-                 <div class="form-field">
+            <h4 class="field-label font-bold text-sm mt-8 mb-4">{{ t .Localizer "API Configuration" }}</h4>
+            <div class="form-grid">
+                <div class="form-field">
                     <label class="field-label">{{ t .Localizer "Device ID" }}</label>
-                    <input value="{{ .Device.ID }}" readonly class="field-input bg-tertiary text-secondary">
+                    <input value="{{ .Device.ID }}"
+                           readonly
+                           class="field-input bg-tertiary text-secondary">
                 </div>
                 <div class="form-field">
                     <label for="api_key" class="field-label">{{ t .Localizer "Device API Key" }}</label>
-                    <input name="api_key" id="api_key" value="{{ .Device.APIKey }}" oninput="updateExampleCommands()" class="field-input field-mono">
+                    <input name="api_key"
+                           id="api_key"
+                           value="{{ .Device.APIKey }}"
+                           oninput="updateExampleCommands()"
+                           class="field-input field-mono">
                 </div>
-                
-                 <div class="form-field col-span-full">
+                <div class="form-field col-span-full">
                     <label for="curl_example" class="field-label">{{ t .Localizer "Example curl Command" }}</label>
-                    <textarea id="curl_example" rows="3" readonly class="field-input field-mono text-xs text-secondary"></textarea>
+                    <textarea id="curl_example"
+                              rows="3"
+                              readonly
+                              class="field-input field-mono text-xs text-secondary"></textarea>
                 </div>
-                
                 <div class="form-field col-span-full">
                     <label for="pixlet_example" class="field-label">{{ t .Localizer "Example pixlet Command" }}</label>
-                    <textarea id="pixlet_example" rows="3" readonly class="field-input field-mono text-xs text-secondary"></textarea>
+                    <textarea id="pixlet_example"
+                              rows="3"
+                              readonly
+                              class="field-input field-mono text-xs text-secondary"></textarea>
                 </div>
-             </div>
+            </div>
         </div>
-
         <!-- Additional Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Additional Settings" }}</h2>
-             <div class="form-grid">
+            <div class="form-grid">
                 <div class="form-field col-span-full">
                     <label for="notes" class="field-label">{{ t .Localizer "Notes" }}</label>
                     <textarea name="notes" id="notes" class="field-input" rows="3">{{ .Device.Notes }}</textarea>
                 </div>
             </div>
         </div>
-
         <!-- Firmware Update (OTA) -->
-    {{ if .Device.OTACapable }}
-    <div class="form-section">
-        <h2 class="section-title">{{ t .Localizer "Firmware Update" }}</h2>
-        <div class="alert alert-info border-primary bg-secondary p-4 mb-4">
-            <i data-lucide="info" class="text-secondary"></i>
-            <div class="alert-content">
-                <div class="text-sm"><strong>{{ t .Localizer "Device Version" }}:</strong> {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}</div>
-                <div class="text-sm"><strong>{{ t .Localizer "Available Version" }}:</strong> {{ if .FirmwareVersion }}{{ .FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}</div>
-            </div>
-        </div>
-
-        <div class="flex flex-col md:flex-row gap-3">
-            <!-- Official Firmware -->
-            <div class="flex-1 p-3 border border-neutral-200 flex flex-col justify-between gap-3">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {{ if .Device.OTACapable }}
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Firmware Update" }}</h2>
+            <div class="alert alert-info border-primary bg-secondary p-4 mb-4">
+                <i data-lucide="info" class="text-secondary"></i>
+                <div class="alert-content">
                     <div class="text-sm">
-                        <strong>{{ t .Localizer "Official Firmware" }}</strong>
-                        <div class="text-xs text-secondary">{{ t .Localizer "Install the latest official release." }}</div>
+                        <strong>{{ t .Localizer "Device Version" }}:</strong> {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
                     </div>
-                    {{ if .FirmwareAvailable }}
-                    <button type="button" class="btn-create whitespace-nowrap justify-center" onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "Trigger OTA Update? Device will reboot." }}')">
-                        <i data-lucide="cpu"></i> {{ t .Localizer "Install" }}
-                    </button>
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Available Version" }}:</strong> {{ if .FirmwareVersion }}{{ .FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row gap-3">
+                <!-- Official Firmware -->
+                <div class="flex-1 p-3 border border-neutral-200 flex flex-col justify-between gap-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div class="text-sm">
+                            <strong>{{ t .Localizer "Official Firmware" }}</strong>
+                            <div class="text-xs text-secondary">{{ t .Localizer "Install the latest official release." }}</div>
+                        </div>
+                        {{ if .FirmwareAvailable }}
+                        <button type="button"
+                                class="btn-create whitespace-nowrap justify-center"
+                                onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "Trigger OTA Update? Device will reboot." }}')">
+                            <i data-lucide="cpu"></i> {{ t .Localizer "Install" }}
+                        </button>
                     {{ else }}
-                    <button type="button" class="btn-secondary whitespace-nowrap justify-center" disabled>
-                        <i data-lucide="ban"></i> {{ t .Localizer "Unavailable" }}
-                    </button>
+                        <button type="button"
+                                class="btn-secondary whitespace-nowrap justify-center"
+                                disabled>
+                            <i data-lucide="ban"></i> {{ t .Localizer "Unavailable" }}
+                        </button>
+                        {{ end }}
+                    </div>
+                    {{ if and .FirmwareAvailable (eq .Device.Type.Slug "tidbyt_gen1") }}
+                    <div class="form-field-checkbox mt-2 pt-2 border-t border-neutral-100">
+                        <label class="checkbox-label" for="swap_colors">
+                            <input type="checkbox"
+                                   name="swap_colors"
+                                   id="swap_colors"
+                                   {{ if .Device.SwapColors }}
+                                   checked
+                                   {{ end }}>
+                            <span class="text-xs">{{ t .Localizer "Swap Colors (Gen 1 Fix)" }}</span>
+                        </label>
+                    </div>
                     {{ end }}
                 </div>
-                
-                {{ if and .FirmwareAvailable (eq .Device.Type.Slug "tidbyt_gen1") }}
-                <div class="form-field-checkbox mt-2 pt-2 border-t border-neutral-100">
-                    <label class="checkbox-label" for="swap_colors">
-                        <input type="checkbox" name="swap_colors" id="swap_colors" {{ if .Device.SwapColors }}checked{{ end }}>
-                        <span class="text-xs">{{ t .Localizer "Swap Colors (Gen 1 Fix)" }}</span>
-                    </label>
-                </div>
-                {{ end }}
-            </div>
-
-            <!-- Custom Firmware -->
-            <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div class="text-sm">
-                    <strong>{{ t .Localizer "Custom Firmware" }}</strong>
-                    <div class="text-xs text-secondary">{{ t .Localizer "Upload and install a custom .bin file." }}</div>
-                </div>
-                <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('custom_firmware_file').click();">
-                    <i data-lucide="square-code"></i> {{ t .Localizer "Upload & Install" }}
-                </button>
-            </div>
-        </div>
-    </div>
-    {{ end }}
-
-    {{ if .Device.SupportsFirmwareFeatures }}
-    <div class="form-section">
-        <h2 class="section-title">{{ t .Localizer "Firmware Features" }}</h2>
-        <div class="form-grid">
-             <div class="form-field col-span-full">
-                <label class="field-label">{{ t .Localizer "Image URL" }}</label>
-                <div class="flex gap-2">
-                    <input type="text"
-                           id="reported_img_url"
-                           value="{{ derefOr .Device.Info.ImageURL "" }}"
-                           class="field-input flex-1 hidden-input-override">
+                <!-- Custom Firmware -->
+                <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Custom Firmware" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Upload and install a custom .bin file." }}</div>
+                    </div>
                     <button type="button"
-                            class="btn-secondary"
-                            onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
-                            title="{{ t .Localizer "Sync current Image URL to device via WebSocket" }}">
-                        <i data-lucide="refresh-cw"></i>
+                            class="btn-secondary whitespace-nowrap justify-center"
+                            onclick="document.getElementById('custom_firmware_file').click();">
+                        <i data-lucide="square-code"></i> {{ t .Localizer "Upload & Install" }}
                     </button>
                 </div>
-                 <p class="text-danger text-xs mt-1">
-                    <i data-lucide="alert-triangle" class="icon-sm inline"></i>
-                    {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
-                </p>
-            </div>
-
-            <div class="form-field-checkbox col-span-full">
-                <label class="checkbox-label" for="fw_swap_colors">
-                    <input type="checkbox" id="fw_swap_colors"
-                           {{ if derefOr .Device.Info.SwapColors false }}checked{{ end }}
-                           onchange="updateFirmwareSettings({swap_colors: this.checked})">
-                    <span>{{ t .Localizer "Swap Colors" }}</span>
-                </label>
-            </div>
-
-             <div class="form-field">
-                <label class="field-label">{{ t .Localizer "WiFi Power Save" }}</label>
-                <select class="field-select field-input" onchange="updateFirmwareSettings({wifi_power_save: this.value})">
-                    <option value="0" {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}selected{{ end }}>{{ t .Localizer "None" }}</option>
-                    <option value="1" {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}selected{{ end }}>{{ t .Localizer "Minimum" }}</option>
-                    <option value="2" {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}selected{{ end }}>{{ t .Localizer "Maximum" }}</option>
-                </select>
-            </div>
-
-            <div class="form-field-checkbox col-span-full">
-                <label class="checkbox-label" for="fw_skip_version">
-                    <input type="checkbox" id="fw_skip_version"
-                           {{ if derefOr .Device.Info.SkipDisplayVersion false }}checked{{ end }}
-                           onchange="updateFirmwareSettings({skip_display_version: this.checked})">
-                    <span>{{ t .Localizer "Skip Display Version" }}</span>
-                </label>
-            </div>
-
-            <div class="form-field-checkbox col-span-full">
-                <label class="checkbox-label" for="fw_prefer_ipv6">
-                    <input type="checkbox" id="fw_prefer_ipv6"
-                           {{ if derefOr .Device.Info.PreferIPv6 false }}checked{{ end }}
-                           onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
-                    <span>{{ t .Localizer "Prefer IPv6" }}</span>
-                </label>
-            </div>
-
-            <div class="form-field-checkbox col-span-full">
-                <label class="checkbox-label" for="fw_ap_mode">
-                    <input type="checkbox" id="fw_ap_mode"
-                           {{ if derefOr .Device.Info.APMode false }}checked{{ end }}
-                           onchange="updateFirmwareSettings({ap_mode: this.checked})">
-                    <span>{{ t .Localizer "AP Mode (Hotspot)" }}</span>
-                </label>
-                <p class="text-danger text-xs mt-1">
-                    <i data-lucide="alert-triangle" class="icon-sm inline"></i>
-                    {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
-                </p>
-            </div>
-            
-             <div class="col-span-full mt-4">
-                <button type="button"
-                        class="btn-create w-full"
-                        onclick="rebootDevice()">
-                    <i data-lucide="power"></i> {{ t .Localizer "Reboot Device" }}
-                </button>
             </div>
         </div>
-        <script>
+        {{ end }}
+        {{ if .Device.SupportsFirmwareFeatures }}
+        <div class="form-section">
+            <h2 class="section-title">{{ t .Localizer "Firmware Features" }}</h2>
+            <div class="form-grid">
+                <div class="form-field col-span-full">
+                    <label class="field-label">{{ t .Localizer "Image URL" }}</label>
+                    <div class="flex gap-2">
+                        <input type="text"
+                               id="reported_img_url"
+                               value="{{ derefOr .Device.Info.ImageURL "" }}"
+                               class="field-input flex-1 hidden-input-override">
+                        <button type="button"
+                                class="btn-secondary"
+                                onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
+                                title="{{ t .Localizer "Sync current Image URL to device via WebSocket" }}">
+                            <i data-lucide="refresh-cw"></i>
+                        </button>
+                    </div>
+                    <p class="text-danger text-xs mt-1">
+                        <i data-lucide="alert-triangle" class="icon-sm inline"></i>
+                        {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
+                    </p>
+                </div>
+                <div class="form-field-checkbox col-span-full">
+                    <label class="checkbox-label" for="fw_swap_colors">
+                        <input type="checkbox"
+                               id="fw_swap_colors"
+                               {{ if derefOr .Device.Info.SwapColors false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({swap_colors: this.checked})">
+                        <span>{{ t .Localizer "Swap Colors" }}</span>
+                    </label>
+                </div>
+                <div class="form-field">
+                    <label class="field-label">{{ t .Localizer "WiFi Power Save" }}</label>
+                    <select class="field-select field-input"
+                            onchange="updateFirmwareSettings({wifi_power_save: this.value})">
+                        <option value="0"
+                                {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}
+                                selected
+                                {{ end }}>{{ t .Localizer "None" }}
+                        </option>
+                        <option value="1"
+                                {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Minimum" }}
+                        </option>
+                        <option value="2"
+                                {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}
+                                selected
+                                {{ end }}>{{ t .Localizer "Maximum" }}
+                        </option>
+                    </select>
+                </div>
+                <div class="form-field-checkbox col-span-full">
+                    <label class="checkbox-label" for="fw_skip_version">
+                        <input type="checkbox"
+                               id="fw_skip_version"
+                               {{ if derefOr .Device.Info.SkipDisplayVersion false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({skip_display_version: this.checked})">
+                        <span>{{ t .Localizer "Skip Display Version" }}</span>
+                    </label>
+                </div>
+                <div class="form-field-checkbox col-span-full">
+                    <label class="checkbox-label" for="fw_prefer_ipv6">
+                        <input type="checkbox"
+                               id="fw_prefer_ipv6"
+                               {{ if derefOr .Device.Info.PreferIPv6 false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
+                        <span>{{ t .Localizer "Prefer IPv6" }}</span>
+                    </label>
+                </div>
+                <div class="form-field-checkbox col-span-full">
+                    <label class="checkbox-label" for="fw_ap_mode">
+                        <input type="checkbox"
+                               id="fw_ap_mode"
+                               {{ if derefOr .Device.Info.APMode false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({ap_mode: this.checked})">
+                        <span>{{ t .Localizer "AP Mode (Hotspot)" }}</span>
+                    </label>
+                    <p class="text-danger text-xs mt-1">
+                        <i data-lucide="alert-triangle" class="icon-sm inline"></i>
+                        {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
+                    </p>
+                </div>
+                <div class="col-span-full mt-4">
+                    <button type="button" class="btn-create w-full" onclick="rebootDevice()">
+                        <i data-lucide="power"></i> {{ t .Localizer "Reboot Device" }}
+                    </button>
+                </div>
+            </div>
+            <script>
             function updateFirmwareSettings(settings) {
                 const params = new URLSearchParams();
                 for (const [key, value] of Object.entries(settings)) {
@@ -509,59 +635,62 @@
                     form.submit();
                  }
             }
-        </script>
-    </div>
-    {{ end }}
-
-
+            </script>
+        </div>
+        {{ end }}
         <!-- Configuration Management -->
         <div class="form-section">
-             <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
-             <div class="flex flex-col md:flex-row gap-3">
+            <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
+            <div class="flex flex-col md:flex-row gap-3">
                 <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Export Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Backup device settings." }}</div>
                     </div>
-                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
+                    <button type="button"
+                            class="btn-secondary whitespace-nowrap justify-center"
+                            onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
                         <i data-lucide="download"></i> {{ t .Localizer "Export" }}
-                     </button>
+                    </button>
                 </div>
-
                 <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Import Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Restore device settings." }}</div>
                     </div>
-                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('import_config_file').click();">
+                    <button type="button"
+                            class="btn-secondary whitespace-nowrap justify-center"
+                            onclick="document.getElementById('import_config_file').click();">
                         <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
-                     </button>
+                    </button>
                 </div>
-             </div>
+            </div>
         </div>
-
         <!-- Danger Zone -->
-         <div class="form-section border-danger mt-8">
+        <div class="form-section border-danger mt-8">
             <h2 class="section-title text-danger">{{ t .Localizer "Danger Zone" }}</h2>
             <div class="mt-4">
-                 <button type="button" class="btn-delete w-full justify-center" onclick="deleteDevice();">
+                <button type="button"
+                        class="btn-delete w-full justify-center"
+                        onclick="deleteDevice();">
                     <i data-lucide="trash-2"></i> {{ t .Localizer "Delete Device" }}
                 </button>
             </div>
-         </div>
+        </div>
     </form>
-    
     <!-- Separate delete form to avoid Chrome issues -->
-    <form id="delete-device-form" action="/devices/{{ .Device.ID }}/delete" method="post" style="display: none;"></form>
+    <form id="delete-device-form"
+          action="/devices/{{ .Device.ID }}/delete"
+          method="post"
+          style="display: none">
+    </form>
 </div>
-
 <!-- Sticky Action Bar -->
-{{ template "sticky_actions" (dict 
-    "Localizer" .Localizer 
-    "SaveType" "submit" 
-    "SaveForm" "device-form" 
+{{ template "sticky_actions" (dict
+"Localizer" .Localizer
+"SaveType" "submit"
+"SaveForm" "device-form"
 ) }}
-
 <script>
     function deleteDevice() {
         if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) {
@@ -646,10 +775,16 @@
         }
     });
 </script>
-
 <!-- Hidden form for config import -->
-<form action="/devices/{{ .Device.ID }}/import_config" method="post" enctype="multipart/form-data" style="display: none">
-    <input type="file" name="file" id="import_config_file" onchange="if(confirm('{{ t .Localizer "Overwrite all current settings and apps?" }}')) { this.form.submit(); } else { this.value = ''; }" accept=".json">
+<form action="/devices/{{ .Device.ID }}/import_config"
+      method="post"
+      enctype="multipart/form-data"
+      style="display: none">
+    <input type="file"
+           name="file"
+           id="import_config_file"
+           onchange="if(confirm('{{ t .Localizer "Overwrite all current settings and apps?" }}')) { this.form.submit(); } else { this.value = ''; }"
+           accept=".json">
 </form>
 <form action="/devices/{{ .Device.ID }}/ota"
       method="post"

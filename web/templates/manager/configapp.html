@@ -1,7 +1,9 @@
 {{ define "configapp" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
 {{ define "header" }}
 <script src="/static/js/location.js"></script>
@@ -43,7 +45,6 @@
             {{ end }}
         </div>
     </div>
-
     <form method="post" id="dynamicForm">
         <!-- Schema Config Section -->
         <div class="form-section">
@@ -52,58 +53,84 @@
                 <!-- Schema fields will be injected here by JavaScript -->
             </div>
         </div>
-
         <!-- App Settings Section -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Display Settings" }}</h2>
             <div class="form-grid">
                 <div class="form-field">
                     <label class="field-label" for="uinterval">{{ t .Localizer "Render Interval (Minutes)" }}</label>
-                    <input type="number" name="uinterval" id="uinterval" min="0" class="field-input"
-                           value="{{ .App.UInterval }}" data-default="{{ .App.UInterval }}" required>
+                    <input type="number"
+                           name="uinterval"
+                           id="uinterval"
+                           min="0"
+                           class="field-input"
+                           value="{{ .App.UInterval }}"
+                           data-default="{{ .App.UInterval }}"
+                           required>
                     <span class="field-hint">{{ t .Localizer "Update every X minutes" }}</span>
                 </div>
-
                 <div class="form-field">
                     <label class="field-label" for="display_time">{{ t .Localizer "Display Time (Seconds)" }}</label>
-                    <input type="number" name="display_time" id="display_time" min="0" class="field-input"
-                           value="{{ .App.DisplayTime }}" data-default="{{ .App.DisplayTime }}">
+                    <input type="number"
+                           name="display_time"
+                           id="display_time"
+                           min="0"
+                           class="field-input"
+                           value="{{ .App.DisplayTime }}"
+                           data-default="{{ .App.DisplayTime }}">
                     <span class="field-hint">{{ t .Localizer "0 for device default" }}</span>
                 </div>
-
                 <div class="form-field">
                     <label class="field-label" for="color_filter">
                         {{ t .Localizer "Color Filter" }}
-                        <span class="icon-hover-info ml-1" title="{{ t .Localizer "ColorFilterTooltip" }}">
+                        <span class="icon-hover-info ml-1"
+                              title="{{ t .Localizer "ColorFilterTooltip" }}">
                             <i data-lucide="info" class="icon-sm text-muted"></i>
                         </span>
                     </label>
-                    <select name="color_filter" id="color_filter" class="field-select field-input">
+                    <select name="color_filter"
+                            id="color_filter"
+                            class="field-select field-input">
                         {{ range .ColorFilterOptions }}
-                        <option value="{{ .Value }}" {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}selected{{ end }}>{{ t $.Localizer .Name }}</option>
+                        <option value="{{ .Value }}"
+                                {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}
+                                selected
+                                {{ end }}>{{ t $.Localizer .Name }}
+                        </option>
                         {{ end }}
                     </select>
                 </div>
-
                 <div class="form-field">
                     <label class="field-label" for="notes">{{ t .Localizer "Notes" }}</label>
-                    <input name="notes" id="notes" class="field-input"
-                           value="{{ .App.Notes }}" data-default="{{ .App.Notes }}"
+                    <input name="notes"
+                           id="notes"
+                           class="field-input"
+                           value="{{ .App.Notes }}"
+                           data-default="{{ .App.Notes }}"
                            placeholder="{{ t .Localizer "Optional reference name" }}">
                 </div>
-
                 <div class="form-field col-span-full">
                     <div class="flex flex-wrap gap-6">
                         <div class="form-field-checkbox">
                             <label class="checkbox-label" for="enabled">
-                                <input name="enabled" type="checkbox" id="enabled" {{ if .App.Enabled }}checked{{ end }}
+                                <input name="enabled"
+                                       type="checkbox"
+                                       id="enabled"
+                                       {{ if .App.Enabled }}
+                                       checked
+                                       {{ end }}
                                        data-default="{{ if .App.Enabled }}true{{ else }}false{{ end }}">
                                 <span>{{ t .Localizer "Enabled" }}</span>
                             </label>
                         </div>
                         <div class="form-field-checkbox">
                             <label class="checkbox-label" for="autopin">
-                                <input name="autopin" type="checkbox" id="autopin" {{ if .App.AutoPin }}checked{{ end }}
+                                <input name="autopin"
+                                       type="checkbox"
+                                       id="autopin"
+                                       {{ if .App.AutoPin }}
+                                       checked
+                                       {{ end }}
                                        data-default="{{ if .App.AutoPin }}true{{ else }}false{{ end }}">
                                 <span>{{ t .Localizer "Auto-pin successful renders" }}</span>
                             </label>
@@ -118,40 +145,57 @@
             <div class="form-grid">
                 <div class="form-field">
                     <label class="field-label" for="start_time">{{ t .Localizer "Daily Start Time" }}</label>
-                    <input type="time" name="start_time" id="start_time" class="field-input"
-                           value="{{ deref .App.StartTime }}" data-default="{{ deref .App.StartTime }}">
+                    <input type="time"
+                           name="start_time"
+                           id="start_time"
+                           class="field-input"
+                           value="{{ deref .App.StartTime }}"
+                           data-default="{{ deref .App.StartTime }}">
                 </div>
                 <div class="form-field">
                     <label class="field-label" for="end_time">{{ t .Localizer "Daily End Time" }}</label>
-                    <input type="time" name="end_time" id="end_time" class="field-input"
-                           value="{{ deref .App.EndTime }}" data-default="{{ deref .App.EndTime }}">
+                    <input type="time"
+                           name="end_time"
+                           id="end_time"
+                           class="field-input"
+                           value="{{ deref .App.EndTime }}"
+                           data-default="{{ deref .App.EndTime }}">
                 </div>
             </div>
-
             <!-- Active Days Schedule -->
             <div id="legacy_schedule" class="mt-6">
                 <label class="field-label mb-2">{{ t .Localizer "Active Days" }}</label>
                 <div class="flex flex-wrap gap-4 mb-2">
                     {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
                     <label class="checkbox-label">
-                        <input type="checkbox" name="days" value="{{ $day }}" {{ if or (contains $.App.Days $day) (eq (len $.App.Days) 0) }}checked{{ end }}>
+                        <input type="checkbox"
+                               name="days"
+                               value="{{ $day }}"
+                               {{ if or (contains $.App.Days $day) (eq (len $.App.Days) 0) }}
+                               checked
+                               {{ end }}>
                         <span class="capitalize">{{ t $.Localizer $day }}</span>
                     </label>
                     {{ end }}
                 </div>
                 <p class="field-hint">{{ t .Localizer "If no days are selected, the app will run every day." }}</p>
             </div>
-
             <!-- Custom Recurrence Toggle -->
             <div class="form-field-checkbox mt-6">
                 <label class="checkbox-label" for="use_custom_recurrence">
-                    <input type="checkbox" name="use_custom_recurrence" id="use_custom_recurrence"
-                           {{ if .App.UseCustomRecurrence }}checked{{ end }} onchange="toggleCustomRecurrence()">
+                    <input type="checkbox"
+                           name="use_custom_recurrence"
+                           id="use_custom_recurrence"
+                           {{ if .App.UseCustomRecurrence }}
+                           checked
+                           {{ end }}
+                           onchange="toggleCustomRecurrence()">
                     <span>{{ t .Localizer "Use Custom Recurrence" }}</span>
                 </label>
-                <p class="field-hint mt-1 ml-6">{{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}</p>
+                <p class="field-hint mt-1 ml-6">
+                    {{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}
+                </p>
             </div>
-
             <!-- Custom Recurrence Options (inside Schedule section) -->
             <div id="custom_recurrence" class="hidden mt-6">
                 <label class="field-label mb-4">{{ t .Localizer "Custom Recurrence" }}</label>
@@ -159,93 +203,143 @@
                     <!-- Frequency -->
                     <div class="form-field">
                         <label class="field-label" for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
-                        <select name="recurrence_type" id="recurrence_type" class="field-select field-input" onchange="toggleRecurrenceOptions()">
-                            <option value="daily" {{ if eq (string .App.RecurrenceType) "daily" }}selected{{ end }}>{{ t .Localizer "Daily" }}</option>
-                            <option value="weekly" {{ if eq (string .App.RecurrenceType) "weekly" }}selected{{ end }}>{{ t .Localizer "Weekly" }}</option>
-                            <option value="monthly" {{ if eq (string .App.RecurrenceType) "monthly" }}selected{{ end }}>{{ t .Localizer "Monthly" }}</option>
-                            <option value="yearly" {{ if eq (string .App.RecurrenceType) "yearly" }}selected{{ end }}>{{ t .Localizer "Yearly" }}</option>
+                        <select name="recurrence_type"
+                                id="recurrence_type"
+                                class="field-select field-input"
+                                onchange="toggleRecurrenceOptions()">
+                            <option value="daily"
+                                    {{ if eq (string .App.RecurrenceType) "daily" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Daily" }}
+                            </option>
+                            <option value="weekly"
+                                    {{ if eq (string .App.RecurrenceType) "weekly" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Weekly" }}
+                            </option>
+                            <option value="monthly"
+                                    {{ if eq (string .App.RecurrenceType) "monthly" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Monthly" }}
+                            </option>
+                            <option value="yearly"
+                                    {{ if eq (string .App.RecurrenceType) "yearly" }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Yearly" }}
+                            </option>
                         </select>
                     </div>
-
                     <!-- Repeat Interval -->
                     <div class="form-field">
                         <label class="field-label" for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
                         <div class="flex gap-2 items-center">
-                            <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52"
+                            <input type="number"
+                                   name="recurrence_interval"
+                                   id="recurrence_interval"
+                                   min="1"
+                                   max="52"
                                    class="field-input w-20"
                                    value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}">
                             <span id="interval_unit" class="font-mono text-sm">{{ t .Localizer "days" }}</span>
                         </div>
                     </div>
-
                     <!-- Start Date -->
                     <div class="form-field">
                         <label class="field-label" for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
-                        <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="field-input"
+                        <input type="date"
+                               name="recurrence_start_date"
+                               id="recurrence_start_date"
+                               class="field-input"
                                value="{{ deref .App.RecurrenceStartDate }}">
                     </div>
-
                     <!-- End Date -->
                     <div class="form-field">
                         <label class="field-label" for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
-                        <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="field-input"
+                        <input type="date"
+                               name="recurrence_end_date"
+                               id="recurrence_end_date"
+                               class="field-input"
                                value="{{ deref .App.RecurrenceEndDate }}">
                     </div>
                 </div>
-
                 <!-- Weekly Options -->
-                <div id="weekly_options" class="hidden mt-6 pt-4 border-t border-neutral-200">
+                <div id="weekly_options"
+                     class="hidden mt-6 pt-4 border-t border-neutral-200">
                     <label class="field-label mb-2">{{ t .Localizer "Active Days for Weekly" }}</label>
                     {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
                     {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
                     <div class="flex flex-wrap gap-4">
                         {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
                         <label class="checkbox-label">
-                            <input type="checkbox" name="weekdays" value="{{ $day }}" {{ if or (contains $weekdays $day) (eq (len $weekdays) 0) }}checked{{ end }}>
+                            <input type="checkbox"
+                                   name="weekdays"
+                                   value="{{ $day }}"
+                                   {{ if or (contains $weekdays $day) (eq (len $weekdays) 0) }}
+                                   checked
+                                   {{ end }}>
                             <span class="capitalize">{{ t $.Localizer $day }}</span>
                         </label>
                         {{ end }}
                     </div>
                 </div>
-
                 <!-- Monthly Options -->
-                <div id="monthly_options" class="hidden mt-6 pt-4 border-t border-neutral-200">
+                <div id="monthly_options"
+                     class="hidden mt-6 pt-4 border-t border-neutral-200">
                     {{ $dom := index .App.RecurrencePattern "day_of_month" }}
                     {{ $dow := index .App.RecurrencePattern "day_of_week" }}
                     {{ $current_pattern := "day_of_month" }}
                     {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
-
                     <div class="form-grid">
                         <div class="form-field">
                             <label class="field-label" for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
-                            <select name="monthly_pattern" id="monthly_pattern" class="field-select field-input" onchange="toggleMonthlyPatternOptions()">
-                                <option value="day_of_month" {{ if eq $current_pattern "day_of_month" }}selected{{ end }}>{{ t .Localizer "Day of Month" }}</option>
-                                <option value="day_of_week" {{ if eq $current_pattern "day_of_week" }}selected{{ end }}>{{ t .Localizer "Day of Week" }}</option>
+                            <select name="monthly_pattern"
+                                    id="monthly_pattern"
+                                    class="field-select field-input"
+                                    onchange="toggleMonthlyPatternOptions()">
+                                <option value="day_of_month"
+                                        {{ if eq $current_pattern "day_of_month" }}
+                                        selected
+                                        {{ end }}>{{ t .Localizer "Day of Month" }}
+                                </option>
+                                <option value="day_of_week"
+                                        {{ if eq $current_pattern "day_of_week" }}
+                                        selected
+                                        {{ end }}>{{ t .Localizer "Day of Week" }}
+                                </option>
                             </select>
                         </div>
-
                         <!-- Day of Month Option -->
                         <div id="day_of_month_option" class="form-field">
                             <label class="field-label" for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
-                            <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="field-input w-20"
+                            <input type="number"
+                                   name="day_of_month"
+                                   id="day_of_month"
+                                   min="1"
+                                   max="31"
+                                   class="field-input w-20"
                                    value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
                             <span class="field-hint">{{ t .Localizer "Which day of the month (1-31)" }}</span>
                         </div>
                     </div>
-
                     <!-- Day of Week Option -->
                     <div id="day_of_week_option" class="hidden form-grid mt-4">
                         <div class="form-field">
                             <label class="field-label">{{ t .Localizer "Day of Week Pattern" }}</label>
                             <div class="flex gap-3 items-center">
-                                <select name="week_occurrence" id="week_occurrence" class="field-select field-input" onchange="updateDayOfWeekPattern()">
+                                <select name="week_occurrence"
+                                        id="week_occurrence"
+                                        class="field-select field-input"
+                                        onchange="updateDayOfWeekPattern()">
                                     <option value="first">{{ t .Localizer "First" }}</option>
                                     <option value="second">{{ t .Localizer "Second" }}</option>
                                     <option value="third">{{ t .Localizer "Third" }}</option>
                                     <option value="fourth">{{ t .Localizer "Fourth" }}</option>
                                     <option value="last">{{ t .Localizer "Last" }}</option>
                                 </select>
-                                <select name="week_day" id="week_day" class="field-select field-input" onchange="updateDayOfWeekPattern()">
+                                <select name="week_day"
+                                        id="week_day"
+                                        class="field-select field-input"
+                                        onchange="updateDayOfWeekPattern()">
                                     <option value="monday">{{ t .Localizer "Monday" }}</option>
                                     <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
                                     <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
@@ -254,7 +348,10 @@
                                     <option value="saturday">{{ t .Localizer "Saturday" }}</option>
                                     <option value="sunday">{{ t .Localizer "Sunday" }}</option>
                                 </select>
-                                <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="{{ if $dow }}{{ $dow }}{{ end }}">
+                                <input type="hidden"
+                                       name="day_of_week_pattern"
+                                       id="day_of_week_pattern"
+                                       value="{{ if $dow }}{{ $dow }}{{ end }}">
                             </div>
                             <span class="field-hint">{{ t .Localizer "Example: First Monday of the month" }}</span>
                         </div>
@@ -262,60 +359,61 @@
                 </div>
             </div>
         </div>
-
-
         <!-- Configuration Management -->
         <div class="form-section">
-             <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
-             <div class="flex flex-col md:flex-row gap-3">
+            <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
+            <div class="flex flex-col md:flex-row gap-3">
                 <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Export Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Backup app settings." }}</div>
                     </div>
-                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="exportConfig()">
+                    <button type="button"
+                            class="btn-secondary whitespace-nowrap justify-center"
+                            onclick="exportConfig()">
                         <i data-lucide="download"></i> {{ t .Localizer "Export" }}
-                     </button>
+                    </button>
                 </div>
-
                 <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Import Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Restore app settings." }}</div>
                     </div>
-                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('importConfigInput').click()">
+                    <button type="button"
+                            class="btn-secondary whitespace-nowrap justify-center"
+                            onclick="document.getElementById('importConfigInput').click()">
                         <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
-                     </button>
+                    </button>
                 </div>
-             </div>
+            </div>
         </div>
-
         <!-- Advanced Section (Collapsible) -->
         <details class="form-section" id="advancedSection">
             <summary class="section-title cursor-pointer flex items-center gap-2 select-none">
-                <i data-lucide="chevron-right" class="icon-sm transition-transform" id="advancedChevron"></i>
+                <i data-lucide="chevron-right"
+                   class="icon-sm transition-transform"
+                   id="advancedChevron"></i>
                 {{ t .Localizer "Advanced" }}
             </summary>
-            
             <div class="mt-6 space-y-6">
                 <!-- Raw JSON Config -->
                 <div class="inset-panel bg-tertiary">
                     <div class="field-label mb-2">{{ t .Localizer "Raw JSON Config" }}</div>
-                    <pre class="text-xs font-mono overflow-auto max-h-60" id="configContentPre"></pre>
+                    <pre class="text-xs font-mono overflow-auto max-h-60"
+                         id="configContentPre"></pre>
                 </div>
-                
                 <!-- Render Messages -->
                 <div class="inset-panel bg-tertiary">
                     <div class="field-label mb-2">{{ t .Localizer "Render Messages" }}</div>
                     <pre class="text-xs font-mono overflow-auto max-h-60">{{ range .App.RenderMessages }}{{ . }}
 {{ else }}{{ t .Localizer "No debug logs available." }}{{ end }}</pre>
                 </div>
-                
                 <!-- API Usage -->
                 <div class="inset-panel bg-tertiary">
                     <div class="field-label mb-4">{{ t .Localizer "API Usage" }}</div>
-                    <p class="text-secondary text-xs mb-4">{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
-                    
+                    <p class="text-secondary text-xs mb-4">
+                        {{ t .Localizer "Use these curl commands to control this app via the API:" }}
+                    </p>
                     <!-- Enable App -->
                     <div class="mb-6">
                         <h4 class="field-label mb-2">{{ t .Localizer "Enable App" }}</h4>
@@ -325,7 +423,6 @@
   -d '{"enabled": true}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
                     </div>
-                    
                     <!-- Disable App -->
                     <div class="mb-6">
                         <h4 class="field-label mb-2 text-danger">{{ t .Localizer "Disable App" }}</h4>
@@ -335,7 +432,6 @@
   -d '{"enabled": false}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
                     </div>
-                    
                     <!-- Pin App -->
                     <div class="mb-6">
                         <h4 class="field-label mb-2">{{ t .Localizer "Pin App" }}</h4>
@@ -345,7 +441,6 @@
   -d '{"pinnedApp": "{{ .App.Iname }}"}' \
   /v0/devices/{{ .Device.ID }}</pre>
                     </div>
-                    
                     <!-- Unpin App -->
                     <div class="mb-4">
                         <h4 class="field-label mb-2 text-danger">{{ t .Localizer "Unpin App" }}</h4>
@@ -355,14 +450,12 @@
   -d '{"pinnedApp": ""}' \
   /v0/devices/{{ .Device.ID }}</pre>
                     </div>
-                    
                     <p class="text-xs text-muted">
                         <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
                     </p>
                 </div>
             </div>
         </details>
-
         <!-- Danger Zone - separated by divider -->
         <div class="border-t border-neutral-300 my-8"></div>
         <div class="form-section border-danger">
@@ -371,24 +464,24 @@
                 <button type="button" class="btn-secondary flex-shrink-0" id="resetButton">
                     <i data-lucide="rotate-ccw"></i> {{ t .Localizer "Reset" }}
                 </button>
-                <button type="button" class="btn-delete flex-1 justify-center" id="deleteButton"
+                <button type="button"
+                        class="btn-delete flex-1 justify-center"
+                        id="deleteButton"
                         onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true, '{{ t .Localizer "Delete App?" }}')">
                     <i data-lucide="trash-2"></i> {{ t .Localizer "Delete App" }}
                 </button>
             </div>
         </div>
     </form>
-</div><!-- end dashboard-container -->
-
+</div>
+<!-- end dashboard-container -->
 <!-- Sticky Action Bar -->
-{{ template "sticky_actions" (dict 
-    "Localizer" .Localizer 
-    "CancelID" "cancelButton"
-    "SaveForm" "dynamicForm"
-    "ShowPreview" (eq .Device.Info.ProtocolType "WS")
+{{ template "sticky_actions" (dict
+"Localizer" .Localizer
+"CancelID" "cancelButton"
+"SaveForm" "dynamicForm"
+"ShowPreview" (eq .Device.Info.ProtocolType "WS")
 ) }}
-
-
 <script>
   // Make the schema and config objects available to JavaScript
   const schema = {{ .Schema }};

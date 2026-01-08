@@ -6,72 +6,69 @@
         <div class="catalog-version">
             <span class="version-hash">
                 (version: <a href="{{ .SystemRepoInfo.CommitURL }}"
-                   target="_blank"
-                   class="version-link"
-                   title="{{ .SystemRepoInfo.CommitHash }}">
-                    {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
-                </a>)
-            </span>
-            {{ if .SystemRepoInfo.CommitDate }}
-            <span class="version-date">{{ .SystemRepoInfo.CommitDate }}</span>
-            {{ end }}
-        </div>
+    target="_blank"
+    class="version-link"
+    title="{{ .SystemRepoInfo.CommitHash }}">
+            {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
+            </a>)
+        </span>
+        {{ if .SystemRepoInfo.CommitDate }}
+        <span class="version-date">{{ .SystemRepoInfo.CommitDate }}</span>
         {{ end }}
-    </div>
-
-    {{ if .ShowControls }}
-    <!-- Filter and Sort Controls -->
-    <div class="catalog-controls">
-        <div class="control-row">
-            <div class="search-field">
-                <i data-lucide="search" class="search-icon"></i>
-                <input type="search"
-                       id="{{ .SearchID }}"
-                       class="search-input"
-                       placeholder="{{ t .Localizer "Search apps..." }}"
-                       onkeyup="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
-                       oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
-                       onkeydown="preventSubmitOnEnter(event)" />
-            </div>
-            
-            <div class="filter-toggles">
-                <label class="toggle-label">
-                    <input type="checkbox"
-                           id="hide_installed_{{ .SearchID }}"
-                           onchange="toggleInstalledApps('{{ .SearchID }}')"
-                           class="toggle-checkbox">
-                    <span class="toggle-text">{{ t .Localizer "Hide installed" }}</span>
-                </label>
-                <label class="toggle-label">
-                    <input type="checkbox"
-                           id="show_broken_{{ .SearchID }}"
-                           onchange="toggleBrokenApps('{{ .SearchID }}')"
-                           class="toggle-checkbox">
-                    <span class="toggle-text">{{ t .Localizer "Show broken" }}</span>
-                </label>
-            </div>
-            
-            <div class="sort-field">
-                <label for="sort_{{ .SearchID }}" class="sort-label">{{ t .Localizer "Sort by:" }}</label>
-                <select id="sort_{{ .SearchID }}" class="sort-select" onchange="sortApps('{{ .SearchID }}')">
-                    <option value="system" selected>{{ t .Localizer "Default" }}</option>
-                    <option value="newest">{{ t .Localizer "Newest" }}</option>
-                    <option value="alphabetical">{{ t .Localizer "A-Z" }}</option>
-                    <option value="rev-alphabetical">{{ t .Localizer "Z-A" }}</option>
-                </select>
-            </div>
-        </div>
     </div>
     {{ end }}
-
-    <div id="{{ .GridID }}" class="app-grid">
-        {{ range .Apps }}
-        {{ template "app_card_grid_item" (dict "App" . "DeviceID" $.DeviceID "Localizer" $.Localizer "IsCustom" $.IsCustom "ConfigProduction" $.ConfigProduction) }}
-        {{ end }}
+</div>
+{{ if .ShowControls }}
+<!-- Filter and Sort Controls -->
+<div class="catalog-controls">
+    <div class="control-row">
+        <div class="search-field">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="search"
+                   id="{{ .SearchID }}"
+                   class="search-input"
+                   placeholder="{{ t .Localizer "Search apps..." }}"
+                   onkeyup="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
+                   oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
+                   onkeydown="preventSubmitOnEnter(event)" />
+        </div>
+        <div class="filter-toggles">
+            <label class="toggle-label">
+                <input type="checkbox"
+                       id="hide_installed_{{ .SearchID }}"
+                       onchange="toggleInstalledApps('{{ .SearchID }}')"
+                       class="toggle-checkbox">
+                <span class="toggle-text">{{ t .Localizer "Hide installed" }}</span>
+            </label>
+            <label class="toggle-label">
+                <input type="checkbox"
+                       id="show_broken_{{ .SearchID }}"
+                       onchange="toggleBrokenApps('{{ .SearchID }}')"
+                       class="toggle-checkbox">
+                <span class="toggle-text">{{ t .Localizer "Show broken" }}</span>
+            </label>
+        </div>
+        <div class="sort-field">
+            <label for="sort_{{ .SearchID }}" class="sort-label">{{ t .Localizer "Sort by:" }}</label>
+            <select id="sort_{{ .SearchID }}"
+                    class="sort-select"
+                    onchange="sortApps('{{ .SearchID }}')">
+                <option value="system" selected>{{ t .Localizer "Default" }}</option>
+                <option value="newest">{{ t .Localizer "Newest" }}</option>
+                <option value="alphabetical">{{ t .Localizer "A-Z" }}</option>
+                <option value="rev-alphabetical">{{ t .Localizer "Z-A" }}</option>
+            </select>
+        </div>
     </div>
 </div>
 {{ end }}
-
+<div id="{{ .GridID }}" class="app-grid">
+    {{ range .Apps }}
+    {{ template "app_card_grid_item" (dict "App" . "DeviceID" $.DeviceID "Localizer" $.Localizer "IsCustom" $.IsCustom "ConfigProduction" $.ConfigProduction) }}
+    {{ end }}
+</div>
+</div>
+{{ end }}
 {{ define "app_card_grid_item" }}
 <div class="app-tile {{ if .App.Broken }}is-broken{{ end }}"
      data-value="{{ .App.ID }}"
@@ -82,7 +79,6 @@
      data-date="{{ .App.Date }}"
      data-broken="{{ .App.Broken }}"
      data-author="{{ .App.Author }}">
-    
     <div class="tile-badges">
         {{ if .App.IsInstalled }}
         <span class="tile-badge badge-installed">{{ t .Localizer "Installed" }}</span>
@@ -91,7 +87,6 @@
         <span class="tile-badge badge-2x">2x</span>
         {{ end }}
     </div>
-
     <div class="tile-preview">
         <div class="preview-skeleton"></div>
         <img data-src="/preview/app/{{ .App.ID }}"
@@ -101,7 +96,6 @@
              height="32"
              loading="lazy">
     </div>
-
     <div class="tile-info">
         <h4 class="tile-name">{{ .App.Name }}</h4>
         <p class="tile-summary">{{ .App.Summary }}</p>
@@ -109,7 +103,6 @@
         <div class="tile-author">{{ .App.Author }}</div>
         {{ end }}
     </div>
-
     {{ if .App.Broken }}
     <div class="tile-broken">
         <i data-lucide="alert-triangle"></i>
@@ -117,7 +110,6 @@
         <span class="broken-reason">{{ .App.BrokenReason }}</span>
     </div>
     {{ end }}
-
     <div class="tile-actions">
         {{ if .IsCustom }}
         <a href="/devices/{{ .DeviceID }}/uploads/{{ .App.ID }}/delete"
@@ -126,19 +118,18 @@
             <i data-lucide="trash-2"></i> {{ t .Localizer "Delete" }}
         </a>
         {{ end }}
-
         {{ if eq .ConfigProduction "0" }}
-            {{ if .App.Broken }}
-            <button class="tile-action tile-action-success unmark-broken-btn"
-                    onclick="event.stopPropagation(); unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
-                {{ t .Localizer "Unmark Broken" }}
-            </button>
-            {{ else }}
-            <button class="tile-action tile-action-danger mark-broken-btn"
-                    onclick="event.stopPropagation(); markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
-                {{ t .Localizer "Mark Broken" }}
-            </button>
-            {{ end }}
+        {{ if .App.Broken }}
+        <button class="tile-action tile-action-success unmark-broken-btn"
+                onclick="event.stopPropagation(); unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
+            {{ t .Localizer "Unmark Broken" }}
+        </button>
+    {{ else }}
+        <button class="tile-action tile-action-danger mark-broken-btn"
+                onclick="event.stopPropagation(); markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
+            {{ t .Localizer "Mark Broken" }}
+        </button>
+        {{ end }}
         {{ end }}
     </div>
 </div>

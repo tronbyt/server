@@ -1,7 +1,9 @@
 {{ define "login" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/auth.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/auth.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Log In" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
@@ -10,7 +12,6 @@
 {{ end }}
 {{ define "content" }}
 <div class="form-panel auth-panel">
-
     <form method="post" class="auth-form">
         <!-- Username -->
         <div class="form-field">
@@ -21,7 +22,6 @@
                    required
                    class="field-input">
         </div>
-
         <!-- Password -->
         <div class="form-field">
             <label for="password" class="field-label field-required">{{ t .Localizer "PASSWORD" }}</label>
@@ -31,7 +31,6 @@
                    required
                    class="field-input">
         </div>
-
         <!-- Remember Me -->
         <div class="form-field-checkbox">
             <label class="checkbox-label">
@@ -39,7 +38,6 @@
                 <span>{{ t .Localizer "Remember Me" }}</span>
             </label>
         </div>
-
         <!-- Submit Button -->
         <div class="form-actions">
             <button type="submit" class="btn-primary w-full">
@@ -48,7 +46,6 @@
             </button>
         </div>
     </form>
-
     <!-- WebAuthn / Passkey Login -->
     <div id="webauthn-login-container">
         <div class="auth-divider">
@@ -59,9 +56,7 @@
             {{ t .Localizer "Sign in with Passkey" }}
         </button>
     </div>
-
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize Lucide icons

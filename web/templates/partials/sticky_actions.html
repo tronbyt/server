@@ -11,34 +11,41 @@
   - .DeleteAction: (optional) onclick handler for delete
   - .DeleteText: (optional) custom delete button text
 */}}
-
 {{ define "sticky_actions" }}
 <div class="sticky-actions" id="stickyActions">
     <div class="sticky-actions-inner">
         <!-- Cancel (left on desktop, bottom on mobile) -->
-        <a href="{{ if .CancelURL }}{{ .CancelURL }}{{ else }}/{{ end }}" class="btn-secondary sticky-cancel" {{ if .CancelID }}id="{{ .CancelID }}"{{ end }}>
-            <i data-lucide="x-circle"></i>
-            <span>{{ t .Localizer "Cancel" }}</span>
-        </a>
-        
-        <div class="flex gap-2">
-            <!-- Optional Preview Button -->
-            {{ if .ShowPreview }}
-            <button type="button" class="btn-secondary" id="{{ if .PreviewID }}{{ .PreviewID }}{{ else }}previewButton{{ end }}">
-                <i data-lucide="eye"></i>
-                <span class="hidden md:inline">{{ t .Localizer "Preview" }}</span>
-            </button>
-            {{ end }}
-
-            <!-- Save (right on desktop, top on mobile) -->
-            <button type="{{ if .SaveType }}{{ .SaveType }}{{ else }}submit{{ end }}" 
-                    class="btn-primary sticky-save"
-                    {{ if .SaveForm }}form="{{ .SaveForm }}"{{ end }}
-                    {{ if .SaveAction }}onclick="{{ .SaveAction }}"{{ end }}>
-                <i data-lucide="save"></i>
-                <span>{{ if .SaveText }}{{ .SaveText }}{{ else }}{{ t .Localizer "Save Changes" }}{{ end }}</span>
-            </button>
-        </div>
-    </div>
+    <a href="{{ if .CancelURL }}{{ .CancelURL }}{{ else }}/{{ end }}"
+       class="btn-secondary sticky-cancel"
+       {{ if .CancelID }}
+       id="{{ .CancelID }}"
+       {{ end }}>
+        <i data-lucide="x-circle"></i>
+        <span>{{ t .Localizer "Cancel" }}</span>
+    </a>
+    <div class="flex gap-2">
+        <!-- Optional Preview Button -->
+        {{ if .ShowPreview }}
+    <button type="button"
+            class="btn-secondary"
+            id="{{ if .PreviewID }}{{ .PreviewID }}{{ else }}previewButton{{ end }}">
+        <i data-lucide="eye"></i>
+        <span class="hidden md:inline">{{ t .Localizer "Preview" }}</span>
+    </button>
+    {{ end }}
+    <!-- Save (right on desktop, top on mobile) -->
+<button type="{{ if .SaveType }}{{ .SaveType }}{{ else }}submit{{ end }}"
+        class="btn-primary sticky-save"
+        {{ if .SaveForm }}
+        form="{{ .SaveForm }}"
+        {{ end }}
+        {{ if .SaveAction }}
+        onclick="{{ .SaveAction }}"
+        {{ end }}>
+    <i data-lucide="save"></i>
+    <span>{{ if .SaveText }}{{ .SaveText }}{{ else }}{{ t .Localizer "Save Changes" }}{{ end }}</span>
+</button>
+</div>
+</div>
 </div>
 {{ end }}

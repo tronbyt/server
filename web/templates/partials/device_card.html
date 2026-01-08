@@ -3,17 +3,14 @@
      TEENAGE ENGINEERING DESIGN SYSTEM
      Device Card - Sharp, Instrument-Style Control Panel
      Think: OP-1 synthesizer, not generic web form
-     ============================================ -->
-
+============================================ -->
 <div id="device-card-{{ .Item.ID }}" class="device-card-container">
-
     <!-- DEVICE HEADER -->
     <div class="device-header">
         <div class="device-header-row">
             <h1 class="device-name">
                 <a href="{{ .Item.ImgURL }}" target="_blank" class="device-link">{{ .Item.Name }}</a>
             </h1>
-            
             <!-- Status Badges -->
             <div class="device-badges">
                 {{ if and .Item.PinnedApp (ne (deref .Item.PinnedApp) "") }}
@@ -27,10 +24,9 @@
                     {{ $pinnedName = printf "%s-%s" .Name .Iname }}
                     {{ end }}
                     {{ end }}
-                    {{ if ne $pinnedName "" }}{{ $pinnedName }}{{ else }}{{ $pinned }}{{ end }}
+                {{ if ne $pinnedName "" }}{{ $pinnedName }}{{ else }}{{ $pinned }}{{ end }}
                 </span>
                 {{ end }}
-
                 {{ if .Item.GetNightModeIsActive }}
                 <span class="badge gray" title="{{ t .Localizer "Night Mode Active" }}">
                     <i data-lucide="moon" class="icon-xs"></i>
@@ -45,13 +41,10 @@
             </div>
         </div>
     </div>
-
     <!-- DEVICE CONTROL PANEL - Two Column Layout -->
     <div class="device-control-panel">
-
         <!-- LEFT COLUMN: Controls -->
         <div class="device-controls">
-
             <!-- BRIGHTNESS CONTROL - Instrument-Style Button Grid -->
             <div class="control-group">
                 <label class="control-label">{{ t .Localizer "BRIGHTNESS" }}</label>
@@ -66,12 +59,9 @@
                 </div>
                 {{ end }}
             </div>
-
             <!-- APP CYCLE TIME - Precision Slider with Inline Value -->
             <div class="control-group">
-                <label class="control-label" for="default_interval-{{ .Item.ID }}">
-                    {{ t .Localizer "APP CYCLE TIME" }}
-                </label>
+                <label class="control-label" for="default_interval-{{ .Item.ID }}">{{ t .Localizer "APP CYCLE TIME" }}</label>
                 <div class="slider-container">
                     <span class="slider-label-min">1s</span>
                     <input type="range"
@@ -91,7 +81,6 @@
                     <span id="intervalValue-{{ .Item.ID }}" class="slider-value-label">{{ .Item.DefaultInterval }}s</span>
                 </div>
             </div>
-
             <!-- ACTION BUTTONS - Sharp Rectangular -->
             {{ if not .ReadOnly }}
             <div class="control-group">
@@ -113,7 +102,6 @@
                 </div>
             </div>
             {{ end }}
-
             <!-- VIEW TOGGLE - Compact/Expand Switch -->
             <div class="control-group">
                 <label class="control-label">{{ t .Localizer "APP VIEW" }}</label>
@@ -135,7 +123,6 @@
                 </div>
             </div>
         </div>
-
         <!-- RIGHT COLUMN: Display Preview + Device Info -->
         <div class="device-preview-section">
             <!-- Currently Displaying App - LED Panel -->
@@ -150,7 +137,6 @@
                          loading="lazy">
                 </div>
             </div>
-
             <!-- Device Info (Collapsible) -->
             <div class="device-info-box">
                 <button class="device-info-toggle"
@@ -201,7 +187,6 @@
             </div>
         </div>
     </div>
-
     <!-- DRAG INSTRUCTION -->
     {{ if not .ReadOnly }}
     <div class="drag-instruction-bar">
@@ -209,7 +194,6 @@
         <span>{{ t .Localizer "Drag apps to reorder or copy from/to another device" }}</span>
     </div>
     {{ end }}
-
     <!-- APPS LIST -->
     <div id="appsList-{{ .Item.ID }}" class="apps-list">
         {{ range .Item.Apps }}
@@ -217,7 +201,6 @@
         {{ end }}
     </div>
 </div>
-
 <script>
 // Toggle all app cards to compact view
 function toggleAllAppsCompact(deviceId) {

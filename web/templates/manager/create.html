@@ -1,7 +1,9 @@
 {{ define "create" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "New Tronbyt Device" }}{{ end }}
 {{ define "header" }}
 <script src="/static/js/location.js"></script>
@@ -25,11 +27,9 @@
 {{ define "content" }}
 <div class="dashboard-container">
     <form method="post" id="create-device-form">
-
         <!-- BASIC INFORMATION SECTION -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "BASIC INFORMATION" }}</h2>
-            
             <div class="form-grid">
                 <div class="form-field">
                     <label for="name" class="field-label field-required">{{ t .Localizer "NAME" }}</label>
@@ -42,21 +42,21 @@
                            placeholder="{{ t .Localizer "My Tronbyt" }}">
                     <span class="field-hint">{{ t .Localizer "Descriptive name for this Tronbyt device" }}</span>
                 </div>
-
                 <div class="form-field">
                     <label for="device_type" class="field-label">{{ t .Localizer "DEVICE TYPE" }}</label>
                     <select name="device_type" id="device_type" class="field-input field-select">
                         {{ $deviceType := .Form.DeviceType }}
                         {{ range .DeviceTypeChoices }}
                         <option value="{{ .Value.Slug }}"
-                                {{ if eq $deviceType .Value.Slug }}selected{{ end }}>
+                                {{ if eq $deviceType .Value.Slug }}
+                                selected
+                                {{ end }}>
                             {{ .Label }}
                         </option>
                         {{ end }}
                     </select>
                 </div>
             </div>
-
             <div class="form-field">
                 <label for="device_id" class="field-label">
                     {{ t .Localizer "DEVICE ID" }}
@@ -71,11 +71,9 @@
                 <span class="field-hint">{{ t .Localizer "Leave blank to auto-generate." }}</span>
             </div>
         </div>
-
         <!-- CONNECTION URLS SECTION -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "CONNECTION URLS" }}</h2>
-            
             <div class="form-grid">
                 <div class="form-field">
                     <label for="img_url" class="field-label">{{ t .Localizer "IMAGE URL" }}</label>
@@ -87,7 +85,6 @@
                            placeholder="http://...">
                     <span class="field-hint">{{ t .Localizer "Leave blank unless advanced user." }}</span>
                 </div>
-
                 <div class="form-field">
                     <label for="ws_url" class="field-label">{{ t .Localizer "WEBSOCKET URL" }}</label>
                     <input name="ws_url"
@@ -100,11 +97,9 @@
                 </div>
             </div>
         </div>
-
         <!-- DISPLAY SETTINGS SECTION -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "DISPLAY SETTINGS" }}</h2>
-            
             <div class="form-field">
                 <label class="field-label">{{ t .Localizer "BRIGHTNESS" }}</label>
                 <input type="hidden"
@@ -121,11 +116,9 @@
                 </div>
             </div>
         </div>
-
         <!-- LOCATION & NOTES SECTION -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "LOCATION & NOTES" }}</h2>
-            
             <div class="form-grid">
                 <div class="form-field">
                     <label for="location_search" class="field-label">{{ t .Localizer "LOCATION" }}</label>
@@ -134,13 +127,13 @@
                            placeholder="{{ t .Localizer "Enter a location" }}"
                            value="{{ .Form.LocationSearch }}"
                            class="field-input">
-                    <ul id="location_results" class="location-results"></ul>
+                    <ul id="location_results" class="location-results">
+                    </ul>
                     <input type="hidden"
                            name="location"
                            id="location"
                            value='{{ .Form.LocationJSON }}'>
                 </div>
-
                 <div class="form-field">
                     <label for="notes" class="field-label">{{ t .Localizer "NOTES" }}</label>
                     <input name="notes"
@@ -152,30 +145,32 @@
                 </div>
             </div>
         </div>
-
         <!-- HIDDEN FIELDS -->
         <input type="hidden" name="api_key" id="api_key">
-
         <!-- CONFIGURATION MANAGEMENT SECTION -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "CONFIGURATION MANAGEMENT" }}</h2>
-             <div class="flex flex-col md:flex-row gap-3">
+            <div class="flex flex-col md:flex-row gap-3">
                 <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Import Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Import device settings from backup." }}</div>
                     </div>
-                     <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('import-file').click();">
+                    <button type="button"
+                            class="btn-secondary whitespace-nowrap justify-center"
+                            onclick="document.getElementById('import-file').click();">
                         <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
-                     </button>
+                    </button>
                 </div>
-             </div>
+            </div>
         </div>
-
         <!-- ACTION BUTTONS -->
         <!-- ACTION BUTTONS -->
-        <div class="form-actions justify-between gap-3 mt-10" style="margin-bottom: 4rem;">
-            <button type="button" class="btn-secondary" onclick="window.location.href='/';">
+        <div class="form-actions justify-between gap-3 mt-10"
+             style="margin-bottom: 4rem">
+            <button type="button"
+                    class="btn-secondary"
+                    onclick="window.location.href='/';">
                 <i data-lucide="x-circle"></i>
                 <span>{{ t .Localizer "Cancel" }}</span>
             </button>
@@ -184,9 +179,7 @@
                 <span>{{ t .Localizer "Create Device" }}</span>
             </button>
         </div>
-
     </form>
-
     <!-- Import Form (Hidden) -->
     <form id="import-device-form"
           method="post"
@@ -200,7 +193,6 @@
                onchange="this.form.submit();">
     </form>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         enableLocationSearch(

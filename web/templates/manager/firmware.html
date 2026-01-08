@@ -1,7 +1,9 @@
 {{ define "firmware" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Firmware" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
@@ -10,36 +12,38 @@
 {{ end }}
 {{ define "content" }}
 <div class="dashboard-container">
-
     {{ if not .FirmwareBinsAvailable }}
     <div class="alert alert-warning border-danger bg-secondary p-4 mb-6">
         <i data-lucide="alert-triangle" class="text-danger"></i>
         <div class="alert-content">
             <strong class="text-danger">{{ t .Localizer "FIRMWARE FILES NOT AVAILABLE" }}</strong>
-            <p>{{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}</p>
+            <p>
+                {{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}
+            </p>
             {{ if .User.IsAdmin }}
             <p class="mt-2 text-sm">
-                <strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }} 
-                <a href="/auth/edit#firmware-management" class="text-link text-inherit font-bold underline">{{ t .Localizer "Admin page" }}</a> 
+                <strong>{{ t .Localizer "Action Required:" }}</strong> {{ t .Localizer "Please go to the" }}
+                <a href="/auth/edit#firmware-management"
+                   class="text-link text-inherit font-bold underline">{{ t .Localizer "Admin page" }}</a>
                 {{ t .Localizer "to download the latest firmware files." }}
             </p>
-            {{ else }}
+        {{ else }}
             <p class="mt-2 text-sm">{{ t .Localizer "Please contact your administrator to download the firmware files." }}</p>
             {{ end }}
         </div>
     </div>
     {{ end }}
-
     {{ if .FirmwareVersion }}
     <div class="alert alert-info border-primary bg-secondary p-4 mb-6">
         <i data-lucide="info" class="text-secondary"></i>
         <div class="alert-content">
-             <div class="flex flex-wrap justify-between items-center w-full gap-3">
+            <div class="flex flex-wrap justify-between items-center w-full gap-3">
                 <div class="text-sm">
                     <strong>{{ t .Localizer "Firmware Image Version" }}:</strong> {{ .FirmwareVersion }}
                 </div>
                 {{ if .User.IsAdmin }}
-                <a href="/auth/edit#firmware-management" class="btn-secondary py-1 px-3 min-h-0 text-xs shadow-none">
+                <a href="/auth/edit#firmware-management"
+                   class="btn-secondary py-1 px-3 min-h-0 text-xs shadow-none">
                     <i data-lucide="settings" class="icon-sm"></i>
                     {{ t .Localizer "Manage Firmware" }}
                 </a>
@@ -48,7 +52,6 @@
         </div>
     </div>
     {{ end }}
-
     <form method="post" id="firmware-form">
         <!-- Flasher Instructions -->
         <div class="form-section">
@@ -58,8 +61,10 @@
                 <div class="alert-content">
                     <strong class="text-secondary">{{ t .Localizer "Download ESP Flasher" }}</strong>
                     <p class="mt-1">
-                        {{ t .Localizer "Download ESP Flasher here" }}: 
-                        <a href="https://github.com/Jason2866/ESP_Flasher/releases" target="_blank" class="text-link font-bold underline">Jason2866/ESP_Flasher</a>
+                        {{ t .Localizer "Download ESP Flasher here" }}:
+                        <a href="https://github.com/Jason2866/ESP_Flasher/releases"
+                           target="_blank"
+                           class="text-link font-bold underline">Jason2866/ESP_Flasher</a>
                     </p>
                     <p class="text-sm mt-3 text-secondary">
                         {{ t .Localizer "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher." }}
@@ -67,15 +72,17 @@
                     <p class="text-xs text-muted mt-3 font-mono">
                         <i data-lucide="info" class="icon-sm inline align-text-bottom mr-1"></i>
                         {{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}
-                        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank" class="text-link text-inherit underline">CP210x</a>, 
-                        <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank" class="text-link text-inherit underline">CH34x</a>
+                        <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads"
+                           target="_blank"
+                           class="text-link text-inherit underline">CP210x</a>,
+                        <a href="https://github.com/WCHSoftGroup/ch34xser_macos"
+                           target="_blank"
+                           class="text-link text-inherit underline">CH34x</a>
                     </p>
                 </div>
             </div>
         </div>
-
         <input type="hidden" name="id" id="id" value="{{ .Device.ID }}">
-
         <!-- Connection Settings -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "Connection Settings" }}</h2>
@@ -97,7 +104,6 @@
                         </label>
                     </div>
                 </div>
-
                 <div class="form-field col-span-full">
                     <label for="img_url" class="field-label">{{ t .Localizer "Image URL" }}</label>
                     <input name="img_url" id="img_url" class="field-input field-mono max-w-2xl">
@@ -105,21 +111,22 @@
                 </div>
             </div>
         </div>
-
         <!-- WiFi Configuration -->
         <div class="form-section">
             <h2 class="section-title">{{ t .Localizer "WiFi Configuration" }}</h2>
             <div class="form-grid gap-x-8">
                 <div class="form-field">
                     <label for="wifi_ap" class="field-label field-required">{{ t .Localizer "WiFi Network Name (SSID)" }}</label>
-                    <input name="wifi_ap" id="wifi_ap" required class="field-input" placeholder="2.4GHz WiFi only">
+                    <input name="wifi_ap"
+                           id="wifi_ap"
+                           required
+                           class="field-input"
+                           placeholder="2.4GHz WiFi only">
                 </div>
-
                 <div class="form-field">
                     <label for="wifi_password" class="field-label field-required">{{ t .Localizer "WiFi Password" }}</label>
                     <input name="wifi_password" id="wifi_password" required class="field-input">
                 </div>
-
                 {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
                 <div class="form-field-checkbox col-span-full mt-4">
                     <label for="swap_colors" class="checkbox-label">
@@ -130,11 +137,10 @@
                 {{ end }}
             </div>
         </div>
-
         <!-- Action Bar -->
         <div class="form-actions justify-between gap-3 mt-10">
-             <button type="button" class="btn-secondary" onclick="window.history.back()">
-               <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+            <button type="button" class="btn-secondary" onclick="window.history.back()">
+                <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
             </button>
             <button class="btn-create" type="submit">
                 <i data-lucide="cpu"></i>
@@ -143,7 +149,6 @@
         </div>
     </form>
 </div>
-
 <script>
     (function() {
         const input = document.getElementById('img_url');
@@ -185,4 +190,3 @@
     });
 </script>
 {{ end }}
-

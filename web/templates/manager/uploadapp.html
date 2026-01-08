@@ -1,7 +1,9 @@
 {{ define "uploadapp" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/addapp.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/addapp.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Upload App" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
@@ -21,8 +23,8 @@
                    class="field-input">
             <span class="field-hint">{{ t .Localizer "Supported formats: .star, .webp or .zip" }}</span>
         </div>
-
-        <div class="form-actions justify-between gap-3 mt-10" style="margin-bottom: 4rem;">
+        <div class="form-actions justify-between gap-3 mt-10"
+             style="margin-bottom: 4rem">
             <button type="button" class="btn-secondary" onclick="window.history.back();">
                 <i data-lucide="x-circle"></i>
                 {{ t .Localizer "Cancel" }}
@@ -34,7 +36,6 @@
         </div>
     </form>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof lucide !== 'undefined') {

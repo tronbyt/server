@@ -1,7 +1,9 @@
 {{ define "edit" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Edit User" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
@@ -10,18 +12,22 @@
 {{ end }}
 {{ define "content" }}
 <div class="dashboard-container has-sticky-actions">
-
     <!-- System Administration (Admins Only) -->
     {{ if .User.IsAdmin }}
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "System Apps Repository" }}</h2>
-        
         {{ if .SystemRepoInfo }}
         <div class="inset-panel mb-4">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
-                <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .SystemRepoInfo.URL }}</a>
-                <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
-                    <button type="submit" class="btn-secondary" title="{{ t .Localizer "Refresh" }}">
+                <a href="{{ .SystemRepoInfo.URL }}"
+                   target="_blank"
+                   class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .SystemRepoInfo.URL }}</a>
+                <form method="post"
+                      action="/refresh_system_repo"
+                      onsubmit="event.preventDefault(); refreshSystemRepo(this);">
+                    <button type="submit"
+                            class="btn-secondary"
+                            title="{{ t .Localizer "Refresh" }}">
                         <i data-lucide="refresh-cw"></i>
                     </button>
                 </form>
@@ -30,22 +36,29 @@
                 <span class="mr-3"><strong>{{ t .Localizer "Branch" }}:</strong> {{ .SystemRepoInfo.Branch }}</span>
                 <span>
                     <strong>{{ t .Localizer "Commit" }}:</strong>
-                    <a href="{{ .SystemRepoInfo.CommitURL }}" target="_blank" class="text-link" title="{{ .SystemRepoInfo.CommitHash }}">
-                        {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
+                    <a href="{{ .SystemRepoInfo.CommitURL }}"
+                       target="_blank"
+                       class="text-link"
+                       title="{{ .SystemRepoInfo.CommitHash }}">
+                    {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
                     </a>
                 </span>
             </div>
         </div>
-        {{ else }}
+    {{ else }}
         <p class="text-sm text-secondary italic mb-4">{{ t .Localizer "No system repository configured." }}</p>
         {{ end }}
-        
         <form method="post" action="/set_system_repo" class="form-grid">
             <div class="form-field col-span-full">
                 <label for="system_repo_url" class="field-label">{{ t .Localizer "Repository URL" }}</label>
                 <div class="flex gap-2 max-w-3xl">
-                    <input name="app_repo_url" id="system_repo_url" value="{{ .GlobalSystemRepoURL }}" class="field-input field-mono flex-1">
-                    <button type="submit" class="btn-primary" onclick="return confirm('{{ t .Localizer "Change system repository? This may break existing apps." }}');">
+                    <input name="app_repo_url"
+                           id="system_repo_url"
+                           value="{{ .GlobalSystemRepoURL }}"
+                           class="field-input field-mono flex-1">
+                    <button type="submit"
+                            class="btn-primary"
+                            onclick="return confirm('{{ t .Localizer "Change system repository? This may break existing apps." }}');">
                         <i data-lucide="save"></i> {{ t .Localizer "Save" }}
                     </button>
                 </div>
@@ -56,24 +69,24 @@
             </div>
         </form>
     </div>
-
     <!-- Firmware Management -->
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Firmware Management" }}</h2>
-        
         <div class="inset-panel mb-4">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div class="text-sm">
                     {{ if .FirmwareVersion }}
                     <strong>{{ t .Localizer "Current Version" }}:</strong> <span class="font-mono">{{ .FirmwareVersion }}</span>
-                    {{ else }}
+                {{ else }}
                     <span class="text-secondary italic">{{ t .Localizer "Unknown version" }}</span>
                     {{ end }}
                 </div>
-                <form method="post" action="/update_firmware" onsubmit="event.preventDefault(); updateFirmware(this);">
+                <form method="post"
+                      action="/update_firmware"
+                      onsubmit="event.preventDefault(); updateFirmware(this);">
                     <button type="submit" class="btn-create">
-                        <i data-lucide="cpu"></i> 
-                        {{ if .FirmwareVersion }}{{ t .Localizer "Update Firmware" }}{{ else }}{{ t .Localizer "Download Firmware" }}{{ end }}
+                        <i data-lucide="cpu"></i>
+                    {{ if .FirmwareVersion }}{{ t .Localizer "Update Firmware" }}{{ else }}{{ t .Localizer "Download Firmware" }}{{ end }}
                     </button>
                 </form>
             </div>
@@ -84,23 +97,29 @@
         </p>
     </div>
     {{ end }}
-
     <!-- User Custom Repo -->
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Custom Apps Repository" }}</h2>
-        
         {{ if .UserRepoInfo }}
         <div class="inset-panel mb-4">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
-                <a href="{{ .UserRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .UserRepoInfo.URL }}</a>
+                <a href="{{ .UserRepoInfo.URL }}"
+                   target="_blank"
+                   class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .UserRepoInfo.URL }}</a>
                 {{ if .User.AppRepoURL }}
                 <div class="flex gap-2">
-                    <form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2></i>'; ">
-                        <button type="submit" class="btn-secondary" title="{{ t .Localizer "Refresh" }}">
+                    <form method="post"
+                          action="/refresh_user_repo"
+                          onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2></i>'; ">
+                        <button type="submit"
+                                class="btn-secondary"
+                                title="{{ t .Localizer "Refresh" }}">
                             <i data-lucide="refresh-cw"></i>
                         </button>
                     </form>
-                    <form method="post" action="/set_user_repo" onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
+                    <form method="post"
+                          action="/set_user_repo"
+                          onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
                         <input type="hidden" name="app_repo_url" value="">
                         <button type="submit" class="btn-delete" title="{{ t .Localizer "Remove" }}">
                             <i data-lucide="trash-2"></i>
@@ -113,22 +132,29 @@
                 <span class="mr-3"><strong>{{ t .Localizer "Branch" }}:</strong> {{ .UserRepoInfo.Branch }}</span>
                 <span>
                     <strong>{{ t .Localizer "Commit" }}:</strong>
-                    <a href="{{ .UserRepoInfo.CommitURL }}" target="_blank" class="text-link" title="{{ .UserRepoInfo.CommitHash }}">
-                        {{ if .UserRepoInfo.CommitMessage }}{{ .UserRepoInfo.CommitMessage }}{{ else }}{{ substr .UserRepoInfo.CommitHash 0 8 }}{{ end }}
+                    <a href="{{ .UserRepoInfo.CommitURL }}"
+                       target="_blank"
+                       class="text-link"
+                       title="{{ .UserRepoInfo.CommitHash }}">
+                    {{ if .UserRepoInfo.CommitMessage }}{{ .UserRepoInfo.CommitMessage }}{{ else }}{{ substr .UserRepoInfo.CommitHash 0 8 }}{{ end }}
                     </a>
                 </span>
             </div>
         </div>
-        {{ else }}
+    {{ else }}
         <p class="text-sm text-secondary italic mb-4">{{ t .Localizer "No custom repository configured." }}</p>
         {{ end }}
-
         <form method="post" action="/set_user_repo" class="form-grid">
             <div class="form-field col-span-full">
                 <label for="user_repo_url" class="field-label">{{ t .Localizer "Repository URL" }}</label>
                 <div class="flex gap-2 max-w-3xl">
-                    <input name="app_repo_url" id="user_repo_url" value="{{ .User.AppRepoURL }}" class="field-input field-mono flex-1">
-                    <button type="submit" class="btn-primary" onclick="return confirm('{{ t .Localizer "Change custom repository? This may break existing apps." }}');">
+                    <input name="app_repo_url"
+                           id="user_repo_url"
+                           value="{{ .User.AppRepoURL }}"
+                           class="field-input field-mono flex-1">
+                    <button type="submit"
+                            class="btn-primary"
+                            onclick="return confirm('{{ t .Localizer "Change custom repository? This may break existing apps." }}');">
                         <i data-lucide="save"></i> {{ t .Localizer "Save" }}
                     </button>
                 </div>
@@ -139,41 +165,55 @@
             </div>
         </form>
     </div>
-
     <!-- Security Settings -->
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Security Settings" }}</h2>
-        
         <div class="form-grid">
             <div class="form-field col-span-full">
                 <label for="email" class="field-label">{{ t .Localizer "Email Address" }}</label>
-                <input type="email" name="email" id="email" form="userSettingsForm" value="{{ if .User.Email }}{{ .User.Email }}{{ end }}" class="field-input max-w-lg">
+                <input type="email"
+                       name="email"
+                       id="email"
+                       form="userSettingsForm"
+                       value="{{ if .User.Email }}{{ .User.Email }}{{ end }}"
+                       class="field-input max-w-lg">
             </div>
-            
             <div class="form-field">
                 <label for="old_password" class="field-label">{{ t .Localizer "Old Password" }}</label>
-                <input type="password" name="old_password" id="old_password" form="userSettingsForm" class="field-input">
+                <input type="password"
+                       name="old_password"
+                       id="old_password"
+                       form="userSettingsForm"
+                       class="field-input">
             </div>
-            
             <div class="form-field">
                 <label for="password" class="field-label">{{ t .Localizer "New Password" }}</label>
-                <input type="password" name="password" id="password" form="userSettingsForm" class="field-input">
+                <input type="password"
+                       name="password"
+                       id="password"
+                       form="userSettingsForm"
+                       class="field-input">
             </div>
         </div>
     </div>
-
     <!-- API Access -->
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "API Access" }}</h2>
         <div class="form-grid">
             <div class="form-field col-span-full">
                 <label for="api_key" class="field-label">{{ t .Localizer "Your API Key" }}</label>
-                <input type="text" name="api_key" id="api_key" form="userSettingsForm" value="{{ .User.APIKey }}" class="field-input field-mono max-w-lg">
+                <input type="text"
+                       name="api_key"
+                       id="api_key"
+                       form="userSettingsForm"
+                       value="{{ .User.APIKey }}"
+                       class="field-input field-mono max-w-lg">
             </div>
-            
             <div class="form-field col-span-full">
                 <form method="post" action="/auth/generate_api_key">
-                    <button type="submit" class="btn-primary" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
+                    <button type="submit"
+                            class="btn-primary"
+                            onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
                         <i data-lucide="refresh-cw"></i> {{ t .Localizer "Generate New Random Key" }}
                     </button>
                 </form>
@@ -184,7 +224,6 @@
             </div>
         </div>
     </div>
-
     <!-- Passkeys -->
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Passkeys" }}</h2>
@@ -198,12 +237,18 @@
                                 {{ $iconLight := webauthn_icon .Authenticator false }}
                                 {{ $iconDark := webauthn_icon .Authenticator true }}
                                 {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
-                                    <img src="{{ $iconLight }}" alt="Auth Icon" class="auth-icon-light authenticator-icon">
-                                    <img src="{{ $iconDark }}" alt="Auth Icon" class="auth-icon-dark authenticator-icon">
+                                <img src="{{ $iconLight }}"
+                                     alt="Auth Icon"
+                                     class="auth-icon-light authenticator-icon">
+                                <img src="{{ $iconDark }}"
+                                     alt="Auth Icon"
+                                     class="auth-icon-dark authenticator-icon">
                                 {{ else if or $iconLight $iconDark }}
-                                    <img src="{{ or $iconLight $iconDark }}" alt="Auth Icon" class="authenticator-icon">
-                                {{ else }}
-                                    <i data-lucide="key" class="icon-sm"></i>
+                                <img src="{{ or $iconLight $iconDark }}"
+                                     alt="Auth Icon"
+                                     class="authenticator-icon">
+                            {{ else }}
+                                <i data-lucide="key" class="icon-sm"></i>
                                 {{ end }}
                             </div>
                             <div>
@@ -213,22 +258,29 @@
                                 {{ end }}
                             </div>
                         </div>
-                        <button onclick="deletePasskey('{{ .ID }}')" class="btn-delete btn-sm px-2" title="{{ t $.Localizer "Delete Passkey" }}">
+                        <button onclick="deletePasskey('{{ .ID }}')"
+                                class="btn-delete btn-sm px-2"
+                                title="{{ t $.Localizer "Delete Passkey" }}">
                             <i data-lucide="trash-2" class="icon-sm mr-0"></i>
                         </button>
                     </div>
-                    {{ else }}
-                    <p class="text-sm text-secondary italic text-center py-4 border border-neutral-200">{{ t .Localizer "No passkeys registered." }}</p>
+                {{ else }}
+                    <p class="text-sm text-secondary italic text-center py-4 border border-neutral-200">
+                        {{ t .Localizer "No passkeys registered." }}
+                    </p>
                     {{ end }}
                 </div>
-                
                 <div class="flex flex-col items-start gap-2">
-                    <button onclick="registerPasskey()" class="btn-primary" {{ if gt (len .User.Credentials) 0 }}disabled{{ end }}>
+                    <button onclick="registerPasskey()"
+                            class="btn-primary"
+                            {{ if gt (len .User.Credentials) 0 }}
+                            disabled
+                            {{ end }}>
                         <i data-lucide="fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
                     </button>
                     {{ if gt (len .User.Credentials) 0 }}
                     <p class="text-xs text-secondary flex items-center gap-1">
-                        <i data-lucide="info" class="icon-xs"></i> 
+                        <i data-lucide="info" class="icon-xs"></i>
                         {{ t .Localizer "Only one passkey can be registered at a time." }}
                     </p>
                     {{ end }}
@@ -236,37 +288,45 @@
             </div>
         </div>
     </div>
-
     <!-- Configuration Management -->
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
-        
         <div class="flex flex-col md:flex-row gap-3">
             <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div class="text-sm">
                     <strong>{{ t .Localizer "Export Configuration" }}</strong>
                     <div class="text-xs text-secondary">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</div>
                 </div>
-                <a href="/export_user_config" class="btn-secondary whitespace-nowrap justify-center">
+                <a href="/export_user_config"
+                   class="btn-secondary whitespace-nowrap justify-center">
                     <i data-lucide="download"></i> {{ t .Localizer "Export" }}
                 </a>
             </div>
-
             <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div class="text-sm">
                     <strong>{{ t .Localizer "Import Configuration" }}</strong>
                     <div class="text-xs text-secondary">{{ t .Localizer "Restore settings from backup." }}</div>
                 </div>
-                 <form method="post" action="/import_user_config" enctype="multipart/form-data" class="flex items-center">
-                    <input type="file" name="file" id="import_file" accept=".json" required class="hidden" onchange="if(confirm('{{ t .Localizer "Importing will replace current settings. Continue?" }}')) this.form.submit();">
-                    <button type="button" class="btn-secondary whitespace-nowrap justify-center w-full" onclick="document.getElementById('import_file').click();">
+                <form method="post"
+                      action="/import_user_config"
+                      enctype="multipart/form-data"
+                      class="flex items-center">
+                    <input type="file"
+                           name="file"
+                           id="import_file"
+                           accept=".json"
+                           required
+                           class="hidden"
+                           onchange="if(confirm('{{ t .Localizer "Importing will replace current settings. Continue?" }}')) this.form.submit();">
+                    <button type="button"
+                            class="btn-secondary whitespace-nowrap justify-center w-full"
+                            onclick="document.getElementById('import_file').click();">
                         <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
                     </button>
                 </form>
             </div>
         </div>
     </div>
-
     <!-- About Server -->
     <!-- About Server -->
     <div class="flex flex-col items-center justify-center mt-12 pb-12 gap-4">
@@ -277,23 +337,23 @@
         {{ end }}
         <div class="text-xs text-secondary font-mono uppercase tracking-widest opacity-60">
             {{ t .Localizer "Tronbyt Server" }} — v{{ .ServerVersion }}
-            {{ if .CommitHash }} 
-                // <a href="https://github.com/tronbyt/server/tree/{{ .CommitHash }}" target="_blank" class="hover:text-primary transition-colors">{{ substr .CommitHash 0 7 }}</a>
+            {{ if .CommitHash }}
+            // <a href="https://github.com/tronbyt/server/tree/{{ .CommitHash }}"
+    target="_blank"
+    class="hover:text-primary transition-colors">{{ substr .CommitHash 0 7 }}</a>
             {{ end }}
         </div>
     </div>
-
-</div><!-- end dashboard-container -->
-
+</div>
+<!-- end dashboard-container -->
 <!-- Hidden form that the sticky bar submits -->
-<form method="post" id="userSettingsForm"></form>
-
+<form method="post" id="userSettingsForm">
+</form>
 <!-- Sticky Action Bar -->
-{{ template "sticky_actions" (dict 
-    "Localizer" .Localizer 
-    "SaveForm" "userSettingsForm"
+{{ template "sticky_actions" (dict
+"Localizer" .Localizer
+"SaveForm" "userSettingsForm"
 ) }}
-
 <script>
     // JS functions reused from original but cleaner
      function refreshSystemRepo(form) {

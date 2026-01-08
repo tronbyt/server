@@ -1,19 +1,24 @@
 {{ define "adminindex" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "extra_css" }}<link rel="stylesheet" href="/static/css/pages/dashboard.css">{{ end }}
+{{ define "extra_css" }}
+<link rel="stylesheet" href="/static/css/pages/dashboard.css">
+{{ end }}
 {{ define "title" }}{{ t .Localizer "Tronbyt Manager" }}{{ end }}
 {{ define "header" }}
 <div class="page-header">
     <div class="flex justify-between items-center gap-4 flex-wrap">
         <h1 class="page-title">{{ t .Localizer "Admin Dashboard" }}</h1>
         <div class="flex gap-2">
-            <button type="button" class="btn-secondary" onclick="window.location.reload()" title="{{ t .Localizer "Refresh" }}">
+            <button type="button"
+                    class="btn-secondary"
+                    onclick="window.location.reload()"
+                    title="{{ t .Localizer "Refresh" }}">
                 <i data-lucide="rotate-ccw" class="icon-sm"></i>
             </button>
             {{ if .User }}
             <a class="btn-create" href="/devices/create">
-                <i data-lucide="plus-circle"></i> 
+                <i data-lucide="plus-circle"></i>
                 {{ t .Localizer "New Tronbyt" }}
             </a>
             {{ end }}
@@ -33,24 +38,22 @@
             </button>
             {{ end }}
         </div>
-
         {{ if .Devices }}
-            {{ $userDevices := .Devices }}
-            {{ range .Devices }}
-                {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $userDevices "ReadOnly" true) }}
-            {{ end }}
-        {{ else }}
-            <div class="alert alert-info">
-                <i data-lucide="info"></i>
-                <div class="alert-content">
-                    <p>{{ t $.Localizer "No devices found for this user." }}</p>
-                </div>
+        {{ $userDevices := .Devices }}
+        {{ range .Devices }}
+        {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $userDevices "ReadOnly" true) }}
+        {{ end }}
+    {{ else }}
+        <div class="alert alert-info">
+            <i data-lucide="info"></i>
+            <div class="alert-content">
+                <p>{{ t $.Localizer "No devices found for this user." }}</p>
             </div>
+        </div>
         {{ end }}
     </div>
     {{ end }}
 </div>
-
 <script>
     function deleteUser(username) {
         if (!confirm('{{ t .Localizer "Delete User?" }}')) return;

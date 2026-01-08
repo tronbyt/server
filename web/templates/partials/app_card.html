@@ -3,8 +3,7 @@
      NEW DESIGN SYSTEM - App Card Component
      COMPACT VIEW (Default) & FULL VIEW (Expanded)
      Uses Lucide Icons via data-lucide attribute
-     ============================================ -->
-
+============================================ -->
 <!-- COMPACT VIEW (Default) -->
 <div class="card-container hover-bg compact-view app-card"
      id="app-card-{{ .App.Iname }}"
@@ -12,7 +11,6 @@
      data-iname="{{ .App.Iname }}"
      data-expanded="false"
      onclick="toggleAppCardView('{{ .App.Iname }}', event)">
-
     <div class="compact-row">
         <!-- Preview Thumbnail -->
         <div class="thumb-box compact">
@@ -20,7 +18,6 @@
                  src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
                  alt="{{ t .Localizer "Preview" }}"
                  loading="lazy">
-
             {{ if .App.EmptyLastRender }}
             <div class="thumb-overlay">
                 <span class="thumb-overlay-badge">
@@ -30,7 +27,6 @@
             </div>
             {{ end }}
         </div>
-
         <!-- Info Section -->
         <div class="compact-info">
             <h3 class="font-bold">{{ .App.Name }}-{{ .App.Iname }}</h3>
@@ -42,87 +38,84 @@
                 <div class="flex items-center gap-2">
                     <i data-lucide="clock" class="meta-icon"></i>
                     <span>
-                    {{ if .App.EmptyLastRender }}
+                        {{ if .App.EmptyLastRender }}
                         {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
                     {{ else }}
                         {{ timeago .Localizer .App.LastRender }}
-                    {{ end }}
+                        {{ end }}
                     </span>
                 </div>
             </div>
         </div>
-
         <!-- Status Badge (Display Only - NOT clickable) -->
         <div class="compact-status">
             {{ if isPinned .Device .App.Iname }}
-                <div class="badge black">{{ t .Localizer "PINNED" }}</div>
-            {{ else }}
-                <div class="badge {{ if .App.Enabled }}is-enabled{{ else }}gray{{ end }}">
-                    {{ if .App.Enabled }}{{ t .Localizer "ENABLED" }}{{ else }}{{ t .Localizer "DISABLED" }}{{ end }}
-                </div>
-            {{ end }}
+            <div class="badge black">{{ t .Localizer "PINNED" }}</div>
+        {{ else }}
+        <div class="badge {{ if .App.Enabled }}is-enabled{{ else }}gray{{ end }}">
+        {{ if .App.Enabled }}{{ t .Localizer "ENABLED" }}{{ else }}{{ t .Localizer "DISABLED" }}{{ end }}
         </div>
-
-        <!-- Compact Actions Toolbar -->
-        <div class="compact-actions">
-            <!-- Play/Pause -->
-            <button class="btn-tool btn-play {{ if .App.Enabled }}is-enabled{{ end }}"
-                    onclick="event.stopPropagation(); toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}');"
-                    aria-label="{{ if .App.Enabled }}{{ t .Localizer "Disable" }}{{ else }}{{ t .Localizer "Enable" }}{{ end }}">
-                <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}"></i>
-            </button>
-
-            <!-- Edit -->
-            <a class="btn-tool"
-               href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"
-               onclick="event.stopPropagation();"
-               aria-label="{{ t .Localizer "Edit" }}">
-                <i data-lucide="edit-3"></i>
-            </a>
-
-            <!-- Preview -->
-            <button class="btn-tool"
-                    onclick="event.stopPropagation(); previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', null, this);"
-                    aria-label="{{ t .Localizer "Preview" }}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="3" width="20" height="14" rx="2"/>
-                    <path d="M8 21h8M12 17v4"/>
-                </svg>
-            </button>
-
-            <!-- Pin/Unpin -->
-            <button class="btn-tool btn-pin {{ if isPinned .Device .App.Iname }}is-pinned{{ end }}"
-                    onclick="event.stopPropagation(); togglePin('{{ .Device.ID }}', '{{ .App.Iname }}');"
-                    aria-label="{{ if isPinned .Device .App.Iname }}{{ t .Localizer "Unpin" }}{{ else }}{{ t .Localizer "Pin" }}{{ end }}">
-                <i data-lucide="pin"></i>
-            </button>
-
-            <!-- Duplicate -->
-            <button class="btn-tool"
-                    onclick="event.stopPropagation(); duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}');"
-                    aria-label="{{ t .Localizer "Duplicate" }}">
-                <i data-lucide="copy"></i>
-            </button>
-
-            <!-- Delete -->
-            <button class="btn-tool btn-trash"
-                    onclick="event.stopPropagation(); deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }});"
-                    aria-label="{{ t .Localizer "Delete" }}">
-                <i data-lucide="trash-2"></i>
-            </button>
-        </div>
+        {{ end }}
     </div>
+    <!-- Compact Actions Toolbar -->
+    <div class="compact-actions">
+        <!-- Play/Pause -->
+    <button class="btn-tool btn-play {{ if .App.Enabled }}is-enabled{{ end }}"
+            onclick="event.stopPropagation(); toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}');"
+            aria-label="{{ if .App.Enabled }}{{ t .Localizer "Disable" }}{{ else }}{{ t .Localizer "Enable" }}{{ end }}">
+        <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}"></i>
+    </button>
+    <!-- Edit -->
+    <a class="btn-tool"
+       href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"
+       onclick="event.stopPropagation();"
+       aria-label="{{ t .Localizer "Edit" }}">
+        <i data-lucide="edit-3"></i>
+    </a>
+    <!-- Preview -->
+    <button class="btn-tool"
+            onclick="event.stopPropagation(); previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', null, this);"
+            aria-label="{{ t .Localizer "Preview" }}">
+        <svg width="16"
+             height="16"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <path d="M8 21h8M12 17v4" />
+        </svg>
+    </button>
+    <!-- Pin/Unpin -->
+<button class="btn-tool btn-pin {{ if isPinned .Device .App.Iname }}is-pinned{{ end }}"
+        onclick="event.stopPropagation(); togglePin('{{ .Device.ID }}', '{{ .App.Iname }}');"
+        aria-label="{{ if isPinned .Device .App.Iname }}{{ t .Localizer "Unpin" }}{{ else }}{{ t .Localizer "Pin" }}{{ end }}">
+    <i data-lucide="pin"></i>
+</button>
+<!-- Duplicate -->
+<button class="btn-tool"
+        onclick="event.stopPropagation(); duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}');"
+        aria-label="{{ t .Localizer "Duplicate" }}">
+    <i data-lucide="copy"></i>
+</button>
+<!-- Delete -->
+<button class="btn-tool btn-trash"
+        onclick="event.stopPropagation(); deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', false, {{ t .Localizer "Delete App?" | json }});"
+        aria-label="{{ t .Localizer "Delete" }}">
+    <i data-lucide="trash-2"></i>
+</button>
 </div>
-
+</div>
+</div>
 <!-- FULL VIEW (Expanded - Hidden by default) -->
 <div class="card-container full-view hidden app-card"
      id="app-card-full-{{ .App.Iname }}"
      draggable="true"
      data-iname="{{ .App.Iname }}"
      data-expanded="true">
-
     <!-- Header (Click to collapse) -->
-    <div class="card-header border-b" onclick="collapseAppCard('{{ .App.Iname }}')">
+    <div class="card-header border-b"
+         onclick="collapseAppCard('{{ .App.Iname }}')">
         <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
                 <h2 class="card-title">{{ .App.Name }}-{{ .App.Iname }}</h2>
@@ -138,7 +131,6 @@
                 <span>{{ if .App.Enabled }}{{ t .Localizer "ENABLED" }}{{ else }}{{ t .Localizer "DISABLED" }}{{ end }}</span>
             </div>
         </div>
-
         <div class="flex items-center gap-6 text-sm header-meta-row">
             <div class="flex items-center gap-2">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
@@ -151,9 +143,9 @@
                 <span class="text-secondary">{{ t .Localizer "Last rendered:" }}</span>
                 <span class="font-medium">
                     {{ if .App.EmptyLastRender }}
-                        {{ t .Localizer "No output for:" }} {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
-                    {{ else }}
-                        {{ timeago .Localizer .App.LastRender }}
+                    {{ t .Localizer "No output for:" }} {{ timesince .Localizer (or .App.LastSuccessfulRender .App.LastRender) }}
+                {{ else }}
+                    {{ timeago .Localizer .App.LastRender }}
                     {{ end }}
                 </span>
                 {{ if not .App.EmptyLastRender }}
@@ -162,7 +154,6 @@
             </div>
         </div>
     </div>
-
     <!-- Content: Preview + Actions -->
     <div class="view-content-wrapper">
         <!-- Preview Area -->
@@ -172,7 +163,6 @@
                      src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
                      alt="{{ t .Localizer "Preview" }}"
                      loading="lazy">
-
                 {{ if .App.EmptyLastRender }}
                 <div class="thumb-overlay">
                     <span class="thumb-overlay-badge">
@@ -183,7 +173,6 @@
                 {{ end }}
             </div>
         </div>
-
         <!-- Actions Area -->
         <div class="actions-area">
             <div class="flex flex-col gap-3">
@@ -191,27 +180,30 @@
                 <div class="grid-3">
                     <button class="btn-action-lg btn-play {{ if .App.Enabled }}is-enabled{{ end }}"
                             onclick="event.stopPropagation(); toggleEnabled('{{ .Device.ID }}', '{{ .App.Iname }}');">
-                        <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}" class="icon-lg"></i>
+                        <i data-lucide="{{ if .App.Enabled }}pause{{ else }}play{{ end }}"
+                           class="icon-lg"></i>
                         <span class="font-medium">{{ if .App.Enabled }}{{ t .Localizer "Disable" }}{{ else }}{{ t .Localizer "Enable" }}{{ end }}</span>
                     </button>
-
                     <a class="btn-action-lg"
                        href="/devices/{{ .Device.ID }}/{{ .App.Iname }}/config"
                        onclick="event.stopPropagation();">
                         <i data-lucide="edit-3" class="icon-lg"></i>
                         <span class="font-medium">{{ t .Localizer "Edit" }}</span>
                     </a>
-
                     <button class="btn-action-lg"
                             onclick="event.stopPropagation(); previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', null, this);">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2"/>
-                            <path d="M8 21h8M12 17v4"/>
+                        <svg width="20"
+                             height="20"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <path d="M8 21h8M12 17v4" />
                         </svg>
                         <span class="font-medium">{{ t .Localizer "Preview" }}</span>
                     </button>
                 </div>
-
                 <!-- Secondary Actions -->
                 <div class="grid-5">
                     <button class="btn-action-sm btn-pin {{ if isPinned .Device .App.Iname }}is-pinned{{ end }}"
@@ -219,25 +211,21 @@
                         <i data-lucide="pin"></i>
                         <span>{{ if isPinned .Device .App.Iname }}{{ t .Localizer "Unpin" }}{{ else }}{{ t .Localizer "Pin" }}{{ end }}</span>
                     </button>
-
                     <button class="btn-action-sm"
                             onclick="event.stopPropagation(); moveApp('{{ .Device.ID }}', '{{ .App.Iname }}', 'top');">
                         <i data-lucide="chevron-up"></i>
                         <span>{{ t .Localizer "Top" }}</span>
                     </button>
-
                     <button class="btn-action-sm"
                             onclick="event.stopPropagation(); moveApp('{{ .Device.ID }}', '{{ .App.Iname }}', 'bottom');">
                         <i data-lucide="chevron-down"></i>
                         <span>{{ t .Localizer "Bottom" }}</span>
                     </button>
-
                     <button class="btn-action-sm"
                             onclick="event.stopPropagation(); duplicateApp('{{ .Device.ID }}', '{{ .App.Iname }}');">
                         <i data-lucide="copy"></i>
                         <span>{{ t .Localizer "Duplicate" }}</span>
                     </button>
-
                     {{ if gt (len .Devices) 1 }}
                     <div class="relative btn-action-sm w-full p-0">
                         <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
@@ -257,7 +245,6 @@
                     </div>
                     {{ end }}
                 </div>
-
                 <!-- Delete Section -->
                 <div class="border-t pt-2">
                     <button class="btn-delete"
