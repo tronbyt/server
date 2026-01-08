@@ -10,36 +10,19 @@
 </div>
 {{ end }}
 {{ define "content" }}
-<div class="dashboard-container">
-    <!-- Top Action Bar -->
-    <!-- Top Action Bar REMOVED -->
-    <!-- Config Content -->
-    <div id="configContent" class="hidden mb-6">
-        <div class="inset-panel bg-tertiary">
-            <div class="field-label mb-2">{{ t .Localizer "Raw JSON Config" }}</div>
-            <pre class="text-xs font-mono overflow-auto max-h-60" id="configContentPre"></pre>
-        </div>
-    </div>
-    <!-- Debug Content -->
-    <div id="debugContent" class="hidden mb-6">
-        <div class="inset-panel bg-tertiary">
-            <div class="field-label mb-2">{{ t .Localizer "Render Messages" }}</div>
-            <pre class="text-xs font-mono overflow-auto max-h-60">{{ range .App.RenderMessages }}{{ . }}
-{{ else }}{{ t .Localizer "No debug logs available." }}{{ end }}</pre>
-        </div>
-    </div>
-
+<div class="dashboard-container has-sticky-actions">
     <!-- Preview & App Info -->
     <div class="form-section">
         <div class="flex flex-col md:flex-row gap-6 items-start">
             <div class="flex flex-col items-center gap-2">
-                <div class="bg-black p-3 border border-neutral-800 rounded">
-                    <img id="previewImage"
-                         src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
-                         alt="{{ t .Localizer "Preview" }}"
-                         width="256"
-                         height="128"
-                         style="image-rendering: pixelated; display: block;">
+                <div style="width: 320px;">
+                    <div class="led-panel">
+                        <img id="previewImage"
+                             src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+                             alt="{{ t .Localizer "Preview" }}"
+                             class="preview-image"
+                             loading="lazy">
+                    </div>
                 </div>
                 <span class="text-[10px] font-mono uppercase tracking-wider opacity-50">{{ .App.Iname }}</span>
             </div>
@@ -64,17 +47,7 @@
     <form method="post" id="dynamicForm">
         <!-- Schema Config Section -->
         <div class="form-section">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="section-title mb-0">{{ t .Localizer "App Configuration" }}</h2>
-                <div class="flex gap-2">
-                    <button id="toggleConfigBtn" type="button" class="btn-secondary btn-sm">
-                        <i data-lucide="file-code"></i> <span class="button-label">{{ t .Localizer "Config" }}</span>
-                    </button>
-                    <button id="toggleDebugBtn" type="button" class="btn-secondary btn-sm">
-                        <i data-lucide="bug"></i> <span class="button-label">{{ t .Localizer "Debug" }}</span>
-                    </button>
-                </div>
-            </div>
+            <h2 class="section-title">{{ t .Localizer "App Configuration" }}</h2>
             <div id="schemaConfigContainer" class="form-grid">
                 <!-- Schema fields will be injected here by JavaScript -->
             </div>
@@ -316,45 +289,32 @@
              </div>
         </div>
 
-        <!-- Form Actions -->
-        <div class="form-section border-t pt-6 mt-6">
-            <div class="form-actions flex-col md:flex-row justify-between gap-4">
-                <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                    <button type="submit" class="btn-primary w-full md:w-auto justify-center">
-                        <i data-lucide="save"></i> {{ t .Localizer "Save Changes" }}
-                    </button>
-                    {{ if eq .Device.Info.ProtocolType "WS" }}
-                    <button type="button" class="btn-secondary w-full md:w-auto justify-center" id="previewButton">
-                        <i data-lucide="eye"></i> {{ t .Localizer "Preview" }}
-                    </button>
-                    {{ end }}
-                    <button type="button" class="btn-secondary w-full md:w-auto justify-center" id="resetButton">
-                        <i data-lucide="rotate-ccw"></i> {{ t .Localizer "Reset" }}
-                    </button>
-                </div>
-                <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                    <button type="button" class="btn-secondary w-full md:w-auto justify-center" id="cancelButton">
-                        <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
-                    </button>
-                    <button type="button" class="btn-delete w-full md:w-auto justify-center" id="deleteButton"
-                            onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true, '{{ t .Localizer "Delete App?" }}')">
-                        <i data-lucide="trash-2"></i> {{ t .Localizer "Delete App" }}
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- API Usage (Collapsible) -->
-        <div class="form-section" id="apiUsageSection">
-            <div class="flex items-center gap-3 mb-4">
-                <h2 class="section-title mb-0">{{ t .Localizer "API Usage" }}</h2>
-                <button id="toggleApiUsageBtn" type="button" class="btn-secondary text-sm">
-                    <i data-lucide="code"></i> <span class="button-label">{{ t .Localizer "Show" }}</span>
-                </button>
-            </div>
-            <div class="api-usage-details hidden">
+        <!-- Advanced Section (Collapsible) -->
+        <details class="form-section" id="advancedSection">
+            <summary class="section-title cursor-pointer flex items-center gap-2 select-none">
+                <i data-lucide="chevron-right" class="icon-sm transition-transform" id="advancedChevron"></i>
+                {{ t .Localizer "Advanced" }}
+            </summary>
+            
+            <div class="mt-6 space-y-6">
+                <!-- Raw JSON Config -->
                 <div class="inset-panel bg-tertiary">
-                    <p class="text-secondary mb-4">{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
+                    <div class="field-label mb-2">{{ t .Localizer "Raw JSON Config" }}</div>
+                    <pre class="text-xs font-mono overflow-auto max-h-60" id="configContentPre"></pre>
+                </div>
+                
+                <!-- Render Messages -->
+                <div class="inset-panel bg-tertiary">
+                    <div class="field-label mb-2">{{ t .Localizer "Render Messages" }}</div>
+                    <pre class="text-xs font-mono overflow-auto max-h-60">{{ range .App.RenderMessages }}{{ . }}
+{{ else }}{{ t .Localizer "No debug logs available." }}{{ end }}</pre>
+                </div>
+                
+                <!-- API Usage -->
+                <div class="inset-panel bg-tertiary">
+                    <div class="field-label mb-4">{{ t .Localizer "API Usage" }}</div>
+                    <p class="text-secondary text-xs mb-4">{{ t .Localizer "Use these curl commands to control this app via the API:" }}</p>
+                    
                     <!-- Enable App -->
                     <div class="mb-6">
                         <h4 class="field-label mb-2">{{ t .Localizer "Enable App" }}</h4>
@@ -364,6 +324,7 @@
   -d '{"enabled": true}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
                     </div>
+                    
                     <!-- Disable App -->
                     <div class="mb-6">
                         <h4 class="field-label mb-2 text-danger">{{ t .Localizer "Disable App" }}</h4>
@@ -373,6 +334,7 @@
   -d '{"enabled": false}' \
   /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
                     </div>
+                    
                     <!-- Pin App -->
                     <div class="mb-6">
                         <h4 class="field-label mb-2">{{ t .Localizer "Pin App" }}</h4>
@@ -382,6 +344,7 @@
   -d '{"pinnedApp": "{{ .App.Iname }}"}' \
   /v0/devices/{{ .Device.ID }}</pre>
                     </div>
+                    
                     <!-- Unpin App -->
                     <div class="mb-4">
                         <h4 class="field-label mb-2 text-danger">{{ t .Localizer "Unpin App" }}</h4>
@@ -391,13 +354,53 @@
   -d '{"pinnedApp": ""}' \
   /v0/devices/{{ .Device.ID }}</pre>
                     </div>
+                    
                     <p class="text-xs text-muted">
                         <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
                     </p>
                 </div>
             </div>
+        </details>
+
+        <!-- Danger Zone - separated by divider -->
+        <div class="border-t border-neutral-300 my-8"></div>
+        <div class="form-section border-danger">
+            <h2 class="section-title text-danger">{{ t .Localizer "Danger Zone" }}</h2>
+            <div class="flex items-center gap-3">
+                <button type="button" class="btn-secondary flex-shrink-0" id="resetButton">
+                    <i data-lucide="rotate-ccw"></i> {{ t .Localizer "Reset" }}
+                </button>
+                <button type="button" class="btn-delete flex-1 justify-center" id="deleteButton"
+                        onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true, '{{ t .Localizer "Delete App?" }}')">
+                    <i data-lucide="trash-2"></i> {{ t .Localizer "Delete App" }}
+                </button>
+            </div>
         </div>
+    </form>
 </div><!-- end dashboard-container -->
+
+<!-- Sticky Action Bar -->
+<div class="sticky-actions" id="stickyActions">
+    <div class="sticky-actions-inner">
+        <a href="/" class="btn-secondary sticky-cancel" id="cancelButton">
+            <i data-lucide="arrow-left"></i>
+            <span>{{ t .Localizer "Cancel" }}</span>
+        </a>
+        <div class="flex gap-2">
+            {{ if eq .Device.Info.ProtocolType "WS" }}
+            <button type="button" class="btn-secondary" id="previewButton">
+                <i data-lucide="eye"></i>
+                <span class="hidden md:inline">{{ t .Localizer "Preview" }}</span>
+            </button>
+            {{ end }}
+            <button type="submit" form="dynamicForm" class="btn-primary sticky-save">
+                <i data-lucide="save"></i>
+                <span>{{ t .Localizer "Save Changes" }}</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 
 <script>
   // Make the schema and config objects available to JavaScript
@@ -410,54 +413,11 @@
 
   // Initialize toggle buttons for config and debug content
   function initializeToggleButtons() {
-    const toggleConfigBtn = document.getElementById("toggleConfigBtn");
-    const configContent = document.getElementById("configContent");
-    const toggleDebugBtn = document.getElementById("toggleDebugBtn");
-    const debugContent = document.getElementById("debugContent");
-
-    if (toggleConfigBtn && configContent) {
-      toggleConfigBtn.addEventListener("click", function () {
-        toggleContent(configContent, toggleConfigBtn,
-          "{{ t .Localizer "Hide App Config" }}", "{{ t .Localizer "Show App Config" }}", 'hidden');
-      });
-    }
-
-    if (toggleDebugBtn && debugContent) {
-      toggleDebugBtn.addEventListener("click", function () {
-        toggleContent(debugContent, toggleDebugBtn,
-          "{{ t .Localizer "Hide Render Debug" }}", "{{ t .Localizer "Show Render Debug" }}", 'hidden');
-      });
-    }
-
-    const toggleApiUsageBtn = document.getElementById("toggleApiUsageBtn");
-    const apiUsageDetails = document.querySelector("#apiUsageSection .api-usage-details");
-
-    if (toggleApiUsageBtn && apiUsageDetails) {
-      // Set initial button text based on initial hidden state
-      const label = toggleApiUsageBtn.querySelector(".button-label");
-      if (apiUsageDetails.classList.contains("hidden")) {
-        label.textContent = "{{ t .Localizer "Show" }}";
-      } else {
-        label.textContent = "{{ t .Localizer "Hide" }}";
-      }
-
-      toggleApiUsageBtn.addEventListener("click", function () {
-        toggleContent(apiUsageDetails, toggleApiUsageBtn,
-          "{{ t .Localizer "Hide" }}", "{{ t .Localizer "Show" }}", 'hidden');
-      });
-    }
-  }
-
-  // Generic function to toggle content visibility
-  function toggleContent(content, button, hideText, showText, className) {
-    const label = button.querySelector(".button-label");
-    const target = label || button;
-    if (content.classList.contains(className)) {
-      content.classList.remove(className);
-      target.textContent = hideText;
-    } else {
-      content.classList.add(className);
-      target.textContent = showText;
+    // Config content is now shown inside the Advanced details section
+    // Just populate it on load
+    const configPre = document.getElementById("configContentPre");
+    if (configPre) {
+      configPre.textContent = JSON.stringify(config, null, 2);
     }
   }
 

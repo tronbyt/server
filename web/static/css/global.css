@@ -1729,3 +1729,29 @@ nav li a:hover { color: var(--orange-500); }
         padding-bottom: 4rem !important;
     }
 }
+
+
+/* ===========================================
+   COLLAPSIBLE DETAILS/SUMMARY
+   For Advanced sections and accordions
+   =========================================== */
+details summary {
+    list-style: none !important;
+}
+
+details summary::-webkit-details-marker {
+    display: none !important;
+}
+
+details summary .icon-sm {
+    transition: transform 0.2s ease !important;
+}
+
+details[open] summary .icon-sm {
+    transform: rotate(90deg) !important;
+}
+
+/* Space between content in advanced section */
+.space-y-6 > * + * {
+    margin-top: 1.5rem !important;
+}
