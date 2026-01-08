@@ -128,10 +128,10 @@
                 </div>
             </div>
 
-            <!-- Legacy Schedule (Default) -->
-            <div id="legacy_schedule" class="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
-                <label class="field-label mb-4 block">{{ t .Localizer "Active Days" }}</label>
-                <div class="flex flex-wrap gap-x-6 gap-y-3">
+            <!-- Active Days Schedule -->
+            <div id="legacy_schedule" class="mt-6">
+                <label class="field-label mb-2">{{ t .Localizer "Active Days" }}</label>
+                <div class="flex flex-wrap gap-4 mb-2">
                     {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
                     <label class="checkbox-label">
                         <input type="checkbox" name="days" value="{{ $day }}" {{ if or (contains $.App.Days $day) (eq (len $.App.Days) 0) }}checked{{ end }}>
@@ -139,7 +139,7 @@
                     </label>
                     {{ end }}
                 </div>
-                <span class="field-hint mt-3 block">{{ t .Localizer "If no days are selected, the app will run every day." }}</span>
+                <p class="field-hint">{{ t .Localizer "If no days are selected, the app will run every day." }}</p>
             </div>
 
             <!-- Custom Recurrence Toggle -->
@@ -149,114 +149,115 @@
                            {{ if .App.UseCustomRecurrence }}checked{{ end }} onchange="toggleCustomRecurrence()">
                     <span>{{ t .Localizer "Use Custom Recurrence" }}</span>
                 </label>
-                <span class="field-hint ml-6">{{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}</span>
-            </div>
-        </div>
-        <!-- Custom Recurrence Section -->
-        <div id="custom_recurrence" class="form-section hidden mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
-            <h3 class="section-title">{{ t .Localizer "Custom Recurrence" }}</h3>
-            <div class="form-grid">
-                <!-- Frequency -->
-                <div class="form-field">
-                    <label class="field-label" for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
-                    <select name="recurrence_type" id="recurrence_type" class="field-select field-input" onchange="toggleRecurrenceOptions()">
-                        <option value="daily" {{ if eq (string .App.RecurrenceType) "daily" }}selected{{ end }}>{{ t .Localizer "Daily" }}</option>
-                        <option value="weekly" {{ if eq (string .App.RecurrenceType) "weekly" }}selected{{ end }}>{{ t .Localizer "Weekly" }}</option>
-                        <option value="monthly" {{ if eq (string .App.RecurrenceType) "monthly" }}selected{{ end }}>{{ t .Localizer "Monthly" }}</option>
-                        <option value="yearly" {{ if eq (string .App.RecurrenceType) "yearly" }}selected{{ end }}>{{ t .Localizer "Yearly" }}</option>
-                    </select>
-                </div>
-
-                <!-- Repeat Interval -->
-                <div class="form-field">
-                    <label class="field-label" for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
-                    <div class="flex gap-2 items-center">
-                        <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52"
-                               class="field-input" style="width: 80px;"
-                               value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}">
-                        <span id="interval_unit" class="text-secondary">{{ t .Localizer "days" }}</span>
-                    </div>
-                </div>
-
-                <!-- Start Date -->
-                <div class="form-field">
-                    <label class="field-label" for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
-                    <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="field-input"
-                           value="{{ deref .App.RecurrenceStartDate }}">
-                </div>
-
-                <!-- End Date -->
-                <div class="form-field">
-                    <label class="field-label" for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
-                    <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="field-input"
-                           value="{{ deref .App.RecurrenceEndDate }}">
-                </div>
+                <p class="field-hint mt-1 ml-6">{{ t .Localizer "Enable advanced scheduling options (bi-weekly, monthly, yearly, etc.)" }}</p>
             </div>
 
-            <!-- Weekly Options -->
-            <div id="weekly_options" class="hidden mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                <label class="field-label mb-4 block">{{ t .Localizer "Active Days for Weekly" }}</label>
-                {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
-                {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
-                <div class="flex flex-wrap gap-x-6 gap-y-3">
-                    {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="weekdays" value="{{ $day }}" {{ if or (contains $weekdays $day) (eq (len $weekdays) 0) }}checked{{ end }}>
-                        <span class="capitalize">{{ t $.Localizer $day }}</span>
-                    </label>
-                    {{ end }}
-                </div>
-            </div>
-
-            <!-- Monthly Options -->
-            <div id="monthly_options" class="hidden mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                {{ $dom := index .App.RecurrencePattern "day_of_month" }}
-                {{ $dow := index .App.RecurrencePattern "day_of_week" }}
-                {{ $current_pattern := "day_of_month" }}
-                {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
-
+            <!-- Custom Recurrence Options (inside Schedule section) -->
+            <div id="custom_recurrence" class="hidden mt-6">
+                <label class="field-label mb-4">{{ t .Localizer "Custom Recurrence" }}</label>
                 <div class="form-grid">
+                    <!-- Frequency -->
                     <div class="form-field">
-                        <label class="field-label" for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
-                        <select name="monthly_pattern" id="monthly_pattern" class="field-select field-input" onchange="toggleMonthlyPatternOptions()">
-                            <option value="day_of_month" {{ if eq $current_pattern "day_of_month" }}selected{{ end }}>{{ t .Localizer "Day of Month" }}</option>
-                            <option value="day_of_week" {{ if eq $current_pattern "day_of_week" }}selected{{ end }}>{{ t .Localizer "Day of Week" }}</option>
+                        <label class="field-label" for="recurrence_type">{{ t .Localizer "Frequency" }}</label>
+                        <select name="recurrence_type" id="recurrence_type" class="field-select field-input" onchange="toggleRecurrenceOptions()">
+                            <option value="daily" {{ if eq (string .App.RecurrenceType) "daily" }}selected{{ end }}>{{ t .Localizer "Daily" }}</option>
+                            <option value="weekly" {{ if eq (string .App.RecurrenceType) "weekly" }}selected{{ end }}>{{ t .Localizer "Weekly" }}</option>
+                            <option value="monthly" {{ if eq (string .App.RecurrenceType) "monthly" }}selected{{ end }}>{{ t .Localizer "Monthly" }}</option>
+                            <option value="yearly" {{ if eq (string .App.RecurrenceType) "yearly" }}selected{{ end }}>{{ t .Localizer "Yearly" }}</option>
                         </select>
                     </div>
 
-                    <!-- Day of Month Option -->
-                    <div id="day_of_month_option" class="form-field">
-                        <label class="field-label" for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
-                        <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="field-input"
-                               value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}" style="width: 80px;">
-                        <span class="field-hint">{{ t .Localizer "Which day of the month (1-31)" }}</span>
+                    <!-- Repeat Interval -->
+                    <div class="form-field">
+                        <label class="field-label" for="recurrence_interval">{{ t .Localizer "Repeat Every" }}</label>
+                        <div class="flex gap-2 items-center">
+                            <input type="number" name="recurrence_interval" id="recurrence_interval" min="1" max="52"
+                                   class="field-input w-20"
+                                   value="{{ if .App.RecurrenceInterval }}{{ .App.RecurrenceInterval }}{{ else }}1{{ end }}">
+                            <span id="interval_unit" class="font-mono text-sm">{{ t .Localizer "days" }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Start Date -->
+                    <div class="form-field">
+                        <label class="field-label" for="recurrence_start_date">{{ t .Localizer "Start Date" }}</label>
+                        <input type="date" name="recurrence_start_date" id="recurrence_start_date" class="field-input"
+                               value="{{ deref .App.RecurrenceStartDate }}">
+                    </div>
+
+                    <!-- End Date -->
+                    <div class="form-field">
+                        <label class="field-label" for="recurrence_end_date">{{ t .Localizer "End Date (optional)" }}</label>
+                        <input type="date" name="recurrence_end_date" id="recurrence_end_date" class="field-input"
+                               value="{{ deref .App.RecurrenceEndDate }}">
                     </div>
                 </div>
 
-                <!-- Day of Week Option -->
-                <div id="day_of_week_option" class="hidden form-grid mt-4">
-                    <div class="form-field">
-                        <label class="field-label">{{ t .Localizer "Day of Week Pattern" }}</label>
-                        <div class="flex gap-3 items-center">
-                            <select name="week_occurrence" id="week_occurrence" class="field-select field-input" onchange="updateDayOfWeekPattern()">
-                                <option value="first">{{ t .Localizer "First" }}</option>
-                                <option value="second">{{ t .Localizer "Second" }}</option>
-                                <option value="third">{{ t .Localizer "Third" }}</option>
-                                <option value="fourth">{{ t .Localizer "Fourth" }}</option>
-                                <option value="last">{{ t .Localizer "Last" }}</option>
+                <!-- Weekly Options -->
+                <div id="weekly_options" class="hidden mt-6 pt-4 border-t border-neutral-200">
+                    <label class="field-label mb-2">{{ t .Localizer "Active Days for Weekly" }}</label>
+                    {{ $weekdays := index .App.RecurrencePattern "weekdays" }}
+                    {{ if not $weekdays }}{{ $weekdays = .App.Days }}{{ end }}
+                    <div class="flex flex-wrap gap-4">
+                        {{ range $day := (slice "monday" "tuesday" "wednesday" "thursday" "friday" "saturday" "sunday") }}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="weekdays" value="{{ $day }}" {{ if or (contains $weekdays $day) (eq (len $weekdays) 0) }}checked{{ end }}>
+                            <span class="capitalize">{{ t $.Localizer $day }}</span>
+                        </label>
+                        {{ end }}
+                    </div>
+                </div>
+
+                <!-- Monthly Options -->
+                <div id="monthly_options" class="hidden mt-6 pt-4 border-t border-neutral-200">
+                    {{ $dom := index .App.RecurrencePattern "day_of_month" }}
+                    {{ $dow := index .App.RecurrencePattern "day_of_week" }}
+                    {{ $current_pattern := "day_of_month" }}
+                    {{ if $dow }}{{ $current_pattern = "day_of_week" }}{{ end }}
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label class="field-label" for="monthly_pattern">{{ t .Localizer "Monthly Pattern" }}</label>
+                            <select name="monthly_pattern" id="monthly_pattern" class="field-select field-input" onchange="toggleMonthlyPatternOptions()">
+                                <option value="day_of_month" {{ if eq $current_pattern "day_of_month" }}selected{{ end }}>{{ t .Localizer "Day of Month" }}</option>
+                                <option value="day_of_week" {{ if eq $current_pattern "day_of_week" }}selected{{ end }}>{{ t .Localizer "Day of Week" }}</option>
                             </select>
-                            <select name="week_day" id="week_day" class="field-select field-input" onchange="updateDayOfWeekPattern()">
-                                <option value="monday">{{ t .Localizer "Monday" }}</option>
-                                <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
-                                <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
-                                <option value="thursday">{{ t .Localizer "Thursday" }}</option>
-                                <option value="friday">{{ t .Localizer "Friday" }}</option>
-                                <option value="saturday">{{ t .Localizer "Saturday" }}</option>
-                                <option value="sunday">{{ t .Localizer "Sunday" }}</option>
-                            </select>
-                            <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="{{ if $dow }}{{ $dow }}{{ end }}">
                         </div>
-                        <span class="field-hint">{{ t .Localizer "Example: First Monday of the month" }}</span>
+
+                        <!-- Day of Month Option -->
+                        <div id="day_of_month_option" class="form-field">
+                            <label class="field-label" for="day_of_month">{{ t .Localizer "Day of Month" }}</label>
+                            <input type="number" name="day_of_month" id="day_of_month" min="1" max="31" class="field-input w-20"
+                                   value="{{ if $dom }}{{ $dom }}{{ else }}1{{ end }}">
+                            <span class="field-hint">{{ t .Localizer "Which day of the month (1-31)" }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Day of Week Option -->
+                    <div id="day_of_week_option" class="hidden form-grid mt-4">
+                        <div class="form-field">
+                            <label class="field-label">{{ t .Localizer "Day of Week Pattern" }}</label>
+                            <div class="flex gap-3 items-center">
+                                <select name="week_occurrence" id="week_occurrence" class="field-select field-input" onchange="updateDayOfWeekPattern()">
+                                    <option value="first">{{ t .Localizer "First" }}</option>
+                                    <option value="second">{{ t .Localizer "Second" }}</option>
+                                    <option value="third">{{ t .Localizer "Third" }}</option>
+                                    <option value="fourth">{{ t .Localizer "Fourth" }}</option>
+                                    <option value="last">{{ t .Localizer "Last" }}</option>
+                                </select>
+                                <select name="week_day" id="week_day" class="field-select field-input" onchange="updateDayOfWeekPattern()">
+                                    <option value="monday">{{ t .Localizer "Monday" }}</option>
+                                    <option value="tuesday">{{ t .Localizer "Tuesday" }}</option>
+                                    <option value="wednesday">{{ t .Localizer "Wednesday" }}</option>
+                                    <option value="thursday">{{ t .Localizer "Thursday" }}</option>
+                                    <option value="friday">{{ t .Localizer "Friday" }}</option>
+                                    <option value="saturday">{{ t .Localizer "Saturday" }}</option>
+                                    <option value="sunday">{{ t .Localizer "Sunday" }}</option>
+                                </select>
+                                <input type="hidden" name="day_of_week_pattern" id="day_of_week_pattern" value="{{ if $dow }}{{ $dow }}{{ end }}">
+                            </div>
+                            <span class="field-hint">{{ t .Localizer "Example: First Monday of the month" }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1353,6 +1354,42 @@
             window.location.href = "/";
         }
     });
+
+    // Reset button - resets all fields to their data-default values
+    const resetButton = document.getElementById("resetButton");
+    if (resetButton) {
+        resetButton.addEventListener("click", () => {
+            if (!confirm('{{ t .Localizer "Reset all fields to their default values?" }}')) return;
+            
+            // Reset all inputs with data-default attribute
+            document.querySelectorAll('[data-default]').forEach(input => {
+                const defaultVal = input.getAttribute('data-default');
+                if (input.type === 'checkbox') {
+                    input.checked = defaultVal === 'true';
+                } else {
+                    input.value = defaultVal;
+                }
+            });
+            
+            // Reset generated config fields to original config values
+            const generatedFields = document.getElementById("generatedFields");
+            if (generatedFields) {
+                generatedFields.querySelectorAll('input, select, textarea').forEach(field => {
+                    const key = field.name;
+                    if (key && config.hasOwnProperty(key)) {
+                        if (field.type === 'checkbox') {
+                            field.checked = !!config[key];
+                        } else {
+                            field.value = config[key] !== undefined ? config[key] : '';
+                        }
+                    }
+                });
+            }
+            
+            // Trigger preview update
+            updateConfigAndPreview();
+        });
+    }
   });
 </script>
 {{ end }}
