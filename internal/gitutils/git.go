@@ -156,6 +156,15 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		return EnsureRepo(path, repoURL, token, update)
 	}
 
+	// Validate HEAD exists
+	if _, err := r.Head(); err != nil {
+		slog.Warn("Repo HEAD is missing or invalid, re-cloning", "error", err)
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("failed to remove broken repo: %w", err)
+		}
+		return EnsureRepo(path, repoURL, token, update)
+	}
+
 	if !update {
 		slog.Info("Skipping repo update (update=false)")
 		return nil
