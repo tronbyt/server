@@ -413,18 +413,11 @@
 </div>
 
 <!-- Sticky Action Bar -->
-<div class="sticky-actions" id="stickyActions">
-    <div class="sticky-actions-inner">
-        <a href="/" class="btn-secondary sticky-cancel">
-            <i data-lucide="arrow-left"></i>
-            <span>{{ t .Localizer "Cancel" }}</span>
-        </a>
-        <button type="button" class="btn-primary sticky-save" onclick="saveDeviceForm();">
-            <i data-lucide="save"></i>
-            <span>{{ t .Localizer "Save Changes" }}</span>
-        </button>
-    </div>
-</div>
+{{ template "sticky_actions" (dict 
+    "Localizer" .Localizer 
+    "SaveType" "button" 
+    "SaveAction" "saveDeviceForm();" 
+) }}
 
 <script>
     function deleteDevice() {

@@ -37,7 +37,7 @@
 
     <div class="form-section">
         <h2 class="section-title">{{ t .Localizer "Create Account" }}</h2>
-        <form method="post" class="auth-form">
+        <form method="post" class="auth-form" id="registerForm">
             <!-- Username -->
             <div class="form-field">
                 <label for="username" class="field-label field-required">{{ t .Localizer "USERNAME" }}</label>
@@ -84,21 +84,28 @@
             </div>
             {{ end }}
 
-            <!-- Submit Button -->
-            <div class="form-actions">
-                {{ if eq .UserCount 0 }}
-                <button type="submit" class="btn-create">
-                    <i data-lucide="user-plus"></i>
-                    {{ t .Localizer "Create Admin User" }}
-                </button>
-                {{ else }}
-                <button type="submit" class="btn-create">
-                    <i data-lucide="user-plus"></i>
-                    {{ t .Localizer "Register" }}
-                </button>
-                {{ end }}
-            </div>
+
         </form>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="auth-panel" style="margin-top: 1rem; padding: 0 1rem; margin-bottom: 4rem;">
+    <div class="form-actions justify-between gap-3">
+        <button type="button" class="btn-secondary" onclick="window.history.back()">
+            <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
+        </button>
+        {{ if eq .UserCount 0 }}
+        <button type="submit" form="registerForm" class="btn-create">
+            <i data-lucide="user-plus"></i>
+            {{ t .Localizer "Create Admin User" }}
+        </button>
+        {{ else }}
+        <button type="submit" form="registerForm" class="btn-create">
+            <i data-lucide="user-plus"></i>
+            {{ t .Localizer "Register" }}
+        </button>
+        {{ end }}
     </div>
 </div>
 

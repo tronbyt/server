@@ -173,14 +173,15 @@
         </div>
 
         <!-- ACTION BUTTONS -->
-        <div class="form-actions">
+        <!-- ACTION BUTTONS -->
+        <div class="form-actions justify-between gap-3 mt-10" style="margin-bottom: 4rem;">
+            <button type="button" class="btn-secondary" onclick="window.location.href='/';">
+                <i data-lucide="x-circle"></i>
+                <span>{{ t .Localizer "Cancel" }}</span>
+            </button>
             <button type="submit" class="btn-create">
                 <i data-lucide="plus-circle"></i>
                 <span>{{ t .Localizer "Create Device" }}</span>
-            </button>
-            <button type="button" class="btn-secondary" onclick="window.location.href='/';">
-                <i data-lucide="x"></i>
-                <span>{{ t .Localizer "Cancel" }}</span>
             </button>
         </div>
 

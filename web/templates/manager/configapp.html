@@ -380,26 +380,12 @@
 </div><!-- end dashboard-container -->
 
 <!-- Sticky Action Bar -->
-<div class="sticky-actions" id="stickyActions">
-    <div class="sticky-actions-inner">
-        <a href="/" class="btn-secondary sticky-cancel" id="cancelButton">
-            <i data-lucide="arrow-left"></i>
-            <span>{{ t .Localizer "Cancel" }}</span>
-        </a>
-        <div class="flex gap-2">
-            {{ if eq .Device.Info.ProtocolType "WS" }}
-            <button type="button" class="btn-secondary" id="previewButton">
-                <i data-lucide="eye"></i>
-                <span class="hidden md:inline">{{ t .Localizer "Preview" }}</span>
-            </button>
-            {{ end }}
-            <button type="submit" form="dynamicForm" class="btn-primary sticky-save">
-                <i data-lucide="save"></i>
-                <span>{{ t .Localizer "Save Changes" }}</span>
-            </button>
-        </div>
-    </div>
-</div>
+{{ template "sticky_actions" (dict 
+    "Localizer" .Localizer 
+    "CancelID" "cancelButton"
+    "SaveForm" "dynamicForm"
+    "ShowPreview" (eq .Device.Info.ProtocolType "WS")
+) }}
 
 
 <script>

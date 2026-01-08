@@ -22,14 +22,14 @@
             <span class="field-hint">{{ t .Localizer "Supported formats: .star, .webp or .zip" }}</span>
         </div>
 
-        <div class="form-actions">
-            <button type="submit" class="btn-create">
-                <i data-lucide="upload"></i>
-                {{ t .Localizer "Upload" }}
-            </button>
+        <div class="form-actions justify-between gap-3 mt-10" style="margin-bottom: 4rem;">
             <button type="button" class="btn-secondary" onclick="window.history.back();">
-                <i data-lucide="x"></i>
+                <i data-lucide="x-circle"></i>
                 {{ t .Localizer "Cancel" }}
+            </button>
+            <button type="submit" class="btn-create">
+                <i data-lucide="cloud-upload"></i>
+                {{ t .Localizer "Upload" }}
             </button>
         </div>
     </form>
