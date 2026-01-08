@@ -1623,7 +1623,7 @@ button.btn-action-lg {
     /* display: block !important; -- REMOVED to fix duplicate full/compact view */
     border: 1px solid var(--neutral-700) !important;
     margin-bottom: 1rem !important;
-    border-radius: 4px !important;
+    border-radius: 0 !important;
     background-color: var(--white) !important;
     overflow: hidden !important;
 }

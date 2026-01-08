@@ -21,16 +21,16 @@
             <div class="form-field col-span-full">
                 <label class="field-label">{{ t .Localizer "System Apps Repository" }}</label>
                 {{ if .SystemRepoInfo }}
-                <div class="flex flex-col gap-1 mb-3">
-                     <div class="flex items-center justify-between">
-                        <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-link font-bold truncate">{{ .SystemRepoInfo.URL }}</a>
+                <div class="flex flex-col gap-3 mb-4 p-3 bg-tertiary rounded border border-neutral-200">
+                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .SystemRepoInfo.URL }}</a>
                         <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
-                            <button type="submit" class="btn-secondary btn-sm">
+                            <button type="submit" class="btn-secondary btn-sm w-full md:w-auto justify-center">
                                 <i data-lucide="rotate-cw" class="icon-sm"></i> {{ t .Localizer "Refresh" }}
                             </button>
                         </form>
                     </div>
-                    <div class="text-xs text-secondary font-mono flex gap-3">
+                    <div class="text-xs text-secondary font-mono flex flex-wrap gap-3 pt-2 border-t border-neutral-200">
                         <span><strong>{{ t .Localizer "Branch" }}:</strong> {{ .SystemRepoInfo.Branch }}</span>
                          <span>
                             <strong>{{ t .Localizer "Commit" }}:</strong>
@@ -44,13 +44,13 @@
                  <div class="text-sm text-secondary italic mb-3">{{ t .Localizer "No system repository configured." }}</div>
                 {{ end }}
                 
-                <form method="post" action="/set_system_repo" class="flex gap-2 items-end">
-                    <div class="flex-1">
+                <form method="post" action="/set_system_repo" class="flex flex-col md:flex-row gap-2 items-end">
+                    <div class="flex-1 w-full">
                         <label for="app_repo_url" class="field-label text-xs mb-1.5">{{ t .Localizer "Change Repository URL" }}</label>
                         <input name="app_repo_url" id="app_repo_url" required value="{{ .GlobalSystemRepoURL }}" class="field-input field-mono w-full">
                     </div>
-                    <button type="submit" class="btn-primary mb-[1px]">
-                        <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+                    <button type="submit" class="btn-secondary w-full md:w-auto justify-center mb-[1px]">
+                        <i data-lucide="save"></i> {{ t .Localizer "Save URL" }}
                     </button>
                 </form>
                  <p class="field-hint mt-1 text-warning">
@@ -60,10 +60,10 @@
             </div>
 
             <!-- Firmware Management -->
-            <div class="form-field col-span-full mt-4 pt-4 border-t border-dashed border-neutral-200">
+            <div class="form-field col-span-full mt-6 pt-6 border-t border-dashed border-neutral-200">
                 <label class="field-label">{{ t .Localizer "Firmware Management" }}</label>
-                <div class="flex flex-col gap-2">
-                     <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-3">
+                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 bg-tertiary rounded border border-neutral-200">
                          <div class="text-sm">
                             {{ if .FirmwareVersion }}
                             <strong>{{ t .Localizer "Current Version" }}:</strong> <span class="font-mono">{{ .FirmwareVersion }}</span>
@@ -72,18 +72,16 @@
                             {{ end }}
                         </div>
                         <form method="post" action="/update_firmware" onsubmit="event.preventDefault(); updateFirmware(this);">
-                            <button type="submit" class="btn-secondary btn-sm">
+                            <button type="submit" class="btn-secondary btn-sm w-full md:w-auto justify-center">
                                 <i {{ if .FirmwareVersion }}data-lucide="rotate-cw"{{ else }}data-lucide="download"{{ end }}></i> 
-                                {{ if .FirmwareVersion }}{{ t .Localizer "Update" }}{{ else }}{{ t .Localizer "Download" }}{{ end }}
+                                {{ if .FirmwareVersion }}{{ t .Localizer "Update Firmware" }}{{ else }}{{ t .Localizer "Download Firmware" }}{{ end }}
                             </button>
                         </form>
                     </div>
-                    <div class="alert alert-info py-2 px-3 text-xs">
-                        <div class="flex gap-2">
-                            <i data-lucide="info" class="icon-sm mt-0.5"></i>
-                            <div>{{ t .Localizer "This updates the firmware available for flashing, not the firmware on existing devices." }}</div>
-                        </div>
-                    </div>
+                    <p class="text-xs text-secondary flex items-start gap-2">
+                        <i data-lucide="info" class="icon-sm mt-0.5 flex-shrink-0"></i>
+                         {{ t .Localizer "This updates the firmware available for flashing, not the firmware on existing devices." }}
+                    </p>
                 </div>
             </div>
         </div>
@@ -96,26 +94,26 @@
         <div class="form-grid">
             <div class="form-field col-span-full">
                  {{ if .UserRepoInfo }}
-                <div class="flex flex-col gap-1 mb-3">
-                     <div class="flex items-center justify-between">
-                        <a href="{{ .UserRepoInfo.URL }}" target="_blank" class="text-link font-bold truncate max-w-md">{{ .UserRepoInfo.URL }}</a>
+                <div class="flex flex-col gap-3 mb-4 p-3 bg-tertiary rounded border border-neutral-200">
+                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <a href="{{ .UserRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .UserRepoInfo.URL }}</a>
                          {{ if .User.AppRepoURL }}
-                        <div class="flex gap-2">
-                             <form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2 class=icon-sm></i>'; ">
-                                <button type="submit" class="btn-secondary btn-sm px-2">
-                                    <i data-lucide="rotate-cw" class="icon-sm"></i>
+                        <div class="flex gap-2 w-full md:w-auto">
+                             <form method="post" action="/refresh_user_repo" class="flex-1 md:flex-none" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2 class=icon-sm></i>'; ">
+                                <button type="submit" class="btn-secondary btn-sm w-full justify-center px-3">
+                                    <i data-lucide="rotate-cw" class="icon-sm"></i> {{ t .Localizer "Refresh" }}
                                 </button>
                             </form>
-                            <form method="post" action="/set_user_repo" onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
+                            <form method="post" action="/set_user_repo" class="flex-1 md:flex-none" onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
                                 <input type="hidden" name="app_repo_url" value="">
-                                <button type="submit" class="btn-delete btn-sm px-2">
-                                    <i data-lucide="trash-2" class="icon-sm mr-0"></i>
+                                <button type="submit" class="btn-delete btn-sm w-full justify-center px-3">
+                                    <i data-lucide="trash-2" class="icon-sm mr-0"></i> {{ t .Localizer "Remove" }}
                                 </button>
                             </form>
                         </div>
                         {{ end }}
                     </div>
-                    <div class="text-xs text-secondary font-mono flex gap-3">
+                    <div class="text-xs text-secondary font-mono flex flex-wrap gap-3 pt-2 border-t border-neutral-200">
                         <span><strong>{{ t .Localizer "Branch" }}:</strong> {{ .UserRepoInfo.Branch }}</span>
                          <span>
                             <strong>{{ t .Localizer "Commit" }}:</strong>
@@ -129,13 +127,13 @@
                  <div class="text-sm text-secondary italic mb-3">{{ t .Localizer "No custom repository configured." }}</div>
                 {{ end }}
 
-                <form method="post" action="/set_user_repo" class="flex gap-2 items-end">
-                    <div class="flex-1">
+                <form method="post" action="/set_user_repo" class="flex flex-col md:flex-row gap-2 items-end">
+                    <div class="flex-1 w-full">
                         <label for="user_repo_url" class="field-label text-xs mb-1.5">{{ t .Localizer "Set Repository URL" }}</label>
                         <input name="app_repo_url" id="user_repo_url" required value="{{ .User.AppRepoURL }}" class="field-input field-mono w-full">
                     </div>
-                    <button type="submit" class="btn-primary mb-[1px]">
-                        <i data-lucide="save"></i> {{ t .Localizer "Save" }}
+                    <button type="submit" class="btn-secondary w-full md:w-auto justify-center mb-[1px]">
+                        <i data-lucide="save"></i> {{ t .Localizer "Save URL" }}
                     </button>
                 </form>
                  <p class="field-hint mt-1 text-warning">
@@ -185,12 +183,12 @@
                 <div class="form-field col-span-full">
                      <label class="field-label">{{ t .Localizer "API Access" }}</label>
                      <div class="flex flex-col gap-4">
-                        <form method="post" action="/auth/set_api_key" class="flex gap-2 items-end">
-                            <div class="flex-1">
+                        <form method="post" action="/auth/set_api_key" class="flex flex-col md:flex-row gap-2 md:items-end">
+                            <div class="flex-1 w-full">
                                 <label for="api_key" class="field-label text-xs mb-1.5">{{ t .Localizer "Your API Key" }}</label>
                                 <input type="text" name="api_key" id="api_key" required value="{{ .User.APIKey }}" class="field-input field-mono w-full">
                             </div>
-                            <button type="submit" class="btn-primary mb-[1px]" onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
+                            <button type="submit" class="btn-primary w-full md:w-auto" onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
                                 <i data-lucide="save"></i> {{ t .Localizer "Update" }}
                             </button>
                         </form>
@@ -215,7 +213,7 @@
             <div class="form-field col-span-full">
                 <div class="flex flex-col gap-2 mb-4">
                     {{ range .User.Credentials }}
-                    <div class="flex justify-between items-center p-3 border border-neutral-200 rounded-md bg-white">
+                    <div class="flex justify-between items-center p-3 border border-neutral-200 bg-white">
                         <div class="flex items-center gap-3">
                             <div class="flex items-center justify-center w-8 h-8 rounded bg-neutral-100 text-neutral-500">
                                 {{ $iconLight := webauthn_icon .Authenticator false }}
@@ -241,7 +239,7 @@
                         </button>
                     </div>
                     {{ else }}
-                    <p class="text-sm text-secondary italic text-center py-4 bg-tertiary rounded-md">{{ t .Localizer "No passkeys registered." }}</p>
+                    <p class="text-sm text-secondary italic text-center py-4 border border-neutral-200">{{ t .Localizer "No passkeys registered." }}</p>
                     {{ end }}
                 </div>
                 
@@ -260,46 +258,32 @@
         </div>
     </div>
 
-    <!-- Data Management -->
+    <!-- Configuration Management -->
     <div class="form-section">
-        <h2 class="section-title">{{ t .Localizer "Data Management" }}</h2>
+        <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
         
-        <div class="form-grid">
-            <!-- Export -->
-            <div class="form-field col-span-full">
-                 <div class="flex items-center justify-between gap-4 p-4 border border-neutral-200 rounded-lg">
-                    <div class="flex-1">
-                        <label class="font-bold text-sm block">{{ t .Localizer "Export Configuration" }}</label>
-                        <div class="text-xs text-secondary mt-1">
-                            {{ t .Localizer "Download your entire user configuration as a JSON file." }}
-                        </div>
-                    </div>
-                     <a href="/export_user_config" class="btn-secondary whitespace-nowrap">
-                        <i data-lucide="download"></i> {{ t .Localizer "Export" }}
-                    </a>
+        <div class="flex flex-col md:flex-row gap-3">
+            <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="text-sm">
+                    <strong>{{ t .Localizer "Export Configuration" }}</strong>
+                    <div class="text-xs text-secondary">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</div>
                 </div>
+                <a href="/export_user_config" class="btn-secondary whitespace-nowrap justify-center">
+                    <i data-lucide="download"></i> {{ t .Localizer "Export" }}
+                </a>
             </div>
 
-            <!-- Import -->
-            <div class="form-field col-span-full">
-                <div class="p-4 border border-warning/30 bg-warning/5 rounded-lg">
-                     <div class="flex gap-3 mb-4">
-                        <i data-lucide="alert-triangle" class="text-warning flex-shrink-0"></i>
-                        <div>
-                            <label class="font-bold text-sm block">{{ t .Localizer "Import Configuration" }}</label>
-                            <p class="text-xs text-secondary mt-1">
-                                {{ t .Localizer "Importing a configuration will replace your current settings, but preserve your login credentials." }}
-                            </p>
-                        </div>
-                     </div>
-                    
-                    <form method="post" action="/import_user_config" enctype="multipart/form-data" class="flex gap-2 items-center">
-                        <input type="file" name="file" id="file" accept=".json" required class="field-input py-1.5 px-3 text-sm flex-1 bg-white">
-                        <button type="submit" class="btn-primary">
-                            <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
-                        </button>
-                    </form>
+            <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="text-sm">
+                    <strong>{{ t .Localizer "Import Configuration" }}</strong>
+                    <div class="text-xs text-secondary">{{ t .Localizer "Restore settings from backup." }}</div>
                 </div>
+                 <form method="post" action="/import_user_config" enctype="multipart/form-data" class="flex items-center">
+                    <input type="file" name="file" id="import_file" accept=".json" required class="hidden" onchange="if(confirm('{{ t .Localizer "Importing will replace current settings. Continue?" }}')) this.form.submit();">
+                    <button type="button" class="btn-secondary whitespace-nowrap justify-center w-full" onclick="document.getElementById('import_file').click();">
+                        <i data-lucide="upload"></i> {{ t .Localizer "Import" }}
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -308,7 +292,7 @@
     <div class="text-center mt-12 pb-12 text-neutral-500">
         {{ if .UpdateAvailable }}
         <div class="mb-6">
-            <a href="{{ .LatestReleaseURL }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 border border-orange-500 text-orange-500 font-bold text-xs uppercase tracking-widest no-underline hover:bg-orange-500 hover:text-white transition-all rounded-full">
+            <a href="{{ .LatestReleaseURL }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 border border-orange-500 text-orange-500 font-bold text-xs uppercase tracking-widest no-underline hover:bg-orange-500 hover:text-white transition-all">
                 <i data-lucide="arrow-up-circle" class="icon-sm"></i> {{ t .Localizer "Update available!" }}
             </a>
         </div>

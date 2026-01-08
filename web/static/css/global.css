@@ -49,11 +49,13 @@ html, body {
     
     /* Danger Colors */
     --red-50: #fef2f2;
+    --red-100: #fee2e2;
     --red-300: #fca5a5;
     --red-400: #f87171;
     --red-500: #ef4444;
     --red-600: #dc2626;
     --red-800: #991b1b;
+    --red-900: #7f1d1d;
 
     /* Info Colors */
     --blue-50: #eff6ff;
@@ -139,13 +141,6 @@ html, body {
     /* LED Display */
     --led-bg: var(--black);
     --led-frame: var(--neutral-900);
-    
-    /* Radius Tokens */
-    --radius-sm: 0.25rem;
-    --radius-md: 0.375rem;
-    --radius-lg: 0.5rem;
-    --radius-full: 9999px;
-    --radius-btn: var(--radius-md);
 
     /* Danger color alias */
     --danger-color: var(--red-600);
@@ -206,6 +201,8 @@ html, body {
     --btn-danger-hover-border: #dc2626;
     
     --red-50: #450a0a;
+    --red-100: rgba(153, 27, 27, 0.3);
+    --red-900: #7f1d1d;
     
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
@@ -286,14 +283,26 @@ html, body {
 .border-r { border-right: 1px solid var(--border-primary) !important; }
 .border-none { border: none !important; }
 .shadow-none { box-shadow: none !important; }
-.rounded { border-radius: 4px !important; }
+.rounded { border-radius: 0.25rem !important; }
+.rounded-md { border-radius: 0.375rem !important; }
+.rounded-lg { border-radius: 0.5rem !important; }
+.rounded-full { border-radius: 9999px !important; }
+
+/* Whitespace & Text */
+.whitespace-nowrap { white-space: nowrap !important; }
+.break-all { word-break: break-all !important; }
+.transition-colors { transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease !important; }
 
 /* Margin Utilities */
 .m-0 { margin: 0 !important; }
 .mt-0 { margin-top: 0 !important; }
 .mb-0 { margin-bottom: 0 !important; }
+.mr-0 { margin-right: 0 !important; }
+.ml-0 { margin-left: 0 !important; }
 .mt-1 { margin-top: 0.25rem !important; }
 .mb-1 { margin-bottom: 0.25rem !important; }
+.ml-1 { margin-left: 0.25rem !important; }
+.mr-1 { margin-right: 0.25rem !important; }
 .mt-2 { margin-top: 0.5rem !important; }
 .mb-2 { margin-bottom: 0.5rem !important; }
 .ml-2 { margin-left: 0.5rem !important; }
@@ -309,6 +318,8 @@ html, body {
 .ml-6 { margin-left: 1.5rem !important; }
 .mt-8 { margin-top: 2rem !important; }
 .mb-8 { margin-bottom: 2rem !important; }
+.mt-12 { margin-top: 3rem !important; }
+.pb-12 { padding-bottom: 3rem !important; }
 
 /* Padding Utilities */
 .p-0 { padding: 0 !important; }
@@ -321,8 +332,15 @@ html, body {
 .p-4 { padding: 1rem !important; }
 .pt-4 { padding-top: 1rem !important; }
 .pb-4 { padding-bottom: 1rem !important; }
+.pt-6 { padding-top: 1.5rem !important; }
+.pb-6 { padding-bottom: 1.5rem !important; }
+.pt-8 { padding-top: 2rem !important; }
+.pb-8 { padding-bottom: 2rem !important; }
+.px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
 .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+.px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
 .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+.py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
 
 /* Size Utilities */
 .max-w-md { max-width: 28rem !important; }
@@ -368,6 +386,11 @@ html, body {
 .align-text-bottom { vertical-align: text-bottom !important; }
 .block { display: block !important; }
 
+/* Hover State Utilities */
+.hover\:text-orange-500:hover { color: var(--orange-500) !important; }
+.hover\:text-primary:hover { color: var(--text-primary) !important; }
+.hover\:bg-orange-500:hover { background-color: var(--orange-500) !important; }
+
 
 /* ===========================================
    BUTTON SYSTEM
@@ -384,7 +407,7 @@ html, body {
     box-sizing: border-box !important;
     background-color: var(--orange-500) !important;
     border: 1px solid var(--orange-500) !important;
-    border-radius: var(--radius-btn) !important;
+
     color: var(--white) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -430,7 +453,7 @@ html, body {
     box-sizing: border-box !important;
     background-color: var(--neutral-900) !important;
     border: 1px solid var(--neutral-900) !important;
-    border-radius: var(--radius-btn) !important;
+
     color: var(--white) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -458,22 +481,22 @@ html, body {
 
 [data-theme="dark"] .btn-save,
 [data-theme="dark"] .btn-primary {
-    background-color: var(--white) !important;
-    border-color: var(--white) !important;
-    color: var(--black) !important;
+    background-color: var(--btn-primary-bg) !important;
+    border-color: var(--btn-primary-border) !important;
+    color: var(--btn-primary-text) !important;
 }
 
 [data-theme="dark"] .btn-save:hover,
 [data-theme="dark"] .btn-primary:hover {
-    background-color: var(--neutral-200) !important;
-    border-color: var(--neutral-200) !important;
+    background-color: var(--btn-primary-hover-bg) !important;
+    border-color: var(--btn-primary-hover-bg) !important;
 }
 
 [data-theme="dark"] .btn-save i,
 [data-theme="dark"] .btn-primary i,
 [data-theme="dark"] .btn-save svg,
 [data-theme="dark"] .btn-primary svg { 
-    color: var(--black) !important; 
+    color: var(--btn-primary-text) !important; 
 }
 
 /* Cancel/Secondary Button (Gray - Neutral Actions) */
@@ -488,7 +511,7 @@ html, body {
     box-sizing: border-box !important;
     background: transparent !important;
     border: 1px solid var(--neutral-300) !important;
-    border-radius: var(--radius-btn) !important;
+
     color: var(--neutral-700) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -524,29 +547,30 @@ html, body {
 
 [data-theme="dark"] .btn-cancel,
 [data-theme="dark"] .btn-secondary {
-    border-color: var(--neutral-600) !important;
-    color: var(--neutral-300) !important;
+    border-color: var(--btn-secondary-border) !important;
+    color: var(--btn-secondary-text) !important;
+    background-color: var(--btn-secondary-bg) !important;
 }
 
 [data-theme="dark"] .btn-cancel:hover,
 [data-theme="dark"] .btn-secondary:hover {
-    background-color: var(--neutral-800) !important;
-    border-color: var(--neutral-500) !important;
-    color: var(--white) !important;
+    background-color: var(--btn-secondary-hover-bg) !important;
+    border-color: var(--border-secondary) !important;
+    color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .btn-cancel i,
 [data-theme="dark"] .btn-secondary i,
 [data-theme="dark"] .btn-cancel svg,
 [data-theme="dark"] .btn-secondary svg { 
-    color: var(--neutral-400) !important; 
+    color: var(--text-secondary) !important; 
 }
 
 [data-theme="dark"] .btn-cancel:hover i,
 [data-theme="dark"] .btn-secondary:hover i,
 [data-theme="dark"] .btn-cancel:hover svg,
 [data-theme="dark"] .btn-secondary:hover svg { 
-    color: var(--white) !important; 
+    color: var(--text-primary) !important; 
 }
 
 /* Ghost Button (Text-only - Minimal emphasis) */
@@ -560,7 +584,7 @@ html, body {
     box-sizing: border-box !important;
     background: none !important;
     border: 1px solid transparent !important;
-    border-radius: var(--radius-btn) !important;
+
     color: var(--neutral-600) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -617,7 +641,7 @@ html, body {
     box-sizing: border-box !important;
     background-color: var(--orange-500) !important;
     border: 1px solid var(--orange-500) !important;
-    border-radius: var(--radius-btn) !important;
+
     color: var(--white) !important;
     font-family: var(--font-mono) !important;
     font-size: 0.75rem !important;
@@ -649,7 +673,7 @@ html, body {
     width: 100% !important;
     padding: 0.75rem 1.25rem !important;
     border: 1px solid var(--red-300) !important;
-    border-radius: var(--radius-btn) !important;
+
     font-size: 0.75rem !important;
     color: var(--red-600) !important;
     font-weight: 600 !important;
@@ -666,27 +690,40 @@ html, body {
 }
 
 [data-theme="dark"] .btn-delete {
-    border-color: var(--red-900) !important;
-    color: var(--red-400) !important;
-    background-color: rgba(153, 27, 27, 0.2) !important; /* Darker red tint */
+    border-color: var(--btn-danger-border) !important;
+    color: var(--btn-danger-text) !important;
+    background-color: var(--red-100) !important;
 }
 
 [data-theme="dark"] .btn-delete i,
 [data-theme="dark"] .btn-delete svg { 
-    color: var(--red-400) !important; 
+    color: var(--btn-danger-text) !important; 
     width: 1.25em !important; 
     height: 1.25em !important;
 }
 
 [data-theme="dark"] .btn-delete:hover {
-    background-color: rgba(153, 27, 27, 0.4) !important;
-    border-color: var(--red-600) !important;
-    color: var(--white) !important;
+    background-color: var(--btn-danger-hover-bg) !important;
+    border-color: var(--btn-danger-hover-border) !important;
+    color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .btn-delete:hover i,
 [data-theme="dark"] .btn-delete:hover svg { 
-    color: var(--white) !important; 
+    color: var(--text-primary) !important; 
+}
+
+/* Button Size Modifiers */
+.btn-sm {
+    padding: 0.5rem 0.75rem !important;
+    min-height: 2rem !important;
+    font-size: 0.6875rem !important;
+}
+
+.btn-sm i,
+.btn-sm svg {
+    width: 1em !important;
+    height: 1em !important;
 }
 
 
@@ -1589,3 +1626,15 @@ nav li a:hover { color: var(--orange-500); }
 .dropdown-item.danger { color: var(--red-600) !important; }
 [data-theme="dark"] .dropdown-item.danger { color: var(--red-400) !important; }
 
+
+/* ===========================================
+   RESPONSIVE UTILITIES (md: 768px)
+   =========================================== */
+@media (min-width: 768px) {
+    .md\:flex-row { flex-direction: row !important; }
+    .md\:items-center { align-items: center !important; }
+    .md\:items-end { align-items: flex-end !important; }
+    .md\:w-auto { width: auto !important; }
+    .md\:flex-none { flex: none !important; }
+    .md\:justify-between { justify-content: space-between !important; }
+}

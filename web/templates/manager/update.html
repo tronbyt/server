@@ -374,7 +374,7 @@
         <div class="form-section">
              <h2 class="section-title">{{ t .Localizer "Configuration Management" }}</h2>
              <div class="flex flex-col md:flex-row gap-3">
-                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Export Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Backup device settings." }}</div>
@@ -384,7 +384,7 @@
                      </button>
                 </div>
 
-                <div class="flex-1 p-3 border border-neutral-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="text-sm">
                         <strong>{{ t .Localizer "Import Configuration" }}</strong>
                         <div class="text-xs text-secondary">{{ t .Localizer "Restore device settings." }}</div>
@@ -410,15 +410,24 @@
          <div class="form-section border-danger">
             <h2 class="section-title text-danger">{{ t .Localizer "Danger Zone" }}</h2>
             <div class="form-actions">
-                 <button type="button" class="btn-delete" onclick="if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) { this.form.action = '/devices/{{ .Device.ID }}/delete'; this.form.method = 'post'; this.form.submit(); }">
+                 <button type="button" class="btn-delete" onclick="deleteDevice();">
                     <i data-lucide="trash-2"></i> {{ t .Localizer "Delete Device" }}
                 </button>
             </div>
          </div>
     </form>
+    
+    <!-- Separate delete form to avoid Chrome issues -->
+    <form id="delete-device-form" action="/devices/{{ .Device.ID }}/delete" method="post" style="display: none;"></form>
 </div>
 
 <script>
+    function deleteDevice() {
+        if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) {
+            document.getElementById('delete-device-form').submit();
+        }
+    }
+    
     function resetImgUrl() {
         document.getElementById('img_url').value = '{{ .DefaultImgURL }}';
         updateExampleCommands();
