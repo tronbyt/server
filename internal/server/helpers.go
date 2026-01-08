@@ -148,8 +148,8 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	}
 
 	// Calculate IsAutoLoginActive
-	var userCount int64
-	if err := s.DB.Model(&data.User{}).Count(&userCount).Error; err != nil {
+	userCount, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
+	if err != nil {
 		slog.Error("Failed to count users for auto-login check", "error", err)
 	} else {
 		tmplData.IsAutoLoginActive = (s.Config.SingleUserAutoLogin == "1" && userCount == 1)
@@ -180,7 +180,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 
 	// Render partial if requested
 	if tmplData.Partial != "" {
-		err := tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
+		err = tmpl.ExecuteTemplate(w, tmplData.Partial, tmplData)
 		if err != nil {
 			slog.Error("Failed to render partial", "template", name, "partial", tmplData.Partial, "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -189,7 +189,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	}
 
 	// Execute pre-parsed template
-	err := tmpl.ExecuteTemplate(w, name, tmplData)
+	err = tmpl.ExecuteTemplate(w, name, tmplData)
 	if err != nil {
 		slog.Error("Failed to render template", "template", name, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -563,4 +563,23 @@ func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
 		wsScheme = "wss"
 	}
 	return fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, deviceID)
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+var rebootPayloadJSON = []byte(`{"reboot":true}`)
+
+func (s *Server) sendRebootCommand(deviceID string) error {
+	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: rebootPayloadJSON})
+	return nil
 }

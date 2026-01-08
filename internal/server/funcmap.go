@@ -165,11 +165,11 @@ func tmplT(localizer *i18n.Localizer, messageID string, args ...any) string {
 	return translated
 }
 
-func tmplDeref(v any) string {
-	return tmplDerefOr(v, "")
+func tmplDeref(v any) any {
+	return tmplDerefOr(v, nil)
 }
 
-func tmplDerefOr(v any, def string) string {
+func tmplDerefOr(v any, def any) any {
 	if v == nil {
 		return def
 	}
@@ -182,7 +182,7 @@ func tmplDerefOr(v any, def string) string {
 		rv = rv.Elem()
 	}
 
-	return fmt.Sprintf("%v", rv.Interface())
+	return rv.Interface()
 }
 
 func tmplIsPinned(device data.Device, iname string) bool {

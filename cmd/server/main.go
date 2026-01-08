@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -68,7 +69,7 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 
 	gormConfig := &gorm.Config{
 		Logger:      data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
-		PrepareStmt: true, // Enable prepared statement caching for performance
+		PrepareStmt: false, // Disable prepared statement caching to avoid SQLite locking issues
 	}
 
 	if strings.HasPrefix(dsn, "postgres") || strings.Contains(dsn, "host=") {
@@ -79,12 +80,14 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 		db, err = gorm.Open(mysql.Open(dsn), gormConfig)
 	} else {
 		slog.Info("Using SQLite DB", "path", dsn)
-		// For SQLite, disable prepared statements to avoid transaction conflicts
-		sqliteConfig := &gorm.Config{
-			Logger:      data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
-			PrepareStmt: false, // Disable for SQLite to prevent locking issues
+		if !strings.Contains(dsn, "_busy_timeout") {
+			if strings.Contains(dsn, "?") {
+				dsn += "&_busy_timeout=5000"
+			} else {
+				dsn += "?_busy_timeout=5000"
+			}
 		}
-		db, err = gorm.Open(sqlite.Open(dsn), sqliteConfig)
+		db, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 		if err == nil {
 			// Configure connection pool FIRST before any queries
 			// SQLite doesn't handle concurrent writes well, so we limit to 1 connection
@@ -133,14 +136,38 @@ func resetPassword(dsn, username, password string) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	result := db.Model(&data.User{}).Where("username = ?", username).Update("password", hashedPassword)
-	if result.Error != nil {
-		return result.Error
+	rowsAffected, err := gorm.G[data.User](db).Where("username = ?", username).Update(context.Background(), "password", hashedPassword)
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
+	if rowsAffected == 0 {
 		return fmt.Errorf("user not found")
 	}
 	return nil
+}
+
+func sanitizeDB(db *gorm.DB) {
+	// Sanitize data before migration (fixes v2.0.x empty email constraint issue)
+	if db.Migrator().HasTable(&data.User{}) {
+		if _, err := gorm.G[data.User](db).Where("email IN ?", []string{"", "none"}).Update(context.Background(), "email", nil); err != nil {
+			slog.Warn("Failed to sanitize empty emails", "error", err)
+		}
+	}
+
+	// Fix timezone issues
+	if db.Migrator().HasTable(&data.Device{}) {
+		devices, err := gorm.G[data.Device](db).Where("location LIKE '%\"timezone\":\"None\"'").Find(context.Background())
+		if err != nil {
+			slog.Warn("Failed to get devices with illegal timestamps", "error", err)
+		} else {
+			for _, device := range devices {
+				device.Location.Timezone = ""
+				if _, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "location", device.Location); err != nil {
+					slog.Warn("Failed to update device location during sanitization", "device_id", device.ID, "error", err)
+				}
+			}
+		}
+	}
 }
 
 func main() {
@@ -226,8 +253,8 @@ func main() {
 		tempDB, err := openDB(*dbDSN, "ERROR")
 		if err == nil {
 			if tempDB.Migrator().HasTable(&data.User{}) {
-				var count int64
-				if err := tempDB.Model(&data.User{}).Count(&count).Error; err == nil && count > 0 {
+				count, err := gorm.G[data.User](tempDB).Count(context.Background(), "*")
+				if err == nil && count > 0 {
 					skipMigration = true
 					slog.Warn("New database already has users, skipping automatic migration.", "new_db", *dbDSN)
 				}
@@ -267,25 +294,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Sanitize data before migration (fixes v2.0.x empty email constraint issue)
-	if db.Migrator().HasTable(&data.User{}) {
-		if err := db.Model(&data.User{}).Where("email IN ?", []string{"", "none"}).Update("email", nil).Error; err != nil {
-			slog.Warn("Failed to sanitize empty emails", "error", err)
-		}
-	}
-
-	// Fix timezone issues
-	if db.Migrator().HasTable(&data.Device{}) {
-		devices := []data.Device{}
-		if err := db.Model(&data.Device{}).Where("location LIKE '%\"timezone\":\"None\"'").Find(&devices); err != nil {
-			slog.Warn("Failed to get devices with illegal timestamps", "error", err)
-		} else {
-			for _, device := range devices {
-				device.Location.Timezone = ""
-				db.Save(&device)
-			}
-		}
-	}
+	// Sanitize data
+	sanitizeDB(db)
 
 	// AutoMigrate (ensure schema exists)
 	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
@@ -326,8 +336,8 @@ func main() {
 	}
 
 	// Single User Auto-Login Warning
-	var userCount int64
-	if err := db.Model(&data.User{}).Count(&userCount).Error; err != nil {
+	userCount, err := gorm.G[data.User](db).Count(context.Background(), "*")
+	if err != nil {
 		slog.Error("Failed to count users for auto-login warning", "error", err)
 	} else if cfg.SingleUserAutoLogin == "1" && userCount == 1 {
 		slog.Warn(`

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -266,6 +267,9 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/update", s.RequireLogin(s.RequireDevice(s.handleUpdateDevicePost)))
 	s.Router.HandleFunc("POST /devices/{id}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteDevice)))
 	s.Router.HandleFunc("POST /devices/{id}/import_config", s.RequireLogin(s.RequireDevice(s.handleImportDeviceConfig)))
+	s.Router.HandleFunc("POST /devices/{id}/reboot", s.RequireLogin(s.RequireDevice(s.handleRebootDevice)))
+
+	s.Router.HandleFunc("POST /devices/{id}/update_firmware_settings", s.RequireLogin(s.RequireDevice(s.handleUpdateFirmwareSettings)))
 
 	// Websocket routes
 	s.SetupWebsocketRoutes()
@@ -273,9 +277,48 @@ func (s *Server) routes() {
 	// Health and Metrics
 	s.Router.HandleFunc("GET /health", s.handleHealth)
 	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromGatherer, promhttp.HandlerOpts{}))
+	s.Router.HandleFunc("GET /dots", s.handleDots)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Chain middlewares: Recover -> Gzip -> Logging -> Proxy -> Mux
 	RecoverMiddleware(GzipMiddleware(LoggingMiddleware(ProxyMiddleware(s.Router)))).ServeHTTP(w, r)
+}
+
+func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
+	widthStr := r.URL.Query().Get("w")
+	heightStr := r.URL.Query().Get("h")
+	radiusStr := r.URL.Query().Get("r")
+
+	width := 64
+	height := 32
+	radius := 0.3
+
+	if wVal, err := strconv.Atoi(widthStr); err == nil && wVal > 0 {
+		width = wVal
+	}
+	if hVal, err := strconv.Atoi(heightStr); err == nil && hVal > 0 {
+		height = hVal
+	}
+	if rVal, err := strconv.ParseFloat(radiusStr, 64); err == nil && rVal > 0 {
+		radius = rVal
+	}
+
+	etag := fmt.Sprintf("\"%d-%d-%g\"", width, height, radius)
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "public, max-age=31536000")
+
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+
+	rStr := strings.TrimPrefix(fmt.Sprintf("%g", radius), "0")
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" fill="#fff"><defs><pattern id="dot" width="1" height="1" patternUnits="userSpaceOnUse"><circle cx=".5" cy=".5" r="%s"/></pattern></defs><rect width="100%%" height="100%%" fill="url(#dot)"/></svg>`, width, height, rStr)
+
+	if _, err := w.Write([]byte(svg)); err != nil {
+		slog.Error("Failed to write dots SVG", "error", err)
+	}
 }

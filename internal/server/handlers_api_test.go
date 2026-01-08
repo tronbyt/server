@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
@@ -163,6 +164,23 @@ func TestHandleGetDevice(t *testing.T) {
 	apiKey := "test_api_key"
 	deviceID := "testdevice"
 
+	// Update device with new Info fields
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+
+	device.Info.SSID = stringPtr("Test SSID")
+	device.Info.WifiPowerSave = intPtr(1)
+	device.Info.SkipDisplayVersion = boolPtr(true)
+	device.Info.APMode = boolPtr(true)
+	device.Info.PreferIPv6 = boolPtr(true)
+	device.Info.SwapColors = boolPtr(true)
+	device.Info.ImageURL = stringPtr("http://example.com/image.png")
+	if err := s.DB.Save(device).Error; err != nil {
+		t.Fatalf("Failed to update device info: %v", err)
+	}
+
 	req := newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, nil)
 	rr := httptest.NewRecorder()
 
@@ -180,6 +198,28 @@ func TestHandleGetDevice(t *testing.T) {
 
 	if payload.ID != deviceID {
 		t.Errorf("Expected device ID %s, got %s", deviceID, payload.ID)
+	}
+	// Verify new fields
+	if payload.Info.SSID == nil || *payload.Info.SSID != "Test SSID" {
+		t.Errorf("Expected SSID 'Test SSID', got '%v'", payload.Info.SSID)
+	}
+	if payload.Info.WifiPowerSave == nil || *payload.Info.WifiPowerSave != 1 {
+		t.Errorf("Expected WifiPowerSave 1, got %v", payload.Info.WifiPowerSave)
+	}
+	if payload.Info.SkipDisplayVersion == nil || !*payload.Info.SkipDisplayVersion {
+		t.Errorf("Expected SkipDisplayVersion to be true, got %v", payload.Info.SkipDisplayVersion)
+	}
+	if payload.Info.APMode == nil || !*payload.Info.APMode {
+		t.Errorf("Expected APMode to be true, got %v", payload.Info.APMode)
+	}
+	if payload.Info.PreferIPv6 == nil || !*payload.Info.PreferIPv6 {
+		t.Errorf("Expected PreferIPv6 to be true, got %v", payload.Info.PreferIPv6)
+	}
+	if payload.Info.SwapColors == nil || !*payload.Info.SwapColors {
+		t.Errorf("Expected SwapColors to be true, got %v", payload.Info.SwapColors)
+	}
+	if payload.Info.ImageURL == nil || *payload.Info.ImageURL != "http://example.com/image.png" {
+		t.Errorf("Expected ImageURL 'http://example.com/image.png', got '%v'", payload.Info.ImageURL)
 	}
 }
 
@@ -586,5 +626,89 @@ func TestHandleListInstallationsDeviceKey(t *testing.T) {
 
 	if len(response.Installations) != 1 {
 		t.Errorf("Expected 1 installation, got %d", len(response.Installations))
+	}
+}
+
+func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+
+	// Subscribe to broadcaster to check for notification
+	ch := s.Broadcaster.Subscribe(deviceID)
+	defer s.Broadcaster.Unsubscribe(deviceID, ch)
+
+	// Construct JSON request body
+	payload := FirmwareSettingsUpdate{
+		SkipDisplayVersion: boolPtr(true),
+		WifiPowerSave:      intPtr(2),
+		ImageURL:           stringPtr("http://example.com/test.png"),
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/v0/devices/%s/update_firmware_settings", deviceID), bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	if rr.Body.String() != "Firmware settings updated." {
+		t.Errorf("Expected body 'Firmware settings updated.', got '%s'", rr.Body.String())
+	}
+
+	// Verify broadcaster notification
+	select {
+	case msg := <-ch:
+		cmdMsg, ok := msg.(DeviceCommandMessage)
+		if !ok {
+			t.Fatalf("unexpected message type from broadcaster: %T", msg)
+		}
+
+		var receivedPayload map[string]any
+		if err := json.Unmarshal(cmdMsg.Payload, &receivedPayload); err != nil {
+			t.Fatalf("failed to unmarshal payload from broadcaster: %v", err)
+		}
+
+		if len(receivedPayload) != 3 {
+			t.Errorf("expected 3 fields in payload, got %d", len(receivedPayload))
+		}
+		if val, ok := receivedPayload["skip_display_version"].(bool); !ok || !val {
+			t.Errorf("expected skip_display_version to be true, got %v", receivedPayload["skip_display_version"])
+		}
+		if val, ok := receivedPayload["wifi_power_save"].(float64); !ok || val != 2 {
+			t.Errorf("expected wifi_power_save to be 2, got %v", receivedPayload["wifi_power_save"])
+		}
+		if val, ok := receivedPayload["image_url"].(string); !ok || val != "http://example.com/test.png" {
+			t.Errorf("expected image_url to be 'http://example.com/test.png', got '%v'", receivedPayload["image_url"])
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out waiting for broadcaster notification")
+	}
+}
+
+func TestHandleRebootDeviceAPI(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/reboot", deviceID), apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	if rr.Body.String() != "Reboot command sent." {
+		t.Errorf("Expected body 'Reboot command sent.', got '%s'", rr.Body.String())
 	}
 }

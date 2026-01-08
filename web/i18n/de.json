@@ -1567,5 +1567,65 @@
   },
   "User repository refreshed successfully.": {
     "other": "Benutzer-Repository erfolgreich aktualisiert."
+  },
+  "Firmware Features": {
+    "other": "Firmware-Funktionen"
+  },
+  "MAC Address": {
+    "other": "MAC-Adresse"
+  },
+  "WiFi SSID": {
+    "other": "WLAN-SSID"
+  },
+  "WiFi SSID:": {
+    "other": "WLAN-SSID:"
+  },
+  "Sync current Image URL to device via WebSocket": {
+    "other": "Aktuelle Bild-URL via WebSocket an Gerät senden"
+  },
+  "Swap Colors": {
+    "other": "Farben tauschen"
+  },
+  "WiFi Power Save": {
+    "other": "WLAN-Energiesparmodus"
+  },
+  "Minimum": {
+    "other": "Minimal"
+  },
+  "Maximum": {
+    "other": "Maximal"
+  },
+  "Skip Display Version": {
+    "other": "Versionsanzeige überspringen"
+  },
+  "Prefer IPv6": {
+    "other": "IPv6 bevorzugen"
+  },
+  "AP Mode (Hotspot)": {
+    "other": "AP-Modus (Hotspot)"
+  },
+  "Reboot Device": {
+    "other": "Gerät neu starten"
+  },
+  "Are you sure you want to reboot the device?": {
+    "other": "Sind Sie sicher, dass Sie das Gerät neu starten möchten?"
+  },
+  "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device.": {
+    "other": "Warnung: Die Eingabe einer falschen URL kann die Verbindung des Geräts zu diesem Server unterbrechen. Die Behebung erfordert ein erneutes Flashen des Geräts."
+  },
+  "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device.": {
+    "other": "Warnung: Wenn der AP-Modus ausgeschaltet ist, kann das WLAN-Netzwerk nicht ohne erneutes Flashen des Geräts geändert werden."
+  },
+  "Reboot command sent to device.": {
+    "other": "Befehl zum Neustart an das Gerät gesendet."
+  },
+  "Install Custom Firmware": {
+    "other": "Benutzerdefinierte Firmware installieren"
+  },
+  "Upload and install a custom firmware binary (.bin).": {
+    "other": "Laden Sie eine benutzerdefinierte Firmware-Datei (.bin) hoch und installieren Sie sie."
+  },
+  "Install custom firmware? The device will reboot.": {
+    "other": "Benutzerdefinierte Firmware installieren? Das Gerät wird neu gestartet."
   }
 }

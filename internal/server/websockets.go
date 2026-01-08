@@ -28,10 +28,17 @@ type WSMessage struct {
 }
 
 type ClientInfo struct {
-	FirmwareVersion string `json:"firmware_version"`
-	FirmwareType    string `json:"firmware_type"`
-	ProtocolVersion *int   `json:"protocol_version"`
-	MACAddress      string `json:"mac"`
+	FirmwareVersion    string  `json:"firmware_version"`
+	FirmwareType       string  `json:"firmware_type"`
+	ProtocolVersion    *int    `json:"protocol_version"`
+	MACAddress         string  `json:"mac"`
+	SSID               *string `json:"ssid"`
+	WifiPowerSave      *int    `json:"wifi_power_save"`
+	SkipDisplayVersion *bool   `json:"skip_display_version"`
+	APMode             *bool   `json:"ap_mode"`
+	PreferIPv6         *bool   `json:"prefer_ipv6"`
+	SwapColors         *bool   `json:"swap_colors"`
+	ImageURL           *string `json:"image_url"`
 }
 
 type WSEvent struct {
@@ -39,6 +46,10 @@ type WSEvent struct {
 	DeviceID string `json:"device_id,omitempty"`
 	AppID    string `json:"app_id,omitempty"`
 	Payload  any    `json:"payload,omitempty"`
+}
+
+type DeviceCommandMessage struct {
+	Payload []byte
 }
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +85,10 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	// Update protocol type if different from current
 	if device.Info.ProtocolType != data.ProtocolWS {
 		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
-		s.DB.Model(&data.Device{ID: device.ID}).Update("info", data.JSONMap{"protocol_type": data.ProtocolWS})
+		device.Info.ProtocolType = data.ProtocolWS
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "info", data.JSONMap{"protocol_type": data.ProtocolWS}); err != nil {
+			slog.Error("Failed to update protocol_type", "error", err)
+		}
 	}
 	ch := s.Broadcaster.Subscribe(deviceID)
 	defer s.Broadcaster.Unsubscribe(deviceID, ch)
@@ -95,7 +109,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update LastSeen
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("last_seen", time.Now()).Error; err != nil {
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "last_seen", time.Now()); err != nil {
 				slog.Error("Failed to update last_seen", "error", err)
 			}
 
@@ -109,7 +123,29 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				device.Info.MACAddress = msg.ClientInfo.MACAddress
 
-				if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+				if msg.ClientInfo.SSID != nil {
+					device.Info.SSID = msg.ClientInfo.SSID
+				}
+				if msg.ClientInfo.WifiPowerSave != nil {
+					device.Info.WifiPowerSave = msg.ClientInfo.WifiPowerSave
+				}
+				if msg.ClientInfo.SkipDisplayVersion != nil {
+					device.Info.SkipDisplayVersion = msg.ClientInfo.SkipDisplayVersion
+				}
+				if msg.ClientInfo.APMode != nil {
+					device.Info.APMode = msg.ClientInfo.APMode
+				}
+				if msg.ClientInfo.PreferIPv6 != nil {
+					device.Info.PreferIPv6 = msg.ClientInfo.PreferIPv6
+				}
+				if msg.ClientInfo.SwapColors != nil {
+					device.Info.SwapColors = msg.ClientInfo.SwapColors
+				}
+				if msg.ClientInfo.ImageURL != nil {
+					device.Info.ImageURL = msg.ClientInfo.ImageURL
+				}
+
+				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 					slog.Error("Failed to update device info", "error", err)
 				}
 			}
@@ -121,7 +157,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					slog.Info("First 'queued' message, setting protocol_version to 1", "device", deviceID)
 					newVersion := 1
 					device.Info.ProtocolVersion = &newVersion
-					if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+					if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 						slog.Error("Failed to update device info (protocol version)", "error", err)
 					}
 				}
@@ -139,7 +175,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh)
 }
 
-func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan []byte, stopCh <-chan struct{}) {
+func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}) {
 	var pendingImage []byte
 	device := *initialDevice
 	lastSentBrightness := -1
@@ -159,27 +195,6 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		var imgData []byte
 		var app *data.App
 		var err error
-
-		// Check for Pending Update
-		if updateURL := device.PendingUpdateURL; updateURL != "" {
-			slog.Info("Sending OTA update command", "device", device.ID, "url", updateURL)
-			if err := conn.WriteJSON(map[string]string{
-				"ota_url": updateURL,
-			}); err != nil {
-				slog.Error("Failed to write OTA update message", "error", err)
-				return
-			}
-			// Clear pending update to avoid loops
-			if err := s.DB.Model(&data.Device{ID: device.ID}).Update("pending_update_url", "").Error; err != nil {
-				slog.Error("Failed to clear pending update", "error", err)
-			} else {
-				device.PendingUpdateURL = ""
-			}
-			// Wait a bit to let the device process, then return or continue?
-			// The device will likely close connection and reboot.
-			// Let's just continue loop, but we won't send image this cycle probably?
-			// Or we can just let it flow. The device should handle it.
-		}
 
 		if pendingImage != nil {
 			imgData = pendingImage
@@ -275,7 +290,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					if app != nil {
 						slog.Debug("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
 						// Only now do we update the database that the device is truly displaying this app.
-						if err := s.DB.Model(&data.Device{ID: device.ID}).Update("displaying_app", app.Iname).Error; err != nil {
+						if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "displaying_app", app.Iname); err != nil {
 							slog.Error("Failed to update displaying_app", "device", device.ID, "error", err)
 						}
 						// Notify Dashboard
@@ -285,7 +300,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 				}
 				// If just Queued, we keep waiting for Displaying.
-			case payload := <-broadcastCh:
+			case val := <-broadcastCh:
 				// Update available (Reload device first)
 				reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
 				if err != nil {
@@ -294,9 +309,35 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				}
 				device = reloaded
 
-				if len(payload) > 0 {
+				var isCommand bool
+				var isImage bool
+				var cmdPayload []byte
+				var imgData []byte
+
+				switch v := val.(type) {
+				case DeviceCommandMessage:
+					isCommand = true
+					cmdPayload = v.Payload
+				case []byte:
+					if len(v) > 0 {
+						isImage = true
+						imgData = v
+					}
+				}
+
+				if isCommand {
+					// It's a command, send it directly as JSON (TextMessage)
+					if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+						slog.Error("Failed to write command to WS", "error", err)
+						return
+					}
+					// Don't interrupt the current app for settings changes, unless it's a reboot (which the device handles)
+					continue
+				}
+
+				if isImage {
 					// Pushed Image: Interrupt and send
-					pendingImage = payload
+					pendingImage = imgData
 					interrupted = true
 					waiting = false
 					sendImmediate = true
@@ -373,7 +414,12 @@ func (s *Server) handleDashboardWS(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-done:
 			return
-		case data := <-ch:
+		case val := <-ch:
+			var data []byte
+			if b, ok := val.([]byte); ok {
+				data = b
+			}
+
 			// Forward the event data (JSON) to the client
 			if len(data) == 0 {
 				// Fallback for legacy calls sending nil: trigger generic refresh

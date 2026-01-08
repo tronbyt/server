@@ -136,7 +136,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps for all user's devices
-		var deviceIDs []string
+		deviceIDs := make([]string, 0, len(targetUser.Devices))
 		for _, d := range targetUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}
@@ -190,7 +190,7 @@ func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("theme_preference", theme).Error; err != nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "theme_preference", theme); err != nil {
 		slog.Error("Failed to update theme preference", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -208,7 +208,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
 	repoURL := r.FormValue("app_repo_url")
-	if err := s.DB.Model(&data.User{}).Where("username = ?", user.Username).Update("app_repo_url", repoURL).Error; err != nil {
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "app_repo_url", repoURL); err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
 		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/auth/edit", http.StatusSeeOther)
 		return
@@ -347,7 +347,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// Delete existing devices and apps
-		var deviceIDs []string
+		deviceIDs := make([]string, 0, len(currentUser.Devices))
 		for _, d := range currentUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}

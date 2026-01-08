@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -39,8 +40,7 @@ func TestLoginRedirectToRegisterIfNoUsers(t *testing.T) {
 	s := newTestServer(t)
 
 	// Ensure no users
-	var count int64
-	s.DB.Model(&data.User{}).Count(&count)
+	count, _ := gorm.G[data.User](s.DB).Count(context.Background(), "*")
 	if count != 0 {
 		t.Fatalf("Expected 0 users, got %d", count)
 	}
