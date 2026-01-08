@@ -223,12 +223,12 @@
 
                 <div class="form-field">
                     <label for="night_start" class="field-label">{{ t .Localizer "Start Time" }}</label>
-                    <input type="time" name="night_start" id="night_start" value="{{ if .Device.NightStart }}{{ .Device.NightStart }}{{ else }}22:00{{ end }}" class="field-input">
+                    <input type="time" name="night_start" id="night_start" value="{{ if .Device.NightStart }}{{ .Device.NightStart }}{{ else }}22:00{{ end }}" class="field-input w-full max-w-full">
                 </div>
 
                 <div class="form-field">
                     <label for="night_end" class="field-label">{{ t .Localizer "End Time" }}</label>
-                    <input type="time" name="night_end" id="night_end" value="{{ if .Device.NightEnd }}{{ .Device.NightEnd }}{{ else }}06:00{{ end }}" class="field-input">
+                    <input type="time" name="night_end" id="night_end" value="{{ if .Device.NightEnd }}{{ .Device.NightEnd }}{{ else }}06:00{{ end }}" class="field-input w-full max-w-full">
                 </div>
 
                 <div class="form-field">
@@ -354,31 +354,45 @@
             </div>
         </div>
 
-        {{ if .FirmwareAvailable }}
-             <div class="form-field-checkbox my-4">
-                {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
-                <label class="checkbox-label" for="swap_colors">
-                    <input type="checkbox" name="swap_colors" id="swap_colors" {{ if .Device.SwapColors }}checked{{ end }}>
-                    <span>{{ t .Localizer "Swap Colors (Fix for some Tidbyt Gen 1 displays)" }}</span>
-                </label>
-                 <span class="field-hint ml-4">{{ t .Localizer "Changing this requires saving before updating." }}</span>
+        <div class="flex flex-col md:flex-row gap-3">
+            <!-- Official Firmware -->
+            <div class="flex-1 p-3 border border-neutral-200 flex flex-col justify-between gap-3">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="text-sm">
+                        <strong>{{ t .Localizer "Official Firmware" }}</strong>
+                        <div class="text-xs text-secondary">{{ t .Localizer "Install the latest official release." }}</div>
+                    </div>
+                    {{ if .FirmwareAvailable }}
+                    <button type="button" class="btn-create whitespace-nowrap justify-center" onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "Trigger OTA Update? Device will reboot." }}')">
+                        <i data-lucide="cpu"></i> {{ t .Localizer "Install" }}
+                    </button>
+                    {{ else }}
+                    <button type="button" class="btn-secondary whitespace-nowrap justify-center" disabled>
+                        <i data-lucide="ban"></i> {{ t .Localizer "Unavailable" }}
+                    </button>
+                    {{ end }}
+                </div>
+                
+                {{ if and .FirmwareAvailable (eq .Device.Type.Slug "tidbyt_gen1") }}
+                <div class="form-field-checkbox mt-2 pt-2 border-t border-neutral-100">
+                    <label class="checkbox-label" for="swap_colors">
+                        <input type="checkbox" name="swap_colors" id="swap_colors" {{ if .Device.SwapColors }}checked{{ end }}>
+                        <span class="text-xs">{{ t .Localizer "Swap Colors (Gen 1 Fix)" }}</span>
+                    </label>
+                </div>
                 {{ end }}
             </div>
 
-             <div class="flex flex-col gap-4 mt-4">
-                 <button type="button" class="btn-create justify-center" onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "Trigger OTA Update? Device will reboot." }}')">
-                    <i data-lucide="cpu"></i> {{ t .Localizer "Install Latest Firmware" }}
+            <!-- Custom Firmware -->
+            <div class="flex-1 p-3 border border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="text-sm">
+                    <strong>{{ t .Localizer "Custom Firmware" }}</strong>
+                    <div class="text-xs text-secondary">{{ t .Localizer "Upload and install a custom .bin file." }}</div>
+                </div>
+                <button type="button" class="btn-secondary whitespace-nowrap justify-center" onclick="document.getElementById('custom_firmware_file').click();">
+                    <i data-lucide="square-code"></i> {{ t .Localizer "Upload & Install" }}
                 </button>
             </div>
-        {{ else }}
-            <p class="text-secondary text-sm">{{ t .Localizer "No official firmware builds available on the server." }}</p>
-        {{ end }}
-
-        <div class="border-t border-neutral-200 my-4 pt-4">
-            <button type="button" class="btn-primary justify-center w-full" onclick="document.getElementById('custom_firmware_file').click();">
-                <i data-lucide="square-code"></i> {{ t .Localizer "Install Custom Firmware" }}
-            </button>
-            <div class="text-xs text-secondary mt-1 text-center">{{ t .Localizer "Upload and install a custom firmware binary (.bin)." }}</div>
         </div>
     </div>
     {{ end }}
@@ -406,114 +420,60 @@
                     {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
                 </p>
             </div>
-        </div>
-    </div>
-                                           justify-content: center;
-                                           height: 35px"
-                                    onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
-                                    title="{{ t .Localizer "Sync current Image URL to device via WebSocket" }}">
-                                <i class="fa-solid fa-sync"></i>
-                            </button>
-                        </div>
-                        <p class="small-text" style="color: var(--danger-text); margin-top: 5px">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="device-settings-label">{{ t .Localizer "Swap Colors" }}</label>
-                    </td>
-                    <td>
-                        <label class="switch">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.SwapColors false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({swap_colors: this.checked})">
-                            <span class="slider round"></span>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="device-settings-label">{{ t .Localizer "WiFi Power Save" }}</label>
-                    </td>
-                    <td>
-                        <select class="device-settings-input"
-                                onchange="updateFirmwareSettings({wifi_power_save: this.value})">
-                            <option value="0"
-                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}
-                                    selected
-                                    {{ end }}>{{ t .Localizer "None" }}
-                            </option>
-                            <option value="1"
-                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}
-                                    selected
-                                    {{ end }}>{{ t .Localizer "Minimum" }}
-                            </option>
-                            <option value="2"
-                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}
-                                    selected
-                                    {{ end }}>{{ t .Localizer "Maximum" }}
-                            </option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="device-settings-label">{{ t .Localizer "Skip Display Version" }}</label>
-                    </td>
-                    <td>
-                        <label class="switch">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.SkipDisplayVersion false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({skip_display_version: this.checked})">
-                            <span class="slider round"></span>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="device-settings-label">{{ t .Localizer "Prefer IPv6" }}</label>
-                    </td>
-                    <td>
-                        <label class="switch">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.PreferIPv6 false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
-                            <span class="slider round"></span>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="device-settings-label">{{ t .Localizer "AP Mode (Hotspot)" }}</label>
-                    </td>
-                    <td>
-                        <label class="switch">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.APMode false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({ap_mode: this.checked})">
-                            <span class="slider round"></span>
-                        </label>
-                        <p class="small-text" style="color: var(--danger-text); margin-top: 5px">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                            {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
-                        </p>
-                    </td>
-                </tr>
-            </table>
-            <div style="margin-top: 15px;">
+
+            <div class="form-field-checkbox col-span-full">
+                <label class="checkbox-label" for="fw_swap_colors">
+                    <input type="checkbox" id="fw_swap_colors"
+                           {{ if derefOr .Device.Info.SwapColors false }}checked{{ end }}
+                           onchange="updateFirmwareSettings({swap_colors: this.checked})">
+                    <span>{{ t .Localizer "Swap Colors" }}</span>
+                </label>
+            </div>
+
+             <div class="form-field">
+                <label class="field-label">{{ t .Localizer "WiFi Power Save" }}</label>
+                <select class="field-select field-input" onchange="updateFirmwareSettings({wifi_power_save: this.value})">
+                    <option value="0" {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}selected{{ end }}>{{ t .Localizer "None" }}</option>
+                    <option value="1" {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}selected{{ end }}>{{ t .Localizer "Minimum" }}</option>
+                    <option value="2" {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}selected{{ end }}>{{ t .Localizer "Maximum" }}</option>
+                </select>
+            </div>
+
+            <div class="form-field-checkbox col-span-full">
+                <label class="checkbox-label" for="fw_skip_version">
+                    <input type="checkbox" id="fw_skip_version"
+                           {{ if derefOr .Device.Info.SkipDisplayVersion false }}checked{{ end }}
+                           onchange="updateFirmwareSettings({skip_display_version: this.checked})">
+                    <span>{{ t .Localizer "Skip Display Version" }}</span>
+                </label>
+            </div>
+
+            <div class="form-field-checkbox col-span-full">
+                <label class="checkbox-label" for="fw_prefer_ipv6">
+                    <input type="checkbox" id="fw_prefer_ipv6"
+                           {{ if derefOr .Device.Info.PreferIPv6 false }}checked{{ end }}
+                           onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
+                    <span>{{ t .Localizer "Prefer IPv6" }}</span>
+                </label>
+            </div>
+
+            <div class="form-field-checkbox col-span-full">
+                <label class="checkbox-label" for="fw_ap_mode">
+                    <input type="checkbox" id="fw_ap_mode"
+                           {{ if derefOr .Device.Info.APMode false }}checked{{ end }}
+                           onchange="updateFirmwareSettings({ap_mode: this.checked})">
+                    <span>{{ t .Localizer "AP Mode (Hotspot)" }}</span>
+                </label>
+                <p class="text-danger text-xs mt-1">
+                    <i data-lucide="alert-triangle" class="icon-sm inline"></i>
+                    {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
+                </p>
+            </div>
+            
+             <div class="col-span-full mt-4">
                 <button type="button"
                         class="w3-button w3-deep-orange config-management-btn"
+                        style="width: 100%; border-radius: 4px;"
                         onclick="rebootDevice()">
                     <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
                 </button>
@@ -551,55 +511,6 @@
                  }
             }
         </script>
-        <style>
-            /* Simple switch toggle style */
-            .switch {
-              position: relative;
-              display: inline-block;
-              width: 40px;
-              height: 20px;
-            }
-            .switch input {
-              opacity: 0;
-              width: 0;
-              height: 0;
-            }
-            .slider {
-              position: absolute;
-              cursor: pointer;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background-color: #ccc;
-              transition: .4s;
-            }
-            .slider:before {
-              position: absolute;
-              content: "";
-              height: 16px;
-              width: 16px;
-              left: 2px;
-              bottom: 2px;
-              background-color: white;
-              transition: .4s;
-            }
-            input:checked + .slider {
-              background-color: #2196F3;
-            }
-            input:focus + .slider {
-              box-shadow: 0 0 1px #2196F3;
-            }
-            input:checked + .slider:before {
-              transform: translateX(20px);
-            }
-            .slider.round {
-              border-radius: 20px;
-            }
-            .slider.round:before {
-              border-radius: 50%;
-            }
-        </style>
     </div>
     {{ end }}
 
@@ -630,12 +541,11 @@
              </div>
         </div>
 
-        <!-- Danger Zone - separated by divider -->
-        <div class="border-t border-neutral-300 my-8"></div>
-         <div class="form-section border-danger">
+        <!-- Danger Zone -->
+         <div class="form-section border-danger mt-8">
             <h2 class="section-title text-danger">{{ t .Localizer "Danger Zone" }}</h2>
-            <div class="form-actions">
-                 <button type="button" class="btn-delete" onclick="deleteDevice();">
+            <div class="mt-4">
+                 <button type="button" class="btn-delete w-full justify-center" onclick="deleteDevice();">
                     <i data-lucide="trash-2"></i> {{ t .Localizer "Delete Device" }}
                 </button>
             </div>
@@ -716,6 +626,7 @@
     });
 
     function saveDeviceForm() {
+        console.log("saveDeviceForm called");
         const useCustomScaleCheckbox = document.getElementById('use_custom_brightness_scale');
         const hiddenInput = document.getElementById('custom_brightness_scale_hidden');
 
@@ -729,7 +640,16 @@
         } else if (hiddenInput) {
             hiddenInput.value = '';
         }
-        document.getElementById('device-form').submit();
+        
+        const form = document.getElementById('device-form');
+        if (form) {
+             if (form.reportValidity()) {
+                form.submit();
+            }
+        } else {
+            console.error("Form 'device-form' not found!");
+            alert("Error: Could not find form to save.");
+        }
     }
 </script>
 
