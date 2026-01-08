@@ -1560,6 +1560,21 @@ nav li a:hover { color: var(--orange-500); }
     .page-header { padding: 0 1rem 1rem 1rem !important; }
     .page-title { font-size: 1.25rem !important; }
     .alert { padding: 0.75rem !important; font-size: 0.75rem !important; }
+    
+    /* Input groups with buttons should stack on mobile */
+    .form-field .flex {
+        flex-direction: column !important;
+    }
+    .form-field .flex > .field-input,
+    .form-field .flex > input {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .form-field .flex > .btn-secondary,
+    .form-field .flex > button {
+        width: 100% !important;
+        flex-shrink: 0 !important;
+    }
 }
 
 @media (max-width: 480px) {
