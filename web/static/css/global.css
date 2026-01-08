@@ -916,6 +916,7 @@ html, body {
     margin-top: 2rem !important;
     padding-top: 1.5rem !important;
     border-top: 1px solid var(--border-primary) !important;
+    flex-wrap: wrap !important;
 }
 
 @media (max-width: 640px) {
@@ -990,13 +991,7 @@ html, body {
 
 [data-theme="dark"] .field-hint { color: var(--neutral-500) !important; }
 
-/* Form Actions */
-.form-actions {
-    display: flex !important;
-    gap: 0.75rem !important;
-    flex-wrap: wrap !important;
-    padding-top: 1rem !important;
-}
+/* NOTE: .form-actions is fully defined above (lines ~912-927) */
 
 /* Checkbox Fields */
 .form-field-checkbox {
@@ -1169,6 +1164,45 @@ input[type="radio"]:checked::after {
 
 [data-theme="dark"] .location-results li:hover { background-color: var(--bg-tertiary) !important; }
 
+
+/* ===========================================
+   LED DISPLAY (Shared base for preview boxes)
+   =========================================== */
+.led-display {
+    background-color: var(--black) !important;
+    border: 1px solid var(--neutral-400) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.25rem !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+[data-theme="dark"] .led-display {
+    background-color: var(--black) !important;
+    border-color: var(--neutral-500) !important;
+}
+
+.led-display img,
+.led-display-image {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 2 / 1 !important;
+    object-fit: contain !important;
+    display: block !important;
+    background: var(--black) !important;
+    image-rendering: pixelated !important;
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: crisp-edges !important;
+    /* LED dot mask effect */
+    -webkit-mask-image: url('/dots') !important;
+    -webkit-mask-repeat: no-repeat !important;
+    -webkit-mask-size: contain !important;
+    mask-image: url('/dots') !important;
+    mask-repeat: no-repeat !important;
+    mask-size: contain !important;
+}
 
 /* ===========================================
    DASHBOARD CONTAINER
