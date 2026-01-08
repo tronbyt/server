@@ -206,7 +206,11 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	remoteRefName := plumbing.ReferenceName(fmt.Sprintf("refs/remotes/origin/%s", branchName))
 	remoteRef, err := r.Reference(remoteRefName, true)
 	if err != nil {
-		return fmt.Errorf("failed to find remote ref %s: %w", remoteRefName, err)
+		slog.Warn("Failed to find remote ref, re-cloning", "ref", remoteRefName, "error", err)
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("failed to remove broken repo: %w", err)
+		}
+		return EnsureRepo(path, repoURL, token, update)
 	}
 
 	// Hard Reset the worktree to the remote commit
