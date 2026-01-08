@@ -337,7 +337,7 @@
                         <i data-lucide="x-circle"></i> {{ t .Localizer "Cancel" }}
                     </button>
                     <button type="button" class="btn-delete w-full md:w-auto justify-center" id="deleteButton"
-                            onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
+                            onclick="deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true, '{{ t .Localizer "Delete App?" }}')">
                         <i data-lucide="trash-2"></i> {{ t .Localizer "Delete App" }}
                     </button>
                 </div>
@@ -1317,7 +1317,10 @@
       reader.readAsText(file);
   }
 
-  function deleteApp(deviceId, iname, deleteOnCancel) {
+  function deleteApp(deviceId, iname, redirectAfterDelete, confirmMessage) {
+      if (!confirm(confirmMessage || 'Delete App?')) {
+          return;
+      }
       fetch(`/devices/${deviceId}/${iname}/delete`, {
         method: 'POST'
       }).then(() => {
