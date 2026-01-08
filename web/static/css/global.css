@@ -983,6 +983,29 @@ html, body {
 
 /* NOTE: .form-actions is fully defined above (lines ~912-927) */
 
+/* Color Swatch Button (for color palettes) */
+.color-swatch {
+    display: inline-block !important;
+    border: 1px solid var(--neutral-300) !important;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    transition: all 150ms ease !important;
+}
+
+.color-swatch:hover {
+    border-color: var(--neutral-900) !important;
+    transform: scale(1.1) !important;
+}
+
+[data-theme="dark"] .color-swatch {
+    border-color: var(--neutral-500) !important;
+}
+
+[data-theme="dark"] .color-swatch:hover {
+    border-color: var(--neutral-300) !important;
+}
+
 /* Checkbox Fields */
 .form-field-checkbox {
     display: flex !important;

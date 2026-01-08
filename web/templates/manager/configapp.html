@@ -930,7 +930,7 @@
             if (!hexColorRegex.test(color)) return;
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'w3-button';
+            btn.className = 'color-swatch';
             btn.style.setProperty('--color', color);
             btn.style.backgroundColor = color; // Fallback
             btn.style.width = '20px';
