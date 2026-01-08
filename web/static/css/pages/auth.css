@@ -7,7 +7,7 @@
    AUTH PANEL
    =========================================== */
 .auth-panel {
-    max-width: 28rem !important;
+    max-width: 50rem !important; /* increased from 28rem to match legacy .form-panel width */
     margin: 0 auto !important;
     padding: 0 1rem !important;
 }
