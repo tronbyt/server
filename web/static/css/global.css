@@ -1130,7 +1130,7 @@ input[type="radio"]:checked::after {
    LOADING & SKELETON
    =========================================== */
 .loading-container {
-    display: flex !important;
+    display: flex; /* Remove !important */
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
