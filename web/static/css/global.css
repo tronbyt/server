@@ -127,7 +127,7 @@ html, body {
     --space-2xl: 2rem;
     
     /* Typography */
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --font-size-xs: 0.625rem;
     --font-size-sm: 0.6875rem;
     --font-size-base: 0.75rem;
@@ -1388,7 +1388,7 @@ nav li a:hover { color: var(--orange-500); }
     display: flex !important;
     gap: 0 !important;
     border: 1px solid var(--neutral-300) !important;
-    background-color: var(--bg-tertiary) !important;
+    background-color: transparent !important;
 }
 
 [data-theme="dark"] .theme-toggle-group { border-color: var(--neutral-400) !important; }
@@ -1401,11 +1401,19 @@ nav li a:hover { color: var(--orange-500); }
     font-family: var(--font-mono) !important;
     font-size: 0.625rem !important;
     font-weight: 700 !important;
-    padding: 0.375rem 0.625rem !important;
+    padding: 0.5rem !important;
     text-transform: uppercase !important;
     cursor: pointer !important;
     transition: all 0.1s ease !important;
-    line-height: 1 !important;
+    line-height: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.theme-btn svg {
+    width: 16px;
+    height: 16px;
 }
 
 .theme-btn:last-child { border-right: none !important; }
@@ -1424,22 +1432,20 @@ nav li a:hover { color: var(--orange-500); }
     
     .hamburger {
         display: flex !important;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
-        gap: 4px;
         width: 32px;
         height: 32px;
         border: 1px solid var(--neutral-300) !important;
         background: var(--bg-tertiary) !important;
         padding: 0 !important;
+        color: var(--neutral-900) !important;
+        cursor: pointer !important;
     }
     
-    .hamburger span {
-        width: 14px;
-        height: 1.5px;
-        background-color: var(--neutral-900);
-        margin: 0 !important;
+    .hamburger svg {
+        width: 20px;
+        height: 20px;
     }
     
     /* Mobile Menu */
@@ -1496,6 +1502,9 @@ nav li a:hover { color: var(--orange-500); }
         font-family: var(--font-mono) !important;
         text-decoration: none !important;
         font-size: 1.125rem !important;
+        text-transform: uppercase !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.025em !important;
         display: block;
     }
     
@@ -1526,7 +1535,40 @@ nav li a:hover { color: var(--orange-500); }
         color: var(--neutral-900);
         cursor: pointer;
         padding: 0.5rem;
-        line-height: 1;
+        line-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .mobile-menu-close svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Fix Theme Toggle in Mobile Menu */
+    .mobile-menu .theme-toggle-container {
+        border-left: none !important;
+        padding-left: 0 !important;
+        margin-top: auto; /* Push to bottom if needed, or just standard margin */
+        padding-top: 1rem;
+        border-top: 1px solid var(--neutral-300) !important;
+        width: 100%;
+    }
+    
+    [data-theme="dark"] .mobile-menu .theme-toggle-container {
+        border-top-color: var(--neutral-400) !important;
+    }
+
+    .mobile-menu .theme-toggle {
+        justify-content: space-between;
+        width: 100%;
+    }
+    
+    .mobile-menu label {
+        font-family: var(--font-mono) !important;
+        font-size: 0.75rem !important; /* Match other menu items size roughly or keep small label style */
+        color: var(--neutral-500) !important;
     }
 }
 

@@ -21,6 +21,9 @@
     </script>
     <link rel="icon" href="/static/favicon.ico">
     <!-- MODULAR CSS DESIGN SYSTEM -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/global.css">
     {{ block "extra_css" . }}{{ end }}
     <!-- Lucide Icons (bundled locally for reliability) -->
@@ -31,9 +34,7 @@
 </head>
 <nav>
     <button class="hamburger" id="hamburgerButton">
-        <span>&nbsp;</span>
-        <span>&nbsp;</span>
-        <span>&nbsp;</span>
+        <i data-lucide="menu"></i>
     </button>
     <h1>
         <a href="/" class="no-underline text-inherit">
@@ -69,9 +70,9 @@
             <div class="theme-toggle">
                 <label for="theme-select">{{ t .Localizer "Theme:" }}</label>
                 <div class="theme-toggle-group" id="theme-group">
-                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "light" }}active{{ end }}" data-theme-value="light">{{ t .Localizer "Light" }}</button>
-                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "dark" }}active{{ end }}" data-theme-value="dark">{{ t .Localizer "Dark" }}</button>
-                    <button type="button" class="theme-btn {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}active{{ end }}" data-theme-value="system">{{ t .Localizer "System" }}</button>
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "light" }}active{{ end }}" data-theme-value="light" aria-label="{{ t .Localizer "Light" }}" title="{{ t .Localizer "Light" }}"><i data-lucide="sun"></i></button>
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "dark" }}active{{ end }}" data-theme-value="dark" aria-label="{{ t .Localizer "Dark" }}" title="{{ t .Localizer "Dark" }}"><i data-lucide="moon"></i></button>
+                    <button type="button" class="theme-btn {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}active{{ end }}" data-theme-value="system" aria-label="{{ t .Localizer "System" }}" title="{{ t .Localizer "System" }}"><i data-lucide="monitor"></i></button>
                 </div>
             </div>
         </li>
@@ -99,7 +100,7 @@
                 {{ t .Localizer "Tronbyt Manager" }}
             </a>
         </h1>
-        <button class="mobile-menu-close" id="mobileMenuClose">×</button>
+        <button class="mobile-menu-close" id="mobileMenuClose"><i data-lucide="x"></i></button>
     </div>
     <ul>
         {{ if .User }}
@@ -128,9 +129,9 @@
         <div class="theme-toggle">
             <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
                 <div class="theme-toggle-group" id="mobile-theme-group">
-                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "light" }}active{{ end }}" data-theme-value="light">{{ t .Localizer "Light" }}</button>
-                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "dark" }}active{{ end }}" data-theme-value="dark">{{ t .Localizer "Dark" }}</button>
-                    <button type="button" class="theme-btn {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}active{{ end }}" data-theme-value="system">{{ t .Localizer "System" }}</button>
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "light" }}active{{ end }}" data-theme-value="light" aria-label="{{ t .Localizer "Light" }}" title="{{ t .Localizer "Light" }}"><i data-lucide="sun"></i></button>
+                    <button type="button" class="theme-btn {{ if eq (string .User.ThemePreference) "dark" }}active{{ end }}" data-theme-value="dark" aria-label="{{ t .Localizer "Dark" }}" title="{{ t .Localizer "Dark" }}"><i data-lucide="moon"></i></button>
+                    <button type="button" class="theme-btn {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}active{{ end }}" data-theme-value="system" aria-label="{{ t .Localizer "System" }}" title="{{ t .Localizer "System" }}"><i data-lucide="monitor"></i></button>
                 </div>
         </div>
     </li>

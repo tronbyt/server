@@ -1157,7 +1157,7 @@ button.btn-action-lg {
 }
 
 .device-info-toggle:hover {
-    background-color: var(--neutral-50) !important;
+    color: var(--orange-500) !important;
 }
 
 [data-theme="dark"] .device-info-toggle {
@@ -1165,7 +1165,8 @@ button.btn-action-lg {
 }
 
 [data-theme="dark"] .device-info-toggle:hover {
-    background-color: var(--bg-tertiary) !important;
+    color: var(--orange-500) !important;
+    background-color: transparent !important;
 }
 
 .device-info-toggle i {
