@@ -18,16 +18,16 @@
         
         {{ if .SystemRepoInfo }}
         <div class="inset-panel mb-4">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
                 <a href="{{ .SystemRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .SystemRepoInfo.URL }}</a>
                 <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
-                    <button type="submit" class="btn-secondary btn-sm px-2" title="{{ t .Localizer "Refresh" }}">
-                        <i data-lucide="rotate-cw" class="icon-sm"></i>
+                    <button type="submit" class="btn-secondary" title="{{ t .Localizer "Refresh" }}">
+                        <i data-lucide="refresh-cw"></i>
                     </button>
                 </form>
             </div>
-            <div class="text-xs text-secondary font-mono flex flex-wrap gap-3 mt-3 pt-3 border-t border-neutral-300">
-                <span><strong>{{ t .Localizer "Branch" }}:</strong> {{ .SystemRepoInfo.Branch }}</span>
+            <div class="text-xs text-secondary font-mono">
+                <span class="mr-3"><strong>{{ t .Localizer "Branch" }}:</strong> {{ .SystemRepoInfo.Branch }}</span>
                 <span>
                     <strong>{{ t .Localizer "Commit" }}:</strong>
                     <a href="{{ .SystemRepoInfo.CommitURL }}" target="_blank" class="text-link" title="{{ .SystemRepoInfo.CommitHash }}">
@@ -91,26 +91,26 @@
         
         {{ if .UserRepoInfo }}
         <div class="inset-panel mb-4">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
                 <a href="{{ .UserRepoInfo.URL }}" target="_blank" class="text-sm font-bold break-all hover:text-orange-500 transition-colors">{{ .UserRepoInfo.URL }}</a>
                 {{ if .User.AppRepoURL }}
                 <div class="flex gap-2">
-                    <form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2 class=icon-sm></i>'; ">
-                        <button type="submit" class="btn-secondary btn-sm px-2" title="{{ t .Localizer "Refresh" }}">
-                            <i data-lucide="rotate-cw" class="icon-sm"></i>
+                    <form method="post" action="/refresh_user_repo" onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=loader-2></i>'; ">
+                        <button type="submit" class="btn-secondary" title="{{ t .Localizer "Refresh" }}">
+                            <i data-lucide="refresh-cw"></i>
                         </button>
                     </form>
                     <form method="post" action="/set_user_repo" onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
                         <input type="hidden" name="app_repo_url" value="">
-                        <button type="submit" class="btn-delete btn-sm px-2" title="{{ t .Localizer "Remove" }}">
-                            <i data-lucide="trash-2" class="icon-sm mr-0"></i>
+                        <button type="submit" class="btn-delete" title="{{ t .Localizer "Remove" }}">
+                            <i data-lucide="trash-2"></i>
                         </button>
                     </form>
                 </div>
                 {{ end }}
             </div>
-            <div class="text-xs text-secondary font-mono flex flex-wrap gap-3 mt-3 pt-3 border-t border-neutral-300">
-                <span><strong>{{ t .Localizer "Branch" }}:</strong> {{ .UserRepoInfo.Branch }}</span>
+            <div class="text-xs text-secondary font-mono">
+                <span class="mr-3"><strong>{{ t .Localizer "Branch" }}:</strong> {{ .UserRepoInfo.Branch }}</span>
                 <span>
                     <strong>{{ t .Localizer "Commit" }}:</strong>
                     <a href="{{ .UserRepoInfo.CommitURL }}" target="_blank" class="text-link" title="{{ .UserRepoInfo.CommitHash }}">
@@ -174,7 +174,7 @@
             <div class="form-field col-span-full">
                 <form method="post" action="/auth/generate_api_key">
                     <button type="submit" class="btn-primary" onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
-                        <i data-lucide="rotate-cw"></i> {{ t .Localizer "Generate New Random Key" }}
+                        <i data-lucide="refresh-cw"></i> {{ t .Localizer "Generate New Random Key" }}
                     </button>
                 </form>
                 <p class="field-hint mt-2 text-warning">

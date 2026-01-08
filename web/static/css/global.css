@@ -57,11 +57,7 @@ html, body {
     --red-800: #991b1b;
     --red-900: #7f1d1d;
 
-    /* Info Colors */
-    --blue-50: #eff6ff;
-    --blue-500: #3b82f6;
-    --blue-600: #2563eb;
-    --blue-800: #1e40af;
+    /* Blue removed - per design system, blue is for links only (use orange accent) */
 
     /* Success Colors */
     --green-50: #ecfdf5;
@@ -207,10 +203,7 @@ html, body {
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
-
-    --blue-50: rgba(59, 130, 246, 0.1);
-    --blue-500: #3b82f6;
-    --blue-800: #93c5fd;
+    /* Blue removed - per design system */
 
     --green-50: rgba(34, 197, 94, 0.1);
     --green-500: #22c55e;
@@ -283,10 +276,7 @@ html, body {
 .border-r { border-right: 1px solid var(--border-primary) !important; }
 .border-none { border: none !important; }
 .shadow-none { box-shadow: none !important; }
-.rounded { border-radius: 0.25rem !important; }
-.rounded-md { border-radius: 0.375rem !important; }
-.rounded-lg { border-radius: 0.5rem !important; }
-.rounded-full { border-radius: 9999px !important; }
+/* Removed: .rounded, .rounded-md, .rounded-lg, .rounded-full - Design system requires sharp corners (border-radius: 0) */
 
 /* Whitespace & Text */
 .whitespace-nowrap { white-space: nowrap !important; }
@@ -796,20 +786,20 @@ html, body {
 }
 [data-theme="dark"] .alert-success i { color: var(--green-500) !important; }
 
-/* Info Alert */
+/* Info Alert - Using neutral palette (blue reserved for links per design system) */
 .alert-info {
-    background-color: var(--blue-50) !important;
-    border-color: var(--blue-500) !important;
-    color: var(--blue-800) !important;
+    background-color: var(--neutral-100) !important;
+    border-color: var(--neutral-300) !important;
+    color: var(--neutral-700) !important;
 }
-.alert-info i { color: var(--blue-600) !important; }
+.alert-info i { color: var(--orange-500) !important; }
 
 [data-theme="dark"] .alert-info {
-    background-color: var(--blue-50) !important;
-    border-color: var(--blue-500) !important;
-    color: var(--blue-800) !important;
+    background-color: var(--neutral-200) !important;
+    border-color: var(--neutral-400) !important;
+    color: var(--neutral-700) !important;
 }
-[data-theme="dark"] .alert-info i { color: var(--blue-500) !important; }
+[data-theme="dark"] .alert-info i { color: var(--orange-500) !important; }
 
 /* ===========================================
    FORM SYSTEM
@@ -1223,7 +1213,7 @@ input[type="radio"]:checked::after {
    =========================================== */
 .inset-panel {
     border: 1px solid var(--neutral-200) !important;
-    border-radius: 4px !important;
+    border-radius: 0 !important;  /* Design system: sharp corners */
     padding: 1.5rem !important;
     background-color: var(--white) !important;
 }
