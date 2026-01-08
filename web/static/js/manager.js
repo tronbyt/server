@@ -1006,7 +1006,6 @@ function setupVirtualScrolling() {
 function initializeDragAndDrop() {
   // Find all app cards and make them draggable
   const appCards = document.querySelectorAll('.app-card');
-  console.log('initializeDragAndDrop: Found', appCards.length, 'app cards');
   appCards.forEach(card => {
     setupDragAndDrop(card);
   });
