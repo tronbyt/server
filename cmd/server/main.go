@@ -69,7 +69,7 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 
 	gormConfig := &gorm.Config{
 		Logger:      data.NewGORMSlogLogger(gormLogLevel, 200*time.Millisecond, true),
-		PrepareStmt: false, // Disable prepared statement caching to avoid SQLite locking issues
+		PrepareStmt: true, // Enable prepared statement caching for performance
 	}
 
 	if strings.HasPrefix(dsn, "postgres") || strings.Contains(dsn, "host=") {
@@ -80,24 +80,7 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 		db, err = gorm.Open(mysql.Open(dsn), gormConfig)
 	} else {
 		slog.Info("Using SQLite DB", "path", dsn)
-		if !strings.Contains(dsn, "_busy_timeout") {
-			if strings.Contains(dsn, "?") {
-				dsn += "&_busy_timeout=5000"
-			} else {
-				dsn += "?_busy_timeout=5000"
-			}
-		}
 		db, err = gorm.Open(sqlite.Open(dsn), gormConfig)
-		if err == nil {
-			// Enable WAL mode for better concurrency
-			if err := db.Exec("PRAGMA journal_mode=WAL;").Error; err != nil {
-				slog.Warn("Failed to set WAL mode for SQLite", "error", err)
-			}
-			// Set busy timeout to prevent "database is locked" errors
-			if err := db.Exec("PRAGMA busy_timeout=5000;").Error; err != nil {
-				slog.Warn("Failed to set busy timeout for SQLite", "error", err)
-			}
-		}
 	}
 
 	if err == nil {
