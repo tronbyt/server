@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/transport"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
@@ -113,10 +114,12 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		slog.Info("Cloning repo", "url", repoURL)
 		_, err := git.PlainClone(path, &git.CloneOptions{
-			URL:      repoURL,
-			Progress: &logWriter{},
-			Depth:    1,
-			Auth:     auth,
+			URL:          repoURL,
+			Progress:     &logWriter{},
+			Depth:        1,
+			SingleBranch: true,
+			Tags:         git.NoTags,
+			Auth:         auth,
 		})
 
 		return err
@@ -167,14 +170,31 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		return err
 	}
 
+	// Identify the branch we are on
+	headRef, err := r.Head()
+	if err != nil {
+		return fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	if !headRef.Name().IsBranch() {
+		return fmt.Errorf("repository in detached HEAD state at %s, cannot determine branch to update", headRef.Hash().String())
+	}
+	branchName := headRef.Name().Short()
+
 	// Fetch updates (Depth 1 = Shallow)
-	slog.Info("Fetching updates")
+	// We must explicitly specify the RefSpec to ensure we fetch the branch we are currently on
+	// into the correct remote tracking branch. This is crucial for single-branch shallow clones.
+	slog.Info("Fetching updates", "branch", branchName)
+	refSpec := config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/origin/%s", branchName, branchName))
+
 	err = r.Fetch(&git.FetchOptions{
 		RemoteName: "origin",
 		Progress:   &logWriter{},
 		Depth:      1,
+		Tags:       git.NoTags,
 		Force:      true,
 		Auth:       auth,
+		RefSpecs:   []config.RefSpec{refSpec},
 	})
 
 	// Handle fetch errors
@@ -189,17 +209,6 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		}
 		return fmt.Errorf("failed to fetch repo: %w", err)
 	}
-
-	// Identify the branch we are on
-	headRef, err := r.Head()
-	if err != nil {
-		return fmt.Errorf("failed to get HEAD: %w", err)
-	}
-
-	if !headRef.Name().IsBranch() {
-		return fmt.Errorf("repository in detached HEAD state at %s, cannot determine branch to update", headRef.Hash().String())
-	}
-	branchName := headRef.Name().Short()
 
 	// Find the commit hash of that branch on the remote
 	// We look for refs/remotes/origin/<branchName>
