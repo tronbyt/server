@@ -24,7 +24,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 	// However, user asked for it to be in slog, mimicking previous stdout visibility.
 	msg := strings.TrimSpace(string(p))
 	if msg != "" {
-		slog.Info(msg)
+		slog.Debug(msg)
 	}
 	return len(p), nil
 }
