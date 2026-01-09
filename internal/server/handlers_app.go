@@ -44,34 +44,9 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
 	systemApps := s.ListSystemApps()
-
 	customApps := apps.ListUserApps(s.DataDir, user.Username)
 
-	// Mark installed apps
-	installedMap := make(map[string]bool)
-	installedPaths := make(map[string]bool)
-	for _, da := range device.Apps {
-		installedMap[da.Name] = true
-		if da.Path != nil && *da.Path != "" {
-			installedPaths[*da.Path] = true
-			// Also track relative path to ensure matching works if DB has absolute paths
-			// but ListSystemApps returns relative paths.
-			if rel, err := filepath.Rel(s.DataDir, *da.Path); err == nil {
-				installedPaths[rel] = true
-			}
-		}
-	}
-
-	for i := range systemApps {
-		if installedMap[systemApps[i].ID] || installedPaths[systemApps[i].Path] {
-			systemApps[i].IsInstalled = true
-		}
-	}
-	for i := range customApps {
-		if installedMap[customApps[i].ID] || installedPaths[customApps[i].Path] {
-			customApps[i].IsInstalled = true
-		}
-	}
+	s.markInstalledApps(device, systemApps, customApps)
 
 	var systemRepoInfo *gitutils.RepoInfo
 	if s.Config.SystemAppsRepo != "" {
@@ -92,6 +67,41 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 		SystemRepoInfo: systemRepoInfo,
 		Config:         &config.TemplateConfig{Production: s.Config.Production},
 	})
+}
+
+func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMetadata, customApps []apps.AppMetadata) {
+	// Mark installed apps
+	installedNames := make(map[string]bool)
+	installedPaths := make(map[string]bool)
+	for _, da := range device.Apps {
+		installedNames[da.Name] = true
+		if da.Path != nil && *da.Path != "" {
+			p := *da.Path
+			installedPaths[p] = true
+			installedPaths[filepath.Dir(p)] = true
+
+			// Also track relative path to ensure matching works if DB has absolute paths
+			// but ListSystemApps returns relative paths.
+			if rel, err := filepath.Rel(s.DataDir, p); err == nil {
+				installedPaths[rel] = true
+				installedPaths[filepath.Dir(rel)] = true
+			}
+		}
+	}
+
+	for i := range systemApps {
+		fullPath := filepath.Join(systemApps[i].Path, systemApps[i].FileName)
+		if installedNames[systemApps[i].ID] || installedNames[systemApps[i].Name] ||
+			installedPaths[systemApps[i].Path] || installedPaths[fullPath] {
+			systemApps[i].IsInstalled = true
+		}
+	}
+	for i := range customApps {
+		if installedNames[customApps[i].ID] || installedNames[customApps[i].Name] ||
+			installedPaths[customApps[i].Path] || installedPaths[filepath.Dir(customApps[i].Path)] {
+			customApps[i].IsInstalled = true
+		}
+	}
 }
 
 func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {

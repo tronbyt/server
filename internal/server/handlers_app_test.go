@@ -17,6 +17,7 @@ import (
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/data"
 
+	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
 
@@ -579,4 +580,124 @@ func TestHandleDeleteApp_ClearsNightModeApp(t *testing.T) {
 	if dev.NightModeApp != "" {
 		t.Errorf("NightModeApp was not cleared, is: %v", dev.NightModeApp)
 	}
+}
+
+func TestMarkInstalledApps(t *testing.T) {
+	s := &Server{
+		DataDir: "/app/data",
+	}
+
+	systemApps := []apps.AppMetadata{
+		{
+			Manifest: apps.Manifest{
+				ID:       "weather",
+				Name:     "Weather",
+				FileName: "weather.star",
+			},
+			Path: "system-apps/apps/weather",
+		},
+		{
+			Manifest: apps.Manifest{
+				ID:       "clock",
+				Name:     "Clock",
+				FileName: "clock.star",
+			},
+			Path: "system-apps/apps/clock",
+		},
+		{
+			Manifest: apps.Manifest{
+				ID:       "oldapp",
+				Name:     "Old App",
+				FileName: "oldapp.star",
+			},
+			Path: "system-apps/apps/oldapp",
+		},
+		{
+			Manifest: apps.Manifest{
+				ID:       "newapp",
+				Name:     "New App",
+				FileName: "newapp.star",
+			},
+			Path: "system-apps/apps/newapp",
+		},
+	}
+
+	customApps := []apps.AppMetadata{
+		{
+			Manifest: apps.Manifest{
+				ID:       "mycustom",
+				Name:     "My Custom App",
+				FileName: "mycustom.star",
+			},
+			Path: "users/admin/apps/mycustom/mycustom.star",
+		},
+	}
+
+	weatherPath := "system-apps/apps/weather"
+	oldAppPath := "system-apps/apps/oldapp/oldapp.star"
+	customAppPath := "users/admin/apps/mycustom"
+
+	device := &data.Device{
+		Apps: []data.App{
+			{
+				Name: "Weather",
+				Path: &weatherPath, // Directory format
+			},
+			{
+				Name: "Old App",
+				Path: &oldAppPath, // Legacy file format
+			},
+			{
+				Name: "My Custom App",
+				Path: &customAppPath, // Directory format for custom app
+			},
+			{
+				Name: "New App",
+				Path: nil, // Name match fallback
+			},
+		},
+	}
+
+	s.markInstalledApps(device, systemApps, customApps)
+
+	// System Apps
+	assert.True(t, systemApps[0].IsInstalled, "Weather should be installed (directory match)")
+	assert.False(t, systemApps[1].IsInstalled, "Clock should not be installed")
+	assert.True(t, systemApps[2].IsInstalled, "Old App should be installed (full path match)")
+	assert.True(t, systemApps[3].IsInstalled, "New App should be installed (name match fallback)")
+
+	// Custom Apps
+	assert.True(t, customApps[0].IsInstalled, "My Custom App should be installed (directory match)")
+}
+
+func TestMarkInstalledApps_AbsolutePaths(t *testing.T) {
+	s := &Server{
+		DataDir: "/app/data",
+	}
+
+	systemApps := []apps.AppMetadata{
+		{
+			Manifest: apps.Manifest{
+				ID:       "weather",
+				Name:     "Weather",
+				FileName: "weather.star",
+			},
+			Path: "system-apps/apps/weather",
+		},
+	}
+
+	absPath := "/app/data/system-apps/apps/weather/weather.star"
+
+	device := &data.Device{
+		Apps: []data.App{
+			{
+				Name: "Weather",
+				Path: &absPath, // Absolute path in DB
+			},
+		},
+	}
+
+	s.markInstalledApps(device, systemApps, nil)
+
+	assert.True(t, systemApps[0].IsInstalled, "Weather should be installed (absolute to relative conversion match)")
 }
