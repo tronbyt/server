@@ -49,17 +49,26 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 
 	// Mark installed apps
 	installedMap := make(map[string]bool)
+	installedPaths := make(map[string]bool)
 	for _, da := range device.Apps {
 		installedMap[da.Name] = true
+		if da.Path != nil && *da.Path != "" {
+			installedPaths[*da.Path] = true
+			// Also track relative path to ensure matching works if DB has absolute paths
+			// but ListSystemApps returns relative paths.
+			if rel, err := filepath.Rel(s.DataDir, *da.Path); err == nil {
+				installedPaths[rel] = true
+			}
+		}
 	}
 
 	for i := range systemApps {
-		if installedMap[systemApps[i].ID] {
+		if installedMap[systemApps[i].ID] || installedPaths[systemApps[i].Path] {
 			systemApps[i].IsInstalled = true
 		}
 	}
 	for i := range customApps {
-		if installedMap[customApps[i].ID] {
+		if installedMap[customApps[i].ID] || installedPaths[customApps[i].Path] {
 			customApps[i].IsInstalled = true
 		}
 	}
