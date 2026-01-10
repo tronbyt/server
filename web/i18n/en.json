@@ -1571,8 +1571,17 @@
   "WiFi SSID:": {
     "other": "WiFi SSID:"
   },
+  "Hostname:": {
+    "other": "Hostname:"
+  },
+  "Hostname": {
+    "other": "Hostname"
+  },
   "Sync current Image URL to device via WebSocket": {
     "other": "Sync current Image URL to device via WebSocket"
+  },
+  "Sync Hostname to device via WebSocket": {
+    "other": "Sync Hostname to device via WebSocket"
   },
   "Swap Colors": {
     "other": "Swap Colors"

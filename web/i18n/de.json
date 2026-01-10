@@ -1577,11 +1577,20 @@
   "WiFi SSID": {
     "other": "WLAN-SSID"
   },
-  "WiFi SSID:": {
+  "WLAN-SSID:": {
     "other": "WLAN-SSID:"
+  },
+  "Hostname:": {
+    "other": "Hostname:"
+  },
+  "Hostname": {
+    "other": "Hostname"
   },
   "Sync current Image URL to device via WebSocket": {
     "other": "Aktuelle Bild-URL via WebSocket an Gerät senden"
+  },
+  "Sync Hostname to device via WebSocket": {
+    "other": "Hostname via WebSocket an Gerät senden"
   },
   "Swap Colors": {
     "other": "Farben tauschen"
