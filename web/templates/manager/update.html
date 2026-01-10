@@ -742,6 +742,44 @@
                 </tr>
                 <tr>
                     <td>
+                        <label class="device-settings-label">{{ t .Localizer "SNTP Server" }}</label>
+                    </td>
+                    <td>
+                        <div class="firmware-setting-control">
+                            <input type="text"
+                                   id="reported_sntp_server"
+                                   value="{{ derefOr .Device.Info.SNTPServer "" }}"
+                                   class="device-settings-input firmware-setting-input">
+                            <button type="button"
+                                    class="w3-button w3-small w3-blue firmware-setting-button"
+                                    onclick="updateFirmwareSettings({sntp_server: document.getElementById('reported_sntp_server').value})"
+                                    title="{{ t .Localizer "Sync SNTP Server to device via WebSocket" }}">
+                                <i class="fa-solid fa-sync"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="device-settings-label">{{ t .Localizer "Syslog Address" }}</label>
+                    </td>
+                    <td>
+                        <div class="firmware-setting-control">
+                            <input type="text"
+                                   id="reported_syslog_addr"
+                                   value="{{ derefOr .Device.Info.SyslogAddr "" }}"
+                                   class="device-settings-input firmware-setting-input">
+                            <button type="button"
+                                    class="w3-button w3-small w3-blue firmware-setting-button"
+                                    onclick="updateFirmwareSettings({syslog_addr: document.getElementById('reported_syslog_addr').value})"
+                                    title="{{ t .Localizer "Sync Syslog Address to device via WebSocket" }}">
+                                <i class="fa-solid fa-sync"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
                         <label class="device-settings-label">{{ t .Localizer "Swap Colors" }}</label>
                     </td>
                     <td>

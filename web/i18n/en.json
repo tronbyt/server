@@ -1577,11 +1577,29 @@
   "Hostname": {
     "other": "Hostname"
   },
+  "SNTP Server": {
+    "other": "SNTP Server"
+  },
+  "Syslog Address": {
+    "other": "Syslog Address"
+  },
+  "SNTP Server:": {
+    "other": "SNTP Server:"
+  },
+  "Syslog Address:": {
+    "other": "Syslog Address:"
+  },
   "Sync current Image URL to device via WebSocket": {
     "other": "Sync current Image URL to device via WebSocket"
   },
   "Sync Hostname to device via WebSocket": {
     "other": "Sync Hostname to device via WebSocket"
+  },
+  "Sync SNTP Server to device via WebSocket": {
+    "other": "Sync SNTP Server to device via WebSocket"
+  },
+  "Sync Syslog Address to device via WebSocket": {
+    "other": "Sync Syslog Address to device via WebSocket"
   },
   "Swap Colors": {
     "other": "Swap Colors"
