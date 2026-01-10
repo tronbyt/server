@@ -74,8 +74,8 @@ func (l *GORMSlogLogger) Trace(ctx context.Context, begin time.Time, fc func() (
 // NewGORMSlogLogger creates a new GORM logger that uses slog.
 func NewGORMSlogLogger(slogLevel logger.LogLevel, slowThreshold time.Duration, ignoreRecordNotFoundError bool) logger.Interface {
 	return &GORMSlogLogger{
-		LogLevel:                slogLevel,
-		SlowThreshold:           slowThreshold,
+		LogLevel:                  slogLevel,
+		SlowThreshold:             slowThreshold,
 		IgnoreRecordNotFoundError: ignoreRecordNotFoundError,
 	}
 }

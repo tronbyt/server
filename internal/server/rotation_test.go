@@ -404,7 +404,7 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	app.EmptyLastRender = true
 	// LastRender must be old enough to trigger a new render
 	app.LastRender = time.Now().Add(-1 * time.Hour)
-	
+
 	updates := data.App{
 		Pushed:          false,
 		Path:            app.Path,
