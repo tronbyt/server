@@ -925,6 +925,9 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 	if val := r.FormValue("image_url"); val != "" {
 		payload["image_url"] = val
 	}
+	if val := r.FormValue("hostname"); val != "" {
+		payload["hostname"] = val
+	}
 
 	if len(payload) == 0 {
 		http.Error(w, "No settings provided", http.StatusBadRequest)
