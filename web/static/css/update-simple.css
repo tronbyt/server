@@ -213,6 +213,27 @@ textarea.device-example-command-input {
   font-size: 14px;
 }
 
+/* Firmware Settings Styles */
+.firmware-setting-control {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.firmware-setting-input {
+  flex: 1;
+  font-size: 0.85em;
+  margin-bottom: 0;
+}
+
+.firmware-setting-button {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 35px;
+}
+
 /* Override brightness styles for update page (dark theme default) */
 .brightness-btn[data-brightness="0"] { background-color: #1a1a1a; color: #666; border-color: #222; }
 .brightness-btn[data-brightness="1"] { background-color: #333; color: #aaa; border-color: #444; }

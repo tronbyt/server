@@ -703,21 +703,13 @@
                         <label class="device-settings-label">{{ t .Localizer "Image URL" }}</label>
                     </td>
                     <td>
-                        <div style="display: flex; gap: 5px; align-items: center;">
+                        <div class="firmware-setting-control">
                             <input type="text"
                                    id="reported_img_url"
                                    value="{{ derefOr .Device.Info.ImageURL "" }}"
-                                   class="device-settings-input"
-                                   style="flex: 1;
-                                          font-size: 0.85em;
-                                          margin-bottom: 0">
+                                   class="device-settings-input firmware-setting-input">
                             <button type="button"
-                                    class="w3-button w3-small w3-blue"
-                                    style="margin: 0;
-                                           display: flex;
-                                           align-items: center;
-                                           justify-content: center;
-                                           height: 35px"
+                                    class="w3-button w3-small w3-blue firmware-setting-button"
                                     onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
                                     title="{{ t .Localizer "Sync current Image URL to device via WebSocket" }}">
                                 <i class="fa-solid fa-sync"></i>
@@ -734,21 +726,13 @@
                         <label class="device-settings-label">{{ t .Localizer "Hostname" }}</label>
                     </td>
                     <td>
-                        <div style="display: flex; gap: 5px; align-items: center;">
+                        <div class="firmware-setting-control">
                             <input type="text"
                                    id="reported_hostname"
                                    value="{{ derefOr .Device.Info.Hostname "" }}"
-                                   class="device-settings-input"
-                                   style="flex: 1;
-                                          font-size: 0.85em;
-                                          margin-bottom: 0">
+                                   class="device-settings-input firmware-setting-input">
                             <button type="button"
-                                    class="w3-button w3-small w3-blue"
-                                    style="margin: 0;
-                                           display: flex;
-                                           align-items: center;
-                                           justify-content: center;
-                                           height: 35px"
+                                    class="w3-button w3-small w3-blue firmware-setting-button"
                                     onclick="updateFirmwareSettings({hostname: document.getElementById('reported_hostname').value})"
                                     title="{{ t .Localizer "Sync Hostname to device via WebSocket" }}">
                                 <i class="fa-solid fa-sync"></i>
