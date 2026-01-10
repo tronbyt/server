@@ -573,28 +573,6 @@
         </form>
     </div>
 </div>
-<hr style="margin-top: 40px; border: none; border-top: 1px solid #333;">
-{{ if .UpdateAvailable }}
-<div style="text-align: center; margin-top: 20px;">
-    <a href="{{ .LatestReleaseURL }}"
-       target="_blank"
-       style="color: #ff5722;
-              text-decoration: none;
-              font-weight: bold">
-        <i class="fa-solid fa-circle-arrow-up"></i> {{ t .Localizer "Update available!" }}
-    </a>
-</div>
-{{ end }}
-<div style="font-size: 12px;
-            color: #888;
-            text-align: center;
-            margin-top: {{ if .UpdateAvailable }}5px{{ else }}20px{{ end }}">
-{{ t .Localizer "Server" }} {{ .ServerVersion }}{{ if .CommitHash }} (<a href="https://github.com/tronbyt/server/tree/{{ .CommitHash }}"
-   target="_blank"
-   style="color: var(--primary-color);
-          text-decoration: none;
-          font-family: monospace">{{ substr .CommitHash 0 7 }}</a>){{ end }}
-</div>
 <script>
     function refreshSystemRepo(form) {
         const btn = form.querySelector('button');
