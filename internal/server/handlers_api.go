@@ -88,6 +88,8 @@ type DeviceInfo struct {
 	SwapColors         *bool   `json:"swapColors,omitempty"`
 	ImageURL           *string `json:"imageUrl,omitempty"`
 	Hostname           *string `json:"hostname,omitempty"`
+	SNTPServer         *string `json:"sntpServer,omitempty"`
+	SyslogAddr         *string `json:"syslogAddr,omitempty"`
 }
 
 // toDevicePayload converts a data.Device model to a DevicePayload for API responses.
@@ -106,6 +108,8 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		SwapColors:         d.Info.SwapColors,
 		ImageURL:           d.Info.ImageURL,
 		Hostname:           d.Info.Hostname,
+		SNTPServer:         d.Info.SNTPServer,
+		SyslogAddr:         d.Info.SyslogAddr,
 	}
 
 	var lastSeen *string
@@ -668,6 +672,8 @@ type FirmwareSettingsUpdate struct {
 	WifiPowerSave      *int    `json:"wifiPowerSave"`
 	ImageURL           *string `json:"imageUrl"`
 	Hostname           *string `json:"hostname"`
+	SNTPServer         *string `json:"sntpServer"`
+	SyslogAddr         *string `json:"syslogAddr"`
 }
 
 func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.Request) {
@@ -701,6 +707,12 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	}
 	if update.Hostname != nil {
 		payload["hostname"] = *update.Hostname
+	}
+	if update.SNTPServer != nil {
+		payload["sntp_server"] = *update.SNTPServer
+	}
+	if update.SyslogAddr != nil {
+		payload["syslog_addr"] = *update.SyslogAddr
 	}
 
 	if len(payload) == 0 {

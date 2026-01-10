@@ -88,6 +88,18 @@
                                         <td>{{ .Item.Info.Hostname }}</td>
                                     </tr>
                                     {{ end }}
+                                    {{ if .Item.Info.SNTPServer }}
+                                    <tr>
+                                        <td>{{ t $.Localizer "SNTP Server:" }}</td>
+                                        <td>{{ .Item.Info.SNTPServer }}</td>
+                                    </tr>
+                                    {{ end }}
+                                    {{ if .Item.Info.SyslogAddr }}
+                                    <tr>
+                                        <td>{{ t $.Localizer "Syslog Address:" }}</td>
+                                        <td>{{ .Item.Info.SyslogAddr }}</td>
+                                    </tr>
+                                    {{ end }}
                                     {{ if .Item.Info.SSID }}
                                     <tr>
                                         <td>{{ t $.Localizer "WiFi SSID:" }}</td>

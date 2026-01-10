@@ -928,6 +928,12 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 	if val := r.FormValue("hostname"); val != "" {
 		payload["hostname"] = val
 	}
+	if val := r.FormValue("sntp_server"); val != "" {
+		payload["sntp_server"] = val
+	}
+	if val := r.FormValue("syslog_addr"); val != "" {
+		payload["syslog_addr"] = val
+	}
 
 	if len(payload) == 0 {
 		http.Error(w, "No settings provided", http.StatusBadRequest)
