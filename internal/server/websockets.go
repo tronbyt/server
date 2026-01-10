@@ -39,6 +39,7 @@ type ClientInfo struct {
 	PreferIPv6         *bool   `json:"prefer_ipv6"`
 	SwapColors         *bool   `json:"swap_colors"`
 	ImageURL           *string `json:"image_url"`
+	Hostname           *string `json:"hostname"`
 }
 
 type WSEvent struct {
@@ -143,6 +144,9 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				if msg.ClientInfo.ImageURL != nil {
 					device.Info.ImageURL = msg.ClientInfo.ImageURL
+				}
+				if msg.ClientInfo.Hostname != nil {
+					device.Info.Hostname = msg.ClientInfo.Hostname
 				}
 
 				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {

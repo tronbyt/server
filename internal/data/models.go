@@ -405,6 +405,7 @@ type DeviceInfo struct {
 	PreferIPv6         *bool        `json:"prefer_ipv6"`
 	SwapColors         *bool        `json:"swap_colors"`
 	ImageURL           *string      `json:"image_url"`
+	Hostname           *string      `json:"hostname"`
 }
 
 func (i DeviceInfo) Value() (driver.Value, error) {
