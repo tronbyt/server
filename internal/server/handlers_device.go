@@ -921,18 +921,21 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	// String fields
-	if val := r.FormValue("image_url"); val != "" {
-		payload["image_url"] = val
+	// String fields - Non-empty
+	nonEmptyStringFields := []string{"image_url", "hostname"}
+	for _, field := range nonEmptyStringFields {
+		if val := r.FormValue(field); val != "" {
+			payload[field] = val
+		}
 	}
-	if val := r.FormValue("hostname"); val != "" {
-		payload["hostname"] = val
-	}
-	if val := r.FormValue("sntp_server"); val != "" {
-		payload["sntp_server"] = val
-	}
-	if val := r.FormValue("syslog_addr"); val != "" {
-		payload["syslog_addr"] = val
+
+	// String fields - Nullable (can be empty to clear)
+	nullableStringFields := []string{"sntp_server", "syslog_addr"}
+	for _, field := range nullableStringFields {
+		val := r.FormValue(field)
+		if _, ok := r.Form[field]; ok {
+			payload[field] = val
+		}
 	}
 
 	if len(payload) == 0 {
