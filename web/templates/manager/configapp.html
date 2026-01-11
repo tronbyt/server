@@ -730,6 +730,7 @@
   const updateConfigAndPreview = debounce(() => {
     const configContentPre = document.getElementById("configContentPre");
     const previewImage = document.getElementById("previewImage");
+
     if (configContentPre) configContentPre.textContent = JSON.stringify(config, null, 2);
 
     // Trigger backend preview (POST to update ephemeral, then GET with config param)
@@ -1102,6 +1103,20 @@
     typeaheadInput.setAttribute("data-ignore-config", "true");
     typeaheadInput.placeholder = "{{ t .Localizer "Start typing..." }}";
     typeaheadInput.className = "form-control";
+
+    // Initialize visible value
+    const initialValue = config[field.id];
+    if (initialValue) {
+        try {
+            const parsedValue = typeof initialValue === 'string' ? JSON.parse(initialValue) : initialValue;
+            if (parsedValue?.display) {
+                typeaheadInput.value = parsedValue.display;
+            }
+        } catch (e) {
+            console.warn("Could not parse initial typeahead value", e);
+        }
+    }
+
     inputElement.appendChild(typeaheadInput);
 
     const hiddenTypeaheadInput = document.createElement("input");
@@ -1109,7 +1124,13 @@
     hiddenTypeaheadInput.id = "schema_" + field.id;
     hiddenTypeaheadInput.dataset.configId = field.id;
     hiddenTypeaheadInput.name = field.id;
-    hiddenTypeaheadInput.value = JSON.stringify(config[field.id] || {});
+    // Ensure we have a string for the hidden input, but don't double-encode if it's already a string
+    let hiddenValue = initialValue || "{}";
+    if (typeof hiddenValue !== 'string') {
+        hiddenValue = JSON.stringify(hiddenValue);
+    }
+    hiddenTypeaheadInput.value = hiddenValue;
+
     inputElement.appendChild(hiddenTypeaheadInput);
 
     const typeaheadResults = document.createElement("ul");
