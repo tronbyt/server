@@ -80,12 +80,13 @@ func humanizeTime(localizer *i18n.Localizer, ts any, prefix string) string {
 		}
 		t = time.Unix(v, 0)
 	case time.Time:
-		if v.IsZero() {
+		// Check for both Go's zero time and Unix epoch (SQLite might store 0 as 1970-01-01)
+		if v.IsZero() || v.Year() <= 1970 {
 			return tmplT(localizer, "Never")
 		}
 		t = v
 	case *time.Time:
-		if v == nil || v.IsZero() {
+		if v == nil || v.IsZero() || v.Year() <= 1970 {
 			return tmplT(localizer, "Never")
 		}
 		t = *v
