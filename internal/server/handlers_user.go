@@ -48,7 +48,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	tmplData := TemplateData{User: user, Devices: devices}
+	// Always pass ALL user.Devices so app_card can show "Copy to" dropdown with all devices
+	tmplData := TemplateData{User: user, Devices: user.Devices}
 	if partial == "device_card" && len(devices) == 1 {
 		tmplData.Partial = "device_card"
 		tmplData.Item = &devices[0]
