@@ -212,7 +212,7 @@
             </div>
             <div id="appsList-{{ .Item.ID }}" class="visible apps-list-view">
                 {{ range .Item.Apps }}
-                {{ template "app_card" (dict "App" . "Device" $.Item "Localizer" $.Localizer "Devices" $.Devices "ReadOnly" $.ReadOnly) }}
+                {{ template "app_card" (dict "App" . "Device" $.Item "Localizer" $.Localizer "Devices" $.AllDevices "ReadOnly" $.ReadOnly) }}
                 <hr class="list-view-separator">
                 {{ end }}
             </div>

@@ -41,15 +41,22 @@ type DeviceTypeOption struct {
 	Label string
 }
 
+// DeviceSummary is a lightweight struct for "Copy to" dropdown targets.
+type DeviceSummary struct {
+	ID   string
+	Name string
+}
+
 // TemplateData is a struct to pass data to HTML templates.
 type TemplateData struct {
-	User      *data.User
-	Users     []data.User // For admin view
-	Config    *config.TemplateConfig
-	Flashes   []string
-	Devices   []data.Device
-	Item      *data.Device    // For single item partials
-	Localizer *i18n.Localizer // Pass Localizer directly
+	User       *data.User
+	Users      []data.User // For admin view
+	Config     *config.TemplateConfig
+	Flashes    []string
+	Devices    []data.Device   // Filtered devices for rendering
+	AllDevices []DeviceSummary // Lightweight list for "Copy to" dropdown
+	Item       *data.Device    // For single item partials
+	Localizer  *i18n.Localizer
 
 	UpdateAvailable  bool
 	LatestReleaseURL string
