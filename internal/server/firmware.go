@@ -109,6 +109,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 	}
 
 	mapping := map[string]string{
+		// OTA firmware binaries (app only, flashable at 0x10000)
 		"tidbyt-gen1_firmware.bin":               "tidbyt-gen1.bin",
 		"tidbyt-gen1_swap_firmware.bin":          "tidbyt-gen1_swap.bin",
 		"tidbyt-gen2_firmware.bin":               "tidbyt-gen2.bin",
@@ -117,6 +118,15 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		"tronbyt-s3-wide_firmware.bin":           "tronbyt-s3-wide.bin",
 		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
 		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
+		// Merged binaries (bootloader + partition + app, flashable at 0x0)
+		"tidbyt-gen1_merged.bin":               "tidbyt-gen1_merged.bin",
+		"tidbyt-gen1_swap_merged.bin":          "tidbyt-gen1_swap_merged.bin",
+		"tidbyt-gen2_merged.bin":               "tidbyt-gen2_merged.bin",
+		"pixoticker_merged.bin":                "pixoticker_merged.bin",
+		"tronbyt-s3_merged.bin":                "tronbyt-S3_merged.bin",
+		"tronbyt-s3-wide_merged.bin":           "tronbyt-s3-wide_merged.bin",
+		"matrixportal-s3_merged.bin":           "matrixportal-s3_merged.bin",
+		"matrixportal-s3-waveshare_merged.bin": "matrixportal-s3-waveshare_merged.bin",
 	}
 
 	count := 0
@@ -218,20 +228,32 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	password := r.FormValue("wifi_password")
 	imgURL := r.FormValue("img_url")
 	swapColors := r.FormValue("swap_colors") == "on"
+	merged := r.FormValue("merged") == "on"
 
 	if ssid == "" || password == "" || imgURL == "" {
 		http.Error(w, "Missing fields", http.StatusBadRequest)
 		return
 	}
 
-	binData, err := firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+	var binData []byte
+	var err error
+	var filename string
+
+	if merged {
+		binData, err = firmware.GenerateMerged(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		filename = fmt.Sprintf("%s-merged.bin", device.Name)
+	} else {
+		binData, err = firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		filename = fmt.Sprintf("%s-firmware.bin", device.Name)
+	}
+
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to generate firmware: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s-firmware.bin\"", device.Name))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	if _, err := w.Write(binData); err != nil {
 		slog.Error("Failed to write firmware data to response", "error", err)
 		// Log error, but can't change HTTP status after writing headers.
