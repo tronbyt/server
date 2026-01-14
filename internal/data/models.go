@@ -15,7 +15,7 @@ import (
 // --- Enums & Value Types ---
 
 const minOTAFirmwareVersion = "v1.4.6"
-const minFirmwareFeaturesVersion = "v1.5.0"
+const minFirmwareFeaturesVersion = "v1.4.8"
 
 type ThemePreference string
 
