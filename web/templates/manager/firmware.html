@@ -135,6 +135,22 @@
                 {{ end }}
             </table>
         </div>
+        <div class="device-settings-section-divider">
+            <h3>{{ t .Localizer "Firmware Type" }}</h3>
+            <table class="device-settings-table">
+                <tr>
+                    <td>
+                        <label for="merged" class="device-settings-label">{{ t .Localizer "Full Flash Binary (Merged)" }}</label>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="merged" id="merged">
+                        <p class="field-description">
+                            {{ t .Localizer "Check this to download a merged binary that includes the bootloader and partition table. This is required for initial flashing at address 0x0. Leave unchecked for OTA-compatible firmware (app only, flash at 0x10000)." }}
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
     <div class="device-settings-section">
         <div class="config-management-container">

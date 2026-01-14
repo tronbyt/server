@@ -646,6 +646,30 @@ func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 	}
 }
 
+func (dt DeviceType) MergedFilename(swapColors bool) string {
+	switch dt {
+	case DeviceTidbytGen1:
+		if swapColors {
+			return "tidbyt-gen1_swap_merged.bin"
+		}
+		return "tidbyt-gen1_merged.bin"
+	case DeviceTidbytGen2:
+		return "tidbyt-gen2_merged.bin"
+	case DevicePixoticker:
+		return "pixoticker_merged.bin"
+	case DeviceTronbytS3:
+		return "tronbyt-S3_merged.bin"
+	case DeviceTronbytS3Wide:
+		return "tronbyt-s3-wide_merged.bin"
+	case DeviceMatrixPortal:
+		return "matrixportal-s3_merged.bin"
+	case DeviceMatrixPortalWS:
+		return "matrixportal-s3-waveshare_merged.bin"
+	default:
+		return ""
+	}
+}
+
 func (d *Device) GetTimezone() string {
 	if d.Timezone != nil && *d.Timezone != "" {
 		return *d.Timezone
