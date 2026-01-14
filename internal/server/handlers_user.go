@@ -48,8 +48,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Always pass ALL user.Devices so app_card can show "Copy to" dropdown with all devices
-	tmplData := TemplateData{User: user, Devices: user.Devices}
+	// Build lightweight device list for "Copy to" dropdown
+	allDevices := make([]DeviceSummary, len(user.Devices))
+	for i, d := range user.Devices {
+		allDevices[i] = DeviceSummary{ID: d.ID, Name: d.Name}
+	}
+
+	// Devices: filtered list for rendering, AllDevices: lightweight list for "Copy to" dropdown
+	tmplData := TemplateData{User: user, Devices: devices, AllDevices: allDevices}
 	if partial == "device_card" && len(devices) == 1 {
 		tmplData.Partial = "device_card"
 		tmplData.Item = &devices[0]

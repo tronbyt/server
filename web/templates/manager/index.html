@@ -16,7 +16,7 @@
 <hr>
 {{ end }}
 {{ range .Devices }}
-{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices) }}
+{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "AllDevices" $.AllDevices) }}
 <hr>
 {{ end }}
 {{ end }}
