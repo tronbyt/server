@@ -228,7 +228,7 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	password := r.FormValue("wifi_password")
 	imgURL := r.FormValue("img_url")
 	swapColors := r.FormValue("swap_colors") == "on"
-	merged := r.FormValue("merged") == "on"
+	otaOnly := r.FormValue("ota_only") == "on"
 
 	if ssid == "" || password == "" || imgURL == "" {
 		http.Error(w, "Missing fields", http.StatusBadRequest)
@@ -239,12 +239,12 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	var err error
 	var filename string
 
-	if merged {
-		binData, err = firmware.GenerateMerged(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
-		filename = fmt.Sprintf("%s-merged.bin", device.Name)
-	} else {
+	if otaOnly {
 		binData, err = firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
 		filename = fmt.Sprintf("%s-firmware.bin", device.Name)
+	} else {
+		binData, err = firmware.GenerateMerged(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		filename = fmt.Sprintf("%s-merged.bin", device.Name)
 	}
 
 	if err != nil {
