@@ -83,36 +83,6 @@ func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url st
 	return content, nil
 }
 
-func updateFirmwareData(data []byte) ([]byte, error) {
-	// Image format: [Data ...][Checksum 1B][SHA256 32B]
-	// Total length - 33 is the data length.
-
-	if len(data) < 33 {
-		return nil, fmt.Errorf("firmware binary too short")
-	}
-
-	dataLen := len(data) - 33
-
-	// 1. Calculate Checksum (XOR sum of data + 0xEF)
-	checksum := byte(0xEF)
-	for i := range dataLen {
-		checksum ^= data[i]
-	}
-
-	// Write checksum
-	data[len(data)-33] = checksum
-
-	// 2. Calculate SHA256 (Hash of Data + Checksum)
-	// Hash content is everything up to the digest.
-	hashContent := data[:len(data)-32]
-	hash := sha256.Sum256(hashContent)
-
-	// Write hash
-	copy(data[len(data)-32:], hash[:])
-
-	return data, nil
-}
-
 // GenerateMerged generates a merged firmware binary (bootloader + partition + app) with
 // injected WiFi credentials and URL. The merged binary is flashable at address 0x0.
 // It works by:
