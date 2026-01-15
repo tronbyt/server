@@ -23,6 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebp-dev
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
