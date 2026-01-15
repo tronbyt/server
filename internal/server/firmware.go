@@ -78,6 +78,26 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		return err
 	}
 
+	requiredMergedFiles := []string{"tidbyt-gen1_merged.bin", "tronbyt-S3_merged.bin"}
+	forceDownload := false
+	for _, f := range requiredMergedFiles {
+		if _, statErr := os.Stat(filepath.Join(firmwareDir, f)); os.IsNotExist(statErr) {
+			slog.Info("Required merged firmware file missing, will re-download", "file", f)
+			forceDownload = true
+		}
+	}
+
+	versionFile := filepath.Join(firmwareDir, "firmware_version.txt")
+	currentVersion := ""
+	if data, err := os.ReadFile(versionFile); err == nil {
+		currentVersion = strings.TrimSpace(string(data))
+	}
+
+	if !forceDownload && currentVersion == release.TagName {
+		slog.Info("Firmware up to date", "version", currentVersion)
+		return nil
+	}
+
 	// Cleanup old custom firmware uploads
 	if files, err := os.ReadDir(firmwareDir); err == nil {
 		for _, f := range files {
@@ -97,17 +117,6 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		}
 	}
 
-	versionFile := filepath.Join(firmwareDir, "firmware_version.txt")
-	currentVersion := ""
-	if data, err := os.ReadFile(versionFile); err == nil {
-		currentVersion = strings.TrimSpace(string(data))
-	}
-
-	if currentVersion == release.TagName {
-		slog.Info("Firmware up to date", "version", currentVersion)
-		return nil
-	}
-
 	mapping := map[string]string{
 		// OTA firmware binaries (app only, flashable at 0x10000)
 		"tidbyt-gen1_firmware.bin":               "tidbyt-gen1.bin",
@@ -116,17 +125,11 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		"pixoticker_firmware.bin":                "pixoticker.bin",
 		"tronbyt-s3_firmware.bin":                "tronbyt-S3.bin",
 		"tronbyt-s3-wide_firmware.bin":           "tronbyt-s3-wide.bin",
-		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
-		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
+		"matrixportal-s3_firmware.bin":           "tronbyt-S3.bin",
+		"matrixportal-s3-waveshare_firmware.bin": "tronbyt-S3.bin",
 		// Merged binaries (bootloader + partition + app, flashable at 0x0)
-		"tidbyt-gen1_merged.bin":               "tidbyt-gen1_merged.bin",
-		"tidbyt-gen1_swap_merged.bin":          "tidbyt-gen1_swap_merged.bin",
-		"tidbyt-gen2_merged.bin":               "tidbyt-gen2_merged.bin",
-		"pixoticker_merged.bin":                "pixoticker_merged.bin",
-		"tronbyt-s3_merged.bin":                "tronbyt-S3_merged.bin",
-		"tronbyt-s3-wide_merged.bin":           "tronbyt-s3-wide_merged.bin",
-		"matrixportal-s3_merged.bin":           "matrixportal-s3_merged.bin",
-		"matrixportal-s3-waveshare_merged.bin": "matrixportal-s3-waveshare_merged.bin",
+		"tidbyt-gen1_merged.bin": "tidbyt-gen1_merged.bin",
+		"tronbyt-s3_merged.bin":  "tronbyt-S3_merged.bin",
 	}
 
 	count := 0
