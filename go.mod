@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/go-git/go-git/v6 v6.0.0-20251231065035-29ae690a9f19
+	github.com/go-git/go-git/v6 v6.0.0-20260114124804-a8db3a6585a6
 	github.com/go-webauthn/webauthn v0.15.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
@@ -14,13 +14,13 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/prometheus/client_golang v1.23.2
-	github.com/quic-go/quic-go v0.58.0
+	github.com/quic-go/quic-go v0.59.0
 	github.com/stretchr/testify v1.11.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
-	github.com/tronbyt/pixlet v0.49.8
-	golang.org/x/crypto v0.46.0
-	golang.org/x/mod v0.31.0
-	golang.org/x/text v0.32.0
+	github.com/tronbyt/pixlet v0.49.9
+	golang.org/x/crypto v0.47.0
+	golang.org/x/mod v0.32.0
+	golang.org/x/text v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
@@ -36,10 +36,11 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
-	github.com/air-verse/air v1.63.6 // indirect
+	github.com/air-verse/air v1.64.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antchfx/xmlquery v1.5.0 // indirect
 	github.com/antchfx/xpath v1.3.5 // indirect
+	github.com/anthonynsimon/bild v0.14.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
@@ -118,9 +119,9 @@ require (
 	go.starlark.net v0.0.0-20251109183026-be02852a5e1f // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/image v0.34.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
