@@ -14,6 +14,10 @@ const (
 	PlaceholderSSID     = "XplaceholderWIFISSID____________"
 	PlaceholderPassword = "XplaceholderWIFIPASSWORD________________________________________"
 	PlaceholderURL      = "XplaceholderREMOTEURL___________________________________________________________________________________________________________"
+
+	// MergedAppOffset is the offset where the app binary starts in a merged firmware image.
+	// Merged binaries contain: bootloader (0x0/0x1000) + partition table (0x8000) + app (0x10000).
+	MergedAppOffset = 0x10000
 )
 
 func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
@@ -24,6 +28,15 @@ func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url st
 	if err != nil {
 		return nil, fmt.Errorf("firmware file not found: %s", path)
 	}
+
+	if len(content) < 33 {
+		return nil, fmt.Errorf("firmware binary too short")
+	}
+
+	// Track checksum delta from placeholder replacements
+	// ESP32 image checksum is complex (header + segment data only), but we can
+	// calculate the delta from our changes and apply it to the original checksum.
+	var checksumDelta byte
 
 	// Replacements
 	replacements := map[string]string{
@@ -41,51 +54,71 @@ func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url st
 		search := []byte(oldStr + "\x00")
 		idx := bytes.Index(content, search)
 		if idx == -1 {
-			// Try without null terminator if not found?
-			// Python script enforced + \x00. We stick to it.
 			return nil, fmt.Errorf("placeholder %s not found", oldStr)
 		}
 
 		// Create replacement: new string + null + padding nulls
-		// Length must match `search` length (oldStr + \x00)
 		replacement := make([]byte, len(search))
 		copy(replacement, []byte(newStr))
-		// Remaining bytes are 0 by default (padding)
+
+		// Calculate checksum delta: XOR of old bytes XOR new bytes
+		// This captures the change in checksum caused by this replacement
+		for i := range len(search) {
+			checksumDelta ^= content[idx+i] ^ replacement[i]
+		}
 
 		// Overwrite content
 		copy(content[idx:], replacement)
 	}
 
-	// Correct Checksum and Digest
-	return updateFirmwareData(content)
+	// Apply checksum delta to original checksum
+	checksumPos := len(content) - 33
+	content[checksumPos] ^= checksumDelta
+
+	// Recalculate SHA256 (this IS a simple hash of everything except last 32 bytes)
+	hashContent := content[:len(content)-32]
+	hash := sha256.Sum256(hashContent)
+	copy(content[len(content)-32:], hash[:])
+
+	return content, nil
 }
 
-func updateFirmwareData(data []byte) ([]byte, error) {
-	// Image format: [Data ...][Checksum 1B][SHA256 32B]
-	// Total length - 33 is the data length.
-
-	if len(data) < 33 {
-		return nil, fmt.Errorf("firmware binary too short")
+// GenerateMerged generates a merged firmware binary (bootloader + partition + app) with
+// injected WiFi credentials and URL. The merged binary is flashable at address 0x0.
+// It works by:
+// 1. Generating the injected firmware.bin using Generate()
+// 2. Reading the preamble (bootloader + partition table) from the merged binary
+// 3. Combining preamble + injected firmware.
+func GenerateMerged(dataDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
+	// Generate the injected firmware binary
+	firmwareData, err := Generate(dataDir, deviceType, ssid, password, url, swapColors)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate firmware: %w", err)
 	}
 
-	dataLen := len(data) - 33
+	// Read the preamble from the merged binary (bootloader + partition table, first 0x10000 bytes)
+	mergedFilename := deviceType.MergedFilename(swapColors)
+	if mergedFilename == "" {
+		return nil, fmt.Errorf("merged firmware not available for device type %s", deviceType.String())
+	}
+	mergedPath := filepath.Join(dataDir, "firmware", mergedFilename)
 
-	// 1. Calculate Checksum (XOR sum of data + 0xEF)
-	checksum := byte(0xEF)
-	for i := range dataLen {
-		checksum ^= data[i]
+	mergedContent, err := os.ReadFile(mergedPath)
+	if err != nil {
+		return nil, fmt.Errorf("merged firmware file not found: %s. Please refresh firmware binaries on the Admin page", mergedPath)
 	}
 
-	// Write checksum
-	data[len(data)-33] = checksum
+	if len(mergedContent) < MergedAppOffset {
+		return nil, fmt.Errorf("merged firmware file too short to contain preamble")
+	}
 
-	// 2. Calculate SHA256 (Hash of Data + Checksum)
-	// Hash content is everything up to the digest.
-	hashContent := data[:len(data)-32]
-	hash := sha256.Sum256(hashContent)
+	// Extract the preamble (first 0x10000 bytes containing bootloader + partition table)
+	preamble := mergedContent[:MergedAppOffset]
 
-	// Write hash
-	copy(data[len(data)-32:], hash[:])
+	// Combine preamble + injected firmware
+	result := make([]byte, len(preamble)+len(firmwareData))
+	copy(result, preamble)
+	copy(result[MergedAppOffset:], firmwareData)
 
-	return data, nil
+	return result, nil
 }

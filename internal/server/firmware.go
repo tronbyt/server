@@ -78,6 +78,26 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		return err
 	}
 
+	requiredMergedFiles := []string{"tidbyt-gen1_merged.bin", "tronbyt-S3_merged.bin"}
+	forceDownload := false
+	for _, f := range requiredMergedFiles {
+		if _, statErr := os.Stat(filepath.Join(firmwareDir, f)); os.IsNotExist(statErr) {
+			slog.Info("Required merged firmware file missing, will re-download", "file", f)
+			forceDownload = true
+		}
+	}
+
+	versionFile := filepath.Join(firmwareDir, "firmware_version.txt")
+	currentVersion := ""
+	if data, err := os.ReadFile(versionFile); err == nil {
+		currentVersion = strings.TrimSpace(string(data))
+	}
+
+	if !forceDownload && currentVersion == release.TagName {
+		slog.Info("Firmware up to date", "version", currentVersion)
+		return nil
+	}
+
 	// Cleanup old custom firmware uploads
 	if files, err := os.ReadDir(firmwareDir); err == nil {
 		for _, f := range files {
@@ -97,26 +117,19 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		}
 	}
 
-	versionFile := filepath.Join(firmwareDir, "firmware_version.txt")
-	currentVersion := ""
-	if data, err := os.ReadFile(versionFile); err == nil {
-		currentVersion = strings.TrimSpace(string(data))
-	}
-
-	if currentVersion == release.TagName {
-		slog.Info("Firmware up to date", "version", currentVersion)
-		return nil
-	}
-
 	mapping := map[string]string{
+		// OTA firmware binaries (app only, flashable at 0x10000)
 		"tidbyt-gen1_firmware.bin":               "tidbyt-gen1.bin",
 		"tidbyt-gen1_swap_firmware.bin":          "tidbyt-gen1_swap.bin",
 		"tidbyt-gen2_firmware.bin":               "tidbyt-gen2.bin",
 		"pixoticker_firmware.bin":                "pixoticker.bin",
 		"tronbyt-s3_firmware.bin":                "tronbyt-S3.bin",
 		"tronbyt-s3-wide_firmware.bin":           "tronbyt-s3-wide.bin",
-		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
-		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
+		"matrixportal-s3_firmware.bin":           "tronbyt-S3.bin",
+		"matrixportal-s3-waveshare_firmware.bin": "tronbyt-S3.bin",
+		// Merged binaries (bootloader + partition + app, flashable at 0x0)
+		"tidbyt-gen1_merged.bin": "tidbyt-gen1_merged.bin",
+		"tronbyt-s3_merged.bin":  "tronbyt-S3_merged.bin",
 	}
 
 	count := 0
@@ -218,20 +231,32 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	password := r.FormValue("wifi_password")
 	imgURL := r.FormValue("img_url")
 	swapColors := r.FormValue("swap_colors") == "on"
+	otaOnly := r.FormValue("ota_only") == "on"
 
 	if ssid == "" || password == "" || imgURL == "" {
 		http.Error(w, "Missing fields", http.StatusBadRequest)
 		return
 	}
 
-	binData, err := firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+	var binData []byte
+	var err error
+	var filename string
+
+	if otaOnly {
+		binData, err = firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		filename = fmt.Sprintf("%s-firmware.bin", device.Name)
+	} else {
+		binData, err = firmware.GenerateMerged(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		filename = fmt.Sprintf("%s-merged.bin", device.Name)
+	}
+
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to generate firmware: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s-firmware.bin\"", device.Name))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	if _, err := w.Write(binData); err != nil {
 		slog.Error("Failed to write firmware data to response", "error", err)
 		// Log error, but can't change HTTP status after writing headers.

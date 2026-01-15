@@ -45,14 +45,31 @@
     <div class="device-settings-section">
         <h2>{{ t .Localizer "Firmware Generation" }}</h2>
         <div class="device-settings-section-divider">
-            <h3>{{ t .Localizer "Download ESP Flasher" }}</h3>
+            <h3>{{ t .Localizer "Flashing Instructions" }}</h3>
+            <p>{{ t .Localizer "After generating and downloading the firmware file, use one of these web-based flashers:" }}</p>
+            <ul>
+                <li>
+                    <a href="https://espressif.github.io/esptool-js/" target="_blank">Espressif Web Flasher</a>
+                </li>
+                <li>
+                    <a href="https://thelastoutpostworkshop.github.io/ESPConnect/"
+                       target="_blank">ESPConnect Web Flasher</a>
+                </li>
+            </ul>
             <p>
-                {{ t .Localizer "Download ESP Flasher here" }} <a href="https://github.com/Jason2866/ESP_Flasher/releases"
-    target="_blank">ESP Flasher</a>
+                <strong>{{ t .Localizer "Steps:" }}</strong>
             </p>
-            <p>
-                {{ t .Localizer "Connect your device to your computer with a data USB cable, run the ESP Flasher program and select your downloaded firmware file to flash your device. Do NOT use a web based flasher." }}
-            </p>
+            <ol>
+                <li>{{ t .Localizer "Connect your device to your computer with a data USB cable" }}</li>
+                <li>{{ t .Localizer "Open one of the web flashers above in Chrome or Edge" }}</li>
+                <li>{{ t .Localizer "Click Connect and select your device's serial port" }}</li>
+                <li>{{ t .Localizer "Click Flash Tools if needed" }}</li>
+                <li>
+                    {{ t .Localizer "Set the flash address to" }} <strong>0x0</strong>
+                </li>
+                <li>{{ t .Localizer "Select your downloaded firmware file and click Program/Flash" }}</li>
+                <li>{{ t .Localizer "Reboot the device if it doesn't restart automatically" }}</li>
+            </ol>
             <p>
                 <i>{{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}
                     <br>
@@ -133,6 +150,27 @@
                     </td>
                 </tr>
                 {{ end }}
+            </table>
+            <p class="w3-panel w3-pale-yellow w3-border w3-border-yellow w3-round">
+                <i class="fa-solid fa-circle-info"></i>
+                <strong>{{ t .Localizer "Note:" }}</strong>
+                {{ t .Localizer "If you are changing WiFi credentials or the image URL on a previously flashed device, select \"Full Erase\" or \"Erase All Flash\" before flashing. Otherwise the old settings stored on the device will be used instead of the new ones." }}
+            </p>
+        </div>
+        <div class="device-settings-section-divider">
+            <h3>{{ t .Localizer "Firmware Type" }}</h3>
+            <table class="device-settings-table">
+                <tr>
+                    <td>
+                        <label for="ota_only" class="device-settings-label">{{ t .Localizer "OTA Update Only" }}</label>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="ota_only" id="ota_only">
+                        <p class="field-description">
+                            {{ t .Localizer "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section." }}
+                        </p>
+                    </td>
+                </tr>
             </table>
         </div>
     </div>

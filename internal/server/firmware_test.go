@@ -64,6 +64,12 @@ func TestHandleFirmwareGeneratePost(t *testing.T) {
 		t.Fatalf("Failed to write dummy firmware file: %v", err)
 	}
 
+	// Create a dummy merged firmware file (at least MergedAppOffset = 0x10000 bytes)
+	mergedFirmware := make([]byte, 0x10000+len(dummyFirmware))
+	if err := os.WriteFile(filepath.Join(firmwareDir, "tidbyt-gen1_merged.bin"), mergedFirmware, 0644); err != nil {
+		t.Fatalf("Failed to write dummy merged firmware file: %v", err)
+	}
+
 	form := url.Values{}
 	form.Add("wifi_ap", "TestSSID")
 	form.Add("wifi_password", "TestPass")

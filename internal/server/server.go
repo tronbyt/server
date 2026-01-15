@@ -170,6 +170,11 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	go s.checkForUpdates()
 	go s.autoRefreshSystemRepo()
 
+	// Check and refresh firmware binaries at startup
+	if err := s.UpdateFirmwareBinaries(); err != nil {
+		slog.Error("Failed to refresh firmware binaries on startup", "error", err)
+	}
+
 	s.routes()
 	return s
 }
