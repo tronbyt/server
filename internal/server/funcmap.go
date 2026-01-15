@@ -80,12 +80,12 @@ func humanizeTime(localizer *i18n.Localizer, ts any, prefix string) string {
 		}
 		t = time.Unix(v, 0)
 	case time.Time:
-		if v.IsZero() {
+		if v.IsZero() || v.Unix() == 0 {
 			return tmplT(localizer, "Never")
 		}
 		t = v
 	case *time.Time:
-		if v == nil || v.IsZero() {
+		if v == nil || v.IsZero() || v.Unix() == 0 {
 			return tmplT(localizer, "Never")
 		}
 		t = *v
