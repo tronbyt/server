@@ -105,7 +105,7 @@ func GenerateMerged(dataDir string, deviceType data.DeviceType, ssid, password, 
 
 	mergedContent, err := os.ReadFile(mergedPath)
 	if err != nil {
-		return nil, fmt.Errorf("merged firmware file not found (needed for bootloader/partition): %s", mergedPath)
+		return nil, fmt.Errorf("merged firmware file not found: %s. Please refresh firmware binaries on the Admin page", mergedPath)
 	}
 
 	if len(mergedContent) < MergedAppOffset {
