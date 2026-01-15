@@ -88,7 +88,7 @@ func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url st
 // It works by:
 // 1. Generating the injected firmware.bin using Generate()
 // 2. Reading the preamble (bootloader + partition table) from the merged binary
-// 3. Combining preamble + injected firmware.
+// 3. Combining preamble + injected firmware. Yes.
 func GenerateMerged(dataDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
 	// Generate the injected firmware binary
 	firmwareData, err := Generate(dataDir, deviceType, ssid, password, url, swapColors)
