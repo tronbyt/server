@@ -18,7 +18,7 @@ However, there are some drawbacks, including the lack of a mobile app, slightly 
 Developing additional clients for Tronbyt Server is straightforward: pull WebP images from the `/next` endpoint and loop the animation for the duration specified in the `Tronbyt-Dwell-Secs` response header. Display brightness can optionally be set using the `Tronbyt-Brightness` header (0-100).
 
 **Installation Methods:**
-*   **Docker:** The recommended method uses Docker Compose with a configuration file.
+*   **Docker:** The recommended method uses Docker Compose with a configuration file. Video Tutorial : [Raspberry Pi Setup with Docker](https://youtu.be/UeHzD0uFxRo)
 *   **Bare metal (Homebrew):** Install using Homebrew:
     ```bash
     brew tap tronbyt/server
