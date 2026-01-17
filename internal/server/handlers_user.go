@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
@@ -41,11 +40,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	for i := range devices {
 		device := &devices[i]
 		slog.Debug("handleIndex device", "id", device.ID, "apps_count", len(device.Apps))
-
-		// Sort Apps
-		sort.Slice(device.Apps, func(i, j int) bool {
-			return device.Apps[i].Order < device.Apps[j].Order
-		})
 	}
 
 	// Build lightweight device list for "Copy to" dropdown
@@ -72,25 +66,16 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	users, err := gorm.G[data.User](s.DB).
-		Preload("Devices", nil).
-		Preload("Devices.Apps", nil).
+		Preload("Devices", func(db gorm.PreloadBuilder) error {
+			db.Order("name ASC")
+			return nil
+		}).
+		Preload("Devices.Apps", orderedAppsPreload).
 		Find(r.Context())
 	if err != nil {
 		slog.Error("Failed to list users", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
-	}
-
-	// Sort Apps for each user's devices
-	for i := range users {
-		u := &users[i]
-		// Sort apps for each device
-		for j := range u.Devices {
-			dev := &u.Devices[j]
-			sort.Slice(dev.Apps, func(a, b int) bool {
-				return dev.Apps[a].Order < dev.Apps[b].Order
-			})
-		}
 	}
 
 	// We need to inject the current admin user into TemplateData for the header/nav
