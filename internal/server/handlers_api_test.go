@@ -68,6 +68,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		Password: "$2a$10$w3bQ0wWwWwWwWwWwWwWwWu.D/ZJ.p.Xg.3Q.Q.Q.Q.Q.Q.Q.Q", // Placeholder for hashed password
 		Email:    stringPtr("admin@example.com"),
 		APIKey:   "admin_test_api_key",
+		IsAdmin:  true,
 	}
 	if err := gorm.G[data.User](db).Create(ctx, &adminUser); err != nil {
 		t.Fatalf("Failed to create admin user: %v", err)
