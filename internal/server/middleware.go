@@ -55,7 +55,7 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 				db.Order("name ASC")
 				return nil
 			}).
-			Preload("Devices.Apps", nil).
+			Preload("Devices.Apps", orderedAppsPreload).
 			Where("api_key = ?", apiKey).
 			First(r.Context())
 
@@ -72,7 +72,7 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// 2. Try to find Device by API Key
-		device, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("api_key = ?", apiKey).First(r.Context())
+		device, err := gorm.G[data.Device](s.DB).Preload("Apps", orderedAppsPreload).Where("api_key = ?", apiKey).First(r.Context())
 		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				slog.Error("API auth: database error when finding device by key", "error", err)
@@ -85,7 +85,7 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 					db.Order("name ASC")
 					return nil
 				}).
-				Preload("Devices.Apps", nil).
+				Preload("Devices.Apps", orderedAppsPreload).
 				Where("username = ?", device.Username).
 				First(r.Context())
 
@@ -123,7 +123,7 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 				db.Order("name ASC")
 				return nil
 			}).
-			Preload("Devices.Apps", nil).
+			Preload("Devices.Apps", orderedAppsPreload).
 			Where("username = ?", username).
 			First(r.Context())
 

@@ -589,3 +589,9 @@ func (s *Server) sendRebootCommand(deviceID string) error {
 	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: rebootPayloadJSON})
 	return nil
 }
+
+// orderedAppsPreload defines a GORM preload function to sort associated apps by their 'order' field.
+var orderedAppsPreload = func(db gorm.PreloadBuilder) error {
+	db.Order(clause.OrderByColumn{Column: clause.Column{Name: "order"}, Desc: false})
+	return nil
+}
