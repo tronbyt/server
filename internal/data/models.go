@@ -778,6 +778,9 @@ func (d *Device) SupportsFirmwareFeatures() bool {
 	if d.Info.ProtocolType != ProtocolWS {
 		return false
 	}
+	if d.Info.FirmwareType != "ESP32" {
+		return false
+	}
 	v := d.Info.FirmwareVersion
 	if v == "" {
 		return false
