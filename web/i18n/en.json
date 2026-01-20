@@ -1451,6 +1451,15 @@
   "Invalid old password": {
     "other": "Invalid old password"
   },
+  "Copy to...": {
+    "other": "Copy to..."
+  },
+  "Drag apps to reorder or copy from/to another device": {
+    "other": "Drag apps to reorder or copy from/to another device"
+  },
+  "Unknown": {
+    "other": "Unknown"
+  },
   "WebAuthn is not supported in this browser.": {
     "other": "WebAuthn is not supported in this browser."
   },
@@ -1645,5 +1654,47 @@
   },
   "Install custom firmware? The device will reboot.": {
     "other": "Install custom firmware? The device will reboot."
+  },
+  "After generating and downloading the firmware file, use one of these web-based flashers:": {
+    "other": "After generating and downloading the firmware file, use one of these web-based flashers:"
+  },
+  "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section.": {
+    "other": "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section."
+  },
+  "Click Connect and select your device's serial port": {
+    "other": "Click Connect and select your device's serial port"
+  },
+  "Click Flash Tools if needed": {
+    "other": "Click Flash Tools if needed"
+  },
+  "Connect your device to your computer with a data USB cable": {
+    "other": "Connect your device to your computer with a data USB cable"
+  },
+  "Firmware Type": {
+    "other": "Firmware Type"
+  },
+  "Flashing Instructions": {
+    "other": "Flashing Instructions"
+  },
+  "No official firmware builds available on the server.": {
+    "other": "No official firmware builds available on the server."
+  },
+  "Open one of the web flashers above in Chrome or Edge": {
+    "other": "Open one of the web flashers above in Chrome or Edge"
+  },
+  "OTA Update Only": {
+    "other": "OTA Update Only"
+  },
+  "Reboot the device if it doesn't restart automatically": {
+    "other": "Reboot the device if it doesn't restart automatically"
+  },
+  "Select your downloaded firmware file and click Program/Flash": {
+    "other": "Select your downloaded firmware file and click Program/Flash"
+  },
+  "Set the flash address to": {
+    "other": "Set the flash address to"
+  },
+  "Steps:": {
+    "other": "Steps:"
   }
 }
