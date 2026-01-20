@@ -771,7 +771,7 @@
     "other": "Farbfilter"
   },
   "ColorFilter": {
-    "other": "Keine Datei"
+    "other": "ColorFilter"
   },
   "ColorFilterTooltip": {
     "other": "Wenden Sie benutzerdefinierte Filter auf das Bild an:\n            Keine: Keine Transformation\n            Gedimmt: Verdunkelt das Bild gleichmäßig, während der Farbton erhalten bleibt\n            Rotverschiebung: CCT-abgeleitete chromatische Adaptationsmatrix ~3400K Ziel\n            Warm: Fügt einen subtilen warmen, orange/gelben Farbton hinzu\n            Sonnenuntergang: Emuliert tiefes Pink/Orange eines Sonnenuntergangs\n            Sepia: Fügt einen warmen, antiken Braunton hinzu, der gealterte Fotografien imitiert\n            Vintage: Gedämpfte, braun/grüne nostalgische Töne\n            Dämmerung: Helligkeit verblasst, fügt einen rötlichen Stich hinzu\n            Kühl: Fügt einen kühlen, bläulichen Farbton hinzu\n            Schwarz & Weiß: Konvertiert das Bild in perzeptives Graustufen unter Verwendung von Luminanzgewichten\n            Eis: Blasse Entsättigung mit bläulichem Stich\n            Mondlicht: Gedämpftes Blau-Grau, Nachtbeleuchtungseffekt\n            Neon: Erhöht den Kontrast, Magenta-Blau Cyberpunk\n            Pastell: Mildert Töne, sanfte Glanzlichterverstärkung"
@@ -1577,7 +1577,7 @@
   "WiFi SSID": {
     "other": "WLAN-SSID"
   },
-  "WLAN-SSID:": {
+  "WiFi SSID:": {
     "other": "WLAN-SSID:"
   },
   "Hostname:": {
@@ -1654,5 +1654,47 @@
   },
   "Install custom firmware? The device will reboot.": {
     "other": "Benutzerdefinierte Firmware installieren? Das Gerät wird neu gestartet."
+  },
+  "After generating and downloading the firmware file, use one of these web-based flashers:": {
+    "other": "Nachdem die Firmware-Datei generiert und heruntergeladen wurde, verwenden Sie einen dieser webbasierten Flasher:"
+  },
+  "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section.": {
+    "other": "Aktivieren Sie dies für reine OTA-Firmware (nur App, Flash bei 0x10000). Lassen Sie es deaktiviert für eine vollständige Flash-Binärdatei, die den Bootloader und die Partitionstabelle enthält (Flash bei 0x0). Um die Firmware auf dem Gerät zu aktualisieren, gehen Sie zur Seite \"Gerät bearbeiten\" und scrollen Sie nach unten zum Abschnitt \"Firmware-Update\"."
+  },
+  "Click Connect and select your device's serial port": {
+    "other": "Klicken Sie auf \"Verbinden\" und wählen Sie den seriellen Anschluss Ihres Geräts aus"
+  },
+  "Click Flash Tools if needed": {
+    "other": "Klicken Sie bei Bedarf auf \"Flash Tools\""
+  },
+  "Connect your device to your computer with a data USB cable": {
+    "other": "Verbinden Sie Ihr Gerät über ein USB-Datenkabel mit Ihrem Computer"
+  },
+  "Firmware Type": {
+    "other": "Firmware-Typ"
+  },
+  "Flashing Instructions": {
+    "other": "Flash-Anleitung"
+  },
+  "No official firmware builds available on the server.": {
+    "other": "Keine offiziellen Firmware-Builds auf dem Server verfügbar."
+  },
+  "Open one of the web flashers above in Chrome or Edge": {
+    "other": "Öffnen Sie einen der oben genannten Web-Flasher in Chrome oder Edge"
+  },
+  "OTA Update Only": {
+    "other": "Nur OTA-Update"
+  },
+  "Reboot the device if it doesn't restart automatically": {
+    "other": "Starten Sie das Gerät neu, falls es nicht automatisch neu startet"
+  },
+  "Select your downloaded firmware file and click Program/Flash": {
+    "other": "Wählen Sie Ihre heruntergeladene Firmware-Datei aus und klicken Sie auf \"Program/Flash\""
+  },
+  "Set the flash address to": {
+    "other": "Setzen Sie die Flash-Adresse auf"
+  },
+  "Steps:": {
+    "other": "Schritte:"
   }
 }
