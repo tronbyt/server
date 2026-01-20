@@ -270,6 +270,26 @@
                               padding: 8px;
                               margin: 0">
             </div>
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox"
+                           name="add_apps_to_top"
+                           id="add_apps_to_top"
+                           value="1"
+                           {{ if .User.AddAppsToTop }}
+                           checked
+                           {{ end }}
+                           style="width: 18px;
+                                  height: 18px">
+                    <label for="add_apps_to_top" style="margin: 0;">{{ t .Localizer "Add new apps to top of list" }}</label>
+                </div>
+                <p style="color: #888;
+                          font-size: 0.8em;
+                          margin-top: 5px;
+                          margin-bottom: 0">
+                    {{ t .Localizer "When enabled, newly added apps will appear at position #1 instead of at the end." }}
+                </p>
+            </div>
             <div style="border-top: 1px solid #333;
                         padding-top: 15px;
                         margin-top: 15px;

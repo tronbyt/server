@@ -171,11 +171,22 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		Path:        &appPath,
 	}
 
-	maxOrder, err := getMaxAppOrder(s.DB, device.ID)
-	if err != nil {
-		slog.Error("Failed to get max app order", "error", err)
+	if user.AddAppsToTop {
+		// Shift all existing apps' orders up by 1 to make room at position 1
+		if err := s.DB.Model(&data.App{}).
+			Where("device_id = ?", device.ID).
+			Update("order", gorm.Expr("`order` + 1")).Error; err != nil {
+			slog.Error("Failed to shift app orders", "error", err)
+		}
+		newApp.Order = 1
+	} else {
+		// Add to end of list
+		maxOrder, err := getMaxAppOrder(s.DB, device.ID)
+		if err != nil {
+			slog.Error("Failed to get max app order", "error", err)
+		}
+		newApp.Order = maxOrder + 1
 	}
-	newApp.Order = maxOrder + 1
 
 	if err := gorm.G[data.App](s.DB).Create(r.Context(), &newApp); err != nil {
 		slog.Error("Failed to save app", "error", err)

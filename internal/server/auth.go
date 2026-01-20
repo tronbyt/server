@@ -379,12 +379,20 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Update AddAppsToTop preference
+	addAppsToTop := r.FormValue("add_apps_to_top") == "1"
+	if user.AddAppsToTop != addAppsToTop {
+		user.AddAppsToTop = addAppsToTop
+		needsSave = true
+	}
+
 	if needsSave {
 		updates := data.User{
-			Password: user.Password,
-			Email:    user.Email,
+			Password:     user.Password,
+			Email:        user.Email,
+			AddAppsToTop: user.AddAppsToTop,
 		}
-		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email").Updates(r.Context(), updates); err != nil {
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email", "AddAppsToTop").Updates(r.Context(), updates); err != nil {
 			slog.Error("Failed to update user profile", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
