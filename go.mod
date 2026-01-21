@@ -17,7 +17,7 @@ require (
 	github.com/quic-go/quic-go v0.59.0
 	github.com/stretchr/testify v1.11.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
-	github.com/tronbyt/pixlet v0.50.0
+	github.com/tronbyt/pixlet v0.50.1
 	golang.org/x/crypto v0.47.0
 	golang.org/x/mod v0.32.0
 	golang.org/x/text v0.33.0
