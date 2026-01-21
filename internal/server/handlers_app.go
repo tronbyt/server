@@ -159,7 +159,6 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create App in DB
 	newApp := data.App{
 		DeviceID:    device.ID,
 		Iname:       iname,
@@ -171,24 +170,29 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		Path:        &appPath,
 	}
 
-	if user.AddAppsToTop {
-		// Shift all existing apps' orders up by 1 to make room at position 1
-		if err := s.DB.Model(&data.App{}).
-			Where("device_id = ?", device.ID).
-			Update("order", gorm.Expr("`order` + 1")).Error; err != nil {
-			slog.Error("Failed to shift app orders", "error", err)
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		if user.AddAppsToTop {
+			if _, err := gorm.G[data.App](tx).
+				Where("device_id = ?", device.ID).
+				Update(r.Context(), "order", gorm.Expr("`order` + 1")); err != nil {
+				return err
+			}
+			newApp.Order = 1
+		} else {
+			var maxOrder int64
+			if err := tx.Model(&data.App{}).Where("device_id = ?", device.ID).Select("COALESCE(MAX(`order`), -1)").Scan(&maxOrder).Error; err != nil {
+				return err
+			}
+			newApp.Order = int(maxOrder) + 1
 		}
-		newApp.Order = 1
-	} else {
-		// Add to end of list
-		maxOrder, err := getMaxAppOrder(s.DB, device.ID)
-		if err != nil {
-			slog.Error("Failed to get max app order", "error", err)
-		}
-		newApp.Order = maxOrder + 1
-	}
 
-	if err := gorm.G[data.App](s.DB).Create(r.Context(), &newApp); err != nil {
+		if err := gorm.G[data.App](tx).Create(r.Context(), &newApp); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		slog.Error("Failed to save app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
