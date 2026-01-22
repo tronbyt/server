@@ -177,7 +177,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 				Update(r.Context(), "order", gorm.Expr("`order` + 1")); err != nil {
 				return err
 			}
-			newApp.Order = 1
+newApp.Order = 0
 		} else {
 			maxOrder, err := getMaxAppOrder(tx, device.ID)
 			if err != nil {
