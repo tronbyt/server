@@ -174,7 +174,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		if user.AddAppsToTop {
 			if _, err := gorm.G[data.App](tx).
 				Where("device_id = ?", device.ID).
-				Update(r.Context(), "order", gorm.Expr("`order` + 1")); err != nil {
+				Update(r.Context(), "order", gorm.Expr("? + 1", clause.Column{Name: "order"})); err != nil {
 				return err
 			}
 newApp.Order = 0
