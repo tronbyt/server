@@ -179,11 +179,11 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			}
 			newApp.Order = 1
 		} else {
-			var maxOrder int64
-			if err := tx.Model(&data.App{}).Where("device_id = ?", device.ID).Select("COALESCE(MAX(`order`), -1)").Scan(&maxOrder).Error; err != nil {
+			maxOrder, err := getMaxAppOrder(tx, device.ID)
+			if err != nil {
 				return err
 			}
-			newApp.Order = int(maxOrder) + 1
+			newApp.Order = maxOrder + 1
 		}
 
 		if err := gorm.G[data.App](tx).Create(r.Context(), &newApp); err != nil {
