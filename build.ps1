@@ -15,6 +15,10 @@ $COMMIT = "unknown"
 $DATE = Get-Date -Format "yyyy-MM-dd"
 
 if (Test-Path .git) {
+    if (-not (Get-Command "git" -ErrorAction SilentlyContinue)) {
+        Write-Error "git not found, but .git directory exists. Cannot determine version information."
+        exit 1
+    }
     $COMMIT = git rev-parse --short HEAD
     $VERSION = git describe --tags --always --dirty
 }
@@ -45,4 +49,3 @@ if ($LASTEXITCODE -ne 0) {
 go build -ldflags="-w -s" -o migrate.exe ./cmd/migrate
 
 Write-Host "Build Complete!" -ForegroundColor Green
-Write-Host "Run the server using: .\start.bat" -ForegroundColor Yellow
