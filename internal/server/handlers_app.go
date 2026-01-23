@@ -159,7 +159,6 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create App in DB
 	newApp := data.App{
 		DeviceID:    device.ID,
 		Iname:       iname,
@@ -171,13 +170,29 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		Path:        &appPath,
 	}
 
-	maxOrder, err := getMaxAppOrder(s.DB, device.ID)
-	if err != nil {
-		slog.Error("Failed to get max app order", "error", err)
-	}
-	newApp.Order = maxOrder + 1
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		if user.AddAppsToTop {
+			if _, err := gorm.G[data.App](tx).
+				Where("device_id = ?", device.ID).
+				Update(r.Context(), "order", gorm.Expr("? + 1", clause.Column{Name: "order"})); err != nil {
+				return err
+			}
+			newApp.Order = 0
+		} else {
+			maxOrder, err := getMaxAppOrder(tx, device.ID)
+			if err != nil {
+				return err
+			}
+			newApp.Order = maxOrder + 1
+		}
 
-	if err := gorm.G[data.App](s.DB).Create(r.Context(), &newApp); err != nil {
+		if err := gorm.G[data.App](tx).Create(r.Context(), &newApp); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		slog.Error("Failed to save app", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
