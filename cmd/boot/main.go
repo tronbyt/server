@@ -23,13 +23,18 @@ func main() {
         exePath := filepath.Dir(ex)
         
         // Force the app to look for data next to the .exe
-        os.Setenv("DATA_DIR", filepath.Join(exePath, "data"))
+        if err := os.Setenv("DATA_DIR", filepath.Join(exePath, "data")); err != nil {
+            panic("Could not set DATA_DIR: " + err.Error())
+        }
     }
 
     // 2. Set default Database Path if env var is missing
     if s := os.Getenv("DB_DSN"); s != "" {
         dataDir := os.Getenv("DATA_DIR")
-        os.Setenv("DB_DSN", filepath.Join(dataDir, "tronbyt.db"))
+        if err := os.Setenv("DB_DSN", filepath.Join(dataDir, "tronbyt.db")); err != nil {
+			panic("Could not set DB_DSN: " + err.Error())
+		}
+
     }
 
     // 3. Auto-create the data folder so the user doesn't have to
