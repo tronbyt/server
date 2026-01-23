@@ -1,5 +1,3 @@
-# build.ps1
-
 Write-Host "Checking dependencies..." -ForegroundColor Cyan
 if (-not (Get-Command "gcc" -ErrorAction SilentlyContinue)) {
     Write-Error "GCC not found. Please ensure MSYS2 MinGW64 bin folder is in your PATH."
@@ -11,7 +9,7 @@ $env:GOOS = "windows"
 $env:GOARCH = "amd64"
 $env:CGO_ENABLED = "1" # Required for libwebp and sqlite
 
-# 2. Get Version Info (mimicking Docker ARGs)
+# 2. Get Version Info
 $VERSION = "dev"
 $COMMIT = "unknown"
 $DATE = Get-Date -Format "yyyy-MM-dd"
@@ -33,7 +31,7 @@ $env:CGO_ENABLED = "0"
 go build -ldflags="-w -s" -o boot.exe ./cmd/boot
 $env:CGO_ENABLED = "1"
 
-# 5. Build 'tronbyt-server' (The Main App)
+# 5. Build 'tronbyt-server'
 $LDFLAGS = "-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=$VERSION' -X 'tronbyt-server/internal/version.Commit=$COMMIT' -X 'tronbyt-server/internal/version.BuildDate=$DATE'"
 
 go build -ldflags="$LDFLAGS" -tags gzip_fonts -o tronbyt-server.exe ./cmd/server
