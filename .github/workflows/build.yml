@@ -59,6 +59,9 @@ jobs:
 
   build-and-test:
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         include:
@@ -70,15 +73,34 @@ jobs:
             goos: linux
             goarch: arm64
             artifact_name: tronbyt-server-linux-arm64
-          - os: macos-26
+          - os: macos-latest
             goos: darwin
             goarch: arm64
             artifact_name: tronbyt-server-darwin-arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            artifact_name: tronbyt-server-windows-amd64.exe
 
     steps:
       - uses: actions/checkout@v6
 
+      # Windows specific setup
+      # Install GCC and Libwebp
+      - name: Setup MSYS2
+        if: matrix.goos == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-libwebp
+            pkg-config
+
+      # Linux/Mac specific setup
       - name: Install system dependencies
+        if: matrix.goos != 'windows'
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
             sudo apt-get update
@@ -96,19 +118,29 @@ jobs:
         run: go mod download
 
       - name: Test
-        # CGO required for pixlet
-        run: CGO_ENABLED=1 go test -v ./...
+        env:
+          CGO_ENABLED: 1 # CGO required for pixlet
+        run: go test -v ./...
 
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
         run: |
           VERSION=${GITHUB_REF_NAME}
           COMMIT=${GITHUB_SHA}
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Base flags
           LDFLAGS="-w -s -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${DATE}'"
-          CGO_ENABLED=1 go build -v -ldflags "${LDFLAGS}" -o ${{ matrix.artifact_name }} ./cmd/server
+          
+          # Add static flags ONLY for Windows to avoid DLL dependency
+          if [ "${{ matrix.goos }}" == "windows" ]; then
+             LDFLAGS="${LDFLAGS} -extldflags '-static'"
+          fi
+
+          go build -v -ldflags "${LDFLAGS}" -tags gzip_fonts -o ${{ matrix.artifact_name }} ./cmd/server
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v6
