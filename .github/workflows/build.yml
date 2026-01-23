@@ -96,7 +96,7 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-libwebp
-            pkg-config
+            mingw-w64-x86_64-pkgconf
 
       # Linux/Mac specific setup
       - name: Install system dependencies

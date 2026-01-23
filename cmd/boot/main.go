@@ -1,3 +1,5 @@
+//go:build !windows
+
 package main
 
 import (
@@ -12,34 +14,6 @@ import (
 func main() {
 	uid := 1000
 	gid := 1000
-
-	// Add standalone Windows .exe support (create data folder next to .exe)
-	if s := os.Getenv("DATA_DIR"); s != "" {
-		// Get the directory of the running .exe
-		ex, err := os.Executable()
-		if err != nil {
-			panic("Could not get executable path: " + err.Error())
-		}
-		exePath := filepath.Dir(ex)
-		
-		// Force the app to look for data next to the .exe
-		if err := os.Setenv("DATA_DIR", filepath.Join(exePath, "data")); err != nil {
-			panic("Could not set DATA_DIR: " + err.Error())
-		}
-	}
-
-	// 2. Set default Database Path if env var is missing
-	if s := os.Getenv("DB_DSN"); s != "" {
-		dataDir := os.Getenv("DATA_DIR")
-		if err := os.Setenv("DB_DSN", filepath.Join(dataDir, "tronbyt.db")); err != nil {
-			panic("Could not set DB_DSN: " + err.Error())
-		}
-	}
-
-	// 3. Auto-create the data folder so the user doesn't have to
-	if err := os.MkdirAll(os.Getenv("DATA_DIR"), 0755); err != nil {
-		panic("Could not create data directory: " + err.Error())
-	}
 
 	if s := os.Getenv("PUID"); s != "" {
 		if i, err := strconv.Atoi(s); err != nil {
