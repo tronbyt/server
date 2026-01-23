@@ -98,6 +98,12 @@ jobs:
             mingw-w64-x86_64-libwebp
             mingw-w64-x86_64-pkgconf
 
+      - name: Set CGO Flags (windows)
+        if: matrix.goos == 'windows'
+        run: |
+          echo "CGO_CFLAGS=-IC:/msys64/mingw64/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-LC:/msys64/mingw64/lib -lwebp" >> $GITHUB_ENV
+
       # Linux/Mac specific setup
       - name: Install system dependencies
         if: matrix.goos != 'windows'
