@@ -13,6 +13,27 @@ func main() {
 	uid := 1000
 	gid := 1000
 
+	// Add standalone Windows .exe support (create data folder next to .exe)
+	if os.Getenv("DATA_DIR") == "" {
+        // Get the directory of the running .exe
+        ex, _ := os.Executable()
+        exePath := filepath.Dir(ex)
+        
+        // Force the app to look for data next to the .exe
+        os.Setenv("DATA_DIR", filepath.Join(exePath, "data"))
+    }
+
+    // 2. Set default Database Path if env var is missing
+    if os.Getenv("DB_DSN") == "" {
+        dataDir := os.Getenv("DATA_DIR")
+        os.Setenv("DB_DSN", filepath.Join(dataDir, "tronbyt.db"))
+    }
+
+    // 3. Auto-create the data folder so the user doesn't have to
+    if err := os.MkdirAll(os.Getenv("DATA_DIR"), 0755); err != nil {
+        panic("Could not create data directory: " + err.Error())
+    }
+
 	if s := os.Getenv("PUID"); s != "" {
 		if i, err := strconv.Atoi(s); err != nil {
 			slog.Warn("Invalid PUID value, using default", "puid", s, "error", err)
