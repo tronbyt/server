@@ -16,7 +16,10 @@ func main() {
 	// Add standalone Windows .exe support (create data folder next to .exe)
 	if os.Getenv("DATA_DIR") == "" {
         // Get the directory of the running .exe
-        ex, _ := os.Executable()
+        ex, err := os.Executable()
+        if err != nil {
+            panic("Could not get executable path: " + err.Error())
+        }
         exePath := filepath.Dir(ex)
         
         // Force the app to look for data next to the .exe
