@@ -14,7 +14,7 @@ func main() {
 	gid := 1000
 
 	// Add standalone Windows .exe support (create data folder next to .exe)
-	if os.Getenv("DATA_DIR") == "" {
+	if s := os.Getenv("DATA_DIR"); s != "" {
         // Get the directory of the running .exe
         ex, err := os.Executable()
         if err != nil {
@@ -27,7 +27,7 @@ func main() {
     }
 
     // 2. Set default Database Path if env var is missing
-    if os.Getenv("DB_DSN") == "" {
+    if s := os.Getenv("DB_DSN"); s != "" {
         dataDir := os.Getenv("DATA_DIR")
         os.Setenv("DB_DSN", filepath.Join(dataDir, "tronbyt.db"))
     }
