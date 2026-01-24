@@ -2,7 +2,6 @@ name: Create and publish a container image
 
 on:
   push:
-    # Publish `main` branch as `latest` tag and track the 'development' branch with its own tag
     branches:
       - main
       - dev
@@ -65,8 +64,6 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and push Docker image
