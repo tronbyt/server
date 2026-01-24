@@ -417,7 +417,7 @@
     "other": "Firmware Verwaltung"
   },
   "Current Firmware": {
-    "other": "Aktuelle Firmware:"
+    "other": "Aktuelle Firmware"
   },
   "Version": {
     "other": "Version"
@@ -1517,11 +1517,11 @@
   "Firmware Update": {
     "other": "Firmware-Update"
   },
+  "Downloaded firmware version": {
+    "other": "Heruntergeladene Firmware-Version"
+  },
   "Device Version": {
     "other": "Geräte-Version"
-  },
-  "Available Version": {
-    "other": "Verfügbare Version"
   },
   "Swap Colors (Fix for some Tidbyt Gen 1 displays)": {
     "other": "Farben tauschen (Fix für manche Tidbyt Gen 1 Displays)"
@@ -1531,6 +1531,12 @@
   },
   "Install Latest Firmware": {
     "other": "Neueste Firmware installieren"
+  },
+  "Select Version": {
+    "other": "Version auswählen"
+  },
+  "Install Selected Firmware": {
+    "other": "Ausgewählte Firmware installieren"
   },
   "This will trigger an Over-The-Air update. The device will reboot. Continue?": {
     "other": "Dies startet ein Over-The-Air Update. Das Gerät wird neu starten. Fortfahren?"
@@ -1699,5 +1705,11 @@
   },
   "If you are changing WiFi credentials or the image URL on a previously flashed device, select \"Full Erase\" or \"Erase All Flash\" before flashing. Otherwise the old settings stored on the device will be used instead of the new ones.": {
     "other": "Wenn Sie die WLAN-Zugangsdaten oder die Bild-URL auf einem zuvor geflashten Gerät ändern, wählen Sie vor dem Flashen „Full Erase“ oder „Erase All Flash“. Andernfalls werden die alten auf dem Gerät gespeicherten Einstellungen anstelle der neuen verwendet."
+  },
+  "Add new apps to top of list": {
+    "other": "Neue Apps am Anfang der Liste hinzufügen"
+  },
+  "When enabled, newly added apps will appear at position #1 instead of at the end.": {
+    "other": "Wenn aktiviert, erscheinen neu hinzugefügte Apps an Position #1 anstatt am Ende."
   }
 }

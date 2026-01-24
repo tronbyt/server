@@ -108,11 +108,10 @@
                 align-items: flex-start;
                 margin-bottom: 15px">
         <div style="flex: 1;">
-            <strong>{{ t .Localizer "Current Firmware" }}</strong>
             {{ if .FirmwareVersion }}
             <div style="margin-top: 8px;">
                 <div style="margin-bottom: 5px;" id="firmware-version">
-                    <strong>{{ t .Localizer "Version" }}:</strong> {{ .FirmwareVersion }}
+                    <strong>{{ t .Localizer "Downloaded firmware version" }}:</strong> {{ .FirmwareVersion }}
                 </div>
                 <div style="color: #888; font-size: 0.9em;">
                     {{ t .Localizer "Firmware is automatically updated when the server starts." }}
@@ -649,7 +648,7 @@
             .then(data => {
                 if (data.version) {
                     const el = document.getElementById('firmware-version');
-                    if (el) el.innerHTML = '<strong>{{ t .Localizer "Version" }}:</strong> ' + data.version;
+                    if (el) el.innerHTML = '<strong>{{ t .Localizer "Downloaded firmware version" }}:</strong> ' + data.version;
                 }
                 if (data.success) {
                     btn.innerHTML = '<i class="fa-solid fa-check"></i> {{ t .Localizer "Success" }}';

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -251,35 +250,27 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	localizer := s.getLocalizer(r)
 
 	// Check if specific firmware exists for this device
-	firmwareAvailable := false
+	availableVersions := s.GetAvailableFirmwareVersions()
+	firmwareAvailable := len(availableVersions) > 0
 	firmwareVersion := "Unknown"
-	binName := device.Type.FirmwareFilename(device.SwapColors)
-	if binName != "" {
-		firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
-		if _, err := os.Stat(firmwarePath); err == nil {
-			firmwareAvailable = true
-
-			// Read version
-			v := s.GetFirmwareVersion()
-			if v != "" {
-				firmwareVersion = v
-			}
-		}
+	if firmwareAvailable {
+		firmwareVersion = availableVersions[0]
 	}
 
 	s.renderTemplate(w, r, "update", TemplateData{
-		User:               user,
-		Device:             device,
-		DeviceTypeChoices:  s.getDeviceTypeChoices(localizer),
-		ColorFilterOptions: s.getColorFilterChoices(),
-		AvailableLocales:   locales,
-		DefaultImgURL:      s.getImageURL(r, device.ID),
-		DefaultWsURL:       s.getWebsocketURL(r, device.ID),
-		BrightnessUI:       bUI,
-		NightBrightnessUI:  nbUI,
-		DimBrightnessUI:    dbUI,
-		FirmwareAvailable:  firmwareAvailable,
-		FirmwareVersion:    firmwareVersion,
+		User:                      user,
+		Device:                    device,
+		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
+		ColorFilterOptions:        s.getColorFilterChoices(),
+		AvailableLocales:          locales,
+		DefaultImgURL:             s.getImageURL(r, device.ID),
+		DefaultWsURL:              s.getWebsocketURL(r, device.ID),
+		BrightnessUI:              bUI,
+		NightBrightnessUI:         nbUI,
+		DimBrightnessUI:           dbUI,
+		FirmwareAvailable:         firmwareAvailable,
+		FirmwareVersion:           firmwareVersion,
+		AvailableFirmwareVersions: availableVersions,
 
 		Localizer: localizer,
 	})

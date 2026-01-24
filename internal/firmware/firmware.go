@@ -20,9 +20,9 @@ const (
 	MergedAppOffset = 0x10000
 )
 
-func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
+func Generate(firmwareDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
 	filename := deviceType.FirmwareFilename(swapColors)
-	path := filepath.Join(dataDir, "firmware", filename)
+	path := filepath.Join(firmwareDir, filename)
 
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -89,9 +89,9 @@ func Generate(dataDir string, deviceType data.DeviceType, ssid, password, url st
 // 1. Generating the injected firmware.bin using Generate()
 // 2. Reading the preamble (bootloader + partition table) from the merged binary
 // 3. Combining preamble + injected firmware.
-func GenerateMerged(dataDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
+func GenerateMerged(firmwareDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
 	// Generate the injected firmware binary
-	firmwareData, err := Generate(dataDir, deviceType, ssid, password, url, swapColors)
+	firmwareData, err := Generate(firmwareDir, deviceType, ssid, password, url, swapColors)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate firmware: %w", err)
 	}
@@ -101,7 +101,7 @@ func GenerateMerged(dataDir string, deviceType data.DeviceType, ssid, password, 
 	if mergedFilename == "" {
 		return nil, fmt.Errorf("merged firmware not available for device type %s", deviceType.String())
 	}
-	mergedPath := filepath.Join(dataDir, "firmware", mergedFilename)
+	mergedPath := filepath.Join(firmwareDir, mergedFilename)
 
 	mergedContent, err := os.ReadFile(mergedPath)
 	if err != nil {

@@ -291,7 +291,11 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	firmwareVersion := s.GetFirmwareVersion()
+	// Handle admin view specific data
+	var firmwareVersion string
+	if user.IsAdmin {
+		firmwareVersion = s.GetLatestFirmwareVersion()
+	}
 	if firmwareVersion == "" {
 		firmwareVersion = "unknown"
 	}

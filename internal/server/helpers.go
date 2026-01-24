@@ -89,16 +89,17 @@ type TemplateData struct {
 	DimBrightnessUI    int
 
 	// Firmware
-	FirmwareBinsAvailable bool
-	FirmwareAvailable     bool
-	FirmwareVersion       string
-	ServerVersion         string
-	CommitHash            string
-	IsAutoLoginActive     bool // Indicate if single-user auto-login is active
-	UserCount             int  // Number of users, for registration logic
-	DeleteOnCancel        bool // Indicate if app should be deleted on cancel
-	ReadOnly              bool // Indicate if the view should be read-only
-	Partial               string
+	FirmwareBinsAvailable     bool
+	FirmwareAvailable         bool
+	FirmwareVersion           string
+	AvailableFirmwareVersions []string
+	ServerVersion             string
+	CommitHash                string
+	IsAutoLoginActive         bool // Indicate if single-user auto-login is active
+	UserCount                 int  // Number of users, for registration logic
+	DeleteOnCancel            bool // Indicate if app should be deleted on cancel
+	ReadOnly                  bool // Indicate if the view should be read-only
+	Partial                   string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.

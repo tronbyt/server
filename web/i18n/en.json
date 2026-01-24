@@ -1517,11 +1517,11 @@
   "Firmware Update": {
     "other": "Firmware Update"
   },
+  "Downloaded firmware version": {
+    "other": "Downloaded firmware version"
+  },
   "Device Version": {
     "other": "Device Version"
-  },
-  "Available Version": {
-    "other": "Available Version"
   },
   "Swap Colors (Fix for some Tidbyt Gen 1 displays)": {
     "other": "Swap Colors (Fix for some Tidbyt Gen 1 displays)"
@@ -1531,6 +1531,12 @@
   },
   "Install Latest Firmware": {
     "other": "Install Latest Firmware"
+  },
+  "Select Version": {
+    "other": "Select Version"
+  },
+  "Install Selected Firmware": {
+    "other": "Install Selected Firmware"
   },
   "This will trigger an Over-The-Air update. The device will reboot. Continue?": {
     "other": "This will trigger an Over-The-Air update. The device will reboot. Continue?"
@@ -1699,5 +1705,11 @@
   },
   "If you are changing WiFi credentials or the image URL on a previously flashed device, select \"Full Erase\" or \"Erase All Flash\" before flashing. Otherwise the old settings stored on the device will be used instead of the new ones.": {
     "other": "If you are changing WiFi credentials or the image URL on a previously flashed device, select \"Full Erase\" or \"Erase All Flash\" before flashing. Otherwise the old settings stored on the device will be used instead of the new ones."
+  },
+  "Add new apps to top of list": {
+    "other": "Add new apps to top of list"
+  },
+  "When enabled, newly added apps will appear at position #1 instead of at the end.": {
+    "other": "When enabled, newly added apps will appear at position #1 instead of at the end."
   }
 }

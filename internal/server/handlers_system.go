@@ -28,7 +28,8 @@ func (s *Server) handleUpdateFirmware(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		version := s.GetFirmwareVersion()
+		// Firmware version info
+		version := s.GetLatestFirmwareVersion()
 		if version == "" {
 			version = "unknown"
 		}
