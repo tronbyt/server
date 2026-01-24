@@ -109,12 +109,15 @@ jobs:
           
           echo "Using MSYS2 at: $MSYS_ROOT"
           
-          # Convert backslashes to forward slashes just in case
+          # Convert backslashes to forward slashes for GCC compatibility
           MSYS_ROOT=$(echo "$MSYS_ROOT" | sed 's/\\/\//g')
 
-          # Set flags using the clean path (No "Program Files"!)
-          export CGO_CFLAGS="-I${MSYS_ROOT}/mingw64/include"
-          export CGO_LDFLAGS="-L${MSYS_ROOT}/mingw64/lib
+          # Write to GITHUB_ENV so following steps (like 'go build') can see them
+          echo "CGO_CFLAGS=-I${MSYS_ROOT}/mingw64/include" >> "$GITHUB_ENV"
+          echo "CGO_LDFLAGS=-L${MSYS_ROOT}/mingw64/lib" >> "$GITHUB_ENV"
+          
+          # Optional: Add the mingw64 bin folder to PATH so dlls are found during tests
+          echo "${MSYS_ROOT}/mingw64/bin" >> "$GITHUB_PATH"
 
       # Linux/Mac specific setup
       - name: Install system dependencies
