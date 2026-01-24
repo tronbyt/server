@@ -1696,5 +1696,8 @@
   },
   "Steps:": {
     "other": "Schritte:"
+  },
+  "If you are changing WiFi credentials or the image URL on a previously flashed device, select \"Full Erase\" or \"Erase All Flash\" before flashing. Otherwise the old settings stored on the device will be used instead of the new ones.": {
+    "other": "Wenn Sie die WLAN-Zugangsdaten oder die Bild-URL auf einem zuvor geflashten Gerät ändern, wählen Sie vor dem Flashen „Full Erase“ oder „Erase All Flash“. Andernfalls werden die alten auf dem Gerät gespeicherten Einstellungen anstelle der neuen verwendet."
   }
 }
