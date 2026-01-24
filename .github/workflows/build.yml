@@ -92,6 +92,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
+          path-type: inherit
           update: true
           install: >-
             mingw-w64-x86_64-gcc
@@ -100,9 +101,15 @@ jobs:
 
       - name: Set CGO Flags (windows)
         if: matrix.goos == 'windows'
+        shell: bash
         run: |
-          echo "CGO_CFLAGS=-IC:/msys64/mingw64/include" >> $GITHUB_ENV
-          echo "CGO_LDFLAGS=-LC:/msys64/mingw64/lib -lwebp" >> $GITHUB_ENV
+          MSYS_ROOT=$(cygpath -m /)
+          echo "Detected MSYS2 Root: $MSYS_ROOT"
+          
+          echo "PKG_CONFIG_PATH=${MSYS_ROOT}mingw64/lib/pkgconfig" >> $GITHUB_ENV
+          
+          echo "CGO_CFLAGS=-I${MSYS_ROOT}mingw64/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-L${MSYS_ROOT}mingw64/lib" >> $GITHUB_ENV
 
       # Linux/Mac specific setup
       - name: Install system dependencies
