@@ -113,8 +113,8 @@ jobs:
           MSYS_ROOT=$(echo "$MSYS_ROOT" | sed 's/\\/\//g')
 
           # Set flags using the clean path (No "Program Files"!)
-          echo "CGO_CFLAGS=-I${MSYS_ROOT}/mingw64/include" >> $GITHUB_ENV
-          echo "CGO_LDFLAGS=-L${MSYS_ROOT}/mingw64/lib" >> $GITHUB_EN
+          export CGO_CFLAGS="-I${MSYS_ROOT}/mingw64/include"
+          export CGO_LDFLAGS="-L${MSYS_ROOT}/mingw64/lib
 
       # Linux/Mac specific setup
       - name: Install system dependencies
