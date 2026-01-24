@@ -29,7 +29,23 @@
 {{ if .FirmwareVersion }}
 <div class="firmware-info">
     <div>
-        <strong>{{ t .Localizer "Firmware Image Version" }}:</strong> {{ .FirmwareVersion }}
+        <strong>{{ t .Localizer "Firmware Image Version" }}:</strong>
+        {{ if .AvailableFirmwareVersions }}
+        <select name="version"
+                form="firmware-form"
+                class="device-settings-input"
+                style="width: auto;
+                       display: inline-block;
+                       margin-left: 10px;
+                       padding: 2px 5px">
+            {{ range .AvailableFirmwareVersions }}
+            <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}
+            </option>
+            {{ end }}
+        </select>
+    {{ else }}
+        {{ .FirmwareVersion }}
+        {{ end }}
     </div>
     {{ if .User.IsAdmin }}
     <div>

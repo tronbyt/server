@@ -651,30 +651,26 @@
             <p>
                 <strong>{{ t .Localizer "Device Version" }}:</strong> {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
             </p>
-            {{ if .FirmwareAvailable }}
-            <p>
-                <strong>{{ t .Localizer "Available Version" }}:</strong> {{ if .FirmwareVersion }}{{ .FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
-            </p>
-            {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
+            {{ if .AvailableFirmwareVersions }}
             <div style="margin-bottom: 10px;">
-                <label for="swap_colors" style="cursor: pointer;">
-                    <input type="checkbox"
-                           name="swap_colors"
-                           id="swap_colors"
-                           {{ if .Device.SwapColors }}
-                           checked
-                           {{ end }}>
-                    {{ t .Localizer "Swap Colors (Fix for some Tidbyt Gen 1 displays)" }}
+                <label for="firmware_version_select">
+                    <strong>{{ t .Localizer "Select Version" }}:</strong>
                 </label>
-                <p class="small-text">
-                    {{ t .Localizer "Note: Changing this setting will require saving before updating firmware." }}
-                </p>
+                <select id="firmware_version_select"
+                        class="device-settings-input"
+                        style="width: auto;
+                               display: inline-block;
+                               margin-left: 10px">
+                    {{ range .AvailableFirmwareVersions }}
+                    <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}
+                    </option>
+                    {{ end }}
+                </select>
             </div>
-            {{ end }}
             <button type="button"
                     class="w3-button w3-blue config-management-btn"
-                    onclick="triggerOTA('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
-                <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Latest Firmware" }}
+                    onclick="triggerOTAWithVersion('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
+                <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Selected Firmware" }}
             </button>
             <small class="small-text" style="display: block; margin-top: 5px;">{{ t .Localizer "Updates the device to the latest version available on the server." }}</small>
         {{ else }}

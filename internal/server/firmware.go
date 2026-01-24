@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 	"tronbyt-server/internal/firmware"
 
 	"log/slog"
+
+	"golang.org/x/mod/semver"
 
 	"gorm.io/gorm"
 )
@@ -35,11 +38,23 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		}
 	}
 
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
+	// Read stored ETag
+	etagFile := filepath.Join(s.DataDir, "firmware", "firmware_releases_etag.txt")
+	var storedETag string
+	if data, err := os.ReadFile(etagFile); err == nil {
+		storedETag = strings.TrimSpace(string(data))
+	}
+
+	// Fetch last 5 releases
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=5", owner, repo)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
+	}
+
+	if storedETag != "" {
+		req.Header.Set("If-None-Match", storedETag)
 	}
 
 	token := s.Config.GitHubToken
@@ -58,48 +73,56 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		}
 	}()
 
+	if resp.StatusCode == http.StatusNotModified {
+		slog.Info("Firmware releases not modified (ETag match)")
+		return nil
+	}
+
 	if resp.StatusCode != http.StatusOK {
+		// If we hit a rate limit (403) or other error, check if we have any cached firmware.
+		// If so, we can proceed without failing completely.
+		if resp.StatusCode == http.StatusForbidden {
+			releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
+			if entries, err := os.ReadDir(releasesDir); err == nil && len(entries) > 0 {
+				slog.Warn("GitHub API rate limit exceeded (403). Using cached firmware releases.", "count", len(entries))
+				return nil
+			}
+		}
 		return fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
 
-	var release struct {
+	// Save new ETag
+	newETag := resp.Header.Get("ETag")
+	if newETag != "" {
+		// Ensure directory exists before writing etag
+		if err := os.MkdirAll(filepath.Dir(etagFile), 0755); err != nil {
+			slog.Error("Failed to create firmware dir for etag", "error", err)
+		} else {
+			if err := os.WriteFile(etagFile, []byte(newETag), 0644); err != nil {
+				slog.Error("Failed to write ETag file", "error", err)
+			}
+		}
+	}
+
+	var releases []struct {
 		TagName string `json:"tag_name"`
 		Assets  []struct {
 			Name string `json:"name"`
 			URL  string `json:"url"` // API URL
 		} `json:"assets"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return err
 	}
 
-	firmwareDir := filepath.Join(s.DataDir, "firmware")
-	if err := os.MkdirAll(firmwareDir, 0755); err != nil {
+	baseFirmwareDir := filepath.Join(s.DataDir, "firmware")
+	releasesDir := filepath.Join(baseFirmwareDir, "releases")
+	if err := os.MkdirAll(releasesDir, 0755); err != nil {
 		return err
-	}
-
-	requiredMergedFiles := []string{"tidbyt-gen1_merged.bin", "tronbyt-S3_merged.bin"}
-	forceDownload := false
-	for _, f := range requiredMergedFiles {
-		if _, statErr := os.Stat(filepath.Join(firmwareDir, f)); os.IsNotExist(statErr) {
-			slog.Info("Required merged firmware file missing, will re-download", "file", f)
-			forceDownload = true
-		}
-	}
-
-	versionFile := filepath.Join(firmwareDir, "firmware_version.txt")
-	currentVersion := ""
-	if data, err := os.ReadFile(versionFile); err == nil {
-		currentVersion = strings.TrimSpace(string(data))
-	}
-
-	if !forceDownload && currentVersion == release.TagName {
-		slog.Info("Firmware up to date", "version", currentVersion)
-		return nil
 	}
 
 	// Cleanup old custom firmware uploads
-	if files, err := os.ReadDir(firmwareDir); err == nil {
+	if files, err := os.ReadDir(baseFirmwareDir); err == nil {
 		for _, f := range files {
 			if strings.HasPrefix(f.Name(), "custom_") {
 				info, err := f.Info()
@@ -109,7 +132,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 				}
 				// Cleanup files older than 24 hours
 				if time.Since(info.ModTime()) > 24*time.Hour {
-					if err := os.Remove(filepath.Join(firmwareDir, f.Name())); err != nil {
+					if err := os.Remove(filepath.Join(baseFirmwareDir, f.Name())); err != nil {
 						slog.Warn("Failed to delete old custom firmware", "file", f.Name(), "error", err)
 					}
 				}
@@ -117,6 +140,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		}
 	}
 
+	// Mapping of asset names to local names
 	mapping := map[string]string{
 		// OTA firmware binaries (app only, flashable at 0x10000)
 		"tidbyt-gen1_firmware.bin":               "tidbyt-gen1.bin",
@@ -132,59 +156,110 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		"tronbyt-s3_merged.bin":  "tronbyt-S3_merged.bin",
 	}
 
-	count := 0
-	for _, asset := range release.Assets {
-		localName, ok := mapping[asset.Name]
-		if !ok {
+	for _, release := range releases {
+		versionDir := filepath.Join(releasesDir, release.TagName)
+		if err := os.MkdirAll(versionDir, 0755); err != nil {
+			slog.Error("Failed to create version dir", "version", release.TagName, "error", err)
 			continue
 		}
 
-		slog.Info("Downloading firmware", "asset", asset.Name)
+		// Iterate over assets and download them if they are missing or empty.
 
-		// Use API URL with Accept header to get binary
-		dReq, _ := http.NewRequest(http.MethodGet, asset.URL, nil)
-		dReq.Header.Set("Accept", "application/octet-stream")
-		if token != "" {
-			dReq.Header.Set("Authorization", "Bearer "+token)
-		}
-
-		dResp, err := client.Do(dReq)
-		if err != nil {
-			slog.Error("Failed to download firmware asset", "asset", asset.Name, "error", err)
-			continue
-		}
-		defer func() {
-			if err := dResp.Body.Close(); err != nil {
-				slog.Error("Failed to close asset body", "asset", asset.Name, "error", err)
+		for _, asset := range release.Assets {
+			localName, ok := mapping[asset.Name]
+			if !ok {
+				continue
 			}
-		}()
 
-		if dResp.StatusCode != http.StatusOK {
-			slog.Error("Failed to download firmware asset (bad status)", "asset", asset.Name, "status", dResp.StatusCode)
-			continue
-		}
+			localPath := filepath.Join(versionDir, localName)
+			if info, err := os.Stat(localPath); err == nil && info.Size() > 0 {
+				continue // Already exists and is not empty
+			}
 
-		outFile, err := os.Create(filepath.Join(firmwareDir, localName))
-		if err != nil {
-			slog.Error("Failed to create firmware file", "file", localName, "error", err)
-			continue
+			slog.Info("Downloading firmware asset", "version", release.TagName, "asset", asset.Name)
+
+			dReq, err := http.NewRequest(http.MethodGet, asset.URL, nil)
+			if err != nil {
+				slog.Error("Failed to create firmware download request", "asset", asset.Name, "error", err)
+				continue
+			}
+			dReq.Header.Set("Accept", "application/octet-stream")
+			if token != "" {
+				dReq.Header.Set("Authorization", "Bearer "+token)
+			}
+
+			dResp, err := client.Do(dReq)
+			if err != nil {
+				slog.Error("Failed to download firmware asset", "asset", asset.Name, "error", err)
+				continue
+			}
+
+			// Closure to handle defer properly in loop
+			func() {
+				defer func() {
+					if err := dResp.Body.Close(); err != nil {
+						slog.Error("Failed to close response body", "asset", asset.Name, "error", err)
+					}
+				}()
+				if dResp.StatusCode != http.StatusOK {
+					if dResp.StatusCode == http.StatusForbidden {
+						slog.Warn("Failed to download firmware asset (rate limit)", "asset", asset.Name, "status", dResp.StatusCode)
+					} else {
+						slog.Error("Failed to download firmware asset (bad status)", "asset", asset.Name, "status", dResp.StatusCode)
+					}
+					return
+				}
+
+				tempPath := localPath + ".tmp"
+				outFile, err := os.Create(tempPath)
+				if err != nil {
+					slog.Error("Failed to create temp firmware file", "file", tempPath, "error", err)
+					return
+				}
+
+				if _, err := io.Copy(outFile, dResp.Body); err != nil {
+					_ = outFile.Close()
+					_ = os.Remove(tempPath)
+					slog.Error("Failed to write firmware file", "file", localPath, "error", err)
+					return
+				}
+				if err := outFile.Close(); err != nil {
+					_ = os.Remove(tempPath)
+					slog.Error("Failed to close temp firmware file", "file", tempPath, "error", err)
+					return
+				}
+
+				if err := os.Rename(tempPath, localPath); err != nil {
+					slog.Error("Failed to rename firmware file", "from", tempPath, "to", localPath, "error", err)
+					_ = os.Remove(tempPath)
+				}
+			}()
 		}
-		if _, err := io.Copy(outFile, dResp.Body); err != nil {
-			slog.Error("Failed to write firmware file", "file", localName, "error", err)
-		}
-		if err := outFile.Close(); err != nil {
-			slog.Error("Failed to close firmware file", "file", localName, "error", err)
-		}
-		count++
 	}
 
-	if count > 0 {
-		if err := os.WriteFile(versionFile, []byte(release.TagName), 0644); err != nil {
-			slog.Error("Failed to write version file", "error", err)
-		}
-	}
-
+	// Update version file to point to the latest tag
 	return nil
+}
+
+func (s *Server) GetAvailableFirmwareVersions() []string {
+	releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
+	entries, err := os.ReadDir(releasesDir)
+	if err != nil {
+		return nil
+	}
+
+	var versions []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			versions = append(versions, entry.Name())
+		}
+	}
+
+	slices.SortFunc(versions, func(a, b string) int {
+		return semver.Compare(b, a) // Descending order
+	})
+
+	return versions
 }
 
 func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Request) {
@@ -192,35 +267,26 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 	device := GetDevice(r)
 
 	// Check firmware availability
-	firmwareDir := filepath.Join(s.DataDir, "firmware")
+	// Default to latest
+	version := s.GetLatestFirmwareVersion()
 	binsAvailable := false
-	version := ""
 
-	if _, err := os.Stat(firmwareDir); err == nil {
-		// Check for bin files
-		files, _ := os.ReadDir(firmwareDir)
-		for _, f := range files {
-			if strings.HasSuffix(f.Name(), ".bin") {
-				binsAvailable = true
-				break
-			}
-		}
-
-		// Check version
-		versionBytes, err := os.ReadFile(filepath.Join(firmwareDir, "firmware_version.txt"))
-		if err == nil {
-			version = strings.TrimSpace(string(versionBytes))
+	if version != "" {
+		firmwareDir := filepath.Join(s.DataDir, "firmware", "releases", version)
+		if _, err := os.Stat(firmwareDir); err == nil {
+			binsAvailable = true
 		}
 	}
 
 	localizer := s.getLocalizer(r)
 	s.renderTemplate(w, r, "firmware", TemplateData{
-		User:                  user,
-		Device:                device,
-		FirmwareBinsAvailable: binsAvailable,
-		FirmwareVersion:       version,
-		DeviceTypeChoices:     s.getDeviceTypeChoices(localizer),
-		Localizer:             localizer,
+		User:                      user,
+		Device:                    device,
+		FirmwareBinsAvailable:     binsAvailable,
+		FirmwareVersion:           version,
+		AvailableFirmwareVersions: s.GetAvailableFirmwareVersions(),
+		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
+		Localizer:                 localizer,
 	})
 }
 
@@ -232,21 +298,32 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	imgURL := r.FormValue("img_url")
 	swapColors := r.FormValue("swap_colors") == "on"
 	otaOnly := r.FormValue("ota_only") == "on"
+	version := r.FormValue("version")
 
 	if ssid == "" || password == "" || imgURL == "" {
 		http.Error(w, "Missing fields", http.StatusBadRequest)
 		return
 	}
 
+	if version == "" {
+		version = s.GetLatestFirmwareVersion() // Default to latest
+	}
+
+	if version == "" {
+		http.Error(w, "No firmware versions available", http.StatusInternalServerError)
+		return
+	}
+	firmwareDir := filepath.Join(s.DataDir, "firmware", "releases", version)
+
 	var binData []byte
 	var err error
 	var filename string
 
 	if otaOnly {
-		binData, err = firmware.Generate(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		binData, err = firmware.Generate(firmwareDir, device.Type, ssid, password, imgURL, swapColors)
 		filename = fmt.Sprintf("%s-firmware.bin", device.Name)
 	} else {
-		binData, err = firmware.GenerateMerged(s.DataDir, device.Type, ssid, password, imgURL, swapColors)
+		binData, err = firmware.GenerateMerged(firmwareDir, device.Type, ssid, password, imgURL, swapColors)
 		filename = fmt.Sprintf("%s-merged.bin", device.Name)
 	}
 
@@ -259,7 +336,6 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	if _, err := w.Write(binData); err != nil {
 		slog.Error("Failed to write firmware data to response", "error", err)
-		// Log error, but can't change HTTP status after writing headers.
 	}
 }
 
@@ -321,23 +397,35 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if updateURL == "" {
+		version := r.FormValue("version")
+		if version == "" {
+			version = s.GetLatestFirmwareVersion() // Default to latest
+		}
+
+		if version == "" {
+			s.flashAndRedirect(w, r, "No firmware available.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
+
 		binName := device.Type.FirmwareFilename(device.SwapColors)
 		if binName == "" {
 			s.flashAndRedirect(w, r, "OTA not supported for this device type", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 			return
 		}
 
-		firmwarePath := filepath.Join(s.DataDir, "firmware", binName)
+		// Check if file exists in the versioned directory
+		firmwarePath := filepath.Join(s.DataDir, "firmware", "releases", version, binName)
 		if _, err := os.Stat(firmwarePath); os.IsNotExist(err) {
-			s.flashAndRedirect(w, r, "Firmware binary not found. Please update firmware binaries in Admin settings.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			s.flashAndRedirect(w, r, fmt.Sprintf("Firmware binary not found for version %s.", version), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 			return
 		}
 
 		// Construct URL
-		// Using the new /static/firmware/ route
+		// We need to serve this file via HTTP.
+		// Existing /static/firmware/ maps to DataDir/firmware.
+		// So we can access it via /static/firmware/releases/<version>/<binName>
 		baseURL := s.GetBaseURL(r)
-		// Ensure baseURL has no trailing slash, but /static/firmware/ does
-		updateURL = fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), binName)
+		updateURL = fmt.Sprintf("%s/static/firmware/releases/%s/%s", strings.TrimRight(baseURL, "/"), version, binName)
 	}
 
 	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", updateURL); err != nil {
@@ -360,10 +448,10 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	s.flashAndRedirect(w, r, "OTA Update queued. Device should update shortly.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 }
 
-func (s *Server) GetFirmwareVersion() string {
-	versionBytes, err := os.ReadFile(filepath.Join(s.DataDir, "firmware", "firmware_version.txt"))
-	if err != nil {
-		return ""
+func (s *Server) GetLatestFirmwareVersion() string {
+	versions := s.GetAvailableFirmwareVersions()
+	if len(versions) > 0 {
+		return versions[0]
 	}
-	return strings.TrimSpace(string(versionBytes))
+	return ""
 }

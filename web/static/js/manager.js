@@ -1793,3 +1793,23 @@ function triggerOTA(deviceId, confirmMessage) {
     form.submit();
   }
 }
+
+function triggerOTAWithVersion(deviceId, confirmMessage) {
+  if (confirm(confirmMessage)) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/devices/${deviceId}/ota`;
+
+    const select = document.getElementById('firmware_version_select');
+    if (select) {
+        const versionInput = document.createElement('input');
+        versionInput.type = 'hidden';
+        versionInput.name = 'version';
+        versionInput.value = select.value;
+        form.appendChild(versionInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
