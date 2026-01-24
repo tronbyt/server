@@ -88,6 +88,7 @@ jobs:
       # Windows specific setup
       # Install GCC and Libwebp
       - name: Setup MSYS2
+        id: msys2
         if: matrix.goos == 'windows'
         uses: msys2/setup-msys2@v2
         with:
