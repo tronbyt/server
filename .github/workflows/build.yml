@@ -103,13 +103,17 @@ jobs:
         if: matrix.goos == 'windows'
         shell: bash
         run: |
-          MSYS_ROOT=$(cygpath -m /)
-          echo "Detected MSYS2 Root: $MSYS_ROOT"
+          # Retrieve the install location from the previous step
+          MSYS_ROOT="${{ steps.msys2.outputs.msys2-location }}"
           
-          echo "PKG_CONFIG_PATH=${MSYS_ROOT}mingw64/lib/pkgconfig" >> $GITHUB_ENV
+          echo "Using MSYS2 at: $MSYS_ROOT"
           
-          echo "CGO_CFLAGS=-I${MSYS_ROOT}mingw64/include" >> $GITHUB_ENV
-          echo "CGO_LDFLAGS=-L${MSYS_ROOT}mingw64/lib" >> $GITHUB_ENV
+          # Convert backslashes to forward slashes just in case
+          MSYS_ROOT=$(echo "$MSYS_ROOT" | sed 's/\\/\//g')
+
+          # Set flags using the clean path (No "Program Files"!)
+          echo "CGO_CFLAGS=-I${MSYS_ROOT}/mingw64/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-L${MSYS_ROOT}/mingw64/lib" >> $GITHUB_EN
 
       # Linux/Mac specific setup
       - name: Install system dependencies
