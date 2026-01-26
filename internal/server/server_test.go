@@ -29,10 +29,12 @@ func newTestServer(t *testing.T) *Server {
 	db.Create(&data.Setting{Key: "secret_key", Value: "testsecret"})
 	db.Create(&data.Setting{Key: "system_apps_repo", Value: ""})
 
-	cfg := &config.Settings{}
+	cfg := &config.Settings{
+		Production: "0",
+		DataDir:    t.TempDir(),
+	}
 
 	s := NewServer(db, cfg)
-	s.DataDir = t.TempDir()
 	return s
 }
 

@@ -81,10 +81,10 @@ func (s *Server) UpdateFirmwareBinaries() error {
 	if resp.StatusCode != http.StatusOK {
 		// If we hit a rate limit (403) or other error, check if we have any cached firmware.
 		// If so, we can proceed without failing completely.
-		if resp.StatusCode == http.StatusForbidden {
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
 			releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
 			if entries, err := os.ReadDir(releasesDir); err == nil && len(entries) > 0 {
-				slog.Warn("GitHub API rate limit exceeded (403). Using cached firmware releases.", "count", len(entries))
+				slog.Warn("GitHub API rate limit exceeded. Using cached firmware releases.", "count", len(entries))
 				return nil
 			}
 		}

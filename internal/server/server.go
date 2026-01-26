@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -167,13 +168,17 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 
 	s.RefreshSystemAppsCache()
 
+	// Clean up and recreate tmp directory
+	tmpDir := s.GetTmpDir()
+	if err := os.RemoveAll(tmpDir); err != nil {
+		slog.Warn("Failed to clean up tmp directory on startup", "path", tmpDir, "error", err)
+	}
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		slog.Error("Failed to create tmp directory on startup", "path", tmpDir, "error", err)
+	}
+
 	go s.checkForUpdates()
 	go s.autoRefreshSystemRepo()
-
-	// Check and refresh firmware binaries at startup
-	if err := s.UpdateFirmwareBinaries(); err != nil {
-		slog.Error("Failed to refresh firmware binaries on startup", "error", err)
-	}
 
 	s.routes()
 	return s
@@ -288,6 +293,10 @@ func (s *Server) routes() {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Chain middlewares: Recover -> Gzip -> Logging -> Proxy -> Mux
 	RecoverMiddleware(GzipMiddleware(LoggingMiddleware(ProxyMiddleware(s.Router)))).ServeHTTP(w, r)
+}
+
+func (s *Server) GetTmpDir() string {
+	return filepath.Join(s.DataDir, "tmp")
 }
 
 func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
