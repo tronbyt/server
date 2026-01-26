@@ -1101,8 +1101,15 @@ func (s *Server) parseManifest(tempExtractDir string) (string, error) {
 func (s *Server) handleZipUpload(w http.ResponseWriter, r *http.Request, user *data.User, device *data.Device, file io.Reader, header *multipart.FileHeader, appName string) error {
 	userAppsDir := filepath.Join(s.DataDir, "users", user.Username, "apps")
 
+	// Create temp dir inside DataDir for containerized environments where /tmp may not exist
+	tmpDir := filepath.Join(s.DataDir, "tmp")
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		slog.Error("Failed to create tmp directory", "error", err)
+		return err
+	}
+
 	// Save the zip file temporarily
-	tempZip, err := os.CreateTemp("", "upload-*.zip")
+	tempZip, err := os.CreateTemp(tmpDir, "upload-*.zip")
 	if err != nil {
 		slog.Error("Failed to create temp zip file", "error", err)
 		return err
@@ -1126,7 +1133,7 @@ func (s *Server) handleZipUpload(w http.ResponseWriter, r *http.Request, user *d
 	}
 
 	// Create a temp dir for extraction
-	tempExtractDir, err := os.MkdirTemp("", "app-extract-*")
+	tempExtractDir, err := os.MkdirTemp(tmpDir, "app-extract-*")
 	if err != nil {
 		slog.Error("Failed to create temp extract dir", "error", err)
 		return err
