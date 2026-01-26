@@ -57,10 +57,12 @@ func newTestServerAPI(t *testing.T) *Server {
 		t.Fatalf("Failed to seed system_apps_repo: %v", err)
 	}
 
-	cfg := &config.Settings{}
+	cfg := &config.Settings{
+		Production: "0",
+		DataDir:    t.TempDir(),
+	}
 
 	s := NewServer(db, cfg)
-	s.DataDir = t.TempDir()
 
 	// Setup common test user and device
 	adminUser := data.User{

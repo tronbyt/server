@@ -190,6 +190,10 @@ func main() {
 	dataDir := flag.String("data", cfg.DataDir, "Path to data directory")
 	flag.Parse()
 
+	// Update config with flag values
+	cfg.DataDir = *dataDir
+	cfg.DBDSN = *dbDSN
+
 	if len(flag.Args()) > 0 {
 		cmd := flag.Arg(0)
 		switch cmd {
@@ -296,8 +300,6 @@ func main() {
 	runtime.InitCache(cache)
 
 	srv := server.NewServer(db, cfg)
-	srv.DataDir = *dataDir
-	srv.Config = cfg // Pass the loaded configuration
 
 	// Firmware Update (production only)
 	if cfg.Production == "1" {
