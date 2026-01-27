@@ -128,12 +128,12 @@ func (s *Server) doUpdateCheck() {
 
 	switch resp.StatusCode {
 	case http.StatusNotModified:
-		// Load persisted version info
-		if val, err := s.getSetting("system_update_latest_tag"); err == nil {
-			latestVersion = val
-		}
-		if val, err := s.getSetting("system_update_latest_url"); err == nil {
-			releaseURL = val
+		// Load persisted version info only if both are present
+		tag, errTag := s.getSetting("system_update_latest_tag")
+		url, errURL := s.getSetting("system_update_latest_url")
+		if errTag == nil && errURL == nil && tag != "" && url != "" {
+			latestVersion = tag
+			releaseURL = url
 		}
 	case http.StatusOK:
 		// Save new ETag
