@@ -26,6 +26,7 @@ type Settings struct {
 	SSLCertFile            string `env:"TRONBYT_SSL_CERTFILE"`
 	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES"  envDefault:"*"`
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
+	EnableUpdateChecks     string `env:"ENABLE_UPDATE_CHECKS"     envDefault:"1"`
 }
 
 // TemplateConfig holds configuration values needed in templates.

@@ -89,12 +89,21 @@ func (s *Server) refreshSystemRepo() error {
 }
 
 func (s *Server) doUpdateCheck() {
+	if s.Config.EnableUpdateChecks != "1" {
+		return
+	}
+
 	url := "https://api.github.com/repos/tronbyt/server/releases/latest"
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Debug("Failed to create HTTP request for update check", "error", err)
 		return
+	}
+
+	// Read stored ETag
+	if val, err := s.getSetting("system_update_etag"); err == nil && val != "" {
+		req.Header.Set("If-None-Match", val)
 	}
 
 	githubToken := s.Config.GitHubToken
@@ -115,15 +124,43 @@ func (s *Server) doUpdateCheck() {
 		}
 	}()
 
-	if resp.StatusCode != http.StatusOK {
+	var latestVersion, releaseURL string
+
+	if resp.StatusCode == http.StatusNotModified {
+		// Load persisted version info
+		if val, err := s.getSetting("system_update_latest_tag"); err == nil {
+			latestVersion = val
+		}
+		if val, err := s.getSetting("system_update_latest_url"); err == nil {
+			releaseURL = val
+		}
+	} else if resp.StatusCode == http.StatusOK {
+		// Save new ETag
+		newETag := resp.Header.Get("ETag")
+		if newETag != "" {
+			if err := s.setSetting("system_update_etag", newETag); err != nil {
+				slog.Error("Failed to save system update ETag setting", "error", err)
+			}
+		}
+
+		var release struct {
+			TagName string `json:"tag_name"`
+			HTMLURL string `json:"html_url"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+			return
+		}
+		latestVersion = release.TagName
+		releaseURL = release.HTMLURL
+
+		// Persist version info
+		_ = s.setSetting("system_update_latest_tag", latestVersion)
+		_ = s.setSetting("system_update_latest_url", releaseURL)
+	} else {
 		return
 	}
 
-	var release struct {
-		TagName string `json:"tag_name"`
-		HTMLURL string `json:"html_url"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+	if latestVersion == "" {
 		return
 	}
 
@@ -131,16 +168,15 @@ func (s *Server) doUpdateCheck() {
 	if !strings.HasPrefix(currentVersion, "v") {
 		currentVersion = "v" + currentVersion
 	}
-	latestVersion := release.TagName
 	if !strings.HasPrefix(latestVersion, "v") {
 		latestVersion = "v" + latestVersion
 	}
 
 	if semver.IsValid(currentVersion) && semver.IsValid(latestVersion) {
 		if semver.Compare(latestVersion, currentVersion) > 0 {
-			slog.Info("Update available", "current", version.Version, "latest", release.TagName)
+			slog.Info("Update available", "current", version.Version, "latest", latestVersion)
 			s.UpdateAvailable = true
-			s.LatestReleaseURL = release.HTMLURL
+			s.LatestReleaseURL = releaseURL
 		}
 	}
 }
