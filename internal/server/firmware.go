@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,6 +16,8 @@ import (
 	"tronbyt-server/internal/firmware"
 
 	"log/slog"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
 
 	"golang.org/x/mod/semver"
 
@@ -313,10 +316,14 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "No firmware versions available", http.StatusInternalServerError)
 		return
 	}
-	firmwareDir := filepath.Join(s.DataDir, "firmware", "releases", version)
+	firmwareDir, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "firmware", "releases"), version)
+	if err != nil {
+		slog.Error("Failed to resolve firmware directory", "error", err)
+		http.Error(w, "Invalid version", http.StatusBadRequest)
+		return
+	}
 
 	var binData []byte
-	var err error
 	var filename string
 
 	if otaOnly {
@@ -414,7 +421,15 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if file exists in the versioned directory
-		firmwarePath := filepath.Join(s.DataDir, "firmware", "releases", version, binName)
+		firmwareBase := filepath.Join(s.DataDir, "firmware", "releases")
+		versionDir, err := securejoin.SecureJoin(firmwareBase, version)
+		if err != nil {
+			slog.Error("Failed to resolve firmware version directory", "version", version, "error", err)
+			s.flashAndRedirect(w, r, "Invalid firmware version.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+			return
+		}
+
+		firmwarePath := filepath.Join(versionDir, binName)
 		if _, err := os.Stat(firmwarePath); os.IsNotExist(err) {
 			s.flashAndRedirect(w, r, fmt.Sprintf("Firmware binary not found for version %s.", version), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 			return
@@ -425,7 +440,7 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 		// Existing /static/firmware/ maps to DataDir/firmware.
 		// So we can access it via /static/firmware/releases/<version>/<binName>
 		baseURL := s.GetBaseURL(r)
-		updateURL = fmt.Sprintf("%s/static/firmware/releases/%s/%s", strings.TrimRight(baseURL, "/"), version, binName)
+		updateURL = fmt.Sprintf("%s/static/firmware/releases/%s/%s", strings.TrimRight(baseURL, "/"), url.PathEscape(version), url.PathEscape(binName))
 	}
 
 	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", updateURL); err != nil {
