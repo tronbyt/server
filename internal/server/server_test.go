@@ -30,8 +30,9 @@ func newTestServer(t *testing.T) *Server {
 	db.Create(&data.Setting{Key: "system_apps_repo", Value: ""})
 
 	cfg := &config.Settings{
-		Production: "0",
-		DataDir:    t.TempDir(),
+		Production:         "0",
+		DataDir:            t.TempDir(),
+		EnableUpdateChecks: "0",
 	}
 
 	s := NewServer(db, cfg)

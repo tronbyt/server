@@ -42,10 +42,9 @@ func (s *Server) UpdateFirmwareBinaries() error {
 	}
 
 	// Read stored ETag
-	etagFile := filepath.Join(s.DataDir, "firmware", "firmware_releases_etag.txt")
 	var storedETag string
-	if data, err := os.ReadFile(etagFile); err == nil {
-		storedETag = strings.TrimSpace(string(data))
+	if val, err := s.getSetting("firmware_releases_etag"); err == nil {
+		storedETag = val
 	}
 
 	// Fetch last 5 releases
@@ -97,13 +96,8 @@ func (s *Server) UpdateFirmwareBinaries() error {
 	// Save new ETag
 	newETag := resp.Header.Get("ETag")
 	if newETag != "" {
-		// Ensure directory exists before writing etag
-		if err := os.MkdirAll(filepath.Dir(etagFile), 0755); err != nil {
-			slog.Error("Failed to create firmware dir for etag", "error", err)
-		} else {
-			if err := os.WriteFile(etagFile, []byte(newETag), 0644); err != nil {
-				slog.Error("Failed to write ETag file", "error", err)
-			}
+		if err := s.setSetting("firmware_releases_etag", newETag); err != nil {
+			slog.Error("Failed to save firmware ETag setting", "error", err)
 		}
 	}
 
