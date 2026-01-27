@@ -155,8 +155,12 @@ func (s *Server) doUpdateCheck() {
 		releaseURL = release.HTMLURL
 
 		// Persist version info
-		_ = s.setSetting("system_update_latest_tag", latestVersion)
-		_ = s.setSetting("system_update_latest_url", releaseURL)
+		if err := s.setSetting("system_update_latest_tag", latestVersion); err != nil {
+			slog.Error("Failed to save system update latest tag", "error", err)
+		}
+		if err := s.setSetting("system_update_latest_url", releaseURL); err != nil {
+			slog.Error("Failed to save system update latest URL", "error", err)
+		}
 	default:
 		return
 	}
