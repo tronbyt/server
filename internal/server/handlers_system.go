@@ -126,7 +126,8 @@ func (s *Server) doUpdateCheck() {
 
 	var latestVersion, releaseURL string
 
-	if resp.StatusCode == http.StatusNotModified {
+	switch resp.StatusCode {
+	case http.StatusNotModified:
 		// Load persisted version info
 		if val, err := s.getSetting("system_update_latest_tag"); err == nil {
 			latestVersion = val
@@ -134,7 +135,7 @@ func (s *Server) doUpdateCheck() {
 		if val, err := s.getSetting("system_update_latest_url"); err == nil {
 			releaseURL = val
 		}
-	} else if resp.StatusCode == http.StatusOK {
+	case http.StatusOK:
 		// Save new ETag
 		newETag := resp.Header.Get("ETag")
 		if newETag != "" {
@@ -156,7 +157,7 @@ func (s *Server) doUpdateCheck() {
 		// Persist version info
 		_ = s.setSetting("system_update_latest_tag", latestVersion)
 		_ = s.setSetting("system_update_latest_url", releaseURL)
-	} else {
+	default:
 		return
 	}
 
