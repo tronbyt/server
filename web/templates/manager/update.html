@@ -457,15 +457,28 @@
         <table class="device-settings-table">
             <tr>
                 <td>
+                    <label for="dim_mode_enabled" class="device-settings-label">{{ t .Localizer "Enable dim Mode" }}</label>
+                </td>
+                <td>
+                    <input type="checkbox"
+                           name="dim_mode_enabled"
+                           id="dim_mode_enabled"
+                           {{ if .Device.DimModeEnabled }}
+                           checked
+                           {{ end }}>
+                </td>
+            </tr>
+            <tr>
+                <td>
                     <label for="dim_time" class="device-settings-label">{{ t .Localizer "Dim Start Time" }}</label>
                 </td>
                 <td>
                     <input type="time"
                            name="dim_time"
                            id="dim_time"
-                           value="{{ deref .Device.DimTime }}"
+                           value="{{ if .Device.DimTime }}{{ .Device.DimTime }}{{ else }}18:00{{ end }}"
                            class="device-settings-input">
-                    <small class="small-text">{{ t .Localizer "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default." }}</small>
+                    <small class="small-text">{{ t .Localizer "Dim mode ends at Night End Time (if set) or 6:00 AM by default." }}</small>
                 </td>
             </tr>
             <tr>
@@ -485,6 +498,24 @@
                                 onclick="setDimBrightnessUpdate({{ . }})">{{ . }}</button>
                         {{ end }}
                     </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="dim_color_filter" class="device-settings-label">{{ t .Localizer "Dim Color Filter" }}</label>
+                    <span class="tooltip-icon"
+                          title="{{ t .Localizer " Apply custom filters to the image during dim mode." }}">ⓘ</span>
+                </td>
+                <td>
+                    <select name="dim_color_filter"
+                            id="dim_color_filter"
+                            class="device-settings-input">
+                        {{ range .ColorFilterOptions }}
+                        <option value="{{ .Value }}" {{ if eq (derefOr $.Device.DimColorFilter "none" ) .Value }} selected {{ end
+                            }}>{{ t $.Localizer .Name }}
+                        </option>
+                        {{ end }}
+                    </select>
                 </td>
             </tr>
         </table>

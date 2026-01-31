@@ -409,6 +409,8 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// 6. Dim Mode
+	device.DimModeEnabled = r.FormValue("dim_mode_enabled") == "on"
+
 	dimTime := r.FormValue("dim_time")
 	if dimTime != "" {
 		parsed, err := parseTimeInput(dimTime)
@@ -424,6 +426,14 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	if dimUI, err := strconv.Atoi(r.FormValue("dim_brightness")); err == nil {
 		val := data.BrightnessFromUIScale(dimUI, customScale)
 		device.DimBrightness = &val
+	}
+
+	dimColorFilter := r.FormValue("dim_color_filter")
+	if dimColorFilter != "none" {
+		val := data.ColorFilter(dimColorFilter)
+		device.DimColorFilter = &val
+	} else {
+		device.DimColorFilter = nil
 	}
 
 	// 7. Location & Locale
@@ -642,6 +652,7 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		device.Info = importedDevice.Info
 		device.ColorFilter = importedDevice.ColorFilter
 		device.NightColorFilter = importedDevice.NightColorFilter
+		device.DimColorFilter = importedDevice.DimColorFilter
 		device.SwapColors = importedDevice.SwapColors
 
 		if err := tx.Save(device).Error; err != nil {

@@ -245,6 +245,8 @@ func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []strin
 	var deviceFilter data.ColorFilter
 	if device.GetNightModeIsActive() && device.NightColorFilter != nil {
 		deviceFilter = *device.NightColorFilter
+	} else if device.GetDimModeIsActive() && device.DimColorFilter != nil {
+		deviceFilter = *device.DimColorFilter
 	} else if device.ColorFilter != nil {
 		deviceFilter = *device.ColorFilter
 	} else {
