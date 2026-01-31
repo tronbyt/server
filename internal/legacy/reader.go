@@ -52,6 +52,7 @@ type LegacyDevice struct {
 	Info                  LegacyDeviceInfo           `json:"info"`
 	ColorFilter           *string                    `json:"color_filter"`
 	NightColorFilter      *string                    `json:"night_color_filter"`
+	DimColorFilter        *string                    `json:"dim_color_filter"`
 }
 
 type LegacyLocation struct {

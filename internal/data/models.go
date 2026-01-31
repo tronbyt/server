@@ -564,6 +564,7 @@ type Device struct {
 	NightStart            string      `json:"night_start"` // HH:MM
 	NightEnd              string      `json:"night_end"`   // HH:MM
 	NightBrightness       Brightness  `gorm:"default:0"               json:"night_brightness"`
+	DimModeEnabled        bool        `json:"dim_mode_enabled"`
 	DimTime               *string     `json:"dim_time"`
 	DimBrightness         *Brightness `json:"dim_brightness"`
 	DefaultInterval       int         `gorm:"default:15"              json:"default_interval"`
@@ -587,6 +588,7 @@ type Device struct {
 
 	ColorFilter      *ColorFilter `json:"color_filter"`
 	NightColorFilter *ColorFilter `json:"night_color_filter"`
+	DimColorFilter   *ColorFilter `json:"dim_color_filter"`
 
 	// OTA
 	SwapColors       bool   `json:"swap_colors"`
@@ -706,6 +708,9 @@ func (d Device) GetNightModeIsActive() bool {
 
 // GetDimModeIsActive checks if dim mode is active (dimming without full night mode).
 func (d Device) GetDimModeIsActive() bool {
+	if !d.DimModeEnabled {
+		return false
+	}
 	dimTime := d.DimTime
 	if dimTime == nil || *dimTime == "" {
 		return false
