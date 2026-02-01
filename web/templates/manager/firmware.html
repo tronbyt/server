@@ -56,6 +56,16 @@
     </div>
     {{ end }}
 </div>
+{{ if .URLWarning }}
+<div class="w3-panel w3-red w3-border w3-border-red w3-round-large">
+    <h3>
+        <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}
+    </h3>
+    <p>
+        {{ t .Localizer "The devices image URL uses localhost or 127.0.0.1 (" }}<strong>{{ .Device.ImgURL }}</strong>{{ t .Localizer ") which will not work.  Either replace localhost with the ip or hostname of this server below or connect to this server over its ip/hostname, edit the device and click the refresh buttons by the devices image urls, click save then return here." }}
+    </p>
+</div>
+{{ end }}
 {{ end }}
 <form method="post" id="firmware-form">
     <div class="device-settings-section">
