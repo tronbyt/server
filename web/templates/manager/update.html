@@ -109,6 +109,17 @@
         </div>
         <div class="device-settings-section-divider">
             <h3>{{ t .Localizer "Connection URLs" }}</h3>
+            {{ if .URLWarning }}
+            <div class="w3-panel w3-red w3-border w3-border-red w3-round-large"
+                 style="margin-bottom: 10px">
+                <h4>
+                    <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}
+                </h4>
+                <p>
+                    {{ t .Localizer "The firmware image URL uses localhost (" }}<strong>{{ .Device.ImgURL }}</strong>{{ t .Localizer ") which will not work when the device is running on a different network. Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the devices image URLs, then return here." }}
+                </p>
+            </div>
+            {{ end }}
             <table class="device-settings-table">
                 <tr>
                     <td>
@@ -706,20 +717,6 @@
         </div>
     </div>
 </div>
-{{ if .URLWarning }}
-<div class="device-settings-section">
-    <div class="device-settings-section-divider">
-        <div class="w3-panel w3-red w3-border w3-border-red w3-round-large">
-            <h3>
-                <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}
-            </h3>
-            <p>
-                {{ t .Localizer "The firmware image URL uses localhost (" }}<strong>{{ .Device.ImgURL }}</strong>{{ t .Localizer ") which will not work when the device is running on a different network. Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the devices image URLs, then return here." }}
-            </p>
-        </div>
-    </div>
-</div>
-{{ end }}
 <div class="device-settings-section">
     <h2>{{ t .Localizer "Display Settings" }}</h2>
     <table class="device-settings-table">
@@ -728,17 +725,6 @@
                 <label class="device-settings-label">{{ t .Localizer "Image URL" }}</label>
             </td>
             <td>
-                {{ if .URLWarning }}
-                <div class="w3-panel w3-red w3-border w3-border-red w3-round-large"
-                     style="margin-bottom: 10px">
-                    <h4>
-                        <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}
-                    </h4>
-                    <p>
-                        {{ t .Localizer "The firmware image URL uses localhost (" }}<strong>{{ .Device.ImgURL }}</strong>{{ t .Localizer ") which will not work when the device is running on a different network. Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the devices image URLs, then return here." }}
-                    </p>
-                </div>
-                {{ end }}
                 <div class="firmware-setting-control">
                     <input type="text"
                            id="reported_img_url"
