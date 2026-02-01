@@ -95,10 +95,11 @@ type TemplateData struct {
 	AvailableFirmwareVersions []string
 	ServerVersion             string
 	CommitHash                string
-	IsAutoLoginActive         bool // Indicate if single-user auto-login is active
-	UserCount                 int  // Number of users, for registration logic
-	DeleteOnCancel            bool // Indicate if app should be deleted on cancel
-	ReadOnly                  bool // Indicate if the view should be read-only
+	IsAutoLoginActive         bool   // Indicate if single-user auto-login is active
+	UserCount                 int    // Number of users, for registration logic
+	DeleteOnCancel            bool   // Indicate if app should be deleted on cancel
+	URLWarning                string // Warning about localhost in image URL
+	ReadOnly                  bool   // Indicate if the view should be read-only
 	Partial                   string
 }
 

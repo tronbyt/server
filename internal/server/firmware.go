@@ -276,6 +276,12 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 	}
 
 	localizer := s.getLocalizer(r)
+	// Check if URL contains localhost
+	imgURL := device.ImgURL
+	var urlWarning string
+	if strings.Contains(imgURL, "localhost") || strings.Contains(imgURL, "127.0.0.1") {
+		urlWarning = "localhost"
+	}
 	s.renderTemplate(w, r, "firmware", TemplateData{
 		User:                      user,
 		Device:                    device,
@@ -284,6 +290,7 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 		AvailableFirmwareVersions: s.GetAvailableFirmwareVersions(),
 		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
 		Localizer:                 localizer,
+		URLWarning:                urlWarning,
 	})
 }
 
