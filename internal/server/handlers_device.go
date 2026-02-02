@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"tronbyt-server/internal/data"
 
@@ -257,6 +258,12 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		firmwareVersion = availableVersions[0]
 	}
 
+	// Check if URL contains localhost
+	imgURL := device.ImgURL
+	var urlWarning string
+	if strings.Contains(imgURL, "localhost") || strings.Contains(imgURL, "127.0.0.1") {
+		urlWarning = "localhost"
+	}
 	s.renderTemplate(w, r, "update", TemplateData{
 		User:                      user,
 		Device:                    device,
@@ -271,8 +278,8 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		FirmwareAvailable:         firmwareAvailable,
 		FirmwareVersion:           firmwareVersion,
 		AvailableFirmwareVersions: availableVersions,
-
-		Localizer: localizer,
+		Localizer:                 localizer,
+		URLWarning:                urlWarning,
 	})
 }
 
