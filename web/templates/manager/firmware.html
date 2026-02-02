@@ -201,17 +201,16 @@
             </table>
         </div>
     </div>
-    <form method="post" id="firmware-form">
-        <div class="device-settings-section">
-            <div class="config-management-container">
-                <button class="w3-button w3-blue config-management-btn" type="submit">
-                    <i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Generate Firmware File" }}
-                </button>
-            </div>
+    <div class="device-settings-section">
+        <div class="config-management-container">
+            <button class="w3-button w3-blue config-management-btn" type="submit">
+                <i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Generate Firmware File" }}
+            </button>
         </div>
-    </form>
-    <hr>
-    <script>
+    </div>
+</form>
+<hr>
+<script>
     (function() {
         const input = document.getElementById('img_url');
         const httpRadio = document.getElementById('variant_http');
@@ -243,5 +242,5 @@
         wsRadio.checked = true;
         updateUrl();
     })();
-    </script>
-    {{ end }}
+</script>
+{{ end }}
