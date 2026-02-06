@@ -134,7 +134,7 @@ func migrateUser(db *gorm.DB, lUser legacy.LegacyUser) error {
 }
 
 func migrateDirectories(oldDBPath, newDataDir string) error {
-	oldDir := filepath.Dir(oldDBPath)
+	oldDir := filepath.ToSlash(filepath.Dir(oldDBPath))
 
 	dbFileName := filepath.Base(oldDBPath)
 

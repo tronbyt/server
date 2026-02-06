@@ -78,13 +78,13 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 		if da.Path != nil && *da.Path != "" {
 			p := *da.Path
 			installedPaths[p] = true
-			installedPaths[filepath.Dir(p)] = true
+			installedPaths[filepath.ToSlash(filepath.Dir(p))] = true
 
 			// Also track relative path to ensure matching works if DB has absolute paths
 			// but ListSystemApps returns relative paths.
 			if rel, err := filepath.Rel(s.DataDir, p); err == nil {
 				installedPaths[rel] = true
-				installedPaths[filepath.Dir(rel)] = true
+				installedPaths[filepath.ToSlash(filepath.Dir(rel))] = true
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 	}
 	for i := range customApps {
 		if installedNames[customApps[i].ID] || installedNames[customApps[i].Name] ||
-			installedPaths[customApps[i].Path] || installedPaths[filepath.Dir(customApps[i].Path)] {
+			installedPaths[customApps[i].Path] || installedPaths[filepath.ToSlash(filepath.Dir(customApps[i].Path))] {
 			customApps[i].IsInstalled = true
 		}
 	}
@@ -310,7 +310,7 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 	// apps.AppMetadata.Path is relative to DataDir
 	// For System Apps: Path=".../clock", Dir(Path)=".../apps", file="clock/preview.webp" -> Join=".../apps/clock/preview.webp" (Correct)
 	// For User Apps: Path=".../app.star", Dir(Path)=".../app", file="preview.webp" -> Join=".../app/preview.webp" (Correct)
-	appDir := filepath.Join(s.DataDir, filepath.Dir(appMeta.Path))
+	appDir := filepath.Join(s.DataDir, filepath.ToSlash(filepath.Dir(appMeta.Path)))
 
 	path, err := securejoin.SecureJoin(appDir, file)
 	if err != nil {
@@ -1266,7 +1266,7 @@ func (s *Server) unzip(src, dest string) error {
 			continue
 		}
 
-		if err = os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
+		if err = os.MkdirAll(filepath.ToSlash(filepath.Dir(fpath)), 0755); err != nil {
 			return err
 		}
 
