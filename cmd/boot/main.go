@@ -71,7 +71,6 @@ func main() {
 		}
 
 		dropPrivileges(uid, gid)
-
 	}
 
 	if len(os.Args) < 2 {
