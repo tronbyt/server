@@ -69,20 +69,6 @@ func main() {
 				slog.Warn("Failed to fix permissions", "dir", dir, "error", err)
 			}
 		}
-
-		// Drop privileges
-		if err := syscall.Setgroups([]int{gid}); err != nil {
-			slog.Error("Failed to set groups", "error", err)
-			os.Exit(1)
-		}
-		if err := syscall.Setgid(gid); err != nil {
-			slog.Error("Failed to set gid", "error", err)
-			os.Exit(1)
-		}
-		if err := syscall.Setuid(uid); err != nil {
-			slog.Error("Failed to set uid", "error", err)
-			os.Exit(1)
-		}
 	}
 
 	if len(os.Args) < 2 {
