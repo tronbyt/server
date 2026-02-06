@@ -4,7 +4,7 @@
 set -e
 
 echo "================================================"
-echo "Raspberry Pi Server Setup Script"
+echo "Raspberry Pi Tronbyt Server Setup Script"
 echo "================================================"
 echo ""
 
@@ -51,12 +51,56 @@ fi
 echo "[6/6] Starting Docker containers..."
 sudo docker compose up -d
 
+# Wait for container to be ready (check for HTTP 200 or 303)
+echo "Waiting for server to be ready..."
+MAX_RETRIES=60
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "303" ]; then
+        echo -e "\rServer is ready!                               "
+        break
+    fi
+    printf "\rWaiting for server... (attempt %d/%d)" $((RETRY_COUNT + 1)) $MAX_RETRIES
+    sleep 2
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo -e "\rWarning: Server did not become ready within 2 minutes"
+    echo ""
+    echo "Docker Compose logs:"
+    echo "================================================"
+    sudo docker compose logs
+    echo "================================================"
+    echo ""
+    echo "ERROR: The server appears to have failed to start."
+    echo ""
+    echo "This may be due to:"
+    echo "  - The system-apps/firmware download taking too long"
+    echo "  - The system-apps/firmware download failing"
+    echo ""
+    echo "Suggestions:"
+    echo "  - Try accessing the server later at: http://$(hostname).local:8000"
+    echo "  - Or try running this setup script again"
+    echo ""
+    exit 1
+fi
+
+# Get the Raspberry Pi's IP address
+PI_IP=$(hostname -I | awk '{print $1}')
+
 echo ""
 echo "================================================"
 echo "Setup complete!"
 echo "================================================"
-echo "Docker containers are now running."
-echo "You can check their status with: sudo docker compose ps"
+echo "Tronbyt container is now running."
+echo "You can check the servers logs by running: sudo docker compose logs"
+echo "You can check the status with: sudo docker compose ps"
+echo "You can upgrade the container with: sudo docker compose pull ; sudo docker compose up -d"
+echo ""
+echo "Access your server at: http://$PI_IP:8000"
+echo "                   or: http://$(hostname).local:8000"
 echo ""
 echo "Note: You may need to log out and back in for docker group"
 echo "      permissions to take effect (to run docker without sudo)"
