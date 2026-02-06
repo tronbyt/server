@@ -28,14 +28,9 @@ Write-Host "Building Tronbyt Server ($VERSION)..." -ForegroundColor Green
 # 3. Download Dependencies
 go mod download
 
-# 4. Build 'boot' (Entrypoint wrapper)
-# Note: Usually on Windows you don't need this wrapper, but building it just in case.
-# Boot is CGO-free (CGO_ENABLED=0), so we toggle it off briefly.
-$env:CGO_ENABLED = "0"
-go build -ldflags="-w -s" -o boot.exe ./cmd/boot
 $env:CGO_ENABLED = "1"
 
-# 5. Build 'tronbyt-server'
+# 4. Build 'tronbyt-server'
 $LDFLAGS = "-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=$VERSION' -X 'tronbyt-server/internal/version.Commit=$COMMIT' -X 'tronbyt-server/internal/version.BuildDate=$DATE'"
 
 go build -ldflags="$LDFLAGS" -tags gzip_fonts -o tronbyt-server.exe ./cmd/server
@@ -45,7 +40,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 6. Build 'migrate' (Database tool)
+# 5. Build 'migrate' (Database tool)
 go build -ldflags="-w -s" -o migrate.exe ./cmd/migrate
 
 Write-Host "Build Complete!" -ForegroundColor Green

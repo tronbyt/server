@@ -73,11 +73,11 @@ jobs:
             goos: linux
             goarch: arm64
             artifact_name: tronbyt-server-linux-arm64
-          - os: macos-latest
+          - os: macos-26
             goos: darwin
             goarch: arm64
             artifact_name: tronbyt-server-darwin-arm64
-          - os: windows-latest
+          - os: windows-2025
             goos: windows
             goarch: amd64
             artifact_name: tronbyt-server-windows-amd64.exe
@@ -102,7 +102,6 @@ jobs:
 
       - name: Set CGO Flags (windows)
         if: matrix.goos == 'windows'
-        shell: bash
         run: |
           # Retrieve the install location from the previous step
           MSYS_ROOT="${{ steps.msys2.outputs.msys2-location }}"
