@@ -69,6 +69,9 @@ func main() {
 				slog.Warn("Failed to fix permissions", "dir", dir, "error", err)
 			}
 		}
+
+		dropPrivileges(uid, gid)
+
 	}
 
 	if len(os.Args) < 2 {
