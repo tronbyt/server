@@ -19,16 +19,22 @@ if (Test-Path .git) {
         Write-Error "git not found, but .git directory exists. Cannot determine version information."
         exit 1
     }
-    $COMMIT = git rev-parse --short HEAD
-    $VERSION = git describe --tags --always --dirty
+    $COMMIT = $(git rev-parse --short HEAD)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Failed to get git commit hash. Using default 'unknown'."
+        $COMMIT = "unknown"
+    }
+    $VERSION = $(git describe --tags --always --dirty)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Failed to get git version. Using default 'dev'."
+        $VERSION = "dev"
+    }
 }
 
 Write-Host "Building Tronbyt Server ($VERSION)..." -ForegroundColor Green
 
 # 3. Download Dependencies
 go mod download
-
-$env:CGO_ENABLED = "1"
 
 # 4. Build 'tronbyt-server'
 $LDFLAGS = "-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=$VERSION' -X 'tronbyt-server/internal/version.Commit=$COMMIT' -X 'tronbyt-server/internal/version.BuildDate=$DATE'"
