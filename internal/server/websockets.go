@@ -102,6 +102,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	// Read loop to handle ping/pong/close and client messages
 	go func() {
 		defer close(stopCh)
+		var lastSeenUpdate time.Time
 		for {
 			var msg WSMessage
 			if err := conn.ReadJSON(&msg); err != nil {
@@ -111,9 +112,15 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Update LastSeen
-			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "last_seen", time.Now()); err != nil {
-				slog.Error("Failed to update last_seen", "error", err)
+			// Update LastSeen with rate limiting (max once per 5 seconds)
+			// to reduce SQLite write contention
+			now := time.Now()
+			if now.Sub(lastSeenUpdate) >= 5*time.Second {
+				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "last_seen", now); err != nil {
+					slog.Error("Failed to update last_seen", "error", err)
+				} else {
+					lastSeenUpdate = now
+				}
 			}
 
 			// Handle Message

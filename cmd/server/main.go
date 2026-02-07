@@ -92,6 +92,15 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 	}
 
 	if err == nil {
+		// Configure connection pool to prevent exhaustion and SQLite contention
+		sqlDB, err := db.DB()
+		if err == nil {
+			sqlDB.SetMaxOpenConns(25)                  // Limit concurrent connections
+			sqlDB.SetMaxIdleConns(10)                  // Keep some connections ready
+			sqlDB.SetConnMaxLifetime(30 * time.Minute) // Recycle connections periodically
+			slog.Debug("Configured database connection pool", "maxOpen", 25, "maxIdle", 10)
+		}
+
 		if err := db.Use(prometheus.New(prometheus.Config{
 			DBName:          "tronbyt",
 			RefreshInterval: 15,

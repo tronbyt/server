@@ -8,7 +8,6 @@ import (
 	"tronbyt-server/internal/data"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // handleNextApp is the handler for GET /{id}/next.
@@ -57,42 +56,27 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update device info if needed
-	// We use a transaction with locking to avoid race conditions with other requests
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		// Lock the row to ensure we read the latest state and no one else updates it
-		freshDevice, err := gorm.G[data.Device](tx, clause.Locking{Strength: "UPDATE"}).Where("id = ?", device.ID).First(r.Context())
-		if err != nil {
-			return err
-		}
+	// Device info updates are best-effort and don't require locking
+	updated := false
+	if device.Info.ProtocolType != data.ProtocolHTTP {
+		slog.Debug("Updating protocol_type to HTTP on /next request", "device", device.ID)
+		device.Info.ProtocolType = data.ProtocolHTTP
+		updated = true
+	}
 
-		updated := false
-		if freshDevice.Info.ProtocolType != data.ProtocolHTTP {
-			slog.Debug("Updating protocol_type to HTTP on /next request", "device", device.ID)
-			freshDevice.Info.ProtocolType = data.ProtocolHTTP
+	// Check for firmware version header
+	if fwVersion := r.Header.Get("X-Firmware-Version"); fwVersion != "" {
+		if device.Info.FirmwareVersion != fwVersion {
+			slog.Debug("Updating firmware_version on /next request", "device", device.ID, "version", fwVersion)
+			device.Info.FirmwareVersion = fwVersion
 			updated = true
 		}
+	}
 
-		// Check for firmware version header
-		if fwVersion := r.Header.Get("X-Firmware-Version"); fwVersion != "" {
-			if freshDevice.Info.FirmwareVersion != fwVersion {
-				slog.Debug("Updating firmware_version on /next request", "device", device.ID, "version", fwVersion)
-				freshDevice.Info.FirmwareVersion = fwVersion
-				updated = true
-			}
+	if updated {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "info", device.Info); err != nil {
+			slog.Error("Failed to update device info", "device", device.ID, "error", err)
 		}
-
-		if updated {
-			if _, err := gorm.G[data.Device](tx).Where("id = ?", freshDevice.ID).Update(r.Context(), "info", freshDevice.Info); err != nil {
-				return err
-			}
-			// Update the in-memory device object so subsequent logic uses the new values
-			device.Info = freshDevice.Info
-		}
-		return nil
-	})
-
-	if err != nil {
-		slog.Error("Failed to update device info transaction", "device", device.ID, "error", err)
 	}
 
 	imgData, app, err := s.GetNextAppImage(r.Context(), device, user)
