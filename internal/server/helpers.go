@@ -462,7 +462,7 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 	}
 
 	var appMetadata *apps.AppMetadata
-	appDir := filepath.Dir(appPath)
+	appDir := filepath.ToSlash(filepath.Dir(appPath))
 
 	s.systemAppsCacheMutex.RLock()
 	for i := range s.systemAppsCache {
@@ -488,7 +488,7 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 		if err == nil && info.IsDir() {
 			appDir = fullPath
 		} else {
-			appDir = filepath.Dir(fullPath)
+			appDir = filepath.ToSlash(filepath.Dir(fullPath))
 		}
 
 		manifestPath := filepath.Join(appDir, "manifest.yaml")

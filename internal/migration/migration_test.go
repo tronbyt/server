@@ -34,7 +34,7 @@ func TestMigrateLegacyDB(t *testing.T) {
 	dataDir := filepath.Join(tempDir, "data")
 
 	// Create necessary parent directory for oldDBPath
-	err = os.MkdirAll(filepath.Dir(oldDBPath), 0755)
+	err = os.MkdirAll(filepath.ToSlash(filepath.Dir(oldDBPath)), 0755)
 	assert.NoError(t, err)
 	err = os.MkdirAll(dataDir, 0755)
 	assert.NoError(t, err)
