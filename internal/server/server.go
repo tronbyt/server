@@ -19,6 +19,7 @@ import (
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/config"
+	"tronbyt-server/internal/data"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/web"
 
@@ -45,6 +46,7 @@ type Server struct {
 	Upgrader      *websocket.Upgrader
 	PromRegistry  prometheus.Registerer
 	PromGatherer  prometheus.Gatherer
+	WriteQueue    *data.WriteQueue
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -85,6 +87,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		},
 		PromRegistry: prometheus.DefaultRegisterer,
 		PromGatherer: prometheus.DefaultGatherer,
+		WriteQueue:   data.NewWriteQueue(db, 100),
 	}
 
 	// Load Settings from DB

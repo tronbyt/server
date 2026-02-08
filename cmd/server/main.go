@@ -92,13 +92,15 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 	}
 
 	if err == nil {
-		// Configure connection pool to prevent exhaustion and SQLite contention
+		// Configure connection pool for SQLite
+		// can only write from one connection at a time, so we use
+		// a write queue to serialize writes instead of limiting connections
 		sqlDB, err := db.DB()
 		if err == nil {
-			sqlDB.SetMaxOpenConns(25)                  // Limit concurrent connections
-			sqlDB.SetMaxIdleConns(10)                  // Keep some connections ready
+			sqlDB.SetMaxOpenConns(5)                   // Reasonable limit for concurrent reads
+			sqlDB.SetMaxIdleConns(3)                   // Keep some connections ready
 			sqlDB.SetConnMaxLifetime(30 * time.Minute) // Recycle connections periodically
-			slog.Debug("Configured database connection pool", "maxOpen", 25, "maxIdle", 10)
+			slog.Debug("Configured database connection pool", "maxOpen", 5, "maxIdle", 3)
 		}
 
 		if err := db.Use(prometheus.New(prometheus.Config{

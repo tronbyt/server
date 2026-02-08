@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -90,9 +91,14 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	// For HTTP devices, we assume "Sent" equals "Displaying" (or roughly so).
 	// We update DisplayingApp here so the Preview uses the explicit field instead of fallback.
 	if app != nil {
-		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "displaying_app", app.Iname); err != nil {
-			slog.Error("Failed to update displaying_app for HTTP device", "device", device.ID, "error", err)
-		}
+		appIname := app.Iname
+		s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+			_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "displaying_app", appIname)
+			if err != nil {
+				slog.Error("Failed to update displaying_app for HTTP device", "device", device.ID, "error", err)
+			}
+			return err
+		})
 	}
 
 	// Send Headers
@@ -104,12 +110,15 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Sending OTA update header", "device", device.ID, "url", updateURL)
 		w.Header().Set("Tronbyt-OTA-URL", updateURL)
 
-		// Clear pending update
-		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", ""); err != nil {
-			slog.Error("Failed to clear pending update", "error", err)
-		} else {
-			device.PendingUpdateURL = ""
-		}
+		// Clear pending update using write queue to avoid contention
+		s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+			_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "pending_update_url", "")
+			if err != nil {
+				slog.Error("Failed to clear pending update", "error", err)
+			}
+			return err
+		})
+		device.PendingUpdateURL = ""
 	}
 
 	// Determine Brightness

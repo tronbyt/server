@@ -68,24 +68,31 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		LastSeen: &now,
 	}
 
-	q := gorm.G[data.Device](s.DB).Where("id = ?", device.ID)
-	hasIndexUpdate := false
-	if nextIndex != device.LastAppIndex {
+	hasIndexUpdate := nextIndex != device.LastAppIndex
+	if hasIndexUpdate {
 		deviceUpdates.LastAppIndex = nextIndex
-		q = q.Select("LastSeen", "LastAppIndex")
-		hasIndexUpdate = true
-	} else {
-		q = q.Select("LastSeen")
 	}
 
-	if _, err := q.Updates(ctx, deviceUpdates); err != nil {
-		slog.Error("Failed to update device state (last_app_index/last_seen)", "error", err)
-	} else {
+	// Use write queue to serialize device updates and avoid SQLite lock contention
+	s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+		q := gorm.G[data.Device](db).Where("id = ?", device.ID)
 		if hasIndexUpdate {
-			device.LastAppIndex = nextIndex
+			q = q.Select("LastSeen", "LastAppIndex")
+		} else {
+			q = q.Select("LastSeen")
 		}
-		device.LastSeen = &now
+		_, err := q.Updates(context.Background(), deviceUpdates)
+		if err != nil {
+			slog.Error("Failed to update device state (last_app_index/last_seen)", "error", err)
+		}
+		return err
+	})
+
+	// Update in-memory object immediately (best-effort)
+	if hasIndexUpdate {
+		device.LastAppIndex = nextIndex
 	}
+	device.LastSeen = &now
 
 	// Notify Dashboard that the device has updated (new app or new render)
 	// For WS devices, we wait for the ACK to send this event to avoid "future" previews.

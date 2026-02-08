@@ -116,11 +116,14 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 			// to reduce SQLite write contention
 			now := time.Now()
 			if now.Sub(lastSeenUpdate) >= 5*time.Second {
-				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "last_seen", now); err != nil {
-					slog.Error("Failed to update last_seen", "error", err)
-				} else {
-					lastSeenUpdate = now
-				}
+				s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+					_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "last_seen", now)
+					if err != nil {
+						slog.Error("Failed to update last_seen", "error", err)
+					}
+					return err
+				})
+				lastSeenUpdate = now
 			}
 
 			// Handle Message
@@ -164,9 +167,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					device.Info.SyslogAddr = msg.ClientInfo.SyslogAddr
 				}
 
-				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
-					slog.Error("Failed to update device info", "error", err)
-				}
+				s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+					_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info)
+					if err != nil {
+						slog.Error("Failed to update device info", "error", err)
+					}
+					return err
+				})
 			}
 
 			if msg.Queued != nil {
@@ -176,9 +183,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					slog.Info("First 'queued' message, setting protocol_version to 1", "device", deviceID)
 					newVersion := 1
 					device.Info.ProtocolVersion = &newVersion
-					if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
-						slog.Error("Failed to update device info (protocol version)", "error", err)
-					}
+					s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+						_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info)
+						if err != nil {
+							slog.Error("Failed to update device info (protocol version)", "error", err)
+						}
+						return err
+					})
 				}
 			}
 
