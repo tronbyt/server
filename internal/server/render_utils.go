@@ -164,22 +164,34 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			RenderMessages:  data.StringSlice(messages),
 		}
 
-		q := gorm.G[data.App](s.DB).Where("id = ?", app.ID)
 		if success {
 			appUpdates.LastSuccessfulRender = &now
-			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender")
-		} else {
-			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages")
 		}
 
-		rowsAffected, err := q.Updates(ctx, appUpdates)
+		// Use write queue to serialize updates and avoid SQLite lock contention
+		err = s.WriteQueue.Execute(ctx, func(db *gorm.DB) error {
+			q := gorm.G[data.App](db).Where("id = ?", app.ID)
+			if success {
+				q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender")
+			} else {
+				q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages")
+			}
+			rowsAffected, err := q.Updates(ctx, appUpdates)
+			if err != nil {
+				return err
+			}
+			if rowsAffected == 0 {
+				return fmt.Errorf("app no longer exists")
+			}
+			return nil
+		})
+
 		if err != nil {
+			if err.Error() == "app no longer exists" {
+				slog.Info("App no longer exists in DB, aborting", "app", appBasename)
+				return false
+			}
 			slog.Error("Failed to update app state in DB", "app", appBasename, "error", err)
-			return false
-		}
-
-		if rowsAffected == 0 {
-			slog.Info("App no longer exists in DB, aborting", "app", appBasename)
 			return false
 		}
 
@@ -214,22 +226,28 @@ func (s *Server) handleAutoPin(ctx context.Context, app *data.App, device *data.
 	if success {
 		// Pin if not already pinned
 		if device.PinnedApp == nil || *device.PinnedApp != app.Iname {
-			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pinned_app", app.Iname); err != nil {
-				slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
-			} else {
-				device.PinnedApp = &app.Iname
-				shouldNotify = true
-			}
+			s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+				_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "pinned_app", app.Iname)
+				if err != nil {
+					slog.Error("Failed to pin app", "app", app.Iname, "device_id", device.ID, "error", err)
+				}
+				return err
+			})
+			device.PinnedApp = &app.Iname
+			shouldNotify = true
 		}
 	} else {
 		// Unpin if currently pinned to this app
 		if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pinned_app", nil); err != nil {
-				slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
-			} else {
-				device.PinnedApp = nil
-				shouldNotify = true
-			}
+			s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+				_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "pinned_app", nil)
+				if err != nil {
+					slog.Error("Failed to unpin app", "app", app.Iname, "device_id", device.ID, "error", err)
+				}
+				return err
+			})
+			device.PinnedApp = nil
+			shouldNotify = true
 		}
 	}
 

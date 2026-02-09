@@ -230,11 +230,14 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		if !foundPinned {
 			// Pinned app not found (e.g. delivered/deleted), clear pin and continue
 			slog.Warn("Pinned app not found on device, clearing pin", "device", device.ID, "app", pinnedIname)
-			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pinned_app", nil); err != nil {
-				slog.Error("Failed to clear invalid pinned app", "device", device.ID, "error", err)
-			} else {
-				device.PinnedApp = nil
-			}
+			s.WriteQueue.ExecuteAsync(func(db *gorm.DB) error {
+				_, err := gorm.G[data.Device](db).Where("id = ?", device.ID).Update(context.Background(), "pinned_app", nil)
+				if err != nil {
+					slog.Error("Failed to clear invalid pinned app", "device", device.ID, "error", err)
+				}
+				return err
+			})
+			device.PinnedApp = nil
 		}
 	}
 

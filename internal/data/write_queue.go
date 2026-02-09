@@ -91,6 +91,7 @@ func (wq *WriteQueue) Execute(ctx context.Context, fn func(*gorm.DB) error) erro
 }
 
 // ExecuteAsync queues a write operation without waiting (fire-and-forget).
+// If the queue is full, executes synchronously to avoid data loss.
 func (wq *WriteQueue) ExecuteAsync(fn func(*gorm.DB) error) {
 	op := writeOp{
 		ctx: context.Background(),
@@ -99,9 +100,61 @@ func (wq *WriteQueue) ExecuteAsync(fn func(*gorm.DB) error) {
 
 	select {
 	case wq.queue <- op:
+		// Successfully queued
 	default:
-		// Queue is full, log and drop
-		slog.Warn("Write queue full, dropping async operation")
+		// Queue is full, execute synchronously with timeout to prevent blocking
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		done := make(chan error, 1)
+		syncOp := writeOp{
+			ctx:  ctx,
+			do:   fn,
+			done: done,
+		}
+
+		// Try to queue the synchronous operation
+		select {
+		case wq.queue <- syncOp:
+			// Wait for completion with timeout
+			select {
+			case <-done:
+				// Completed successfully
+			case <-ctx.Done():
+				slog.Warn("Write queue full, synchronous execution timed out")
+			}
+		case <-ctx.Done():
+			// Even the queue insertion timed out
+			slog.Warn("Write queue full, operation dropped after timeout")
+		}
+	}
+}
+
+// Flush waits for all queued operations to complete.
+// Used primarily in tests to ensure async writes are finished before assertions.
+func (wq *WriteQueue) Flush(timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		// Send a marker operation and wait for it to complete
+		markerDone := make(chan error, 1)
+		markerOp := writeOp{
+			ctx:  context.Background(),
+			do:   func(*gorm.DB) error { return nil },
+			done: markerDone,
+		}
+		select {
+		case wq.queue <- markerOp:
+			<-markerDone
+		case <-time.After(timeout):
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
 	}
 }
 

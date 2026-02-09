@@ -324,6 +324,9 @@ func TestDetermineNextApp_Pinning(t *testing.T) {
 		t.Error("Expected d.PinnedApp to be nil after missing app check")
 	}
 
+	// Flush write queue to ensure async DB updates complete
+	s.WriteQueue.Flush(2 * time.Second)
+
 	// Verify pin is cleared in DB
 	dbDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", d.ID).First(ctx)
 	if err != nil {
@@ -383,6 +386,9 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	if d.PinnedApp == nil || *d.PinnedApp != app.Iname {
 		t.Errorf("Expected app %s to be auto-pinned, but got %v", app.Iname, d.PinnedApp)
 	}
+
+	// Flush write queue to ensure async DB updates complete
+	s.WriteQueue.Flush(2 * time.Second)
 
 	// Check DB
 	dbDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", d.ID).First(ctx)
