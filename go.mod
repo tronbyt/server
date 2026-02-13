@@ -20,7 +20,7 @@ require (
 	github.com/tronbyt/pixlet v0.50.2
 	golang.org/x/crypto v0.47.0
 	golang.org/x/mod v0.32.0
-	golang.org/x/text v0.33.0
+	golang.org/x/text v0.34.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
