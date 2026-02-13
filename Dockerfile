@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
 
 # hadolint global ignore=DL3018
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
