@@ -21,7 +21,6 @@ Developing additional clients for Tronbyt Server is straightforward: pull WebP i
 *   **Docker:** The recommended method uses Docker Compose with a configuration file. Video Tutorial : [Raspberry Pi Setup with Docker](https://youtu.be/UeHzD0uFxRo)
 *   **Bare metal (Homebrew):** Install using Homebrew:
     ```bash
-    brew tap tronbyt/server
     brew install tronbyt-server
     ```
 *   **Bare metal (from source):** Build from source using Go.
