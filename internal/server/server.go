@@ -66,6 +66,7 @@ var templateFiles = map[string]string{
 	"uploadapp":  "manager/uploadapp.html",
 	"firmware":   "manager/firmware.html",
 	"update":     "manager/update.html",
+	"device_tv":   "manager/device_tv.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -280,6 +281,9 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/reboot", s.RequireLogin(s.RequireDevice(s.handleRebootDevice)))
 
 	s.Router.HandleFunc("POST /devices/{id}/update_firmware_settings", s.RequireLogin(s.RequireDevice(s.handleUpdateFirmwareSettings)))
+
+	// Add this line for the TV View endpoint
+	s.Router.HandleFunc("GET /devices/{id}/tv", s.RequireLogin(s.RequireDevice(s.handleDeviceTV)))
 
 	// Websocket routes
 	s.SetupWebsocketRoutes()
