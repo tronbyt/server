@@ -57,6 +57,12 @@
          height="64">
     <div class="skeleton-loader"></div>
 </div>
+<div style="text-align:center; margin:8px 0;">
+    <label style="cursor:pointer; user-select:none; font-size:0.9em;">
+        <input type="checkbox" id="autoRefreshPreview" checked>
+        {{ t .Localizer "Auto Render Preview" }}
+    </label>
+</div>
 {{ if .AppMetadata }}
 <div class="app-metadata">
     {{ if .AppMetadata.Summary }}
@@ -732,6 +738,10 @@
     const previewImage = document.getElementById("previewImage");
 
     if (configContentPre) configContentPre.textContent = JSON.stringify(config, null, 2);
+
+    // Skip rendering if auto-refresh is disabled
+    const autoRefresh = document.getElementById("autoRefreshPreview");
+    if (autoRefresh && !autoRefresh.checked) return;
 
     // Trigger backend preview (POST to update ephemeral, then GET with config param)
     previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', config, null, null)

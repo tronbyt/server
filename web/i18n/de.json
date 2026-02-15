@@ -722,6 +722,9 @@
   "Preview": {
     "other": "Vorschau"
   },
+  "Auto Render Preview": {
+    "other": "Vorschau automatisch rendern"
+  },
   "Last Rendered:": {
     "other": "Zuletzt gerendert:"
   },
