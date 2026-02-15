@@ -1,4 +1,5 @@
 # Tronbyt Server
+[Tronbyt Demo](https://tronbyt.clodhost.com/auth/register)
 
 The Tronbyt Server is a Go-based application designed to manage apps on Tronbyt devices locally, without relying on Tidbyt's backend servers. It offers a web UI for app discoverability and operates independently of cloud dependencies, ensuring continued functionality even if Tidbyt's servers are offline. The server also enables some APIs that were previously blocked by Tidbyt's servers, such as Surfline apps, and supports custom hardware.
 
