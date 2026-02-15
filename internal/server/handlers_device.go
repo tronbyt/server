@@ -224,6 +224,18 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (s *Server) handleDeviceTV(w http.ResponseWriter, r *http.Request) {
+    user := GetUser(r)
+    localizer := s.getLocalizer(r)
+    device := GetDevice(r) // Middleware provides this
+
+    s.renderTemplate(w, r, "device_tv", TemplateData{
+        User:      user,
+        Localizer: localizer,
+        Device:    device, 
+    })
+}
+
 func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
