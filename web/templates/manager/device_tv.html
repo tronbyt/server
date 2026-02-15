@@ -1,0 +1,137 @@
+{{define "device_tv"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Device.Name }} - TV Mode</title>
+    <script>
+        // Wait for the HTML to be fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('fullscreen-btn');
+
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.error(`Error: ${err.message}`);
+                        });
+                        btn.innerHTML = '<i class="fa-solid fa-compress"></i> Exit';
+                    } else {
+                        document.exitFullscreen();
+                        btn.innerHTML = '<i class="fa-solid fa-expand"></i> Fullscreen';
+                    }
+                });
+            }
+
+            // Keep the interval here as well
+            setInterval(() => {
+                const images = document.querySelectorAll('.app-card img');
+                images.forEach(img => {
+                    const url = new URL(img.src);
+                    url.searchParams.set('t', Date.now());
+                    img.src = url.toString();
+                });
+            }, 60000);
+        });
+    </script>
+   <style>
+        body, html {
+            background-color: black !important;
+            color: white;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            /* Changed to auto so you can scroll if apps overflow, 
+            but we hide the scrollbar visuals below */
+            overflow-y: auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tv-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Changed to min-height to allow page to grow */
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .device-header {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-top: 30px;        /* Changed from margin-bottom to margin-top */
+            border-top: 2px solid #333; /* Changed from border-bottom to border-top */
+            padding-top: 15px;       /* Changed from padding-bottom to padding-top */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-grid {
+            display: grid;
+            /* Changed to auto-fit and increased min-width to 350px 
+            so apps look better on large screens */
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            flex-grow: 1;
+            align-content: center;
+        }
+
+        .app-card img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 64/32;
+            object-fit: contain;
+            image-rendering: pixelated; 
+            /* Ensures pixels stay sharp regardless of scaling */
+        }
+
+        .status-pill {
+            font-size: 1rem;
+            background: #2e7d32;
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        /* Style for your new Fullscreen button to match the theme */
+        #fullscreen-btn {
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        #fullscreen-btn:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="tv-container">
+        <div class="app-grid">
+        {{ range .Device.Apps }}
+            {{ if .Enabled }}  <div class="app-card" style="background: none; border: none; padding: 10px;">
+                    <img src="/devices/{{ $.Device.ID }}/installations/{{ .Iname }}/preview" 
+                        style="width: 100%; aspect-ratio: 64/32; image-rendering: pixelated; display: block;">
+                </div>
+            {{ end }}
+        {{ end }}
+        </div>
+
+        <div class="device-header">
+            <div>
+                {{ .Device.Name }} <span class="status-pill">Live Monitor</span>
+            </div>
+            <button id="fullscreen-btn" class="w3-button w3-teal w3-round" style="font-size: 1rem;">
+                <i class="fa-solid fa-expand"></i> Fullscreen
+            </button>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}
