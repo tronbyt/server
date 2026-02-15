@@ -229,19 +229,6 @@ func (s *Server) handleDeviceTV(w http.ResponseWriter, r *http.Request) {
     localizer := s.getLocalizer(r)
     device := GetDevice(r) // Middleware provides this
 
-    if device == nil {
-        slog.Error("Device not found in context")
-        http.Error(w, "Device not found", http.StatusNotFound)
-        return
-    }
-
-    // Load the apps for the grid
-    if err := s.DB.Preload("Apps").First(device, "id = ?", device.ID).Error; err != nil {
-        slog.Error("Failed to preload apps", "error", err)
-    }
-
-    // Double check the template name "device_tv" matches 
-    // the key in the map in server.go
     s.renderTemplate(w, r, "device_tv", TemplateData{
         User:      user,
         Localizer: localizer,
