@@ -75,6 +75,16 @@
 
         headerButtons.appendChild(saveBtn);
         headerButtons.appendChild(deleteBtn);
+
+        // Initialize firmware img URL based on RequireAPIKey checkbox
+        var requireApiKeyChecked = document.getElementById('require_api_key').checked;
+        var key = getAPIKey();
+        var firmwareImgEl = document.getElementById('reported_img_url');
+        if (requireApiKeyChecked && key) {
+            firmwareImgEl.value = addKeyToURL(baseFirmwareImgURL, key);
+        } else {
+            firmwareImgEl.value = baseFirmwareImgURL;
+        }
     });
 </script>
 {{ end }}
@@ -177,6 +187,7 @@
     <script>
         const baseImgURL = '{{ .DefaultImgURL }}';
         const baseWsURL = '{{ .DefaultWsURL }}';
+        const baseFirmwareImgURL = '{{ .FirmwareImgURL }}';
 
         function getAPIKey() {
             return (document.getElementById('api_key') || {}).value || '';
@@ -206,12 +217,15 @@
             var key = getAPIKey();
             var imgEl = document.getElementById('img_url');
             var wsEl = document.getElementById('ws_url');
+            var firmwareImgEl = document.getElementById('reported_img_url');
             if (checked) {
                 imgEl.value = addKeyToURL(imgEl.value, key);
                 wsEl.value = addKeyToURL(wsEl.value, key);
+                firmwareImgEl.value = addKeyToURL(firmwareImgEl.value, key);
             } else {
                 imgEl.value = removeKeyFromURL(imgEl.value);
                 wsEl.value = removeKeyFromURL(wsEl.value);
+                firmwareImgEl.value = removeKeyFromURL(firmwareImgEl.value);
             }
             updateExampleCommands();
         }
@@ -803,7 +817,7 @@
                     <div class="firmware-setting-control">
                         <input type="text"
                                id="reported_img_url"
-                               value="{{ if .FirmwareImgURL }}{{ .FirmwareImgURL }}{{ else }}{{ derefOr .Device.Info.ImageURL "" }}{{ end }}"
+                               value="{{ .FirmwareImgURL }}"
                                class="device-settings-input firmware-setting-input">
                         <button type="button"
                                 class="w3-button w3-small w3-blue firmware-setting-button"
