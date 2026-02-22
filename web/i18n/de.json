@@ -179,6 +179,9 @@
   "Name is required.": {
     "other": "Name ist erforderlich."
   },
+  "Name already exists.": {
+    "other": "Name existiert bereits."
+  },
   "Invalid Device ID.": {
     "other": "Ungültige Geräte-ID."
   },
@@ -1726,5 +1729,11 @@
   },
   "16-char hex": {
     "other": "16-Zeichen Hex"
+  },
+  "Require API Key": {
+    "other": "API-Schlüssel erforderlich"
+  },
+  "RequireAPIKeyHelp": {
+    "other": "Wenn aktiviert, muss die Bild-URL den API-Schlüssel als Query-Parameter (?key=...) oder Authorization-Header enthalten. Verwenden Sie die Schaltfläche \"Bild-URL synchronisieren\" unter Firmware-Funktionen, um die aktualisierte URL an ein verbundenes Gerät zu senden."
   }
 }

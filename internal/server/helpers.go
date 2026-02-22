@@ -84,6 +84,7 @@ type TemplateData struct {
 	AvailableLocales   []string
 	DefaultImgURL      string
 	DefaultWsURL       string
+	FirmwareImgURL     string
 	BrightnessUI       int
 	NightBrightnessUI  int
 	DimBrightnessUI    int
@@ -565,6 +566,37 @@ func (s *Server) getImageURL(r *http.Request, deviceID string) string {
 	return fmt.Sprintf("%s/%s/next", baseURL, deviceID)
 }
 
+func (s *Server) getImageURLWithKey(r *http.Request, deviceID string, apiKey string) string {
+	u := s.getImageURL(r, deviceID)
+	if apiKey != "" {
+		u += "?key=" + apiKey
+	}
+	return u
+}
+
+// appendKeyToURL appends ?key=apiKey (or &key=apiKey) to a URL string.
+func appendKeyToURL(rawURL string, apiKey string) string {
+	if apiKey == "" || rawURL == "" {
+		return rawURL
+	}
+	if strings.Contains(rawURL, "?") {
+		return rawURL + "&key=" + apiKey
+	}
+	return rawURL + "?key=" + apiKey
+}
+
+// extractDeviceKey extracts the device API key from the request.
+// It checks the "key" query parameter first, then the Authorization: Bearer header.
+func extractDeviceKey(r *http.Request) string {
+	if key := r.URL.Query().Get("key"); key != "" {
+		return key
+	}
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimPrefix(auth, "Bearer ")
+	}
+	return ""
+}
+
 func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
 	baseURL := s.GetBaseURL(r)
 	wsScheme := "ws"
@@ -572,6 +604,14 @@ func (s *Server) getWebsocketURL(r *http.Request, deviceID string) string {
 		wsScheme = "wss"
 	}
 	return fmt.Sprintf("%s://%s/%s/ws", wsScheme, r.Host, deviceID)
+}
+
+func (s *Server) getWebsocketURLWithKey(r *http.Request, deviceID string, apiKey string) string {
+	u := s.getWebsocketURL(r, deviceID)
+	if apiKey != "" {
+		u += "?key=" + apiKey
+	}
+	return u
 }
 
 func stringPtr(s string) *string {

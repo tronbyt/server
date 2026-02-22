@@ -123,6 +123,21 @@
             <table class="device-settings-table">
                 <tr>
                     <td>
+                        <label for="require_api_key" class="device-settings-label">{{ t .Localizer "Require API Key" }}</label>
+                    </td>
+                    <td>
+                        <input type="checkbox"
+                               name="require_api_key"
+                               id="require_api_key"
+                               {{ if .Device.RequireAPIKey }}
+                               checked
+                               {{ end }}
+                               onchange="toggleRequireAPIKey()">
+                        <small class="small-text">{{ t .Localizer "RequireAPIKeyHelp" }}</small>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
                         <label for="img_url" class="device-settings-label">{{ t .Localizer "Image URL" }}</label>
                     </td>
                     <td>
@@ -160,13 +175,69 @@
         </div>
     </div>
     <script>
+        const baseImgURL = '{{ .DefaultImgURL }}';
+        const baseWsURL = '{{ .DefaultWsURL }}';
+
+        function getAPIKey() {
+            return (document.getElementById('api_key') || {}).value || '';
+        }
+
+        function addKeyToURL(url, key) {
+            url = removeKeyFromURL(url);
+            if (!key) return url;
+            return url + (url.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key);
+        }
+
+        function removeKeyFromURL(url) {
+            try {
+                // Handle both http(s) and ws(s) schemes by temporarily swapping for parsing
+                var swapped = false;
+                var parseURL = url;
+                if (parseURL.startsWith('ws://')) {
+                    parseURL = 'http://' + parseURL.substring(5);
+                    swapped = true;
+                } else if (parseURL.startsWith('wss://')) {
+                    parseURL = 'https://' + parseURL.substring(6);
+                    swapped = true;
+                }
+                var u = new URL(parseURL);
+                u.searchParams.delete('key');
+                var result = u.toString();
+                if (swapped) {
+                    result = result.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+                }
+                return result;
+            } catch (e) {
+                return url.replace(/[?&]key=[^&]*/, '');
+            }
+        }
+
+        function toggleRequireAPIKey() {
+            var checked = document.getElementById('require_api_key').checked;
+            var key = getAPIKey();
+            var imgEl = document.getElementById('img_url');
+            var wsEl = document.getElementById('ws_url');
+            if (checked) {
+                imgEl.value = addKeyToURL(imgEl.value, key);
+                wsEl.value = addKeyToURL(wsEl.value, key);
+            } else {
+                imgEl.value = removeKeyFromURL(imgEl.value);
+                wsEl.value = removeKeyFromURL(wsEl.value);
+            }
+            updateExampleCommands();
+        }
+
         function resetImgUrl() {
-            document.getElementById('img_url').value = '{{ .DefaultImgURL }}';
-            updateExampleCommands(); // Update example commands if they exist
+            var checked = document.getElementById('require_api_key').checked;
+            var url = removeKeyFromURL(baseImgURL);
+            document.getElementById('img_url').value = checked ? addKeyToURL(url, getAPIKey()) : url;
+            updateExampleCommands();
         }
 
         function resetWsUrl() {
-            document.getElementById('ws_url').value = '{{ .DefaultWsURL }}';
+            var checked = document.getElementById('require_api_key').checked;
+            var url = removeKeyFromURL(baseWsURL);
+            document.getElementById('ws_url').value = checked ? addKeyToURL(url, getAPIKey()) : url;
         }
     </script>
     <div class="device-settings-section">
@@ -743,7 +814,7 @@
                     <div class="firmware-setting-control">
                         <input type="text"
                                id="reported_img_url"
-                               value="{{ derefOr .Device.Info.ImageURL "" }}"
+                               value="{{ if .FirmwareImgURL }}{{ .FirmwareImgURL }}{{ else }}{{ derefOr .Device.Info.ImageURL "" }}{{ end }}"
                                class="device-settings-input firmware-setting-input">
                         <button type="button"
                                 class="w3-button w3-small w3-blue firmware-setting-button"

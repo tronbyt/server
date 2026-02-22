@@ -38,6 +38,13 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if device.RequireAPIKey {
+		if key := extractDeviceKey(r); key == "" || key != device.APIKey {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	if len(device.Apps) == 0 {
 		reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", device.ID).First(r.Context())
 		if err == nil {

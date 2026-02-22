@@ -65,6 +65,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if device.RequireAPIKey {
+		if key := extractDeviceKey(r); key == "" || key != device.APIKey {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	user, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(r.Context())
 	if err != nil {
 		slog.Error("User for device not found in WS handler", "username", device.Username, "error", err)

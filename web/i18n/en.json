@@ -179,6 +179,9 @@
   "Name is required.": {
     "other": "Name is required."
   },
+  "Name already exists.": {
+    "other": "Name already exists."
+  },
   "Invalid Device ID.": {
     "other": "Invalid Device ID."
   },
@@ -1726,5 +1729,11 @@
   },
   "16-char hex": {
     "other": "16-char hex"
+  },
+  "Require API Key": {
+    "other": "Require API Key"
+  },
+  "RequireAPIKeyHelp": {
+    "other": "When enabled, the Image URL must include the API key as a query parameter (?key=...) or Authorization header. Use the Firmware Features \"Sync Image URL\" button to push the updated URL to a connected device."
   }
 }

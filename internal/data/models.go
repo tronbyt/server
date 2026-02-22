@@ -592,6 +592,7 @@ type Device struct {
 
 	// OTA
 	SwapColors       bool   `json:"swap_colors"`
+	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
 	Apps []App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`

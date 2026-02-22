@@ -312,14 +312,27 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(imgURL, "localhost") || strings.Contains(imgURL, "127.0.0.1") {
 		urlWarning = "localhost"
 	}
+	defaultImgURL := s.getImageURL(r, device.ID)
+	defaultWsURL := s.getWebsocketURL(r, device.ID)
+	firmwareImgURL := ""
+	if device.Info.ImageURL != nil {
+		firmwareImgURL = *device.Info.ImageURL
+	}
+	if device.RequireAPIKey {
+		defaultImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
+		defaultWsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
+		firmwareImgURL = appendKeyToURL(firmwareImgURL, device.APIKey)
+	}
+
 	s.renderTemplate(w, r, "update", TemplateData{
 		User:                      user,
 		Device:                    device,
 		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
 		ColorFilterOptions:        s.getColorFilterChoices(),
 		AvailableLocales:          locales,
-		DefaultImgURL:             s.getImageURL(r, device.ID),
-		DefaultWsURL:              s.getWebsocketURL(r, device.ID),
+		DefaultImgURL:             defaultImgURL,
+		DefaultWsURL:              defaultWsURL,
+		FirmwareImgURL:            firmwareImgURL,
 		BrightnessUI:              bUI,
 		NightBrightnessUI:         nbUI,
 		DimBrightnessUI:           dbUI,
@@ -542,6 +555,9 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// 9. OTA
 	device.SwapColors = r.FormValue("swap_colors") == "on"
 
+	// 10. Require API Key
+	device.RequireAPIKey = r.FormValue("require_api_key") == "on"
+
 	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		slog.Error("Failed to update device", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -709,6 +725,7 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		device.NightColorFilter = importedDevice.NightColorFilter
 		device.DimColorFilter = importedDevice.DimColorFilter
 		device.SwapColors = importedDevice.SwapColors
+		device.RequireAPIKey = importedDevice.RequireAPIKey
 
 		if err := tx.Save(device).Error; err != nil {
 			return fmt.Errorf("failed to save updated device: %w", err)
