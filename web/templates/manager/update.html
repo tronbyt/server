@@ -190,25 +190,14 @@
 
         function removeKeyFromURL(url) {
             try {
-                // Handle both http(s) and ws(s) schemes by temporarily swapping for parsing
-                var swapped = false;
-                var parseURL = url;
-                if (parseURL.startsWith('ws://')) {
-                    parseURL = 'http://' + parseURL.substring(5);
-                    swapped = true;
-                } else if (parseURL.startsWith('wss://')) {
-                    parseURL = 'https://' + parseURL.substring(6);
-                    swapped = true;
-                }
-                var u = new URL(parseURL);
+                const u = new URL(url, window.location.origin);
                 u.searchParams.delete('key');
-                var result = u.toString();
-                if (swapped) {
-                    result = result.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+                if (url.startsWith('/') || !url.includes('://')) {
+                    return u.pathname + u.search + u.hash;
                 }
-                return result;
+                return u.toString();
             } catch (e) {
-                return url.replace(/[?&]key=[^&]*/, '');
+                return url.replace(/([?&])key=[^&]*(&|$)/, '$1').replace(/[?&]$/, '');
             }
         }
 
