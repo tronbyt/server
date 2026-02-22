@@ -83,3 +83,135 @@ func TestHandleNextApp_FirmwareUpdate(t *testing.T) {
 		t.Errorf("Expected firmware version v1.5.0, got %s", updatedDevice.Info.FirmwareVersion)
 	}
 }
+
+func TestHandleNextApp_APIKey(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	// Update device to require API key
+	var device data.Device
+	s.DB.First(&device, "id = ?", "testdevice")
+	device.RequireAPIKey = true
+	s.DB.Save(&device)
+
+	// Add an app so /next returns something
+	app := data.App{
+		DeviceID:  "testdevice",
+		Iname:     "testapp",
+		Name:      "Test App",
+		UInterval: 10,
+		Enabled:   true,
+		Pushed:    true,
+	}
+	s.DB.Create(&app)
+	if err := s.savePushedImage("testdevice", "testapp", []byte("dummy image")); err != nil {
+		t.Fatalf("Failed to save pushed image: %v", err)
+	}
+
+	t.Run("without API key returns 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/testdevice/next", nil)
+		req.SetPathValue("id", "testdevice")
+
+		rr := httptest.NewRecorder()
+		s.handleNextApp(rr, req)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401 Unauthorized, got %v", rr.Code)
+		}
+	})
+
+	t.Run("with incorrect API key returns 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/testdevice/next?key=wrongkey", nil)
+		req.SetPathValue("id", "testdevice")
+
+		rr := httptest.NewRecorder()
+		s.handleNextApp(rr, req)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401 Unauthorized, got %v", rr.Code)
+		}
+	})
+
+	t.Run("with correct API key via query param returns 200", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/testdevice/next?key=device_api_key", nil)
+		req.SetPathValue("id", "testdevice")
+
+		rr := httptest.NewRecorder()
+		s.handleNextApp(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected status 200 OK, got %v", rr.Code)
+		}
+	})
+
+	t.Run("with correct API key via Bearer header returns 200", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/testdevice/next", nil)
+		req.SetPathValue("id", "testdevice")
+		req.Header.Set("Authorization", "Bearer device_api_key")
+
+		rr := httptest.NewRecorder()
+		s.handleNextApp(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected status 200 OK, got %v", rr.Code)
+		}
+	})
+}
+
+func TestHandleWS_APIKey(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	// Update device to require API key
+	var device data.Device
+	s.DB.First(&device, "id = ?", "testdevice")
+	device.RequireAPIKey = true
+	s.DB.Save(&device)
+
+	t.Run("without API key returns 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/v0/devices/testdevice/ws", nil)
+		req.SetPathValue("id", "testdevice")
+
+		rr := httptest.NewRecorder()
+		s.handleWS(rr, req)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401 Unauthorized, got %v", rr.Code)
+		}
+	})
+
+	t.Run("with incorrect API key returns 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/v0/devices/testdevice/ws?key=wrongkey", nil)
+		req.SetPathValue("id", "testdevice")
+
+		rr := httptest.NewRecorder()
+		s.handleWS(rr, req)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status 401 Unauthorized, got %v", rr.Code)
+		}
+	})
+
+	t.Run("with correct API key via query param does not return 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/v0/devices/testdevice/ws?key=device_api_key", nil)
+		req.SetPathValue("id", "testdevice")
+
+		rr := httptest.NewRecorder()
+		s.handleWS(rr, req)
+
+		if rr.Code == http.StatusUnauthorized {
+			t.Errorf("Expected status not 401 Unauthorized, got %v", rr.Code)
+		}
+	})
+
+	t.Run("with correct API key via Bearer header does not return 401", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/v0/devices/testdevice/ws", nil)
+		req.SetPathValue("id", "testdevice")
+		req.Header.Set("Authorization", "Bearer device_api_key")
+
+		rr := httptest.NewRecorder()
+		s.handleWS(rr, req)
+
+		if rr.Code == http.StatusUnauthorized {
+			t.Errorf("Expected status not 401 Unauthorized, got %v", rr.Code)
+		}
+	})
+}
