@@ -1714,5 +1714,17 @@
   },
   "When enabled, newly added apps will appear at position #1 instead of at the end.": {
     "other": "When enabled, newly added apps will appear at position #1 instead of at the end."
+  },
+  "Device ID Mode": {
+    "other": "Device ID Mode"
+  },
+  "From Name": {
+    "other": "From Name"
+  },
+  "8-char hex": {
+    "other": "8-char hex"
+  },
+  "16-char hex": {
+    "other": "16-char hex"
   }
 }

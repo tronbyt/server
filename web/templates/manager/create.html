@@ -54,6 +54,39 @@
         </div>
         <div class="device-settings-row">
             <div>
+                <label class="device-settings-label">{{ t .Localizer "Device ID Mode" }}</label>
+                <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                        <input type="radio"
+                               name="device_id_mode"
+                               value="from_name"
+                               {{ if eq .Form.DeviceIDMode "from_name" }}
+                               checked
+                               {{ end }}
+                               onchange="updateDeviceIDMode()">
+                        {{ t .Localizer "From Name" }}
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                        <input type="radio"
+                               name="device_id_mode"
+                               value="hex8"
+                               {{ if or (eq .Form.DeviceIDMode "hex8") (eq .Form.DeviceIDMode "") }}
+                               checked
+                               {{ end }}
+                               onchange="updateDeviceIDMode()">
+                        {{ t .Localizer "8-char hex" }}
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                        <input type="radio"
+                               name="device_id_mode"
+                               value="hex16"
+                               {{ if eq .Form.DeviceIDMode "hex16" }}
+                               checked
+                               {{ end }}
+                               onchange="updateDeviceIDMode()">
+                        {{ t .Localizer "16-char hex" }}
+                    </label>
+                </div>
                 <label for="device_id" class="device-settings-label">
                     {{ t .Localizer "Device ID" }} ({{ t .Localizer "Optional" }})
                 </label>
@@ -167,8 +200,53 @@
            onchange="this.form.submit();">
 </form>
 <script>
+    function slugify(str) {
+        return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+
+    function getSelectedMode() {
+        var radios = document.querySelectorAll('input[name="device_id_mode"]');
+        for (var i = 0; i < radios.length; i++) {
+            if (radios[i].checked) return radios[i].value;
+        }
+        return 'hex8';
+    }
+
+    function updateDeviceIDMode() {
+        var mode = getSelectedMode();
+        var deviceIdInput = document.getElementById('device_id');
+        if (mode === 'from_name') {
+            deviceIdInput.readOnly = true;
+            deviceIdInput.value = slugify(document.getElementById('name').value);
+        } else {
+            deviceIdInput.readOnly = true;
+            deviceIdInput.value = '';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         enableLocationSearch(document.getElementById('location_search'), document.getElementById('location_results'), document.getElementById('location'), null);
+
+        var nameInput = document.getElementById('name');
+        nameInput.addEventListener('input', function() {
+            if (getSelectedMode() === 'from_name') {
+                document.getElementById('device_id').value = slugify(this.value);
+            }
+        });
+
+        // Initialize state on page load
+        var mode = getSelectedMode();
+        var deviceIdInput = document.getElementById('device_id');
+        if (mode === 'from_name') {
+            deviceIdInput.readOnly = true;
+            if (nameInput.value && !deviceIdInput.value) {
+                deviceIdInput.value = slugify(nameInput.value);
+            }
+        } else if (mode === 'hex8' || mode === 'hex16') {
+            if (!deviceIdInput.value) {
+                deviceIdInput.readOnly = true;
+            }
+        }
     });
 </script>
 {{ end }}

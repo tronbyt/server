@@ -16,17 +16,38 @@ import (
 	"gorm.io/gorm"
 )
 
-var validDeviceIDRe = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+var validDeviceIDRe = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+
+var nonAlphanumRe = regexp.MustCompile(`[^a-z0-9]+`)
+var leadTrailHyphenRe = regexp.MustCompile(`^-+|-+$`)
+
+// slugifyDeviceName converts a device name to a URL-safe slug.
+func slugifyDeviceName(name string) string {
+	s := strings.ToLower(name)
+	s = nonAlphanumRe.ReplaceAllString(s, "-")
+	s = leadTrailHyphenRe.ReplaceAllString(s, "")
+	return s
+}
 
 func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
+
+	// Default to "from_name" on local networks, "hex8" otherwise
+	defaultMode := "hex8"
+	host := r.Host
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+	if s.isTrustedNetwork(r) || strings.HasSuffix(host, ".local") {
+		defaultMode = "from_name"
+	}
 
 	localizer := s.getLocalizer(r)
 	s.renderTemplate(w, r, "create", TemplateData{
 		User:              user,
 		DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 		Localizer:         localizer,
-		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil)}, // Default brightness 20%
+		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil), DeviceIDMode: defaultMode},
 	})
 }
 
@@ -37,6 +58,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	formData := CreateDeviceFormData{
 		Name:           r.FormValue("name"),
 		DeviceID:       r.FormValue("device_id"),
+		DeviceIDMode:   r.FormValue("device_id_mode"),
 		DeviceType:     r.FormValue("device_type"),
 		ImgURL:         r.FormValue("img_url"),
 		WsURL:          r.FormValue("ws_url"),
@@ -116,14 +138,28 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	// Generate unique ID and API Key
 	var deviceID string
 	if formData.DeviceID != "" {
+		// Custom device ID typed by the user takes priority
 		deviceID = formData.DeviceID
 	} else {
-		var err error
-		deviceID, err = generateSecureToken(8)
-		if err != nil {
-			slog.Error("Failed to generate device ID", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+		switch formData.DeviceIDMode {
+		case "from_name":
+			deviceID = slugifyDeviceName(formData.Name)
+		case "hex16":
+			var err error
+			deviceID, err = generateSecureToken(16)
+			if err != nil {
+				slog.Error("Failed to generate device ID", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+		default: // "hex8" or empty
+			var err error
+			deviceID, err = generateSecureToken(8)
+			if err != nil {
+				slog.Error("Failed to generate device ID", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 	apiKey, err := generateSecureToken(32)
@@ -225,15 +261,15 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleDeviceTV(w http.ResponseWriter, r *http.Request) {
-    user := GetUser(r)
-    localizer := s.getLocalizer(r)
-    device := GetDevice(r) // Middleware provides this
+	user := GetUser(r)
+	localizer := s.getLocalizer(r)
+	device := GetDevice(r) // Middleware provides this
 
-    s.renderTemplate(w, r, "device_tv", TemplateData{
-        User:      user,
-        Localizer: localizer,
-        Device:    device, 
-    })
+	s.renderTemplate(w, r, "device_tv", TemplateData{
+		User:      user,
+		Localizer: localizer,
+		Device:    device,
+	})
 }
 
 func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {

@@ -107,6 +107,7 @@ type TemplateData struct {
 type CreateDeviceFormData struct {
 	Name           string
 	DeviceID       string
+	DeviceIDMode   string
 	DeviceType     string
 	ImgURL         string
 	WsURL          string
