@@ -220,7 +220,11 @@
             deviceIdInput.value = slugify(document.getElementById('name').value);
         } else {
             deviceIdInput.readOnly = true;
-            deviceIdInput.value = '';
+            if (deviceIdInput.value !== '') {
+                // If a custom ID was entered, keep it visible but read-only
+            } else {
+                deviceIdInput.value = '';
+            }
         }
     }
 
