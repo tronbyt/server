@@ -113,6 +113,7 @@ type CreateDeviceFormData struct {
 	ImgURL         string
 	WsURL          string
 	APIKey         string
+	RequireAPIKey  bool
 	Notes          string
 	Brightness     int
 	LocationSearch string
@@ -572,17 +573,6 @@ func (s *Server) getImageURLWithKey(r *http.Request, deviceID string, apiKey str
 		u += "?key=" + apiKey
 	}
 	return u
-}
-
-// appendKeyToURL appends ?key=apiKey (or &key=apiKey) to a URL string.
-func appendKeyToURL(rawURL string, apiKey string) string {
-	if apiKey == "" || rawURL == "" {
-		return rawURL
-	}
-	if strings.Contains(rawURL, "?") {
-		return rawURL + "&key=" + apiKey
-	}
-	return rawURL + "?key=" + apiKey
 }
 
 // extractDeviceKey extracts the device API key from the request.

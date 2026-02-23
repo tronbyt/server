@@ -1019,6 +1019,9 @@
   "Leave blank to auto-generate.": {
     "other": "Leave blank to auto-generate."
   },
+  "Auto-generated from name": {
+    "other": "Auto-generated from name"
+  },
   "Device Type": {
     "other": "Device Type"
   },
@@ -1734,6 +1737,6 @@
     "other": "Require API Key"
   },
   "RequireAPIKeyHelp": {
-    "other": "When enabled, the Image URL must include the API key as a query parameter (?key=...) or Authorization header. Use the Firmware Features \"Sync Image URL\" button to push the updated URL to a connected device."
+    "other": "When enabled, the device must authenticate with the server using an API key for added security.  Highly recommended for publicly accessible servers."
   }
 }
