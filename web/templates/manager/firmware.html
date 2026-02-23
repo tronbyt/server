@@ -106,7 +106,7 @@
                     <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}
                 </h4>
                 <p>
-                    {{ t .Localizer "The firmware image URL uses localhost (" }}<strong>{{ .Device.ImgURL }}</strong>{{ t .Localizer ") which will not work when the device is running on a different network. Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the devices image URLs, then return here." }}
+                    {{ t .Localizer "The firmware image URL uses localhost (" }}<strong>{{ .Device.ImgURL }}</strong>{{ t .Localizer ") which will not work. Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the devices image URLs, then return here." }}
                 </p>
             </div>
             {{ end }}

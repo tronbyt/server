@@ -579,9 +579,20 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	device.RequireAPIKey = r.FormValue("require_api_key") == "on"
 
 	// Update URLs based on RequireAPIKey setting
+	// Preserve user's custom URL if provided, just append the key
+	userImgURL := s.sanitizeURL(r.FormValue("img_url"))
+	userWsURL := s.sanitizeURL(r.FormValue("ws_url"))
 	if device.RequireAPIKey {
-		device.ImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
-		device.WsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
+		if userImgURL != "" {
+			device.ImgURL = appendKeyToURLString(userImgURL, device.APIKey)
+		} else {
+			device.ImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
+		}
+		if userWsURL != "" {
+			device.WsURL = appendKeyToURLString(userWsURL, device.APIKey)
+		} else {
+			device.WsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
+		}
 	}
 
 	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
