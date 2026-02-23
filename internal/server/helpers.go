@@ -574,17 +574,6 @@ func (s *Server) getImageURLWithKey(r *http.Request, deviceID string, apiKey str
 	return u
 }
 
-// appendKeyToURL appends ?key=apiKey (or &key=apiKey) to a URL string.
-func appendKeyToURL(rawURL string, apiKey string) string {
-	if apiKey == "" || rawURL == "" {
-		return rawURL
-	}
-	if strings.Contains(rawURL, "?") {
-		return rawURL + "&key=" + apiKey
-	}
-	return rawURL + "?key=" + apiKey
-}
-
 // extractDeviceKey extracts the device API key from the request.
 // It checks the "key" query parameter first, then the Authorization: Bearer header.
 func extractDeviceKey(r *http.Request) string {
