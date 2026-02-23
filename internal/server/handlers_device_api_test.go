@@ -90,8 +90,7 @@ func TestHandleNextApp_APIKey(t *testing.T) {
 	// Update device to require API key
 	var device data.Device
 	s.DB.First(&device, "id = ?", "testdevice")
-	device.RequireAPIKey = true
-	s.DB.Save(&device)
+	s.DB.Model(&device).Update("require_api_key", true)
 
 	// Add an app so /next returns something
 	app := data.App{
