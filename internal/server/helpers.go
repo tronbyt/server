@@ -11,8 +11,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -573,6 +575,45 @@ func (s *Server) getImageURLWithKey(r *http.Request, deviceID string, apiKey str
 		u += "?key=" + apiKey
 	}
 	return u
+}
+
+// appendKeyToURLString appends ?key=apiKey (or &key=apiKey) to a URL string.
+// It first removes any existing key parameter to avoid double-append.
+func appendKeyToURLString(rawURL string, apiKey string) string {
+	if apiKey == "" || rawURL == "" {
+		return rawURL
+	}
+
+	// Remove existing key parameter first to avoid double-append
+	rawURL = removeKeyFromURLString(rawURL)
+
+	if strings.Contains(rawURL, "?") {
+		return rawURL + "&key=" + apiKey
+	}
+	return rawURL + "?key=" + apiKey
+}
+
+// removeKeyFromURLString removes the key query parameter from a URL string.
+func removeKeyFromURLString(rawURL string) string {
+	if rawURL == "" {
+		return rawURL
+	}
+
+	// Simple regex-free approach
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		// If parsing fails, do simple string replacement
+		re := regexp.MustCompile(`([?&])key=[^&]*(&|$)`)
+		result := re.ReplaceAllString(rawURL, "$1")
+		result = strings.TrimSuffix(result, "?")
+		result = strings.TrimSuffix(result, "&")
+		return result
+	}
+
+	query := u.Query()
+	query.Del("key")
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 // extractDeviceKey extracts the device API key from the request.
