@@ -93,7 +93,8 @@
                 <input name="device_id"
                        id="device_id"
                        value="{{ .Form.DeviceID }}"
-                       class="device-settings-input">
+                       class="device-settings-input"
+                       placeholder="{{ if eq .Form.DeviceIDMode "from_name" }}{{ t .Localizer "Auto-generated from name" }}{{ else }}{{ t .Localizer "Leave blank to auto-generate" }}{{ end }}">
                 <small class="small-text">{{ t .Localizer "Leave blank to auto-generate." }}</small>
             </div>
         </div>
@@ -230,12 +231,10 @@
         var mode = getSelectedMode();
         var deviceIdInput = document.getElementById('device_id');
         if (mode === 'from_name') {
-            deviceIdInput.readOnly = true;
             deviceIdInput.value = slugify(document.getElementById('name').value);
         } else {
-            deviceIdInput.readOnly = true;
             if (deviceIdInput.value !== '') {
-                // If a custom ID was entered, keep it visible but read-only
+                // If a custom ID was entered, keep it visible
             } else {
                 deviceIdInput.value = '';
             }
@@ -256,13 +255,8 @@
         var mode = getSelectedMode();
         var deviceIdInput = document.getElementById('device_id');
         if (mode === 'from_name') {
-            deviceIdInput.readOnly = true;
             if (nameInput.value && !deviceIdInput.value) {
                 deviceIdInput.value = slugify(nameInput.value);
-            }
-        } else if (mode === 'hex8' || mode === 'hex16') {
-            if (!deviceIdInput.value) {
-                deviceIdInput.readOnly = true;
             }
         }
     });

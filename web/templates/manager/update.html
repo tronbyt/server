@@ -75,16 +75,6 @@
 
         headerButtons.appendChild(saveBtn);
         headerButtons.appendChild(deleteBtn);
-
-        // Initialize firmware img URL based on RequireAPIKey checkbox
-        var requireApiKeyChecked = document.getElementById('require_api_key').checked;
-        var key = getAPIKey();
-        var firmwareImgEl = document.getElementById('reported_img_url');
-        if (requireApiKeyChecked && key) {
-            firmwareImgEl.value = addKeyToURL(baseFirmwareImgURL, key);
-        } else {
-            firmwareImgEl.value = baseFirmwareImgURL;
-        }
     });
 </script>
 {{ end }}
@@ -187,7 +177,6 @@
     <script>
         const baseImgURL = '{{ .DefaultImgURL }}';
         const baseWsURL = '{{ .DefaultWsURL }}';
-        const baseFirmwareImgURL = '{{ .FirmwareImgURL }}';
 
         function getAPIKey() {
             return (document.getElementById('api_key') || {}).value || '';

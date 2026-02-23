@@ -221,6 +221,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		Name:                  formData.Name,
 		Type:                  deviceType,
 		APIKey:                apiKey,
+		RequireAPIKey:         formData.RequireAPIKey,
 		ImgURL:                formData.ImgURL, // Can be overridden by default logic later
 		WsURL:                 formData.WsURL,  // Can be overridden by default logic later
 		Notes:                 formData.Notes,
@@ -243,6 +244,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 	if newDevice.WsURL == "" {
 		newDevice.WsURL = s.getWebsocketURL(r, newDevice.ID)
+	}
+
+	// If RequireAPIKey is enabled, append the key to the URLs
+	if newDevice.RequireAPIKey {
+		newDevice.ImgURL = s.getImageURLWithKey(r, newDevice.ID, apiKey)
+		newDevice.WsURL = s.getWebsocketURLWithKey(r, newDevice.ID, apiKey)
 	}
 
 	// Save to DB
@@ -279,6 +286,15 @@ func (s *Server) handleDeviceTV(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
+
+	// Reload device from DB to ensure we have latest data (especially RequireAPIKey)
+	freshDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).First(r.Context())
+	if err != nil {
+		slog.Error("Failed to reload device", "error", err)
+		http.Error(w, "Device not found", http.StatusNotFound)
+		return
+	}
+	device = &freshDevice
 
 	// Parse custom brightness scale if device has one
 	var customScale map[int]int
@@ -325,6 +341,7 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	if device.RequireAPIKey {
 		defaultImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
 		defaultWsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
+		firmwareImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
 	}
 
 	s.renderTemplate(w, r, "update", TemplateData{
@@ -560,6 +577,12 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	// 10. Require API Key
 	device.RequireAPIKey = r.FormValue("require_api_key") == "on"
+
+	// Update URLs based on RequireAPIKey setting
+	if device.RequireAPIKey {
+		device.ImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
+		device.WsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
+	}
 
 	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		slog.Error("Failed to update device", "error", err)

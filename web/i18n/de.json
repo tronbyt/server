@@ -1019,6 +1019,9 @@
   "Leave blank to auto-generate.": {
     "other": "Leer lassen für automatische Generierung."
   },
+  "Auto-generated from name": {
+    "other": "Automatisch aus Name generiert"
+  },
   "Device Type": {
     "other": "Gerätetyp"
   },
