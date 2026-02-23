@@ -162,8 +162,7 @@ func TestHandleWS_APIKey(t *testing.T) {
 	// Update device to require API key
 	var device data.Device
 	s.DB.First(&device, "id = ?", "testdevice")
-	device.RequireAPIKey = true
-	s.DB.Save(&device)
+	s.DB.Model(&device).Update("require_api_key", true)
 
 	t.Run("without API key returns 401", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v0/devices/testdevice/ws", nil)
