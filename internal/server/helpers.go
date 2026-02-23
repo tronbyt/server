@@ -113,6 +113,7 @@ type CreateDeviceFormData struct {
 	ImgURL         string
 	WsURL          string
 	APIKey         string
+	RequireAPIKey  bool
 	Notes          string
 	Brightness     int
 	LocationSearch string

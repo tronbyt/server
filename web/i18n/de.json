@@ -1734,6 +1734,6 @@
     "other": "API-Schlüssel erforderlich"
   },
   "RequireAPIKeyHelp": {
-    "other": "Wenn aktiviert, muss die Bild-URL den API-Schlüssel als Query-Parameter (?key=...) oder Authorization-Header enthalten. Verwenden Sie die Schaltfläche \"Bild-URL synchronisieren\" unter Firmware-Funktionen, um die aktualisierte URL an ein verbundenes Gerät zu senden."
+    "other": "Wenn aktiviert, muss sich das Gerät zur Erhöhung der Sicherheit mit einem API-Schlüssel beim Server authentifizieren."
   }
 }

@@ -42,12 +42,15 @@ func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		defaultMode = "from_name"
 	}
 
+	// Default RequireAPIKey to true for non-local (remote) access
+	requireAPIKeyDefault := !s.isTrustedNetwork(r)
+
 	localizer := s.getLocalizer(r)
 	s.renderTemplate(w, r, "create", TemplateData{
 		User:              user,
 		DeviceTypeChoices: s.getDeviceTypeChoices(localizer),
 		Localizer:         localizer,
-		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil), DeviceIDMode: defaultMode},
+		Form:              CreateDeviceFormData{Brightness: data.Brightness(20).UIScale(nil), DeviceIDMode: defaultMode, RequireAPIKey: requireAPIKeyDefault},
 	})
 }
 
@@ -62,6 +65,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		DeviceType:     r.FormValue("device_type"),
 		ImgURL:         r.FormValue("img_url"),
 		WsURL:          r.FormValue("ws_url"),
+		RequireAPIKey:  r.FormValue("require_api_key") == "on",
 		Notes:          r.FormValue("notes"),
 		LocationJSON:   r.FormValue("location"),
 		LocationSearch: r.FormValue("location_search"), // Used for re-populating form
