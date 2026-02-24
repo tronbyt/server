@@ -654,8 +654,10 @@ func (dt DeviceType) MergedFilename(swapColors bool) string {
 	switch dt {
 	case DeviceTidbytGen1, DeviceTidbytGen2:
 		return "tidbyt-gen1_merged.bin"
-	case DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+	case DeviceTronbytS3, DeviceTronbytS3Wide:
 		return "tronbyt-S3_merged.bin"
+	case DeviceMatrixPortal, DeviceMatrixPortalWS:
+		return "matrixportal-s3_merged.bin"
 	default:
 		return ""
 	}

@@ -149,8 +149,9 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
 		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
 		// Merged binaries (bootloader + partition + app, flashable at 0x0)
-		"tidbyt-gen1_merged.bin": "tidbyt-gen1_merged.bin",
-		"tronbyt-s3_merged.bin":  "tronbyt-S3_merged.bin",
+		"tidbyt-gen1_merged.bin":     "tidbyt-gen1_merged.bin",
+		"tronbyt-s3_merged.bin":      "tronbyt-S3_merged.bin",
+		"matrixportal-s3_merged.bin": "matrixportal-s3_merged.bin",
 	}
 
 	for _, release := range releases {
