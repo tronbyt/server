@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -66,7 +67,7 @@ var templateFiles = map[string]string{
 	"uploadapp":  "manager/uploadapp.html",
 	"firmware":   "manager/firmware.html",
 	"update":     "manager/update.html",
-	"device_tv":   "manager/device_tv.html",
+	"device_tv":  "manager/device_tv.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -190,6 +191,13 @@ func (s *Server) routes() {
 	// Actually order of registration doesn't matter in Go 1.22 for correctness, but presence matters.
 	// But let's put them first for clarity.
 	s.Router.HandleFunc("GET /static/ws", func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
+
+	// pprof endpoints (for debugging)
+	s.Router.Handle("GET /debug/pprof/", http.HandlerFunc(pprof.Index))
+	s.Router.Handle("GET /debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	s.Router.Handle("GET /debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	s.Router.Handle("GET /debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	s.Router.Handle("GET /debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	// Static files
 	staticFS, err := fs.Sub(web.Assets, "static")
