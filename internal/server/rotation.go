@@ -16,7 +16,16 @@ import (
 	"gorm.io/gorm"
 )
 
+var renderSem = make(chan struct{}, 10)
+
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
+	select {
+	case renderSem <- struct{}{}:
+		defer func() { <-renderSem }()
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
+	}
+
 	// 1. Check Pushed Ephemeral Images (__*)
 	pushedDir := filepath.Join(s.DataDir, "webp", device.ID, "pushed")
 	if entries, err := os.ReadDir(pushedDir); err == nil {
