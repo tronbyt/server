@@ -120,11 +120,13 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 1. Find App Details (Recommended Interval)
-	recommendedInterval := 15 // Default
+	recommendedInterval := 15 // Default when no metadata
+	hasMetadata := false
 
 	// Try to get metadata using getAppMetadata (checks cache and disk)
 	if metadata := s.getAppMetadata(appPath); metadata != nil {
 		recommendedInterval = metadata.RecommendedInterval
+		hasMetadata = true
 	}
 
 	uinterval := 0
@@ -138,7 +140,8 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	if uinterval == 0 || (uinterval == 10 && recommendedInterval != 10) {
 		uinterval = recommendedInterval
 	}
-	if uinterval == 0 {
+	// Only fall back to 10 if no metadata was found (0 is valid when explicitly set)
+	if uinterval == 0 && !hasMetadata {
 		uinterval = 10
 	}
 

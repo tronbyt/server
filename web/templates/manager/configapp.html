@@ -137,7 +137,7 @@
         <tr>
             <td>
                 <label for="uinterval">{{ t .Localizer "Render Interval Minutes" }}</label>
-                <small>{{ t .Localizer "Update every X minutes" }}</small>
+                <small>{{ t .Localizer "Update every X minutes" }}{{ if .AppMetadata }} ({{ t .Localizer "recommended" }}: {{ .AppMetadata.RecommendedInterval }}){{ end }}</small>
             </td>
             <td>
                 <input type="number"
@@ -147,6 +147,9 @@
                        class="form-control"
                        value="{{ .App.UInterval }}"
                        data-default="{{ .App.UInterval }}"
+                       {{ if .AppMetadata }}
+                       placeholder="{{ .AppMetadata.RecommendedInterval }}"
+                       {{ end }}
                        required>
             </td>
         </tr>

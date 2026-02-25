@@ -767,6 +767,9 @@
   "Update every X minutes": {
     "other": "Update every X minutes"
   },
+  "recommended": {
+    "other": "recommended"
+  },
   "Display Time Seconds": {
     "other": "Display Time Seconds"
   },
