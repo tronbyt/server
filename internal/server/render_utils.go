@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -154,6 +155,8 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		} else if empty {
 			slog.Debug("No output from app", "app", appBasename)
 		}
+
+		debug.FreeOSMemory()
 
 		// Update App State in DB - This is our atomic check-and-update.
 		// If the app was deleted while we were rendering, RowsAffected will be 0.
