@@ -136,6 +136,14 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	now := time.Now()
 	// uinterval is minutes
 	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
+		// Try to acquire render lock
+		lock, acquired := acquireDeviceRender(device.ID)
+		if !acquired {
+			slog.Debug("Render already in progress, skipping", "device", device.ID)
+			return true // Skip render, let GetNextAppImage handle cached image
+		}
+		defer lock()
+
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
