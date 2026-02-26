@@ -33,34 +33,6 @@ func acquireDeviceRender(deviceID string) (release func(), acquired bool) {
 }
 
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
-	release, acquired := acquireDeviceRender(device.ID)
-	if !acquired {
-		// Render already in progress for this device - try to return cached image
-		slog.Debug("Render in progress, trying cached image", "device", device.ID)
-
-		// Try to read any existing cached webp for this device
-		deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-		if err == nil {
-			if entries, err := os.ReadDir(deviceWebpDir); err == nil {
-				for _, entry := range entries {
-					if strings.HasSuffix(entry.Name(), ".webp") {
-						webpPath := filepath.Join(deviceWebpDir, entry.Name())
-						data, err := os.ReadFile(webpPath)
-						if err == nil {
-							slog.Debug("Returning cached image during render", "device", device.ID, "path", webpPath)
-							return data, nil, nil
-						}
-					}
-				}
-			}
-		}
-
-		// No cached image available, return error to let caller handle
-		slog.Warn("No cached image available while render in progress", "device", device.ID)
-		return nil, nil, fmt.Errorf("render in progress, no cached image")
-	}
-	defer release()
-
 	// 1. Check Pushed Ephemeral Images (__*)
 	pushedDir := filepath.Join(s.DataDir, "webp", device.ID, "pushed")
 	if entries, err := os.ReadDir(pushedDir); err == nil {
@@ -137,7 +109,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 	}
 
-	// 6. Return Image
+	// 6. Return Image (render happens elsewhere via possiblyRender)
 	var webpPath string
 
 	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
