@@ -62,9 +62,9 @@ func TestHandleAddAppPost(t *testing.T) {
 		t.Fatalf("App not created")
 	}
 
-	// Check recommended interval logic (10 -> 5)
-	if app.UInterval != 5 {
-		t.Errorf("Expected uinterval 5 (recommended), got %d", app.UInterval)
+	// Check that form value is used (10)
+	if app.UInterval != 10 {
+		t.Errorf("Expected uinterval 10 (from form), got %d", app.UInterval)
 	}
 
 	// Check Enabled default

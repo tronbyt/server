@@ -119,22 +119,20 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get recommended interval for initial form population
-	recommendedInterval := 10 // Default
-	if metadata := s.getAppMetadata(appPath); metadata != nil {
-		recommendedInterval = metadata.RecommendedInterval
-	}
-
-	uinterval := 10 // Default
+	// Get uinterval from form: -1 means not set (use recommended/default)
+	uinterval := -1
 	if uintervalStr != "" {
 		if val, err := strconv.Atoi(uintervalStr); err == nil {
 			uinterval = val
 		}
 	}
-
-	// If user didn't specify a custom interval, use recommended
-	if uinterval == 10 {
-		uinterval = recommendedInterval
+	// If not set (was -1), default to 10
+	if uinterval == -1 {
+		uinterval = 10
+	}
+	// Ensure uinterval is not negative
+	if uinterval < 0 {
+		uinterval = 10
 	}
 
 	displayTime, _ := strconv.Atoi(displayTimeStr)
