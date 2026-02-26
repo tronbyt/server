@@ -1748,7 +1748,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('selected_app_path').value = appItem.getAttribute('data-path');
 
       const recInterval = appItem.getAttribute('data-recommended-interval');
-      if (recInterval && recInterval !== '0') {
+      if (recInterval) {
         document.getElementById('uinterval').value = recInterval;
       } else {
         document.getElementById('uinterval').value = 10;
