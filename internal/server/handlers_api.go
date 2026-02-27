@@ -192,6 +192,7 @@ type PushAppData struct {
 	AppID             string         `json:"app_id"`
 	InstallationID    string         `json:"installationID"`
 	InstallationIDAlt string         `json:"installationId"`
+	Background        bool           `json:"background"`
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
@@ -282,8 +283,11 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Notify device via Websocket
-	sent := s.Broadcaster.Notify(device.ID, imgBytes)
+	// Notify device via Websocket only if this is a foreground push
+	sent := false
+	if !dataReq.Background {
+		sent = s.Broadcaster.Notify(device.ID, imgBytes)
+	}
 
 	if !sent || installationID != "" {
 		if err := s.savePushedImage(device.ID, installationID, imgBytes); err != nil {
@@ -349,6 +353,7 @@ type PushData struct {
 	InstallationID    string `json:"installationID"`
 	InstallationIDAlt string `json:"installationId"`
 	Image             string `json:"image"`
+	Background        bool   `json:"background"`
 }
 
 func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
@@ -377,8 +382,11 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Notify device via Websocket
-	sent := s.Broadcaster.Notify(device.ID, imgBytes)
+	// Notify device via Websocket only if this is a foreground push
+	sent := false
+	if !dataReq.Background {
+		sent = s.Broadcaster.Notify(device.ID, imgBytes)
+	}
 
 	if !sent || installID != "" {
 		if err := s.savePushedImage(device.ID, installID, imgBytes); err != nil {
