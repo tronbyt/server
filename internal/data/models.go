@@ -595,7 +595,7 @@ type Device struct {
 	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
-	Apps []App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
+	Apps []*App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
 
 func (dt DeviceType) Supports2x() bool {
@@ -808,7 +808,7 @@ func (d *Device) SupportsFirmwareFeatures() bool {
 func (d *Device) GetApp(iname string) *App {
 	for i := range d.Apps {
 		if d.Apps[i].Iname == iname {
-			return &d.Apps[i]
+			return d.Apps[i]
 		}
 	}
 	return nil

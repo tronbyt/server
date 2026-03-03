@@ -152,8 +152,8 @@ func (ld *LegacyDevice) ToDataDevice(username string) data.Device {
 }
 
 // ToDataApp converts a LegacyApp to the modern data.App format.
-func (la *LegacyApp) ToDataApp(deviceID string) data.App {
-	na := data.App{
+func (la *LegacyApp) ToDataApp(deviceID string) *data.App {
+	na := &data.App{
 		DeviceID:            deviceID,
 		Iname:               la.Iname,
 		Name:                la.Name,

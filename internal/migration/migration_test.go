@@ -112,7 +112,7 @@ func TestMigrateLegacyDB(t *testing.T) {
 	assert.Equal(t, "06:00", adminDevice.NightEnd)
 	assert.Equal(t, data.Brightness(12), adminDevice.NightBrightness)
 
-	var adminApps []data.App
+	var adminApps []*data.App
 	err = newDB.Where("device_id = ?", adminDevice.ID).Find(&adminApps).Error
 	assert.NoError(t, err)
 	// assert.Len(t, adminApps, 2) // Commented out to be robust against total count
@@ -122,7 +122,7 @@ func TestMigrateLegacyDB(t *testing.T) {
 	for _, app := range adminApps {
 		if app.Iname == "548" {
 			val := app
-			octoprintApp = &val
+			octoprintApp = val
 			break
 		}
 	}

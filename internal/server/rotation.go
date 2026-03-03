@@ -129,7 +129,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 		// Find app in device.Apps
 		for i := range device.Apps {
 			if device.Apps[i].Iname == targetIname {
-				app := &device.Apps[i]
+				app := device.Apps[i]
 
 				// Generate path
 				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
@@ -152,7 +152,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 	}
 
 	// Priority 2: Fallback to LastAppIndex (Legacy/HTTP devices)
-	apps := make([]data.App, len(device.Apps))
+	apps := make([]*data.App, len(device.Apps))
 	copy(apps, device.Apps)
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Order < apps[j].Order
@@ -168,7 +168,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 		idx = 0
 	}
 
-	app := &expanded[idx]
+	app := expanded[idx]
 
 	// Return image
 	var webpPath string
@@ -192,7 +192,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		nightIname := device.NightModeApp
 		for i := range device.Apps {
 			if device.Apps[i].Iname == nightIname {
-				app := &device.Apps[i]
+				app := device.Apps[i]
 				// Found Night Mode app, check if it's renderable before returning
 				if s.possiblyRender(ctx, app, device, user) && !app.EmptyLastRender {
 					return app, device.LastAppIndex, nil
@@ -210,7 +210,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		for i := range device.Apps {
 			if device.Apps[i].Iname == pinnedIname {
 				foundPinned = true
-				app := &device.Apps[i]
+				app := device.Apps[i]
 				// Found pinned app, check renderability
 				if s.possiblyRender(ctx, app, device, user) && !app.EmptyLastRender {
 					return app, device.LastAppIndex, nil
@@ -232,7 +232,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 	}
 
 	// Sort Apps
-	apps := make([]data.App, len(device.Apps))
+	apps := make([]*data.App, len(device.Apps))
 	copy(apps, device.Apps)
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Order < apps[j].Order
@@ -263,12 +263,12 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 			// So an interstitial at index i corresponds to App at i-1.
 			if nextIndex > 0 {
 				prevApp := expanded[nextIndex-1]
-				prevActive := prevApp.Enabled && IsAppScheduleActive(&prevApp, device)
+				prevActive := prevApp.Enabled && IsAppScheduleActive(prevApp, device)
 				if !prevActive {
 					shouldDisplay = false
 				}
 			}
-		} else if candidate.Enabled && IsAppScheduleActive(&candidate, device) {
+		} else if candidate.Enabled && IsAppScheduleActive(candidate, device) {
 			shouldDisplay = true
 		}
 
@@ -279,8 +279,8 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		}
 
 		if shouldDisplay {
-			if s.possiblyRender(ctx, &candidate, device, user) && !candidate.EmptyLastRender {
-				return &candidate, nextIndex, nil
+			if s.possiblyRender(ctx, candidate, device, user) && !candidate.EmptyLastRender {
+				return candidate, nextIndex, nil
 			}
 		}
 
@@ -290,7 +290,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 	return nil, 0, nil
 }
 
-func createExpandedAppsList(device *data.Device, apps []data.App) []data.App {
+func createExpandedAppsList(device *data.Device, apps []*data.App) []*data.App {
 	if !device.InterstitialEnabled || device.InterstitialApp == nil {
 		return apps
 	}
@@ -301,7 +301,7 @@ func createExpandedAppsList(device *data.Device, apps []data.App) []data.App {
 	// Find interstitial app object
 	for i := range apps {
 		if apps[i].Iname == interstitialIname {
-			interstitialApp = &apps[i]
+			interstitialApp = apps[i]
 			break
 		}
 	}
@@ -310,12 +310,12 @@ func createExpandedAppsList(device *data.Device, apps []data.App) []data.App {
 		return apps
 	}
 
-	expanded := make([]data.App, 0, len(device.Apps)*10) // Pre-allocate to a reasonable size
+	expanded := make([]*data.App, 0, len(device.Apps)*10) // Pre-allocate to a reasonable size
 	for i, app := range apps {
 		expanded = append(expanded, app)
 		// Add interstitial after each regular app, except the last one
 		if i < len(apps)-1 {
-			expanded = append(expanded, *interstitialApp)
+			expanded = append(expanded, interstitialApp)
 		}
 	}
 	return expanded
