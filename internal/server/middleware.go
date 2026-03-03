@@ -207,7 +207,7 @@ func (s *Server) RequireApp(next http.HandlerFunc) http.HandlerFunc {
 		var app *data.App
 		for i := range device.Apps {
 			if device.Apps[i].Iname == iname {
-				app = &device.Apps[i]
+				app = device.Apps[i]
 				break
 			}
 		}

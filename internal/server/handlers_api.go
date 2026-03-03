@@ -317,7 +317,7 @@ func (s *Server) handleListInstallations(w http.ResponseWriter, r *http.Request)
 
 	installations := make([]AppPayload, 0, len(device.Apps))
 	for i := range device.Apps {
-		installations = append(installations, s.toAppPayload(device, &device.Apps[i]))
+		installations = append(installations, s.toAppPayload(device, device.Apps[i]))
 	}
 
 	response := map[string]any{

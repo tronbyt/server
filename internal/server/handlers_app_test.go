@@ -638,7 +638,7 @@ func TestMarkInstalledApps(t *testing.T) {
 	customAppPath := "users/admin/apps/mycustom"
 
 	device := &data.Device{
-		Apps: []data.App{
+		Apps: []*data.App{
 			{
 				Name: "Weather",
 				Path: &weatherPath, // Directory format
@@ -689,7 +689,7 @@ func TestMarkInstalledApps_AbsolutePaths(t *testing.T) {
 	absPath := "/app/data/system-apps/apps/weather/weather.star"
 
 	device := &data.Device{
-		Apps: []data.App{
+		Apps: []*data.App{
 			{
 				Name: "Weather",
 				Path: &absPath, // Absolute path in DB

@@ -130,7 +130,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 				ID:       "dev1",
 				Username: "testuser",
 				Name:     "Imported Device",
-				Apps: []data.App{
+				Apps: []*data.App{
 					{
 						ID:    9999, // Explicit ID that should be ignored/reset
 						Iname: "app1",
