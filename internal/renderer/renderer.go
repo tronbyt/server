@@ -55,12 +55,11 @@ func Render(
 	}
 
 	return loader.RenderApplet(
-		path,
-		config,
+		ctx, path, config,
 		loader.WithMeta(canvas.Metadata{
-			Width:  int(width),
-			Height: int(height),
-			Is2x:   bool(output2x),
+			Width:  width,
+			Height: height,
+			Is2x:   output2x,
 		}),
 		loader.WithMaxDuration(maxDuration),
 		loader.WithTimeout(timeout),
@@ -73,13 +72,13 @@ func Render(
 }
 
 // GetSchema returns the schema JSON for the given script.
-func GetSchema(path string, width, height int, output2x bool) ([]byte, error) {
+func GetSchema(ctx context.Context, path string, width, height int, output2x bool) ([]byte, error) {
 	applet, err := runtime.NewAppletFromPath(
-		path,
+		ctx, path,
 		runtime.WithCanvasMeta(canvas.Metadata{
 			Width:  width,
 			Height: height,
-			Is2x:   bool(output2x),
+			Is2x:   output2x,
 		}),
 	)
 	if err != nil {
@@ -110,11 +109,11 @@ func CallSchemaHandler(
 	parameter string,
 ) (string, error) {
 	applet, err := runtime.NewAppletFromPath(
-		path,
+		ctx, path,
 		runtime.WithCanvasMeta(canvas.Metadata{
 			Width:  width,
 			Height: height,
-			Is2x:   bool(output2x),
+			Is2x:   output2x,
 		}),
 	)
 	if err != nil {

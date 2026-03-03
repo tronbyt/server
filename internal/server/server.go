@@ -66,7 +66,7 @@ var templateFiles = map[string]string{
 	"uploadapp":  "manager/uploadapp.html",
 	"firmware":   "manager/firmware.html",
 	"update":     "manager/update.html",
-	"device_tv":   "manager/device_tv.html",
+	"device_tv":  "manager/device_tv.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
