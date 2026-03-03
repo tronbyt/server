@@ -645,18 +645,6 @@ func (s *Server) getWebsocketURLWithKey(r *http.Request, deviceID string, apiKey
 	return u
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
-func intPtr(i int) *int {
-	return &i
-}
-
-func boolPtr(b bool) *bool {
-	return &b
-}
-
 var rebootPayloadJSON = []byte(`{"reboot":true}`)
 
 func (s *Server) sendRebootCommand(deviceID string) error {
