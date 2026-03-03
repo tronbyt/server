@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -752,8 +753,7 @@ func (s *Server) handleMoveApp(w http.ResponseWriter, r *http.Request) {
 	direction := r.FormValue("direction")
 
 	// Sort
-	appsList := make([]*data.App, len(device.Apps))
-	copy(appsList, device.Apps)
+	appsList := slices.Clone(device.Apps)
 	sort.Slice(appsList, func(i, j int) bool {
 		return appsList[i].Order < appsList[j].Order
 	})
@@ -908,8 +908,7 @@ func (s *Server) handleReorderApps(w http.ResponseWriter, r *http.Request) {
 	targetIname := r.FormValue("target_iname")
 	insertAfter := r.FormValue("insert_after") == "true"
 
-	appsList := make([]*data.App, len(device.Apps))
-	copy(appsList, device.Apps)
+	appsList := slices.Clone(device.Apps)
 	sort.Slice(appsList, func(i, j int) bool {
 		return appsList[i].Order < appsList[j].Order
 	})

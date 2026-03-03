@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -152,8 +153,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 	}
 
 	// Priority 2: Fallback to LastAppIndex (Legacy/HTTP devices)
-	apps := make([]*data.App, len(device.Apps))
-	copy(apps, device.Apps)
+	apps := slices.Clone(device.Apps)
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Order < apps[j].Order
 	})
@@ -232,8 +232,7 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 	}
 
 	// Sort Apps
-	apps := make([]*data.App, len(device.Apps))
-	copy(apps, device.Apps)
+	apps := slices.Clone(device.Apps)
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Order < apps[j].Order
 	})
