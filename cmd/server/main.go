@@ -289,6 +289,7 @@ func main() {
 
 	// Initialize Pixlet Cache
 	var cache runtime.Cache
+	defer cache.Close()
 	if cfg.RedisURL != "" {
 		slog.Info("Initializing Pixlet Redis cache", "url", cfg.RedisURL)
 		cache = runtime.NewRedisCache(cfg.RedisURL)

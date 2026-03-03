@@ -69,7 +69,7 @@ func newTestServerAPI(t *testing.T) *Server {
 	adminUser := data.User{
 		Username: "admin",
 		Password: "$2a$10$w3bQ0wWwWwWwWwWwWwWwWu.D/ZJ.p.Xg.3Q.Q.Q.Q.Q.Q.Q.Q", // Placeholder for hashed password
-		Email:    stringPtr("admin@example.com"),
+		Email:    new("admin@example.com"),
 		APIKey:   "admin_test_api_key",
 		IsAdmin:  true,
 	}
@@ -80,7 +80,7 @@ func newTestServerAPI(t *testing.T) *Server {
 	user := data.User{
 		Username: "testuser",
 		Password: "$2a$10$w3bQ0wWwWwWwWwWwWwWwWu.D/ZJ.p.Xg.3Q.Q.Q.Q.Q.Q.Q.Q", // Placeholder for hashed password
-		Email:    stringPtr("test@example.com"),
+		Email:    new("test@example.com"),
 		APIKey:   "test_api_key",
 	}
 	if err := gorm.G[data.User](db).Create(ctx, &user); err != nil {
@@ -174,13 +174,13 @@ func TestHandleGetDevice(t *testing.T) {
 		t.Fatalf("Failed to fetch device: %v", err)
 	}
 
-	device.Info.SSID = stringPtr("Test SSID")
-	device.Info.WifiPowerSave = intPtr(1)
-	device.Info.SkipDisplayVersion = boolPtr(true)
-	device.Info.APMode = boolPtr(true)
-	device.Info.PreferIPv6 = boolPtr(true)
-	device.Info.SwapColors = boolPtr(true)
-	device.Info.ImageURL = stringPtr("http://example.com/image.png")
+	device.Info.SSID = new("Test SSID")
+	device.Info.WifiPowerSave = new(1)
+	device.Info.SkipDisplayVersion = new(true)
+	device.Info.APMode = new(true)
+	device.Info.PreferIPv6 = new(true)
+	device.Info.SwapColors = new(true)
+	device.Info.ImageURL = new("http://example.com/image.png")
 	if err := s.DB.Save(device).Error; err != nil {
 		t.Fatalf("Failed to update device info: %v", err)
 	}
@@ -644,9 +644,9 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 
 	// Construct JSON request body
 	payload := FirmwareSettingsUpdate{
-		SkipDisplayVersion: boolPtr(true),
-		WifiPowerSave:      intPtr(2),
-		ImageURL:           stringPtr("http://example.com/test.png"),
+		SkipDisplayVersion: new(true),
+		WifiPowerSave:      new(2),
+		ImageURL:           new("http://example.com/test.png"),
 	}
 	body, _ := json.Marshal(payload)
 

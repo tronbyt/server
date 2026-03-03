@@ -30,7 +30,7 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	// Create existing user
 	user := data.User{
 		Username: "testuser",
-		Email:    stringPtr("old@example.com"),
+		Email:    new("old@example.com"),
 	}
 	db.Create(&user)
 
@@ -108,7 +108,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 	// Create existing user
 	user := data.User{
 		Username: "testuser",
-		Email:    stringPtr("test@example.com"),
+		Email:    new("test@example.com"),
 	}
 	db.Create(&user)
 
@@ -124,7 +124,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 	// We use a high ID (e.g., 9999) to verify it gets reset
 	importedUser := data.User{
 		Username: "testuser",
-		Email:    stringPtr("imported@example.com"),
+		Email:    new("imported@example.com"),
 		Devices: []data.Device{
 			{
 				ID:       "dev1",

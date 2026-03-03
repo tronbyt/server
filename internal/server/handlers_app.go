@@ -330,7 +330,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-				schemaBytes, err = renderer.GetSchema(appPath, 64, 32, device.Type.Supports2x())
+				schemaBytes, err = renderer.GetSchema(r.Context(), appPath, 64, 32, device.Type.Supports2x())
 				if err != nil {
 					slog.Error("Failed to get app schema", "error", err)
 					// Fall through with empty schema
