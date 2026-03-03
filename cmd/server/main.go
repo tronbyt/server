@@ -289,7 +289,6 @@ func main() {
 
 	// Initialize Pixlet Cache
 	var cache runtime.Cache
-	defer cache.Close()
 	if cfg.RedisURL != "" {
 		slog.Info("Initializing Pixlet Redis cache", "url", cfg.RedisURL)
 		cache = runtime.NewRedisCache(cfg.RedisURL)
@@ -297,6 +296,7 @@ func main() {
 		slog.Info("Initializing Pixlet in-memory cache")
 		cache = runtime.NewInMemoryCache()
 	}
+	defer cache.Close()
 	runtime.InitHTTP(cache)
 	runtime.InitCache(cache)
 
