@@ -11,12 +11,12 @@ import (
 type Settings struct {
 	DBDSN                  string `env:"DB_DSN"                   envDefault:"data/tronbyt.db"`
 	DataDir                string `env:"DATA_DIR"                 envDefault:"data"`
-	Production             string `env:"PRODUCTION"               envDefault:"1"`
-	EnableUserRegistration string `env:"ENABLE_USER_REGISTRATION" envDefault:"1"`
-	EnablePprof            string `env:"ENABLE_PPROF"             envDefault:"0"`
-	MaxUsers               int    `env:"MAX_USERS"                envDefault:"0"`
-	SingleUserAutoLogin    string `env:"SINGLE_USER_AUTO_LOGIN"   envDefault:"0"`
-	SystemAppsAutoRefresh  string `env:"SYSTEM_APPS_AUTO_REFRESH" envDefault:"0"`
+	Production             bool   `env:"PRODUCTION"               envDefault:"true"`
+	EnableUserRegistration bool   `env:"ENABLE_USER_REGISTRATION" envDefault:"true"`
+	EnablePprof            bool   `env:"ENABLE_PPROF"`
+	MaxUsers               int    `env:"MAX_USERS"`
+	SingleUserAutoLogin    bool   `env:"SINGLE_USER_AUTO_LOGIN"`
+	SystemAppsAutoRefresh  bool   `env:"SYSTEM_APPS_AUTO_REFRESH"`
 	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO"         envDefault:"https://github.com/tronbyt/apps.git"`
 	GitHubToken            string `env:"GITHUB_TOKEN"`
 	RedisURL               string `env:"REDIS_URL"`
@@ -27,15 +27,15 @@ type Settings struct {
 	SSLCertFile            string `env:"TRONBYT_SSL_CERTFILE"`
 	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES"  envDefault:"*"`
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
-	EnableUpdateChecks     string `env:"ENABLE_UPDATE_CHECKS"     envDefault:"1"`
+	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
 }
 
 // TemplateConfig holds configuration values needed in templates.
 type TemplateConfig struct {
-	EnableUserRegistration string
-	SingleUserAutoLogin    string
-	SystemAppsAutoRefresh  string
-	Production             string
+	EnableUserRegistration bool
+	SingleUserAutoLogin    bool
+	SystemAppsAutoRefresh  bool
+	Production             bool
 }
 
 func LoadSettings() (*Settings, error) {

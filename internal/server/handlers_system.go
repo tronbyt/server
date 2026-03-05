@@ -57,7 +57,7 @@ func (s *Server) checkForUpdates() {
 }
 
 func (s *Server) autoRefreshSystemRepo() {
-	if s.Config.SystemAppsAutoRefresh != "1" {
+	if !s.Config.SystemAppsAutoRefresh {
 		return
 	}
 
@@ -66,7 +66,7 @@ func (s *Server) autoRefreshSystemRepo() {
 	ticker := time.NewTicker(12 * time.Hour)
 	defer ticker.Stop()
 	for range ticker.C {
-		if s.Config.SystemAppsAutoRefresh != "1" {
+		if !s.Config.SystemAppsAutoRefresh {
 			slog.Info("System apps auto-refresh disabled, stopping ticker")
 			return
 		}
@@ -89,7 +89,7 @@ func (s *Server) refreshSystemRepo() error {
 }
 
 func (s *Server) doUpdateCheck() {
-	if s.Config.EnableUpdateChecks != "1" {
+	if !s.Config.EnableUpdateChecks {
 		return
 	}
 

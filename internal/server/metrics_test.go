@@ -27,7 +27,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	// Setup Server
 	cfg := &config.Settings{
 		DataDir:    t.TempDir(),
-		Production: "0",
+		Production: false,
 	}
 	s := NewServer(db, cfg)
 

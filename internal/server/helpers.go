@@ -165,7 +165,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	if err != nil {
 		slog.Error("Failed to count users for auto-login check", "error", err)
 	} else {
-		tmplData.IsAutoLoginActive = (s.Config.SingleUserAutoLogin == "1" && userCount == 1)
+		tmplData.IsAutoLoginActive = s.Config.SingleUserAutoLogin && userCount == 1
 	}
 
 	// Get and clear flash messages

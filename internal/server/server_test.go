@@ -18,7 +18,7 @@ import (
 
 type option func(s *config.Settings)
 
-func withPprof(value string) option {
+func withPprof(value bool) option {
 	return func(s *config.Settings) {
 		s.EnablePprof = value
 	}
@@ -40,9 +40,9 @@ func newTestServer(t *testing.T, opts ...option) *Server {
 	db.Create(&data.Setting{Key: "system_apps_repo", Value: ""})
 
 	cfg := &config.Settings{
-		Production:         "0",
 		DataDir:            t.TempDir(),
-		EnableUpdateChecks: "0",
+		Production:         false,
+		EnableUpdateChecks: false,
 	}
 
 	for _, opt := range opts {
@@ -96,7 +96,7 @@ func TestPprofRoutesDisabledByDefault(t *testing.T) {
 }
 
 func TestPprofRoutesEnabled(t *testing.T) {
-	s := newTestServer(t, withPprof("1"))
+	s := newTestServer(t, withPprof(true))
 
 	req, err := http.NewRequest(http.MethodGet, "/debug/pprof/", nil)
 	require.NoError(t, err)

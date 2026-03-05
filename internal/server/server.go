@@ -294,7 +294,7 @@ func (s *Server) routes() {
 	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromGatherer, promhttp.HandlerOpts{}))
 	s.Router.HandleFunc("GET /dots", s.handleDots)
 
-	if s.Config.EnablePprof == "1" {
+	if s.Config.EnablePprof {
 		slog.Info("Enabling pprof", "path", "/debug/pprof/")
 		s.Router.HandleFunc("GET /debug/pprof/", pprof.Index)
 		s.Router.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)

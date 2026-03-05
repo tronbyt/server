@@ -1364,7 +1364,7 @@ func (s *Server) handleUnmarkAppBroken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, broken bool) {
-	if s.Config.Production == "1" {
+	if s.Config.Production {
 		http.Error(w, "Not allowed in production mode", http.StatusForbidden)
 		return
 	}

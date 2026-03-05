@@ -54,7 +54,7 @@ The `tronbyt-server` binary supports additional commands for administration:
     ```bash
     curl http://localhost:8000/metrics
     ```
-*   **`/debug/pprof/`**: Exposes Go pprof endpoints when `ENABLE_PPROF=1` is set. Disabled by default.
+*   **`/debug/pprof/`**: Exposes Go pprof endpoints when `ENABLE_PPROF=true` is set. Disabled by default.
 
 **Quick Start Guide:**
 1.  Access the web app at `http://localhost:8000`.
@@ -66,7 +66,7 @@ The `tronbyt-server` binary supports additional commands for administration:
 
 **Ports:** The web app is exposed on port `8000`.
 
-**User Registration:** By default, only the admin can create new user accounts. Open user registration can be enabled by setting `ENABLE_USER_REGISTRATION=1` in the `.env` file.
+**User Registration:** By default, only the admin can create new user accounts. Open user registration can be enabled by setting `ENABLE_USER_REGISTRATION=true` in the `.env` file.
 
 **Updating:**
 *   Docker containers: `docker compose pull && docker compose up -d`.
@@ -83,7 +83,7 @@ If you are upgrading from the Python version (v1.x) and using the default SQLite
 *   For native development:
     *   Run directly: `go run ./cmd/server`.
     *   With live-reloading (using [Air](https://github.com/air-verse/air)):
-        Run: `PRODUCTION=0 go tool air`
+        Run: `PRODUCTION=false go tool air`
 
 **Configuration:**
 

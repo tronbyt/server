@@ -4,7 +4,7 @@
 {{ define "title" }}{{ t .Localizer "Register" }}{{ end }}
 {{ define "content" }}
 <h1>{{ t .Localizer "Register" }}</h1>
-{{ if eq .Config.SingleUserAutoLogin "1" }}
+{{ if .Config.SingleUserAutoLogin }}
 <div class="w3-panel w3-orange w3-border w3-border-orange w3-round-large"
      style="margin-bottom: 20px">
     <div style="display: flex; align-items: center; gap: 10px;">
