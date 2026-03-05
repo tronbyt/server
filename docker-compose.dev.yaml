@@ -16,6 +16,7 @@ services:
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-${UID:-1000}}
+      - ENABLE_PPROF=1
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - LOG_LEVEL

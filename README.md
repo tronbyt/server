@@ -54,6 +54,7 @@ The `tronbyt-server` binary supports additional commands for administration:
     ```bash
     curl http://localhost:8000/metrics
     ```
+*   **`/debug/pprof/`**: Exposes Go pprof endpoints when `ENABLE_PPROF=1` is set. Disabled by default.
 
 **Quick Start Guide:**
 1.  Access the web app at `http://localhost:8000`.
@@ -91,6 +92,7 @@ The server can be configured via environment variables or `.env` file:
 *   `TRONBYT_PORT`: Listen port (default: `8000`).
 *   `TRONBYT_UNIX_SOCKET`: Path to Unix socket to listen on (optional).
 *   `TRONBYT_SSL_KEYFILE` & `TRONBYT_SSL_CERTFILE`: Paths to TLS key/cert for native HTTPS.
+*   `ENABLE_PPROF`: Set to `1` to enable pprof routes at `/debug/pprof/` (default: `0`).
 *   `SYSTEM_APPS_REPO`: Git repository URL for system apps.
 *   `REDIS_URL`: Redis connection string for caching (optional).
 

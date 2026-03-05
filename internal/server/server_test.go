@@ -10,11 +10,21 @@ import (
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func newTestServer(t *testing.T) *Server {
+type option func(s *config.Settings)
+
+func withPprof(value string) option {
+	return func(s *config.Settings) {
+		s.EnablePprof = value
+	}
+}
+
+func newTestServer(t *testing.T, opts ...option) *Server {
 	dbName := fmt.Sprintf("file:%s?mode=memory&cache=private&_busy_timeout=5000", t.Name())
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	if err != nil {
@@ -33,6 +43,10 @@ func newTestServer(t *testing.T) *Server {
 		Production:         "0",
 		DataDir:            t.TempDir(),
 		EnableUpdateChecks: "0",
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
 	}
 
 	s := NewServer(db, cfg)
@@ -63,4 +77,31 @@ func TestLoginRedirectToRegisterIfNoUsers(t *testing.T) {
 		t.Errorf("handler returned wrong redirect location: got %v want %v",
 			location.Path, "/auth/register")
 	}
+}
+
+func TestPprofRoutesDisabledByDefault(t *testing.T) {
+	s := newTestServer(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/debug/pprof/", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusSeeOther, rr.Code)
+
+	location, err := rr.Result().Location()
+	require.NoError(t, err)
+	assert.Equal(t, "/auth/login", location.Path)
+}
+
+func TestPprofRoutesEnabled(t *testing.T) {
+	s := newTestServer(t, withPprof("1"))
+
+	req, err := http.NewRequest(http.MethodGet, "/debug/pprof/", nil)
+	require.NoError(t, err)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
 }

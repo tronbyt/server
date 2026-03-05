@@ -13,6 +13,7 @@ type Settings struct {
 	DataDir                string `env:"DATA_DIR"                 envDefault:"data"`
 	Production             string `env:"PRODUCTION"               envDefault:"1"`
 	EnableUserRegistration string `env:"ENABLE_USER_REGISTRATION" envDefault:"1"`
+	EnablePprof            string `env:"ENABLE_PPROF"             envDefault:"0"`
 	MaxUsers               int    `env:"MAX_USERS"                envDefault:"0"`
 	SingleUserAutoLogin    string `env:"SINGLE_USER_AUTO_LOGIN"   envDefault:"0"`
 	SystemAppsAutoRefresh  string `env:"SYSTEM_APPS_AUTO_REFRESH" envDefault:"0"`
