@@ -265,7 +265,7 @@ func main() {
 
 	// Clone/Update System Apps Repo
 	systemAppsDir := filepath.Join(*dataDir, "system-apps")
-	shouldUpdate := cfg.Production == "1"
+	shouldUpdate := cfg.Production
 	if err := gitutils.EnsureRepo(systemAppsDir, cfg.SystemAppsRepo, cfg.GitHubToken, shouldUpdate); err != nil {
 		slog.Error("Failed to update system apps repo", "error", err)
 		// Continue anyway
@@ -303,7 +303,7 @@ func main() {
 	srv := server.NewServer(db, cfg)
 
 	// Firmware Update (production only)
-	if cfg.Production == "1" {
+	if cfg.Production {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -322,7 +322,7 @@ func main() {
 	userCount, err := gorm.G[data.User](db).Count(context.Background(), "*")
 	if err != nil {
 		slog.Error("Failed to count users for auto-login warning", "error", err)
-	} else if cfg.SingleUserAutoLogin == "1" && userCount == 1 {
+	} else if cfg.SingleUserAutoLogin && userCount == 1 {
 		slog.Warn(`
 ======================================================================
 ⚠️  SINGLE-USER AUTO-LOGIN MODE IS ENABLED

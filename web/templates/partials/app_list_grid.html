@@ -111,7 +111,7 @@
         <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
     </a>
     {{ end }}
-    {{ if eq .ConfigProduction "0" }}
+    {{ if not .ConfigProduction }}
     {{ if .App.Broken }}
     <button class="unmark-broken-btn"
             onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});"

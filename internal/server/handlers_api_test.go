@@ -58,9 +58,9 @@ func newTestServerAPI(t *testing.T) *Server {
 	}
 
 	cfg := &config.Settings{
-		Production:         "0",
 		DataDir:            t.TempDir(),
-		EnableUpdateChecks: "0",
+		Production:         false,
+		EnableUpdateChecks: false,
 	}
 
 	s := NewServer(db, cfg)

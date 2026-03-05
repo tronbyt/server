@@ -37,7 +37,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Auto-Login Check
-	if s.Config.SingleUserAutoLogin == "1" {
+	if s.Config.SingleUserAutoLogin {
 		count, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
 		if err == nil && count == 1 {
 			if s.isTrustedNetwork(r) {
@@ -153,7 +153,7 @@ func (s *Server) handleRegisterGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.Config.EnableUserRegistration != "1" && count > 0 {
+	if !s.Config.EnableUserRegistration && count > 0 {
 		session, _ := s.Store.Get(r, "session-name")
 		currentUsername, ok := session.Values["username"].(string)
 		if !ok {
@@ -190,7 +190,7 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 
 	localizer := s.getLocalizer(r)
 
-	if s.Config.EnableUserRegistration != "1" && count > 0 {
+	if !s.Config.EnableUserRegistration && count > 0 {
 		session, _ := s.Store.Get(r, "session-name")
 		currentUsername, ok := session.Values["username"].(string)
 		if !ok {

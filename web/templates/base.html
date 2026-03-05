@@ -89,7 +89,7 @@
         <li>
             <a href="/auth/login">{{ t .Localizer "Log In" }}</a>
         </li>
-        {{ if eq .Config.EnableUserRegistration "1" }}
+        {{ if .Config.EnableUserRegistration }}
         <li>
             <a href="/auth/register">{{ t .Localizer "Create User" }}</a>
         </li>
@@ -159,7 +159,7 @@
     <li>
         <a href="/auth/login" onclick="closeMobileMenu()">{{ t .Localizer "Log In" }}</a>
     </li>
-    {{ if eq .Config.EnableUserRegistration "1" }}
+    {{ if .Config.EnableUserRegistration }}
     <li>
         <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
     </li>
