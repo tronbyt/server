@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -292,6 +293,15 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("GET /health", s.handleHealth)
 	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromGatherer, promhttp.HandlerOpts{}))
 	s.Router.HandleFunc("GET /dots", s.handleDots)
+
+	if s.Config.EnablePprof == "1" {
+		slog.Info("Enabling pprof", "path", "/debug/pprof/")
+		s.Router.HandleFunc("GET /debug/pprof/", pprof.Index)
+		s.Router.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
+		s.Router.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+		s.Router.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
+		s.Router.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
+	}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
