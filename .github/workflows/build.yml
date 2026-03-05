@@ -105,16 +105,16 @@ jobs:
         run: |
           # Retrieve the install location from the previous step
           MSYS_ROOT="${{ steps.msys2.outputs.msys2-location }}"
-          
+
           echo "Using MSYS2 at: $MSYS_ROOT"
-          
+
           # Convert backslashes to forward slashes for GCC compatibility
           MSYS_ROOT=$(echo "$MSYS_ROOT" | sed 's/\\/\//g')
 
           # Write to GITHUB_ENV so following steps (like 'go build') can see them
           echo "CGO_CFLAGS=-I${MSYS_ROOT}/mingw64/include" >> "$GITHUB_ENV"
           echo "CGO_LDFLAGS=-L${MSYS_ROOT}/mingw64/lib" >> "$GITHUB_ENV"
-          
+
           # Optional: Add the mingw64 bin folder to PATH so dlls are found during tests
           echo "${MSYS_ROOT}/mingw64/bin" >> "$GITHUB_PATH"
 
@@ -151,10 +151,10 @@ jobs:
           VERSION=${GITHUB_REF_NAME}
           COMMIT=${GITHUB_SHA}
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
+
           # Base flags
           LDFLAGS="-w -s -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${DATE}'"
-          
+
           # Add static flags ONLY for Windows to avoid DLL dependency
           if [ "${{ matrix.goos }}" == "windows" ]; then
              LDFLAGS="${LDFLAGS} -extldflags '-static'"
