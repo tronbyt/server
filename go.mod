@@ -6,7 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/cyphar/filepath-securejoin v0.6.1
 	github.com/go-git/go-git/v6 v6.0.0-20260123133532-f99a98e81ce9
-	github.com/go-webauthn/webauthn v0.15.0
+	github.com/go-webauthn/webauthn v0.16.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/gorilla/websocket v1.5.3
@@ -66,13 +66,13 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/go-webauthn/x v0.1.26 // indirect
+	github.com/go-webauthn/x v0.2.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hugo v0.149.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/google/go-tpm v0.9.7 // indirect
+	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/tink/go v1.7.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
