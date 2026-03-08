@@ -288,7 +288,7 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
 	// Reload device from DB to ensure we have latest data (especially RequireAPIKey)
-	freshDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).First(r.Context())
+	freshDevice, err := gorm.G[data.Device](s.DB).Preload("Apps", orderedAppsPreload).Where("id = ?", device.ID).First(r.Context())
 	if err != nil {
 		slog.Error("Failed to reload device", "error", err)
 		http.Error(w, "Device not found", http.StatusNotFound)
