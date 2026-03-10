@@ -60,10 +60,11 @@ func (l *GORMSlogLogger) Trace(ctx context.Context, begin time.Time, fc func() (
 	}
 
 	if err != nil && l.LogLevel >= logger.Error {
-		if l.IgnoreRecordNotFoundError && errors.Is(err, gorm.ErrRecordNotFound) {
-			return
+		level := slog.LevelError
+		if (l.IgnoreRecordNotFoundError && errors.Is(err, gorm.ErrRecordNotFound)) || errors.Is(err, context.Canceled) {
+			level = slog.LevelDebug
 		}
-		slog.ErrorContext(ctx, "GORM query error", append(fields, slog.Any("error", err))...)
+		slog.Log(ctx, level, "GORM query error", append(fields, slog.Any("error", err))...)
 	} else if elapsed > l.SlowThreshold && l.SlowThreshold != 0 && l.LogLevel >= logger.Warn {
 		slog.WarnContext(ctx, "GORM slow query", fields...)
 	} else if l.LogLevel >= logger.Info { // GORM logger.Info maps to slog.LevelDebug for SQL
