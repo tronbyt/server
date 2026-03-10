@@ -1,6 +1,6 @@
 module tronbyt-server
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/caarlos0/env/v11 v11.4.0
@@ -17,7 +17,7 @@ require (
 	github.com/quic-go/quic-go v0.59.0
 	github.com/stretchr/testify v1.11.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
-	github.com/tronbyt/pixlet v0.51.0
+	github.com/tronbyt/pixlet v0.51.1
 	golang.org/x/crypto v0.48.0
 	golang.org/x/mod v0.33.0
 	golang.org/x/text v0.34.0
