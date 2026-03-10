@@ -128,10 +128,14 @@ func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 			First(r.Context())
 
 		if err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				slog.Error("Database error checking session user", "username", username, "error", err)
-			} else {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				slog.Info("User in session not found in DB", "username", username)
+			} else {
+				level := slog.LevelError
+				if errors.Is(err, context.Canceled) {
+					level = slog.LevelDebug
+				}
+				slog.Log(r.Context(), level, "Database error checking session user", "username", username, "error", err)
 			}
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
