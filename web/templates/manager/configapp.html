@@ -188,6 +188,33 @@
                 </select>
             </td>
         </tr>
+        <!-- Show Full Animation -->
+        <tr>
+            <td>
+                <label for="show_full_animation">{{ t .Localizer "Show Full Animation" }}</label>
+                <span class="tooltip-icon"
+                      title="{{ t .Localizer "ShowFullAnimationTooltip" }}">ⓘ</span>
+                <small>{{ t .Localizer "Override whether the full animation is shown" }}</small>
+            </td>
+            <td>
+                {{- $sfa := "auto" }}
+                {{- if ne .App.ShowFullAnimation nil }}
+                {{- if deref .App.ShowFullAnimation }}
+                {{- $sfa = "true" }}
+                {{- else }}
+                {{- $sfa = "false" }}
+                {{- end }}
+                {{- end }}
+                <select name="show_full_animation"
+                        id="show_full_animation"
+                        class="form-control">
+                    {{ range .ShowFullAnimationOptions }}
+                    <option value="{{ .Value }}" {{ if eq $sfa .Value }} selected {{ end }}>{{ t $.Localizer .Name }}
+                    </option>
+                    {{ end }}
+                </select>
+            </td>
+        </tr>
         <!-- Notes -->
         <tr>
             <td>
@@ -1437,6 +1464,7 @@
           start_time: document.getElementById('start_time').value,
           end_time: document.getElementById('end_time').value,
           color_filter: document.getElementById('color_filter').value,
+          show_full_animation: document.getElementById('show_full_animation').value,
           days: days,
 
           use_custom_recurrence: document.getElementById('use_custom_recurrence').checked,
@@ -1500,6 +1528,7 @@
                   start_time: { type: 'value', default: '' },
                   end_time: { type: 'value', default: '' },
                   color_filter: { type: 'value', default: 'inherit' },
+                  show_full_animation: { type: 'value', default: 'auto' },
                   use_custom_recurrence: { type: 'checked' },
                   recurrence_type: { type: 'value', default: 'daily' },
                   recurrence_interval: { type: 'value', default: '1' },

@@ -351,14 +351,15 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, r, "configapp", TemplateData{
-		User:               user,
-		Device:             device,
-		App:                app,
-		Schema:             template.JS(schemaBytes),
-		AppConfig:          app.Config,
-		DeleteOnCancel:     deleteOnCancel,
-		ColorFilterOptions: s.getColorFilterChoices(),
-		AppMetadata:        appMetadata,
+		User:                     user,
+		Device:                   device,
+		App:                      app,
+		Schema:                   template.JS(schemaBytes),
+		AppConfig:                app.Config,
+		DeleteOnCancel:           deleteOnCancel,
+		ColorFilterOptions:       s.getColorFilterChoices(),
+		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
+		AppMetadata:              appMetadata,
 	})
 }
 
@@ -377,6 +378,7 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		Config              map[string]any `json:"config"`
 		UseCustomRecurrence bool           `json:"use_custom_recurrence"`
 		ColorFilter         string         `json:"color_filter"`
+		ShowFullAnimation   string         `json:"show_full_animation"`
 
 		StartTime string   `json:"start_time"`
 		EndTime   string   `json:"end_time"`
@@ -443,12 +445,22 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	// Handle Days slice
 	app.Days = payload.Days
 
-	if payload.ColorFilter != "" {
-		if payload.ColorFilter == "inherit" {
-			app.ColorFilter = nil
+	switch payload.ColorFilter {
+	case "", "inherit", "none":
+		app.ColorFilter = nil
+	default:
+		val := data.ColorFilter(payload.ColorFilter)
+		app.ColorFilter = &val
+	}
+
+	switch payload.ShowFullAnimation {
+	case "", "auto":
+		app.ShowFullAnimation = nil
+	default:
+		if val, err := strconv.ParseBool(payload.ShowFullAnimation); err != nil {
+			slog.Warn("Failed to parse ShowFullAnimation", "error", err)
 		} else {
-			val := data.ColorFilter(payload.ColorFilter)
-			app.ColorFilter = &val
+			app.ShowFullAnimation = &val
 		}
 	}
 
