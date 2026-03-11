@@ -27,6 +27,7 @@ func Render(
 	timezone *string,
 	locale *string,
 	filters []string,
+	showFullAnimation *bool,
 ) ([]byte, []string, error) {
 	location := time.Local
 	if timezone != nil && *timezone != "" {
@@ -68,6 +69,7 @@ func Render(
 		loader.WithLocation(location),
 		loader.WithLanguage(lang),
 		loader.WithFilters(renderFilters),
+		loader.WithShowFullAnimation(showFullAnimation),
 	)
 }
 

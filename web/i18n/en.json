@@ -785,6 +785,24 @@
   "ColorFilterTooltip": {
     "other": "Apply custom filters to the image:\n            None: No transformation\n            Dimmed: Darkens image uniformly while preserving hue\n            Redshift: CCT-derived chromatic adaptation matrix ~3400K target\n            Warm: Adds a subtle warm, orange/yellow hue\n            Sunset: Emulates deep pink/orange of a setting sun\n            Sepia: Adds a warm, antique brown tone mimicking aged photographs\n            Vintage: Muted, brown/green nostalgic tones\n            Dusk: Fades brightness, adds reddish cast\n            Cool: Adds a cool, blue tint\n            Black & White: Converts image to perceptual grayscale using luminance weights\n            Ice: Pale desaturation with bluish cast\n            Moonlight: Dim blue-gray, night lighting effect\n            Neon: Boosts contrast, magenta-blue cyberpunk\n            Pastel: Softens tones, gentle highlight boost"
   },
+  "Show Full Animation": {
+    "other": "Show Full Animation"
+  },
+  "ShowFullAnimationTooltip": {
+    "other": "Animations longer than the device cycle time are normally cut short. Enable this to let the app finish its full animation, even if it exceeds the cycle time."
+  },
+  "Auto (Chosen by the app)": {
+    "other": "Auto (Chosen by the app)"
+  },
+  "True": {
+    "other": "True"
+  },
+  "False": {
+    "other": "False"
+  },
+  "Override whether the full animation is shown": {
+    "other": "Override whether this app shows its full animation"
+  },
   "Override device color filter": {
     "other": "Override device color filter"
   },

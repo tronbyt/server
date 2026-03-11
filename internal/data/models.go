@@ -541,11 +541,12 @@ type App struct {
 	RecurrenceStartDate *string        `json:"recurrence_start_date"` // YYYY-MM-DD
 	RecurrenceEndDate   *string        `json:"recurrence_end_date"`   // YYYY-MM-DD
 
-	Config          JSONMap      `gorm:"type:text"         json:"config"`
-	EmptyLastRender bool         `json:"empty_last_render"`
-	RenderMessages  StringSlice  `gorm:"type:text"         json:"render_messages"`
-	AutoPin         bool         `json:"auto_pin"`
-	ColorFilter     *ColorFilter `json:"color_filter"`
+	Config            JSONMap      `gorm:"type:text"           json:"config"`
+	EmptyLastRender   bool         `json:"empty_last_render"`
+	RenderMessages    StringSlice  `gorm:"type:text"           json:"render_messages"`
+	AutoPin           bool         `json:"auto_pin"`
+	ColorFilter       *ColorFilter `json:"color_filter"`
+	ShowFullAnimation *bool        `json:"show_full_animation"`
 }
 
 type Device struct {

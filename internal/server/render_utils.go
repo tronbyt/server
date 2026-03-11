@@ -61,6 +61,12 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		filters = s.getEffectiveFilters(device, app)
 	}
 
+	// App-level rendering overrides are optional when rendering previews.
+	var showFullAnimation *bool
+	if app != nil {
+		showFullAnimation = app.ShowFullAnimation
+	}
+
 	// 2. Static WebP App
 	if strings.HasSuffix(strings.ToLower(appPath), ".webp") {
 		content, err := os.ReadFile(appPath)
@@ -82,6 +88,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		&deviceTimezone,
 		locale,
 		filters,
+		showFullAnimation,
 	)
 }
 

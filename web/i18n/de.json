@@ -782,6 +782,24 @@
   "ColorFilterTooltip": {
     "other": "Wenden Sie benutzerdefinierte Filter auf das Bild an:\n            Keine: Keine Transformation\n            Gedimmt: Verdunkelt das Bild gleichmäßig, während der Farbton erhalten bleibt\n            Rotverschiebung: CCT-abgeleitete chromatische Adaptationsmatrix ~3400K Ziel\n            Warm: Fügt einen subtilen warmen, orange/gelben Farbton hinzu\n            Sonnenuntergang: Emuliert tiefes Pink/Orange eines Sonnenuntergangs\n            Sepia: Fügt einen warmen, antiken Braunton hinzu, der gealterte Fotografien imitiert\n            Vintage: Gedämpfte, braun/grüne nostalgische Töne\n            Dämmerung: Helligkeit verblasst, fügt einen rötlichen Stich hinzu\n            Kühl: Fügt einen kühlen, bläulichen Farbton hinzu\n            Schwarz & Weiß: Konvertiert das Bild in perzeptives Graustufen unter Verwendung von Luminanzgewichten\n            Eis: Blasse Entsättigung mit bläulichem Stich\n            Mondlicht: Gedämpftes Blau-Grau, Nachtbeleuchtungseffekt\n            Neon: Erhöht den Kontrast, Magenta-Blau Cyberpunk\n            Pastell: Mildert Töne, sanfte Glanzlichterverstärkung"
   },
+  "Show Full Animation": {
+    "other": "Vollständige Animation anzeigen"
+  },
+  "ShowFullAnimationTooltip": {
+    "other": "Animationen, die länger als die Gerätezykluszeit dauern, werden normalerweise abgeschnitten. Aktivieren Sie dies, damit die App die vollständige Animation anzeigen kann, auch wenn sie die Zykluszeit überschreitet."
+  },
+  "Auto (Chosen by the app)": {
+    "other": "Automatisch (Von der App gewählt)"
+  },
+  "True": {
+    "other": "Wahr"
+  },
+  "False": {
+    "other": "Falsch"
+  },
+  "Override whether the full animation is shown": {
+    "other": "Überschreibt, ob diese App ihre vollständige Animation anzeigt"
+  },
   "Override device color filter": {
     "other": "Geräte-Farbfilter überschreiben"
   },
