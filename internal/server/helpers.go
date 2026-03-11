@@ -38,6 +38,11 @@ type ColorFilterOption struct {
 	Name  string
 }
 
+type ShowFullAnimationOption struct {
+	Value string
+	Name  string
+}
+
 type DeviceTypeOption struct {
 	Value data.DeviceType
 	Label string
@@ -82,14 +87,15 @@ type TemplateData struct {
 	AppMetadata *apps.AppMetadata
 
 	// Device Update Extras
-	ColorFilterOptions []ColorFilterOption
-	AvailableLocales   []string
-	DefaultImgURL      string
-	DefaultWsURL       string
-	FirmwareImgURL     string
-	BrightnessUI       int
-	NightBrightnessUI  int
-	DimBrightnessUI    int
+	ColorFilterOptions       []ColorFilterOption
+	ShowFullAnimationOptions []ShowFullAnimationOption
+	AvailableLocales         []string
+	DefaultImgURL            string
+	DefaultWsURL             string
+	FirmwareImgURL           string
+	BrightnessUI             int
+	NightBrightnessUI        int
+	DimBrightnessUI          int
 
 	// Firmware
 	FirmwareBinsAvailable     bool
@@ -253,6 +259,14 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeOpt
 		})
 	}
 	return choices
+}
+
+func (s *Server) getShowFullAnimationChoices() []ShowFullAnimationOption {
+	return []ShowFullAnimationOption{
+		{Value: "auto", Name: "Auto (Chosen by the app)"},
+		{Value: "true", Name: "True"},
+		{Value: "false", Name: "False"},
+	}
 }
 
 func (s *Server) getColorFilterChoices() []ColorFilterOption {
