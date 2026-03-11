@@ -291,7 +291,14 @@ func main() {
 	var cache runtime.Cache
 	if cfg.RedisURL != "" {
 		slog.Info("Initializing Pixlet Redis cache", "url", cfg.RedisURL)
-		cache = runtime.NewRedisCache(cfg.RedisURL)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		var err error
+		cache, err = runtime.NewRedisCache(ctx, cfg.RedisURL)
+		if err != nil {
+			slog.Error("Failed to connect to Redis", "error", err)
+			os.Exit(1)
+		}
+		cancel()
 	} else {
 		slog.Info("Initializing Pixlet in-memory cache")
 		cache = runtime.NewInMemoryCache()
