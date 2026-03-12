@@ -88,6 +88,12 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 			if err := db.Exec("PRAGMA busy_timeout=5000;").Error; err != nil {
 				slog.Warn("Failed to set busy timeout for SQLite", "error", err)
 			}
+			if err := db.Exec("PRAGMA cache_size=-64000;").Error; err != nil {
+				slog.Warn("Failed to set cache size for SQLite", "error", err)
+			}
+			if err := db.Exec("PRAGMA synchronous=NORMAL;").Error; err != nil {
+				slog.Warn("Failed to set synchronous for SQLite", "error", err)
+			}
 		}
 	}
 
@@ -277,6 +283,29 @@ func main() {
 		slog.Error("Failed to open database", "error", err)
 		os.Exit(1)
 	}
+
+	// Configure DB connection pool
+	sqlDB, _ := db.DB()
+	sqlDB.SetMaxOpenConns(5)
+	sqlDB.SetMaxIdleConns(2)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(1 * time.Minute)
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			stats := sqlDB.Stats()
+			slog.Debug("DB Pool",
+				"open", stats.OpenConnections,
+				"in_use", stats.InUse,
+				"idle", stats.Idle,
+				"wait_count", stats.WaitCount,
+				"max_idle_closed", stats.MaxIdleClosed,
+				"max_idle_time_closed", stats.MaxIdleTimeClosed,
+				"max_lifetime_closed", stats.MaxLifetimeClosed,
+			)
+		}
+	}()
 
 	// Sanitize data
 	sanitizeDB(db)
