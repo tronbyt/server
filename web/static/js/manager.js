@@ -1,6 +1,12 @@
 // Global variables for addapp filtering/sorting
+const SORT_TYPE_STORAGE_KEY = 'tronbyt_app_sort_type';
 let isInitialLoad = true;
-let sortType = localStorage.getItem('tronbyt_app_sort_type') || 'system';
+let sortType = 'system';
+try {
+  sortType = localStorage.getItem(SORT_TYPE_STORAGE_KEY) || 'system';
+} catch (e) {
+  console.error('Failed to read sort preference from localStorage:', e);
+}
 let hideInstalled = false;
 let showBroken = false;
 let isProcessing = false;
@@ -515,7 +521,11 @@ function toggleBrokenApps(searchId) {
 
 function sortApps(searchId) {
   sortType = document.getElementById('sort_' + searchId).value;
-  localStorage.setItem('tronbyt_app_sort_type', sortType);
+  try {
+    localStorage.setItem(SORT_TYPE_STORAGE_KEY, sortType);
+  } catch (e) {
+    console.error('Failed to save sort preference to localStorage:', e);
+  }
   applyFilters();
 }
 
@@ -1628,12 +1638,16 @@ function switchToCollapsedView(deviceId) {
 // Initialize drag and drop for all app cards when page loads
 document.addEventListener('DOMContentLoaded', function () {
   // Initialize sorting dropdowns from localStorage
-  const savedSortType = localStorage.getItem('tronbyt_app_sort_type');
-  if (savedSortType) {
-    const sortSelects = document.querySelectorAll('select[id^="sort_"]');
-    sortSelects.forEach(select => {
-      select.value = savedSortType;
-    });
+  try {
+    const savedSortType = localStorage.getItem(SORT_TYPE_STORAGE_KEY);
+    if (savedSortType) {
+      const sortSelects = document.querySelectorAll('select[id^="sort_"]');
+      sortSelects.forEach(select => {
+        select.value = savedSortType;
+      });
+    }
+  } catch (e) {
+    console.error('Failed to read sort preference from localStorage:', e);
   }
 
   // Common initializations
