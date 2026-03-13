@@ -1,6 +1,6 @@
 // Global variables for addapp filtering/sorting
 let isInitialLoad = true;
-let sortType = 'system';
+let sortType = localStorage.getItem('tronbyt_app_sort_type') || 'system';
 let hideInstalled = false;
 let showBroken = false;
 let isProcessing = false;
@@ -515,6 +515,7 @@ function toggleBrokenApps(searchId) {
 
 function sortApps(searchId) {
   sortType = document.getElementById('sort_' + searchId).value;
+  localStorage.setItem('tronbyt_app_sort_type', sortType);
   applyFilters();
 }
 
@@ -1626,6 +1627,15 @@ function switchToCollapsedView(deviceId) {
 
 // Initialize drag and drop for all app cards when page loads
 document.addEventListener('DOMContentLoaded', function () {
+  // Initialize sorting dropdowns from localStorage
+  const savedSortType = localStorage.getItem('tronbyt_app_sort_type');
+  if (savedSortType) {
+    const sortSelects = document.querySelectorAll('select[id^="sort_"]');
+    sortSelects.forEach(select => {
+      select.value = savedSortType;
+    });
+  }
+
   // Common initializations
   initializeDragAndDrop();
   initializeViewToggles();
