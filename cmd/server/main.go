@@ -285,7 +285,11 @@ func main() {
 	}
 
 	// Configure DB connection pool
-	sqlDB, _ := db.DB()
+	sqlDB, err := db.DB()
+	if err != nil {
+		slog.Error("Failed to get database connection pool", "error", err)
+		os.Exit(1)
+	}
 	sqlDB.SetMaxOpenConns(5)
 	sqlDB.SetMaxIdleConns(2)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
