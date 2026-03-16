@@ -177,6 +177,7 @@ func TestHandleGetDevice(t *testing.T) {
 	device.Info.SSID = new("Test SSID")
 	device.Info.WifiPowerSave = new(1)
 	device.Info.SkipDisplayVersion = new(true)
+	device.Info.SkipBootAnimation = new(true)
 	device.Info.APMode = new(true)
 	device.Info.PreferIPv6 = new(true)
 	device.Info.SwapColors = new(true)
@@ -212,6 +213,9 @@ func TestHandleGetDevice(t *testing.T) {
 	}
 	if payload.Info.SkipDisplayVersion == nil || !*payload.Info.SkipDisplayVersion {
 		t.Errorf("Expected SkipDisplayVersion to be true, got %v", payload.Info.SkipDisplayVersion)
+	}
+	if payload.Info.SkipBootAnimation == nil || !*payload.Info.SkipBootAnimation {
+		t.Errorf("Expected SkipBootAnimation to be true, got %v", payload.Info.SkipBootAnimation)
 	}
 	if payload.Info.APMode == nil || !*payload.Info.APMode {
 		t.Errorf("Expected APMode to be true, got %v", payload.Info.APMode)
@@ -645,6 +649,7 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 	// Construct JSON request body
 	payload := FirmwareSettingsUpdate{
 		SkipDisplayVersion: new(true),
+		SkipBootAnimation:  new(true),
 		WifiPowerSave:      new(2),
 		ImageURL:           new("http://example.com/test.png"),
 	}
@@ -680,11 +685,14 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 			t.Fatalf("failed to unmarshal payload from broadcaster: %v", err)
 		}
 
-		if len(receivedPayload) != 3 {
-			t.Errorf("expected 3 fields in payload, got %d", len(receivedPayload))
+		if len(receivedPayload) != 4 {
+			t.Errorf("expected 4 fields in payload, got %d", len(receivedPayload))
 		}
 		if val, ok := receivedPayload["skip_display_version"].(bool); !ok || !val {
 			t.Errorf("expected skip_display_version to be true, got %v", receivedPayload["skip_display_version"])
+		}
+		if val, ok := receivedPayload["skip_boot_animation"].(bool); !ok || !val {
+			t.Errorf("expected skip_boot_animation to be true, got %v", receivedPayload["skip_boot_animation"])
 		}
 		if val, ok := receivedPayload["wifi_power_save"].(float64); !ok || val != 2 {
 			t.Errorf("expected wifi_power_save to be 2, got %v", receivedPayload["wifi_power_save"])
