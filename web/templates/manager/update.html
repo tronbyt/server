@@ -935,6 +935,21 @@
             </tr>
             <tr>
                 <td>
+                    <label class="device-settings-label">{{ t .Localizer "Skip Boot Animation" }}</label>
+                </td>
+                <td>
+                    <label class="switch">
+                        <input type="checkbox"
+                               {{- if derefOr .Device.Info.SkipBootAnimation false }}
+                               checked
+                               {{- end }}
+                               onchange="updateFirmwareSettings({skip_boot_animation: this.checked})">
+                        <span class="slider round"></span>
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <td>
                     <label class="device-settings-label">{{ t .Localizer "Prefer IPv6" }}</label>
                 </td>
                 <td>

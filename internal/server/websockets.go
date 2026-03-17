@@ -35,6 +35,7 @@ type ClientInfo struct {
 	SSID               *string `json:"ssid"`
 	WifiPowerSave      *int    `json:"wifi_power_save"`
 	SkipDisplayVersion *bool   `json:"skip_display_version"`
+	SkipBootAnimation  *bool   `json:"skip_boot_animation"`
 	APMode             *bool   `json:"ap_mode"`
 	PreferIPv6         *bool   `json:"prefer_ipv6"`
 	SwapColors         *bool   `json:"swap_colors"`
@@ -141,6 +142,9 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				if msg.ClientInfo.SkipDisplayVersion != nil {
 					device.Info.SkipDisplayVersion = msg.ClientInfo.SkipDisplayVersion
+				}
+				if msg.ClientInfo.SkipBootAnimation != nil {
+					device.Info.SkipBootAnimation = msg.ClientInfo.SkipBootAnimation
 				}
 				if msg.ClientInfo.APMode != nil {
 					device.Info.APMode = msg.ClientInfo.APMode

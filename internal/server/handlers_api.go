@@ -83,6 +83,7 @@ type DeviceInfo struct {
 	SSID               *string `json:"ssid,omitempty"`
 	WifiPowerSave      *int    `json:"wifiPowerSave,omitempty"`
 	SkipDisplayVersion *bool   `json:"skipDisplayVersion,omitempty"`
+	SkipBootAnimation  *bool   `json:"skipBootAnimation,omitempty"`
 	APMode             *bool   `json:"apMode,omitempty"`
 	PreferIPv6         *bool   `json:"preferIPv6,omitempty"`
 	SwapColors         *bool   `json:"swapColors,omitempty"`
@@ -103,6 +104,7 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		SSID:               d.Info.SSID,
 		WifiPowerSave:      d.Info.WifiPowerSave,
 		SkipDisplayVersion: d.Info.SkipDisplayVersion,
+		SkipBootAnimation:  d.Info.SkipBootAnimation,
 		APMode:             d.Info.APMode,
 		PreferIPv6:         d.Info.PreferIPv6,
 		SwapColors:         d.Info.SwapColors,
@@ -674,6 +676,7 @@ func (s *Server) handleRebootDeviceAPI(w http.ResponseWriter, r *http.Request) {
 // FirmwareSettingsUpdate represents the updatable firmware settings via API.
 type FirmwareSettingsUpdate struct {
 	SkipDisplayVersion *bool   `json:"skipDisplayVersion"`
+	SkipBootAnimation  *bool   `json:"skipBootAnimation"`
 	PreferIPv6         *bool   `json:"preferIPv6"`
 	APMode             *bool   `json:"apMode"`
 	SwapColors         *bool   `json:"swapColors"`
@@ -697,6 +700,9 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 
 	if update.SkipDisplayVersion != nil {
 		payload["skip_display_version"] = *update.SkipDisplayVersion
+	}
+	if update.SkipBootAnimation != nil {
+		payload["skip_boot_animation"] = *update.SkipBootAnimation
 	}
 	if update.PreferIPv6 != nil {
 		payload["prefer_ipv6"] = *update.PreferIPv6
