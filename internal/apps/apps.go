@@ -13,17 +13,19 @@ import (
 
 // Manifest reflects the structure of manifest.yaml for system apps.
 type Manifest struct {
-	ID                  string `yaml:"id"`
-	Name                string `yaml:"name"`
-	Summary             string `yaml:"summary"`
-	Desc                string `yaml:"desc"`
-	Author              string `yaml:"author"`
-	FileName            string `yaml:"fileName"`
-	PackageName         string `yaml:"packageName"`
-	RecommendedInterval int    `yaml:"recommendedInterval"`
-	Supports2x          bool   `yaml:"supports2x"`
-	Broken              bool   `yaml:"broken"`
-	BrokenReason        string `yaml:"brokenReason"`
+	ID                  string   `yaml:"id"`
+	Name                string   `yaml:"name"`
+	Summary             string   `yaml:"summary"`
+	Desc                string   `yaml:"desc"`
+	Author              string   `yaml:"author"`
+	FileName            string   `yaml:"fileName"`
+	PackageName         string   `yaml:"packageName"`
+	RecommendedInterval int      `yaml:"recommendedInterval"`
+	Supports2x          bool     `yaml:"supports2x"`
+	Broken              bool     `yaml:"broken"`
+	BrokenReason        string   `yaml:"brokenReason"`
+	Category            string   `yaml:"category"`
+	Tags                []string `yaml:"tags"`
 }
 
 type AppMetadata struct {
