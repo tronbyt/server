@@ -24,8 +24,7 @@
                onkeydown="preventSubmitOnEnter(event)" />
         <label for="category_{{ .SearchID }}" class="control-label">
             {{ t .Localizer "Category:" }}
-            <select id="category_{{ .SearchID }}"
-                    onchange="filterByCategory('{{ .SearchID }}', '{{ .GridID }}')">
+            <select id="category_{{ .SearchID }}" onchange="filterByCategory()">
                 <option value="">{{ t .Localizer "All Categories" }}</option>
             </select>
         </label>

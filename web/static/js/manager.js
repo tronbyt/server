@@ -9,7 +9,6 @@ try {
 }
 let hideInstalled = false;
 let showBroken = false;
-let selectedCategory = "";
 let isProcessing = false;
 
 // Debounce function
@@ -520,9 +519,7 @@ function toggleBrokenApps(searchId) {
   applyFilters();
 }
 
-function filterByCategory(searchId, gridId) {
-  const select = document.getElementById('category_' + searchId);
-  selectedCategory = select ? select.value : '';
+function filterByCategory() {
   applyFilters();
 }
 
@@ -635,7 +632,7 @@ function applyFilters() {
           const name = (item.getAttribute('data-name') || '').toLowerCase();
           const author = (item.getAttribute('data-author') || '').toLowerCase();
           const summary = (item.querySelector('p')?.textContent || '').toLowerCase();
-          const tags = (item.getAttribute('data-tags') || '').toLowerCase();
+          const tags = (item.getAttribute('data-tags') || '').toLowerCase().split(',');
           const category = (item.getAttribute('data-category') || '').toLowerCase();
 
           // Apply search filter (search name, summary, tags, and author if search begins with @)
@@ -645,7 +642,7 @@ function applyFilters() {
                 return false;
               }
             } else {
-              if (!name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter) && !tags.includes(currentSearchFilter)) {
+              if (!name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter) && !tags.some(tag => tag.includes(currentSearchFilter))) {
                 return false;
               }
             }
