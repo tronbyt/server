@@ -593,6 +593,12 @@
   "Show broken apps": {
     "other": "Defekte Apps anzeigen"
   },
+  "Category:": {
+    "other": "Kategorie:"
+  },
+  "All Categories": {
+    "other": "Alle Kategorien"
+  },
   "Sort by:": {
     "other": "Sortieren nach:"
   },

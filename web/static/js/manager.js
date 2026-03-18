@@ -519,6 +519,10 @@ function toggleBrokenApps(searchId) {
   applyFilters();
 }
 
+function filterByCategory() {
+  applyFilters();
+}
+
 function sortApps(searchId) {
   sortType = document.getElementById('sort_' + searchId).value;
   try {
@@ -615,6 +619,9 @@ function applyFilters() {
         const sortSelect = document.getElementById('sort_' + searchId);
         const currentSortType = sortSelect ? sortSelect.value : 'system';
 
+        const categorySelect = document.getElementById('category_' + searchId);
+        const currentCategory = categorySelect ? categorySelect.value : '';
+
         // Get all app items from the grid
         const allItems = Array.from(grid.getElementsByClassName('app-item'));
 
@@ -625,18 +632,25 @@ function applyFilters() {
           const name = (item.getAttribute('data-name') || '').toLowerCase();
           const author = (item.getAttribute('data-author') || '').toLowerCase();
           const summary = (item.querySelector('p')?.textContent || '').toLowerCase();
+          const tags = (item.getAttribute('data-tags') || '').toLowerCase().split(',');
+          const category = (item.getAttribute('data-category') || '').toLowerCase();
 
-          // Apply search filter (search name, summary, and author if search begins with @)
+          // Apply search filter (search name, summary, tags, and author if search begins with @)
           if (currentSearchFilter) {
             if (currentSearchFilter.startsWith("@")) {
               if (!author.includes(currentSearchFilter.substring(1))) {
                 return false;
               }
             } else {
-              if (!name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter)) {
+              if (!name.includes(currentSearchFilter) && !summary.includes(currentSearchFilter) && !tags.some(tag => tag.includes(currentSearchFilter))) {
                 return false;
               }
             }
+          }
+
+          // Apply category filter
+          if (currentCategory && category !== currentCategory) {
+            return false;
           }
 
           // Apply hide filters
@@ -1635,6 +1649,41 @@ function switchToCollapsedView(deviceId) {
   saveDevicePreferences(deviceId, prefs);
 }
 
+// Populate category dropdowns with unique categories from all app items
+function populateCategoryDropdowns() {
+  const categorySelects = document.querySelectorAll('select[id^="category_"]');
+  if (categorySelects.length === 0) return;
+
+  // Collect all unique categories from app items
+  const categories = new Set();
+  const appItems = document.querySelectorAll('.app-item');
+  appItems.forEach(item => {
+    const category = item.getAttribute('data-category');
+    if (category) {
+      categories.add(category);
+    }
+  });
+
+  // Sort categories alphabetically
+  const sortedCategories = Array.from(categories).sort();
+
+  // Populate each category dropdown (skip the first "All Categories" option)
+  categorySelects.forEach(select => {
+    // Remove existing options except the first one
+    while (select.options.length > 1) {
+      select.remove(1);
+    }
+
+    // Add category options
+    sortedCategories.forEach(category => {
+      const option = document.createElement('option');
+      option.value = category;
+      option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+      select.appendChild(option);
+    });
+  });
+}
+
 // Initialize drag and drop for all app cards when page loads
 document.addEventListener('DOMContentLoaded', function () {
   // Initialize sorting dropdowns from localStorage
@@ -1649,6 +1698,9 @@ document.addEventListener('DOMContentLoaded', function () {
   } catch (e) {
     console.error('Failed to read sort preference from localStorage:', e);
   }
+
+  // Populate category dropdowns from available app categories
+  populateCategoryDropdowns();
 
   // Common initializations
   initializeDragAndDrop();
