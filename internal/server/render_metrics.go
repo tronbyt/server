@@ -17,6 +17,15 @@ type RenderMetrics struct {
 
 var renderMetrics RenderMetrics
 
+type WebPMetrics struct {
+	servedCount   atomic.Int64
+	renderCount   atomic.Int64
+	cacheHitCount atomic.Int64
+	bytesServed   atomic.Int64
+}
+
+var webpMetrics WebPMetrics
+
 func (m *RenderMetrics) StartRender() {
 	m.activeCount.Add(1)
 	m.queuedCount.Add(1)
@@ -61,4 +70,33 @@ func (m *RenderMetrics) AvgDuration() time.Duration {
 
 func (m *RenderMetrics) MaxDuration() time.Duration {
 	return time.Duration(atomic.LoadInt64(&m.maxDur))
+}
+
+func (w *WebPMetrics) RecordWebPServed(bytes int) {
+	w.servedCount.Add(1)
+	w.bytesServed.Add(int64(bytes))
+}
+
+func (w *WebPMetrics) RecordRender() {
+	w.renderCount.Add(1)
+}
+
+func (w *WebPMetrics) RecordCacheHit() {
+	w.cacheHitCount.Add(1)
+}
+
+func (w *WebPMetrics) LogStats() {
+	served := w.servedCount.Swap(0)
+	renders := w.renderCount.Swap(0)
+	cacheHits := w.cacheHitCount.Swap(0)
+	bytes := w.bytesServed.Swap(0)
+
+	mbServed := float64(bytes) / (1024 * 1024)
+
+	slog.Info("WebP stats (10s window)",
+		"webp_served", served,
+		"renders", renders,
+		"cache_hits", cacheHits,
+		"mb_served", mbServed,
+	)
 }

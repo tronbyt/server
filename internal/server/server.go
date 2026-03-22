@@ -326,6 +326,15 @@ func (s *Server) routes() {
 			renderMetrics.LogStats()
 		}
 	}()
+
+	// Start periodic WebP stats logger (every 10 seconds)
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			webpMetrics.LogStats()
+		}
+	}()
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

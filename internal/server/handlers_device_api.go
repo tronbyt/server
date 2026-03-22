@@ -142,6 +142,8 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	dwell := device.GetEffectiveDwellTime(app)
 	w.Header().Set("Tronbyt-Dwell-Secs", fmt.Sprintf("%d", dwell))
 
+	webpMetrics.RecordWebPServed(len(imgData))
+
 	if _, err := w.Write(imgData); err != nil {
 		slog.Error("Failed to write image data to response", "error", err)
 		// Log error, but can't change HTTP status after writing headers.

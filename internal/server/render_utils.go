@@ -154,6 +154,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		renderMetrics.StartRender()
+		webpMetrics.RecordRender()
 
 		slog.Info("Rendering app", "app", appBasename)
 
