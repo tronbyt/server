@@ -14,6 +14,11 @@ type RenderMetrics struct {
 	failedCount atomic.Int64
 	totalDur    int64 // nanoseconds
 	maxDur      int64
+
+	// Sliding window tracking (timestamps of events in last 60 seconds)
+	mu              sync.Mutex
+	rendersByMinute []int64 // timestamps of renders
+	reqsByMinute    []int64 // timestamps of requests
 }
 
 var renderMetrics RenderMetrics
@@ -24,9 +29,16 @@ type WebPMetrics struct {
 	bytesServed   atomic.Int64
 	uniqueMu      sync.Mutex
 	uniqueDevices map[string]bool
+
+	// Sliding window tracking
+	mu              sync.Mutex
+	webpsByMinute   []int64 // timestamps of webp serves
+	devicesByMinute []int64 // timestamps of unique devices
 }
 
 var webpMetrics WebPMetrics
+
+const windowDuration = 60 * time.Second
 
 func (m *RenderMetrics) StartRender() {
 	m.activeCount.Add(1)
@@ -47,6 +59,11 @@ func (m *RenderMetrics) EndRender(dur time.Duration, failed bool) {
 	if failed {
 		m.failedCount.Add(1)
 	}
+
+	now := time.Now().Unix()
+	m.mu.Lock()
+	m.rendersByMinute = append(m.rendersByMinute, now)
+	m.mu.Unlock()
 }
 
 func (m *RenderMetrics) LogStats() {
@@ -56,6 +73,13 @@ func (m *RenderMetrics) LogStats() {
 		"total", m.totalCount.Load(),
 		"failed", m.failedCount.Load(),
 	)
+}
+
+func (m *RenderMetrics) RecordRequest() {
+	now := time.Now().Unix()
+	m.mu.Lock()
+	m.reqsByMinute = append(m.reqsByMinute, now)
+	m.mu.Unlock()
 }
 
 func (m *RenderMetrics) ActiveCount() int64 {
@@ -74,9 +98,52 @@ func (m *RenderMetrics) MaxDuration() time.Duration {
 	return time.Duration(atomic.LoadInt64(&m.maxDur))
 }
 
+func (m *RenderMetrics) TotalCount() int64 {
+	return m.totalCount.Load()
+}
+
+func (m *RenderMetrics) FailedCount() int64 {
+	return m.failedCount.Load()
+}
+
+func (m *RenderMetrics) QueuedCount() int64 {
+	return m.queuedCount.Load()
+}
+
+func (m *RenderMetrics) RendersPerMin() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cutoff := time.Now().Add(-windowDuration).Unix()
+	var count int64
+	for _, t := range m.rendersByMinute {
+		if t >= cutoff {
+			count++
+		}
+	}
+	return count
+}
+
+func (m *RenderMetrics) ReqsPerMin() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cutoff := time.Now().Add(-windowDuration).Unix()
+	var count int64
+	for _, t := range m.reqsByMinute {
+		if t >= cutoff {
+			count++
+		}
+	}
+	return count
+}
+
 func (w *WebPMetrics) RecordWebPServed(bytes int) {
 	w.servedCount.Add(1)
 	w.bytesServed.Add(int64(bytes))
+
+	now := time.Now().Unix()
+	w.mu.Lock()
+	w.webpsByMinute = append(w.webpsByMinute, now)
+	w.mu.Unlock()
 }
 
 func (w *WebPMetrics) RecordRender() {
@@ -85,11 +152,19 @@ func (w *WebPMetrics) RecordRender() {
 
 func (w *WebPMetrics) RecordUniqueDevice(deviceID string) {
 	w.uniqueMu.Lock()
-	defer w.uniqueMu.Unlock()
+	alreadySeen := w.uniqueDevices[deviceID]
 	if w.uniqueDevices == nil {
 		w.uniqueDevices = make(map[string]bool)
 	}
 	w.uniqueDevices[deviceID] = true
+	w.uniqueMu.Unlock()
+
+	if !alreadySeen {
+		now := time.Now().Unix()
+		w.mu.Lock()
+		w.devicesByMinute = append(w.devicesByMinute, now)
+		w.mu.Unlock()
+	}
 }
 
 func (w *WebPMetrics) LogStats() {
@@ -110,4 +185,74 @@ func (w *WebPMetrics) LogStats() {
 		"unique_devices", uniqueDevs,
 		"mb_served", mbServed,
 	)
+}
+
+func (w *WebPMetrics) ServedCount() int64 {
+	return w.servedCount.Load()
+}
+
+func (w *WebPMetrics) RenderCount() int64 {
+	return w.renderCount.Load()
+}
+
+func (w *WebPMetrics) BytesServed() int64 {
+	return w.bytesServed.Load()
+}
+
+func (w *WebPMetrics) WebpsPerMin() int64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	cutoff := time.Now().Add(-windowDuration).Unix()
+	var count int64
+	for _, t := range w.webpsByMinute {
+		if t >= cutoff {
+			count++
+		}
+	}
+	return count
+}
+
+func (w *WebPMetrics) UniqueDevicesPerMin() int64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	cutoff := time.Now().Add(-windowDuration).Unix()
+	var count int64
+	for _, t := range w.devicesByMinute {
+		if t >= cutoff {
+			count++
+		}
+	}
+	return count
+}
+
+type StatsSnapshot struct {
+	ActiveRenders    int64
+	QueuedRenders    int64
+	TotalRenders     int64
+	FailedRenders    int64
+	AvgRenderMs      int64
+	MaxRenderMs      int64
+	RendersPerMin    int64
+	ReqsPerMin       int64
+	WebpsServed      int64
+	WebpsPerMin      int64
+	BytesServedMB    float64
+	UniqueDevsPerMin int64
+}
+
+func GetStatsSnapshot() StatsSnapshot {
+	return StatsSnapshot{
+		ActiveRenders:    renderMetrics.ActiveCount(),
+		QueuedRenders:    renderMetrics.QueuedCount(),
+		TotalRenders:     renderMetrics.TotalCount(),
+		FailedRenders:    renderMetrics.FailedCount(),
+		AvgRenderMs:      renderMetrics.AvgDuration().Milliseconds(),
+		MaxRenderMs:      renderMetrics.MaxDuration().Milliseconds(),
+		RendersPerMin:    renderMetrics.RendersPerMin(),
+		ReqsPerMin:       renderMetrics.ReqsPerMin(),
+		WebpsServed:      webpMetrics.ServedCount(),
+		WebpsPerMin:      webpMetrics.WebpsPerMin(),
+		BytesServedMB:    float64(webpMetrics.BytesServed()) / (1024 * 1024),
+		UniqueDevsPerMin: webpMetrics.UniqueDevicesPerMin(),
+	}
 }

@@ -15,6 +15,8 @@ import (
 func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	renderMetrics.RecordRequest()
+
 	var device *data.Device
 	if d, err := DeviceFromContext(r.Context()); err == nil {
 		device = d

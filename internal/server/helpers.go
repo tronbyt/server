@@ -86,6 +86,11 @@ type TemplateData struct {
 	AppConfig   map[string]any
 	AppMetadata *apps.AppMetadata
 
+	// Admin Dashboard
+	TotalDevices int64
+	TotalUsers   int64
+	Stats        StatsSnapshot
+
 	// Device Update Extras
 	ColorFilterOptions       []ColorFilterOption
 	ShowFullAnimationOptions []ShowFullAnimationOption
