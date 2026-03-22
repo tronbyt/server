@@ -153,11 +153,15 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			return false
 		}
 
+		renderMetrics.StartRender()
+
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
 		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
 		renderDur := time.Since(startTime)
+
+		renderMetrics.EndRender(renderDur, err != nil)
 
 		for _, msg := range messages {
 			slog.Debug("Render message", "app", appBasename, "message", msg)
