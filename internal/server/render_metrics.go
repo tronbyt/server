@@ -2,6 +2,7 @@ package server
 
 import (
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -20,8 +21,9 @@ var renderMetrics RenderMetrics
 type WebPMetrics struct {
 	servedCount   atomic.Int64
 	renderCount   atomic.Int64
-	cacheHitCount atomic.Int64
 	bytesServed   atomic.Int64
+	uniqueMu      sync.Mutex
+	uniqueDevices map[string]bool
 }
 
 var webpMetrics WebPMetrics
@@ -81,22 +83,31 @@ func (w *WebPMetrics) RecordRender() {
 	w.renderCount.Add(1)
 }
 
-func (w *WebPMetrics) RecordCacheHit() {
-	w.cacheHitCount.Add(1)
+func (w *WebPMetrics) RecordUniqueDevice(deviceID string) {
+	w.uniqueMu.Lock()
+	defer w.uniqueMu.Unlock()
+	if w.uniqueDevices == nil {
+		w.uniqueDevices = make(map[string]bool)
+	}
+	w.uniqueDevices[deviceID] = true
 }
 
 func (w *WebPMetrics) LogStats() {
 	served := w.servedCount.Swap(0)
 	renders := w.renderCount.Swap(0)
-	cacheHits := w.cacheHitCount.Swap(0)
 	bytes := w.bytesServed.Swap(0)
+
+	w.uniqueMu.Lock()
+	uniqueDevs := len(w.uniqueDevices)
+	w.uniqueDevices = make(map[string]bool) // Reset for next window
+	w.uniqueMu.Unlock()
 
 	mbServed := float64(bytes) / (1024 * 1024)
 
-	slog.Info("WebP stats (10s window)",
+	slog.Info("Stats 10s -- ",
 		"webp_served", served,
 		"renders", renders,
-		"cache_hits", cacheHits,
+		"unique_devices", uniqueDevs,
 		"mb_served", mbServed,
 	)
 }

@@ -107,8 +107,12 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		// Send default image if error (or not found)
 		slog.Error("Failed to get next app image", "device", device.ID, "error", err)
 		s.sendDefaultImage(w, r, device)
+		webpMetrics.RecordWebPServed(0)
+		webpMetrics.RecordUniqueDevice(device.ID)
 		return
 	}
+
+	webpMetrics.RecordUniqueDevice(device.ID)
 
 	// For HTTP devices, we assume "Sent" equals "Displaying" (or roughly so).
 	// We update DisplayingApp here so the Preview uses the explicit field instead of fallback.
