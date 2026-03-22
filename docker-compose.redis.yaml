@@ -17,6 +17,7 @@ services:
       - ENABLE_USER_REGISTRATION
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
+      - MAX_CONCURRENT_RENDERS=${MAX_CONCURRENT_RENDERS:-5}
 
     healthcheck:
       test: ["CMD", "/app/tronbyt-server", "health"]

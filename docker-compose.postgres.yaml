@@ -16,6 +16,7 @@ services:
       - ENABLE_USER_REGISTRATION
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
+      - MAX_CONCURRENT_RENDERS=${MAX_CONCURRENT_RENDERS:-5}
       - DB_DSN=host=db user=tronbyt password=tronbyt dbname=tronbyt port=5432 sslmode=disable TimeZone=UTC
     depends_on:
       - db

@@ -28,6 +28,7 @@ type Settings struct {
 	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES"  envDefault:"*"`
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
 	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
+	MaxConcurrentRenders   int    `env:"MAX_CONCURRENT_RENDERS"   envDefault:"5"`
 }
 
 // TemplateConfig holds configuration values needed in templates.

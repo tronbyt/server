@@ -88,8 +88,14 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		},
 		PromRegistry: prometheus.DefaultRegisterer,
 		PromGatherer: prometheus.DefaultGatherer,
-		RenderSem:    make(chan struct{}, 5), // Limit to 5 concurrent renders
 	}
+
+	// Initialize render semaphore (default to 5 for zero/negative values)
+	maxRenders := cfg.MaxConcurrentRenders
+	if maxRenders <= 0 {
+		maxRenders = 5
+	}
+	s.RenderSem = make(chan struct{}, maxRenders)
 
 	// Load Settings from DB
 	// Secret Key
