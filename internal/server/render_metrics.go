@@ -28,12 +28,11 @@ type WebPMetrics struct {
 	renderCount   atomic.Int64
 	bytesServed   atomic.Int64
 	uniqueMu      sync.Mutex
-	uniqueDevices map[string]bool
+	uniqueDevices map[string]int64 // device ID -> last seen timestamp
 
 	// Sliding window tracking
-	mu              sync.Mutex
-	webpsByMinute   []int64 // timestamps of webp serves
-	devicesByMinute []int64 // timestamps of unique devices
+	mu            sync.Mutex
+	webpsByMinute []int64 // timestamps of webp serves
 }
 
 var webpMetrics WebPMetrics
@@ -151,20 +150,13 @@ func (w *WebPMetrics) RecordRender() {
 }
 
 func (w *WebPMetrics) RecordUniqueDevice(deviceID string) {
+	now := time.Now().Unix()
 	w.uniqueMu.Lock()
-	alreadySeen := w.uniqueDevices[deviceID]
 	if w.uniqueDevices == nil {
-		w.uniqueDevices = make(map[string]bool)
+		w.uniqueDevices = make(map[string]int64)
 	}
-	w.uniqueDevices[deviceID] = true
+	w.uniqueDevices[deviceID] = now
 	w.uniqueMu.Unlock()
-
-	if !alreadySeen {
-		now := time.Now().Unix()
-		w.mu.Lock()
-		w.devicesByMinute = append(w.devicesByMinute, now)
-		w.mu.Unlock()
-	}
 }
 
 func (w *WebPMetrics) LogStats() {
@@ -172,9 +164,20 @@ func (w *WebPMetrics) LogStats() {
 	renders := w.renderCount.Swap(0)
 	bytes := w.bytesServed.Swap(0)
 
+	cutoff := time.Now().Add(-windowDuration).Unix()
 	w.uniqueMu.Lock()
-	uniqueDevs := len(w.uniqueDevices)
-	w.uniqueDevices = make(map[string]bool) // Reset for next window
+	var uniqueDevs int64
+	for _, lastSeen := range w.uniqueDevices {
+		if lastSeen >= cutoff {
+			uniqueDevs++
+		}
+	}
+	// Clean up old entries
+	for id, lastSeen := range w.uniqueDevices {
+		if lastSeen < cutoff {
+			delete(w.uniqueDevices, id)
+		}
+	}
 	w.uniqueMu.Unlock()
 
 	mbServed := float64(bytes) / (1024 * 1024)
@@ -213,12 +216,12 @@ func (w *WebPMetrics) WebpsPerMin() int64 {
 }
 
 func (w *WebPMetrics) UniqueDevicesPerMin() int64 {
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	cutoff := time.Now().Add(-windowDuration).Unix()
+	w.uniqueMu.Lock()
+	defer w.uniqueMu.Unlock()
 	var count int64
-	for _, t := range w.devicesByMinute {
-		if t >= cutoff {
+	for _, lastSeen := range w.uniqueDevices {
+		if lastSeen >= cutoff {
 			count++
 		}
 	}
