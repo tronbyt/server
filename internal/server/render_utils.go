@@ -143,6 +143,16 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	now := time.Now()
 	// uinterval is minutes
 	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
+		// Acquire render semaphore to limit concurrent renders
+		// This prevents thundering herd from overwhelming CPU
+		select {
+		case s.RenderSem <- struct{}{}:
+			defer func() { <-s.RenderSem }()
+		case <-ctx.Done():
+			slog.Warn("Context cancelled waiting for render slot", "app", appBasename)
+			return false
+		}
+
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()

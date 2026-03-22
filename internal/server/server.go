@@ -46,6 +46,7 @@ type Server struct {
 	Upgrader      *websocket.Upgrader
 	PromRegistry  prometheus.Registerer
 	PromGatherer  prometheus.Gatherer
+	RenderSem     chan struct{} // Semaphore to limit concurrent renders
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -87,6 +88,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		},
 		PromRegistry: prometheus.DefaultRegisterer,
 		PromGatherer: prometheus.DefaultGatherer,
+		RenderSem:    make(chan struct{}, 5), // Limit to 5 concurrent renders
 	}
 
 	// Load Settings from DB
