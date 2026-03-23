@@ -2,6 +2,9 @@ package server
 
 import (
 	"log/slog"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -162,7 +165,6 @@ func (w *WebPMetrics) RecordUniqueDevice(deviceID string) {
 func (w *WebPMetrics) LogStats() {
 	served := w.servedCount.Swap(0)
 	renders := w.renderCount.Swap(0)
-	bytes := w.bytesServed.Swap(0)
 
 	cutoff := time.Now().Add(-windowDuration).Unix()
 	w.uniqueMu.Lock()
@@ -180,14 +182,30 @@ func (w *WebPMetrics) LogStats() {
 	}
 	w.uniqueMu.Unlock()
 
-	mbServed := float64(bytes) / (1024 * 1024)
+	loadAvg1m := getLoadAverage()
 
-	slog.Info("Stats 10s -- ",
-		"webp_served", served,
-		"renders", renders,
-		"unique_devices", uniqueDevs,
-		"mb_served", mbServed,
+	slog.Info("Stats ----- ",
+		"served", served,
+		"renderred", renders,
+		"devices", uniqueDevs,
+		"load", loadAvg1m,
 	)
+}
+
+func getLoadAverage() float64 {
+	data, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return 0
+	}
+	parts := strings.Split(string(data), " ")
+	if len(parts) < 1 {
+		return 0
+	}
+	f, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return 0
+	}
+	return f
 }
 
 func (w *WebPMetrics) ServedCount() int64 {

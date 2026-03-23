@@ -170,11 +170,11 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		renderMetrics.StartRender()
 		webpMetrics.RecordRender()
 
-		slog.Info("Rendering app", "app", appBasename)
-
 		startTime := time.Now()
 		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
 		renderDur := time.Since(startTime)
+
+		slog.Info("Rendered app", "app", appBasename, "duration", renderDur)
 
 		renderMetrics.EndRender(renderDur, err != nil)
 
