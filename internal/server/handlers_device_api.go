@@ -15,6 +15,8 @@ import (
 func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
+	renderMetrics.RecordRequest()
+
 	var device *data.Device
 	if d, err := DeviceFromContext(r.Context()); err == nil {
 		device = d
@@ -107,8 +109,12 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		// Send default image if error (or not found)
 		slog.Error("Failed to get next app image", "device", device.ID, "error", err)
 		s.sendDefaultImage(w, r, device)
+		webpMetrics.RecordWebPServed(0)
+		webpMetrics.RecordUniqueDevice(device.ID)
 		return
 	}
+
+	webpMetrics.RecordUniqueDevice(device.ID)
 
 	// For HTTP devices, we assume "Sent" equals "Displaying" (or roughly so).
 	// We update DisplayingApp here so the Preview uses the explicit field instead of fallback.
@@ -141,6 +147,8 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 
 	dwell := device.GetEffectiveDwellTime(app)
 	w.Header().Set("Tronbyt-Dwell-Secs", fmt.Sprintf("%d", dwell))
+
+	webpMetrics.RecordWebPServed(len(imgData))
 
 	if _, err := w.Write(imgData); err != nil {
 		slog.Error("Failed to write image data to response", "error", err)

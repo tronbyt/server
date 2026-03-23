@@ -274,6 +274,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		if err := conn.WriteMessage(websocket.BinaryMessage, imgData); err != nil {
 			return
 		}
+		webpMetrics.RecordWebPServed(len(imgData))
+		webpMetrics.RecordUniqueDevice(device.ID)
 
 		if sendImmediate {
 			if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {

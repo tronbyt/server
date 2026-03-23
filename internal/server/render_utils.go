@@ -143,11 +143,40 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	now := time.Now()
 	// uinterval is minutes
 	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
-		slog.Info("Rendering app", "app", appBasename)
+		// Try to acquire render semaphore without blocking.
+		// If no slot available, only skip rendering if we have a valid cached image.
+		// If last render was empty or failed, we must attempt rendering.
+		hasValidCachedImage := app.LastSuccessfulRender != nil && !app.EmptyLastRender
+
+		if hasValidCachedImage {
+			select {
+			case s.RenderSem <- struct{}{}:
+				defer func() { <-s.RenderSem }()
+			default:
+				slog.Debug("Skipping render - no slot available", "app", appBasename)
+				return true // Use existing cached image
+			}
+		} else {
+			// No valid cached image, must render - use non-blocking but wait briefly
+			select {
+			case s.RenderSem <- struct{}{}:
+				defer func() { <-s.RenderSem }()
+			case <-ctx.Done():
+				slog.Warn("Context cancelled waiting for render slot", "app", appBasename)
+				return false // Cannot render, skip to next app
+			}
+		}
+
+		renderMetrics.StartRender()
+		webpMetrics.RecordRender()
 
 		startTime := time.Now()
 		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
 		renderDur := time.Since(startTime)
+
+		slog.Info(fmt.Sprintf("Rendered in %dms %s ", renderDur.Milliseconds(), appBasename))
+
+		renderMetrics.EndRender(renderDur, err != nil)
 
 		for _, msg := range messages {
 			slog.Debug("Render message", "app", appBasename, "message", msg)

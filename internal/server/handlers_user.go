@@ -429,3 +429,24 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 
 	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
 }
+
+func (s *Server) handleAdminDashboard(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	var totalDevices, totalUsers int64
+	s.DB.Model(&data.Device{}).Count(&totalDevices)
+	s.DB.Model(&data.User{}).Count(&totalUsers)
+
+	stats := GetStatsSnapshot()
+
+	s.renderTemplate(w, r, "admin_dashboard", TemplateData{
+		User:         user,
+		TotalDevices: totalDevices,
+		TotalUsers:   totalUsers,
+		Stats:        stats,
+	})
+}

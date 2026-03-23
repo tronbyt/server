@@ -1,0 +1,194 @@
+{{ define "admin_dashboard" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "Admin Dashboard" }}{{ end }}
+{{ define "header" }}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/css/manager.css">
+{{ end }}
+{{ define "content" }}
+<div class="w3-container w3-padding">
+    <div class="w3-center" style="margin-bottom: 20px;">
+        <label>
+            <input type="checkbox" id="autoRefresh" checked>
+            {{ t .Localizer "Auto Refresh (10s)" }}
+        </label>
+    </div>
+    <h1 class="w3-center">{{ t .Localizer "Admin Dashboard" }}</h1>
+    <br>
+    <div class="w3-row-padding w3-stretch">
+        <div class="w3-third">
+            <div class="w3-card w3-padding w3-center stat-card">
+                <h3>
+                    <i class="fa-solid fa-users"></i> {{ t .Localizer "Total Users" }}
+                </h3>
+                <p class="stat-value">{{ .TotalUsers }}</p>
+            </div>
+        </div>
+        <div class="w3-third">
+            <div class="w3-card w3-padding w3-center stat-card">
+                <h3>
+                    <i class="fa-solid fa-mobile-screen"></i> {{ t .Localizer "Total Devices" }}
+                </h3>
+                <p class="stat-value">{{ .TotalDevices }}</p>
+            </div>
+        </div>
+        <div class="w3-third">
+            <div class="w3-card w3-padding w3-center stat-card">
+                <h3>
+                    <i class="fa-solid fa-chart-line"></i> {{ t .Localizer "Reqs / Min" }}
+                </h3>
+                <p class="stat-value">{{ .Stats.ReqsPerMin }}</p>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="w3-row-padding w3-stretch">
+        <div class="w3-half">
+            <div class="w3-card w3-padding">
+                <h3 class="w3-center">
+                    <i class="fa-solid fa-image"></i> {{ t .Localizer "WebP Stats" }}
+                </h3>
+                <br>
+                <table class="w3-table">
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Total WebPs Served" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.WebpsServed }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "WebPs / Min (avg)" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.WebpsPerMin }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "MB Served" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ printf "%.2f" .Stats.BytesServedMB }} MB</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Unique Devices / Min" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.UniqueDevsPerMin }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="w3-half">
+            <div class="w3-card w3-padding">
+                <h3 class="w3-center">
+                    <i class="fa-solid fa-gear"></i> {{ t .Localizer "Render Stats" }}
+                </h3>
+                <br>
+                <table class="w3-table">
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Active Renders" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.ActiveRenders }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Queued Renders" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.QueuedRenders }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Total Renders" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.TotalRenders }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Failed Renders" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.FailedRenders }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Renders / Min (avg)" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.RendersPerMin }}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Avg Render Time" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.AvgRenderMs }} ms</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>{{ t .Localizer "Max Render Time" }}</strong>
+                        </td>
+                        <td class="stat-value-small">{{ .Stats.MaxRenderMs }} ms</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="w3-center">
+        <a href="/admin" class="w3-button w3-grey w3-round w3-padding">{{ t .Localizer "Back to Admin" }}</a>
+    </div>
+</div>
+<style>
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+    }
+    .stat-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin: 10px 0;
+        color: var(--primary-color);
+    }
+    .stat-value-small {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    .w3-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+    }
+</style>
+<script>
+    const autoRefreshCheckbox = document.getElementById('autoRefresh');
+    let refreshInterval;
+
+    function startAutoRefresh() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(() => {
+            window.location.reload();
+        }, 10000);
+    }
+
+    function stopAutoRefresh() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+    }
+
+    autoRefreshCheckbox.addEventListener('change', () => {
+        if (autoRefreshCheckbox.checked) {
+            startAutoRefresh();
+        } else {
+            stopAutoRefresh();
+        }
+        localStorage.setItem('dashboardAutoRefresh', autoRefreshCheckbox.checked);
+    });
+
+    if (localStorage.getItem('dashboardAutoRefresh') === 'false') {
+        autoRefreshCheckbox.checked = false;
+        stopAutoRefresh();
+    } else {
+        startAutoRefresh();
+    }
+</script>
+{{ end }}

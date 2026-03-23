@@ -46,6 +46,7 @@ type Server struct {
 	Upgrader      *websocket.Upgrader
 	PromRegistry  prometheus.Registerer
 	PromGatherer  prometheus.Gatherer
+	RenderSem     chan struct{} // Semaphore to limit concurrent renders
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -56,18 +57,19 @@ type Server struct {
 
 // Map template names to their file paths relative to web/templates.
 var templateFiles = map[string]string{
-	"index":      "manager/index.html",
-	"adminindex": "manager/adminindex.html",
-	"login":      "auth/login.html",
-	"register":   "auth/register.html",
-	"edit":       "auth/edit.html",
-	"create":     "manager/create.html",
-	"addapp":     "manager/addapp.html",
-	"configapp":  "manager/configapp.html",
-	"uploadapp":  "manager/uploadapp.html",
-	"firmware":   "manager/firmware.html",
-	"update":     "manager/update.html",
-	"device_tv":  "manager/device_tv.html",
+	"index":           "manager/index.html",
+	"adminindex":      "manager/adminindex.html",
+	"admin_dashboard": "manager/admin_dashboard.html",
+	"login":           "auth/login.html",
+	"register":        "auth/register.html",
+	"edit":            "auth/edit.html",
+	"create":          "manager/create.html",
+	"addapp":          "manager/addapp.html",
+	"configapp":       "manager/configapp.html",
+	"uploadapp":       "manager/uploadapp.html",
+	"firmware":        "manager/firmware.html",
+	"update":          "manager/update.html",
+	"device_tv":       "manager/device_tv.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -88,6 +90,13 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		PromRegistry: prometheus.DefaultRegisterer,
 		PromGatherer: prometheus.DefaultGatherer,
 	}
+
+	// Initialize render semaphore (default to 5 for zero/negative values)
+	maxRenders := cfg.MaxConcurrentRenders
+	if maxRenders <= 0 {
+		maxRenders = 5
+	}
+	s.RenderSem = make(chan struct{}, maxRenders)
 
 	// Load Settings from DB
 	// Secret Key
@@ -222,6 +231,7 @@ func (s *Server) routes() {
 	// Web UI
 	s.Router.HandleFunc("GET /", s.RequireLogin(s.handleIndex))
 	s.Router.HandleFunc("GET /admin", s.RequireLogin(s.handleAdminIndex))
+	s.Router.HandleFunc("GET /admin/dashboard", s.RequireLogin(s.handleAdminDashboard))
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 
 	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
@@ -302,6 +312,15 @@ func (s *Server) routes() {
 		s.Router.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
 		s.Router.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
 	}
+
+	// Start periodic WebP stats logger (every 10 seconds)
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			webpMetrics.LogStats()
+		}
+	}()
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
