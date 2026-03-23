@@ -17,6 +17,15 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 
 	renderMetrics.RecordRequest()
 
+	// Acquire per-device semaphore to prevent queue backup from same device.
+	// If already processing a request for this device, return cached image immediately.
+	if !s.acquireDeviceSemaphore(id) {
+		slog.Debug("Device busy, serving cached image", "device", id)
+		s.serveCachedImageForDevice(w, r, id)
+		return
+	}
+	defer s.releaseDeviceSemaphore(id)
+
 	var device *data.Device
 	if d, err := DeviceFromContext(r.Context()); err == nil {
 		device = d

@@ -20,6 +20,7 @@ import (
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/config"
+	"tronbyt-server/internal/data"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/web"
 
@@ -47,6 +48,9 @@ type Server struct {
 	PromRegistry  prometheus.Registerer
 	PromGatherer  prometheus.Gatherer
 	RenderSem     chan struct{} // Semaphore to limit concurrent renders
+
+	deviceSemaphores      map[string]chan struct{}
+	deviceSemaphoresMutex sync.Mutex
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -97,6 +101,9 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		maxRenders = 5
 	}
 	s.RenderSem = make(chan struct{}, maxRenders)
+
+	// Initialize device semaphores map
+	s.deviceSemaphores = make(map[string]chan struct{})
 
 	// Load Settings from DB
 	// Secret Key
@@ -367,5 +374,71 @@ func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := w.Write([]byte(svg)); err != nil {
 		slog.Error("Failed to write dots SVG", "error", err)
+	}
+}
+
+// acquireDeviceSemaphore tries to acquire a slot for processing a device request.
+// Returns true if acquired, false if device is already processing a request.
+// When false is returned, the caller should serve a cached image.
+func (s *Server) acquireDeviceSemaphore(deviceID string) bool {
+	s.deviceSemaphoresMutex.Lock()
+	ch, exists := s.deviceSemaphores[deviceID]
+	if !exists {
+		ch = make(chan struct{}, 1)
+		s.deviceSemaphores[deviceID] = ch
+	}
+	s.deviceSemaphoresMutex.Unlock()
+
+	select {
+	case ch <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+// releaseDeviceSemaphore releases the slot for a device after processing.
+func (s *Server) releaseDeviceSemaphore(deviceID string) {
+	s.deviceSemaphoresMutex.Lock()
+	ch, exists := s.deviceSemaphores[deviceID]
+	s.deviceSemaphoresMutex.Unlock()
+	if exists {
+		<-ch
+	}
+}
+
+// serveCachedImageForDevice returns a cached image when the device is busy processing another request.
+// This prevents queue buildup from retry storms.
+func (s *Server) serveCachedImageForDevice(w http.ResponseWriter, r *http.Request, deviceID string) {
+	device, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", deviceID).First(r.Context())
+	if err != nil {
+		slog.Error("Failed to fetch device for cached image", "device", deviceID, "error", err)
+		http.Error(w, "Device not found", http.StatusNotFound)
+		return
+	}
+
+	imgData, app, err := s.GetCurrentAppImage(r.Context(), &device)
+	if err != nil || imgData == nil {
+		slog.Error("Failed to get cached image", "device", deviceID, "error", err)
+		http.Error(w, "Image not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/webp")
+	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
+	w.Header().Set("X-Cached", "true")
+
+	if app != nil {
+		w.Header().Set("Tronbyt-App", app.Iname)
+	}
+
+	brightness := device.GetEffectiveBrightness()
+	w.Header().Set("Tronbyt-Brightness", fmt.Sprintf("%d", brightness))
+
+	dwell := device.GetEffectiveDwellTime(app)
+	w.Header().Set("Tronbyt-Dwell-Secs", fmt.Sprintf("%d", dwell))
+
+	if _, err := w.Write(imgData); err != nil {
+		slog.Error("Failed to write cached image", "error", err)
 	}
 }
