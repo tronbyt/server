@@ -186,7 +186,7 @@ func (w *WebPMetrics) LogStats() {
 
 	slog.Info("Stats ----- ",
 		"served", served,
-		"renderred", renders,
+		"rendered", renders,
 		"devices", uniqueDevs,
 		"load", loadAvg1m,
 	)
