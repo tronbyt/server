@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -66,15 +67,6 @@ func (m *RenderMetrics) EndRender(dur time.Duration, failed bool) {
 	m.mu.Lock()
 	m.rendersByMinute = append(m.rendersByMinute, now)
 	m.mu.Unlock()
-}
-
-func (m *RenderMetrics) LogStats() {
-	slog.Info("Render stats",
-		"active", m.activeCount.Load(),
-		"queued", m.queuedCount.Load(),
-		"total", m.totalCount.Load(),
-		"failed", m.failedCount.Load(),
-	)
 }
 
 func (m *RenderMetrics) RecordRequest() {
@@ -183,13 +175,9 @@ func (w *WebPMetrics) LogStats() {
 	w.uniqueMu.Unlock()
 
 	loadAvg1m := getLoadAverage()
-
-	slog.Info("Stats ----- ",
-		"served", served,
-		"rendered", renders,
-		"devices", uniqueDevs,
-		"load", loadAvg1m,
-	)
+	if served > 0 {
+		slog.Info(fmt.Sprintf("Stats ------ : %.1f - %d / %d ", loadAvg1m, served, renders))
+	}
 }
 
 func getLoadAverage() float64 {

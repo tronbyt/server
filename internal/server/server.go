@@ -313,22 +313,6 @@ func (s *Server) routes() {
 		s.Router.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
 	}
 
-	// Start periodic render stats logger
-	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			if count := renderMetrics.ActiveCount(); count > 0 {
-				slog.Warn("Render metrics",
-					"active_renders", count,
-					"avg_render_ms", renderMetrics.AvgDuration().Milliseconds(),
-					"max_render_ms", renderMetrics.MaxDuration().Milliseconds(),
-				)
-			}
-			renderMetrics.LogStats()
-		}
-	}()
-
 	// Start periodic WebP stats logger (every 10 seconds)
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
