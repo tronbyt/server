@@ -17,7 +17,7 @@ type RenderMetrics struct {
 	totalCount  atomic.Int64
 	failedCount atomic.Int64
 	totalDur    int64 // nanoseconds
-	maxDur      int64
+	maxDur      atomic.Int64
 
 	// Sliding window tracking (timestamps of events in last 60 seconds)
 	mu              sync.Mutex
@@ -54,9 +54,9 @@ func (m *RenderMetrics) EndRender(dur time.Duration, failed bool) {
 	m.totalCount.Add(1)
 	atomic.AddInt64(&m.totalDur, int64(dur))
 
-	currentMax := atomic.LoadInt64(&m.maxDur)
+	currentMax := m.maxDur.Load()
 	if int64(dur) > currentMax {
-		atomic.StoreInt64(&m.maxDur, int64(dur))
+		m.maxDur.Store(int64(dur))
 	}
 
 	if failed {
@@ -89,7 +89,7 @@ func (m *RenderMetrics) AvgDuration() time.Duration {
 }
 
 func (m *RenderMetrics) MaxDuration() time.Duration {
-	return time.Duration(atomic.LoadInt64(&m.maxDur))
+	return time.Duration(m.maxDur.Load())
 }
 
 func (m *RenderMetrics) TotalCount() int64 {
