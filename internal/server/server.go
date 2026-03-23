@@ -96,11 +96,12 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	}
 
 	// Initialize render semaphore (default to 5 for zero/negative values)
-	maxRenders := cfg.MaxConcurrentRenders
+ 	maxRenders := cfg.MaxConcurrentRenders
 	if maxRenders <= 0 {
 		maxRenders = 5
+		 slog.Warn("MaxConcurrentRenders is zero or negative, using default value of 5")
 	}
-	s.RenderSem = make(chan struct{}, maxRenders)
+	
 
 	// Initialize device semaphores map
 	s.deviceSemaphores = make(map[string]chan struct{})
