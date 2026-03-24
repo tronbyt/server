@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .Device.Name }} - TV Mode</title>
     <script>
-        // Wait for the HTML to be fully loaded
         document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById('fullscreen-btn');
 
@@ -24,7 +23,6 @@
                 });
             }
 
-            // Keep the interval here as well
             setInterval(() => {
                 const images = document.querySelectorAll('.app-card img');
                 images.forEach(img => {
@@ -43,15 +41,12 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            /* Changed to auto so you can scroll if apps overflow, 
-            but we hide the scrollbar visuals below */
             overflow-y: auto;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
-        /* Hide scrollbar for Chrome, Safari and Opera */
         body::-webkit-scrollbar {
             display: none;
         }
@@ -59,7 +54,7 @@
         .tv-container {
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Changed to min-height to allow page to grow */
+            min-height: 100vh;
             padding: 30px;
             box-sizing: border-box;
         }
@@ -67,9 +62,9 @@
         .device-header {
             font-size: 2.5rem;
             font-weight: bold;
-            margin-top: 30px;        /* Changed from margin-bottom to margin-top */
-            border-top: 2px solid #333; /* Changed from border-bottom to border-top */
-            padding-top: 15px;       /* Changed from padding-bottom to padding-top */
+            margin-top: 30px;
+            border-top: 2px solid #333;
+            padding-top: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -77,8 +72,6 @@
 
         .app-grid {
             display: grid;
-            /* Changed to auto-fit and increased min-width to 350px 
-            so apps look better on large screens */
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 30px;
             flex-grow: 1;
@@ -91,7 +84,6 @@
             aspect-ratio: 64/32;
             object-fit: contain;
             image-rendering: pixelated; 
-            /* Ensures pixels stay sharp regardless of scaling */
         }
 
         .status-pill {
@@ -101,7 +93,6 @@
             border-radius: 20px;
         }
 
-        /* Style for your new Fullscreen button to match the theme */
         #fullscreen-btn {
             cursor: pointer;
             transition: opacity 0.2s;
@@ -115,7 +106,9 @@
     <div class="tv-container">
         <div class="app-grid">
         {{ range .Device.Apps }}
-            {{ if .Enabled }}  <div class="app-card" style="background: none; border: none; padding: 10px;">
+            {{/* Only show apps that are enabled and have no error status */}}
+            {{ if and .Enabled (eq .Status "") }}
+                <div class="app-card" style="background: none; border: none; padding: 10px;">
                     <img src="/devices/{{ $.Device.ID }}/installations/{{ .Iname }}/preview" 
                         style="width: 100%; aspect-ratio: 64/32; image-rendering: pixelated; display: block;">
                 </div>
