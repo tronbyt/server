@@ -115,7 +115,7 @@
         <div class="tv-container">
             <div class="app-grid">
                 {{ range .Device.Apps }}
-                {{ if .Enabled }}
+                {{ if and .Enabled (not .EmptyLastRender) }}
                 <div class="app-card"
                      style="background: none;
                             border: none;
