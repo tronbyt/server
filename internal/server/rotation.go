@@ -197,6 +197,11 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 				if s.possiblyRender(ctx, app, device, user) && !app.EmptyLastRender {
 					return app, device.LastAppIndex, nil
 				}
+				// Stop if context was canceled
+				if ctx.Err() != nil {
+					slog.Debug("Context canceled during night mode app render", "device", device.ID)
+					return nil, 0, ctx.Err()
+				}
 				slog.Warn("Night Mode App failed to render, falling back", "app", nightIname, "device", device.ID)
 				break // Stop looking for night app and fall through
 			}
@@ -214,6 +219,11 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 				// Found pinned app, check renderability
 				if s.possiblyRender(ctx, app, device, user) && !app.EmptyLastRender {
 					return app, device.LastAppIndex, nil
+				}
+				// Stop if context was canceled
+				if ctx.Err() != nil {
+					slog.Debug("Context canceled during pinned app render", "device", device.ID)
+					return nil, 0, ctx.Err()
 				}
 				slog.Warn("Pinned App failed to render, falling back", "app", pinnedIname, "device", device.ID)
 				break // Found but failed, fall through to normal rotation without unpinning
@@ -280,6 +290,11 @@ func (s *Server) determineNextApp(ctx context.Context, device *data.Device, user
 		if shouldDisplay {
 			if s.possiblyRender(ctx, candidate, device, user) && !candidate.EmptyLastRender {
 				return candidate, nextIndex, nil
+			}
+			// Stop trying more apps if context was canceled (e.g., request timed out)
+			if ctx.Err() != nil {
+				slog.Debug("Context canceled during app iteration, stopping", "device", device.ID)
+				return nil, 0, ctx.Err()
 			}
 		}
 

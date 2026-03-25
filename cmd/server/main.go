@@ -462,8 +462,8 @@ To disable: Set SINGLE_USER_AUTO_LOGIN=0 in your .env file
 
 	httpSrv := &http.Server{
 		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  25 * time.Second,
+		WriteTimeout: 25 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
