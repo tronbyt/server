@@ -174,7 +174,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
 		renderDur := time.Since(startTime)
 
-		slog.Info(fmt.Sprintf("Rendered in %dms %s ", renderDur.Milliseconds(), appBasename))
+		slog.Info(fmt.Sprintf("Rendered in %dms %s for %s", renderDur.Milliseconds(), appBasename, device.ID))
 
 		renderMetrics.EndRender(renderDur, err != nil)
 
