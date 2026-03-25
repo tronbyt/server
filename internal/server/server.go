@@ -326,7 +326,7 @@ func (s *Server) routes() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
-			webpMetrics.LogStats()
+			webpMetrics.LogStats(len(s.RenderSem))
 		}
 	}()
 }

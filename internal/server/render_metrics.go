@@ -154,7 +154,7 @@ func (w *WebPMetrics) RecordUniqueDevice(deviceID string) {
 	w.uniqueMu.Unlock()
 }
 
-func (w *WebPMetrics) LogStats() {
+func (w *WebPMetrics) LogStats(renderSlotsInUse int) {
 	served := w.servedCount.Swap(0)
 	renders := w.renderCount.Swap(0)
 
@@ -176,7 +176,7 @@ func (w *WebPMetrics) LogStats() {
 
 	loadAvg1m := getLoadAverage()
 	if served > 0 {
-		slog.Info(fmt.Sprintf("Stats ------ : %.1f - %d / %d ", loadAvg1m, served, renders))
+		slog.Info(fmt.Sprintf("Stats ------ : %.1f - %d / %d - %d ", loadAvg1m, served, renders, renderSlotsInUse))
 	}
 }
 
