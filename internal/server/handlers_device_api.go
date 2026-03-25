@@ -8,7 +8,6 @@ import (
 	"tronbyt-server/internal/data"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // handleNextApp is the handler for GET /{id}/next.
@@ -75,10 +74,10 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update device info if needed
-	// We use a transaction with locking to avoid race conditions with other requests
+	// Note: Removed SELECT FOR UPDATE row locking as it was causing lock contention
+	// and "locking protocol" errors when requests timed out mid-transaction
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		// Lock the row to ensure we read the latest state and no one else updates it
-		freshDevice, err := gorm.G[data.Device](tx, clause.Locking{Strength: "UPDATE"}).Where("id = ?", device.ID).First(r.Context())
+		freshDevice, err := gorm.G[data.Device](tx).Where("id = ?", device.ID).First(r.Context())
 		if err != nil {
 			return err
 		}
