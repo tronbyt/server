@@ -80,7 +80,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	if _, err := q.Updates(ctx, deviceUpdates); err != nil {
-		slog.Error("Failed to update device state (last_app_index/last_seen)", "error", err)
+		slog.Error("Failed to update device state (last_app_index/last_seen)", "device", device.ID, "error", err)
 	} else {
 		if hasIndexUpdate {
 			device.LastAppIndex = nextIndex

@@ -162,7 +162,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			case s.RenderSem <- struct{}{}:
 				defer func() { <-s.RenderSem }()
 			case <-ctx.Done():
-				slog.Warn("Context cancelled waiting for render slot", "app", appBasename)
+				slog.Warn("Context cancelled waiting for render slot", "app", appBasename, "device", device.ID)
 				return false // Cannot render, skip to next app
 			}
 		}
