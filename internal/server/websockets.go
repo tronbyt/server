@@ -119,10 +119,12 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Update LastSeen
-			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "last_seen", time.Now()); err != nil {
+			// Update LastSeen with a short timeout to prevent blocking on locked DB
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "last_seen", time.Now()); err != nil {
 				slog.Error("Failed to update last_seen", "error", err)
 			}
+			cancel()
 
 			// Handle Message
 			if msg.ClientInfo != nil {
@@ -168,9 +170,11 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					device.Info.SyslogAddr = msg.ClientInfo.SyslogAddr
 				}
 
-				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "info", device.Info); err != nil {
 					slog.Error("Failed to update device info", "error", err)
 				}
+				cancel()
 			}
 
 			if msg.Queued != nil {
@@ -180,9 +184,11 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					slog.Info("First 'queued' message, setting protocol_version to 1", "device", deviceID)
 					newVersion := 1
 					device.Info.ProtocolVersion = &newVersion
-					if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+					if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "info", device.Info); err != nil {
 						slog.Error("Failed to update device info (protocol version)", "error", err)
 					}
+					cancel()
 				}
 			}
 

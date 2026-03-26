@@ -23,6 +23,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		s.serveCachedImageForDevice(w, r, id)
 		return
 	}
+	// Ensure semaphore is released when this function returns
 	defer s.releaseDeviceSemaphore(id)
 
 	var device *data.Device

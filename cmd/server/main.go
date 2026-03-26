@@ -88,6 +88,12 @@ func openDB(dsn, logLevel string) (*gorm.DB, error) {
 			if err := db.Exec("PRAGMA busy_timeout=5000;").Error; err != nil {
 				slog.Warn("Failed to set busy timeout for SQLite", "error", err)
 			}
+			if err := db.Exec("PRAGMA synchronous=NORMAL;").Error; err != nil {
+				slog.Warn("Failed to set synchronous for SQLite", "error", err)
+			}
+			if err := db.Exec("PRAGMA cache_size=-64000;").Error; err != nil { // 64MB cache
+				slog.Warn("Failed to set cache size for SQLite", "error", err)
+			}
 		}
 	}
 
