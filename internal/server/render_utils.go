@@ -156,10 +156,16 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		empty := len(imgBytes) == 0
 		success := err == nil && !empty
 
-		if err != nil {
+		s.metrics.renderDuration.Observe(renderDur.Seconds())
+		switch {
+		case err != nil:
+			s.metrics.renderTotal.WithLabelValues("error").Inc()
 			slog.Error("Error rendering app", "app", appBasename, "error", err)
-		} else if empty {
+		case empty:
+			s.metrics.renderTotal.WithLabelValues("empty").Inc()
 			slog.Debug("No output from app", "app", appBasename)
+		default:
+			s.metrics.renderTotal.WithLabelValues("success").Inc()
 		}
 
 		// Update App State in DB - This is our atomic check-and-update.

@@ -46,6 +46,7 @@ type Server struct {
 	Upgrader      *websocket.Upgrader
 	PromRegistry  prometheus.Registerer
 	PromGatherer  prometheus.Gatherer
+	metrics       *appMetrics
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -168,6 +169,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		s.PageTemplates[name] = tmpl
 	}
 
+	s.registerMetrics()
 	s.RefreshSystemAppsCache()
 
 	// Clean up and recreate tmp directory
@@ -291,7 +293,9 @@ func (s *Server) routes() {
 
 	// Health and Metrics
 	s.Router.HandleFunc("GET /health", s.handleHealth)
-	s.Router.Handle("GET /metrics", promhttp.HandlerFor(s.PromGatherer, promhttp.HandlerOpts{}))
+	s.Router.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+		promhttp.HandlerFor(s.PromGatherer, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+	})
 	s.Router.HandleFunc("GET /dots", s.handleDots)
 
 	if s.Config.EnablePprof {
@@ -305,8 +309,8 @@ func (s *Server) routes() {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Chain middlewares: Recover -> Gzip -> Logging -> Proxy -> Mux
-	RecoverMiddleware(GzipMiddleware(LoggingMiddleware(ProxyMiddleware(s.Router)))).ServeHTTP(w, r)
+	// Chain middlewares: Recover -> Metrics -> Gzip -> Logging -> Proxy -> Mux
+	RecoverMiddleware(s.metricsMiddleware(GzipMiddleware(LoggingMiddleware(ProxyMiddleware(s.Router))))).ServeHTTP(w, r)
 }
 
 func (s *Server) GetTmpDir() string {
