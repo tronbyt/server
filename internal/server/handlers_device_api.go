@@ -13,6 +13,7 @@ import (
 
 // handleNextApp is the handler for GET /{id}/next.
 func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
+	s.metrics.devicePolls.Inc()
 	id := r.PathValue("id")
 
 	var device *data.Device

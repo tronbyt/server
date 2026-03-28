@@ -91,6 +91,9 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	s.metrics.wsConnections.Inc()
+	defer s.metrics.wsConnections.Dec()
+
 	slog.Info("WS Connected", "device", deviceID)
 
 	// Update protocol type if different from current
