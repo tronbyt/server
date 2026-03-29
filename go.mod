@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/go-git/go-git/v6 v6.0.0-20260123133532-f99a98e81ce9
+	github.com/go-git/go-git/v6 v6.0.0-20260328145551-a93bccd59f82
 	github.com/go-webauthn/webauthn v0.16.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
@@ -34,9 +34,9 @@ require (
 	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/HugoSmits86/nativewebp v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ProtonMail/go-crypto v1.4.0 // indirect
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
-	github.com/air-verse/air v1.64.4 // indirect
+	github.com/air-verse/air v1.64.5 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antchfx/xmlquery v1.5.0 // indirect
@@ -60,7 +60,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gen2brain/webp v0.5.5 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
-	github.com/go-git/go-billy/v6 v6.0.0-20260114122816-19306b749ecc // indirect
+	github.com/go-git/go-billy/v6 v6.0.0-20260226131633-45bd0956d66f // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
