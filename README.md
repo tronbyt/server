@@ -8,12 +8,13 @@ However, there are some drawbacks, including the lack of a mobile app, slightly 
 **Prerequisites for running Tronbyt Server:**
 *   **Docker** and **Docker Compose** (optional but recommended) for containerized deployment.
 *   **Homebrew** for macOS and Linux bare-metal installations (provides pre-built binary).
-*   **Go 1.25+** if building from source.
+*   **Go 1.26+** if building from source.
 
 **Supported Devices:**
 *   Tidbyt Gen1 and Gen2
-*   Tronbyt S3
-*   Raspberry Pi connected to a 64x32 matrix LED
+*   Tronbyt S3 and S3 Wide
+*   MatrixPortal S3 and MatrixPortal S3 Waveshare
+*   Raspberry Pi (64x32) and Raspberry Pi Wide (128x64) connected to matrix LED panels
 *   Pixoticker (limited memory, not recommended)
 
 Developing additional clients for Tronbyt Server is straightforward: pull WebP images from the `/next` endpoint and loop the animation for the duration specified in the `Tronbyt-Dwell-Secs` response header. Display brightness can optionally be set using the `Tronbyt-Brightness` header (0-100).
@@ -50,7 +51,7 @@ The `tronbyt-server` binary supports additional commands for administration:
 
 ### Monitoring
 
-*   **`/metrics`**: Exposes Prometheus-compatible metrics for monitoring the server's health and performance. This endpoint includes standard Go runtime metrics and process-level metrics.
+*   **`/metrics`**: Exposes Prometheus-compatible metrics for monitoring the server's health and performance. This endpoint includes application-specific metrics (`tronbyt_*` for renders, device activity, HTTP requests, users/devices/apps counts), GORM database connection pool stats, and standard Go runtime metrics.
     ```bash
     curl http://localhost:8000/metrics
     ```
@@ -65,8 +66,6 @@ The `tronbyt-server` binary supports additional commands for administration:
 6.  Save to see the app preview.
 
 **Ports:** The web app is exposed on port `8000`.
-
-**User Registration:** By default, only the admin can create new user accounts. Open user registration can be enabled by setting `ENABLE_USER_REGISTRATION=true` in the `.env` file.
 
 **Updating:**
 *   Docker containers: `docker compose pull && docker compose up -d`.
@@ -88,13 +87,23 @@ If you are upgrading from the Python version (v1.x) and using the default SQLite
 **Configuration:**
 
 The server can be configured via environment variables or `.env` file:
+*   `DB_DSN`: Database connection string (default: `data/tronbyt.db`). Supports SQLite, PostgreSQL, and MySQL.
+*   `DATA_DIR`: Directory for data files (default: `data`).
 *   `TRONBYT_HOST`: Listen address (default: empty / all interfaces).
 *   `TRONBYT_PORT`: Listen port (default: `8000`).
 *   `TRONBYT_UNIX_SOCKET`: Path to Unix socket to listen on (optional).
 *   `TRONBYT_SSL_KEYFILE` & `TRONBYT_SSL_CERTFILE`: Paths to TLS key/cert for native HTTPS.
+*   `TRONBYT_TRUSTED_PROXIES`: Trusted proxy CIDR ranges (default: `*`).
 *   `ENABLE_PPROF`: Set to `1` to enable pprof routes at `/debug/pprof/` (default: `0`).
-*   `SYSTEM_APPS_REPO`: Git repository URL for system apps.
+*   `ENABLE_USER_REGISTRATION`: Allow open user registration (default: `true`).
+*   `ENABLE_UPDATE_CHECKS`: Check for new releases on startup (default: `true`).
+*   `MAX_USERS`: Maximum number of user accounts (default: `0` / unlimited).
+*   `SINGLE_USER_AUTO_LOGIN`: Skip login when only one user exists (default: `false`).
+*   `SYSTEM_APPS_REPO`: Git repository URL for system apps (default: `https://github.com/tronbyt/apps.git`).
+*   `SYSTEM_APPS_AUTO_REFRESH`: Automatically refresh the system apps repository (default: `false`).
+*   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
 *   `REDIS_URL`: Redis connection string for caching (optional).
+*   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).
 
 **HTTPS (TLS):**
 *   Can be achieved by configuring `TRONBYT_SSL_KEYFILE` and `TRONBYT_SSL_CERTFILE`.
