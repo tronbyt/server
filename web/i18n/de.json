@@ -1762,5 +1762,38 @@
   },
   "RequireAPIKeyHelp": {
     "other": "Wenn aktiviert, muss sich das Gerät zur Erhöhung der Sicherheit mit einem API-Schlüssel beim Server authentifizieren."
+  },
+  "TV Mode": {
+    "other": "TV-Modus"
+  },
+  "Dim Color Filter": {
+    "other": "Dimm-Farbfilter"
+  },
+  "Enable dim Mode": {
+    "other": "Dimm-Modus aktivieren"
+  },
+  "Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
+    "other": "Der Dimm-Modus endet zur Nacht-Endzeit (falls gesetzt) oder standardmäßig um 6:00 Uhr."
+  },
+  "Apply custom filters to the image during dim mode.": {
+    "other": "Benutzerdefinierte Filter auf das Bild im Dimm-Modus anwenden."
+  },
+  "Skip Boot Animation": {
+    "other": "Boot-Animation überspringen"
+  },
+  "Leave blank to auto-generate": {
+    "other": "Leer lassen zum automatischen Generieren"
+  },
+  "Warning: Localhost URL Detected": {
+    "other": "Warnung: Localhost-URL erkannt"
+  },
+  "The firmware image URL uses localhost which will not work:": {
+    "other": "Die Firmware-Bild-URL verwendet localhost, was nicht funktionieren wird:"
+  },
+  "Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the device's image URLs, then return here.": {
+    "other": "Ersetzen Sie entweder localhost durch die IP-Adresse oder den Hostnamen dieses Servers, oder verbinden Sie sich über die IP-Adresse oder den Hostnamen mit diesem Server, bearbeiten Sie das Gerät, klicken Sie auf die Aktualisierungsschaltflächen bei den Bild-URLs des Geräts, und kehren Sie dann hierher zurück."
+  },
+  "recommended": {
+    "other": "empfohlen"
   }
 }

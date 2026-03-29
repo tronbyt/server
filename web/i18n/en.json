@@ -1765,5 +1765,38 @@
   },
   "RequireAPIKeyHelp": {
     "other": "When enabled, the device must authenticate with the server using an API key for added security.  Highly recommended for publicly accessible servers."
+  },
+  "TV Mode": {
+    "other": "TV Mode"
+  },
+  "Dim Color Filter": {
+    "other": "Dim Color Filter"
+  },
+  "Enable dim Mode": {
+    "other": "Enable dim Mode"
+  },
+  "Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
+    "other": "Dim mode ends at Night End Time (if set) or 6:00 AM by default."
+  },
+  "Apply custom filters to the image during dim mode.": {
+    "other": "Apply custom filters to the image during dim mode."
+  },
+  "Skip Boot Animation": {
+    "other": "Skip Boot Animation"
+  },
+  "Leave blank to auto-generate": {
+    "other": "Leave blank to auto-generate"
+  },
+  "Warning: Localhost URL Detected": {
+    "other": "Warning: Localhost URL Detected"
+  },
+  "The firmware image URL uses localhost which will not work:": {
+    "other": "The firmware image URL uses localhost which will not work:"
+  },
+  "Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the device's image URLs, then return here.": {
+    "other": "Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the device's image URLs, then return here."
+  },
+  "recommended": {
+    "other": "recommended"
   }
 }
