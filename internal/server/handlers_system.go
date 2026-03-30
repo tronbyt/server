@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -48,11 +49,17 @@ func (s *Server) handleUpdateFirmware(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
 }
 
-func (s *Server) checkForUpdates() {
+func (s *Server) checkForUpdates(ctx context.Context) {
 	s.doUpdateCheck()
 	ticker := time.NewTicker(1 * time.Hour)
-	for range ticker.C {
-		s.doUpdateCheck()
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.doUpdateCheck()
+		}
 	}
 }
 

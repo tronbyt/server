@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/gob"
@@ -181,7 +182,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		slog.Error("Failed to create tmp directory on startup", "path", tmpDir, "error", err)
 	}
 
-	go s.checkForUpdates()
+	go s.checkForUpdates(context.Background())
 	go s.autoRefreshSystemRepo()
 
 	s.routes()
