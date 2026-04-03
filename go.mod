@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/go-git/go-git/v6 v6.0.0-20260328145551-a93bccd59f82
+	github.com/go-git/go-git/v6 v6.0.0-alpha.1
 	github.com/go-webauthn/webauthn v0.16.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
