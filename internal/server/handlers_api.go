@@ -226,41 +226,53 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find App Path
-	var appPath string
-
-	// 1. Check System Apps
-	for _, app := range s.ListSystemApps() {
-		if app.ID == dataReq.AppID {
-			appPath = filepath.Join(s.DataDir, app.Path)
-			break
-		}
-	}
-
-	// 2. Check User Apps
-	if appPath == "" && user != nil {
-		userApps := apps.ListUserApps(s.DataDir, user.Username)
-		for _, app := range userApps {
-			if app.ID == dataReq.AppID { // AppID for user apps is folder name
-				appPath = filepath.Join(s.DataDir, app.Path)
-				break
-			}
-		}
-	}
-
-	if appPath == "" {
-		http.Error(w, "App not found", http.StatusNotFound)
-		return
-	}
-
-	// Look up existing app if installationID is provided to get DisplayTime and filters
-	var existingApp *data.App
+	// Determine installationID
 	installationID := dataReq.InstallationID
 	if installationID == "" {
 		installationID = dataReq.InstallationIDAlt
 	}
+
+	// Look up existing app if installationID is provided to get Path, DisplayTime and filters
+	var existingApp *data.App
+	var appPath string
 	if installationID != "" {
 		existingApp = device.GetApp(installationID)
+		if existingApp != nil && existingApp.Path != nil && *existingApp.Path != "" {
+			// Infer app path from existing installation
+			appPath, _ = securejoin.SecureJoin(s.DataDir, *existingApp.Path)
+		}
+	}
+
+	// If we couldn't get appPath from installation, look it up by app_id
+	if appPath == "" {
+		if dataReq.AppID == "" {
+			http.Error(w, "app_id is required when no valid installationID is provided", http.StatusBadRequest)
+			return
+		}
+
+		// 1. Check System Apps
+		for _, app := range s.ListSystemApps() {
+			if app.ID == dataReq.AppID {
+				appPath = filepath.Join(s.DataDir, app.Path)
+				break
+			}
+		}
+
+		// 2. Check User Apps
+		if appPath == "" && user != nil {
+			userApps := apps.ListUserApps(s.DataDir, user.Username)
+			for _, app := range userApps {
+				if app.ID == dataReq.AppID { // AppID for user apps is folder name
+					appPath = filepath.Join(s.DataDir, app.Path)
+					break
+				}
+			}
+		}
+
+		if appPath == "" {
+			http.Error(w, "App not found", http.StatusNotFound)
+			return
+		}
 	}
 
 	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, appPath, dataReq.Config)
