@@ -720,6 +720,10 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		if *update.RecurrenceStartDate == "" {
 			app.RecurrenceStartDate = nil
 		} else {
+			if _, err := time.Parse("2006-01-02", *update.RecurrenceStartDate); err != nil {
+				http.Error(w, "Invalid recurrenceStartDate: must be YYYY-MM-DD", http.StatusBadRequest)
+				return
+			}
 			app.RecurrenceStartDate = update.RecurrenceStartDate
 		}
 	}
@@ -727,6 +731,10 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		if *update.RecurrenceEndDate == "" {
 			app.RecurrenceEndDate = nil
 		} else {
+			if _, err := time.Parse("2006-01-02", *update.RecurrenceEndDate); err != nil {
+				http.Error(w, "Invalid recurrenceEndDate: must be YYYY-MM-DD", http.StatusBadRequest)
+				return
+			}
 			app.RecurrenceEndDate = update.RecurrenceEndDate
 		}
 	}
