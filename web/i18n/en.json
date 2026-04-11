@@ -977,6 +977,12 @@
   "Unpin App": {
     "other": "Unpin App"
   },
+  "Set Schedule": {
+    "other": "Set Schedule"
+  },
+  "Clear Schedule": {
+    "other": "Clear Schedule"
+  },
   "Note:": {
     "other": "Note:"
   },

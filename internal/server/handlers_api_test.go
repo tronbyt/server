@@ -517,6 +517,127 @@ func TestHandlePatchInstallation(t *testing.T) {
 	}
 }
 
+func TestHandlePatchInstallationSchedule(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installID := "scheduleapp"
+
+	// Add a dummy app to the device
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Schedule App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
+		t.Fatalf("Failed to create dummy app: %v", err)
+	}
+
+	// Patch schedule fields
+	startTime := "09:00"
+	endTime := "17:00"
+	days := []string{"monday", "wednesday", "friday"}
+	useCustomRecurrence := true
+	recurrenceType := data.RecurrenceWeekly
+	recurrenceInterval := 2
+	recurrenceStartDate := "2026-01-01"
+	recurrenceEndDate := "2026-12-31"
+
+	update := InstallationUpdate{
+		StartTime:           &startTime,
+		EndTime:             &endTime,
+		Days:                &days,
+		UseCustomRecurrence: &useCustomRecurrence,
+		RecurrenceType:      &recurrenceType,
+		RecurrenceInterval:  &recurrenceInterval,
+		RecurrenceStartDate: &recurrenceStartDate,
+		RecurrenceEndDate:   &recurrenceEndDate,
+	}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	// Verify updated app state from DB
+	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated app state: %v", err)
+	}
+
+	if updated.StartTime == nil || *updated.StartTime != "09:00" {
+		t.Errorf("Expected startTime '09:00', got %v", updated.StartTime)
+	}
+	if updated.EndTime == nil || *updated.EndTime != "17:00" {
+		t.Errorf("Expected endTime '17:00', got %v", updated.EndTime)
+	}
+	if len(updated.Days) != 3 || updated.Days[0] != "monday" {
+		t.Errorf("Expected days [monday wednesday friday], got %v", updated.Days)
+	}
+	if !updated.UseCustomRecurrence {
+		t.Errorf("Expected useCustomRecurrence true, got false")
+	}
+	if updated.RecurrenceType != data.RecurrenceWeekly {
+		t.Errorf("Expected recurrenceType 'weekly', got %s", updated.RecurrenceType)
+	}
+	if updated.RecurrenceInterval != 2 {
+		t.Errorf("Expected recurrenceInterval 2, got %d", updated.RecurrenceInterval)
+	}
+	if updated.RecurrenceStartDate == nil || *updated.RecurrenceStartDate != "2026-01-01" {
+		t.Errorf("Expected recurrenceStartDate '2026-01-01', got %v", updated.RecurrenceStartDate)
+	}
+	if updated.RecurrenceEndDate == nil || *updated.RecurrenceEndDate != "2026-12-31" {
+		t.Errorf("Expected recurrenceEndDate '2026-12-31', got %v", updated.RecurrenceEndDate)
+	}
+
+	// Verify the response JSON also contains the schedule fields
+	var respApp data.App
+	if err := json.NewDecoder(rr.Body).Decode(&respApp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	if respApp.StartTime == nil || *respApp.StartTime != "09:00" {
+		t.Errorf("Response startTime: expected '09:00', got %v", respApp.StartTime)
+	}
+
+	// Now test clearing schedule fields by sending empty strings
+	emptyStr := ""
+	clearUpdate := InstallationUpdate{
+		StartTime: &emptyStr,
+		EndTime:   &emptyStr,
+	}
+	body, _ = json.Marshal(clearUpdate)
+	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("clear schedule: got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	cleared, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch cleared app state: %v", err)
+	}
+	if cleared.StartTime != nil {
+		t.Errorf("Expected startTime nil after clear, got %v", *cleared.StartTime)
+	}
+	if cleared.EndTime != nil {
+		t.Errorf("Expected endTime nil after clear, got %v", *cleared.EndTime)
+	}
+	// Days should still be set from the previous update
+	if len(cleared.Days) != 3 {
+		t.Errorf("Expected days to remain unchanged, got %v", cleared.Days)
+	}
+}
+
 func TestHandleDeleteInstallationAPI(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
