@@ -702,7 +702,13 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		app.UseCustomRecurrence = *update.UseCustomRecurrence
 	}
 	if update.RecurrenceType != nil {
-		app.RecurrenceType = *update.RecurrenceType
+		switch *update.RecurrenceType {
+		case data.RecurrenceDaily, data.RecurrenceWeekly, data.RecurrenceMonthly, data.RecurrenceYearly:
+			app.RecurrenceType = *update.RecurrenceType
+		default:
+			http.Error(w, "Invalid recurrenceType", http.StatusBadRequest)
+			return
+		}
 	}
 	if update.RecurrenceInterval != nil {
 		app.RecurrenceInterval = *update.RecurrenceInterval
