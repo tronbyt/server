@@ -166,6 +166,19 @@ type AppPayload struct {
 	DisplayTimeSec    int    `json:"displayTimeSec"`
 	LastRenderAt      int64  `json:"lastRenderAt"`
 	IsInactive        bool   `json:"isInactive"`
+
+	// Schedule fields
+	StartTime *string  `json:"startTime"`
+	EndTime   *string  `json:"endTime"`
+	Days      []string `json:"days"`
+
+	// Recurrence fields
+	UseCustomRecurrence bool                `json:"useCustomRecurrence"`
+	RecurrenceType      data.RecurrenceType `json:"recurrenceType"`
+	RecurrenceInterval  int                 `json:"recurrenceInterval"`
+	RecurrencePattern   map[string]any      `json:"recurrencePattern"`
+	RecurrenceStartDate *string             `json:"recurrenceStartDate"`
+	RecurrenceEndDate   *string             `json:"recurrenceEndDate"`
 }
 
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
@@ -180,6 +193,17 @@ func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 		DisplayTimeSec:    app.DisplayTime,
 		LastRenderAt:      app.LastRender.Unix(),
 		IsInactive:        app.EmptyLastRender,
+
+		StartTime: app.StartTime,
+		EndTime:   app.EndTime,
+		Days:      app.Days,
+
+		UseCustomRecurrence: app.UseCustomRecurrence,
+		RecurrenceType:      app.RecurrenceType,
+		RecurrenceInterval:  app.RecurrenceInterval,
+		RecurrencePattern:   app.RecurrencePattern,
+		RecurrenceStartDate: app.RecurrenceStartDate,
+		RecurrenceEndDate:   app.RecurrenceEndDate,
 	}
 }
 
