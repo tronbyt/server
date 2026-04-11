@@ -685,6 +685,15 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	if update.Days != nil {
+		for _, day := range *update.Days {
+			switch day {
+			case "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday":
+				// valid
+			default:
+				http.Error(w, fmt.Sprintf("Invalid day: %s", day), http.StatusBadRequest)
+				return
+			}
+		}
 		app.Days = *update.Days
 	}
 
