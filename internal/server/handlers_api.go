@@ -444,8 +444,8 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 
 func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string) error {
 	// Check if app exists by matching on installID (for pushed apps, we need to look up by installID)
-	// Since installID might be non-numeric (e.g., "pushed-hasssolarlocal1"), we check via path/file
-	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ? AND path LIKE ?", deviceID, true, "%"+installID+"%").Count(ctx, "*")
+	// Since installID might be non-numeric (e.g., "pushed:hasssolarlocal1"), we check via path/file
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ? AND path = ?", deviceID, true, "pushed:"+installID).Count(ctx, "*")
 	if err != nil {
 		slog.Error("Failed to check if app exists for image push", "error", err)
 		return err
