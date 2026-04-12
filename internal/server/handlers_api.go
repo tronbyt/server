@@ -443,8 +443,9 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 }
 
 func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string) error {
-	// Check if install exists
-	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, installID).Count(ctx, "*")
+	// Check if app exists by matching on installID (for pushed apps, we need to look up by installID)
+	// Since installID might be non-numeric (e.g., "pushed-hasssolarlocal1"), we check via path/file
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ? AND path LIKE ?", deviceID, true, "%"+installID+"%").Count(ctx, "*")
 	if err != nil {
 		slog.Error("Failed to check if app exists for image push", "error", err)
 		return err
@@ -453,14 +454,25 @@ func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string
 		return nil
 	}
 
+	// Generate a numeric iname for the pushed app (same as regular apps)
+	newIname, err := generateUniqueIname(s.DB, deviceID)
+	if err != nil {
+		slog.Error("Failed to generate iname for pushed app", "error", err)
+		return err
+	}
+
+	// Store installID in path so we can match on it later
+	installPath := "pushed:" + installID
+
 	newApp := data.App{
 		DeviceID:    deviceID,
-		Iname:       installID,
+		Iname:       newIname,
 		Name:        "pushed",
 		UInterval:   10,
 		DisplayTime: 0,
 		Enabled:     true,
 		Pushed:      true,
+		Path:        &installPath,
 	}
 
 	maxOrder, err := getMaxAppOrder(s.DB, deviceID)

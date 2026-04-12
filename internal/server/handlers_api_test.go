@@ -257,13 +257,19 @@ func TestHandlePushImage(t *testing.T) {
 	}
 
 	// Verify the app was created and image saved
-	app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, installID).First(context.Background())
+	// New pushed apps get a numeric iname, so check by path containing installID
+	app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", deviceID, "pushed:"+installID).First(context.Background())
 	if err != nil {
 		t.Fatalf("Expected app to be created, but got error: %v", err)
 	}
 
 	if !app.Pushed {
 		t.Error("Expected app to be marked as pushed")
+	}
+
+	// Verify the iname is numeric (the new behavior for pushed apps)
+	if app.Iname == "" || app.Iname[0] < '0' || app.Iname[0] > '9' {
+		t.Errorf("Expected numeric iname for pushed app, got %s", app.Iname)
 	}
 
 	// Verify image file exists
