@@ -974,6 +974,12 @@
   "Unpin App": {
     "other": "App entpinnen"
   },
+  "Set Schedule": {
+    "other": "Zeitplan festlegen"
+  },
+  "Clear Schedule": {
+    "other": "Zeitplan löschen"
+  },
   "Note:": {
     "other": "Notizen:"
   },

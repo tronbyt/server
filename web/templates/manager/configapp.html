@@ -684,6 +684,24 @@
   -d '{"pinnedApp": ""}' \
   /v0/devices/{{ .Device.ID }}</pre>
             </div>
+            <!-- Set Schedule -->
+            <div style="margin-bottom: 20px;">
+                <h3>{{ t .Localizer "Set Schedule" }}</h3>
+                <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"startTime": "09:00", "endTime": "17:00", "days": ["monday","tuesday","wednesday","thursday","friday"]}' \
+  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+            </div>
+            <!-- Clear Schedule -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: var(--danger-text);">{{ t .Localizer "Clear Schedule" }}</h3>
+                <pre>curl -X PATCH \
+  -H "Authorization: Bearer {{ .Device.APIKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{"startTime": "", "endTime": "", "days": []}' \
+  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+            </div>
             <small>
                 <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
             </small>

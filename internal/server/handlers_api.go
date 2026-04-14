@@ -166,6 +166,19 @@ type AppPayload struct {
 	DisplayTimeSec    int    `json:"displayTimeSec"`
 	LastRenderAt      int64  `json:"lastRenderAt"`
 	IsInactive        bool   `json:"isInactive"`
+
+	// Schedule fields
+	StartTime *string  `json:"startTime"`
+	EndTime   *string  `json:"endTime"`
+	Days      []string `json:"days"`
+
+	// Recurrence fields
+	UseCustomRecurrence bool                `json:"useCustomRecurrence"`
+	RecurrenceType      data.RecurrenceType `json:"recurrenceType"`
+	RecurrenceInterval  int                 `json:"recurrenceInterval"`
+	RecurrencePattern   map[string]any      `json:"recurrencePattern"`
+	RecurrenceStartDate *string             `json:"recurrenceStartDate"`
+	RecurrenceEndDate   *string             `json:"recurrenceEndDate"`
 }
 
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
@@ -180,6 +193,17 @@ func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 		DisplayTimeSec:    app.DisplayTime,
 		LastRenderAt:      app.LastRender.Unix(),
 		IsInactive:        app.EmptyLastRender,
+
+		StartTime: app.StartTime,
+		EndTime:   app.EndTime,
+		Days:      app.Days,
+
+		UseCustomRecurrence: app.UseCustomRecurrence,
+		RecurrenceType:      app.RecurrenceType,
+		RecurrenceInterval:  app.RecurrenceInterval,
+		RecurrencePattern:   app.RecurrencePattern,
+		RecurrenceStartDate: app.RecurrenceStartDate,
+		RecurrenceEndDate:   app.RecurrenceEndDate,
 	}
 }
 
@@ -568,6 +592,19 @@ type InstallationUpdate struct {
 	Pinned            *bool `json:"pinned"`
 	RenderIntervalMin *int  `json:"renderIntervalMin"`
 	DisplayTimeSec    *int  `json:"displayTimeSec"`
+
+	// Schedule fields
+	StartTime *string   `json:"startTime"`
+	EndTime   *string   `json:"endTime"`
+	Days      *[]string `json:"days"`
+
+	// Recurrence fields
+	UseCustomRecurrence *bool                `json:"useCustomRecurrence"`
+	RecurrenceType      *data.RecurrenceType `json:"recurrenceType"`
+	RecurrenceInterval  *int                 `json:"recurrenceInterval"`
+	RecurrencePattern   *map[string]any      `json:"recurrencePattern"`
+	RecurrenceStartDate *string              `json:"recurrenceStartDate"`
+	RecurrenceEndDate   *string              `json:"recurrenceEndDate"`
 }
 
 func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request) {
@@ -631,6 +668,86 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 			http.Error(w, "Failed to update device pin status", http.StatusInternalServerError)
 			return
+		}
+	}
+
+	// Schedule fields
+	if update.StartTime != nil {
+		if *update.StartTime == "" {
+			app.StartTime = nil
+		} else {
+			parsed, err := parseTimeInput(*update.StartTime)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Invalid startTime: %v", err), http.StatusBadRequest)
+				return
+			}
+			app.StartTime = &parsed
+		}
+	}
+	if update.EndTime != nil {
+		if *update.EndTime == "" {
+			app.EndTime = nil
+		} else {
+			parsed, err := parseTimeInput(*update.EndTime)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Invalid endTime: %v", err), http.StatusBadRequest)
+				return
+			}
+			app.EndTime = &parsed
+		}
+	}
+	if update.Days != nil {
+		for _, day := range *update.Days {
+			switch day {
+			case "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday":
+				// valid
+			default:
+				http.Error(w, fmt.Sprintf("Invalid day: %s", day), http.StatusBadRequest)
+				return
+			}
+		}
+		app.Days = *update.Days
+	}
+
+	// Recurrence fields
+	if update.UseCustomRecurrence != nil {
+		app.UseCustomRecurrence = *update.UseCustomRecurrence
+	}
+	if update.RecurrenceType != nil {
+		switch *update.RecurrenceType {
+		case data.RecurrenceDaily, data.RecurrenceWeekly, data.RecurrenceMonthly, data.RecurrenceYearly:
+			app.RecurrenceType = *update.RecurrenceType
+		default:
+			http.Error(w, "Invalid recurrenceType", http.StatusBadRequest)
+			return
+		}
+	}
+	if update.RecurrenceInterval != nil {
+		app.RecurrenceInterval = *update.RecurrenceInterval
+	}
+	if update.RecurrencePattern != nil {
+		app.RecurrencePattern = *update.RecurrencePattern
+	}
+	if update.RecurrenceStartDate != nil {
+		if *update.RecurrenceStartDate == "" {
+			app.RecurrenceStartDate = nil
+		} else {
+			if _, err := time.Parse("2006-01-02", *update.RecurrenceStartDate); err != nil {
+				http.Error(w, "Invalid recurrenceStartDate: must be YYYY-MM-DD", http.StatusBadRequest)
+				return
+			}
+			app.RecurrenceStartDate = update.RecurrenceStartDate
+		}
+	}
+	if update.RecurrenceEndDate != nil {
+		if *update.RecurrenceEndDate == "" {
+			app.RecurrenceEndDate = nil
+		} else {
+			if _, err := time.Parse("2006-01-02", *update.RecurrenceEndDate); err != nil {
+				http.Error(w, "Invalid recurrenceEndDate: must be YYYY-MM-DD", http.StatusBadRequest)
+				return
+			}
+			app.RecurrenceEndDate = update.RecurrenceEndDate
 		}
 	}
 
