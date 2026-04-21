@@ -27,6 +27,7 @@ type Settings struct {
 	SSLCertFile            string `env:"TRONBYT_SSL_CERTFILE"`
 	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES"  envDefault:"*"`
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
+	LogFormat              string `env:"LOG_FORMAT"               envDefault:"text"`
 	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
 }
 

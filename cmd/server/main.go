@@ -179,10 +179,16 @@ func main() {
 	}
 
 	// Create handler options with the parsed level
-	handlerOpts := &slog.HandlerOptions{
+	loggerHandlerOpts := &slog.HandlerOptions{
 		Level: level,
 	}
-	logger = slog.New(slog.NewTextHandler(os.Stdout, handlerOpts))
+	var logHandler slog.Handler
+	if cfg.LogFormat == "json" {
+		logHandler = slog.NewJSONHandler(os.Stdout, loggerHandlerOpts)
+	} else {
+		logHandler = slog.NewTextHandler(os.Stdout, loggerHandlerOpts)
+	}
+	logger = slog.New(logHandler)
 	slog.SetDefault(logger)
 	slog.Debug("Logger initialized", "level", level)
 
