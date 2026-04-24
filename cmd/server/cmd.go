@@ -9,6 +9,7 @@ import (
 	"tronbyt-server/cmd/server/migrate"
 	"tronbyt-server/cmd/server/resetpassword"
 	"tronbyt-server/cmd/server/serve"
+	"tronbyt-server/cmd/server/updatesystemapps"
 	"tronbyt-server/internal/config"
 
 	"github.com/spf13/cobra"
@@ -32,6 +33,7 @@ func New() *cobra.Command {
 		serve.New(),
 		migrate.New(),
 		resetpassword.New(),
+		updatesystemapps.New(),
 		health.New(),
 	)
 
