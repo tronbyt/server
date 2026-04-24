@@ -11,7 +11,6 @@
             <p class="settings-page-copy">{{ t .Localizer "Manage your login, security, and API access." }}</p>
         </div>
     </header>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Profile" }}</h2>
@@ -31,7 +30,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="settings-card-subsection">
                 <h3>{{ t .Localizer "Change Password" }}</h3>
                 <div class="settings-field-list">
@@ -40,7 +38,10 @@
                             <label for="old_password">{{ t .Localizer "Old Password" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <input type="password" name="old_password" id="old_password" class="settings-input">
+                            <input type="password"
+                                   name="old_password"
+                                   id="old_password"
+                                   class="settings-input">
                         </div>
                     </div>
                     <div class="settings-field-row">
@@ -53,7 +54,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="settings-actions">
                 <button type="submit" class="w3-button w3-green">
                     <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save Changes" }}
@@ -61,12 +61,13 @@
             </div>
         </form>
     </section>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Passkey" }}</h2>
             <p>{{ t .Localizer "Manage sign-in with a hardware key, browser, or device passkey." }}</p>
-            <p>{{ t .Localizer "Passkeys only work when Tronbyt is opened on a secure connection. If passkey setup is unavailable, ask whoever manages your server whether HTTPS is enabled." }}</p>
+            <p>
+                {{ t .Localizer "Passkeys only work when Tronbyt is opened on a secure connection. If passkey setup is unavailable, ask whoever manages your server whether HTTPS is enabled." }}
+            </p>
         </div>
         <div id="webauthn-settings-container">
             <ul class="settings-list">
@@ -77,12 +78,18 @@
                         {{ $iconDark := webauthn_icon .Authenticator true }}
                         {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
                         <span class="authenticator-icon-container">
-                            <img src="{{ $iconLight }}" alt="Authenticator Icon" class="auth-icon-light authenticator-icon">
-                            <img src="{{ $iconDark }}" alt="Authenticator Icon" class="auth-icon-dark authenticator-icon">
+                            <img src="{{ $iconLight }}"
+                                 alt="Authenticator Icon"
+                                 class="auth-icon-light authenticator-icon">
+                            <img src="{{ $iconDark }}"
+                                 alt="Authenticator Icon"
+                                 class="auth-icon-dark authenticator-icon">
                         </span>
                         {{ else if or $iconLight $iconDark }}
-                        <img src="{{ or $iconLight $iconDark }}" alt="Authenticator Icon" class="authenticator-icon">
-                        {{ else }}
+                        <img src="{{ or $iconLight $iconDark }}"
+                             alt="Authenticator Icon"
+                             class="authenticator-icon">
+                    {{ else }}
                         <i class="fa-solid fa-key"></i>
                         {{ end }}
                         <span>{{ or .Name .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
@@ -94,7 +101,7 @@
                         <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete" }}
                     </button>
                 </li>
-                {{ else }}
+            {{ else }}
                 <li class="settings-list-empty">{{ t .Localizer "No passkeys registered." }}</li>
                 {{ end }}
             </ul>
@@ -117,7 +124,6 @@
             {{ end }}
         </div>
     </section>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "API Access" }}</h2>
@@ -137,9 +143,7 @@
                                    required
                                    value="{{ .User.APIKey }}"
                                    class="settings-input settings-input-xwide settings-input-code">
-                            <button type="button"
-                                    class="w3-button w3-blue"
-                                    onclick="copyAPIKey()">
+                            <button type="button" class="w3-button w3-blue" onclick="copyAPIKey()">
                                 <i class="fa-solid fa-copy" aria-hidden="true"></i> {{ t .Localizer "Copy" }}
                             </button>
                             <button type="submit"

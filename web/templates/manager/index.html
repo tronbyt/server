@@ -21,7 +21,6 @@
         </div>
         {{ end }}
     </header>
-
     {{ if gt (len .Devices) 1 }}
     <nav class="settings-subnav" aria-label="{{ t .Localizer "Devices" }}">
         {{ range .Devices }}
@@ -29,7 +28,6 @@
         {{ end }}
     </nav>
     {{ end }}
-
     {{ range .Devices }}
     {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "AllDevices" $.AllDevices) }}
     {{ end }}

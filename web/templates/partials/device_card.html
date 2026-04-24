@@ -1,5 +1,6 @@
 {{ define "device_card" }}
-<div id="device-card-{{ .Item.ID }}" class="w3-card-4 w3-padding device-container">
+<div id="device-card-{{ .Item.ID }}"
+     class="w3-card-4 w3-padding device-container">
     <article class="settings-page">
         <header class="settings-page-header">
             <div>
@@ -13,11 +14,12 @@
                         {{ range .Item.Apps }}
                         {{ if eq .Iname $pinned }}{{ $pinnedName = printf "%s-%s" .Name .Iname }}{{ end }}
                         {{ end }}
-                        {{ if ne $pinnedName "" }}{{ $pinnedName }}{{ else }}{{ $pinned }}{{ end }}
+                    {{ if ne $pinnedName "" }}{{ $pinnedName }}{{ else }}{{ $pinned }}{{ end }}
                     </span>
                     {{ end }}
                     {{ if .Item.GetNightModeIsActive }}
-                    <span class="night-mode-badge" title="{{ t .Localizer "Night Mode Active" }}">
+                    <span class="night-mode-badge"
+                          title="{{ t .Localizer "Night Mode Active" }}">
                         <i class="fa-solid fa-moon" aria-hidden="true"></i> {{ t .Localizer "Night Mode" }}
                     </span>
                     {{ else if .Item.GetDimModeIsActive }}
@@ -26,7 +28,9 @@
                     </span>
                     {{ end }}
                 </h1>
-                <p class="settings-page-copy">{{ len .Item.Apps }} {{ if eq (len .Item.Apps) 1 }}{{ t .Localizer "app" }}{{ else }}{{ t .Localizer "apps" }}{{ end }}</p>
+                <p class="settings-page-copy">
+                {{ len .Item.Apps }} {{ if eq (len .Item.Apps) 1 }}{{ t .Localizer "app" }}{{ else }}{{ t .Localizer "apps" }}{{ end }}
+                </p>
             </div>
             <div class="settings-actions">
                 {{ if not .ReadOnly }}
@@ -35,11 +39,12 @@
                 {{ if .Item.Type.SupportsFirmware }}
                 <a class="w3-button w3-teal" href="/devices/{{ .Item.ID }}/firmware"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Firmware" }}</a>
                 {{ end }}
-                <a class="w3-button w3-teal" href="/devices/{{ .Item.ID }}/tv" target="_blank"><i class="fa-solid fa-tv" aria-hidden="true"></i> {{ t .Localizer "TV Mode" }}</a>
+                <a class="w3-button w3-teal"
+                   href="/devices/{{ .Item.ID }}/tv"
+                   target="_blank"><i class="fa-solid fa-tv" aria-hidden="true"></i> {{ t .Localizer "TV Mode" }}</a>
                 {{ end }}
             </div>
         </header>
-
         <section class="settings-card">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Device Info and Controls" }}</h2>
@@ -86,7 +91,12 @@
                                    min="1"
                                    max="30"
                                    value="{{ .Item.DefaultInterval }}"
-                                   {{ if .ReadOnly }}disabled{{ else }}oninput="updateIntervalValue('{{ .Item.ID }}', this.value)" onmouseup="updateInterval('{{ .Item.ID }}', this.value)"{{ end }}>
+                                   {{ if .ReadOnly }}
+                                   disabled
+                                   {{ else }}
+                                   oninput="updateIntervalValue('{{ .Item.ID }}', this.value)"
+                                   onmouseup="updateInterval('{{ .Item.ID }}', this.value)"
+                                   {{ end }}>
                         </div>
                     </div>
                     {{ if .Item.NightModeEnabled }}
@@ -95,14 +105,23 @@
                             <label for="night-mode-toggle-{{ .Item.ID }}">{{ t .Localizer "Night Mode" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <label class="settings-inline-option settings-toggle-row" for="night-mode-toggle-{{ .Item.ID }}">
+                            <label class="settings-inline-option settings-toggle-row"
+                                   for="night-mode-toggle-{{ .Item.ID }}">
                                 <input type="checkbox"
                                        id="night-mode-toggle-{{ .Item.ID }}"
-                                       {{ if .Item.GetNightModeIsActive }}checked{{ end }}
-                                       {{ if .ReadOnly }}disabled{{ else }}onchange="setNightModeOverride('{{ .Item.ID }}', this.checked, this)"{{ end }}>
+                                       {{ if .Item.GetNightModeIsActive }}
+                                       checked
+                                       {{ end }}
+                                       {{ if .ReadOnly }}
+                                       disabled
+                                       {{ else }}
+                                       onchange="setNightModeOverride('{{ .Item.ID }}', this.checked, this)"
+                                       {{ end }}>
                                 <span>{{ t .Localizer "Night mode on" }}</span>
                             </label>
-                            <p class="settings-caption settings-toggle-hint">{{ t .Localizer "Persists until the next scheduled night mode change." }}</p>
+                            <p class="settings-caption settings-toggle-hint">
+                                {{ t .Localizer "Persists until the next scheduled night mode change." }}
+                            </p>
                         </div>
                     </div>
                     {{ end }}
@@ -112,14 +131,23 @@
                             <label for="dim-mode-toggle-{{ .Item.ID }}">{{ t .Localizer "Dim Mode" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <label class="settings-inline-option settings-toggle-row" for="dim-mode-toggle-{{ .Item.ID }}">
+                            <label class="settings-inline-option settings-toggle-row"
+                                   for="dim-mode-toggle-{{ .Item.ID }}">
                                 <input type="checkbox"
                                        id="dim-mode-toggle-{{ .Item.ID }}"
-                                       {{ if .Item.GetDimModeIsActive }}checked{{ end }}
-                                       {{ if .ReadOnly }}disabled{{ else }}onchange="setDimModeOverride('{{ .Item.ID }}', this.checked, this)"{{ end }}>
+                                       {{ if .Item.GetDimModeIsActive }}
+                                       checked
+                                       {{ end }}
+                                       {{ if .ReadOnly }}
+                                       disabled
+                                       {{ else }}
+                                       onchange="setDimModeOverride('{{ .Item.ID }}', this.checked, this)"
+                                       {{ end }}>
                                 <span>{{ t .Localizer "Dim mode on" }}</span>
                             </label>
-                            <p class="settings-caption settings-toggle-hint">{{ t .Localizer "Persists until the next scheduled dim mode change." }}</p>
+                            <p class="settings-caption settings-toggle-hint">
+                                {{ t .Localizer "Persists until the next scheduled dim mode change." }}
+                            </p>
                         </div>
                     </div>
                     {{ end }}
@@ -132,32 +160,62 @@
                         <div id="device-info-content-{{ .Item.ID }}" class="device-info-content">
                             <table class="device-info-table">
                                 {{ if .Item.Info.FirmwareVersion }}
-                                <tr><td>{{ t $.Localizer "Firmware Version:" }}</td><td>{{ .Item.Info.FirmwareVersion }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Firmware Version:" }}</td>
+                                    <td>{{ .Item.Info.FirmwareVersion }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.FirmwareType }}
-                                <tr><td>{{ t $.Localizer "Firmware Type:" }}</td><td>{{ .Item.Info.FirmwareType }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Firmware Type:" }}</td>
+                                    <td>{{ .Item.Info.FirmwareType }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.ProtocolVersion }}
-                                <tr><td>{{ t $.Localizer "Protocol Version:" }}</td><td>{{ deref .Item.Info.ProtocolVersion }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Protocol Version:" }}</td>
+                                    <td>{{ deref .Item.Info.ProtocolVersion }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.MACAddress }}
-                                <tr><td>{{ t $.Localizer "MAC Address:" }}</td><td>{{ .Item.Info.MACAddress }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "MAC Address:" }}</td>
+                                    <td>{{ .Item.Info.MACAddress }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.Hostname }}
-                                <tr><td>{{ t $.Localizer "Hostname:" }}</td><td>{{ .Item.Info.Hostname }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Hostname:" }}</td>
+                                    <td>{{ .Item.Info.Hostname }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.SNTPServer }}
-                                <tr><td>{{ t $.Localizer "SNTP Server:" }}</td><td>{{ .Item.Info.SNTPServer }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "SNTP Server:" }}</td>
+                                    <td>{{ .Item.Info.SNTPServer }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.SyslogAddr }}
-                                <tr><td>{{ t $.Localizer "Syslog Address:" }}</td><td>{{ .Item.Info.SyslogAddr }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Syslog Address:" }}</td>
+                                    <td>{{ .Item.Info.SyslogAddr }}</td>
+                                </tr>
                                 {{ end }}
                                 {{ if .Item.Info.SSID }}
-                                <tr><td>{{ t $.Localizer "WiFi SSID:" }}</td><td>{{ .Item.Info.SSID }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "WiFi SSID:" }}</td>
+                                    <td>{{ .Item.Info.SSID }}</td>
+                                </tr>
                                 {{ end }}
-                                <tr><td>{{ t $.Localizer "Protocol Type:" }}</td><td>{{ .Item.Info.ProtocolType }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Protocol Type:" }}</td>
+                                    <td>{{ .Item.Info.ProtocolType }}</td>
+                                </tr>
                                 {{ if .Item.LastSeen }}
-                                <tr><td>{{ t $.Localizer "Last Seen:" }}</td><td>{{ timeago $.Localizer .Item.LastSeen }}</td></tr>
+                                <tr>
+                                    <td>{{ t $.Localizer "Last Seen:" }}</td>
+                                    <td>{{ timeago $.Localizer .Item.LastSeen }}</td>
+                                </tr>
                                 {{ end }}
                             </table>
                         </div>
@@ -165,7 +223,6 @@
                 </div>
             </div>
         </section>
-
         <section class="settings-card">
             <div class="view-toggle-row settings-view-row">
                 <div class="view-toggle-container settings-view-controls">
@@ -202,7 +259,6 @@
                 {{ end }}
             </div>
         </section>
-
     </article>
 </div>
 {{ end }}

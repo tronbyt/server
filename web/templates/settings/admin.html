@@ -11,7 +11,6 @@
             <p class="settings-page-copy">{{ t .Localizer "Manage backups and user accounts for this server." }}</p>
         </div>
     </header>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Data Management" }}</h2>
@@ -29,7 +28,9 @@
             <div class="settings-field-row">
                 <div class="settings-field-label">{{ t .Localizer "Import Configuration" }}</div>
                 <div class="settings-field-control">
-                    <p class="settings-help">{{ t .Localizer "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password." }}</p>
+                    <p class="settings-help">
+                        {{ t .Localizer "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password." }}
+                    </p>
                     <form method="post"
                           action="/import_user_config"
                           enctype="multipart/form-data"
@@ -50,7 +51,6 @@
             </div>
         </div>
     </section>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "User Management" }}</h2>
@@ -85,7 +85,7 @@
                             onclick="deleteUser('{{ .Username }}')">
                         <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete User" }}
                     </button>
-                    {{ else }}
+                {{ else }}
                     <span class="settings-help">{{ t $.Localizer "Current user" }}</span>
                     {{ end }}
                 </div>
@@ -116,9 +116,9 @@
                             <button class="w3-button w3-blue" type="submit">
                                 <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
                             </button>
-                            <button class="w3-button" type="button" onclick="closeEmailDialog('{{ .Username }}')">
-                                {{ t $.Localizer "Cancel" }}
-                            </button>
+                            <button class="w3-button"
+                                    type="button"
+                                    onclick="closeEmailDialog('{{ .Username }}')">{{ t $.Localizer "Cancel" }}</button>
                         </div>
                     </form>
                 </dialog>

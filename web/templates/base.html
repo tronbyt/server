@@ -116,46 +116,47 @@
             <a href="/auth/logout" onclick="closeMobileMenu()">{{ t .Localizer "Log Out" }}</a>
         </li>
         {{ end }}
-    <li class="theme-toggle-container">
-        <div class="theme-toggle">
-            <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
-            <select id="mobile-theme-select" name="theme">
-                <option value="light"
-                        {{ if eq (string .User.ThemePreference) "light" }}
-                        selected
-                        {{ end }}>{{ t .Localizer "Light" }}
-                </option>
-                <option value="dark"
-                        {{ if eq (string .User.ThemePreference) "dark" }}
-                        selected
-                        {{ end }}>{{ t .Localizer "Dark" }}
-                </option>
-                <option value="system"
-                        {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
-                        selected
-                        {{ end }}>{{ t .Localizer "System" }}
-                </option>
-            </select>
-        </div>
-    </li>
-{{ else }}
-    <li>
-        <a href="/auth/login" onclick="closeMobileMenu()">{{ t .Localizer "Log In" }}</a>
-    </li>
-    {{ if .Config.EnableUserRegistration }}
-    <li>
-        <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
-    </li>
-    {{ end }}
-    {{ end }}
-</ul>
+        <li class="theme-toggle-container">
+            <div class="theme-toggle">
+                <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
+                <select id="mobile-theme-select" name="theme">
+                    <option value="light"
+                            {{ if eq (string .User.ThemePreference) "light" }}
+                            selected
+                            {{ end }}>{{ t .Localizer "Light" }}
+                    </option>
+                    <option value="dark"
+                            {{ if eq (string .User.ThemePreference) "dark" }}
+                            selected
+                            {{ end }}>{{ t .Localizer "Dark" }}
+                    </option>
+                    <option value="system"
+                            {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
+                            selected
+                            {{ end }}>{{ t .Localizer "System" }}
+                    </option>
+                </select>
+            </div>
+        </li>
+    {{ else }}
+        <li>
+            <a href="/auth/login" onclick="closeMobileMenu()">{{ t .Localizer "Log In" }}</a>
+        </li>
+        {{ if .Config.EnableUserRegistration }}
+        <li>
+            <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
+        </li>
+        {{ end }}
+        {{ end }}
+    </ul>
 </div>
 <section class="content">
     <header>
         {{ block "header" . }}{{ end }}
     </header>
     {{ if .SettingsSection }}
-    <nav class="settings-subnav" aria-label="{{ t .Localizer "System Settings" }}">
+    <nav class="settings-subnav"
+         aria-label="{{ t .Localizer "System Settings" }}">
         <a href="/settings/account"
            class="settings-subnav-link {{ if eq .SettingsSection "account" }}active{{ end }}">{{ t .Localizer "Account" }}</a>
         <a href="/settings/content"

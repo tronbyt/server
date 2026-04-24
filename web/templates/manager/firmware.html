@@ -22,30 +22,37 @@
             </a>
         </div>
     </header>
-
     {{ if not .FirmwareBinsAvailable }}
     <section class="settings-card w3-panel w3-yellow w3-border w3-border-amber">
         <div class="settings-card-header">
-            <h2><i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Firmware Files Not Available" }}</h2>
-            <p>{{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}</p>
+            <h2>
+                <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Firmware Files Not Available" }}
+            </h2>
+            <p>
+                {{ t .Localizer "Firmware binary files have not been downloaded yet. Firmware generation will not work until the files are downloaded." }}
+            </p>
         </div>
         {{ if .User.IsAdmin }}
-        <p>{{ t .Localizer "Please go to the" }} <a href="/settings/content" class="w3-text-blue">{{ t .Localizer "Content and Firmware" }}</a> {{ t .Localizer "page to download the latest firmware files." }}</p>
-        {{ else }}
+        <p>
+            {{ t .Localizer "Please go to the" }} <a href="/settings/content" class="w3-text-blue">{{ t .Localizer "Content and Firmware" }}</a> {{ t .Localizer "page to download the latest firmware files." }}
+        </p>
+    {{ else }}
         <p>{{ t .Localizer "Please contact your administrator to download the firmware files." }}</p>
         {{ end }}
     </section>
     {{ end }}
-
     {{ if .URLWarning }}
     <section class="settings-card w3-panel w3-red w3-border w3-border-red">
         <div class="settings-card-header">
-            <h2><i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}</h2>
-            <p>{{ t .Localizer "The firmware image URL uses localhost which will not work:" }} <strong>{{ .Device.ImgURL }}</strong>. {{ t .Localizer "Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the device's image URLs, then return here." }}</p>
+            <h2>
+                <i class="fa-solid fa-triangle-exclamation"></i> {{ t .Localizer "Warning: Localhost URL Detected" }}
+            </h2>
+            <p>
+                {{ t .Localizer "The firmware image URL uses localhost which will not work:" }} <strong>{{ .Device.ImgURL }}</strong>. {{ t .Localizer "Either replace localhost with the IP or hostname of this server, or connect to this server over its IP or hostname, edit the device and click the refresh buttons by the device's image URLs, then return here." }}
+            </p>
         </div>
     </section>
     {{ end }}
-
     <form method="post" id="firmware-form" class="settings-form">
         <section class="settings-card">
             <div class="settings-card-header">
@@ -60,10 +67,11 @@
                         {{ if .AvailableFirmwareVersions }}
                         <select name="version" form="firmware-form" class="settings-input">
                             {{ range .AvailableFirmwareVersions }}
-                            <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
+                            <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}
+                            </option>
                             {{ end }}
                         </select>
-                        {{ else }}
+                    {{ else }}
                         <div>{{ .FirmwareVersion }}</div>
                         {{ end }}
                     </div>
@@ -72,9 +80,18 @@
                     <div class="settings-field-label">{{ t .Localizer "Connection Type" }}</div>
                     <div class="settings-field-control">
                         <div class="settings-inline-group connection-type-container">
-                            <label><input type="radio" name="url_variant" id="variant_ws" value="ws"> WebSocket</label>
-                            <label><input type="radio" name="url_variant" id="variant_http" value="http"> HTTP</label>
-                            <label><input type="radio" name="url_variant" id="variant_custom" value="custom"> Custom</label>
+                            <label>
+                                <input type="radio" name="url_variant" id="variant_ws" value="ws">
+                                WebSocket
+                            </label>
+                            <label>
+                                <input type="radio" name="url_variant" id="variant_http" value="http">
+                                HTTP
+                            </label>
+                            <label>
+                                <input type="radio" name="url_variant" id="variant_custom" value="custom">
+                                Custom
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -83,7 +100,10 @@
                         <label for="img_url">{{ t .Localizer "Image URL" }}</label>
                     </div>
                     <div class="settings-field-control">
-                        <input name="img_url" id="img_url" value="{{ .Device.ImgURL }}" class="settings-input settings-input-wide">
+                        <input name="img_url"
+                               id="img_url"
+                               value="{{ .Device.ImgURL }}"
+                               class="settings-input settings-input-wide">
                     </div>
                 </div>
                 <div class="settings-field-row">
@@ -99,7 +119,10 @@
                         <label for="wifi_password">{{ t .Localizer "WiFi Password" }}</label>
                     </div>
                     <div class="settings-field-control">
-                        <input name="wifi_password" id="wifi_password" required class="settings-input">
+                        <input name="wifi_password"
+                               id="wifi_password"
+                               required
+                               class="settings-input">
                     </div>
                 </div>
                 {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
@@ -124,7 +147,9 @@
                             <input type="checkbox" name="ota_only" id="ota_only">
                             <span>{{ t .Localizer "OTA Update Only" }}</span>
                         </label>
-                        <p class="settings-help">{{ t .Localizer "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section." }}</p>
+                        <p class="settings-help">
+                            {{ t .Localizer "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section." }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -135,27 +160,32 @@
             </div>
         </section>
     </form>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Flashing Instructions" }}</h2>
             <p>{{ t .Localizer "After generating and downloading the firmware file, use one of these web-based flashers:" }}</p>
         </div>
         <ul>
-            <li><a href="https://espressif.github.io/esptool-js/" target="_blank">Espressif Web Flasher</a></li>
-            <li><a href="https://thelastoutpostworkshop.github.io/ESPConnect/" target="_blank">ESPConnect Web Flasher</a></li>
+            <li>
+                <a href="https://espressif.github.io/esptool-js/" target="_blank">Espressif Web Flasher</a>
+            </li>
+            <li>
+                <a href="https://thelastoutpostworkshop.github.io/ESPConnect/"
+                   target="_blank">ESPConnect Web Flasher</a>
+            </li>
         </ul>
         <ol>
             <li>{{ t .Localizer "Connect your device to your computer with a data USB cable" }}</li>
             <li>{{ t .Localizer "Open one of the web flashers above in Chrome or Edge" }}</li>
             <li>{{ t .Localizer "Click Connect and select your device's serial port" }}</li>
             <li>{{ t .Localizer "Click Flash Tools if needed" }}</li>
-            <li>{{ t .Localizer "Set the flash address to" }} <strong>0x0</strong></li>
+            <li>
+                {{ t .Localizer "Set the flash address to" }} <strong>0x0</strong>
+            </li>
             <li>{{ t .Localizer "Select your downloaded firmware file and click Program/Flash" }}</li>
             <li>{{ t .Localizer "Reboot the device if it doesn't restart automatically" }}</li>
         </ol>
     </section>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Troubleshooting" }}</h2>
@@ -168,8 +198,13 @@
             <i>{{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}</i>
         </p>
         <ul>
-            <li><a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads" target="_blank">CP210x Drivers</a></li>
-            <li><a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank">CH34x Drivers</a></li>
+            <li>
+                <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads"
+                   target="_blank">CP210x Drivers</a>
+            </li>
+            <li>
+                <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank">CH34x Drivers</a>
+            </li>
         </ul>
     </section>
 </div>

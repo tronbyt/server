@@ -8,10 +8,11 @@
         <div>
             <p class="settings-eyebrow">{{ t .Localizer "System Settings" }}</p>
             <h1>{{ t .Localizer "Content and Firmware" }}</h1>
-            <p class="settings-page-copy">{{ t .Localizer "Manage where apps and firmware come from, and refresh what is available on this server." }}</p>
+            <p class="settings-page-copy">
+                {{ t .Localizer "Manage where apps and firmware come from, and refresh what is available on this server." }}
+            </p>
         </div>
     </header>
-
     {{ if .User.IsAdmin }}
     <section class="settings-card">
         <div class="settings-card-header">
@@ -24,7 +25,9 @@
                 <div class="settings-field-control">
                     {{ if .SystemRepoInfo }}
                     <div class="settings-meta-block">
-                        <a href="{{ .SystemRepoInfo.URL }}" target="_blank" id="system-repo-url-link">{{ .SystemRepoInfo.URL }}</a>
+                        <a href="{{ .SystemRepoInfo.URL }}"
+                           target="_blank"
+                           id="system-repo-url-link">{{ .SystemRepoInfo.URL }}</a>
                         <div id="system-repo-branch">{{ t .Localizer "Branch" }}: {{ .SystemRepoInfo.Branch }}</div>
                         <div>
                             {{ t .Localizer "Commit" }}:
@@ -32,21 +35,23 @@
                                target="_blank"
                                title="{{ .SystemRepoInfo.CommitHash }}"
                                id="system-repo-commit-link">
-                                {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
+                            {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
                             </a>
                             {{ if .SystemRepoInfo.CommitDate }}
                             <span id="system-repo-commit-date">{{ .SystemRepoInfo.CommitDate }}</span>
                             {{ end }}
                         </div>
                     </div>
-                    {{ else }}
+                {{ else }}
                     <p class="settings-help">{{ t .Localizer "No system repository configured." }}</p>
                     {{ end }}
                 </div>
             </div>
         </div>
         <div class="settings-actions">
-            <form method="post" action="/refresh_system_repo" onsubmit="event.preventDefault(); refreshSystemRepo(this);">
+            <form method="post"
+                  action="/refresh_system_repo"
+                  onsubmit="event.preventDefault(); refreshSystemRepo(this);">
                 <button type="submit" class="w3-button w3-blue">
                     <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Refresh" }}
                 </button>
@@ -70,14 +75,15 @@
                                 <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
                             </button>
                         </div>
-                        <p class="settings-help">{{ t .Localizer "Replacing the existing system repo will delete the previous repo and break any apps using that repo." }}</p>
+                        <p class="settings-help">
+                            {{ t .Localizer "Replacing the existing system repo will delete the previous repo and break any apps using that repo." }}
+                        </p>
                     </div>
                 </div>
             </form>
         </div>
     </section>
     {{ end }}
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Custom Apps Repository" }}</h2>
@@ -96,14 +102,14 @@
                             <a href="{{ .UserRepoInfo.CommitURL }}"
                                target="_blank"
                                title="{{ .UserRepoInfo.CommitHash }}">
-                                {{ if .UserRepoInfo.CommitMessage }}{{ .UserRepoInfo.CommitMessage }}{{ else }}{{ substr .UserRepoInfo.CommitHash 0 8 }}{{ end }}
+                            {{ if .UserRepoInfo.CommitMessage }}{{ .UserRepoInfo.CommitMessage }}{{ else }}{{ substr .UserRepoInfo.CommitHash 0 8 }}{{ end }}
                             </a>
                             {{ if .UserRepoInfo.CommitDate }}
                             <span>{{ .UserRepoInfo.CommitDate }}</span>
                             {{ end }}
                         </div>
                     </div>
-                    {{ else }}
+                {{ else }}
                     <p class="settings-help">{{ t .Localizer "No custom repository configured." }}</p>
                     {{ end }}
                 </div>
@@ -146,13 +152,14 @@
                                 <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
                             </button>
                         </div>
-                        <p class="settings-help">{{ t .Localizer "Replacing an existing custom repo will delete the previous repo and break any apps using that repo." }}</p>
+                        <p class="settings-help">
+                            {{ t .Localizer "Replacing an existing custom repo will delete the previous repo and break any apps using that repo." }}
+                        </p>
                     </div>
                 </div>
             </form>
         </div>
     </section>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Content Preferences" }}</h2>
@@ -170,10 +177,14 @@
                                    name="add_apps_to_top"
                                    id="add_apps_to_top"
                                    value="1"
-                                   {{ if .User.AddAppsToTop }}checked{{ end }}>
+                                   {{ if .User.AddAppsToTop }}
+                                   checked
+                                   {{ end }}>
                             <span>{{ t .Localizer "Add new device apps to the top of the list" }}</span>
                         </label>
-                        <p class="settings-help">{{ t .Localizer "When enabled, an app you add to a device will be inserted at position #1 in that device's app rotation instead of at the end." }}</p>
+                        <p class="settings-help">
+                            {{ t .Localizer "When enabled, an app you add to a device will be inserted at position #1 in that device's app rotation instead of at the end." }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -184,7 +195,6 @@
             </div>
         </form>
     </section>
-
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Firmware" }}</h2>
@@ -200,7 +210,9 @@
             </div>
         </div>
         <div class="settings-actions">
-            <form method="post" action="/update_firmware" onsubmit="event.preventDefault(); updateFirmware(this);">
+            <form method="post"
+                  action="/update_firmware"
+                  onsubmit="event.preventDefault(); updateFirmware(this);">
                 <button type="submit" class="w3-button w3-blue">
                     <i class="fa-solid {{ if ne .FirmwareVersion "unknown" }}fa-arrows-rotate{{ else }}fa-download{{ end }}"
                        aria-hidden="true"></i> {{ if ne .FirmwareVersion "unknown" }}{{ t .Localizer "Update" }}{{ else }}{{ t .Localizer "Download" }}{{ end }}

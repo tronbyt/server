@@ -2,16 +2,16 @@
 <div class="app-group">
     <div class="app-group-header">
         <h3 class="app-group-title">{{ .Title }}</h3>
-    {{ if and .ShowVersion .SystemRepoInfo .SystemRepoInfo.CommitHash }}
-    <span class="app-group-meta">
-        (version: <a href="{{ .SystemRepoInfo.CommitURL }}"
+        {{ if and .ShowVersion .SystemRepoInfo .SystemRepoInfo.CommitHash }}
+        <span class="app-group-meta">
+            (version: <a href="{{ .SystemRepoInfo.CommitURL }}"
     target="_blank"
     title="{{ .SystemRepoInfo.CommitHash }}">
-    {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
-    </a>{{ if .SystemRepoInfo.CommitDate }} - {{ .SystemRepoInfo.CommitDate }}{{ end }})
-</span>
-{{ end }}
-    </div>
+        {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
+        </a>{{ if .SystemRepoInfo.CommitDate }} - {{ .SystemRepoInfo.CommitDate }}{{ end }})
+    </span>
+    {{ end }}
+</div>
 {{ if .ShowControls }}
 <!-- Filter and Sort Controls -->
 <div class="filter-sort-controls">
@@ -91,7 +91,9 @@
              style="opacity: 0.4"
              {{ end }}>
     </div>
-    <p class="app-item-title {{ if .App.Broken }}app-item-muted{{ end }}">{{ .App.Name }}{{ if .App.Summary }} - {{ .App.Summary }}{{ end }}</p>
+    <p class="app-item-title {{ if .App.Broken }}app-item-muted{{ end }}">
+        {{ .App.Name }}{{ if .App.Summary }} - {{ .App.Summary }}{{ end }}
+    </p>
     {{ if .App.Author }}
     <p class="app-item-meta {{ if .App.Broken }}app-item-muted{{ end }}">{{ t .Localizer "From" }} {{ .App.Author }}</p>
     {{ end }}
@@ -111,10 +113,14 @@
     {{ if not .ConfigProduction }}
     {{ if .App.Broken }}
     <button class="unmark-broken-btn"
-            onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">{{ t .Localizer "Unmark Broken" }}</button>
+            onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
+        {{ t .Localizer "Unmark Broken" }}
+    </button>
 {{ else }}
     <button class="mark-broken-btn"
-            onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">{{ t .Localizer "Mark Broken" }}</button>
+            onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
+        {{ t .Localizer "Mark Broken" }}
+    </button>
     {{ end }}
     {{ end }}
 </div>
