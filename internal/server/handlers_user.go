@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
@@ -150,6 +151,37 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed to delete user", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
+}
+
+func (s *Server) handleAdminUpdateUserEmail(w http.ResponseWriter, r *http.Request) {
+	targetUsername := r.PathValue("username")
+	user := GetUser(r)
+	if !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	targetUser, err := gorm.G[data.User](s.DB).Where("username = ?", targetUsername).First(r.Context())
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	email := strings.TrimSpace(r.FormValue("email"))
+	if email == "" {
+		targetUser.Email = nil
+	} else {
+		targetUser.Email = &email
+	}
+
+	updates := data.User{Email: targetUser.Email}
+	if _, err := gorm.G[data.User](s.DB).Where("username = ?", targetUsername).Select("Email").Updates(r.Context(), updates); err != nil {
+		slog.Error("Failed to update user email", "username", targetUsername, "error", err)
+		s.flashAndRedirect(w, r, "That email address is already in use.", "/settings/admin", http.StatusSeeOther)
 		return
 	}
 

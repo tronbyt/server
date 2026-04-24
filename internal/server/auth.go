@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"log/slog"
 	"tronbyt-server/internal/auth"
@@ -376,7 +377,7 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 
 	oldPassword := r.FormValue("old_password")
 	newPassword := r.FormValue("password")
-	email := r.FormValue("email")
+	email := strings.TrimSpace(r.FormValue("email"))
 
 	needsSave := false
 
@@ -430,8 +431,13 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 			AddAppsToTop: user.AddAppsToTop,
 		}
 		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email", "AddAppsToTop").Updates(r.Context(), updates); err != nil {
+			localizer := s.getLocalizer(r)
 			slog.Error("Failed to update user profile", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			s.renderTemplate(w, r, "settings_account", TemplateData{
+				User:            &user,
+				Flashes:         []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "That email address is already in use."})},
+				SettingsSection: "account",
+			})
 			return
 		}
 	}

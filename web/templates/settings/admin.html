@@ -69,18 +69,31 @@
                     {{ if .IsAdmin }}
                     <span class="settings-tag">{{ t $.Localizer "Admin" }}</span>
                     {{ end }}
-                    <span>{{ if .Email }}{{ .Email }}{{ else }}{{ t $.Localizer "No email address" }}{{ end }}</span>
                     <span>{{ len .Devices }} {{ if eq (len .Devices) 1 }}{{ t $.Localizer "device" }}{{ else }}{{ t $.Localizer "devices" }}{{ end }}</span>
                 </div>
-                {{ if ne .Username $.User.Username }}
-                <button class="w3-button w3-red"
-                        type="button"
-                        onclick="deleteUser('{{ .Username }}')">
-                    <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete User" }}
-                </button>
-                {{ else }}
-                <span class="settings-help">{{ t $.Localizer "Current user" }}</span>
-                {{ end }}
+                <div class="settings-actions">
+                    <form method="post"
+                          action="/settings/admin/users/{{ .Username }}/email"
+                          class="settings-inline-form">
+                        <input type="email"
+                               name="email"
+                               value="{{ derefOr .Email "" }}"
+                               placeholder="{{ t $.Localizer "No email address" }}"
+                               class="settings-input">
+                        <button class="w3-button w3-blue" type="submit">
+                            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
+                        </button>
+                    </form>
+                    {{ if ne .Username $.User.Username }}
+                    <button class="w3-button w3-red"
+                            type="button"
+                            onclick="deleteUser('{{ .Username }}')">
+                        <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete User" }}
+                    </button>
+                    {{ else }}
+                    <span class="settings-help">{{ t $.Localizer "Current user" }}</span>
+                    {{ end }}
+                </div>
             </li>
             {{ end }}
         </ul>

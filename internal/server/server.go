@@ -233,6 +233,7 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("GET /settings/admin", s.RequireLogin(s.handleAdminIndex))
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 	s.Router.HandleFunc("DELETE /settings/admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
+	s.Router.HandleFunc("POST /settings/admin/users/{username}/email", s.RequireLogin(s.handleAdminUpdateUserEmail))
 
 	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
 	s.Router.HandleFunc("POST /devices/create", s.RequireLogin(s.handleCreateDevicePost))

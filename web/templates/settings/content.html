@@ -156,7 +156,7 @@
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "Content Preferences" }}</h2>
-            <p>{{ t .Localizer "Choose how new apps are added to your device lists." }}</p>
+            <p>{{ t .Localizer "Choose where a new app appears when you add it to a device." }}</p>
         </div>
         <form method="post" action="/settings/account" class="settings-form">
             <div class="settings-field-list">
@@ -171,9 +171,9 @@
                                    id="add_apps_to_top"
                                    value="1"
                                    {{ if .User.AddAppsToTop }}checked{{ end }}>
-                            <span>{{ t .Localizer "Add new apps to top of list" }}</span>
+                            <span>{{ t .Localizer "Add new device apps to the top of the list" }}</span>
                         </label>
-                        <p class="settings-help">{{ t .Localizer "When enabled, newly added apps will appear at position #1 instead of at the end." }}</p>
+                        <p class="settings-help">{{ t .Localizer "When enabled, an app you add to a device will be inserted at position #1 in that device's app rotation instead of at the end." }}</p>
                     </div>
                 </div>
             </div>

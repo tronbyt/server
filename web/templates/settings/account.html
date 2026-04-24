@@ -26,7 +26,7 @@
                         <input type="email"
                                name="email"
                                id="email"
-                               value="{{ if .User.Email }}{{ .User.Email }}{{ end }}"
+                               value="{{ derefOr .User.Email "" }}"
                                class="settings-input">
                     </div>
                 </div>
