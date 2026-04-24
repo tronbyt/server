@@ -1,17 +1,34 @@
-package main
+package boot
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"syscall"
+
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	uid := 1000
-	gid := 1000
+const Name = "boot"
+
+func New() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   Name,
+		Short: "Boot wrapper",
+		RunE:  run,
+
+		SilenceUsage: true,
+	}
+	cmd.Hidden = true
+	return cmd
+}
+
+func run(_ *cobra.Command, args []string) error {
+	uid, gid := 1000, 1000
 
 	if s := os.Getenv("PUID"); s != "" {
 		if i, err := strconv.Atoi(s); err != nil {
@@ -20,6 +37,7 @@ func main() {
 			uid = i
 		}
 	}
+
 	if s := os.Getenv("PGID"); s != "" {
 		if i, err := strconv.Atoi(s); err != nil {
 			slog.Warn("Invalid PGID value, using default", "pgid", s, "error", err)
@@ -70,25 +88,25 @@ func main() {
 			}
 		}
 
-		dropPrivileges(uid, gid)
+		if err := dropPrivileges(uid, gid); err != nil {
+			return fmt.Errorf("failed to drop privileges: %w", err)
+		}
 	}
 
-	if len(os.Args) < 2 {
-		slog.Error("No command provided to boot wrapper")
-		os.Exit(1)
+	if len(args) == 0 {
+		return errors.New("no command provided to boot wrapper")
 	}
 
-	cmdName := os.Args[1]
-	cmdArgs := os.Args[1:]
+	cmdName := args[0]
+	cmdArgs := args[0:]
 
 	cmdPath, err := exec.LookPath(cmdName)
 	if err != nil {
-		slog.Error("Command not found", "cmd", cmdName, "error", err)
-		os.Exit(1)
+		return fmt.Errorf("%s: command not found: %w", cmdName, err)
 	}
 
 	if err := syscall.Exec(cmdPath, cmdArgs, os.Environ()); err != nil {
-		slog.Error("Failed to exec command", "cmd", cmdName, "error", err)
-		os.Exit(1)
+		return fmt.Errorf("%s: exec: %w", cmdName, err)
 	}
+	return nil
 }

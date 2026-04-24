@@ -46,7 +46,4 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 5. Build 'migrate' (Database tool)
-go build -ldflags="-w -s" -o migrate.exe ./cmd/migrate
-
 Write-Host "Build Complete!" -ForegroundColor Green

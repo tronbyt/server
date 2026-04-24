@@ -15,6 +15,8 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/quic-go/quic-go v0.59.0
+	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
 	github.com/tronbyt/pixlet v0.52.0
@@ -77,6 +79,7 @@ require (
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/tink/go v1.7.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.9.0 // indirect
