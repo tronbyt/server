@@ -41,6 +41,8 @@ func New() *cobra.Command {
 }
 
 func preRun(cmd *cobra.Command, _ []string) error {
+	cmd.SilenceUsage = true
+
 	// Initialize slog before anything else that might log
 	slog.SetDefault(slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil)))
 

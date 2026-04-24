@@ -15,7 +15,7 @@ import (
 func New() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reset-password username new_password",
-		Short: "Reset a user password",
+		Short: "Resets the password for a specified user",
 		RunE:  run,
 		Args:  cobra.ExactArgs(2),
 	}
