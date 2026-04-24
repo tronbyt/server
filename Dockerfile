@@ -40,9 +40,17 @@ ARG BUILD_DATE=unknown
 # Build all Go binaries in a single layer
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 xx-go build -ldflags="-w -s -extldflags '-static'" -o boot ./cmd/boot && \
-    CGO_ENABLED=1 xx-go build -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" -tags gzip_fonts -o tronbyt-server ./cmd/server && \
-    CGO_ENABLED=1 xx-go build -ldflags="-w -s -extldflags '-static'" -o migrate ./cmd/migrate
+    set -x \
+    && CGO_ENABLED=1 xx-go build \
+    -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" \
+    -tags gzip_fonts \
+    -o build/app/tronbyt-server \
+    ./cmd/server
+
+WORKDIR /app/build
+
+RUN ln -s /app/tronbyt-server boot \
+    && ln -s /app/tronbyt-server app/migrate
 
 # --- Runtime Stage ---
 FROM scratch
@@ -53,9 +61,7 @@ WORKDIR /app
 COPY --from=build-production /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 # Copy compiled binaries from builder
-COPY --from=build-production /app/boot /boot
-COPY --from=build-production /app/tronbyt-server /app/tronbyt-server
-COPY --from=build-production /app/migrate /app/migrate
+COPY --from=build-production /app/build /
 
 # Expose port
 EXPOSE 8000

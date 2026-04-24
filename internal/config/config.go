@@ -3,6 +3,7 @@ package config
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -29,6 +30,10 @@ type Settings struct {
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
 	LogFormat              string `env:"LOG_FORMAT"               envDefault:"text"`
 	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
+}
+
+func (s *Settings) SystemAppsDir() string {
+	return filepath.Join(s.DataDir, "system-apps")
 }
 
 // TemplateConfig holds configuration values needed in templates.

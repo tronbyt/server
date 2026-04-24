@@ -1,7 +1,8 @@
 //go:build windows
 
-package main
+package boot
 
-func dropPrivileges(uid, gid int) {
+func dropPrivileges(uid, gid int) error {
 	// No-op on Windows - privilege management works differently
+	return nil
 }
