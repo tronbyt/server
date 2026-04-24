@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/config"
 	"github.com/go-git/go-git/v6/plumbing"
-	"github.com/go-git/go-git/v6/plumbing/transport"
+	"github.com/go-git/go-git/v6/plumbing/client"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
 )
 
@@ -97,15 +97,15 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	slog.Info("Checking git repo", "path", path, "url", repoURL)
 
-	var auth transport.AuthMethod
+	var clientOpts []client.Option
 
 	u, err := url.Parse(repoURL)
 	if err == nil && u.User == nil {
 		if token != "" && (u.Scheme == "http" || u.Scheme == "https") && u.Host == "github.com" {
-			auth = &http.BasicAuth{
+			clientOpts = append(clientOpts, client.WithHTTPAuth(&http.BasicAuth{
 				Username: token,
 				Password: "", // For GitHub PATs, the password can be empty.
-			}
+			}))
 		}
 	} else if err != nil {
 		slog.Warn("Failed to parse repo URL", "url", repoURL, "error", err)
@@ -115,12 +115,12 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		slog.Info("Cloning repo", "url", repoURL)
 		r, err := git.PlainClone(path, &git.CloneOptions{
-			URL:          repoURL,
-			Progress:     &logWriter{},
-			Depth:        1,
-			SingleBranch: true,
-			Tags:         git.NoTags,
-			Auth:         auth,
+			URL:           repoURL,
+			Progress:      &logWriter{},
+			Depth:         1,
+			SingleBranch:  true,
+			Tags:          git.NoTags,
+			ClientOptions: clientOpts,
 		})
 		if err == nil {
 			_ = r.Close()
@@ -194,13 +194,13 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	refSpec := config.RefSpec(fmt.Sprintf("+refs/heads/%s:refs/remotes/origin/%s", branchName, branchName))
 
 	err = r.Fetch(&git.FetchOptions{
-		RemoteName: "origin",
-		Progress:   &logWriter{},
-		Depth:      1,
-		Tags:       git.NoTags,
-		Force:      true,
-		Auth:       auth,
-		RefSpecs:   []config.RefSpec{refSpec},
+		RemoteName:    "origin",
+		Progress:      &logWriter{},
+		Depth:         1,
+		Tags:          git.NoTags,
+		Force:         true,
+		ClientOptions: clientOpts,
+		RefSpecs:      []config.RefSpec{refSpec},
 	})
 
 	// Handle fetch errors
