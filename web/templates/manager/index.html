@@ -3,21 +3,33 @@
 {{ end }}
 {{ define "title" }}{{ t .Localizer "Home" }}{{ end }}
 {{ define "header" }}
-<!-- Add viewport meta tag -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Include external CSS and JS -->
 <link rel="stylesheet" href="/static/css/manager.css">
 {{ end }}
 {{ define "content" }}
-{{ if .User }}
-<br>
-<a class="w3-button w3-purple w3-round w3-padding"
-   href="/devices/create"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "New Tronbyt" }}</a>
-<hr>
+<div class="settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "Home" }}</p>
+            <h1>{{ t .Localizer "App Management" }}</h1>
+            <p class="settings-page-copy">{{ t .Localizer "Choose a device, then manage the apps it shows." }}</p>
+        </div>
+        {{ if .User }}
+        <div class="settings-actions">
+            <a class="w3-button w3-purple" href="/devices/create">
+                <i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "New Tronbyt" }}
+            </a>
+        </div>
+        {{ end }}
+    </header>
+    {{ if gt (len .Devices) 1 }}
+    <nav class="settings-subnav" aria-label="{{ t .Localizer "Devices" }}">
+        {{ range .Devices }}
+        <a class="settings-subnav-link" href="#device-card-{{ .ID }}">{{ .Name }}</a>
+        {{ end }}
+    </nav>
+    {{ end }}
+    {{ range .Devices }}
+    {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "AllDevices" $.AllDevices) }}
+    {{ end }}
+</div>
 {{ end }}
-{{ range .Devices }}
-{{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "AllDevices" $.AllDevices) }}
-<hr>
-{{ end }}
-{{ end }}
-h

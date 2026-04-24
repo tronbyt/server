@@ -1,0 +1,276 @@
+{{ define "settings_account" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "System Settings" }}{{ end }}
+{{ define "content" }}
+<div class="settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "System Settings" }}</p>
+            <h1>{{ t .Localizer "Account" }}</h1>
+            <p class="settings-page-copy">{{ t .Localizer "Manage your login, security, and API access." }}</p>
+        </div>
+    </header>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Profile" }}</h2>
+        </div>
+        <form method="post" action="/settings/account" class="settings-form">
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="email">{{ t .Localizer "Email Address" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="email"
+                               name="email"
+                               id="email"
+                               value="{{ derefOr .User.Email "" }}"
+                               class="settings-input">
+                    </div>
+                </div>
+            </div>
+            <div class="settings-card-subsection">
+                <h3>{{ t .Localizer "Change Password" }}</h3>
+                <div class="settings-field-list">
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="old_password">{{ t .Localizer "Old Password" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="password"
+                                   name="old_password"
+                                   id="old_password"
+                                   class="settings-input">
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="password">{{ t .Localizer "New Password" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="password" name="password" id="password" class="settings-input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="submit" class="w3-button w3-green">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save Changes" }}
+                </button>
+            </div>
+        </form>
+    </section>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Passkey" }}</h2>
+            <p>{{ t .Localizer "Manage sign-in with a hardware key, browser, or device passkey." }}</p>
+            <p>
+                {{ t .Localizer "Passkeys only work when Tronbyt is opened on a secure connection. If passkey setup is unavailable, ask whoever manages your server whether HTTPS is enabled." }}
+            </p>
+        </div>
+        <div id="webauthn-settings-container">
+            <ul class="settings-list">
+                {{ range .User.Credentials }}
+                <li class="settings-list-item">
+                    <div class="settings-list-copy">
+                        {{ $iconLight := webauthn_icon .Authenticator false }}
+                        {{ $iconDark := webauthn_icon .Authenticator true }}
+                        {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
+                        <span class="authenticator-icon-container">
+                            <img src="{{ $iconLight }}"
+                                 alt="Authenticator Icon"
+                                 class="auth-icon-light authenticator-icon">
+                            <img src="{{ $iconDark }}"
+                                 alt="Authenticator Icon"
+                                 class="auth-icon-dark authenticator-icon">
+                        </span>
+                        {{ else if or $iconLight $iconDark }}
+                        <img src="{{ or $iconLight $iconDark }}"
+                             alt="Authenticator Icon"
+                             class="authenticator-icon">
+                    {{ else }}
+                        <i class="fa-solid fa-key"></i>
+                        {{ end }}
+                        <span>{{ or .Name .Authenticator }}{{ if ne .AttestationType "none" }} ({{ .AttestationType }}){{ end }}</span>
+                    </div>
+                    <button onclick="deletePasskey('{{ .ID }}')"
+                            class="w3-button w3-red"
+                            type="button"
+                            title="{{ t $.Localizer "Delete Passkey" }}">
+                        <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete" }}
+                    </button>
+                </li>
+            {{ else }}
+                <li class="settings-list-empty">{{ t .Localizer "No passkeys registered." }}</li>
+                {{ end }}
+            </ul>
+            <div class="settings-actions">
+                <button onclick="registerPasskey()"
+                        class="w3-button w3-blue"
+                        type="button"
+                        {{ if gt (len .User.Credentials) 0 }}
+                        disabled
+                        title="{{ t .Localizer "Only one passkey allowed" }}"
+                        {{ end }}>
+                    <i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Register New Passkey" }}
+                </button>
+            </div>
+            {{ if gt (len .User.Credentials) 0 }}
+            <p class="settings-help">
+                <i class="fa-solid fa-circle-info"></i>
+                {{ t .Localizer "Only one passkey can be registered at a time. Delete the existing one to add a new device." }}
+            </p>
+            {{ end }}
+        </div>
+    </section>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "API Access" }}</h2>
+            <p>{{ t .Localizer "Use this key for user-level API calls and integrations." }}</p>
+        </div>
+        <form method="post" action="/auth/set_api_key" class="settings-form">
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="api_key">{{ t .Localizer "User API Key" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="settings-inline-group settings-api-key-row">
+                            <input type="text"
+                                   name="api_key"
+                                   id="api_key"
+                                   required
+                                   value="{{ .User.APIKey }}"
+                                   class="settings-input settings-input-xwide settings-input-code">
+                            <button type="button" class="w3-button w3-blue" onclick="copyAPIKey()">
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> {{ t .Localizer "Copy" }}
+                            </button>
+                            <button type="submit"
+                                    class="w3-button w3-green"
+                                    onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
+                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="settings-actions">
+            <form method="post" action="/auth/generate_api_key">
+                <button type="submit"
+                        class="w3-button w3-blue"
+                        onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
+                    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Generate New" }}
+                </button>
+            </form>
+        </div>
+    </section>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            const el = document.getElementById('webauthn-settings-container');
+            if (el) el.style.display = 'none';
+        }
+    });
+
+    function bufferDecode(value) {
+        return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");
+    }
+
+    async function deletePasskey(id) {
+        if (!confirm('{{ t .Localizer "Delete this passkey?" }}')) return;
+        try {
+            const resp = await fetch('/auth/webauthn/delete/' + encodeURIComponent(id), {
+                method: 'POST'
+            });
+            if (resp.ok) {
+                location.reload();
+            } else {
+                alert("{{ t .Localizer "Failed to delete passkey" }}");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error: " + e.message);
+        }
+    }
+
+    async function registerPasskey() {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            alert("{{ t .Localizer "WebAuthn is not supported in this browser." }}");
+            return;
+        }
+        try {
+            const resp = await fetch('/auth/webauthn/register/begin');
+            if (!resp.ok) throw new Error("Failed to begin registration");
+
+            const options = await resp.json();
+            options.publicKey.challenge = bufferDecode(options.publicKey.challenge);
+            options.publicKey.user.id = bufferDecode(options.publicKey.user.id);
+            if (options.publicKey.excludeCredentials) {
+                options.publicKey.excludeCredentials.forEach(c => {
+                    c.id = bufferDecode(c.id);
+                });
+            }
+
+            const credential = await navigator.credentials.create({
+                publicKey: options.publicKey
+            });
+
+            const body = {
+                id: credential.id,
+                rawId: bufferEncode(credential.rawId),
+                type: credential.type,
+                response: {
+                    attestationObject: bufferEncode(credential.response.attestationObject),
+                    clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                }
+            };
+
+            const finishResp = await fetch('/auth/webauthn/register/finish', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (finishResp.ok) {
+                location.reload();
+            } else {
+                alert("Registration failed");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error: " + e.message);
+        }
+    }
+
+    async function copyAPIKey() {
+        const input = document.getElementById('api_key');
+        if (!input) return;
+
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+
+        try {
+            await navigator.clipboard.writeText(input.value);
+        } catch (e) {
+            try {
+                document.execCommand('copy');
+            } catch (copyError) {
+                alert("{{ t .Localizer "Failed to copy API key" }}");
+            }
+        }
+    }
+</script>
+{{ end }}

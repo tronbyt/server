@@ -110,6 +110,7 @@ type TemplateData struct {
 	URLWarning                string // Warning about localhost in image URL
 	ReadOnly                  bool   // Indicate if the view should be read-only
 	Partial                   string
+	SettingsSection           string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.

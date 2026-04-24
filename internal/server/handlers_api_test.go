@@ -15,6 +15,8 @@ import (
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -478,6 +480,72 @@ func TestHandlePatchDevice(t *testing.T) {
 	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, body)
 	rr = httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
+}
+
+func TestHandlePatchDeviceNightModeActive(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	device.NightModeEnabled = true
+	device.NightStart = "22:00"
+	device.NightEnd = "06:00"
+	require.NoError(t, s.DB.Save(device).Error)
+
+	active := true
+	update := DeviceUpdate{NightModeActive: &active}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var payload DevicePayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	assert.True(t, payload.NightMode.Active)
+	require.NotNil(t, payload.NightMode.OverrideUntil)
+
+	updatedDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, updatedDevice.NightModeOverride)
+	require.NotNil(t, updatedDevice.NightModeOverrideUntil)
+	assert.True(t, *updatedDevice.NightModeOverride)
+}
+
+func TestHandlePatchDeviceDimModeActive(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	dimTime := "18:00"
+	device.DimModeEnabled = true
+	device.DimTime = &dimTime
+	require.NoError(t, s.DB.Save(device).Error)
+
+	active := true
+	update := DeviceUpdate{DimModeActive: &active}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var payload DevicePayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	assert.True(t, payload.DimMode.Active)
+	require.NotNil(t, payload.DimMode.OverrideUntil)
+
+	updatedDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, updatedDevice.DimModeOverride)
+	require.NotNil(t, updatedDevice.DimModeOverrideUntil)
+	assert.True(t, *updatedDevice.DimModeOverride)
 }
 
 func TestHandlePatchInstallation(t *testing.T) {

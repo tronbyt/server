@@ -4,67 +4,110 @@
 {{ define "title" }}{{ t .Localizer "Add App" }}{{ end }}
 {{ define "header" }}
 <link rel="stylesheet" href="/static/css/addapp-simple.css">
-<h1>{{ t .Localizer "Add App" }}</h1>
 {{ end }}
 {{ define "content" }}
-<div id="addapp_page_identifier">
+<div id="addapp_page_identifier" class="addapp-shell settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "Apps" }}</p>
+            <h1>{{ t .Localizer "Add App" }}</h1>
+            <p class="settings-page-copy">
+                {{ t .Localizer "Choose an app to install on this device, then configure its timing and options." }}
+            </p>
+        </div>
+    </header>
     <!-- Loading indicator -->
     <div id="loading-indicator" class="loading-container">
         <div class="loading-spinner"></div>
         <p>{{ t .Localizer "Loading apps..." }}</p>
     </div>
-    <a class="w3-button w3-purple w3-round w3-padding"
-       href="/devices/{{ .Device.ID }}/uploadapp"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Upload app" }}</a>
-    <form method="post" id="main_form">
-        <label for="name">{{ t .Localizer "App Selection" }}</label>
-        {{ if .CustomApps }}
-        {{ template "app_list_grid" (dict
-        "Title" (t .Localizer "Custom Apps")
-        "SearchID" "custom_search"
-        "GridID" "custom_app_grid"
-        "Apps" .CustomApps
-        "IsCustom" true
-        "DeviceID" .Device.ID
-        "Localizer" .Localizer
-        "ConfigProduction" .Config.Production
-        ) }}
-        <hr>
-        {{ end }}
-        {{ template "app_list_grid" (dict
-        "Title" (t .Localizer "System Apps")
-        "SearchID" "system_search"
-        "GridID" "system_app_grid"
-        "Apps" .SystemApps
-        "ShowControls" true
-        "ShowVersion" true
-        "IsCustom" false
-        "DeviceID" .Device.ID
-        "Localizer" .Localizer
-        "SystemRepoInfo" .SystemRepoInfo
-        "ConfigProduction" .Config.Production
-        ) }}
+    <div class="addapp-actions">
+        <a class="w3-button w3-purple"
+           href="/devices/{{ .Device.ID }}/uploadapp"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Upload app" }}</a>
+    </div>
+    <form method="post" id="main_form" class="addapp-config">
+        <section class="settings-card">
+            <div class="settings-card-header">
+                <h2>{{ t .Localizer "App Selection" }}</h2>
+            </div>
+            {{ if .CustomApps }}
+            {{ template "app_list_grid" (dict
+            "Title" (t .Localizer "Custom Apps")
+            "SearchID" "custom_search"
+            "GridID" "custom_app_grid"
+            "Apps" .CustomApps
+            "IsCustom" true
+            "DeviceID" .Device.ID
+            "Localizer" .Localizer
+            "ConfigProduction" .Config.Production
+            ) }}
+            <hr>
+            {{ end }}
+            {{ template "app_list_grid" (dict
+            "Title" (t .Localizer "System Apps")
+            "SearchID" "system_search"
+            "GridID" "system_app_grid"
+            "Apps" .SystemApps
+            "ShowControls" true
+            "ShowVersion" true
+            "IsCustom" false
+            "DeviceID" .Device.ID
+            "Localizer" .Localizer
+            "SystemRepoInfo" .SystemRepoInfo
+            "ConfigProduction" .Config.Production
+            ) }}
+        </section>
         <input type="hidden" name="name" id="selected_app">
         <input type="hidden" name="path" id="selected_app_path">
-        <br>
-        <label for="uinterval">{{ t .Localizer "Render Interval (minutes)" }}</label>
-        <input name="uinterval"
-               type="number"
-               id="uinterval"
-               min="0"
-               value="-1"
-               required>
-        <label for="display_time">{{ t .Localizer "Display Time (seconds)" }}</label>
-        <input name="display_time"
-               type="number"
-               id="display_time"
-               min="0"
-               value="0"
-               required>
-        <label for="notes">{{ t .Localizer "Notes" }}</label>
-        <textarea name="notes" id="notes"></textarea>
-        <button type="submit" class="w3-button w3-green">
-            <i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ t .Localizer "Configure" }}
-        </button>
+        <section class="settings-card">
+            <div class="settings-card-header">
+                <h2>{{ t .Localizer "Configuration" }}</h2>
+                <p>{{ t .Localizer "Set timing and notes before opening the app configuration screen." }}</p>
+            </div>
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="uinterval">{{ t .Localizer "Render Interval (minutes)" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input name="uinterval"
+                               type="number"
+                               id="uinterval"
+                               min="0"
+                               value="-1"
+                               required
+                               class="settings-input">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="display_time">{{ t .Localizer "Display Time (seconds)" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input name="display_time"
+                               type="number"
+                               id="display_time"
+                               min="0"
+                               value="0"
+                               required
+                               class="settings-input">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="notes">{{ t .Localizer "Notes" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <textarea name="notes" id="notes" class="settings-input settings-input-wide"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="submit" class="w3-button w3-green">
+                    <i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ t .Localizer "Configure" }}
+                </button>
+            </div>
+        </section>
     </form>
 </div>
 {{ end }}

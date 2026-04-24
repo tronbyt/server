@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"log/slog"
 	"tronbyt-server/internal/auth"
@@ -12,6 +13,63 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"gorm.io/gorm"
 )
+
+func (s *Server) loadSettingsUser(r *http.Request) (*data.User, bool) {
+	session, _ := s.Store.Get(r, "session-name")
+	username, ok := session.Values["username"].(string)
+	if !ok {
+		return nil, false
+	}
+
+	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Where("username = ?", username).First(r.Context())
+	if err != nil {
+		slog.Error("Failed to fetch user for settings", "username", username, "error", err)
+		return nil, false
+	}
+
+	return &user, true
+}
+
+func (s *Server) getSettingsContentData(user *data.User) TemplateData {
+	var firmwareVersion string
+	if user.IsAdmin {
+		firmwareVersion = s.GetLatestFirmwareVersion()
+	}
+	if firmwareVersion == "" {
+		firmwareVersion = "unknown"
+	}
+
+	var systemRepoInfo *gitutils.RepoInfo
+	if s.Config.SystemAppsRepo != "" {
+		path := filepath.Join(s.DataDir, "system-apps")
+		info, err := gitutils.GetRepoInfo(path, s.Config.SystemAppsRepo)
+		if err != nil {
+			slog.Error("Failed to get system repo info", "error", err)
+		} else {
+			systemRepoInfo = info
+		}
+	}
+
+	var userRepoInfo *gitutils.RepoInfo
+	if user.AppRepoURL != "" {
+		path := filepath.Join(s.DataDir, "users", user.Username, "repo")
+		info, err := gitutils.GetRepoInfo(path, user.AppRepoURL)
+		if err != nil {
+			slog.Error("Failed to get user repo info", "error", err)
+		} else {
+			userRepoInfo = info
+		}
+	}
+
+	return TemplateData{
+		User:                user,
+		FirmwareVersion:     firmwareVersion,
+		SystemRepoInfo:      systemRepoInfo,
+		UserRepoInfo:        userRepoInfo,
+		GlobalSystemRepoURL: s.Config.SystemAppsRepo,
+		SettingsSection:     "content",
+	}
+}
 
 func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleLoginGet called")
@@ -273,62 +331,34 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 }
 
 func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
-	session, _ := s.Store.Get(r, "session-name")
-	username, ok := session.Values["username"].(string)
+	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
+}
+
+func (s *Server) handleSettingsAccountGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.loadSettingsUser(r)
 	if !ok {
 		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 		return
 	}
 
-	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Where("username = ?", username).First(r.Context())
-	if err != nil {
-		slog.Error("Failed to fetch user for edit", "username", username, "error", err)
+	s.renderTemplate(w, r, "settings_account", TemplateData{
+		User:            user,
+		SettingsSection: "account",
+	})
+}
+
+func (s *Server) handleSettingsContentGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.loadSettingsUser(r)
+	if !ok {
 		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 		return
 	}
 
-	// Handle admin view specific data
-	var firmwareVersion string
-	if user.IsAdmin {
-		firmwareVersion = s.GetLatestFirmwareVersion()
-	}
-	if firmwareVersion == "" {
-		firmwareVersion = "unknown"
-	}
-
-	var systemRepoInfo *gitutils.RepoInfo
-	if s.Config.SystemAppsRepo != "" {
-		path := filepath.Join(s.DataDir, "system-apps")
-		info, err := gitutils.GetRepoInfo(path, s.Config.SystemAppsRepo)
-		if err != nil {
-			slog.Error("Failed to get system repo info", "error", err)
-		} else {
-			systemRepoInfo = info
-		}
-	}
-
-	var userRepoInfo *gitutils.RepoInfo
-	if user.AppRepoURL != "" {
-		path := filepath.Join(s.DataDir, "users", user.Username, "repo")
-		info, err := gitutils.GetRepoInfo(path, user.AppRepoURL)
-		if err != nil {
-			slog.Error("Failed to get user repo info", "error", err)
-		} else {
-			userRepoInfo = info
-		}
-	}
-
-	s.renderTemplate(w, r, "edit", TemplateData{
-		User:                &user,
-		FirmwareVersion:     firmwareVersion,
-		SystemRepoInfo:      systemRepoInfo,
-		UserRepoInfo:        userRepoInfo,
-		GlobalSystemRepoURL: s.Config.SystemAppsRepo,
-	})
+	s.renderTemplate(w, r, "settings_content", s.getSettingsContentData(user))
 }
 
 func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
@@ -347,7 +377,7 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 
 	oldPassword := r.FormValue("old_password")
 	newPassword := r.FormValue("password")
-	email := r.FormValue("email")
+	email := strings.TrimSpace(r.FormValue("email"))
 
 	needsSave := false
 
@@ -355,7 +385,11 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		valid, _, err := auth.VerifyPassword(user.Password, oldPassword)
 		if err != nil || !valid {
 			localizer := s.getLocalizer(r)
-			s.renderTemplate(w, r, "edit", TemplateData{User: &user, Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid old password"})}})
+			s.renderTemplate(w, r, "settings_account", TemplateData{
+				User:            &user,
+				Flashes:         []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid old password"})},
+				SettingsSection: "account",
+			})
 			return
 		}
 
@@ -397,13 +431,18 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 			AddAppsToTop: user.AddAppsToTop,
 		}
 		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email", "AddAppsToTop").Updates(r.Context(), updates); err != nil {
+			localizer := s.getLocalizer(r)
 			slog.Error("Failed to update user profile", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			s.renderTemplate(w, r, "settings_account", TemplateData{
+				User:            &user,
+				Flashes:         []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "That email address is already in use."})},
+				SettingsSection: "account",
+			})
 			return
 		}
 	}
 
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 }
 
 func (s *Server) handleGenerateAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -426,7 +465,7 @@ func (s *Server) handleGenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 }
 
 func (s *Server) handleSetAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -439,7 +478,7 @@ func (s *Server) handleSetAPIKey(w http.ResponseWriter, r *http.Request) {
 
 	apiKey := r.FormValue("api_key")
 	if apiKey == "" {
-		http.Redirect(w, r, "/", http.StatusSeeOther) // Should redirect to edit page?
+		http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 		return
 	}
 
@@ -447,7 +486,7 @@ func (s *Server) handleSetAPIKey(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to update API key", "error", err)
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/account", http.StatusSeeOther)
 }
 
 func (s *Server) SetupAuthRoutes() {
@@ -458,6 +497,9 @@ func (s *Server) SetupAuthRoutes() {
 	s.Router.HandleFunc("POST /auth/register", s.handleRegisterPost)
 	s.Router.HandleFunc("GET /auth/edit", s.handleEditUserGet)
 	s.Router.HandleFunc("POST /auth/edit", s.handleEditUserPost)
+	s.Router.HandleFunc("GET /settings/account", s.handleSettingsAccountGet)
+	s.Router.HandleFunc("POST /settings/account", s.handleEditUserPost)
+	s.Router.HandleFunc("GET /settings/content", s.handleSettingsContentGet)
 	s.Router.HandleFunc("POST /auth/generate_api_key", s.handleGenerateAPIKey)
 	s.Router.HandleFunc("POST /auth/set_api_key", s.handleSetAPIKey)
 

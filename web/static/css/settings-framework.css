@@ -1,0 +1,341 @@
+.settings-subnav {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, #d6d6d6);
+  flex-wrap: wrap;
+}
+
+.settings-subnav-link {
+  color: var(--muted-text, #666);
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.settings-subnav-link.active {
+  color: var(--page-text);
+  font-weight: 600;
+  background: var(--surface-bg, #fff);
+  border-color: var(--border-color, #d6d6d6);
+}
+
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 4px 2px 10px;
+}
+
+.settings-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-text, #666);
+}
+
+.settings-page-header h1,
+.settings-card-header h2,
+.settings-card-subsection h3 {
+  margin: 0;
+}
+
+.settings-page-copy,
+.settings-card-header p,
+.settings-help {
+  margin: 6px 0 0;
+  color: var(--muted-text, #666);
+  line-height: 1.45;
+  max-width: 68ch;
+}
+
+.settings-card {
+  border: 1px solid var(--border-color, #d6d6d6);
+  background: var(--surface-bg, #fff);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 30px var(--shadow-color, rgba(15, 23, 42, 0.06));
+}
+
+.settings-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-card-subsection {
+  border-top: 1px solid var(--border-color, #d6d6d6);
+  padding-top: 14px;
+}
+
+.settings-form,
+.settings-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-field-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 8px 0;
+}
+
+.settings-field-list > .settings-field-row + .settings-field-row {
+  border-top: 1px solid color-mix(in srgb, var(--border-color, #d6d6d6) 75%, transparent);
+}
+
+.settings-field-label {
+  font-weight: 600;
+  padding-top: 10px;
+  color: var(--page-text);
+}
+
+.settings-field-control {
+  min-width: 0;
+}
+
+.settings-inline-group,
+.settings-actions,
+.settings-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-actions {
+  padding-top: 4px;
+}
+
+.settings-inline-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-toggle-row {
+  min-height: 2.25rem;
+}
+
+.settings-toggle-hint {
+  margin-top: 6px;
+}
+
+.settings-control-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.settings-input {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.7rem 0.85rem;
+}
+
+.settings-input-wide {
+  max-width: 40rem;
+}
+
+.settings-input-xwide {
+  max-width: 52rem;
+}
+
+.settings-input-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.95rem;
+}
+
+.settings-file-input {
+  max-width: 46rem;
+}
+
+.settings-two-pane {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.settings-preview-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-caption {
+  margin: 0;
+  color: var(--muted-text, #666);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.settings-view-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-view-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-view-label {
+  font-weight: 600;
+  color: var(--page-text);
+}
+
+.settings-note-danger {
+  color: var(--danger-text);
+}
+
+.settings-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.settings-hidden {
+  display: none;
+}
+
+.settings-meta-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border-color, #d6d6d6);
+  border-radius: 14px;
+  background: var(--surface-subtle, #f7f7f8);
+}
+
+.settings-list-item,
+.settings-list-empty {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border-color, #d6d6d6);
+  background: var(--surface-bg, #fff);
+}
+
+.settings-list li:first-child,
+.settings-list-item:first-child,
+.settings-list-empty:first-child {
+  border-top: 0;
+}
+
+.settings-list-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-user-row {
+  align-items: flex-start;
+}
+
+.settings-user-email-form {
+  margin-top: 10px;
+  align-items: flex-start;
+}
+
+.settings-user-email-form .settings-input {
+  max-width: 22rem;
+}
+
+.settings-api-key-row {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.settings-api-key-row .settings-input {
+  flex: 1 1 32rem;
+}
+
+.settings-user-actions {
+  align-self: center;
+}
+
+.settings-dialog {
+  width: min(42rem, calc(100vw - 2rem));
+  border: 1px solid var(--border-color, #d6d6d6);
+  border-radius: 18px;
+  padding: 18px;
+  background: var(--surface-bg, #fff);
+  box-shadow: 0 24px 60px var(--shadow-color, rgba(15, 23, 42, 0.18));
+}
+
+.settings-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.settings-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px 8px;
+  border: 1px solid var(--border-color, #d6d6d6);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--muted-text, #666);
+}
+
+@media (max-width: 800px) {
+  .settings-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-field-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .settings-field-label {
+    padding-top: 0;
+  }
+
+  .settings-two-pane {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .settings-user-actions {
+    align-self: stretch;
+  }
+}
