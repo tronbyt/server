@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
+	"time"
 	"tronbyt-server/cmd/server/boot"
 	"tronbyt-server/cmd/server/health"
 	"tronbyt-server/cmd/server/migrate"
@@ -12,6 +14,8 @@ import (
 	"tronbyt-server/cmd/server/updatesystemapps"
 	"tronbyt-server/internal/config"
 
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -43,8 +47,17 @@ func New() *cobra.Command {
 func preRun(cmd *cobra.Command, _ []string) error {
 	cmd.SilenceUsage = true
 
+	var color bool
+	if f, ok := cmd.ErrOrStderr().(*os.File); ok {
+		color = isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+	}
+
 	// Initialize slog before anything else that might log
-	slog.SetDefault(slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil)))
+	slog.SetDefault(slog.New(tint.NewHandler(cmd.ErrOrStderr(), &tint.Options{
+		Level:      slog.LevelInfo,
+		TimeFormat: time.RFC3339,
+		NoColor:    !color,
+	})))
 
 	// Load configuration early to get default DB path
 	cfg, err := config.LoadSettings()
@@ -70,14 +83,17 @@ func preRun(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Create handler options with the parsed level
-	loggerHandlerOpts := &slog.HandlerOptions{
-		Level: level,
-	}
 	var logHandler slog.Handler
 	if cfg.LogFormat == "json" {
-		logHandler = slog.NewJSONHandler(cmd.ErrOrStderr(), loggerHandlerOpts)
+		logHandler = slog.NewJSONHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{
+			Level: level,
+		})
 	} else {
-		logHandler = slog.NewTextHandler(cmd.ErrOrStderr(), loggerHandlerOpts)
+		logHandler = tint.NewHandler(cmd.ErrOrStderr(), &tint.Options{
+			Level:      level,
+			TimeFormat: time.RFC3339,
+			NoColor:    !color,
+		})
 	}
 	slog.SetDefault(slog.New(logHandler))
 
