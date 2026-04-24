@@ -49,6 +49,11 @@ The `tronbyt-server` binary supports additional commands for administration:
     ./tronbyt-server health https://your-tronbyt-server.com/health
     ```
 
+*   **`update-system-apps`**: Updates the system apps repo.
+    ```bash
+    ./tronbyt-server update-system-apps
+    ```
+
 ### Monitoring
 
 *   **`/metrics`**: Exposes Prometheus-compatible metrics for monitoring the server's health and performance. This endpoint includes application-specific metrics (`tronbyt_*` for renders, device activity, HTTP requests, users/devices/apps counts), GORM database connection pool stats, and standard Go runtime metrics.
