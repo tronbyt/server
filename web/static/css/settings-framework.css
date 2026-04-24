@@ -154,6 +154,15 @@
   max-width: 40rem;
 }
 
+.settings-input-xwide {
+  max-width: 52rem;
+}
+
+.settings-input-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.95rem;
+}
+
 .settings-file-input {
   max-width: 46rem;
 }
@@ -250,6 +259,31 @@
   gap: 4px;
 }
 
+.settings-user-row {
+  align-items: flex-start;
+}
+
+.settings-user-email-form {
+  margin-top: 10px;
+  align-items: flex-start;
+}
+
+.settings-user-email-form .settings-input {
+  max-width: 22rem;
+}
+
+.settings-api-key-row {
+  align-items: center;
+}
+
+.settings-api-key-row .settings-input {
+  flex: 1 1 32rem;
+}
+
+.settings-user-actions {
+  align-self: center;
+}
+
 .settings-tag {
   display: inline-flex;
   width: fit-content;
@@ -278,5 +312,9 @@
   .settings-two-pane {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .settings-user-actions {
+    align-self: stretch;
   }
 }

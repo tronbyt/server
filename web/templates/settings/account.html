@@ -130,13 +130,18 @@
                         <label for="api_key">{{ t .Localizer "User API Key" }}</label>
                     </div>
                     <div class="settings-field-control">
-                        <div class="settings-inline-group">
+                        <div class="settings-inline-group settings-api-key-row">
                             <input type="text"
                                    name="api_key"
                                    id="api_key"
                                    required
                                    value="{{ .User.APIKey }}"
-                                   class="settings-input settings-input-wide">
+                                   class="settings-input settings-input-xwide settings-input-code">
+                            <button type="button"
+                                    class="w3-button w3-blue"
+                                    onclick="copyAPIKey()">
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> {{ t .Localizer "Copy" }}
+                            </button>
                             <button type="submit"
                                     class="w3-button w3-green"
                                     onclick="return confirm('{{ t .Localizer "Update API key?" }}');">
@@ -242,6 +247,25 @@
         } catch (e) {
             console.error(e);
             alert("Error: " + e.message);
+        }
+    }
+
+    async function copyAPIKey() {
+        const input = document.getElementById('api_key');
+        if (!input) return;
+
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+
+        try {
+            await navigator.clipboard.writeText(input.value);
+        } catch (e) {
+            try {
+                document.execCommand('copy');
+            } catch (copyError) {
+                alert("{{ t .Localizer "Failed to copy API key" }}");
+            }
         }
     }
 </script>

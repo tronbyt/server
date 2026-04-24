@@ -63,27 +63,31 @@
         </div>
         <ul class="settings-list">
             {{ range .Users }}
-            <li class="settings-list-item">
+            <li class="settings-list-item settings-user-row">
                 <div class="settings-list-copy">
                     <strong>{{ .Username }}</strong>
                     {{ if .IsAdmin }}
                     <span class="settings-tag">{{ t $.Localizer "Admin" }}</span>
                     {{ end }}
                     <span>{{ len .Devices }} {{ if eq (len .Devices) 1 }}{{ t $.Localizer "device" }}{{ else }}{{ t $.Localizer "devices" }}{{ end }}</span>
-                </div>
-                <div class="settings-actions">
                     <form method="post"
                           action="/settings/admin/users/{{ .Username }}/email"
-                          class="settings-inline-form">
-                        <input type="email"
-                               name="email"
-                               value="{{ derefOr .Email "" }}"
-                               placeholder="{{ t $.Localizer "No email address" }}"
-                               class="settings-input">
-                        <button class="w3-button w3-blue" type="submit">
-                            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
-                        </button>
+                          class="settings-inline-form settings-user-email-form">
+                        <label for="user-email-{{ .Username }}" class="settings-caption">{{ t $.Localizer "Email Address" }}</label>
+                        <div class="settings-inline-group">
+                            <input type="email"
+                                   name="email"
+                                   id="user-email-{{ .Username }}"
+                                   value="{{ derefOr .Email "" }}"
+                                   placeholder="{{ t $.Localizer "No email address" }}"
+                                   class="settings-input">
+                            <button class="w3-button w3-blue" type="submit">
+                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
+                            </button>
+                        </div>
                     </form>
+                </div>
+                <div class="settings-actions settings-user-actions">
                     {{ if ne .Username $.User.Username }}
                     <button class="w3-button w3-red"
                             type="button"
