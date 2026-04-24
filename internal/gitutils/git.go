@@ -46,6 +46,7 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open repo at %s: %w", path, err)
 	}
+	defer func() { _ = r.Close() }()
 
 	headRef, err := r.Head()
 	if err != nil {
@@ -113,7 +114,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	// Check if path exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		slog.Info("Cloning repo", "url", repoURL)
-		_, err := git.PlainClone(path, &git.CloneOptions{
+		r, err := git.PlainClone(path, &git.CloneOptions{
 			URL:          repoURL,
 			Progress:     &logWriter{},
 			Depth:        1,
@@ -121,6 +122,9 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 			Tags:         git.NoTags,
 			Auth:         auth,
 		})
+		if err == nil {
+			_ = r.Close()
+		}
 
 		return err
 	}
@@ -139,6 +143,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		// For safety, error out.
 		return fmt.Errorf("failed to open repo: %w", err)
 	}
+	defer func() { _ = r.Close() }()
 
 	// Check remote URL
 	rem, err := r.Remote("origin")
@@ -152,6 +157,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 
 		slog.Warn("Repo validation failed, re-cloning", "reason", reason, "new", repoURL)
 		// Remove and re-clone
+		_ = r.Close()
 		if err := os.RemoveAll(path); err != nil {
 			return fmt.Errorf("failed to remove old repo: %w", err)
 		}
@@ -202,6 +208,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		// If fetch fails with object not found (or other critical git error), try re-cloning
 		if errors.Is(err, plumbing.ErrObjectNotFound) {
 			slog.Warn("Git fetch failed with object not found, re-cloning", "error", err)
+			_ = r.Close()
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove broken repo: %w", err)
 			}
@@ -216,6 +223,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 	remoteRef, err := r.Reference(remoteRefName, true)
 	if err != nil {
 		slog.Warn("Failed to find remote ref, re-cloning", "ref", remoteRefName, "error", err)
+		_ = r.Close()
 		if err := os.RemoveAll(path); err != nil {
 			return fmt.Errorf("failed to remove broken repo: %w", err)
 		}
