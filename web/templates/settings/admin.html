@@ -70,24 +70,15 @@
                     <span class="settings-tag">{{ t $.Localizer "Admin" }}</span>
                     {{ end }}
                     <span>{{ len .Devices }} {{ if eq (len .Devices) 1 }}{{ t $.Localizer "device" }}{{ else }}{{ t $.Localizer "devices" }}{{ end }}</span>
-                    <form method="post"
-                          action="/settings/admin/users/{{ .Username }}/email"
-                          class="settings-inline-form settings-user-email-form">
-                        <label for="user-email-{{ .Username }}" class="settings-caption">{{ t $.Localizer "Email Address" }}</label>
-                        <div class="settings-inline-group">
-                            <input type="email"
-                                   name="email"
-                                   id="user-email-{{ .Username }}"
-                                   value="{{ derefOr .Email "" }}"
-                                   placeholder="{{ t $.Localizer "No email address" }}"
-                                   class="settings-input">
-                            <button class="w3-button w3-blue" type="submit">
-                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
-                            </button>
-                        </div>
-                    </form>
+                    <span class="settings-caption">{{ t $.Localizer "Email Address" }}</span>
+                    <span>{{ if .Email }}{{ derefOr .Email "" }}{{ else }}{{ t $.Localizer "No email address" }}{{ end }}</span>
                 </div>
                 <div class="settings-actions settings-user-actions">
+                    <button class="w3-button w3-blue"
+                            type="button"
+                            onclick="openEmailDialog('{{ .Username }}')">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t $.Localizer "Edit Email" }}
+                    </button>
                     {{ if ne .Username $.User.Username }}
                     <button class="w3-button w3-red"
                             type="button"
@@ -98,12 +89,55 @@
                     <span class="settings-help">{{ t $.Localizer "Current user" }}</span>
                     {{ end }}
                 </div>
+                <dialog id="user-email-dialog-{{ .Username }}" class="settings-dialog">
+                    <form method="post"
+                          action="/settings/admin/users/{{ .Username }}/email"
+                          class="settings-form">
+                        <div class="settings-card-header">
+                            <h3>{{ t $.Localizer "Edit Email" }}</h3>
+                            <p>{{ .Username }}</p>
+                        </div>
+                        <div class="settings-field-list">
+                            <div class="settings-field-row">
+                                <div class="settings-field-label">
+                                    <label for="user-email-{{ .Username }}">{{ t $.Localizer "Email Address" }}</label>
+                                </div>
+                                <div class="settings-field-control">
+                                    <input type="email"
+                                           name="email"
+                                           id="user-email-{{ .Username }}"
+                                           value="{{ derefOr .Email "" }}"
+                                           placeholder="{{ t $.Localizer "No email address" }}"
+                                           class="settings-input settings-input-wide">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-dialog-actions">
+                            <button class="w3-button w3-blue" type="submit">
+                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
+                            </button>
+                            <button class="w3-button" type="button" onclick="closeEmailDialog('{{ .Username }}')">
+                                {{ t $.Localizer "Cancel" }}
+                            </button>
+                        </div>
+                    </form>
+                </dialog>
             </li>
             {{ end }}
         </ul>
     </section>
 </div>
 <script>
+    function openEmailDialog(username) {
+        const dialog = document.getElementById('user-email-dialog-' + username);
+        if (dialog) dialog.showModal();
+    }
+
+    function closeEmailDialog(username) {
+        const dialog = document.getElementById('user-email-dialog-' + username);
+        if (dialog) dialog.close();
+    }
+
     function deleteUser(username) {
         if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
 

@@ -123,8 +123,8 @@
             <h2>{{ t .Localizer "API Access" }}</h2>
             <p>{{ t .Localizer "Use this key for user-level API calls and integrations." }}</p>
         </div>
-        <div class="settings-form">
-            <form method="post" action="/auth/set_api_key" class="settings-inline-form">
+        <form method="post" action="/auth/set_api_key" class="settings-form">
+            <div class="settings-field-list">
                 <div class="settings-field-row">
                     <div class="settings-field-label">
                         <label for="api_key">{{ t .Localizer "User API Key" }}</label>
@@ -150,16 +150,16 @@
                         </div>
                     </div>
                 </div>
-            </form>
-            <div class="settings-actions">
-                <form method="post" action="/auth/generate_api_key">
-                    <button type="submit"
-                            class="w3-button w3-blue"
-                            onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
-                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Generate New" }}
-                    </button>
-                </form>
             </div>
+        </form>
+        <div class="settings-actions">
+            <form method="post" action="/auth/generate_api_key">
+                <button type="submit"
+                        class="w3-button w3-blue"
+                        onclick="return confirm('{{ t .Localizer "Generate a new API key? This will replace your current API key." }}');">
+                    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Generate New" }}
+                </button>
+            </form>
         </div>
     </section>
 </div>

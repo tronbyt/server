@@ -274,6 +274,7 @@
 
 .settings-api-key-row {
   align-items: center;
+  justify-content: flex-start;
 }
 
 .settings-api-key-row .settings-input {
@@ -282,6 +283,26 @@
 
 .settings-user-actions {
   align-self: center;
+}
+
+.settings-dialog {
+  width: min(42rem, calc(100vw - 2rem));
+  border: 1px solid var(--border-color, #d6d6d6);
+  border-radius: 18px;
+  padding: 18px;
+  background: var(--surface-bg, #fff);
+  box-shadow: 0 24px 60px var(--shadow-color, rgba(15, 23, 42, 0.18));
+}
+
+.settings-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.settings-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .settings-tag {
