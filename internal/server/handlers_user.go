@@ -79,7 +79,7 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// We need to inject the current admin user into TemplateData for the header/nav
-	s.renderTemplate(w, r, "adminindex", TemplateData{User: user, Users: users})
+	s.renderTemplate(w, r, "settings_admin", TemplateData{User: user, Users: users, SettingsSection: "admin"})
 }
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +153,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 }
 
 func (s *Server) handleSetThemePreference(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +194,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	repoURL := r.FormValue("app_repo_url")
 	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "app_repo_url", repoURL); err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
-		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/auth/edit", http.StatusSeeOther)
+		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/settings/content", http.StatusSeeOther)
 		return
 	}
 
@@ -202,18 +202,18 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	if repoURL == "" {
 		if err := os.RemoveAll(appsPath); err != nil {
 			slog.Error("Failed to remove user repo directory", "error", err)
-			s.flashAndRedirect(w, r, "Failed to remove user repository. Check server logs.", "/auth/edit", http.StatusSeeOther)
+			s.flashAndRedirect(w, r, "Failed to remove user repository. Check server logs.", "/settings/content", http.StatusSeeOther)
 			return
 		}
 	} else {
 		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
 			slog.Error("Failed to sync user repo", "error", err)
-			s.flashAndRedirect(w, r, "Failed to sync user repository. Check server logs.", "/auth/edit", http.StatusSeeOther)
+			s.flashAndRedirect(w, r, "Failed to sync user repository. Check server logs.", "/settings/content", http.StatusSeeOther)
 			return
 		}
 	}
 
-	s.flashAndRedirect(w, r, "User repository updated successfully.", "/auth/edit", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "User repository updated successfully.", "/settings/content", http.StatusSeeOther)
 }
 
 func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
@@ -223,12 +223,12 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
 		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
-			s.flashAndRedirect(w, r, "Failed to refresh user repository. Check server logs.", "/auth/edit", http.StatusSeeOther)
+			s.flashAndRedirect(w, r, "Failed to refresh user repository. Check server logs.", "/settings/content", http.StatusSeeOther)
 			return
 		}
 	}
 
-	s.flashAndRedirect(w, r, "User repository refreshed successfully.", "/auth/edit", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "User repository refreshed successfully.", "/settings/content", http.StatusSeeOther)
 }
 
 func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +295,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		} else {
 			// Both failed
 			slog.Error("Failed to decode imported user JSON (both standard and legacy)", "standard_error", errStandard, "legacy_error", errLegacy)
-			s.flashAndRedirect(w, r, "Invalid JSON file or unsupported format.", "/auth/edit", http.StatusSeeOther)
+			s.flashAndRedirect(w, r, "Invalid JSON file or unsupported format.", "/settings/admin", http.StatusSeeOther)
 			return
 		}
 	}
@@ -321,7 +321,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 		deviceWebpDir, err := s.ensureDeviceImageDir(d.ID)
 		if err != nil {
 			slog.Error("Failed to get device webp directory for cleanup", "device_id", d.ID, "error", err)
-			s.flashAndRedirect(w, r, "Import failed: internal server error.", "/auth/edit", http.StatusSeeOther)
+			s.flashAndRedirect(w, r, "Import failed: internal server error.", "/settings/admin", http.StatusSeeOther)
 			return
 		}
 		if err := os.RemoveAll(deviceWebpDir); err != nil {
@@ -366,11 +366,11 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 
 	if err != nil {
 		slog.Error("Import failed", "error", err)
-		s.flashAndRedirect(w, r, "Import failed. Check server logs.", "/auth/edit", http.StatusSeeOther)
+		s.flashAndRedirect(w, r, "Import failed. Check server logs.", "/settings/admin", http.StatusSeeOther)
 		return
 	}
 
-	s.flashAndRedirect(w, r, "Configuration imported successfully.", "/auth/edit", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, "Configuration imported successfully.", "/settings/admin", http.StatusSeeOther)
 }
 
 func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
@@ -397,7 +397,7 @@ func (s *Server) handleSetSystemRepo(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to update system repo", "error", err)
 	}
 
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/content", http.StatusSeeOther)
 }
 
 func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request) {
@@ -427,5 +427,5 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/content", http.StatusSeeOther)
 }

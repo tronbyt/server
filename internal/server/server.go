@@ -58,18 +58,21 @@ type Server struct {
 
 // Map template names to their file paths relative to web/templates.
 var templateFiles = map[string]string{
-	"index":      "manager/index.html",
-	"adminindex": "manager/adminindex.html",
-	"login":      "auth/login.html",
-	"register":   "auth/register.html",
-	"edit":       "auth/edit.html",
-	"create":     "manager/create.html",
-	"addapp":     "manager/addapp.html",
-	"configapp":  "manager/configapp.html",
-	"uploadapp":  "manager/uploadapp.html",
-	"firmware":   "manager/firmware.html",
-	"update":     "manager/update.html",
-	"device_tv":  "manager/device_tv.html",
+	"index":            "manager/index.html",
+	"adminindex":       "manager/adminindex.html",
+	"login":            "auth/login.html",
+	"register":         "auth/register.html",
+	"edit":             "auth/edit.html",
+	"settings_account": "settings/account.html",
+	"settings_content": "settings/content.html",
+	"settings_admin":   "settings/admin.html",
+	"create":           "manager/create.html",
+	"addapp":           "manager/addapp.html",
+	"configapp":        "manager/configapp.html",
+	"uploadapp":        "manager/uploadapp.html",
+	"firmware":         "manager/firmware.html",
+	"update":           "manager/update.html",
+	"device_tv":        "manager/device_tv.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -224,8 +227,12 @@ func (s *Server) routes() {
 
 	// Web UI
 	s.Router.HandleFunc("GET /", s.RequireLogin(s.handleIndex))
-	s.Router.HandleFunc("GET /admin", s.RequireLogin(s.handleAdminIndex))
+	s.Router.HandleFunc("GET /admin", s.RequireLogin(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
+	}))
+	s.Router.HandleFunc("GET /settings/admin", s.RequireLogin(s.handleAdminIndex))
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
+	s.Router.HandleFunc("DELETE /settings/admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 
 	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
 	s.Router.HandleFunc("POST /devices/create", s.RequireLogin(s.handleCreateDevicePost))

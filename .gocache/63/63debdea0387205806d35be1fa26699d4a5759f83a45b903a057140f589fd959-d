@@ -1,0 +1,3 @@
+# test log
+getenv DATA_DIR
+stat .env

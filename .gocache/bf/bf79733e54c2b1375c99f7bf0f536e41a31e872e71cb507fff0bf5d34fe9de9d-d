@@ -1,0 +1,4 @@
+./argon2.go
+./blake2b.go
+./blamka_generic.go
+./blamka_ref.go

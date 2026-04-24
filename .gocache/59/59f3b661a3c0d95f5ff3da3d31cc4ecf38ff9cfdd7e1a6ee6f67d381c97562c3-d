@@ -1,0 +1,25 @@
+# test log
+getenv GOTMPDIR
+getenv TMPDIR
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps/app1
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps/app1/app1.star
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps/app2
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps/app2/app2.star
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps/app1
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps/app1/app1.webp
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps/app1/app1@2x.webp
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/apps/app1/app1.star
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps/app2
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps/app2/app2.webp
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps/app2/app2@2x.webp
+stat /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T/TestListUserApps216837587/001/users/testuser/repo/apps/app2/app2.star
+open /var/folders/hy/kwbk749x34sfdr3r3y_53zbr0000gp/T

@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/common.css">
 <link rel="stylesheet" href="/static/css/partials.css">
+<link rel="stylesheet" href="/static/css/settings-framework.css">
 <link rel="stylesheet" href="/static/css/fontawesome.min.css">
 <link rel="stylesheet" href="/static/css/brands.min.css">
 <link rel="stylesheet" href="/static/css/solid.min.css">
@@ -43,13 +44,8 @@
         <li>
             <a href="/">{{ t .Localizer "Home" }}</a>
         </li>
-        {{ if .User.IsAdmin }}
         <li>
-            <a href="/auth/register">{{ t .Localizer "Create User" }}</a>
-        </li>
-        {{ end }}
-        <li>
-            <a href="/auth/edit">{{ .User.Username }}</a>
+            <a href="/settings/account">{{ t .Localizer "System Settings" }}</a>
         </li>
         <li>
             <a href="/auth/logout"
@@ -115,13 +111,8 @@
         <li>
             <a href="/" onclick="closeMobileMenu()">{{ t .Localizer "Home" }}</a>
         </li>
-        {{ if .User.IsAdmin }}
         <li>
-            <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
-        </li>
-        {{ end }}
-        <li>
-            <a href="/auth/edit" onclick="closeMobileMenu()">{{ .User.Username }}</a>
+            <a href="/settings/account" onclick="closeMobileMenu()">{{ t .Localizer "System Settings" }}</a>
         </li>
         <li>
         <a href="/auth/logout"
@@ -171,6 +162,18 @@
     <header>
         {{ block "header" . }}{{ end }}
     </header>
+    {{ if .SettingsSection }}
+    <nav class="settings-subnav" aria-label="{{ t .Localizer "System Settings" }}">
+        <a href="/settings/account"
+           class="settings-subnav-link {{ if eq .SettingsSection "account" }}active{{ end }}">{{ t .Localizer "Account" }}</a>
+        <a href="/settings/content"
+           class="settings-subnav-link {{ if eq .SettingsSection "content" }}active{{ end }}">{{ t .Localizer "Content and Firmware" }}</a>
+        {{ if and .User .User.IsAdmin }}
+        <a href="/settings/admin"
+           class="settings-subnav-link {{ if eq .SettingsSection "admin" }}active{{ end }}">{{ t .Localizer "Admin" }}</a>
+        {{ end }}
+    </nav>
+    {{ end }}
     {{- if .Flashes -}}
     <div class="flash">
         {{- range .Flashes -}}

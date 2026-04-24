@@ -1552,6 +1552,7 @@ function restoreDevicePreferences(deviceId) {
     appsList.classList.remove('apps-grid-view');
     appsList.classList.add('apps-list-view', 'collapsed');
     appsList.style.maxHeight = "0";
+    appsList.style.minHeight = "0";
     appsList.style.overflow = "hidden";
     appsList.style.padding = "0";
   } else {
@@ -1583,6 +1584,7 @@ function switchToListView(deviceId) {
   appsList.classList.remove('apps-grid-view', 'collapsed');
   appsList.classList.add('apps-list-view');
   appsList.style.maxHeight = "none";
+  appsList.style.minHeight = "";
   appsList.style.overflow = "visible";
   appsList.style.padding = "";
 
@@ -1611,6 +1613,7 @@ function switchToGridView(deviceId) {
   appsList.classList.remove('apps-list-view', 'collapsed');
   appsList.classList.add('apps-grid-view');
   appsList.style.maxHeight = "none";
+  appsList.style.minHeight = "";
   appsList.style.overflow = "visible";
   appsList.style.padding = "";
 
@@ -1639,6 +1642,7 @@ function switchToCollapsedView(deviceId) {
   appsList.classList.remove('apps-grid-view');
   appsList.classList.add('apps-list-view', 'collapsed');
   appsList.style.maxHeight = "0";
+  appsList.style.minHeight = "0";
   appsList.style.overflow = "hidden";
   appsList.style.padding = "0";
 

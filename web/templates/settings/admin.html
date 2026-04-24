@@ -1,0 +1,107 @@
+{{ define "settings_admin" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "System Settings" }}{{ end }}
+{{ define "content" }}
+<div class="settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "System Settings" }}</p>
+            <h1>{{ t .Localizer "Admin" }}</h1>
+            <p class="settings-page-copy">{{ t .Localizer "Manage backups and user accounts for this server." }}</p>
+        </div>
+    </header>
+
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Data Management" }}</h2>
+        </div>
+        <div class="settings-field-list">
+            <div class="settings-field-row">
+                <div class="settings-field-label">{{ t .Localizer "Export Configuration" }}</div>
+                <div class="settings-field-control">
+                    <p class="settings-help">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</p>
+                    <a href="/export_user_config" class="w3-button w3-blue">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export" }}
+                    </a>
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">{{ t .Localizer "Import Configuration" }}</div>
+                <div class="settings-field-control">
+                    <p class="settings-help">{{ t .Localizer "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password." }}</p>
+                    <form method="post"
+                          action="/import_user_config"
+                          enctype="multipart/form-data"
+                          class="settings-inline-form">
+                        <div class="settings-inline-group">
+                            <input type="file"
+                                   name="file"
+                                   id="file"
+                                   accept=".json"
+                                   required
+                                   class="settings-input">
+                            <button type="submit" class="w3-button w3-blue">
+                                <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import" }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "User Management" }}</h2>
+            <p>{{ t .Localizer "Create, review, and remove users." }}</p>
+        </div>
+        <div class="settings-actions">
+            <a class="w3-button w3-green" href="/auth/register">
+                <i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Create User" }}
+            </a>
+        </div>
+        <ul class="settings-list">
+            {{ range .Users }}
+            <li class="settings-list-item">
+                <div class="settings-list-copy">
+                    <strong>{{ .Username }}</strong>
+                    {{ if .IsAdmin }}
+                    <span class="settings-tag">{{ t $.Localizer "Admin" }}</span>
+                    {{ end }}
+                    <span>{{ if .Email }}{{ .Email }}{{ else }}{{ t $.Localizer "No email address" }}{{ end }}</span>
+                    <span>{{ len .Devices }} {{ if eq (len .Devices) 1 }}{{ t $.Localizer "device" }}{{ else }}{{ t $.Localizer "devices" }}{{ end }}</span>
+                </div>
+                {{ if ne .Username $.User.Username }}
+                <button class="w3-button w3-red"
+                        type="button"
+                        onclick="deleteUser('{{ .Username }}')">
+                    <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete User" }}
+                </button>
+                {{ else }}
+                <span class="settings-help">{{ t $.Localizer "Current user" }}</span>
+                {{ end }}
+            </li>
+            {{ end }}
+        </ul>
+    </section>
+</div>
+<script>
+    function deleteUser(username) {
+        if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
+
+        fetch('/settings/admin/users/' + username, {
+            method: 'DELETE'
+        }).then(response => {
+            if (response.ok || response.redirected) {
+                window.location.reload();
+            } else {
+                alert('{{ t .Localizer "Failed to delete user" }}');
+            }
+        }).catch(err => {
+            console.error(err);
+            alert('{{ t .Localizer "Error deleting user" }}');
+        });
+    }
+</script>
+{{ end }}
