@@ -25,10 +25,12 @@ type DeviceUpdate struct {
 	Brightness          *int    `json:"brightness"`
 	IntervalSec         *int    `json:"intervalSec"`
 	NightModeEnabled    *bool   `json:"nightModeEnabled"`
+	NightModeActive     *bool   `json:"nightModeActive"`
 	NightModeApp        *string `json:"nightModeApp"`
 	NightModeBrightness *int    `json:"nightModeBrightness"`
 	NightModeStartTime  *string `json:"nightModeStartTime"`
 	NightModeEndTime    *string `json:"nightModeEndTime"`
+	DimModeActive       *bool   `json:"dimModeActive"`
 	DimModeStartTime    *string `json:"dimModeStartTime"`
 	DimModeBrightness   *int    `json:"dimModeBrightness"`
 	PinnedApp           *string `json:"pinnedApp"`
@@ -54,17 +56,22 @@ type DevicePayload struct {
 
 // NightMode represents night mode settings in the API payload.
 type NightMode struct {
-	Enabled    bool   `json:"enabled"`
-	App        string `json:"app"`
-	StartTime  string `json:"startTime"`
-	EndTime    string `json:"endTime"`
-	Brightness int    `json:"brightness"`
+	Enabled       bool    `json:"enabled"`
+	Active        bool    `json:"active"`
+	App           string  `json:"app"`
+	StartTime     string  `json:"startTime"`
+	EndTime       string  `json:"endTime"`
+	Brightness    int     `json:"brightness"`
+	OverrideUntil *string `json:"overrideUntil,omitempty"`
 }
 
 // DimMode represents dim mode settings in the API payload.
 type DimMode struct {
-	StartTime  *string `json:"startTime"`
-	Brightness *int    `json:"brightness"`
+	Enabled       bool    `json:"enabled"`
+	Active        bool    `json:"active"`
+	StartTime     *string `json:"startTime"`
+	Brightness    *int    `json:"brightness"`
+	OverrideUntil *string `json:"overrideUntil,omitempty"`
 }
 
 // Interstitial represents interstitial app settings in the API payload.
@@ -95,6 +102,7 @@ type DeviceInfo struct {
 
 // toDevicePayload converts a data.Device model to a DevicePayload for API responses.
 func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
+	now := deviceTimeNow(d)
 	info := DeviceInfo{
 		FirmwareVersion:    d.Info.FirmwareVersion,
 		FirmwareType:       d.Info.FirmwareType,
@@ -126,6 +134,17 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		dimBrightnessPtr = &val
 	}
 
+	var nightModeOverrideUntil *string
+	if d.GetNightModeOverrideActiveAt(now) && d.NightModeOverrideUntil != nil {
+		formatted := d.NightModeOverrideUntil.In(now.Location()).Format(time.RFC3339)
+		nightModeOverrideUntil = &formatted
+	}
+	var dimModeOverrideUntil *string
+	if d.GetDimModeOverrideActiveAt(now) && d.DimModeOverrideUntil != nil {
+		formatted := d.DimModeOverrideUntil.In(now.Location()).Format(time.RFC3339)
+		dimModeOverrideUntil = &formatted
+	}
+
 	return DevicePayload{
 		ID:          d.ID,
 		Type:        d.Type,
@@ -134,15 +153,20 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		IntervalSec: d.DefaultInterval,
 		Brightness:  int(d.Brightness),
 		NightMode: NightMode{
-			Enabled:    d.NightModeEnabled,
-			App:        d.NightModeApp,
-			StartTime:  d.NightStart,
-			EndTime:    d.NightEnd,
-			Brightness: int(d.NightBrightness),
+			Enabled:       d.NightModeEnabled,
+			Active:        d.GetNightModeIsActive(),
+			App:           d.NightModeApp,
+			StartTime:     d.NightStart,
+			EndTime:       d.NightEnd,
+			Brightness:    int(d.NightBrightness),
+			OverrideUntil: nightModeOverrideUntil,
 		},
 		DimMode: DimMode{
-			StartTime:  d.DimTime,
-			Brightness: dimBrightnessPtr,
+			Enabled:       d.DimModeEnabled,
+			Active:        d.GetDimModeIsActive(),
+			StartTime:     d.DimTime,
+			Brightness:    dimBrightnessPtr,
+			OverrideUntil: dimModeOverrideUntil,
 		},
 		PinnedApp: d.PinnedApp,
 		Interstitial: Interstitial{
@@ -525,6 +549,14 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	if update.IntervalSec != nil {
 		device.DefaultInterval = *update.IntervalSec
 	}
+	nightModeWasEnabled := device.NightModeEnabled
+	nightStartWas := device.NightStart
+	nightEndWas := device.NightEnd
+	dimModeWasEnabled := device.DimModeEnabled
+	var dimTimeWas string
+	if device.DimTime != nil {
+		dimTimeWas = *device.DimTime
+	}
 	if update.NightModeEnabled != nil {
 		device.NightModeEnabled = *update.NightModeEnabled
 	}
@@ -569,6 +601,29 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	if update.DimModeBrightness != nil {
 		val := data.Brightness(*update.DimModeBrightness)
 		device.DimBrightness = &val
+	}
+
+	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd {
+		clearNightModeOverride(device)
+	}
+	if update.NightModeActive != nil {
+		if _, err := setNightModeOverride(device, *update.NightModeActive); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	currentDimTime := ""
+	if device.DimTime != nil {
+		currentDimTime = *device.DimTime
+	}
+	if !device.DimModeEnabled || dimModeWasEnabled != device.DimModeEnabled || dimTimeWas != currentDimTime {
+		clearDimModeOverride(device)
+	}
+	if update.DimModeActive != nil {
+		if _, err := setDimModeOverride(device, *update.DimModeActive); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {

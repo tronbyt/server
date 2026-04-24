@@ -1,17 +1,17 @@
 {{ define "app_list_grid" }}
 <div class="app-group">
-    <h3 style="display: inline-block; margin-right: 10px;">{{ .Title }}</h3>
+    <div class="app-group-header">
+        <h3 class="app-group-title">{{ .Title }}</h3>
     {{ if and .ShowVersion .SystemRepoInfo .SystemRepoInfo.CommitHash }}
-    <span style="font-size: 14px; color: #888;">
+    <span class="app-group-meta">
         (version: <a href="{{ .SystemRepoInfo.CommitURL }}"
     target="_blank"
-    style="color: var(--primary-color);
-           text-decoration: none"
     title="{{ .SystemRepoInfo.CommitHash }}">
     {{ if .SystemRepoInfo.CommitMessage }}{{ .SystemRepoInfo.CommitMessage }}{{ else }}{{ substr .SystemRepoInfo.CommitHash 0 8 }}{{ end }}
     </a>{{ if .SystemRepoInfo.CommitDate }} - {{ .SystemRepoInfo.CommitDate }}{{ end }})
 </span>
 {{ end }}
+    </div>
 {{ if .ShowControls }}
 <!-- Filter and Sort Controls -->
 <div class="filter-sort-controls">
@@ -91,26 +91,15 @@
              style="opacity: 0.4"
              {{ end }}>
     </div>
-    <p {{ if .App.Broken }}style="opacity: 0.5;"{{ end }}>{{ .App.Name }} - {{ .App.Summary }}
-    </p>
+    <p class="app-item-title {{ if .App.Broken }}app-item-muted{{ end }}">{{ .App.Name }}{{ if .App.Summary }} - {{ .App.Summary }}{{ end }}</p>
     {{ if .App.Author }}
-    <p {{ if .App.Broken }}style="opacity: 0.5;"{{ end }}>{{ t .Localizer "From" }} {{ .App.Author }}
-    </p>
+    <p class="app-item-meta {{ if .App.Broken }}app-item-muted{{ end }}">{{ t .Localizer "From" }} {{ .App.Author }}</p>
     {{ end }}
     {{ if .App.Broken }}
-    <div style="background-color: #f44336;
-                color: white;
-                padding: 5px 10px;
-                font-weight: bold;
-                border-radius: 3px;
-                font-size: 12px;
-                text-align: center;
-                line-height: 1.3;
-                margin-top: 5px">
+    <div class="broken-badge">
         <i class="fa-solid fa-xmark" aria-hidden="true"></i> {{ t .Localizer "BROKEN" }}
-        <br>
-        <span style="font-size: 10px; font-weight: normal;">{{ .App.BrokenReason }}</span>
     </div>
+    <p class="app-item-meta">{{ .App.BrokenReason }}</p>
     {{ end }}
     {{ if .IsCustom }}
     <a href="/devices/{{ .DeviceID }}/uploads/{{ .App.ID }}/delete"
@@ -122,24 +111,10 @@
     {{ if not .ConfigProduction }}
     {{ if .App.Broken }}
     <button class="unmark-broken-btn"
-            onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});"
-            style="background-color: var(--success-color);
-                   color: white;
-                   border: none;
-                   padding: 5px 10px;
-                   cursor: pointer;
-                   margin-top: 5px;
-                   font-size: 12px">{{ t .Localizer "Unmark Broken" }}</button>
+            onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">{{ t .Localizer "Unmark Broken" }}</button>
 {{ else }}
     <button class="mark-broken-btn"
-            onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});"
-            style="background-color: var(--danger-color);
-                   color: white;
-                   border: none;
-                   padding: 5px 10px;
-                   cursor: pointer;
-                   margin-top: 5px;
-                   font-size: 12px">{{ t .Localizer "Mark Broken" }}</button>
+            onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">{{ t .Localizer "Mark Broken" }}</button>
     {{ end }}
     {{ end }}
 </div>

@@ -155,6 +155,38 @@
 
     <section class="settings-card">
         <div class="settings-card-header">
+            <h2>{{ t .Localizer "Content Preferences" }}</h2>
+            <p>{{ t .Localizer "Choose how new apps are added to your device lists." }}</p>
+        </div>
+        <form method="post" action="/settings/account" class="settings-form">
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="add_apps_to_top">{{ t .Localizer "App Ordering" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <label class="settings-inline-option">
+                            <input type="checkbox"
+                                   name="add_apps_to_top"
+                                   id="add_apps_to_top"
+                                   value="1"
+                                   {{ if .User.AddAppsToTop }}checked{{ end }}>
+                            <span>{{ t .Localizer "Add new apps to top of list" }}</span>
+                        </label>
+                        <p class="settings-help">{{ t .Localizer "When enabled, newly added apps will appear at position #1 instead of at the end." }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="submit" class="w3-button w3-green">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save Preference" }}
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-card-header">
             <h2>{{ t .Localizer "Firmware" }}</h2>
             <p>{{ t .Localizer "Firmware files available for generating or flashing devices." }}</p>
         </div>

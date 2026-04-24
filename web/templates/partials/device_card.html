@@ -1,5 +1,5 @@
 {{ define "device_card" }}
-<div id="device-card-{{ .Item.ID }}" class="w3-card-4 w3-padding device-container" style="margin-bottom: 20px;">
+<div id="device-card-{{ .Item.ID }}" class="w3-card-4 w3-padding device-container">
     <article class="settings-page">
         <header class="settings-page-header">
             <div>
@@ -44,8 +44,8 @@
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Device Info and Controls" }}</h2>
             </div>
-            <div style="display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 20px; align-items: start;">
-                <div>
+            <div class="settings-two-pane">
+                <div class="settings-preview-block">
                     <div class="app-img">
                         <img id="currentWebp-{{ .Item.ID }}"
                              data-src="/devices/{{ .Item.ID }}/current"
@@ -54,7 +54,7 @@
                              width="128"
                              height="64">
                     </div>
-                    <p class="settings-help" style="margin-top: 8px;">{{ t .Localizer "Currently Displaying App" }}</p>
+                    <p class="settings-caption">{{ t .Localizer "Currently Displaying App" }}</p>
                 </div>
                 <div class="settings-field-list">
                     <div class="settings-field-row">
@@ -89,6 +89,40 @@
                                    {{ if .ReadOnly }}disabled{{ else }}oninput="updateIntervalValue('{{ .Item.ID }}', this.value)" onmouseup="updateInterval('{{ .Item.ID }}', this.value)"{{ end }}>
                         </div>
                     </div>
+                    {{ if .Item.NightModeEnabled }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="night-mode-toggle-{{ .Item.ID }}">{{ t .Localizer "Night Mode" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <label class="settings-inline-option settings-toggle-row" for="night-mode-toggle-{{ .Item.ID }}">
+                                <input type="checkbox"
+                                       id="night-mode-toggle-{{ .Item.ID }}"
+                                       {{ if .Item.GetNightModeIsActive }}checked{{ end }}
+                                       {{ if .ReadOnly }}disabled{{ else }}onchange="setNightModeOverride('{{ .Item.ID }}', this.checked, this)"{{ end }}>
+                                <span>{{ t .Localizer "Night mode on" }}</span>
+                            </label>
+                            <p class="settings-caption settings-toggle-hint">{{ t .Localizer "Persists until the next scheduled night mode change." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
+                    {{ if .Item.DimModeEnabled }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="dim-mode-toggle-{{ .Item.ID }}">{{ t .Localizer "Dim Mode" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <label class="settings-inline-option settings-toggle-row" for="dim-mode-toggle-{{ .Item.ID }}">
+                                <input type="checkbox"
+                                       id="dim-mode-toggle-{{ .Item.ID }}"
+                                       {{ if .Item.GetDimModeIsActive }}checked{{ end }}
+                                       {{ if .ReadOnly }}disabled{{ else }}onchange="setDimModeOverride('{{ .Item.ID }}', this.checked, this)"{{ end }}>
+                                <span>{{ t .Localizer "Dim mode on" }}</span>
+                            </label>
+                            <p class="settings-caption settings-toggle-hint">{{ t .Localizer "Persists until the next scheduled dim mode change." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                     <div class="device-info-box">
                         <button class="device-info-toggle"
                                 aria-expanded="false"
@@ -133,9 +167,9 @@
         </section>
 
         <section class="settings-card">
-            <div class="view-toggle-row" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-                <div class="view-toggle-container" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span style="font-weight: bold;">{{ t .Localizer "View:" }}</span>
+            <div class="view-toggle-row settings-view-row">
+                <div class="view-toggle-container settings-view-controls">
+                    <span class="settings-view-label">{{ t .Localizer "View:" }}</span>
                     <button id="listViewBtn-{{ .Item.ID }}"
                             class="w3-button w3-blue w3-round view-toggle-btn active"
                             onclick="switchToListView('{{ .Item.ID }}')"
@@ -156,7 +190,7 @@
                     </button>
                 </div>
                 {{ if not .ReadOnly }}
-                <div class="instruction-text" style="color: #666; font-style: italic;">
+                <div class="instruction-text settings-caption">
                     {{ t .Localizer "Drag apps to reorder or copy from/to another device" }}
                 </div>
                 {{ end }}

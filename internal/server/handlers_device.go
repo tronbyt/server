@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"tronbyt-server/internal/data"
 
@@ -445,6 +446,9 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// 5. Night Mode
+	nightModeWasEnabled := device.NightModeEnabled
+	nightStartWas := device.NightStart
+	nightEndWas := device.NightEnd
 	device.NightModeEnabled = r.FormValue("night_mode_enabled") == "on"
 
 	nightStart := r.FormValue("night_start")
@@ -496,7 +500,16 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		device.NightColorFilter = nil
 	}
 
+	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd {
+		clearNightModeOverride(device)
+	}
+
 	// 6. Dim Mode
+	dimModeWasEnabled := device.DimModeEnabled
+	var dimTimeWas string
+	if device.DimTime != nil {
+		dimTimeWas = *device.DimTime
+	}
 	device.DimModeEnabled = r.FormValue("dim_mode_enabled") == "on"
 
 	dimTime := r.FormValue("dim_time")
@@ -522,6 +535,14 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		device.DimColorFilter = &val
 	} else {
 		device.DimColorFilter = nil
+	}
+
+	currentDimTime := ""
+	if device.DimTime != nil {
+		currentDimTime = *device.DimTime
+	}
+	if !device.DimModeEnabled || dimModeWasEnabled != device.DimModeEnabled || dimTimeWas != currentDimTime {
+		clearDimModeOverride(device)
 	}
 
 	// 7. Location & Locale
@@ -857,6 +878,102 @@ func (s *Server) handleUpdateInterval(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleSetNightModeOverride(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	active, err := strconv.ParseBool(r.FormValue("active"))
+	if err != nil {
+		http.Error(w, "Invalid night mode state", http.StatusBadRequest)
+		return
+	}
+	if !device.NightModeEnabled {
+		http.Error(w, "Night mode is not enabled for this device", http.StatusBadRequest)
+		return
+	}
+
+	overrideUntil, err := setNightModeOverride(device, active)
+	if err != nil {
+		slog.Warn("Failed to set night mode override", "device", device.ID, "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	updates := map[string]any{
+		"night_mode_override":       device.NightModeOverride,
+		"night_mode_override_until": device.NightModeOverrideUntil,
+	}
+	if err := s.DB.Model(&data.Device{ID: device.ID}).Updates(updates).Error; err != nil {
+		slog.Error("Failed to persist night mode override", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{
+		Type:     "device_updated",
+		DeviceID: device.ID,
+		Payload: map[string]any{
+			"nightModeActive":  active,
+			"nightModeUntil":   overrideUntil.Format(time.RFC3339),
+			"nightModeManaged": true,
+		},
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"active":        active,
+		"overrideUntil": overrideUntil.Format(time.RFC3339),
+	})
+}
+
+func (s *Server) handleSetDimModeOverride(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	active, err := strconv.ParseBool(r.FormValue("active"))
+	if err != nil {
+		http.Error(w, "Invalid dim mode state", http.StatusBadRequest)
+		return
+	}
+	if !device.DimModeEnabled {
+		http.Error(w, "Dim mode is not enabled for this device", http.StatusBadRequest)
+		return
+	}
+
+	overrideUntil, err := setDimModeOverride(device, active)
+	if err != nil {
+		slog.Warn("Failed to set dim mode override", "device", device.ID, "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	updates := map[string]any{
+		"dim_mode_override":       device.DimModeOverride,
+		"dim_mode_override_until": device.DimModeOverrideUntil,
+	}
+	if err := s.DB.Model(&data.Device{ID: device.ID}).Updates(updates).Error; err != nil {
+		slog.Error("Failed to persist dim mode override", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{
+		Type:     "device_updated",
+		DeviceID: device.ID,
+		Payload: map[string]any{
+			"dimModeActive":  active,
+			"dimModeUntil":   overrideUntil.Format(time.RFC3339),
+			"dimModeManaged": true,
+		},
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"active":        active,
+		"overrideUntil": overrideUntil.Format(time.RFC3339),
+	})
 }
 
 func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Request) {

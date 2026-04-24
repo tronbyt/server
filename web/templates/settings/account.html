@@ -30,22 +30,6 @@
                                class="settings-input">
                     </div>
                 </div>
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="add_apps_to_top">{{ t .Localizer "App Ordering" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <label class="settings-inline-option">
-                            <input type="checkbox"
-                                   name="add_apps_to_top"
-                                   id="add_apps_to_top"
-                                   value="1"
-                                   {{ if .User.AddAppsToTop }}checked{{ end }}>
-                            <span>{{ t .Localizer "Add new apps to top of list" }}</span>
-                        </label>
-                        <p class="settings-help">{{ t .Localizer "When enabled, newly added apps will appear at position #1 instead of at the end." }}</p>
-                    </div>
-                </div>
             </div>
 
             <div class="settings-card-subsection">

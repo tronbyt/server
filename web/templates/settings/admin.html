@@ -33,14 +33,14 @@
                     <form method="post"
                           action="/import_user_config"
                           enctype="multipart/form-data"
-                          class="settings-inline-form">
-                        <div class="settings-inline-group">
+                          class="settings-form">
+                        <div class="settings-control-stack">
                             <input type="file"
                                    name="file"
                                    id="file"
                                    accept=".json"
                                    required
-                                   class="settings-input">
+                                   class="settings-input settings-file-input">
                             <button type="submit" class="w3-button w3-blue">
                                 <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import" }}
                             </button>

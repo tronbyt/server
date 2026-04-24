@@ -197,8 +197,8 @@
                                    onchange="toggleCustomBrightnessInputs()">
                             <span>{{ t .Localizer "Use custom brightness scale" }}</span>
                         </label>
-                        <div id="custom_brightness_inputs" style="{{ if eq .Device.CustomBrightnessScale "" }}display: none;{{ end }} margin-top: 12px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">
+                        <div id="custom_brightness_inputs" class="{{ if eq .Device.CustomBrightnessScale "" }}settings-hidden{{ end }}" style="margin-top: 12px;">
+                            <div class="settings-grid-compact">
                                 {{ $scaleValues := slice }}
                                 {{ if ne .Device.CustomBrightnessScale "" }}
                                 {{ $scaleValues = split .Device.CustomBrightnessScale "," }}
@@ -265,6 +265,7 @@
 
             <div class="settings-card-subsection">
                 <h3>{{ t .Localizer "Night Mode" }}</h3>
+                <p class="settings-help">{{ t .Localizer "Night mode switches the device into its nighttime state during the scheduled window. It can use a different brightness, color filter, and optional dedicated app." }}</p>
                 <div class="settings-field-list">
                     <div class="settings-field-row">
                         <div class="settings-field-label">
@@ -335,6 +336,7 @@
 
             <div class="settings-card-subsection">
                 <h3>{{ t .Localizer "Dim Mode" }}</h3>
+                <p class="settings-help">{{ t .Localizer "Dim mode lowers brightness before or after the full night mode window. Use it when you want the device to stay visible but less bright." }}</p>
                 <div class="settings-field-list">
                     <div class="settings-field-row">
                         <div class="settings-field-label">
@@ -530,7 +532,7 @@
                                     <i class="fa-solid fa-sync"></i>
                                 </button>
                             </div>
-                            <p class="settings-help" style="color: var(--danger-text);">
+                            <p class="settings-help settings-note-danger">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                 {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
                             </p>
@@ -601,7 +603,7 @@
                         <div class="settings-field-label">{{ t .Localizer "AP Mode (Hotspot)" }}</div>
                         <div class="settings-field-control">
                             <input type="checkbox" {{ if derefOr .Device.Info.APMode false }}checked{{ end }} onchange="updateFirmwareSettings({ap_mode: this.checked})">
-                            <p class="settings-help" style="color: var(--danger-text);">
+                            <p class="settings-help settings-note-danger">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                 {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
                             </p>
