@@ -12,7 +12,7 @@ import (
 func New() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "health [url]",
-		Short: "Perform a health check",
+		Short: "Performs a health check against the running server",
 		RunE:  run,
 
 		SilenceUsage: true,
