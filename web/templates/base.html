@@ -51,18 +51,11 @@
         <li>
             <a href="/settings/account">{{ t .Localizer "System Settings" }}</a>
         </li>
+        {{ if not .IsAutoLoginActive }}
         <li>
-            <a href="/auth/logout"
-               {{ if .IsAutoLoginActive }}
-               onclick="event.preventDefault(); alert('{{ t .Localizer "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user." }}'); return false;"
-               {{ end }}>
-                {{ if .IsAutoLoginActive }}
-                <span class="auto-login-indicator"
-                      title="{{ t .Localizer "Auto-login mode active" }}">⚠️</span>
-                {{ end }}
-                {{ t .Localizer "Log Out" }}
-            </a>
+            <a href="/auth/logout">{{ t .Localizer "Log Out" }}</a>
         </li>
+        {{ end }}
         <li class="theme-toggle-container">
             <div class="theme-toggle">
                 <label for="theme-select">{{ t .Localizer "Theme:" }}</label>
@@ -118,16 +111,11 @@
         <li>
             <a href="/settings/account" onclick="closeMobileMenu()">{{ t .Localizer "System Settings" }}</a>
         </li>
+        {{ if not .IsAutoLoginActive }}
         <li>
-        <a href="/auth/logout"
-           onclick="{{ if .IsAutoLoginActive }}event.preventDefault(); alert('{{ t .Localizer "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user." }}'); return false;{{ else }}closeMobileMenu(){{ end }}">
-            {{ if .IsAutoLoginActive }}
-            <span class="auto-login-indicator"
-                  title="{{ t .Localizer "Auto-login mode active" }}">⚠️</span>
-            {{ end }}
-            {{ t .Localizer "Log Out" }}
-        </a>
-    </li>
+            <a href="/auth/logout" onclick="closeMobileMenu()">{{ t .Localizer "Log Out" }}</a>
+        </li>
+        {{ end }}
     <li class="theme-toggle-container">
         <div class="theme-toggle">
             <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
