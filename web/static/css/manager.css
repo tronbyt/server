@@ -278,6 +278,41 @@ button.action.w3-button.w3-red {
   overflow: hidden;
   background: var(--surface-bg);
   box-shadow: 0 8px 24px var(--shadow-color);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.app-card[data-status="enabled"] {
+  border-left: 3px solid color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
+}
+
+.app-card[data-status="disabled"] {
+  background: color-mix(in srgb, var(--surface-subtle) 88%, var(--surface-bg));
+  border-color: color-mix(in srgb, var(--disabled-text) 35%, var(--border-color));
+  border-left: 3px solid color-mix(in srgb, var(--disabled-text) 60%, var(--border-color));
+  box-shadow: none;
+  opacity: 0.8;
+}
+
+.app-card[data-status="disabled"] .app-preview .app-img img {
+  opacity: 0.42;
+  filter: grayscale(0.65) saturate(0.7);
+}
+
+.app-card[data-status="disabled"] .app-preview .app-img {
+  background: color-mix(in srgb, var(--surface-subtle) 92%, transparent);
+}
+
+.app-card[data-status="disabled"] .app-header h3,
+.app-card[data-status="disabled"] .app-details p {
+  color: var(--muted-text);
+}
+
+.app-card[data-status="disabled"] .app-render-info {
+  color: color-mix(in srgb, var(--muted-text) 88%, transparent);
+}
+
+.app-card[data-status="disabled"] .app-actions {
+  opacity: 0.78;
 }
 
 .app-card-content {
@@ -421,17 +456,6 @@ button.action.w3-button.w3-red {
 
 .dim-mode-badge {
   background-color: color-mix(in srgb, var(--surface-bg) 86%, #728896 14%);
-}
-
-.status-badge.enabled {
-  background-color: color-mix(in srgb, var(--surface-bg) 84%, #2f8d63 16%);
-  color: var(--page-text);
-}
-
-.status-badge.disabled {
-  background-color: var(--surface-subtle);
-  color: var(--muted-text);
-  border-color: var(--border-color);
 }
 
 .status-badge.autopin {

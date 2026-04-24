@@ -1,6 +1,8 @@
 {{ define "app_card" }}
 <!-- App Card Component -->
 <div class="w3-card-4 w3-padding app-card"
+     {{ if .App.Enabled }}data-status="enabled"{{ else }}data-status="disabled"{{ end }}
+     {{ if not .App.Enabled }}aria-disabled="true"{{ end }}
      {{ if not .ReadOnly }}
      draggable="true"
      {{ end }}
@@ -27,12 +29,6 @@
                 <div class="app-status">
                     {{ if isPinned .Device .App.Iname }}
                     <span class="status-badge pinned"><i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "PINNED" }}</span>
-                {{ else }}
-                    {{ if .App.Enabled }}
-                    <span class="status-badge enabled"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ t .Localizer "ENABLED" }}</span>
-                {{ else }}
-                    <span class="status-badge disabled"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{ t .Localizer "DISABLED" }}</span>
-                    {{ end }}
                     {{ end }}
                     {{ if and .App.AutoPin (or (isPinned .Device .App.Iname) .App.Enabled) }}
                     <span class="status-badge autopin"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> {{ t .Localizer "AUTOPIN" }}</span>
