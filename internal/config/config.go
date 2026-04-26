@@ -30,6 +30,16 @@ type Settings struct {
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
 	LogFormat              string `env:"LOG_FORMAT"               envDefault:"text"`
 	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
+
+	// OIDC Configuration
+	OIDCEnabled         bool   `env:"OIDC_ENABLED"`
+	OIDCIssuerURL       string `env:"OIDC_ISSUER_URL"`
+	OIDCClientID        string `env:"OIDC_CLIENT_ID"`
+	OIDCClientSecret    string `env:"OIDC_CLIENT_SECRET"`
+	OIDCAllowAutoCreate bool   `env:"OIDC_ALLOW_AUTO_CREATE"`
+	OIDCAdminGroupClaim string `env:"OIDC_ADMIN_GROUP_CLAIM" envDefault:"groups"`
+	OIDCAdminGroupValue string `env:"OIDC_ADMIN_GROUP_VALUE"`
+	OIDCUsernameClaim   string `env:"OIDC_USERNAME_CLAIM"    envDefault:"preferred_username"`
 }
 
 func (s *Settings) SystemAppsDir() string {

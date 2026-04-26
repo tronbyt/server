@@ -1,4 +1,82 @@
 {
+  "OIDC Support": {
+    "other": "OIDC-Unterstützung"
+  },
+  "Configure OpenID Connect support for single sign-on.": {
+    "other": "Konfigurieren Sie OpenID Connect-Unterstützung für Single Sign-On."
+  },
+  "Sign in with OIDC": {
+    "other": "Mit OIDC anmelden"
+  },
+  "OIDC Configuration": {
+    "other": "OIDC-Konfiguration"
+  },
+  "OIDC Enable": {
+    "other": "OIDC aktivieren"
+  },
+  "OIDC Issuer URL": {
+    "other": "Aussteller-URL"
+  },
+  "OIDC Client ID": {
+    "other": "Client-ID"
+  },
+  "OIDC Client Secret": {
+    "other": "Client-Geheimnis"
+  },
+  "OIDC Allow Auto Create": {
+    "other": "Automatisches Erstellen von Benutzern erlauben"
+  },
+  "OIDC Username Claim": {
+    "other": "Benutzername-Anspruch"
+  },
+  "OIDC Admin Group Claim": {
+    "other": "Admin-Gruppen-Anspruch"
+  },
+  "OIDC Admin Group Value": {
+    "other": "Admin-Gruppen-Wert"
+  },
+  "OIDCErrorNoAccount": {
+    "other": "Kein passendes Konto vorhanden. Bitte wenden Sie sich an einen Administrator."
+  },
+  "OIDCErrorConfig": {
+    "other": "OIDC ist nicht richtig konfiguriert."
+  },
+  "OIDCErrorAuth": {
+    "other": "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+  },
+  "OIDC Settings saved": {
+    "other": "OIDC-Einstellungen gespeichert."
+  },
+  "OIDC Settings": {
+    "other": "OIDC-Einstellungen"
+  },
+  "OIDC Admin group description": {
+    "other": "Benutzer in dieser OIDC-Gruppe erhalten Admin-Zugriff."
+  },
+  "Test OIDC Login": {
+    "other": "OIDC-Anmeldung testen"
+  },
+  "Advanced": {
+    "other": "Erweitert"
+  },
+  "Claim to use for username": {
+    "other": "Anspruch für den Benutzernamen"
+  },
+  "Claim name for group/role check": {
+    "other": "Anspruchsname für Gruppen-/Rollenprüfung"
+  },
+  "No matching account exists. Please contact an administrator.": {
+    "other": "Kein passendes Konto vorhanden. Bitte wenden Sie sich an einen Administrator."
+  },
+  "OIDC is not properly configured.": {
+    "other": "OIDC ist nicht richtig konfiguriert."
+  },
+  "Authentication failed. Please try again.": {
+    "other": "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+  },
+  "OIDC settings saved.": {
+    "other": "OIDC-Einstellungen gespeichert."
+  },
   "TimeAgo_JustNow": {
     "other": "Gerade eben"
   },

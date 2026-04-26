@@ -140,6 +140,29 @@
         </p>
     </div>
 </div>
+<h2>{{ t .Localizer "OIDC Support" }}</h2>
+<div style="border: 1px solid #333;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px">
+    <div style="display: flex;
+                justify-content: space-between;
+                align-items: flex-start">
+        <div style="flex: 1;">
+            <strong>{{ t .Localizer "OIDC Configuration" }}</strong>
+            <div style="margin-top: 8px; color: #888; font-size: 0.9em;">
+                {{ t .Localizer "Configure OpenID Connect support for single sign-on." }}
+            </div>
+        </div>
+        <a href="/admin/settings"
+           class="w3-button w3-teal"
+           style="padding: 8px 16px;
+                  font-size: 14px;
+                  margin-left: 15px">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i> {{ t .Localizer "OIDC Settings" }}
+        </a>
+    </div>
+</div>
 {{ end }}
 <h1>{{ t .Localizer "User Settings" }}</h1>
 <h2>{{ t .Localizer "Custom Apps Repository" }}</h2>

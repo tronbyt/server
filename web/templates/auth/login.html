@@ -25,6 +25,14 @@
         <i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Sign in with Passkey" }}
     </button>
 </div>
+{{ if .OIDCEnabled }}
+<div id="oidc-login-container">
+    <hr>
+    <a href="/auth/oidc/login" class="w3-button w3-blue">
+        <i class="fa-solid fa-openid"></i> {{ t .Localizer "Sign in with OIDC" }}
+    </a>
+</div>
+{{ end }}
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         if (!window.PublicKeyCredential || !navigator.credentials) {
