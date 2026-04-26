@@ -72,7 +72,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.renderTemplate(w, r, "login", TemplateData{})
+	s.renderTemplate(w, r, "login", TemplateData{OIDCEnabled: s.Config.OIDCEnabled})
 }
 
 func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
@@ -467,4 +467,8 @@ func (s *Server) SetupAuthRoutes() {
 	s.Router.HandleFunc("GET /auth/webauthn/login/begin", s.handleWebAuthnLoginBegin)
 	s.Router.HandleFunc("POST /auth/webauthn/login/finish", s.handleWebAuthnLoginFinish)
 	s.Router.HandleFunc("POST /auth/webauthn/delete/{id}", s.handleDeleteWebAuthnCredential)
+
+	// OIDC
+	s.Router.HandleFunc("GET /auth/oidc/login", s.handleOIDCLogin)
+	s.Router.HandleFunc("GET /auth/oidc/callback", s.handleOIDCCallback)
 }

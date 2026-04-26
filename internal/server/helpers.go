@@ -109,7 +109,17 @@ type TemplateData struct {
 	DeleteOnCancel            bool   // Indicate if app should be deleted on cancel
 	URLWarning                string // Warning about localhost in image URL
 	ReadOnly                  bool   // Indicate if the view should be read-only
-	Partial                   string
+	Partial string
+
+	// OIDC Support
+	OIDCEnabled         bool
+	OIDCIssuerURL       string
+	OIDCClientID        string
+	OIDCClientSecret    string
+	OIDCAllowAutoCreate bool
+	OIDCUsernameClaim   string
+	OIDCAdminGroupClaim string
+	OIDCAdminGroupValue string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.

@@ -48,6 +48,7 @@ type Server struct {
 	PromRegistry  prometheus.Registerer
 	PromGatherer  prometheus.Gatherer
 	metrics       *appMetrics
+	OIDCProvider  *OIDCProvider
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -68,8 +69,9 @@ var templateFiles = map[string]string{
 	"configapp":  "manager/configapp.html",
 	"uploadapp":  "manager/uploadapp.html",
 	"firmware":   "manager/firmware.html",
-	"update":     "manager/update.html",
-	"device_tv":  "manager/device_tv.html",
+	"update":    "manager/update.html",
+	"device_tv": "manager/device_tv.html",
+	"settings":  "admin/settings.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -112,6 +114,44 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	repo, err := s.getSetting("system_apps_repo")
 	if err == nil && repo != "" {
 		cfg.SystemAppsRepo = repo
+	}
+
+	// Load OIDC settings from DB
+	if val, err := s.getSetting("oidc_enabled"); err == nil {
+		cfg.OIDCEnabled = val == "true"
+	}
+	if val, err := s.getSetting("oidc_issuer_url"); err == nil {
+		cfg.OIDCIssuerURL = val
+	}
+	if val, err := s.getSetting("oidc_client_id"); err == nil {
+		cfg.OIDCClientID = val
+	}
+	if val, err := s.getSetting("oidc_client_secret"); err == nil {
+		cfg.OIDCClientSecret = val
+	}
+	if val, err := s.getSetting("oidc_allow_auto_create"); err == nil {
+		cfg.OIDCAllowAutoCreate = val == "true"
+	}
+	if val, err := s.getSetting("oidc_admin_group_claim"); err == nil {
+		cfg.OIDCAdminGroupClaim = val
+	}
+	if val, err := s.getSetting("oidc_admin_group_value"); err == nil {
+		cfg.OIDCAdminGroupValue = val
+	}
+	if val, err := s.getSetting("oidc_username_claim"); err == nil {
+		cfg.OIDCUsernameClaim = val
+	}
+
+	// Initialize OIDC provider
+	if cfg.OIDCEnabled && cfg.OIDCIssuerURL != "" {
+		prov, err := s.setupOIDCProvider(context.Background())
+		if err != nil {
+			slog.Warn("Failed to initialize OIDC provider, OIDC login disabled", "error", err)
+			s.OIDCProvider = nil
+		} else {
+			s.OIDCProvider = prov
+			slog.Info("OIDC provider initialized", "issuer", cfg.OIDCIssuerURL)
+		}
 	}
 
 	s.Store = sessions.NewCookieStore([]byte(secretKey))
@@ -225,6 +265,8 @@ func (s *Server) routes() {
 	// Web UI
 	s.Router.HandleFunc("GET /", s.RequireLogin(s.handleIndex))
 	s.Router.HandleFunc("GET /admin", s.RequireLogin(s.handleAdminIndex))
+	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet))
+	s.Router.HandleFunc("POST /admin/settings", s.RequireLogin(s.handleAdminSettingsPost))
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 
 	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
