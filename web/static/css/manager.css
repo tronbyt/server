@@ -108,6 +108,10 @@
   border-radius: 50%;
 }
 
+[data-theme="dark"] .slider:before {
+  background-color: var(--button-primary-bg);
+}
+
 input:checked + .slider {
   background-color: #009688;
 }
@@ -227,14 +231,14 @@ button.action.w3-button:focus {
 /* Ensure specific button colors work correctly */
 .action.w3-button.w3-blue,
 button.action.w3-button.w3-blue {
-  background-color: var(--page-text) !important;
-  color: var(--content-bg) !important;
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
 }
 
 .action.w3-button.w3-green,
 button.action.w3-button.w3-green {
-  background-color: var(--page-text) !important;
-  color: var(--content-bg) !important;
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
 }
 
 .action.w3-button.w3-orange,
