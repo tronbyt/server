@@ -489,12 +489,12 @@
                         <form method="post"
                               action="/auth/oidc/unlink/{{ .ID }}"
                               style="display: inline"
-                              onsubmit="return confirm('{{ t .Localizer "Are you sure you want to unlink this OIDC identity?" }}');">
+                              onsubmit="return confirm('{{ t $.Localizer "Are you sure you want to unlink this OIDC identity?" }}');">
                             <button type="submit"
                                     class="w3-button w3-red"
                                     style="padding: 4px 8px;
                                            font-size: 12px">
-                                <i class="fa-solid fa-trash"></i> {{ t .Localizer "Unlink" }}
+                                <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Unlink" }}
                             </button>
                         </form>
                     </td>
