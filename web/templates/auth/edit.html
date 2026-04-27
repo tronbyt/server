@@ -462,6 +462,57 @@
             {{ end }}
         </div>
     </div>
+    <div style="border-top: 1px solid #333;
+                padding-top: 15px;
+                margin-top: 15px;
+                margin-bottom: 20px">
+        <strong>{{ t .Localizer "OIDC Identities" }}</strong>
+        {{ if gt (len .User.OIDCIdentities) 0 }}
+        <table class="w3-table w3-bordered w3-margin-top"
+               style="background: transparent;
+                      color: inherit">
+            <thead>
+                <tr>
+                    <th>{{ t .Localizer "Issuer" }}</th>
+                    <th>{{ t .Localizer "OIDC Email" }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .User.OIDCIdentities }}
+                <tr>
+                    <td>{{ .Issuer }}</td>
+                    <td>
+                        {{ if .Email }}{{ .Email }}{{ else }}<em>none</em>{{ end }}
+                    </td>
+                    <td style="text-align: right">
+                        <form method="post"
+                              action="/auth/oidc/unlink/{{ .ID }}"
+                              style="display: inline"
+                              onsubmit="return confirm('{{ t .Localizer "Are you sure you want to unlink this OIDC identity?" }}');">
+                            <button type="submit"
+                                    class="w3-button w3-red"
+                                    style="padding: 4px 8px;
+                                           font-size: 12px">
+                                <i class="fa-solid fa-trash"></i> {{ t .Localizer "Unlink" }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    {{ else }}
+        <div style="margin-top: 10px; color: #888; font-size: 0.9em;">
+            {{ t .Localizer "No OIDC identities linked to this account." }}
+        </div>
+        {{ end }}
+        <div style="margin-top: 15px;">
+            <a href="/auth/oidc/link" class="w3-button w3-blue">
+                <i class="fa-solid fa-link"></i> {{ t .Localizer "Link OIDC Account" }}
+            </a>
+        </div>
+    </div>
 </div>
 <script>
     document.addEventListener("DOMContentLoaded", function() {

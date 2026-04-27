@@ -1556,6 +1556,30 @@
   "Invalid username or password": {
     "other": "Ungültiger Benutzername oder Passwort."
   },
+  "OIDC Identities": {
+    "other": "OIDC-Identitäten"
+  },
+  "Issuer": {
+    "other": "Issuer"
+  },
+  "OIDC Email": {
+    "other": "OIDC-E-Mail"
+  },
+  "Unlink": {
+    "other": "Verknüpfung aufheben"
+  },
+  "No OIDC identities linked to this account.": {
+    "other": "Keine OIDC-Identitäten mit diesem Konto verknüpft."
+  },
+  "Link OIDC Account": {
+    "other": "OIDC-Konto verknüpfen"
+  },
+  "Are you sure you want to unlink this OIDC identity?": {
+    "other": "Sind Sie sicher, dass Sie diese OIDC-Identität trennen möchten?"
+  },
+  "This OIDC account is already linked to another user.": {
+    "other": "Dieses OIDC-Konto ist bereits mit einem anderen Benutzer verknüpft."
+  },
   "Invalid old password": {
     "other": "Ungültiges altes Passwort."
   },

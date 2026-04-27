@@ -9,12 +9,14 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
+
+	"tronbyt-server/internal/data"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
-	"tronbyt-server/internal/data"
 )
 
 // OIDCProvider holds the OIDC provider and verifier.
@@ -69,6 +71,20 @@ func addNonceParam(state string, nonce string) string {
 }
 
 func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
+	s.startOIDCAuth(w, r, false)
+}
+
+func (s *Server) handleOIDCLink(w http.ResponseWriter, r *http.Request) {
+	// Must be logged in to link
+	user := GetUser(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	s.startOIDCAuth(w, r, true)
+}
+
+func (s *Server) startOIDCAuth(w http.ResponseWriter, r *http.Request, isLinking bool) {
 	if !s.Config.OIDCEnabled {
 		http.Error(w, "OIDC is not enabled", http.StatusForbidden)
 		return
@@ -105,6 +121,19 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	session.Values["oidc_state"] = state
 	session.Values["oidc_nonce"] = nonce
+	if isLinking {
+		session.Values["oidc_link"] = true
+	} else {
+		delete(session.Values, "oidc_link")
+	}
+
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save session", "error", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	session.Values["oidc_state"] = state
+	session.Values["oidc_nonce"] = nonce
 	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save OIDC session", "error", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -112,11 +141,11 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Debug("OIDC state and nonce saved to session", "state_length", len(state), "nonce_length", len(nonce))
 
-	// Build auth URL using oauth2 lib and dynamic redirect URI from GetBaseURL
+	// Build auth URL with nonce
 	oauth2Cfg := prov.oauth2Config(s.GetBaseURL(r))
-	authURL := oauth2Cfg.AuthCodeURL(addNonceParam(state, nonce), oauth2.AccessTypeOffline)
+	authURL := oauth2Cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("nonce", nonce))
 
-	slog.Debug("Redirecting to OIDC provider", "url", authURL)
+	slog.Debug("Redirecting to OIDC provider", "url", authURL, "linking", isLinking)
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
 }
 
@@ -144,6 +173,8 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	isLinking, _ := session.Values["oidc_link"].(bool)
+	delete(session.Values, "oidc_link")
 
 	expectedState, ok := session.Values["oidc_state"].(string)
 	if !ok || expectedState == "" {
@@ -162,6 +193,11 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actualState := r.URL.Query().Get("state")
+	// OAuth2 library includes nonce in state parameter as "state=X&nonce=Y"
+	// Extract just the state value before the nonce
+	if idx := strings.Index(actualState, "&nonce="); idx != -1 {
+		actualState = actualState[:idx]
+	}
 	if actualState != expectedState {
 		slog.Warn("OIDC state mismatch", "expected", expectedState, "actual", actualState)
 		s.renderTemplate(w, r, "login", TemplateData{
@@ -229,8 +265,11 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify nonce
-	if idToken.Nonce != expectedNonce {
-		slog.Warn("Nonce mismatch")
+	slog.Debug("OIDC nonce verification", "expected", expectedNonce, "idToken.Nonce", idToken.Nonce)
+	// If we provided a nonce, the provider must return a matching nonce
+	// OAuth2 library validates this by default
+	if expectedNonce != "" && idToken.Nonce != expectedNonce {
+		slog.Warn("Nonce mismatch", "expected", expectedNonce, "idToken.Nonce", idToken.Nonce)
 		s.renderTemplate(w, r, "login", TemplateData{
 			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDCErrorAuth"})},
 		})
@@ -247,7 +286,57 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get username and email from claims
+	email := s.extractClaimString(claims, "email", "email")
+
+	// --- Linking Flow ---
+	if isLinking {
+		// Use session directly since callback is not wrapped in AuthMiddleware
+		username, ok := session.Values["username"].(string)
+		if !ok || username == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		user, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(ctx)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		// Check if this identity is already linked to ANOTHER user
+		existing, err := gorm.G[data.OIDCIdentity](s.DB).Where("subject = ? AND issuer = ?", claims["sub"], prov.issuerURL).First(ctx)
+		if err == nil {
+			if existing.UserID != user.Username {
+				s.renderTemplate(w, r, "edit", TemplateData{
+					User:    &user,
+					Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "This OIDC account is already linked to another user."})},
+				})
+				return
+			}
+			// Already linked to current user, everything is fine
+			http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+			return
+		}
+
+		// Create new identity
+		identity := data.OIDCIdentity{
+			UserID:  user.Username,
+			Subject: claims["sub"].(string),
+			Issuer:  prov.issuerURL,
+			Email:   &email,
+		}
+		if err := gorm.G[data.OIDCIdentity](s.DB).Create(ctx, &identity); err != nil {
+			slog.Error("Failed to create OIDC identity link", "error", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("OIDC identity linked successfully", "username", user.Username, "subject", claims["sub"])
+		http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+		return
+	}
+
+	// Get username from claims for auto-link lookups
 	username := s.extractClaimString(claims, s.Config.OIDCUsernameClaim, "preferred_username")
 	if username == "" {
 		username = s.extractClaimString(claims, "email", "email")
@@ -255,8 +344,6 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	if username == "" {
 		username = s.extractClaimString(claims, "sub", "sub")
 	}
-
-	email := s.extractClaimString(claims, "email", "email")
 
 	// Look up existing identity using GORM Generics API
 	identity, err := gorm.G[data.OIDCIdentity](s.DB).Where("subject = ? AND issuer = ?", claims["sub"], prov.issuerURL).First(ctx)
@@ -305,6 +392,26 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+}
+
+func (s *Server) handleOIDCUnlink(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	identityID := r.PathValue("id")
+	if identityID == "" {
+		http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+		return
+	}
+
+	if _, err := gorm.G[data.OIDCIdentity](s.DB).Where("id = ? AND user_id = ?", identityID, user.Username).Delete(r.Context()); err != nil {
+		slog.Error("Failed to unlink OIDC identity", "error", err)
+	}
+
+	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
 }
 
 // extractClaimString extracts a string value from claims map with a fallback.

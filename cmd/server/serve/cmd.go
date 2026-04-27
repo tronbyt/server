@@ -53,7 +53,7 @@ func run(cmd *cobra.Command, args []string) error {
 	sanitizeDB(cmd.Context(), db)
 
 	// AutoMigrate (ensure schema exists)
-	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
+	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}, &data.OIDCIdentity{}); err != nil {
 		return fmt.Errorf("failed to migrate schema: %w", err)
 	}
 
