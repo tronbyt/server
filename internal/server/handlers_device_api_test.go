@@ -13,13 +13,15 @@ func TestHandleNextApp(t *testing.T) {
 	var device data.Device
 	s.DB.First(&device, "id = ?", "testdevice")
 
+	path := "pushed:1"
 	app := data.App{
 		DeviceID:  "testdevice",
-		Iname:     "testapp",
+		Iname:     "1",
 		Name:      "Test App",
 		UInterval: 10,
 		Enabled:   true,
 		Pushed:    true,
+		Path:      &path,
 	}
 	if err := s.DB.Create(&app).Error; err != nil {
 		t.Fatalf("Failed to create app: %v", err)
@@ -93,13 +95,15 @@ func TestHandleNextApp_APIKey(t *testing.T) {
 	s.DB.Model(&device).Update("require_api_key", true)
 
 	// Add an app so /next returns something
+	path := "pushed:1"
 	app := data.App{
 		DeviceID:  "testdevice",
-		Iname:     "testapp",
+		Iname:     "1",
 		Name:      "Test App",
 		UInterval: 10,
 		Enabled:   true,
 		Pushed:    true,
+		Path:      &path,
 	}
 	s.DB.Create(&app)
 	if err := s.savePushedImage("testdevice", "testapp", []byte("dummy image")); err != nil {

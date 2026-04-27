@@ -32,7 +32,8 @@ func TestWebsockets_Client(t *testing.T) {
 	assert.NoError(t, s.DB.Create(&device).Error, "Failed to create test device")
 
 	// Create a dummy pushed app so we get a real image
-	appIname := "ws_test_app"
+	appIname := "1"
+	path := "pushed:1"
 	app := data.App{
 		DeviceID:    deviceID,
 		Iname:       appIname,
@@ -41,6 +42,7 @@ func TestWebsockets_Client(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 		DisplayTime: 5,
+		Path:        &path,
 	}
 	assert.NoError(t, s.DB.Create(&app).Error, "Failed to create test app")
 
