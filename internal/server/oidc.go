@@ -60,6 +60,14 @@ func (p *OIDCProvider) oauth2Config(baseURL string) *oauth2.Config {
 	}
 }
 
+// addNonceParam adds nonce parameter to auth URL if provided.
+func addNonceParam(state string, nonce string) string {
+	if nonce == "" {
+		return state
+	}
+	return state + "&nonce=" + nonce
+}
+
 func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	if !s.Config.OIDCEnabled {
 		http.Error(w, "OIDC is not enabled", http.StatusForbidden)
@@ -106,7 +114,7 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Build auth URL using oauth2 lib and dynamic redirect URI from GetBaseURL
 	oauth2Cfg := prov.oauth2Config(s.GetBaseURL(r))
-	authURL := oauth2Cfg.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	authURL := oauth2Cfg.AuthCodeURL(addNonceParam(state, nonce), oauth2.AccessTypeOffline)
 
 	slog.Debug("Redirecting to OIDC provider", "url", authURL)
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
