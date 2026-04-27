@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
-	"strings"
+	"strconv"
 
 	"tronbyt-server/internal/data"
 
@@ -60,14 +60,6 @@ func (p *OIDCProvider) oauth2Config(baseURL string) *oauth2.Config {
 		Endpoint:     p.provider.Endpoint(),
 		Scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
 	}
-}
-
-// addNonceParam adds nonce parameter to auth URL if provided.
-func addNonceParam(state string, nonce string) string {
-	if nonce == "" {
-		return state
-	}
-	return state + "&nonce=" + nonce
 }
 
 func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
@@ -132,13 +124,6 @@ func (s *Server) startOIDCAuth(w http.ResponseWriter, r *http.Request, isLinking
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	session.Values["oidc_state"] = state
-	session.Values["oidc_nonce"] = nonce
-	if err := s.saveSession(w, r, session); err != nil {
-		slog.Error("Failed to save OIDC session", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
 	slog.Debug("OIDC state and nonce saved to session", "state_length", len(state), "nonce_length", len(nonce))
 
 	// Build auth URL with nonce
@@ -193,11 +178,6 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actualState := r.URL.Query().Get("state")
-	// OAuth2 library includes nonce in state parameter as "state=X&nonce=Y"
-	// Extract just the state value before the nonce
-	if idx := strings.Index(actualState, "&nonce="); idx != -1 {
-		actualState = actualState[:idx]
-	}
 	if actualState != expectedState {
 		slog.Warn("OIDC state mismatch", "expected", expectedState, "actual", actualState)
 		s.renderTemplate(w, r, "login", TemplateData{
@@ -297,14 +277,20 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		user, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(ctx)
+		user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Preload("OIDCIdentities", nil).Where("username = ?", username).First(ctx)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
 		}
 
+		sub, ok := claims["sub"].(string)
+		if !ok || sub == "" {
+			http.Error(w, "Invalid ID token: missing sub claim", http.StatusBadRequest)
+			return
+		}
+
 		// Check if this identity is already linked to ANOTHER user
-		existing, err := gorm.G[data.OIDCIdentity](s.DB).Where("subject = ? AND issuer = ?", claims["sub"], prov.issuerURL).First(ctx)
+		existing, err := gorm.G[data.OIDCIdentity](s.DB).Where("subject = ? AND issuer = ?", sub, prov.issuerURL).First(ctx)
 		if err == nil {
 			if existing.UserID != user.Username {
 				s.renderTemplate(w, r, "edit", TemplateData{
@@ -318,12 +304,17 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var emailPtr *string
+		if email != "" {
+			emailPtr = &email
+		}
+
 		// Create new identity
 		identity := data.OIDCIdentity{
 			UserID:  user.Username,
-			Subject: claims["sub"].(string),
+			Subject: sub,
 			Issuer:  prov.issuerURL,
-			Email:   &email,
+			Email:   emailPtr,
 		}
 		if err := gorm.G[data.OIDCIdentity](s.DB).Create(ctx, &identity); err != nil {
 			slog.Error("Failed to create OIDC identity link", "error", err)
@@ -331,7 +322,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		slog.Info("OIDC identity linked successfully", "username", user.Username, "subject", claims["sub"])
+		slog.Info("OIDC identity linked successfully", "username", user.Username, "subject", sub)
 		http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
 		return
 	}
@@ -407,7 +398,13 @@ func (s *Server) handleOIDCUnlink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := gorm.G[data.OIDCIdentity](s.DB).Where("id = ? AND user_id = ?", identityID, user.Username).Delete(r.Context()); err != nil {
+	id, err := strconv.ParseUint(identityID, 10, 32)
+	if err != nil {
+		http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+		return
+	}
+
+	if _, err := gorm.G[data.OIDCIdentity](s.DB).Where("id = ? AND user_id = ?", uint(id), user.Username).Delete(r.Context()); err != nil {
 		slog.Error("Failed to unlink OIDC identity", "error", err)
 	}
 
