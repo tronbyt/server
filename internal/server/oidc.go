@@ -89,14 +89,20 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store in session
-	session, _ := s.Store.Get(r, "session-name")
-	session.Values["oidc_state"] = state
-	session.Values["oidc_nonce"] = nonce
-	if err := s.saveSession(w, r, session); err != nil {
-		slog.Error("Failed to save session", "error", err)
+	session, err := s.Store.Get(r, "session-name")
+	if err != nil {
+		slog.Error("Failed to get session for OIDC login", "error", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
+	session.Values["oidc_state"] = state
+	session.Values["oidc_nonce"] = nonce
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save OIDC session", "error", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	slog.Debug("OIDC state and nonce saved to session", "state_length", len(state), "nonce_length", len(nonce))
 
 	// Build auth URL using oauth2 lib and dynamic redirect URI from GetBaseURL
 	oauth2Cfg := prov.oauth2Config(s.GetBaseURL(r))
@@ -110,6 +116,8 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	localizer := s.getLocalizer(r)
 
+	slog.Info("OIDC callback received", "path", r.URL.Path, "query", r.URL.RawQuery)
+
 	// Check for error from provider
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		slog.Warn("OIDC provider returned error", "error", errMsg, "desc", r.URL.Query().Get("error_description"))
@@ -120,10 +128,25 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get session and validate state
-	session, _ := s.Store.Get(r, "session-name")
+	session, err := s.Store.Get(r, "session-name")
+	if err != nil {
+		slog.Error("OIDC callback failed to get session", "error", err)
+		s.renderTemplate(w, r, "login", TemplateData{
+			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDCErrorConfig"})},
+		})
+		return
+	}
+
 	expectedState, ok := session.Values["oidc_state"].(string)
 	if !ok || expectedState == "" {
-		slog.Warn("OIDC callback missing state")
+		sessionNil := session == nil
+		var valuesType string
+		var hasOidcState bool
+		if session != nil {
+			valuesType = fmt.Sprintf("%T", session.Values)
+			hasOidcState = session.Values["oidc_state"] != nil
+		}
+		slog.Warn("OIDC callback missing state", "session nil", sessionNil, "session.Values type", valuesType, "oidc_state exists", hasOidcState)
 		s.renderTemplate(w, r, "login", TemplateData{
 			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDCErrorAuth"})},
 		})
