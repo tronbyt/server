@@ -284,7 +284,7 @@ func (s *Server) handleEditUserGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Where("username = ?", username).First(r.Context())
+	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Preload("OIDCIdentities", nil).Where("username = ?", username).First(r.Context())
 	if err != nil {
 		slog.Error("Failed to fetch user for edit", "username", username, "error", err)
 		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
@@ -470,5 +470,7 @@ func (s *Server) SetupAuthRoutes() {
 
 	// OIDC
 	s.Router.HandleFunc("GET /auth/oidc/login", s.handleOIDCLogin)
+	s.Router.HandleFunc("GET /auth/oidc/link", s.RequireLogin(http.HandlerFunc(s.handleOIDCLink)).ServeHTTP)
+	s.Router.HandleFunc("POST /auth/oidc/unlink/{id}", s.RequireLogin(http.HandlerFunc(s.handleOIDCUnlink)).ServeHTTP)
 	s.Router.HandleFunc("GET /auth/oidc/callback", s.handleOIDCCallback)
 }
