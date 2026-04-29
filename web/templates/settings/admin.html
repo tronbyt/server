@@ -55,19 +55,17 @@
         <form method="post" action="/settings/admin/oidc" class="settings-form">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "OIDC Configuration" }}</h2>
-                <div class="settings-actions">
-                    <button type="button"
-                            class="w3-button w3-light-grey"
-                            id="oidc-details-toggle">
-                        <i class="fa-solid fa-chevron-down" id="oidc-toggle-icon"></i>
-                        <span id="oidc-toggle-text">{{ t .Localizer "Show Details" }}</span>
-                    </button>
-                </div>
             </div>
             <div class="settings-field-list">
                 <div class="settings-field-row">
                     <div class="settings-field-label">
                         <label for="oidc_enabled">{{ t .Localizer "OIDC Enable" }}</label>
+                        <button type="button"
+                                class="settings-icon-button"
+                                id="oidc-details-toggle"
+                                title="{{ t .Localizer "Show Details" }}">
+                            <i class="fa-solid fa-chevron-down" id="oidc-toggle-icon"></i>
+                        </button>
                     </div>
                     <div class="settings-field-control">
                         <input type="checkbox"
@@ -80,7 +78,10 @@
                                onchange="updateOIDCVision()">
                     </div>
                 </div>
-                <div id="oidc-collapsible-fields" style="display: none;">
+                <div id="oidc-collapsible-fields"
+                     {{ if not .OIDCEnabled }}
+                     style="display: none"
+                     {{ end }}>
                     <div class="settings-field-row">
                         <div class="settings-field-label">
                             <label for="oidc_issuer_url">{{ t .Localizer "OIDC Issuer URL" }}</label>
@@ -278,13 +279,20 @@
     function updateOIDCVision() {
         const checkbox = document.getElementById('oidc_enabled');
         const container = document.getElementById('oidc-collapsible-fields');
-        const toggleBtn = document.getElementById('oidc-details-toggle');
+        const icon = document.getElementById('oidc-toggle-icon');
 
         if (checkbox && checkbox.checked) {
+            // Always show when enabled
             container.style.display = 'block';
-            if (toggleBtn) toggleBtn.style.display = 'none';
+            if (icon) icon.className = 'fa-solid fa-chevron-up';
         } else {
-            if (toggleBtn) toggleBtn.style.display = 'inline-block';
+            // Respect toggle state when disabled (initially hidden)
+            // If it was already visible (user clicked toggle), keep it visible? 
+            // User said: "collapse the OIDC settings if 'enable oidc' isn't checked"
+            // "but maybe also put an 'expand' button so you can see it without enabling"
+            // So if they uncheck it, we should probably collapse it.
+            container.style.display = 'none';
+            if (icon) icon.className = 'fa-solid fa-chevron-down';
         }
     }
 
@@ -292,17 +300,14 @@
         const toggleBtn = document.getElementById('oidc-details-toggle');
         const container = document.getElementById('oidc-collapsible-fields');
         const icon = document.getElementById('oidc-toggle-icon');
-        const text = document.getElementById('oidc-toggle-text');
 
         if (toggleBtn && container) {
-            toggleBtn.addEventListener('click', function() {
+            toggleBtn.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent any accidental form trigger
                 const isHidden = container.style.display === 'none';
                 container.style.display = isHidden ? 'block' : 'none';
                 if (icon) {
                     icon.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
-                }
-                if (text) {
-                    text.textContent = isHidden ? '{{ t .Localizer "Hide Details" }}' : '{{ t .Localizer "Show Details" }}';
                 }
             });
         }

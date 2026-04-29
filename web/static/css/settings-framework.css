@@ -339,3 +339,23 @@
     align-self: stretch;
   }
 }
+
+.settings-icon-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-text, #666);
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.settings-icon-button:hover {
+  background-color: var(--border-color, #d6d6d6);
+  color: var(--page-text);
+}
