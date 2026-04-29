@@ -60,12 +60,6 @@
                 <div class="settings-field-row">
                     <div class="settings-field-label">
                         <label for="oidc_enabled">{{ t .Localizer "OIDC Enable" }}</label>
-                        <button type="button"
-                                class="settings-icon-button"
-                                id="oidc-details-toggle"
-                                title="{{ t .Localizer "Show Details" }}">
-                            <i class="fa-solid fa-chevron-down" id="oidc-toggle-icon"></i>
-                        </button>
                     </div>
                     <div class="settings-field-control">
                         <input type="checkbox"
@@ -181,6 +175,13 @@
                 <button type="submit" class="w3-button w3-blue">
                     <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save OIDC Settings" }}
                 </button>
+                <a href="#"
+                   class="settings-caption"
+                   id="oidc-details-toggle"
+                   style="text-decoration: none;
+                          cursor: pointer;
+                          user-select: none;
+                          margin-left: 8px">{{ t .Localizer "Expand" }}</a>
                 {{ if .OIDCEnabled }}
                 <a href="/auth/oidc/login" class="w3-button w3-blue">
                     <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> {{ t .Localizer "Test OIDC Login" }}
@@ -279,36 +280,32 @@
     function updateOIDCVision() {
         const checkbox = document.getElementById('oidc_enabled');
         const container = document.getElementById('oidc-collapsible-fields');
-        const icon = document.getElementById('oidc-toggle-icon');
+        const toggleLink = document.getElementById('oidc-details-toggle');
 
         if (checkbox && checkbox.checked) {
             // Always show when enabled
             container.style.display = 'block';
-            if (icon) icon.className = 'fa-solid fa-chevron-up';
+            if (toggleLink) toggleLink.style.display = 'none';
         } else {
-            // Respect toggle state when disabled (initially hidden)
-            // If it was already visible (user clicked toggle), keep it visible? 
-            // User said: "collapse the OIDC settings if 'enable oidc' isn't checked"
-            // "but maybe also put an 'expand' button so you can see it without enabling"
-            // So if they uncheck it, we should probably collapse it.
+            // Collapse when disabled
             container.style.display = 'none';
-            if (icon) icon.className = 'fa-solid fa-chevron-down';
+            if (toggleLink) {
+                toggleLink.style.display = 'inline-block';
+                toggleLink.textContent = '{{ t .Localizer "Expand" }}';
+            }
         }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const toggleBtn = document.getElementById('oidc-details-toggle');
+        const toggleLink = document.getElementById('oidc-details-toggle');
         const container = document.getElementById('oidc-collapsible-fields');
-        const icon = document.getElementById('oidc-toggle-icon');
 
-        if (toggleBtn && container) {
-            toggleBtn.addEventListener('click', function(e) {
-                e.preventDefault(); // Prevent any accidental form trigger
+        if (toggleLink && container) {
+            toggleLink.addEventListener('click', function(e) {
+                e.preventDefault();
                 const isHidden = container.style.display === 'none';
                 container.style.display = isHidden ? 'block' : 'none';
-                if (icon) {
-                    icon.className = isHidden ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down';
-                }
+                toggleLink.textContent = isHidden ? '{{ t .Localizer "Collapse" }}' : '{{ t .Localizer "Expand" }}';
             });
         }
         updateOIDCVision();
