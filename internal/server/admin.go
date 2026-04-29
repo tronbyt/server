@@ -68,7 +68,9 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 		if err != nil {
 			slog.Warn("Failed to reinitialize OIDC provider", "error", err)
 			session.AddFlash("Failed to initialize OIDC provider: " + err.Error())
-			s.saveSession(w, r, session)
+			if err := s.saveSession(w, r, session); err != nil {
+				slog.Error("Failed to save session after OIDC provider error", "error", err)
+			}
 			http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 			return
 		}
@@ -78,7 +80,9 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 	}
 
 	session.AddFlash(localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDC settings saved."}))
-	s.saveSession(w, r, session)
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save session after settings update", "error", err)
+	}
 	http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 }
 
