@@ -1906,5 +1906,14 @@
   },
   "recommended": {
     "other": "recommended"
+  },
+  "UI": {
+    "other": "UI"
+  },
+  "Use System Font": {
+    "other": "Use System Font"
+  },
+  "Use your device's default system font instead of the built-in interface font.": {
+    "other": "Use your device's default system font instead of the built-in interface font."
   }
 }

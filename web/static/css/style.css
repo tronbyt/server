@@ -40,6 +40,10 @@
   --radius-lg: 18px;
 }
 
+[data-font="system"] {
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
   --page-bg: #111315;

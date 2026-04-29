@@ -491,6 +491,7 @@ type User struct {
 	SystemRepoURL   string          `json:"system_repo_url"`
 	AppRepoURL      string          `json:"app_repo_url"`
 	AddAppsToTop    bool            `gorm:"default:false"    json:"add_apps_to_top"`
+	UseSystemFont   bool            `gorm:"default:false"    json:"use_system_font"`
 
 	Devices        []Device             `gorm:"foreignKey:Username;references:Username" json:"devices"`
 	Credentials    []WebAuthnCredential `gorm:"foreignKey:UserID;references:Username"   json:"credentials"`

@@ -1,8 +1,10 @@
 // tronbyt_server/static/js/theme.js
 (function() {
     const THEME_STORAGE_KEY = 'theme_preference';
+    const FONT_STORAGE_KEY = 'font_preference';
     const themeSelect = document.getElementById('theme-select');
     const mobileThemeSelect = document.getElementById('mobile-theme-select');
+    const fontCheckbox = document.getElementById('use_system_font');
     const docElement = document.documentElement; // Usually <html>
 
     let mediaQueryListener = null;
@@ -16,8 +18,16 @@
         }
     }
 
-    function storePreference(theme) {
-        localStorage.setItem(THEME_STORAGE_KEY, theme);
+    function applyFont(useSystem) {
+        if (useSystem) {
+            docElement.setAttribute('data-font', 'system');
+        } else {
+            docElement.removeAttribute('data-font');
+        }
+    }
+
+    function storePreference(key, value) {
+        localStorage.setItem(key, value);
     }
 
     function savePreferenceToServer(theme) {
@@ -33,20 +43,14 @@
         .then(response => {
             if (!response.ok) {
                 console.error('Server responded with an error:', response.status, response.statusText);
-                // Try to parse as JSON, but provide a fallback if it's not
                 return response.text().then(text => {
                     try {
-                        // Attempt to parse as JSON first, as the original code expected JSON error messages
                         const errJson = JSON.parse(text);
-                        // Ensure it's an error structure we expect, otherwise treat as a generic error
                         if (errJson && (errJson.message || errJson.error)) {
                            return Promise.reject(errJson);
                         }
-                        // If not a structured JSON error, or empty JSON, fall through to generic error
                         throw new Error(`Server error: ${response.status} ${response.statusText}. Response: ${text.substring(0, 100)}`);
                     } catch (e) {
-                        // If JSON parsing fails, or it's not our expected error format,
-                        // throw an error with the status text and part of the response
                         throw new Error(`Server error: ${response.status} ${response.statusText}. Response: ${text.substring(0, 100)}`);
                     }
                 });
@@ -131,25 +135,27 @@
     }
 
     function initTheme() {
-        const localPreference = localStorage.getItem(THEME_STORAGE_KEY);
-        // window.currentUserThemePreference should be set in base.html if user is logged in
-        const serverUserPreference = window.currentUserThemePreference;
+        const localThemePreference = localStorage.getItem(THEME_STORAGE_KEY);
+        const localFontPreference = localStorage.getItem(FONT_STORAGE_KEY);
+        // window.currentUserThemePreference and window.currentUserFontPreference should be set in base.html if user is logged in
+        const serverUserThemePreference = window.currentUserThemePreference;
+        const serverUserFontPreference = window.currentUserFontPreference;
 
         let effectiveTheme = 'system'; // Default
 
         if (themeSelect || mobileThemeSelect) { // User is logged in and on a page with the theme selector
-            if (localPreference) {
-                effectiveTheme = localPreference;
-            } else if (serverUserPreference) {
-                effectiveTheme = serverUserPreference;
+            if (localThemePreference) {
+                effectiveTheme = localThemePreference;
+            } else if (serverUserThemePreference) {
+                effectiveTheme = serverUserThemePreference;
             }
             if (themeSelect) themeSelect.value = effectiveTheme;
             if (mobileThemeSelect) mobileThemeSelect.value = effectiveTheme;
         } else { // User is not logged in or on a page without selector (e.g. login page)
-            if (localPreference) {
-                effectiveTheme = localPreference;
+            if (localThemePreference) {
+                effectiveTheme = localThemePreference;
             }
-            // No serverUserPreference to check here
+            // No serverUserThemePreference to check here
         }
 
         applyTheme(effectiveTheme);
@@ -159,8 +165,29 @@
             removeSystemThemeListener(); // Ensure no listener if not 'system'
         }
         // For logged-in users, ensure localStorage is updated if server preference was used
-        if ((themeSelect || mobileThemeSelect) && serverUserPreference && !localPreference) {
-            storePreference(serverUserPreference);
+        if ((themeSelect || mobileThemeSelect) && serverUserThemePreference && !localThemePreference) {
+            storePreference(THEME_STORAGE_KEY, serverUserThemePreference);
+        }
+
+        // Font preference initialization
+        let effectiveFont = 'default';
+        if (fontCheckbox) {
+            if (localFontPreference) {
+                effectiveFont = localFontPreference;
+            } else if (serverUserFontPreference) {
+                effectiveFont = serverUserFontPreference;
+            }
+            fontCheckbox.checked = (effectiveFont === 'system');
+        } else {
+            if (localFontPreference) {
+                effectiveFont = localFontPreference;
+            } else if (serverUserFontPreference) {
+                effectiveFont = serverUserFontPreference;
+            }
+        }
+        applyFont(effectiveFont === 'system');
+        if (serverUserFontPreference && !localFontPreference) {
+            storePreference(FONT_STORAGE_KEY, serverUserFontPreference);
         }
 
         function setupThemeChangeHandler(selector) {
@@ -168,7 +195,7 @@
                 selector.addEventListener('change', function() {
                     const selectedTheme = this.value;
                     applyTheme(selectedTheme);
-                    storePreference(selectedTheme);
+                    storePreference(THEME_STORAGE_KEY, selectedTheme);
                     savePreferenceToServer(selectedTheme); // Save to backend for logged-in user
 
                     // Sync both selectors
@@ -187,6 +214,16 @@
                     }
                 });
             }
+        }
+
+        if (fontCheckbox) {
+            fontCheckbox.addEventListener('change', function() {
+                const useSystem = this.checked;
+                const fontVal = useSystem ? 'system' : 'default';
+                applyFont(useSystem);
+                storePreference(FONT_STORAGE_KEY, fontVal);
+                // Note: The form submission in account.html will save to server.
+            });
         }
 
         setupThemeChangeHandler(themeSelect);

@@ -424,13 +424,21 @@ func (s *Server) handleEditUserPost(w http.ResponseWriter, r *http.Request) {
 		needsSave = true
 	}
 
+	// Update UseSystemFont preference
+	useSystemFont := r.FormValue("use_system_font") == "1"
+	if user.UseSystemFont != useSystemFont {
+		user.UseSystemFont = useSystemFont
+		needsSave = true
+	}
+
 	if needsSave {
 		updates := data.User{
-			Password:     user.Password,
-			Email:        user.Email,
-			AddAppsToTop: user.AddAppsToTop,
+			Password:      user.Password,
+			Email:         user.Email,
+			AddAppsToTop:  user.AddAppsToTop,
+			UseSystemFont: user.UseSystemFont,
 		}
-		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email", "AddAppsToTop").Updates(r.Context(), updates); err != nil {
+		if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Select("Password", "Email", "AddAppsToTop", "UseSystemFont").Updates(r.Context(), updates); err != nil {
 			localizer := s.getLocalizer(r)
 			slog.Error("Failed to update user profile", "error", err)
 			s.renderTemplate(w, r, "settings_account", TemplateData{

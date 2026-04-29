@@ -15,6 +15,13 @@
       } else {
         document.documentElement.setAttribute('data-theme', themeToApply);
       }
+
+      var storedFont = localStorage.getItem('font_preference');
+      var serverProvidedFont = "{{ if .User }}{{ if .User.UseSystemFont }}system{{ else }}default{{ end }}{{ else }}default{{ end }}";
+      var fontToApply = storedFont || serverProvidedFont;
+      if (fontToApply === 'system') {
+        document.documentElement.setAttribute('data-font', 'system');
+      }
       // The full theme.js script will later synchronize the select dropdown and localStorage if needed.
     })();
     </script>
@@ -200,11 +207,12 @@
 </div>
 <script>
   {{ if .User }}
-  window.currentUserThemePreference = "{{ .User.ThemePreference }}";
+    window.currentUserThemePreference = "{{ .User.ThemePreference }}";
+    window.currentUserFontPreference = "{{ if .User.UseSystemFont }}system{{ else }}default{{ end }}";
   {{ else }}
-  window.currentUserThemePreference = "system"; // Default for guests or if not set
+    window.currentUserThemePreference = "system"; // Default for guests or if not set
+    window.currentUserFontPreference = "default";
   {{ end }}
-
   // Mobile menu state management
   let isMenuOpen = false;
 

@@ -30,6 +30,29 @@
                     </div>
                 </div>
             </div>
+
+            <div class="settings-card-subsection">
+                <h3>{{ t .Localizer "UI" }}</h3>
+                <div class="settings-field-list">
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="use_system_font">{{ t .Localizer "Use System Font" }}</label>
+                            <small>{{ t .Localizer "Use your device's default system font instead of the built-in interface font." }}</small>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   name="use_system_font"
+                                   id="use_system_font"
+                                   value="1"
+                                   class="w3-check"
+                                   {{ if .User.UseSystemFont }}
+                                   checked
+                                   {{ end }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="settings-card-subsection">
                 <h3>{{ t .Localizer "Change Password" }}</h3>
                 <div class="settings-field-list">

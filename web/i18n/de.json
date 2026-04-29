@@ -1903,5 +1903,14 @@
   },
   "recommended": {
     "other": "empfohlen"
+  },
+  "UI": {
+    "other": "Benutzeroberfläche"
+  },
+  "Use System Font": {
+    "other": "Systemschriftart verwenden"
+  },
+  "Use your device's default system font instead of the built-in interface font.": {
+    "other": "Verwenden Sie die Standardsystemschriftart Ihres Geräts anstelle der integrierten Benutzeroberflächenschriftart."
   }
 }
