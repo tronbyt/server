@@ -111,6 +111,16 @@ type TemplateData struct {
 	ReadOnly                  bool   // Indicate if the view should be read-only
 	Partial                   string
 	SettingsSection           string
+
+	// OIDC Support
+	OIDCEnabled         bool
+	OIDCIssuerURL       string
+	OIDCClientID        string
+	OIDCClientSecret    string
+	OIDCAllowAutoCreate bool
+	OIDCUsernameClaim   string
+	OIDCAdminGroupClaim string
+	OIDCAdminGroupValue string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.

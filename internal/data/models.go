@@ -492,8 +492,9 @@ type User struct {
 	AppRepoURL      string          `json:"app_repo_url"`
 	AddAppsToTop    bool            `gorm:"default:false"    json:"add_apps_to_top"`
 
-	Devices     []Device             `gorm:"foreignKey:Username;references:Username" json:"devices"`
-	Credentials []WebAuthnCredential `gorm:"foreignKey:UserID;references:Username"   json:"credentials"`
+	Devices        []Device             `gorm:"foreignKey:Username;references:Username" json:"devices"`
+	Credentials    []WebAuthnCredential `gorm:"foreignKey:UserID;references:Username"   json:"credentials"`
+	OIDCIdentities []OIDCIdentity       `gorm:"foreignKey:UserID;references:Username"   json:"oidc_identities"`
 }
 
 type WebAuthnCredential struct {
@@ -510,6 +511,18 @@ type WebAuthnCredential struct {
 	CloneWarning    bool   `json:"clone_warning"`
 	BackupEligible  bool   `json:"backup_eligible"`
 	BackupState     bool   `json:"backup_state"`
+}
+
+// OIDCIdentity links a local user to an OIDC identity.
+type OIDCIdentity struct {
+	ID        uint    `gorm:"primaryKey"`
+	UserID    string  `gorm:"index"` // Foreign key to User.Username
+	User      User    `gorm:"foreignKey:UserID;references:Username" json:"-"`
+	Subject   string  `gorm:"uniqueIndex"` // OIDC subject claim
+	Issuer    string  `gorm:"index"`       // OIDC issuer URL
+	Email     *string // Cached from ID token
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type App struct {

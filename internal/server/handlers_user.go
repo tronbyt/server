@@ -80,7 +80,19 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// We need to inject the current admin user into TemplateData for the header/nav
-	s.renderTemplate(w, r, "settings_admin", TemplateData{User: user, Users: users, SettingsSection: "admin"})
+	s.renderTemplate(w, r, "settings_admin", TemplateData{
+		User:                user,
+		Users:               users,
+		SettingsSection:     "admin",
+		OIDCEnabled:         s.Config.OIDCEnabled,
+		OIDCIssuerURL:       s.Config.OIDCIssuerURL,
+		OIDCClientID:        s.Config.OIDCClientID,
+		OIDCClientSecret:    s.Config.OIDCClientSecret,
+		OIDCAllowAutoCreate: s.Config.OIDCAllowAutoCreate,
+		OIDCUsernameClaim:   s.Config.OIDCUsernameClaim,
+		OIDCAdminGroupClaim: s.Config.OIDCAdminGroupClaim,
+		OIDCAdminGroupValue: s.Config.OIDCAdminGroupValue,
+	})
 }
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {

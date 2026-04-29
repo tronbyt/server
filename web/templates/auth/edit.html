@@ -140,6 +140,29 @@
         </p>
     </div>
 </div>
+<h2>{{ t .Localizer "OIDC Support" }}</h2>
+<div style="border: 1px solid #333;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px">
+    <div style="display: flex;
+                justify-content: space-between;
+                align-items: flex-start">
+        <div style="flex: 1;">
+            <strong>{{ t .Localizer "OIDC Configuration" }}</strong>
+            <div style="margin-top: 8px; color: #888; font-size: 0.9em;">
+                {{ t .Localizer "Configure OpenID Connect support for single sign-on." }}
+            </div>
+        </div>
+        <a href="/admin/settings"
+           class="w3-button w3-teal"
+           style="padding: 8px 16px;
+                  font-size: 14px;
+                  margin-left: 15px">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i> {{ t .Localizer "OIDC Settings" }}
+        </a>
+    </div>
+</div>
 {{ end }}
 <h1>{{ t .Localizer "User Settings" }}</h1>
 <h2>{{ t .Localizer "Custom Apps Repository" }}</h2>
@@ -437,6 +460,57 @@
                 <i class="fa-solid fa-circle-info"></i> {{ t .Localizer "Only one passkey can be registered at a time. Delete the existing one to add a new device." }}
             </div>
             {{ end }}
+        </div>
+    </div>
+    <div style="border-top: 1px solid #333;
+                padding-top: 15px;
+                margin-top: 15px;
+                margin-bottom: 20px">
+        <strong>{{ t .Localizer "OIDC Identities" }}</strong>
+        {{ if gt (len .User.OIDCIdentities) 0 }}
+        <table class="w3-table w3-bordered w3-margin-top"
+               style="background: transparent;
+                      color: inherit">
+            <thead>
+                <tr>
+                    <th>{{ t .Localizer "Issuer" }}</th>
+                    <th>{{ t .Localizer "OIDC Email" }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ range .User.OIDCIdentities }}
+                <tr>
+                    <td>{{ .Issuer }}</td>
+                    <td>
+                        {{ if .Email }}{{ .Email }}{{ else }}<em>none</em>{{ end }}
+                    </td>
+                    <td style="text-align: right">
+                        <form method="post"
+                              action="/auth/oidc/unlink/{{ .ID }}"
+                              style="display: inline"
+                              onsubmit="return confirm('{{ t $.Localizer "Are you sure you want to unlink this OIDC identity?" }}');">
+                            <button type="submit"
+                                    class="w3-button w3-red"
+                                    style="padding: 4px 8px;
+                                           font-size: 12px">
+                                <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Unlink" }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {{ end }}
+            </tbody>
+        </table>
+    {{ else }}
+        <div style="margin-top: 10px; color: #888; font-size: 0.9em;">
+            {{ t .Localizer "No OIDC identities linked to this account." }}
+        </div>
+        {{ end }}
+        <div style="margin-top: 15px;">
+            <a href="/auth/oidc/link" class="w3-button w3-blue">
+                <i class="fa-solid fa-link"></i> {{ t .Localizer "Link OIDC Account" }}
+            </a>
         </div>
     </div>
 </div>

@@ -21,7 +21,7 @@ func (s *Server) loadSettingsUser(r *http.Request) (*data.User, bool) {
 		return nil, false
 	}
 
-	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Where("username = ?", username).First(r.Context())
+	user, err := gorm.G[data.User](s.DB).Preload("Credentials", nil).Preload("OIDCIdentities", nil).Where("username = ?", username).First(r.Context())
 	if err != nil {
 		slog.Error("Failed to fetch user for settings", "username", username, "error", err)
 		return nil, false
@@ -130,7 +130,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.renderTemplate(w, r, "login", TemplateData{})
+	s.renderTemplate(w, r, "login", TemplateData{OIDCEnabled: s.Config.OIDCEnabled})
 }
 
 func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
@@ -509,4 +509,10 @@ func (s *Server) SetupAuthRoutes() {
 	s.Router.HandleFunc("GET /auth/webauthn/login/begin", s.handleWebAuthnLoginBegin)
 	s.Router.HandleFunc("POST /auth/webauthn/login/finish", s.handleWebAuthnLoginFinish)
 	s.Router.HandleFunc("POST /auth/webauthn/delete/{id}", s.handleDeleteWebAuthnCredential)
+
+	// OIDC
+	s.Router.HandleFunc("GET /auth/oidc/login", s.handleOIDCLogin)
+	s.Router.HandleFunc("GET /auth/oidc/link", s.RequireLogin(http.HandlerFunc(s.handleOIDCLink)).ServeHTTP)
+	s.Router.HandleFunc("POST /auth/oidc/unlink/{id}", s.RequireLogin(http.HandlerFunc(s.handleOIDCUnlink)).ServeHTTP)
+	s.Router.HandleFunc("GET /auth/oidc/callback", s.handleOIDCCallback)
 }

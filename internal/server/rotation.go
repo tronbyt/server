@@ -338,8 +338,9 @@ func createExpandedAppsList(device *data.Device, apps []*data.App) []*data.App {
 // getAppWebpPath generates the file path for an app's WebP image.
 // It handles both pushed apps (stored in pushed/ subdirectory) and regular apps.
 func (s *Server) getAppWebpPath(deviceWebpDir string, app *data.App) string {
-	if app.Pushed {
-		return filepath.Join(deviceWebpDir, "pushed", app.Iname+".webp")
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		installID := strings.TrimPrefix(*app.Path, "pushed:")
+		return filepath.Join(deviceWebpDir, "pushed", installID+".webp")
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 	return filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))

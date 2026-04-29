@@ -1,4 +1,82 @@
 {
+  "OIDC Support": {
+    "other": "OIDC Support"
+  },
+  "Configure OpenID Connect support for single sign-on.": {
+    "other": "Configure OpenID Connect support for single sign-on."
+  },
+  "Sign in with OIDC": {
+    "other": "Sign in with OIDC"
+  },
+  "OIDC Configuration": {
+    "other": "OIDC Configuration"
+  },
+  "OIDC Enable": {
+    "other": "Enable OIDC"
+  },
+  "OIDC Issuer URL": {
+    "other": "Issuer URL"
+  },
+  "OIDC Client ID": {
+    "other": "Client ID"
+  },
+  "OIDC Client Secret": {
+    "other": "Client Secret"
+  },
+  "OIDC Allow Auto Create": {
+    "other": "Allow auto-create users"
+  },
+  "OIDC Username Claim": {
+    "other": "Username claim"
+  },
+  "OIDC Admin Group Claim": {
+    "other": "Admin group claim"
+  },
+  "OIDC Admin Group Value": {
+    "other": "Admin group value"
+  },
+  "OIDCErrorNoAccount": {
+    "other": "No matching account exists. Please contact an administrator."
+  },
+  "OIDCErrorConfig": {
+    "other": "OIDC is not properly configured."
+  },
+  "OIDCErrorAuth": {
+    "other": "Authentication failed. Please try again."
+  },
+  "OIDC Settings saved": {
+    "other": "OIDC settings saved."
+  },
+  "OIDC Settings": {
+    "other": "OIDC Settings"
+  },
+  "OIDC Admin group description": {
+    "other": "Users in this OIDC group will be granted admin access."
+  },
+  "Test OIDC Login": {
+    "other": "Test OIDC Login"
+  },
+  "Advanced": {
+    "other": "Advanced"
+  },
+  "Claim to use for username": {
+    "other": "Claim to use for username"
+  },
+  "Claim name for group/role check": {
+    "other": "Claim name for group/role check"
+  },
+  "No matching account exists. Please contact an administrator.": {
+    "other": "No matching account exists. Please contact an administrator."
+  },
+  "OIDC is not properly configured.": {
+    "other": "OIDC is not properly configured."
+  },
+  "Authentication failed. Please try again.": {
+    "other": "Authentication failed. Please try again."
+  },
+  "OIDC settings saved.": {
+    "other": "OIDC settings saved."
+  },
   "TimeAgo_JustNow": {
     "other": "Just now"
   },
@@ -1480,6 +1558,30 @@
   },
   "Invalid username or password": {
     "other": "Invalid username or password"
+  },
+  "OIDC Identities": {
+    "other": "OIDC Identities"
+  },
+  "Issuer": {
+    "other": "Issuer"
+  },
+  "OIDC Email": {
+    "other": "OIDC Email"
+  },
+  "Unlink": {
+    "other": "Unlink"
+  },
+  "No OIDC identities linked to this account.": {
+    "other": "No OIDC identities linked to this account."
+  },
+  "Link OIDC Account": {
+    "other": "Link OIDC Account"
+  },
+  "Are you sure you want to unlink this OIDC identity?": {
+    "other": "Are you sure you want to unlink this OIDC identity?"
+  },
+  "This OIDC account is already linked to another user.": {
+    "other": "This OIDC account is already linked to another user."
   },
   "Administrator": {
     "other": "Administrator"

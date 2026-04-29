@@ -52,6 +52,133 @@
         </div>
     </section>
     <section class="settings-card">
+        <form method="post" action="/settings/admin/oidc" class="settings-form">
+            <div class="settings-card-header">
+                <h2>{{ t .Localizer "OIDC Configuration" }}</h2>
+            </div>
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_enabled">{{ t .Localizer "OIDC Enable" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               name="oidc_enabled"
+                               id="oidc_enabled"
+                               class="w3-check"
+                               {{ if .OIDCEnabled }}
+                               checked
+                               {{ end }}>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_issuer_url">{{ t .Localizer "OIDC Issuer URL" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="url"
+                               name="oidc_issuer_url"
+                               id="oidc_issuer_url"
+                               class="settings-input settings-input-wide"
+                               value="{{ .OIDCIssuerURL }}"
+                               placeholder="https://auth.example.com/realms/myrealm">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_client_id">{{ t .Localizer "OIDC Client ID" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="text"
+                               name="oidc_client_id"
+                               id="oidc_client_id"
+                               class="settings-input settings-input-wide"
+                               value="{{ .OIDCClientID }}">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_client_secret">{{ t .Localizer "OIDC Client Secret" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="password"
+                               name="oidc_client_secret"
+                               id="oidc_client_secret"
+                               class="settings-input settings-input-wide"
+                               value="{{ .OIDCClientSecret }}">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_allow_auto_create">{{ t .Localizer "OIDC Allow Auto Create" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               name="oidc_allow_auto_create"
+                               id="oidc_allow_auto_create"
+                               class="w3-check"
+                               {{ if .OIDCAllowAutoCreate }}
+                               checked
+                               {{ end }}>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_username_claim">{{ t .Localizer "OIDC Username Claim" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="text"
+                               name="oidc_username_claim"
+                               id="oidc_username_claim"
+                               class="settings-input settings-input-wide"
+                               value="{{ .OIDCUsernameClaim }}"
+                               placeholder="preferred_username">
+                        <p class="settings-help">{{ t .Localizer "Claim to use for username" }}</p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_admin_group_claim">{{ t .Localizer "OIDC Admin Group Claim" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="text"
+                               name="oidc_admin_group_claim"
+                               id="oidc_admin_group_claim"
+                               class="settings-input settings-input-wide"
+                               value="{{ .OIDCAdminGroupClaim }}"
+                               placeholder="groups">
+                        <p class="settings-help">{{ t .Localizer "Claim name for group/role check" }}</p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_admin_group_value">{{ t .Localizer "OIDC Admin Group Value" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="text"
+                               name="oidc_admin_group_value"
+                               id="oidc_admin_group_value"
+                               class="settings-input settings-input-wide"
+                               value="{{ .OIDCAdminGroupValue }}"
+                               placeholder="tronbyt-admins">
+                        <p class="settings-help">{{ t .Localizer "OIDC Admin group description" }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="submit" class="w3-button w3-blue">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save OIDC Settings" }}
+                </button>
+                {{ if .OIDCEnabled }}
+                <a href="/auth/oidc/login" class="w3-button w3-blue">
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> {{ t .Localizer "Test OIDC Login" }}
+                </a>
+                {{ end }}
+            </div>
+        </form>
+    </section>
+
+    <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "User Management" }}</h2>
             <p>{{ t .Localizer "Create, review, and remove users." }}</p>

@@ -20,13 +20,18 @@
     </button>
 </form>
 <div id="webauthn-login-container">
-    <hr>
     <button onclick="loginWebAuthn()" class="w3-button w3-blue">
-        <i class="fa-solid fa-fingerprint"></i> {{ t .Localizer "Sign in with Passkey" }}
+        <i class="fa-solid fa-fingerprint" aria-hidden="true"></i> {{ t .Localizer "Sign in with Passkey" }}
     </button>
+    {{ if .OIDCEnabled }}
+    <button onclick="window.location.href='/auth/oidc/login'"
+            class="w3-button w3-blue">
+        <i class="fa-solid fa-id-card" aria-hidden="true"></i> {{ t .Localizer "Sign in with OIDC" }}
+    </button>
+    {{ end }}
 </div>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    function loginWebAuthn() {
         if (!window.PublicKeyCredential || !navigator.credentials) {
             const el = document.getElementById('webauthn-login-container');
             if (el) el.style.display = 'none';
