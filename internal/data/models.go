@@ -564,25 +564,29 @@ type App struct {
 }
 
 type Device struct {
-	ID                    string      `gorm:"primaryKey"              json:"id"` // 8-char hex
-	Username              string      `gorm:"index"                   json:"username"`
-	Name                  string      `json:"name"`
-	Type                  DeviceType  `gorm:"type:text"               json:"type"`
-	APIKey                string      `gorm:"uniqueIndex"             json:"api_key"`
-	ImgURL                string      `json:"img_url"`
-	WsURL                 string      `json:"ws_url"`
-	Notes                 string      `json:"notes"`
-	Brightness            Brightness  `gorm:"default:20"              json:"brightness"` // 0-100
-	CustomBrightnessScale string      `json:"custom_brightness_scale"`
-	NightModeEnabled      bool        `json:"night_mode_enabled"`
-	NightModeApp          string      `json:"night_mode_app"`
-	NightStart            string      `json:"night_start"` // HH:MM
-	NightEnd              string      `json:"night_end"`   // HH:MM
-	NightBrightness       Brightness  `gorm:"default:0"               json:"night_brightness"`
-	DimModeEnabled        bool        `json:"dim_mode_enabled"`
-	DimTime               *string     `json:"dim_time"`
-	DimBrightness         *Brightness `json:"dim_brightness"`
-	DefaultInterval       int         `gorm:"default:15"              json:"default_interval"`
+	ID                     string      `gorm:"primaryKey"                          json:"id"` // 8-char hex
+	Username               string      `gorm:"index"                               json:"username"`
+	Name                   string      `json:"name"`
+	Type                   DeviceType  `gorm:"type:text"                           json:"type"`
+	APIKey                 string      `gorm:"uniqueIndex"                         json:"api_key"`
+	ImgURL                 string      `json:"img_url"`
+	WsURL                  string      `json:"ws_url"`
+	Notes                  string      `json:"notes"`
+	Brightness             Brightness  `gorm:"default:20"                          json:"brightness"` // 0-100
+	CustomBrightnessScale  string      `json:"custom_brightness_scale"`
+	NightModeEnabled       bool        `json:"night_mode_enabled"`
+	NightModeApp           string      `json:"night_mode_app"`
+	NightStart             string      `json:"night_start"` // HH:MM
+	NightEnd               string      `json:"night_end"`   // HH:MM
+	NightBrightness        Brightness  `gorm:"default:0"                           json:"night_brightness"`
+	NightModeOverride      *bool       `json:"night_mode_override,omitempty"`
+	NightModeOverrideUntil *time.Time  `json:"night_mode_override_until,omitempty"`
+	DimModeEnabled         bool        `json:"dim_mode_enabled"`
+	DimModeOverride        *bool       `json:"dim_mode_override,omitempty"`
+	DimModeOverrideUntil   *time.Time  `json:"dim_mode_override_until,omitempty"`
+	DimTime                *string     `json:"dim_time"`
+	DimBrightness          *Brightness `json:"dim_brightness"`
+	DefaultInterval        int         `gorm:"default:15"                          json:"default_interval"`
 
 	Timezone *string `json:"timezone"`
 	Locale   *string `json:"locale"`
@@ -688,13 +692,7 @@ func (d *Device) GetTimezone() string {
 	return "Local"
 }
 
-// GetNightModeIsActive checks if night mode is currently active for a device.
-func (d Device) GetNightModeIsActive() bool {
-	if !d.NightModeEnabled {
-		return false
-	}
-
-	// Get Device Timezone
+func (d Device) getLocation() *time.Location {
 	loc := time.Local
 	if d.Timezone != nil {
 		if l, err := time.LoadLocation(*d.Timezone); err == nil {
@@ -705,10 +703,10 @@ func (d Device) GetNightModeIsActive() bool {
 			loc = l
 		}
 	}
+	return loc
+}
 
-	currentTime := time.Now().In(loc)
-	currentHM := currentTime.Format("15:04")
-
+func (d Device) getNightScheduleBounds() (string, string) {
 	start := "22:00"
 	if d.NightStart != "" {
 		start = d.NightStart
@@ -717,11 +715,176 @@ func (d Device) GetNightModeIsActive() bool {
 	if d.NightEnd != "" {
 		end = d.NightEnd
 	}
+	return start, end
+}
 
-	if start > end {
-		return currentHM >= start || currentHM <= end
+func clockToMinutes(value string) (int, bool) {
+	parts := strings.Split(value, ":")
+	if len(parts) != 2 {
+		return 0, false
 	}
-	return currentHM >= start && currentHM <= end
+	hours, err := strconv.Atoi(parts[0])
+	if err != nil || hours < 0 || hours > 23 {
+		return 0, false
+	}
+	minutes, err := strconv.Atoi(parts[1])
+	if err != nil || minutes < 0 || minutes > 59 {
+		return 0, false
+	}
+	return hours*60 + minutes, true
+}
+
+func (d Device) GetScheduledNightModeIsActiveAt(now time.Time) bool {
+	if !d.NightModeEnabled {
+		return false
+	}
+
+	start, end := d.getNightScheduleBounds()
+	currentMinutes := now.Hour()*60 + now.Minute()
+	startMinutes, startOK := clockToMinutes(start)
+	endMinutes, endOK := clockToMinutes(end)
+	if !startOK || !endOK {
+		return false
+	}
+
+	if startMinutes > endMinutes {
+		return currentMinutes >= startMinutes || currentMinutes <= endMinutes
+	}
+	return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+}
+
+func (d Device) GetNightModeNextChangeAt(now time.Time) *time.Time {
+	if !d.NightModeEnabled {
+		return nil
+	}
+
+	start, end := d.getNightScheduleBounds()
+	startParsed, err := time.Parse("15:04", start)
+	if err != nil {
+		return nil
+	}
+	endParsed, err := time.Parse("15:04", end)
+	if err != nil {
+		return nil
+	}
+
+	var next *time.Time
+	for dayOffset := 0; dayOffset <= 2; dayOffset++ {
+		day := now.AddDate(0, 0, dayOffset)
+		candidates := []time.Time{
+			time.Date(day.Year(), day.Month(), day.Day(), startParsed.Hour(), startParsed.Minute(), 0, 0, now.Location()),
+			time.Date(day.Year(), day.Month(), day.Day(), endParsed.Hour(), endParsed.Minute(), 0, 0, now.Location()),
+		}
+		for _, candidate := range candidates {
+			if !candidate.After(now) {
+				continue
+			}
+			if next == nil || candidate.Before(*next) {
+				candidateCopy := candidate
+				next = &candidateCopy
+			}
+		}
+	}
+	return next
+}
+
+func (d Device) GetNightModeOverrideActiveAt(now time.Time) bool {
+	if d.NightModeOverride == nil || d.NightModeOverrideUntil == nil {
+		return false
+	}
+	return now.Before(d.NightModeOverrideUntil.In(now.Location()))
+}
+
+func (d Device) getDimScheduleBounds() (string, string, bool) {
+	if d.DimTime == nil || *d.DimTime == "" {
+		return "", "", false
+	}
+	start := *d.DimTime
+	end := "06:00"
+	if d.NightEnd != "" {
+		end = d.NightEnd
+	}
+	return start, end, true
+}
+
+func (d Device) GetScheduledDimModeIsActiveAt(now time.Time) bool {
+	if !d.DimModeEnabled {
+		return false
+	}
+	start, end, ok := d.getDimScheduleBounds()
+	if !ok {
+		return false
+	}
+
+	currentMinutes := now.Hour()*60 + now.Minute()
+	startMinutes, startOK := clockToMinutes(start)
+	endMinutes, endOK := clockToMinutes(end)
+	if !startOK || !endOK {
+		return false
+	}
+
+	if startMinutes > endMinutes {
+		return currentMinutes >= startMinutes || currentMinutes <= endMinutes
+	}
+	return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+}
+
+func (d Device) GetDimModeNextChangeAt(now time.Time) *time.Time {
+	if !d.DimModeEnabled {
+		return nil
+	}
+	start, end, ok := d.getDimScheduleBounds()
+	if !ok {
+		return nil
+	}
+
+	startParsed, err := time.Parse("15:04", start)
+	if err != nil {
+		return nil
+	}
+	endParsed, err := time.Parse("15:04", end)
+	if err != nil {
+		return nil
+	}
+
+	var next *time.Time
+	for dayOffset := 0; dayOffset <= 2; dayOffset++ {
+		day := now.AddDate(0, 0, dayOffset)
+		candidates := []time.Time{
+			time.Date(day.Year(), day.Month(), day.Day(), startParsed.Hour(), startParsed.Minute(), 0, 0, now.Location()),
+			time.Date(day.Year(), day.Month(), day.Day(), endParsed.Hour(), endParsed.Minute(), 0, 0, now.Location()),
+		}
+		for _, candidate := range candidates {
+			if !candidate.After(now) {
+				continue
+			}
+			if next == nil || candidate.Before(*next) {
+				candidateCopy := candidate
+				next = &candidateCopy
+			}
+		}
+	}
+	return next
+}
+
+func (d Device) GetDimModeOverrideActiveAt(now time.Time) bool {
+	if d.DimModeOverride == nil || d.DimModeOverrideUntil == nil {
+		return false
+	}
+	return now.Before(d.DimModeOverrideUntil.In(now.Location()))
+}
+
+// GetNightModeIsActive checks if night mode is currently active for a device.
+func (d Device) GetNightModeIsActive() bool {
+	if !d.NightModeEnabled {
+		return false
+	}
+
+	currentTime := time.Now().In(d.getLocation())
+	if d.GetNightModeOverrideActiveAt(currentTime) {
+		return d.NightModeOverride != nil && *d.NightModeOverride
+	}
+	return d.GetScheduledNightModeIsActiveAt(currentTime)
 }
 
 // GetDimModeIsActive checks if dim mode is active (dimming without full night mode).
@@ -729,36 +892,14 @@ func (d Device) GetDimModeIsActive() bool {
 	if !d.DimModeEnabled {
 		return false
 	}
-	dimTime := d.DimTime
-	if dimTime == nil || *dimTime == "" {
+	currentTime := time.Now().In(d.getLocation())
+	if d.GetNightModeIsActive() {
 		return false
 	}
-
-	// Get Device Timezone
-	loc := time.Local
-	if d.Timezone != nil {
-		if l, err := time.LoadLocation(*d.Timezone); err == nil {
-			loc = l
-		}
-	} else if d.Location.Timezone != "" {
-		if l, err := time.LoadLocation(d.Location.Timezone); err == nil {
-			loc = l
-		}
+	if d.GetDimModeOverrideActiveAt(currentTime) {
+		return d.DimModeOverride != nil && *d.DimModeOverride
 	}
-
-	currentTime := time.Now().In(loc)
-	currentHM := currentTime.Format("15:04")
-
-	start := *dimTime
-	end := "06:00" // Default
-	if d.NightEnd != "" {
-		end = d.NightEnd
-	}
-
-	if start > end {
-		return currentHM >= start || currentHM <= end
-	}
-	return currentHM >= start && currentHM <= end
+	return d.GetScheduledDimModeIsActiveAt(currentTime)
 }
 
 // GetEffectiveDwellTime returns the display duration for an app, falling back to the device default.

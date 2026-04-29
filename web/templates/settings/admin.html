@@ -1,0 +1,331 @@
+{{ define "settings_admin" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "System Settings" }}{{ end }}
+{{ define "content" }}
+<div class="settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "System Settings" }}</p>
+            <h1>{{ t .Localizer "Admin" }}</h1>
+            <p class="settings-page-copy">{{ t .Localizer "Manage backups and user accounts for this server." }}</p>
+        </div>
+    </header>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Data Management" }}</h2>
+        </div>
+        <div class="settings-field-list">
+            <div class="settings-field-row">
+                <div class="settings-field-label">{{ t .Localizer "Export Configuration" }}</div>
+                <div class="settings-field-control">
+                    <p class="settings-help">{{ t .Localizer "Download your entire user configuration as a JSON file." }}</p>
+                    <a href="/export_user_config" class="w3-button w3-blue">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export" }}
+                    </a>
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">{{ t .Localizer "Import Configuration" }}</div>
+                <div class="settings-field-control">
+                    <p class="settings-help">
+                        {{ t .Localizer "Import your user configuration from a JSON file. This will replace your current configuration, but preserve your username and password." }}
+                    </p>
+                    <form method="post"
+                          action="/import_user_config"
+                          enctype="multipart/form-data"
+                          class="settings-form">
+                        <div class="settings-control-stack">
+                            <input type="file"
+                                   name="file"
+                                   id="file"
+                                   accept=".json"
+                                   required
+                                   class="settings-input settings-file-input">
+                            <button type="submit" class="w3-button w3-blue">
+                                <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import" }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="settings-card">
+        <form method="post" action="/settings/admin/oidc" class="settings-form">
+            <div class="settings-card-header">
+                <h2>{{ t .Localizer "OIDC Configuration" }}</h2>
+            </div>
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oidc_enabled">{{ t .Localizer "OIDC Enable" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               name="oidc_enabled"
+                               id="oidc_enabled"
+                               class="w3-check"
+                               {{ if .OIDCEnabled }}
+                               checked
+                               {{ end }}
+                               onchange="updateOIDCVision()">
+                    </div>
+                </div>
+                <div id="oidc-collapsible-fields"
+                     {{ if not .OIDCEnabled }}
+                     style="display: none"
+                     {{ end }}>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_issuer_url">{{ t .Localizer "OIDC Issuer URL" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="url"
+                                   name="oidc_issuer_url"
+                                   id="oidc_issuer_url"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCIssuerURL }}"
+                                   placeholder="https://auth.example.com/realms/myrealm">
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_client_id">{{ t .Localizer "OIDC Client ID" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="text"
+                                   name="oidc_client_id"
+                                   id="oidc_client_id"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCClientID }}">
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_client_secret">{{ t .Localizer "OIDC Client Secret" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="password"
+                                   name="oidc_client_secret"
+                                   id="oidc_client_secret"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCClientSecret }}">
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_allow_auto_create">{{ t .Localizer "OIDC Allow Auto Create" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   name="oidc_allow_auto_create"
+                                   id="oidc_allow_auto_create"
+                                   class="w3-check"
+                                   {{ if .OIDCAllowAutoCreate }}
+                                   checked
+                                   {{ end }}>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_username_claim">{{ t .Localizer "OIDC Username Claim" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="text"
+                                   name="oidc_username_claim"
+                                   id="oidc_username_claim"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCUsernameClaim }}"
+                                   placeholder="preferred_username">
+                            <p class="settings-help">{{ t .Localizer "Claim to use for username" }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_admin_group_claim">{{ t .Localizer "OIDC Admin Group Claim" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="text"
+                                   name="oidc_admin_group_claim"
+                                   id="oidc_admin_group_claim"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCAdminGroupClaim }}"
+                                   placeholder="groups">
+                            <p class="settings-help">{{ t .Localizer "Claim name for group/role check" }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="oidc_admin_group_value">{{ t .Localizer "OIDC Admin Group Value" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="text"
+                                   name="oidc_admin_group_value"
+                                   id="oidc_admin_group_value"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCAdminGroupValue }}"
+                                   placeholder="tronbyt-admins">
+                            <p class="settings-help">{{ t .Localizer "OIDC Admin group description" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="submit" class="w3-button w3-blue">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save OIDC Settings" }}
+                </button>
+                <a href="#"
+                   class="settings-caption"
+                   id="oidc-details-toggle"
+                   style="text-decoration: none;
+                          cursor: pointer;
+                          user-select: none;
+                          margin-left: 8px">{{ t .Localizer "Expand" }}</a>
+                {{ if .OIDCEnabled }}
+                <a href="/auth/oidc/login" class="w3-button w3-blue">
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> {{ t .Localizer "Test OIDC Login" }}
+                </a>
+                {{ end }}
+            </div>
+        </form>
+    </section>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "User Management" }}</h2>
+            <p>{{ t .Localizer "Create, review, and remove users." }}</p>
+        </div>
+        <div class="settings-actions">
+            <a class="w3-button w3-green" href="/auth/register">
+                <i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{ t .Localizer "Create User" }}
+            </a>
+        </div>
+        <ul class="settings-list">
+            {{ range .Users }}
+            <li class="settings-list-item settings-user-row">
+                <div class="settings-list-copy">
+                    <strong>{{ .Username }}</strong>
+                    {{ if .IsAdmin }}
+                    <span class="settings-tag">{{ t $.Localizer "Admin" }}</span>
+                    {{ end }}
+                    <span>{{ len .Devices }} {{ if eq (len .Devices) 1 }}{{ t $.Localizer "device" }}{{ else }}{{ t $.Localizer "devices" }}{{ end }}</span>
+                    <span class="settings-caption">{{ t $.Localizer "Email Address" }}</span>
+                    <span>{{ if .Email }}{{ derefOr .Email "" }}{{ else }}{{ t $.Localizer "No email address" }}{{ end }}</span>
+                </div>
+                <div class="settings-actions settings-user-actions">
+                    <button class="w3-button w3-blue"
+                            type="button"
+                            onclick="openEmailDialog('{{ .Username }}')">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t $.Localizer "Edit Email" }}
+                    </button>
+                    {{ if ne .Username $.User.Username }}
+                    <button class="w3-button w3-red"
+                            type="button"
+                            onclick="deleteUser('{{ .Username }}')">
+                        <i class="fa-solid fa-trash"></i> {{ t $.Localizer "Delete User" }}
+                    </button>
+                {{ else }}
+                    <span class="settings-help">{{ t $.Localizer "Current user" }}</span>
+                    {{ end }}
+                </div>
+                <dialog id="user-email-dialog-{{ .Username }}" class="settings-dialog">
+                    <form method="post"
+                          action="/settings/admin/users/{{ .Username }}/email"
+                          class="settings-form">
+                        <div class="settings-card-header">
+                            <h3>{{ t $.Localizer "Edit Email" }}</h3>
+                            <p>{{ .Username }}</p>
+                        </div>
+                        <div class="settings-field-list">
+                            <div class="settings-field-row">
+                                <div class="settings-field-label">
+                                    <label for="user-email-{{ .Username }}">{{ t $.Localizer "Email Address" }}</label>
+                                </div>
+                                <div class="settings-field-control">
+                                    <input type="email"
+                                           name="email"
+                                           id="user-email-{{ .Username }}"
+                                           value="{{ derefOr .Email "" }}"
+                                           placeholder="{{ t $.Localizer "No email address" }}"
+                                           class="settings-input settings-input-wide">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-dialog-actions">
+                            <button class="w3-button w3-blue" type="submit">
+                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t $.Localizer "Save Email" }}
+                            </button>
+                            <button class="w3-button"
+                                    type="button"
+                                    onclick="closeEmailDialog('{{ .Username }}')">{{ t $.Localizer "Cancel" }}</button>
+                        </div>
+                    </form>
+                </dialog>
+            </li>
+            {{ end }}
+        </ul>
+    </section>
+</div>
+<script>
+    function openEmailDialog(username) {
+        const dialog = document.getElementById('user-email-dialog-' + username);
+        if (dialog) dialog.showModal();
+    }
+
+    function closeEmailDialog(username) {
+        const dialog = document.getElementById('user-email-dialog-' + username);
+        if (dialog) dialog.close();
+    }
+
+    function updateOIDCVision() {
+        const checkbox = document.getElementById('oidc_enabled');
+        const container = document.getElementById('oidc-collapsible-fields');
+        const toggleLink = document.getElementById('oidc-details-toggle');
+
+        if (checkbox && checkbox.checked) {
+            // Always show when enabled
+            container.style.display = 'block';
+            if (toggleLink) toggleLink.style.display = 'none';
+        } else {
+            // Collapse when disabled
+            container.style.display = 'none';
+            if (toggleLink) {
+                toggleLink.style.display = 'inline-block';
+                toggleLink.textContent = '{{ t .Localizer "Expand" }}';
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleLink = document.getElementById('oidc-details-toggle');
+        const container = document.getElementById('oidc-collapsible-fields');
+
+        if (toggleLink && container) {
+            toggleLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                const isHidden = container.style.display === 'none';
+                container.style.display = isHidden ? 'block' : 'none';
+                toggleLink.textContent = isHidden ? '{{ t .Localizer "Collapse" }}' : '{{ t .Localizer "Expand" }}';
+            });
+        }
+        updateOIDCVision();
+    });
+
+    function deleteUser(username) {
+        if (!confirm('{{ t .Localizer "Delete User?" }}')) return;
+
+        fetch('/settings/admin/users/' + username, {
+            method: 'DELETE'
+        }).then(response => {
+            if (response.ok || response.redirected) {
+                window.location.reload();
+            } else {
+                alert('{{ t .Localizer "Failed to delete user" }}');
+            }
+        }).catch(err => {
+            console.error(err);
+            alert('{{ t .Localizer "Error deleting user" }}');
+        });
+    }
+</script>
+{{ end }}

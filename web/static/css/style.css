@@ -1,148 +1,288 @@
-/* Define :root variables for light theme (default) */
 :root {
-  --page-bg: #f5f5f5; /* Slightly darker for better contrast */
-  --page-text: #1a1a1a; /* Darker text for better contrast */
-  --content-bg: #ffffff;
-  --primary-color: #2563eb; /* Improved blue with better contrast */
-  --secondary-color: #e5e7eb; /* Better contrast than lightgray */
-  --flash-bg: #dbeafe; /* Light blue with better contrast */
-  --flash-border: #2563eb;
-  --flash-text: #1e40af; /* Darker blue text for better contrast */
-  --link-color: #2563eb;
-  --header-text-color: #2563eb;
-  --post-about-text: #6b7280; /* Better contrast than slategray */
+  color-scheme: light;
+  --font-sans: "Manrope", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --page-bg: #f4f5f7;
+  --page-text: #171717;
+  --muted-text: #666c75;
+  --content-bg: #fbfbfc;
+  --surface-bg: #ffffff;
+  --surface-subtle: #f7f7f8;
+  --primary-color: #2563eb;
+  --primary-soft: #eff6ff;
+  --link-color: #1f4fd1;
+  --header-text-color: #111827;
+  --flash-bg: #eff6ff;
+  --flash-border: #bfdbfe;
+  --flash-text: #1e3a8a;
   --input-bg: #ffffff;
-  --input-text: #1a1a1a;
-  --input-border: #d1d5db; /* Better contrast than #ccc */
-  --button-bg: #f3f4f6; /* Slightly darker for better contrast */
-  --button-text: #1a1a1a;
-  --submit-bg: #2563eb;
+  --input-text: #111827;
+  --input-border: #d7dbe1;
+  --button-bg: #ffffff;
+  --button-text: #111827;
+  --button-primary-bg: #2f3742;
+  --button-primary-hover: #3a4350;
+  --button-primary-text: #ffffff;
+  --submit-bg: #111827;
   --submit-text: #ffffff;
-  --danger-text: #dc2626; /* Better contrast red */
-  --enabled-text: #059669; /* Better contrast green */
-  --disabled-text: #dc2626; /* Consistent with danger */
-  --app-img-bg: #000000;
-  --app-img-border: #d1d5db; /* Better contrast */
+  --danger-text: #c63c37;
+  --enabled-text: #1f7a52;
+  --disabled-text: #7b8088;
+  --app-img-bg: #0b0c0f;
+  --app-img-border: #d7dbe1;
   --select-bg: #ffffff;
-  --select-text: #1a1a1a; /* Better contrast */
-  --select-border: #d1d5db;
-  --border-color: #e5e7eb; /* New variable for consistent borders */
-  --shadow-color: rgba(0, 0, 0, 0.1); /* New variable for shadows */
+  --select-text: #111827;
+  --select-border: #d7dbe1;
+  --border-color: #e3e6ea;
+  --shadow-color: rgba(15, 23, 42, 0.06);
+  --shadow-strong: rgba(15, 23, 42, 0.12);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
 }
 
-/* Define variables for dark theme */
 [data-theme="dark"] {
-  --page-bg: #0f172a; /* Darker background for better contrast */
-  --page-text: #f8fafc; /* High contrast white text */
-  --content-bg: #1e293b; /* Darker content background */
-  --primary-color: #60a5fa; /* Brighter blue for dark mode */
-  --secondary-color: #475569; /* Better contrast secondary */
-  --flash-bg: #1e3a8a; /* Dark blue background for flash messages */
-  --flash-border: #60a5fa;
-  --flash-text: #dbeafe; /* Light blue text for flash messages */
-  --link-color: #60a5fa;
-  --header-text-color: #60a5fa;
-  --post-about-text: #94a3b8; /* Better contrast gray */
-  --input-bg: #334155; /* Darker input background */
-  --input-text: #f8fafc;
-  --input-border: #64748b; /* Better contrast border */
-  --button-bg: #475569; /* Darker button background */
-  --button-text: #f8fafc;
-  --submit-bg: #2563eb; /* Keep same blue for consistency */
-  --submit-text: #ffffff;
-  --danger-text: #f87171; /* Brighter red for dark mode */
-  --enabled-text: #34d399; /* Brighter green for dark mode */
-  --disabled-text: #f87171; /* Consistent with danger */
-  --app-img-bg: #000000;
-  --app-img-border: #64748b; /* Better contrast */
-  --select-bg: #334155;
-  --select-text: #f8fafc;
-  --select-border: #64748b;
-  --border-color: #475569; /* Dark mode border color */
-  --shadow-color: rgba(0, 0, 0, 0.3); /* Darker shadows for dark mode */
+  color-scheme: dark;
+  --page-bg: #111315;
+  --page-text: #f5f7fa;
+  --muted-text: #a5adb8;
+  --content-bg: #17191c;
+  --surface-bg: #1c1f23;
+  --surface-subtle: #22262b;
+  --primary-color: #76a8ff;
+  --primary-soft: rgba(118, 168, 255, 0.14);
+  --link-color: #8db5ff;
+  --header-text-color: #f5f7fa;
+  --flash-bg: rgba(118, 168, 255, 0.14);
+  --flash-border: rgba(118, 168, 255, 0.35);
+  --flash-text: #dce8ff;
+  --input-bg: #15181c;
+  --input-text: #f5f7fa;
+  --input-border: #353b44;
+  --button-bg: #20242a;
+  --button-text: #f5f7fa;
+  --button-primary-bg: #c8d0da;
+  --button-primary-hover: #d9e0ea;
+  --button-primary-text: #111315;
+  --submit-bg: #c8d0da;
+  --submit-text: #111315;
+  --danger-text: #ff8c86;
+  --enabled-text: #72c596;
+  --disabled-text: #9aa3af;
+  --app-img-border: #353b44;
+  --select-bg: #15181c;
+  --select-text: #f5f7fa;
+  --select-border: #353b44;
+  --border-color: #2c3138;
+  --shadow-color: rgba(0, 0, 0, 0.22);
+  --shadow-strong: rgba(0, 0, 0, 0.36);
 }
 
-/* Apply variables to existing styles */
-html { font-family: sans-serif; background: var(--page-bg); color: var(--page-text); padding: 1rem; }
-body { max-width: 960px; margin: 0 auto; background: var(--content-bg); color: var(--page-text); }
-h1 { font-family: sans-serif; color: var(--header-text-color); margin: 1rem 0; }
-a { color: var(--link-color); }
-hr { border: none; border-top: 1px solid var(--secondary-color); }
-nav { background: var(--secondary-color); display: flex; align-items: center; padding: 0 0.5rem; }
-nav h1 { flex: auto; margin: 0; }
-nav h1 a { text-decoration: none; padding: 0.25rem 0.5rem; color: var(--header-text-color); } /* Ensure nav h1 link uses header text color or link color */
-nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
-nav ul li a, nav ul li span, nav header .action { display: block; padding: 0.5rem; color: var(--link-color); } /* Ensure nav links use link color */
+html {
+  font-family: var(--font-sans);
+  background: linear-gradient(180deg, var(--page-bg) 0%, var(--content-bg) 100%);
+  color: var(--page-text);
+  padding: 1rem;
+}
 
-.content { padding: 0 1rem 1rem; }
-.content > header { display: flex; align-items:flex-end; }
-.content > header h1 { flex: auto; margin: 1rem 0 0.25rem 0; } /* Uses h1 style */
+body {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: transparent;
+  color: var(--page-text);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  color: var(--header-text-color);
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.4vw, 2.3rem);
+  line-height: 1.08;
+}
+
+h2 {
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+a {
+  color: var(--link-color);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+}
+
+nav {
+  background: color-mix(in srgb, var(--surface-bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px var(--shadow-color);
+}
+
+nav h1 {
+  flex: auto;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+nav h1 a {
+  text-decoration: none;
+  color: var(--header-text-color);
+}
+
+nav ul {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+}
+
+nav ul li a,
+nav ul li span,
+nav header .action {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted-text);
+  text-decoration: none;
+  border-radius: 999px;
+}
+
+nav ul li a:hover {
+  background: var(--surface-subtle);
+  color: var(--page-text);
+}
+
+.content {
+  padding: 1.25rem 0 1rem;
+}
+
+.content > header {
+  display: flex;
+  align-items: flex-end;
+}
+
 .flash {
-  margin: 1em 0;
-  padding: 1em;
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
   background: var(--flash-bg);
   border: 1px solid var(--flash-border);
+  border-radius: var(--radius-md);
   color: var(--flash-text);
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
-.post > header { display: flex; align-items: flex-end; font-size: 0.85em; } /* Text color will be inherited from body */
-.post > header > div:first-of-type { flex: auto; }
-.post > header h1 { font-size: 1.5em; margin-bottom: 0; } /* Uses h1 style */
-.post .about { color: var(--post-about-text); font-style: italic; }
-.post .body { white-space: pre-line; } /* Text color will be inherited */
-.content:last-child { margin-bottom: 0; }
-.content form { margin: 1em 0; display: flex; flex-direction: column; } /* Text color will be inherited */
-.content label { font-weight: bold; margin-bottom: 0.5em; color: var(--page-text); } /* Ensure labels use page text */
-.content input, .content button, .content textarea {
-  margin-bottom: 1em;
-  background: var(--input-bg);
-  color: var(--input-text);
-  border: 1px solid var(--input-border); /* Add border for consistency */
-  padding: 0.5em; /* Add some padding */
+
+.post > header {
+  display: flex;
+  align-items: flex-end;
+  font-size: 0.85em;
 }
 
-/* Reset styles for checkboxes and radio buttons */
+.post > header > div:first-of-type {
+  flex: auto;
+}
+
+.post .about {
+  color: var(--muted-text);
+  font-style: italic;
+}
+
+.post .body {
+  white-space: pre-line;
+}
+
+.content form {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.content label {
+  font-weight: 600;
+  margin-bottom: 0.4em;
+  color: var(--page-text);
+}
+
+.content input,
+.content button,
+.content textarea,
+.content select {
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.content input:focus,
+.content textarea:focus,
+.content select:focus,
+.content button:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary-color) 45%, var(--input-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 16%, transparent);
+}
+
+.content textarea {
+  min-height: 10em;
+  resize: vertical;
+}
+
 .content input[type="checkbox"],
 .content input[type="radio"] {
   width: auto;
-  margin-bottom: 0;
+  margin: 0;
   padding: 0;
   background: initial;
   border: initial;
   appearance: auto;
   -webkit-appearance: auto;
+  box-shadow: none;
 }
-.content button { /* Style generic buttons */
-  background: var(--button-bg);
-  color: var(--button-text);
-  border: 1px solid var(--input-border); /* Or a specific button border variable */
-}
-.content textarea { min-height: 12em; resize: vertical; }
-input.danger { color: var(--danger-text); background: transparent; border: none; } /* Make danger text inputs stand out */
-input[type=submit] {
-  align-self: start;
-  min-width: 10em;
-  background: var(--submit-bg);
-  color: var(--submit-text);
-  border: none; /* Submit buttons often don't have a border or have a matching one */
-}
-/* Use consistent classes: .text-enabled and .text-disabled */
-.text-enabled { color: var(--enabled-text); }
-.text-disabled { color: var(--disabled-text); }
 
+.text-enabled {
+  color: var(--enabled-text);
+}
 
-/* app-img styles with variables */
+.text-disabled {
+  color: var(--disabled-text);
+}
+
 .app-img {
   position: relative;
   background: var(--app-img-bg);
   overflow: hidden;
   border: 1px solid var(--app-img-border);
-  border-radius: 0.5rem;
+  border-radius: 12px;
 }
+
 .app-img img {
   aspect-ratio: 2 / 1;
-  background: var(--app-img-bg); /* Match parent background */
+  background: var(--app-img-bg);
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
@@ -155,21 +295,20 @@ input[type=submit] {
   width: 100%;
   height: 100%;
 }
+
 .app-img.is-2x img {
   -webkit-mask-image: url('/dots?w=128&h=64&r=0.4');
   mask-image: url('/dots?w=128&h=64&r=0.4');
 }
 
-/* Skeleton loader */
 .skeleton-loader {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, #0009 25%, #fff3 50%, #0009 75%);
+  background: linear-gradient(90deg, transparent 15%, rgba(255, 255, 255, 0.18) 50%, transparent 85%);
   background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-  border-radius: 4px;
+  animation: loading 1.4s infinite;
 }
 
 @keyframes loading {
@@ -177,34 +316,33 @@ input[type=submit] {
   100% { background-position: -200% 0; }
 }
 
-/* Hide skeleton when image loads */
 .app-img img.loaded + .skeleton-loader {
   display: none;
 }
 
-/* Theme Toggle Styles - now using variables */
 .theme-toggle-container {
   display: inline-block;
   list-style-type: none;
 }
+
 .theme-toggle {
   display: inline-flex;
   align-items: center;
-  margin-left: 10px;
-  padding: 0.5rem;
+  margin-left: 6px;
+  padding: 0.2rem 0.3rem;
 }
+
 .theme-toggle label {
   margin-right: 6px;
   font-size: 0.9em;
-  color: var(--page-text); /* Ensure label color matches theme */
+  color: var(--muted-text);
 }
+
 .theme-toggle select {
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
   border: 1px solid var(--select-border);
   background-color: var(--select-bg);
   font-size: 0.9em;
   color: var(--select-text);
 }
-
-/* Theming is now handled by [data-theme] attribute set via JavaScript */

@@ -9,23 +9,7 @@ import (
 )
 
 func (s *Server) handleAdminSettingsGet(w http.ResponseWriter, r *http.Request) {
-	// Check admin
-	user := GetUser(r)
-	if user == nil || !user.IsAdmin {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	s.renderTemplate(w, r, "settings", TemplateData{
-		OIDCEnabled:         s.Config.OIDCEnabled,
-		OIDCIssuerURL:       s.Config.OIDCIssuerURL,
-		OIDCClientID:        s.Config.OIDCClientID,
-		OIDCClientSecret:    s.Config.OIDCClientSecret,
-		OIDCAllowAutoCreate: s.Config.OIDCAllowAutoCreate,
-		OIDCUsernameClaim:   s.Config.OIDCUsernameClaim,
-		OIDCAdminGroupClaim: s.Config.OIDCAdminGroupClaim,
-		OIDCAdminGroupValue: s.Config.OIDCAdminGroupValue,
-	})
+	http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 }
 
 func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request) {
@@ -76,14 +60,18 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	session, _ := s.Store.Get(r, "session-name")
+
 	// Reinitialize OIDC provider if enabled
 	if oidcEnabled && oidcIssuerURL != "" {
 		prov, err := s.setupOIDCProvider(context.Background())
 		if err != nil {
 			slog.Warn("Failed to reinitialize OIDC provider", "error", err)
-			s.renderTemplate(w, r, "settings", TemplateData{
-				Flashes: []string{"Failed to initialize OIDC provider: " + err.Error()},
-			})
+			session.AddFlash("Failed to initialize OIDC provider: " + err.Error())
+			if err := s.saveSession(w, r, session); err != nil {
+				slog.Error("Failed to save session after OIDC provider error", "error", err)
+			}
+			http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 			return
 		}
 		s.OIDCProvider = prov
@@ -91,17 +79,11 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 		s.OIDCProvider = nil
 	}
 
-	s.renderTemplate(w, r, "settings", TemplateData{
-		Flashes:             []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDC settings saved."})},
-		OIDCEnabled:         s.Config.OIDCEnabled,
-		OIDCIssuerURL:       s.Config.OIDCIssuerURL,
-		OIDCClientID:        s.Config.OIDCClientID,
-		OIDCClientSecret:    s.Config.OIDCClientSecret,
-		OIDCAllowAutoCreate: s.Config.OIDCAllowAutoCreate,
-		OIDCUsernameClaim:   s.Config.OIDCUsernameClaim,
-		OIDCAdminGroupClaim: s.Config.OIDCAdminGroupClaim,
-		OIDCAdminGroupValue: s.Config.OIDCAdminGroupValue,
-	})
+	session.AddFlash(localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDC settings saved."}))
+	if err := s.saveSession(w, r, session); err != nil {
+		slog.Error("Failed to save session after settings update", "error", err)
+	}
+	http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
 }
 
 func boolToString(b bool) string {

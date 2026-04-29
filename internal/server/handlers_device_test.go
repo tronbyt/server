@@ -8,9 +8,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"tronbyt-server/internal/data"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -282,4 +285,82 @@ func TestHandleUpdateInterval_Invalid(t *testing.T) {
 			t.Errorf("handler returned wrong error message for input %s: got %s want %s", tc, rr.Body.String(), "Interval must be 1 or greater")
 		}
 	}
+}
+
+func TestHandleSetNightModeOverride(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{
+		ID:               "testdevice",
+		Username:         "testuser",
+		Name:             "Test Device",
+		NightModeEnabled: true,
+		NightStart:       "22:00",
+		NightEnd:         "06:00",
+	}
+	s.DB.Create(&device)
+
+	form := url.Values{}
+	form.Add("active", "true")
+
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/set_night_mode_override", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleSetNightModeOverride)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var updatedDevice data.Device
+	require.NoError(t, s.DB.First(&updatedDevice, "id = ?", "testdevice").Error)
+	require.NotNil(t, updatedDevice.NightModeOverride)
+	require.NotNil(t, updatedDevice.NightModeOverrideUntil)
+	assert.True(t, *updatedDevice.NightModeOverride)
+	assert.True(t, updatedDevice.NightModeOverrideUntil.After(time.Now().Add(-time.Minute)))
+}
+
+func TestHandleSetDimModeOverride(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	dimTime := "18:00"
+	device := data.Device{
+		ID:             "testdevice",
+		Username:       "testuser",
+		Name:           "Test Device",
+		DimModeEnabled: true,
+		DimTime:        &dimTime,
+	}
+	s.DB.Create(&device)
+
+	form := url.Values{}
+	form.Add("active", "true")
+
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/set_dim_mode_override", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleSetDimModeOverride)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var updatedDevice data.Device
+	require.NoError(t, s.DB.First(&updatedDevice, "id = ?", "testdevice").Error)
+	require.NotNil(t, updatedDevice.DimModeOverride)
+	require.NotNil(t, updatedDevice.DimModeOverrideUntil)
+	assert.True(t, *updatedDevice.DimModeOverride)
+	assert.True(t, updatedDevice.DimModeOverrideUntil.After(time.Now().Add(-time.Minute)))
 }

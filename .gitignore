@@ -27,3 +27,7 @@ messages.pot
 .terraform.lock.hcl
 
 CLAUDE.md
+
+# Go cache
+.gocache/
+.gomodcache/

@@ -109,7 +109,8 @@ type TemplateData struct {
 	DeleteOnCancel            bool   // Indicate if app should be deleted on cancel
 	URLWarning                string // Warning about localhost in image URL
 	ReadOnly                  bool   // Indicate if the view should be read-only
-	Partial string
+	Partial                   string
+	SettingsSection           string
 
 	// OIDC Support
 	OIDCEnabled         bool

@@ -62,9 +62,10 @@
 }
 
 .device-container {
-  border: 4px solid #000000;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--surface-bg);
+  box-shadow: 0 12px 32px var(--shadow-color);
   margin-bottom: 20px;
 }
 
@@ -107,6 +108,10 @@
   border-radius: 50%;
 }
 
+[data-theme="dark"] .slider:before {
+  background-color: var(--button-primary-bg);
+}
+
 input:checked + .slider {
   background-color: #009688;
 }
@@ -143,14 +148,13 @@ input:checked + .slider:before {
 .brightness-btn[data-brightness="5"] { background-color: #f3f4f6; color: #1f2937; border-color: #d1d5db; }
 
 .brightness-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transform: translateY(-1px);
 }
 
 .brightness-btn.active {
-  border-color: #2563eb;
-  border-width: 3px;
-  box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+  border-color: var(--primary-color);
+  border-width: 1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 16%, transparent);
 }
 
 /* Dark theme - progressively brighter backgrounds with better contrast */
@@ -161,15 +165,8 @@ input:checked + .slider:before {
 [data-theme="dark"] .brightness-btn[data-brightness="4"] { background-color: #64748b; color: #f1f5f9; border-color: #94a3b8; }
 [data-theme="dark"] .brightness-btn[data-brightness="5"] { background-color: #94a3b8; color: #0f172a; border-color: #cbd5e1; }
 
-[data-theme="dark"] .brightness-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(255,255,255,0.2);
-}
-
 [data-theme="dark"] .brightness-btn.active {
-  border-color: #60a5fa;
-  border-width: 3px;
-  box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+  border-color: var(--primary-color);
 }
 
 /* Make ordering buttons narrower and prevent overflow */
@@ -234,26 +231,26 @@ button.action.w3-button:focus {
 /* Ensure specific button colors work correctly */
 .action.w3-button.w3-blue,
 button.action.w3-button.w3-blue {
-  background-color: #2196F3 !important;
-  color: white !important;
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
 }
 
 .action.w3-button.w3-green,
 button.action.w3-button.w3-green {
-  background-color: #4CAF50 !important;
-  color: white !important;
+  background-color: var(--button-primary-bg) !important;
+  color: var(--button-primary-text) !important;
 }
 
 .action.w3-button.w3-orange,
 button.action.w3-button.w3-orange {
-  background-color: #ff9800 !important;
-  color: white !important;
+  background-color: color-mix(in srgb, var(--button-bg) 88%, #c9691a 12%) !important;
+  color: var(--page-text) !important;
 }
 
 .action.w3-button.w3-red,
 button.action.w3-button.w3-red {
-  background-color: #f44336 !important;
-  color: white !important;
+  background-color: color-mix(in srgb, var(--button-bg) 88%, #c63c37 12%) !important;
+  color: var(--danger-text) !important;
 }
 
 /* App card buttons with no hover effects */
@@ -280,8 +277,46 @@ button.action.w3-button.w3-red {
 /* App Card Layout Styles */
 .app-card {
   margin-bottom: 15px;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   overflow: hidden;
+  background: var(--surface-bg);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.app-card[data-status="enabled"] {
+  border-left: 3px solid color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
+}
+
+.app-card[data-status="disabled"] {
+  background: color-mix(in srgb, var(--surface-subtle) 88%, var(--surface-bg));
+  border-color: color-mix(in srgb, var(--disabled-text) 35%, var(--border-color));
+  border-left: 3px solid color-mix(in srgb, var(--disabled-text) 60%, var(--border-color));
+  box-shadow: none;
+  opacity: 0.8;
+}
+
+.app-card[data-status="disabled"] .app-preview .app-img img {
+  opacity: 0.42;
+  filter: grayscale(0.65) saturate(0.7);
+}
+
+.app-card[data-status="disabled"] .app-preview .app-img {
+  background: color-mix(in srgb, var(--surface-subtle) 92%, transparent);
+}
+
+.app-card[data-status="disabled"] .app-header h3,
+.app-card[data-status="disabled"] .app-details p {
+  color: var(--muted-text);
+}
+
+.app-card[data-status="disabled"] .app-render-info {
+  color: color-mix(in srgb, var(--muted-text) 88%, transparent);
+}
+
+.app-card[data-status="disabled"] .app-actions {
+  opacity: 0.78;
 }
 
 .app-card-content {
@@ -303,7 +338,7 @@ button.action.w3-button.w3-red {
   margin-bottom: 8px;
   display: inline-block;
   position: relative;
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
   width: 256px;
   height: 128px;
@@ -313,7 +348,6 @@ button.action.w3-button.w3-red {
 .app-preview .app-img img {
   width: 256px;
   height: 128px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   object-fit: contain;
   display: block;
 }
@@ -332,18 +366,17 @@ button.action.w3-button.w3-red {
 }
 
 .inactive-badge-overlay {
-  background-color: #6b7280;
-  color: white;
+  background-color: rgba(255, 255, 255, 0.88);
+  color: #111827;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 0.9em;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  font-weight: 600;
 }
 
 [data-theme="dark"] .inactive-badge-overlay {
-  background-color: #9ca3af;
-  color: #0f172a;
+  background-color: rgba(17, 19, 21, 0.88);
+  color: #f5f7fa;
 }
 
 .app-render-info {
@@ -376,8 +409,8 @@ button.action.w3-button.w3-red {
 
 .app-header h3 {
   margin: 0;
-  font-size: 1.2em;
-  font-weight: bold;
+  font-size: 1.1rem;
+  font-weight: 650;
   line-height: 1.3;
 }
 
@@ -387,109 +420,56 @@ button.action.w3-button.w3-red {
 
 .status-badge {
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 0.8em;
-  font-weight: bold;
+  font-weight: 600;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
 
 .status-badge.pinned {
-  background-color: #f59e0b;
-  color: white;
+  background-color: color-mix(in srgb, var(--surface-bg) 84%, #c58a0b 16%);
+  color: var(--page-text);
 }
 
 .pinned-badge {
   font-size: 0.5em;
   vertical-align: middle;
-  background-color: #f59e0b;
-  color: white;
+  background-color: color-mix(in srgb, var(--surface-bg) 84%, #c58a0b 16%);
+  color: var(--page-text);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 999px;
   margin-left: 10px;
   font-weight: normal;
-}
-
-[data-theme="dark"] .pinned-badge {
-  background-color: #fbbf24;
-  color: #0f172a;
 }
 
 .night-mode-badge,
 .dim-mode-badge {
   font-size: 0.5em;
   vertical-align: middle;
-  color: white;
+  color: var(--page-text);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 999px;
   margin-left: 10px;
   font-weight: normal;
 }
 
-[data-theme="dark"] .night-mode-badge,
-[data-theme="dark"] .dim-mode-badge {
-  color: #0f172a;
-}
-
 .night-mode-badge {
-  background-color: #3f51b5;
-}
-
-[data-theme="dark"] .night-mode-badge {
-  background-color: #7986cb;
+  background-color: color-mix(in srgb, var(--surface-bg) 86%, #5a69c8 14%);
 }
 
 .dim-mode-badge {
-  background-color: #607d8b;
-}
-
-[data-theme="dark"] .dim-mode-badge {
-  background-color: #90a4ae;
-}
-
-.status-badge.enabled {
-  background-color: #10b981;
-  color: white;
-}
-
-.status-badge.disabled {
-  background-color: #6b7280;
-  color: white;
+  background-color: color-mix(in srgb, var(--surface-bg) 86%, #728896 14%);
 }
 
 .status-badge.autopin {
-  background-color: #3b82f6;
-  color: white;
+  background-color: color-mix(in srgb, var(--surface-bg) 84%, #4a78d8 16%);
+  color: var(--page-text);
 }
 
 .status-badge.inactive {
-  background-color: #f97316;
-  color: white;
-}
-
-/* Dark mode status badges */
-[data-theme="dark"] .status-badge.pinned {
-  background-color: #fbbf24;
-  color: #0f172a;
-}
-
-[data-theme="dark"] .status-badge.enabled {
-  background-color: #34d399;
-  color: #0f172a;
-}
-
-[data-theme="dark"] .status-badge.autopin {
-  background-color: #60a5fa;
-  color: #0f172a;
-}
-
-[data-theme="dark"] .status-badge.disabled {
-  background-color: #9ca3af;
-  color: #0f172a;
-}
-
-[data-theme="dark"] .status-badge.inactive {
-  background-color: #fb923c;
-  color: #0f172a;
+  background-color: color-mix(in srgb, var(--surface-bg) 84%, #c9691a 16%);
+  color: var(--page-text);
 }
 
 .app-details {
@@ -500,13 +480,8 @@ button.action.w3-button.w3-red {
 .app-details p {
   margin: 6px 0;
   font-size: 0.9em;
-  color: #374151;
+  color: var(--page-text);
   line-height: 1.4;
-}
-
-/* Dark mode app details text */
-[data-theme="dark"] .app-details p {
-  color: #cbd5e1;
 }
 
 .app-actions {
@@ -528,7 +503,7 @@ button.action.w3-button.w3-red {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  opacity: 0.8;
+  opacity: 1;
 }
 
 /* Standardized button sizes for all app actions - both buttons and anchor tags */
@@ -559,9 +534,9 @@ button.action.w3-button {
 .app-actions-secondary .w3-button.w3-disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  background-color: #f5f5f5 !important;
-  color: #999 !important;
-  border-color: #ddd !important;
+  background-color: var(--surface-subtle) !important;
+  color: var(--muted-text) !important;
+  border-color: var(--border-color) !important;
 }
 
 
@@ -573,27 +548,27 @@ button.action.w3-button {
 
 @keyframes moveHighlight {
   0% {
-    background-color: #dbeafe;
-    border: 2px solid #2563eb;
-    box-shadow: 0 0 20px rgba(37, 99, 235, 0.5), 0 4px 10px 0 rgba(0,0,0,0.2), 0 4px 20px 0 rgba(0,0,0,0.19);
-    transform: scale(1.02);
-  }
-  30% {
-    background-color: #e0f2fe;
-    border: 2px solid #2563eb;
-    box-shadow: 0 0 15px rgba(37, 99, 235, 0.3), 0 4px 10px 0 rgba(0,0,0,0.2), 0 4px 20px 0 rgba(0,0,0,0.19);
+    background-color: var(--primary-soft);
+    border: 1px solid color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
+    box-shadow: 0 12px 30px var(--shadow-color);
     transform: scale(1.01);
   }
-  70% {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 0 8px rgba(37, 99, 235, 0.1), 0 4px 10px 0 rgba(0,0,0,0.2), 0 4px 20px 0 rgba(0,0,0,0.19);
+  30% {
+    background-color: var(--primary-soft);
+    border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--border-color));
+    box-shadow: 0 10px 24px var(--shadow-color);
     transform: scale(1.005);
   }
+  70% {
+    background-color: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 24px var(--shadow-color);
+    transform: scale(1.002);
+  }
   100% {
-    background-color: transparent;
-    border: none;
-    box-shadow: 0 4px 10px 0 rgba(0,0,0,0.2), 0 4px 20px 0 rgba(0,0,0,0.19);
+    background-color: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px var(--shadow-color);
     transform: scale(1);
   }
 }
@@ -1033,6 +1008,12 @@ button.action.w3-button {
   margin-top: 0;
   padding-top: 0;
   min-height: 60px; /* Ensure drop target exists when empty */
+}
+
+.apps-list-view.collapsed {
+  min-height: 0;
+  margin: 0;
+  padding: 0 !important;
 }
 
 .drag-over-container {

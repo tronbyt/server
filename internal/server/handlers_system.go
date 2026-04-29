@@ -46,7 +46,7 @@ func (s *Server) handleUpdateFirmware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/auth/edit", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/content", http.StatusSeeOther)
 }
 
 func (s *Server) checkForUpdates(ctx context.Context) {

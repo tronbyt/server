@@ -102,6 +102,70 @@ function updateInterval(deviceId, interval) {
     });
 }
 
+function setNightModeOverride(deviceId, active, input) {
+  const formData = new URLSearchParams();
+  formData.append('active', active);
+
+  if (input) {
+    input.disabled = true;
+  }
+
+  fetch(`/devices/${deviceId}/set_night_mode_override`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(async response => {
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to update night mode');
+      }
+      window.location.reload();
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      if (input) {
+        input.checked = !active;
+        input.disabled = false;
+      }
+      alert(error.message || 'Failed to update night mode');
+    });
+}
+
+function setDimModeOverride(deviceId, active, input) {
+  const formData = new URLSearchParams();
+  formData.append('active', active);
+
+  if (input) {
+    input.disabled = true;
+  }
+
+  fetch(`/devices/${deviceId}/set_dim_mode_override`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(async response => {
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to update dim mode');
+      }
+      window.location.reload();
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      if (input) {
+        input.checked = !active;
+        input.disabled = false;
+      }
+      alert(error.message || 'Failed to update dim mode');
+    });
+}
+
 // Function to toggle the visibility of the device details
 function toggleDetails(deviceId) {
   const details = document.getElementById(`details-${deviceId}`);
@@ -1552,6 +1616,7 @@ function restoreDevicePreferences(deviceId) {
     appsList.classList.remove('apps-grid-view');
     appsList.classList.add('apps-list-view', 'collapsed');
     appsList.style.maxHeight = "0";
+    appsList.style.minHeight = "0";
     appsList.style.overflow = "hidden";
     appsList.style.padding = "0";
   } else {
@@ -1583,6 +1648,7 @@ function switchToListView(deviceId) {
   appsList.classList.remove('apps-grid-view', 'collapsed');
   appsList.classList.add('apps-list-view');
   appsList.style.maxHeight = "none";
+  appsList.style.minHeight = "";
   appsList.style.overflow = "visible";
   appsList.style.padding = "";
 
@@ -1611,6 +1677,7 @@ function switchToGridView(deviceId) {
   appsList.classList.remove('apps-list-view', 'collapsed');
   appsList.classList.add('apps-grid-view');
   appsList.style.maxHeight = "none";
+  appsList.style.minHeight = "";
   appsList.style.overflow = "visible";
   appsList.style.padding = "";
 
@@ -1639,6 +1706,7 @@ function switchToCollapsedView(deviceId) {
   appsList.classList.remove('apps-grid-view');
   appsList.classList.add('apps-list-view', 'collapsed');
   appsList.style.maxHeight = "0";
+  appsList.style.minHeight = "0";
   appsList.style.overflow = "hidden";
   appsList.style.padding = "0";
 

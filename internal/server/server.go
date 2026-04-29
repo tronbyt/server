@@ -59,19 +59,22 @@ type Server struct {
 
 // Map template names to their file paths relative to web/templates.
 var templateFiles = map[string]string{
-	"index":      "manager/index.html",
-	"adminindex": "manager/adminindex.html",
-	"login":      "auth/login.html",
-	"register":   "auth/register.html",
-	"edit":       "auth/edit.html",
-	"create":     "manager/create.html",
-	"addapp":     "manager/addapp.html",
-	"configapp":  "manager/configapp.html",
-	"uploadapp":  "manager/uploadapp.html",
-	"firmware":   "manager/firmware.html",
-	"update":    "manager/update.html",
-	"device_tv": "manager/device_tv.html",
-	"settings":  "admin/settings.html",
+	"index":            "manager/index.html",
+	"adminindex":       "manager/adminindex.html",
+	"login":            "auth/login.html",
+	"register":         "auth/register.html",
+	"edit":             "auth/edit.html",
+	"settings_account": "settings/account.html",
+	"settings_content": "settings/content.html",
+	"settings_admin":   "settings/admin.html",
+	"create":           "manager/create.html",
+	"addapp":           "manager/addapp.html",
+	"configapp":        "manager/configapp.html",
+	"uploadapp":        "manager/uploadapp.html",
+	"firmware":         "manager/firmware.html",
+	"update":           "manager/update.html",
+	"device_tv":        "manager/device_tv.html",
+	"settings":         "admin/settings.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -264,10 +267,16 @@ func (s *Server) routes() {
 
 	// Web UI
 	s.Router.HandleFunc("GET /", s.RequireLogin(s.handleIndex))
-	s.Router.HandleFunc("GET /admin", s.RequireLogin(s.handleAdminIndex))
-	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet))
-	s.Router.HandleFunc("POST /admin/settings", s.RequireLogin(s.handleAdminSettingsPost))
+	s.Router.HandleFunc("GET /admin", s.RequireLogin(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/settings/admin", http.StatusSeeOther)
+	}))
+	s.Router.HandleFunc("GET /settings/admin", s.RequireLogin(s.handleAdminIndex))
+	s.Router.HandleFunc("POST /settings/admin/oidc", s.RequireLogin(s.handleAdminSettingsPost))
+	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet)) // Keep old path just in case
+	s.Router.HandleFunc("POST /admin/settings", s.RequireLogin(s.handleAdminSettingsPost)) // Keep old path just in case
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
+	s.Router.HandleFunc("DELETE /settings/admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
+	s.Router.HandleFunc("POST /settings/admin/users/{username}/email", s.RequireLogin(s.handleAdminUpdateUserEmail))
 
 	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
 	s.Router.HandleFunc("POST /devices/create", s.RequireLogin(s.handleCreateDevicePost))
@@ -275,6 +284,8 @@ func (s *Server) routes() {
 
 	s.Router.HandleFunc("POST /devices/{id}/update_brightness", s.RequireLogin(s.RequireDevice(s.handleUpdateBrightness)))
 	s.Router.HandleFunc("POST /devices/{id}/update_interval", s.RequireLogin(s.RequireDevice(s.handleUpdateInterval)))
+	s.Router.HandleFunc("POST /devices/{id}/set_night_mode_override", s.RequireLogin(s.RequireDevice(s.handleSetNightModeOverride)))
+	s.Router.HandleFunc("POST /devices/{id}/set_dim_mode_override", s.RequireLogin(s.RequireDevice(s.handleSetDimModeOverride)))
 
 	s.Router.HandleFunc("GET /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppGet)))
 	s.Router.HandleFunc("POST /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppPost)))

@@ -21,11 +21,16 @@
 </head>
 <title>{{ block "title" . }}{{ end }} - {{ t .Localizer "Tronbyt Manager" }}</title>
 <link rel="icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;650;700;800&display=swap"
+      rel="stylesheet">
 <link rel="stylesheet" href="/static/css/w3.css">
 <link rel="stylesheet" href="/static/css/style.css">
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/common.css">
 <link rel="stylesheet" href="/static/css/partials.css">
+<link rel="stylesheet" href="/static/css/settings-framework.css">
 <link rel="stylesheet" href="/static/css/fontawesome.min.css">
 <link rel="stylesheet" href="/static/css/brands.min.css">
 <link rel="stylesheet" href="/static/css/solid.min.css">
@@ -43,26 +48,14 @@
         <li>
             <a href="/">{{ t .Localizer "Home" }}</a>
         </li>
-        {{ if .User.IsAdmin }}
         <li>
-            <a href="/auth/register">{{ t .Localizer "Create User" }}</a>
+            <a href="/settings/account">{{ t .Localizer "System Settings" }}</a>
+        </li>
+        {{ if not .IsAutoLoginActive }}
+        <li>
+            <a href="/auth/logout">{{ t .Localizer "Log Out" }}</a>
         </li>
         {{ end }}
-        <li>
-            <a href="/auth/edit">{{ .User.Username }}</a>
-        </li>
-        <li>
-            <a href="/auth/logout"
-               {{ if .IsAutoLoginActive }}
-               onclick="event.preventDefault(); alert('{{ t .Localizer "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user." }}'); return false;"
-               {{ end }}>
-                {{ if .IsAutoLoginActive }}
-                <span class="auto-login-indicator"
-                      title="{{ t .Localizer "Auto-login mode active" }}">⚠️</span>
-                {{ end }}
-                {{ t .Localizer "Log Out" }}
-            </a>
-        </li>
         <li class="theme-toggle-container">
             <div class="theme-toggle">
                 <label for="theme-select">{{ t .Localizer "Theme:" }}</label>
@@ -115,62 +108,65 @@
         <li>
             <a href="/" onclick="closeMobileMenu()">{{ t .Localizer "Home" }}</a>
         </li>
-        {{ if .User.IsAdmin }}
+        <li>
+            <a href="/settings/account" onclick="closeMobileMenu()">{{ t .Localizer "System Settings" }}</a>
+        </li>
+        {{ if not .IsAutoLoginActive }}
+        <li>
+            <a href="/auth/logout" onclick="closeMobileMenu()">{{ t .Localizer "Log Out" }}</a>
+        </li>
+        {{ end }}
+        <li class="theme-toggle-container">
+            <div class="theme-toggle">
+                <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
+                <select id="mobile-theme-select" name="theme">
+                    <option value="light"
+                            {{ if eq (string .User.ThemePreference) "light" }}
+                            selected
+                            {{ end }}>{{ t .Localizer "Light" }}
+                    </option>
+                    <option value="dark"
+                            {{ if eq (string .User.ThemePreference) "dark" }}
+                            selected
+                            {{ end }}>{{ t .Localizer "Dark" }}
+                    </option>
+                    <option value="system"
+                            {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
+                            selected
+                            {{ end }}>{{ t .Localizer "System" }}
+                    </option>
+                </select>
+            </div>
+        </li>
+    {{ else }}
+        <li>
+            <a href="/auth/login" onclick="closeMobileMenu()">{{ t .Localizer "Log In" }}</a>
+        </li>
+        {{ if .Config.EnableUserRegistration }}
         <li>
             <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
         </li>
         {{ end }}
-        <li>
-            <a href="/auth/edit" onclick="closeMobileMenu()">{{ .User.Username }}</a>
-        </li>
-        <li>
-        <a href="/auth/logout"
-           onclick="{{ if .IsAutoLoginActive }}event.preventDefault(); alert('{{ t .Localizer "Auto-login mode is enabled. You cannot log out while this mode is active. To disable auto-login, set SINGLE_USER_AUTO_LOGIN=0 in your .env file or create a second user." }}'); return false;{{ else }}closeMobileMenu(){{ end }}">
-            {{ if .IsAutoLoginActive }}
-            <span class="auto-login-indicator"
-                  title="{{ t .Localizer "Auto-login mode active" }}">⚠️</span>
-            {{ end }}
-            {{ t .Localizer "Log Out" }}
-        </a>
-    </li>
-    <li class="theme-toggle-container">
-        <div class="theme-toggle">
-            <label for="mobile-theme-select">{{ t .Localizer "Theme:" }}</label>
-            <select id="mobile-theme-select" name="theme">
-                <option value="light"
-                        {{ if eq (string .User.ThemePreference) "light" }}
-                        selected
-                        {{ end }}>{{ t .Localizer "Light" }}
-                </option>
-                <option value="dark"
-                        {{ if eq (string .User.ThemePreference) "dark" }}
-                        selected
-                        {{ end }}>{{ t .Localizer "Dark" }}
-                </option>
-                <option value="system"
-                        {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
-                        selected
-                        {{ end }}>{{ t .Localizer "System" }}
-                </option>
-            </select>
-        </div>
-    </li>
-{{ else }}
-    <li>
-        <a href="/auth/login" onclick="closeMobileMenu()">{{ t .Localizer "Log In" }}</a>
-    </li>
-    {{ if .Config.EnableUserRegistration }}
-    <li>
-        <a href="/auth/register" onclick="closeMobileMenu()">{{ t .Localizer "Create User" }}</a>
-    </li>
-    {{ end }}
-    {{ end }}
-</ul>
+        {{ end }}
+    </ul>
 </div>
 <section class="content">
     <header>
         {{ block "header" . }}{{ end }}
     </header>
+    {{ if .SettingsSection }}
+    <nav class="settings-subnav"
+         aria-label="{{ t .Localizer "System Settings" }}">
+        <a href="/settings/account"
+           class="settings-subnav-link {{ if eq .SettingsSection "account" }}active{{ end }}">{{ t .Localizer "Account" }}</a>
+        <a href="/settings/content"
+           class="settings-subnav-link {{ if eq .SettingsSection "content" }}active{{ end }}">{{ t .Localizer "Content and Firmware" }}</a>
+        {{ if and .User .User.IsAdmin }}
+        <a href="/settings/admin"
+           class="settings-subnav-link {{ if eq .SettingsSection "admin" }}active{{ end }}">{{ t .Localizer "Admin" }}</a>
+        {{ end }}
+    </nav>
+    {{ end }}
     {{- if .Flashes -}}
     <div class="flash">
         {{- range .Flashes -}}
