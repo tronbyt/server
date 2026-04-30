@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  --font-sans: "Manrope", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: system-ui, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --page-bg: #f4f5f7;
   --page-text: #171717;
   --muted-text: #666c75;
@@ -100,7 +100,7 @@ h5,
 h6 {
   font-family: var(--font-sans);
   color: var(--header-text-color);
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
 }
 
 h1 {

@@ -18,22 +18,18 @@
       // The full theme.js script will later synchronize the select dropdown and localStorage if needed.
     })();
     </script>
+    <title>{{ block "title" . }}{{ end }} - {{ t .Localizer "Tronbyt Manager" }}</title>
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/css/w3.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/partials.css">
+    <link rel="stylesheet" href="/static/css/settings-framework.css">
+    <link rel="stylesheet" href="/static/css/fontawesome.min.css">
+    <link rel="stylesheet" href="/static/css/brands.min.css">
+    <link rel="stylesheet" href="/static/css/solid.min.css">
 </head>
-<title>{{ block "title" . }}{{ end }} - {{ t .Localizer "Tronbyt Manager" }}</title>
-<link rel="icon" href="/static/favicon.ico">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;650;700;800&display=swap"
-      rel="stylesheet">
-<link rel="stylesheet" href="/static/css/w3.css">
-<link rel="stylesheet" href="/static/css/style.css">
-<link rel="stylesheet" href="/static/css/base.css">
-<link rel="stylesheet" href="/static/css/common.css">
-<link rel="stylesheet" href="/static/css/partials.css">
-<link rel="stylesheet" href="/static/css/settings-framework.css">
-<link rel="stylesheet" href="/static/css/fontawesome.min.css">
-<link rel="stylesheet" href="/static/css/brands.min.css">
-<link rel="stylesheet" href="/static/css/solid.min.css">
 <nav>
     <button class="hamburger" id="hamburgerButton">
         <span>&nbsp;</span>
