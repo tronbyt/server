@@ -170,20 +170,9 @@
         }
 
         // Font preference initialization
-        let effectiveFont = 'default';
+        const effectiveFont = localFontPreference || serverUserFontPreference || 'default';
         if (fontCheckbox) {
-            if (localFontPreference) {
-                effectiveFont = localFontPreference;
-            } else if (serverUserFontPreference) {
-                effectiveFont = serverUserFontPreference;
-            }
             fontCheckbox.checked = (effectiveFont === 'system');
-        } else {
-            if (localFontPreference) {
-                effectiveFont = localFontPreference;
-            } else if (serverUserFontPreference) {
-                effectiveFont = serverUserFontPreference;
-            }
         }
         applyFont(effectiveFont === 'system');
         if (serverUserFontPreference && !localFontPreference) {
