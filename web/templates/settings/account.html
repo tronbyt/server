@@ -35,25 +35,22 @@
                 <div class="settings-field-list">
                     <div class="settings-field-row">
                         <div class="settings-field-label">
-                            {{ t .Localizer "Interface" }}
+                            <label for="use_system_font">{{ t .Localizer "Interface" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <div class="settings-control-stack">
-                                <label class="settings-inline-option">
-                                    <input type="checkbox"
-                                           name="use_system_font"
-                                           id="use_system_font"
-                                           value="1"
-                                           class="w3-check"
-                                           {{ if .User.UseSystemFont }}
-                                           checked
-                                           {{ end }}>
-                                    <span>{{ t .Localizer "Use System Font" }}</span>
-                                </label>
-                                <p class="settings-caption">
-                                    {{ t .Localizer "Use your device's default system font instead of the built-in interface font." }}
-                                </p>
-                            </div>
+                            <label class="settings-inline-option">
+                                <input type="checkbox"
+                                       name="use_system_font"
+                                       id="use_system_font"
+                                       value="1"
+                                       {{ if .User.UseSystemFont }}
+                                       checked
+                                       {{ end }}>
+                                <span>{{ t .Localizer "Use System Font" }}</span>
+                            </label>
+                            <p class="settings-help">
+                                {{ t .Localizer "Use your device's default system font instead of the built-in interface font." }}
+                            </p>
                         </div>
                     </div>
                 </div>
