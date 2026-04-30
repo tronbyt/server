@@ -35,18 +35,25 @@
                 <div class="settings-field-list">
                     <div class="settings-field-row">
                         <div class="settings-field-label">
-                            <label for="use_system_font">{{ t .Localizer "Use System Font" }}</label>
-                            <small>{{ t .Localizer "Use your device's default system font instead of the built-in interface font." }}</small>
+                            {{ t .Localizer "Interface" }}
                         </div>
                         <div class="settings-field-control">
-                            <input type="checkbox"
-                                   name="use_system_font"
-                                   id="use_system_font"
-                                   value="1"
-                                   class="w3-check"
-                                   {{ if .User.UseSystemFont }}
-                                   checked
-                                   {{ end }}>
+                            <div class="settings-control-stack">
+                                <label class="settings-inline-option">
+                                    <input type="checkbox"
+                                           name="use_system_font"
+                                           id="use_system_font"
+                                           value="1"
+                                           class="w3-check"
+                                           {{ if .User.UseSystemFont }}
+                                           checked
+                                           {{ end }}>
+                                    <span>{{ t .Localizer "Use System Font" }}</span>
+                                </label>
+                                <p class="settings-caption">
+                                    {{ t .Localizer "Use your device's default system font instead of the built-in interface font." }}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

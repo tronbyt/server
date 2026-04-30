@@ -1907,6 +1907,9 @@
   "recommended": {
     "other": "recommended"
   },
+  "Interface": {
+    "other": "Interface"
+  },
   "UI": {
     "other": "UI"
   },

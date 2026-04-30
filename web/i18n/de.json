@@ -1904,6 +1904,9 @@
   "recommended": {
     "other": "empfohlen"
   },
+  "Interface": {
+    "other": "Schnittstelle"
+  },
   "UI": {
     "other": "Benutzeroberfläche"
   },
