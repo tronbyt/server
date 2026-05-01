@@ -713,6 +713,189 @@
   "Mark Broken": {
     "other": "Mark Broken"
   },
+  "app": {
+    "other": "app"
+  },
+  "Core Device Setup": {
+    "other": "Core Device Setup"
+  },
+  "Connection Warning": {
+    "other": "Connection Warning"
+  },
+  "Display Behavior": {
+    "other": "Display Behavior"
+  },
+  "Scheduled Behavior": {
+    "other": "Scheduled Behavior"
+  },
+  "Night mode switches the device into its nighttime state during the scheduled window. It can use a different brightness, color filter, and optional dedicated app.": {
+    "other": "Night mode switches the device into its nighttime state during the scheduled window. It can use a different brightness, color filter, and optional dedicated app."
+  },
+  "Dim mode lowers brightness before or after the full night mode window. Use it when you want the device to stay visible but less bright.": {
+    "other": "Dim mode lowers brightness before or after the full night mode window. Use it when you want the device to stay visible but less bright."
+  },
+  "Enable Dim Mode": {
+    "other": "Enable Dim Mode"
+  },
+  "Regional and App Context": {
+    "other": "Regional and App Context"
+  },
+  "Advanced Device API": {
+    "other": "Advanced Device API"
+  },
+  "Maintenance": {
+    "other": "Maintenance"
+  },
+  "Danger Zone": {
+    "other": "Danger Zone"
+  },
+  "Delete Device": {
+    "other": "Delete Device"
+  },
+  "Delete device and ALL apps? This action cannot be undone.": {
+    "other": "Delete device and ALL apps? This action cannot be undone."
+  },
+  "Manage where apps and firmware come from, and refresh what is available on this server.": {
+    "other": "Manage where apps and firmware come from, and refresh what is available on this server."
+  },
+  "Built-in app source for this server.": {
+    "other": "Built-in app source for this server."
+  },
+  "Optional personal app source.": {
+    "other": "Optional personal app source."
+  },
+  "Content Preferences": {
+    "other": "Content Preferences"
+  },
+  "Choose where a new app appears when you add it to a device.": {
+    "other": "Choose where a new app appears when you add it to a device."
+  },
+  "App Ordering": {
+    "other": "App Ordering"
+  },
+  "Add new device apps to the top of the list": {
+    "other": "Add new device apps to the top of the list"
+  },
+  "When enabled, an app you add to a device will be inserted at position #1 in that device's app rotation instead of at the end.": {
+    "other": "When enabled, an app you add to a device will be inserted at position #1 in that device's app rotation instead of at the end."
+  },
+  "Save Preference": {
+    "other": "Save Preference"
+  },
+  "Firmware files available for generating or flashing devices.": {
+    "other": "Firmware files available for generating or flashing devices."
+  },
+  "Manage backups and user accounts for this server.": {
+    "other": "Manage backups and user accounts for this server."
+  },
+  "Save OIDC Settings": {
+    "other": "Save OIDC Settings"
+  },
+  "Expand": {
+    "other": "Expand"
+  },
+  "User Management": {
+    "other": "User Management"
+  },
+  "Create, review, and remove users.": {
+    "other": "Create, review, and remove users."
+  },
+  "devices": {
+    "other": "devices"
+  },
+  "Edit Email": {
+    "other": "Edit Email"
+  },
+  "Current user": {
+    "other": "Current user"
+  },
+  "No email address": {
+    "other": "No email address"
+  },
+  "Save Email": {
+    "other": "Save Email"
+  },
+  "device": {
+    "other": "device"
+  },
+  "Collapse": {
+    "other": "Collapse"
+  },
+  "System Settings": {
+    "other": "System Settings"
+  },
+  "App Management": {
+    "other": "App Management"
+  },
+  "Choose a device, then manage the apps it shows.": {
+    "other": "Choose a device, then manage the apps it shows."
+  },
+  "Devices": {
+    "other": "Devices"
+  },
+  "apps": {
+    "other": "apps"
+  },
+  "Device Info and Controls": {
+    "other": "Device Info and Controls"
+  },
+  "Night mode on": {
+    "other": "Night mode on"
+  },
+  "Persists until the next scheduled night mode change.": {
+    "other": "Persists until the next scheduled night mode change."
+  },
+  "Account": {
+    "other": "Account"
+  },
+  "Content and Firmware": {
+    "other": "Content and Firmware"
+  },
+  "Admin": {
+    "other": "Admin"
+  },
+  "Choose an app to install on this device, then configure its timing and options.": {
+    "other": "Choose an app to install on this device, then configure its timing and options."
+  },
+  "Manage your login, security, and API access.": {
+    "other": "Manage your login, security, and API access."
+  },
+  "Profile": {
+    "other": "Profile"
+  },
+  "Passkey": {
+    "other": "Passkey"
+  },
+  "Manage sign-in with a hardware key, browser, or device passkey.": {
+    "other": "Manage sign-in with a hardware key, browser, or device passkey."
+  },
+  "Passkeys only work when Tronbyt is opened on a secure connection. If passkey setup is unavailable, ask whoever manages your server whether HTTPS is enabled.": {
+    "other": "Passkeys only work when Tronbyt is opened on a secure connection. If passkey setup is unavailable, ask whoever manages your server whether HTTPS is enabled."
+  },
+  "API Access": {
+    "other": "API Access"
+  },
+  "Use this key for user-level API calls and integrations.": {
+    "other": "Use this key for user-level API calls and integrations."
+  },
+  "Copy": {
+    "other": "Copy"
+  },
+  "Failed to copy API key": {
+    "other": "Failed to copy API key"
+  },
+  "Device Firmware": {
+    "other": "Device Firmware"
+  },
+  "Firmware Configuration": {
+    "other": "Firmware Configuration"
+  },
+  "Configure the values that will be baked into the downloaded firmware file.": {
+    "other": "Configure the values that will be baked into the downloaded firmware file."
+  },
+  "Troubleshooting": {
+    "other": "Troubleshooting"
+  },
   "Custom Apps": {
     "other": "Custom Apps"
   },

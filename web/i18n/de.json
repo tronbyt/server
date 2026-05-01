@@ -713,6 +713,189 @@
   "Mark Broken": {
     "other": "Als defekt markieren"
   },
+  "app": {
+    "other": "App"
+  },
+  "Core Device Setup": {
+    "other": "Geräte-Setup"
+  },
+  "Connection Warning": {
+    "other": "Verbindungsfehlerwarnung"
+  },
+  "Display Behavior": {
+    "other": "Anzeigeverhalten"
+  },
+  "Scheduled Behavior": {
+    "other": "Geplantes Verhalten"
+  },
+  "Night mode switches the device into its nighttime state during the scheduled window. It can use a different brightness, color filter, and optional dedicated app.": {
+    "other": "Der Nachtmodus schaltet das Gerät während des geplanten Zeitfensters in den Nachtzustand. Er kann eine andere Helligkeit, Farbfilter und optionale dedizierte App verwenden."
+  },
+  "Dim mode lowers brightness before or after the full night mode window. Use it when you want the device to stay visible but less bright.": {
+    "other": "Dim-Modus senkt die Helligkeit vor oder nach dem vollen Nachtmodus-Fenster. Verwenden Sie ihn, wenn Sie möchten, dass das Gerät sichtbar, aber heller ist."
+  },
+  "Enable Dim Mode": {
+    "other": "Dim-Modus aktivieren"
+  },
+  "Regional and App Context": {
+    "other": "Regionale und App-Kontexte"
+  },
+  "Advanced Device API": {
+    "other": "Erweiterte Geräte-API"
+  },
+  "Maintenance": {
+    "other": "Wartung"
+  },
+  "Danger Zone": {
+    "other": "Gefahrenzone"
+  },
+  "Delete Device": {
+    "other": "Gerät löschen"
+  },
+  "Delete device and ALL apps? This action cannot be undone.": {
+    "other": "Gerät und ALLE Apps löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+  },
+  "Manage where apps and firmware come from, and refresh what is available on this server.": {
+    "other": "Verwalten Sie, woher Apps und Firmware kommen, und aktualisieren Sie, was auf diesem Server verfügbar ist."
+  },
+  "Built-in app source for this server.": {
+    "other": "Integrierte App-Quelle für diesen Server."
+  },
+  "Optional personal app source.": {
+    "other": "Optionale persönliche App-Quelle."
+  },
+  "Content Preferences": {
+    "other": "Inhaltspräferenzen"
+  },
+  "Choose where a new app appears when you add it to a device.": {
+    "other": "Wählen Sie, wo eine neue App erscheint, wenn Sie sie zu einem Gerät hinzufügen."
+  },
+  "App Ordering": {
+    "other": "App-Reihenfolge"
+  },
+  "Add new device apps to the top of the list": {
+    "other": "Neue Geräte-Apps an die Spitze der Liste anzeigen"
+  },
+  "When enabled, an app you add to a device will be inserted at position #1 in that device's app rotation instead of at the end.": {
+    "other": "Wenn aktiviert, wird eine App, die Sie zu einem Gerät hinzufügen, an Position #1 in die App-Rotation des Geräts eingefügt, nicht ans Ende."
+  },
+  "Save Preference": {
+    "other": "Präferenz speichern"
+  },
+  "Firmware files available for generating or flashing devices.": {
+    "other": "Firmware-Dateien zum Generieren oder Flashen von Geräten verfügbar."
+  },
+  "Manage backups and user accounts for this server.": {
+    "other": "Verwalten Sie Backups und Benutzerkonten für diesen Server."
+  },
+  "Save OIDC Settings": {
+    "other": "OIDC-Einstellungen speichern"
+  },
+  "Expand": {
+    "other": "Erweitern"
+  },
+  "User Management": {
+    "other": "Benutzerverwaltung"
+  },
+  "Create, review, and remove users.": {
+    "other": "Benutzer erstellen, überprüfen und entfernen."
+  },
+  "devices": {
+    "other": "Geräte"
+  },
+  "Edit Email": {
+    "other": "E-Mail bearbeiten"
+  },
+  "Current user": {
+    "other": "Aktueller Benutzer"
+  },
+  "No email address": {
+    "other": "Keine E-Mail-Adresse"
+  },
+  "Save Email": {
+    "other": "E-Mail speichern"
+  },
+  "device": {
+    "other": "Gerät"
+  },
+  "Collapse": {
+    "other": "Einklappen"
+  },
+  "System Settings": {
+    "other": "Systemeinstellungen"
+  },
+  "App Management": {
+    "other": "App-Verwaltung"
+  },
+  "Choose a device, then manage the apps it shows.": {
+    "other": "Wählen Sie ein Gerät aus und verwalten Sie die Apps, die es zeigt."
+  },
+  "Devices": {
+    "other": "Geräte"
+  },
+  "apps": {
+    "other": "Apps"
+  },
+  "Device Info and Controls": {
+    "other": "Geräteinformationen und -steuerung"
+  },
+  "Night mode on": {
+    "other": "Nachtmodus an"
+  },
+  "Persists until the next scheduled night mode change.": {
+    "other": "Wird bis zur nächsten geplanten Änderung des Nachtmodus beibehalten."
+  },
+  "Account": {
+    "other": "Konto"
+  },
+  "Content and Firmware": {
+    "other": "Inhalt und Firmware"
+  },
+  "Admin": {
+    "other": "Admin"
+  },
+  "Choose an app to install on this device, then configure its timing and options.": {
+    "other": "Wählen Sie eine App, die Sie auf dieses Gerät installieren möchten, und konfigurieren Sie dann ihre Zeitsteuerung und Optionen."
+  },
+  "Manage your login, security, and API access.": {
+    "other": "Verwalten Sie Ihre Anmeldedaten, Sicherheit und API-Zugriff."
+  },
+  "Profile": {
+    "other": "Profil"
+  },
+  "Passkey": {
+    "other": "Passkey"
+  },
+  "Manage sign-in with a hardware key, browser, or device passkey.": {
+    "other": "Verwalten Sie die Anmeldung mit einem Hardware-Schlüssel, Browser oder Geräte-Passkey."
+  },
+  "Passkeys only work when Tronbyt is opened on a secure connection. If passkey setup is unavailable, ask whoever manages your server whether HTTPS is enabled.": {
+    "other": "Passkeys funktionieren nur, wenn Tronbyt über eine sichere Verbindung geöffnet wird. Wenn die Passkey-Einrichtung nicht verfügbar ist, fragen Sie die Person, die Ihren Server verwaltet, ob HTTPS aktiviert ist."
+  },
+  "API Access": {
+    "other": "API-Zugriff"
+  },
+  "Use this key for user-level API calls and integrations.": {
+    "other": "Verwenden Sie diesen Schlüssel für Benutzerebene-API-Aufrufe und -Integrationen."
+  },
+  "Copy": {
+    "other": "Kopieren"
+  },
+  "Failed to copy API key": {
+    "other": "API-Schlüssel konnte nicht kopiert werden"
+  },
+  "Device Firmware": {
+    "other": "Geräte-Firmware"
+  },
+  "Firmware Configuration": {
+    "other": "Firmware-Konfiguration"
+  },
+  "Configure the values that will be baked into the downloaded firmware file.": {
+    "other": "Konfigurieren Sie die Werte, die in die heruntergeladene Firmwaredatei eingebettet werden."
+  },
+  "Troubleshooting": {
+    "other": "Fehlerbehebung"
+  },
   "Custom Apps": {
     "other": "Benutzerdefinierte Apps"
   },
