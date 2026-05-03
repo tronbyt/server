@@ -822,22 +822,35 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {
-	iname := filepath.Base(r.PathValue("iname"))
+	installID := filepath.Base(r.PathValue("iname"))
 
 	device := GetDevice(r)
-	if _, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", device.ID, iname).Delete(r.Context()); err != nil {
+
+	// First try to find the app by iname (server-generated ID)
+	app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", device.ID, installID).First(r.Context())
+	if err != nil {
+		// If not found by iname, try to find by installationID (stored in path as "pushed:{installationID}")
+		app, err = gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", device.ID, "pushed:"+installID).First(r.Context())
+		if err != nil {
+			http.Error(w, "App not found", http.StatusNotFound)
+			return
+		}
+	}
+
+	// Delete the app
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Delete(r.Context()); err != nil {
 		http.Error(w, "Failed to delete app", http.StatusInternalServerError)
 		return
 	}
 
-	// Clean up files
+	// Clean up files using the actual iname
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	if err != nil {
 		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
+	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {
 			slog.Error("Failed to remove webp file", "path", match, "error", err)

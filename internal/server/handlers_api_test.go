@@ -749,6 +749,46 @@ func TestHandleDeleteInstallationAPI(t *testing.T) {
 	}
 }
 
+func TestHandleDeleteInstallationAPI_ByInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installationID := "my-custom-pushed-app"
+	pushedPath := "pushed:" + installationID
+
+	// Add a pushed app with a numeric iname but custom installationID in path
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       "999", // Server-generated numeric iname
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Order:       0,
+		Pushed:      true,
+		Path:        &pushedPath,
+	}
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
+		t.Fatalf("Failed to create pushed app: %v", err)
+	}
+
+	// Delete using the user-supplied installationID (not the numeric iname)
+	req := newAPIRequest("DELETE", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installationID), apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v, body: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	// Verify app is deleted
+	if _, err := gorm.G[data.App](s.DB).Where("device_id = ? AND iname = ?", deviceID, "999").First(context.Background()); err == nil {
+		t.Errorf("App was not deleted")
+	}
+}
+
 func TestHandlePatchDeviceDeviceKey(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "device_api_key"
