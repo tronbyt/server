@@ -850,6 +850,15 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	// Clean up pushed app image if applicable
+	if app.Pushed && app.Path != nil && len(*app.Path) > 7 && (*app.Path)[:7] == "pushed:" {
+		pushedID := (*app.Path)[7:]
+		pushedWebpPath := filepath.Join(webpDir, "pushed", pushedID+".webp")
+		if err := os.Remove(pushedWebpPath); err != nil && !os.IsNotExist(err) {
+			slog.Error("Failed to remove pushed webp file", "path", pushedWebpPath, "error", err)
+		}
+	}
+
 	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 	for _, match := range matches {
 		if err := os.Remove(match); err != nil {
