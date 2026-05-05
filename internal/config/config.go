@@ -30,6 +30,7 @@ type Settings struct {
 	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
 	LogFormat              string `env:"LOG_FORMAT"               envDefault:"text"`
 	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
+	AltSvcMode             string `env:"ALT_SVC_MODE"             envDefault:"external"` // "internal" or "external"
 
 	// OIDC Configuration
 	OIDCEnabled         bool   `env:"OIDC_ENABLED"`

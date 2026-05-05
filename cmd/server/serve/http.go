@@ -99,14 +99,20 @@ func serve(cfg *config.Settings, srv *server.Server) error {
 
 		// Wrap handler to set Alt-Svc header for TCP connections
 		baseHandler := handler
+		externalAltSvcMode := cfg.AltSvcMode != "internal"
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Determine the external port to advertise in Alt-Svc.
-			// Use GetBaseURL to handle X-Forwarded-Host/Proto respecting logic centrally.
-			baseURL := srv.GetBaseURL(r)
-			u, err := url.Parse(baseURL)
-			var port string
-			if err == nil {
-				port = u.Port()
+			// Determine the port to advertise in Alt-Svc.
+			// For reverse proxies using HTTP/3 for upstream connections to this server,
+			// we ignore X-Forwarded-Port and use the internal listener port for Alt-Svc.
+			port := cfg.Port
+
+			if externalAltSvcMode {
+				// Use GetBaseURL to handle X-Forwarded-* headers centrally.
+				baseURL := srv.GetBaseURL(r)
+				u, err := url.Parse(baseURL)
+				if err == nil {
+					port = u.Port()
+				}
 			}
 
 			if port == "" {
