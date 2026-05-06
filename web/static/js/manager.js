@@ -624,6 +624,10 @@ function sortItems(items, sortTypeParam = null) {
     const installedB = b.getAttribute('data-installed') === 'true';
     const dateA = a.getAttribute('data-date') || '';
     const dateB = b.getAttribute('data-date') || '';
+    const publishedA = a.getAttribute('data-published') || '';
+    const publishedB = b.getAttribute('data-published') || '';
+    const updatedA = a.getAttribute('data-updated') || '';
+    const updatedB = b.getAttribute('data-updated') || '';
 
     switch (currentSortType) {
       case 'alphabetical':
@@ -631,11 +635,15 @@ function sortItems(items, sortTypeParam = null) {
       case 'rev-alphabetical':
         return nameB.localeCompare(nameA);
       case 'newest':
-        // Convert date strings to Date objects for proper chronological sorting
-        const dateA_obj = parseDate(dateA);
-        const dateB_obj = parseDate(dateB);
-        const dateComparison = dateB_obj.getTime() - dateA_obj.getTime();
-        return dateComparison === 0 ? nameA.localeCompare(nameB) : dateComparison;
+        const pubA = parseDate(publishedA || dateA);
+        const pubB = parseDate(publishedB || dateB);
+        const pubComparison = pubB.getTime() - pubA.getTime();
+        return pubComparison === 0 ? nameA.localeCompare(nameB) : pubComparison;
+      case 'last-updated':
+        const updA = parseDate(updatedA || dateA);
+        const updB = parseDate(updatedB || dateB);
+        const updComparison = updB.getTime() - updA.getTime();
+        return updComparison === 0 ? nameA.localeCompare(nameB) : updComparison;
       case 'system':
       default:
         if (installedA && !installedB) return -1;

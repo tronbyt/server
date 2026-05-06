@@ -47,6 +47,7 @@
             <select id="sort_{{ .SearchID }}" onchange="sortApps('{{ .SearchID }}')">
                 <option value="system" selected>{{ t .Localizer "Default" }}</option>
                 <option value="newest">{{ t .Localizer "Newest" }}</option>
+                <option value="last-updated">{{ t .Localizer "Last Updated" }}</option>
                 <option value="alphabetical">{{ t .Localizer "Alphabetical (A-Z)" }}</option>
                 <option value="rev-alphabetical">{{ t .Localizer "Alphabetical (Z-A)" }}</option>
             </select>
@@ -72,6 +73,8 @@
      data-broken="{{ .App.Broken }}"
      data-author="{{ .App.Author }}"
      data-category="{{ .App.Category }}"
+     data-published="{{ .App.Published }}"
+     data-updated="{{ .App.Updated }}"
      data-tags="{{ range $i, $tag := .App.Tags }}{{ if $i }},{{ end }}{{ $tag }}{{ end }}">
     {{ if .App.IsInstalled }}
     <div class="installed-badge">{{ t .Localizer "Installed" }}</div>

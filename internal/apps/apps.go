@@ -26,6 +26,8 @@ type Manifest struct {
 	BrokenReason        string   `yaml:"brokenReason"`
 	Category            string   `yaml:"category"`
 	Tags                []string `yaml:"tags"`
+	Published           string   `yaml:"published"`
+	Updated             string   `yaml:"updated"`
 }
 
 type AppMetadata struct {
@@ -78,10 +80,14 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 		}
 		apps[i].Path = filepath.Join("system-apps", "apps", dirName)
 
-		// Populate Date from file modification time
-		starPath := filepath.Join(appDir, apps[i].FileName)
-		if info, err := os.Stat(starPath); err == nil {
-			apps[i].Date = info.ModTime().Format("2006-01-02 15:04")
+		// Populate Date from Updated field (if set), falling back to file modification time
+		if apps[i].Updated != "" {
+			apps[i].Date = apps[i].Updated
+		} else {
+			starPath := filepath.Join(appDir, apps[i].FileName)
+			if info, err := os.Stat(starPath); err == nil {
+				apps[i].Date = info.ModTime().Format("2006-01-02 15:04")
+			}
 		}
 
 		// Derive Preview if not set
