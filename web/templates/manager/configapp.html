@@ -1,12 +1,14 @@
 {{ define "configapp" }}
 {{ template "base" . }}
 {{ end }}
-{{ define "title" }}{{ t .Localizer "Configuring" }} {{ .App.Name }}{{ end }}
+{{ define "title" }}{{ t .Localizer "Configuring" }} {{ if eq .App.Name "pushed" }}{{ installationID .App }}{{ else }}{{ .App.Name }}{{ end }}{{ end }}
 {{ define "header" }}
 <link rel="stylesheet" href="/static/css/configapp-simple.css">
 <link rel="stylesheet" href="/static/css/updateapp-simple.css">
 <script src="/static/js/location.js"></script>
-<h1>{{ t .Localizer "Configuring" }} {{ .App.Iname }} ({{ .App.Name }})</h1>
+<h1>
+{{ t .Localizer "Configuring" }} {{ if eq .App.Name "pushed" }}{{ installationID .App }}{{ else }}{{ .App.Iname }} ({{ .App.Name }}){{ end }}
+</h1>
 {{ end }}
 {{ define "content" }}
 <!-- Navigation and Toggle Buttons -->

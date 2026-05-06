@@ -550,7 +550,6 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	iname := r.PathValue("iname")
 
 	device := GetDevice(r)
 	app := GetApp(r)
@@ -598,11 +597,24 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	// For pushed apps, look up by installationID (stored in path as "pushed:{installationID}")
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		installationID := strings.TrimPrefix(*app.Path, "pushed:")
+		path := filepath.Join(webpDir, "pushed", installationID+".webp")
+		if _, err := os.Stat(path); err == nil {
+			http.ServeFile(w, r, path)
+			return
+		}
+	}
+
+	// Standard app preview
 	filename := fmt.Sprintf("%s-%s.webp", app.Name, app.Iname)
 	path := filepath.Join(webpDir, filename)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		path = filepath.Join(webpDir, "pushed", iname+".webp")
+		// Try pushed subdirectory with iname as fallback
+		path = filepath.Join(webpDir, "pushed", app.Iname+".webp")
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			s.sendDefaultImage(w, r, device)
 			return

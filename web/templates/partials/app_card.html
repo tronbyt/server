@@ -31,7 +31,7 @@
     <!-- Middle: App Info and Action Buttons -->
     <div class="app-info">
         <div class="app-header">
-            <h3>{{ .App.Name }}-{{ .App.Iname }}</h3>
+            <h3>{{ if eq .App.Name "pushed" }}{{ installationID .App }}{{ else }}{{ .App.Name }}-{{ .App.Iname }}{{ end }}</h3>
             <div class="app-status">
                 {{ if isPinned .Device .App.Iname }}
                 <span class="status-badge pinned"><i class="fa-solid fa-thumbtack" aria-hidden="true"></i> {{ t .Localizer "PINNED" }}</span>
