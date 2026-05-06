@@ -554,6 +554,26 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 	device := GetDevice(r)
 	app := GetApp(r)
 
+	// For pushed apps, skip rendering and serve the existing image directly
+	if app.Pushed {
+		webpDir, err := s.ensureDeviceImageDir(id)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for config preview", "device_id", id, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+			installationID := strings.TrimPrefix(*app.Path, "pushed:")
+			path := filepath.Join(webpDir, "pushed", installationID+".webp")
+			if _, err := os.Stat(path); err == nil {
+				http.ServeFile(w, r, path)
+				return
+			}
+		}
+		s.sendDefaultImage(w, r, device)
+		return
+	}
+
 	// Check for 'config' query param
 	configParam := r.URL.Query().Get("config")
 	if configParam != "" {
@@ -627,6 +647,33 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	app := GetApp(r)
+
+	// For pushed apps, serve the existing image directly without rendering
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		installationID := strings.TrimPrefix(*app.Path, "pushed:")
+		webpDir, err := s.ensureDeviceImageDir(device.ID)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for push preview", "device_id", device.ID, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		pushedImagePath := filepath.Join(webpDir, "pushed", installationID+".webp")
+		imgBytes, err := os.ReadFile(pushedImagePath)
+		if err != nil {
+			slog.Error("Failed to read pushed image for preview", "path", pushedImagePath, "error", err)
+			http.Error(w, "Image not found", http.StatusNotFound)
+			return
+		}
+		// Push preview image to device (ephemeral)
+		if err := s.savePushedImage(device.ID, app.Iname, imgBytes); err != nil {
+			http.Error(w, "Failed to push preview", http.StatusInternalServerError)
+			return
+		}
+		// Notify device via Websocket (Broadcaster)
+		s.Broadcaster.Notify(device.ID, imgBytes)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	// Parse Config from Body
 	var configBody map[string]any

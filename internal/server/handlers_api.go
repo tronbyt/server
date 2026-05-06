@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"tronbyt-server/internal/apps"
@@ -320,6 +321,28 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		if appPath == "" {
 			http.Error(w, "App not found", http.StatusNotFound)
 			return
+		}
+	}
+
+	// For pushed apps (existing app with "pushed:" path), skip rendering and push existing image
+	if existingApp != nil && existingApp.Pushed {
+		if existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") {
+			installationID := strings.TrimPrefix(*existingApp.Path, "pushed:")
+			pushedImagePath := filepath.Join(s.DataDir, "webp", device.ID, "pushed", installationID+".webp")
+			if imgBytes, err := os.ReadFile(pushedImagePath); err == nil {
+				// Notify device via Websocket (unless background)
+				if !dataReq.Background {
+					s.Broadcaster.Notify(device.ID, imgBytes)
+				}
+				if err := s.ensurePushedApp(r.Context(), device.ID, installationID); err != nil {
+					slog.Error("Error adding pushed app", "error", err)
+				}
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write([]byte("App pushed.")); err != nil {
+					slog.Error("Failed to write response", "error", err)
+				}
+				return
+			}
 		}
 	}
 

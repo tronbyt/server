@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/static/css/updateapp-simple.css">
 <script src="/static/js/location.js"></script>
 <h1>
-{{ t .Localizer "Configuring" }} {{ if eq .App.Name "pushed" }}{{ installationID .App }}{{ else }}{{ .App.Iname }} ({{ .App.Name }}){{ end }}
+{{ t .Localizer "Configuring" }} {{ if eq .App.Name "pushed" }}{{ installationID .App }}(pushed){{ else }}{{ .App.Iname }} ({{ .App.Name }}){{ end }}
 </h1>
 {{ end }}
 {{ define "content" }}
@@ -97,7 +97,7 @@
                        id="name"
                        name="name"
                        class="form-control"
-                       value="{{ .App.Name }}"
+                       value="{{ if eq .App.Name "pushed" }}{{ installationID .App }}{{ else }}{{ .App.Name }}{{ end }}"
                        readonly>
             </td>
         </tr>
