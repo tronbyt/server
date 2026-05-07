@@ -14,6 +14,7 @@ import (
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"gorm.io/gorm"
 )
 
@@ -340,7 +341,12 @@ func createExpandedAppsList(device *data.Device, apps []*data.App) []*data.App {
 func (s *Server) getAppWebpPath(deviceWebpDir string, app *data.App) string {
 	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
 		installID := strings.TrimPrefix(*app.Path, "pushed:")
-		return filepath.Join(deviceWebpDir, "pushed", installID+".webp")
+		path, err := securejoin.SecureJoin(filepath.Join(deviceWebpDir, "pushed"), installID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			return ""
+		}
+		return path
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 	return filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))

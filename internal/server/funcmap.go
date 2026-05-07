@@ -20,23 +20,24 @@ import (
 
 func getFuncMap() template.FuncMap {
 	return template.FuncMap{
-		"seq":           tmplSeq,
-		"dict":          tmplDict,
-		"timeago":       tmplTimeAgo,
-		"timesince":     tmplTimeSince,
-		"duration":      tmplDuration,
-		"t":             tmplT,
-		"deref":         tmplDeref,
-		"derefOr":       tmplDerefOr,
-		"isPinned":      tmplIsPinned,
-		"json":          tmplJSON,
-		"string":        tmplString,
-		"substr":        tmplSubstr,
-		"split":         strings.Split,
-		"trim":          strings.TrimSpace,
-		"slice":         tmplSlice,
-		"contains":      tmplContains,
-		"webauthn_icon": tmplWebAuthnIcon,
+		"seq":            tmplSeq,
+		"dict":           tmplDict,
+		"timeago":        tmplTimeAgo,
+		"timesince":      tmplTimeSince,
+		"duration":       tmplDuration,
+		"t":              tmplT,
+		"deref":          tmplDeref,
+		"derefOr":        tmplDerefOr,
+		"isPinned":       tmplIsPinned,
+		"json":           tmplJSON,
+		"string":         tmplString,
+		"substr":         tmplSubstr,
+		"split":          strings.Split,
+		"trim":           strings.TrimSpace,
+		"slice":          tmplSlice,
+		"contains":       tmplContains,
+		"webauthn_icon":  tmplWebAuthnIcon,
+		"installationID": tmplInstallationID,
 	}
 }
 
@@ -224,6 +225,13 @@ func tmplSlice(args ...string) []string {
 
 func tmplContains(slice []string, item string) bool {
 	return slices.Contains(slice, item)
+}
+
+func tmplInstallationID(app data.App) string {
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		return strings.TrimPrefix(*app.Path, "pushed:")
+	}
+	return app.Iname
 }
 
 func tmplWebAuthnIcon(authenticator string, dark bool) template.URL {

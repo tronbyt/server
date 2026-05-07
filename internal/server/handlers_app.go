@@ -550,10 +550,34 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	iname := r.PathValue("iname")
 
 	device := GetDevice(r)
 	app := GetApp(r)
+
+	// For pushed apps, skip rendering and serve the existing image directly
+	if app.Pushed {
+		webpDir, err := s.ensureDeviceImageDir(id)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for config preview", "device_id", id, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		if app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+			installationID := strings.TrimPrefix(*app.Path, "pushed:")
+			path, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
+			if err != nil {
+				slog.Error("Failed to resolve pushed image path", "error", err)
+				s.sendDefaultImage(w, r, device)
+				return
+			}
+			if _, err := os.Stat(path); err == nil {
+				http.ServeFile(w, r, path)
+				return
+			}
+		}
+		s.sendDefaultImage(w, r, device)
+		return
+	}
 
 	// Check for 'config' query param
 	configParam := r.URL.Query().Get("config")
@@ -598,11 +622,29 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	// For pushed apps, look up by installationID (stored in path as "pushed:{installationID}")
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		installationID := strings.TrimPrefix(*app.Path, "pushed:")
+		path, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			s.sendDefaultImage(w, r, device)
+			return
+		}
+		if _, err := os.Stat(path); err == nil {
+			http.ServeFile(w, r, path)
+			return
+		}
+	}
+
+	// Standard app preview
 	filename := fmt.Sprintf("%s-%s.webp", app.Name, app.Iname)
 	path := filepath.Join(webpDir, filename)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		path = filepath.Join(webpDir, "pushed", iname+".webp")
+		// Try pushed subdirectory with iname as fallback
+		path = filepath.Join(webpDir, "pushed", app.Iname+".webp")
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			s.sendDefaultImage(w, r, device)
 			return
@@ -615,6 +657,33 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	app := GetApp(r)
+
+	// For pushed apps, serve the existing image directly without rendering
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		installationID := strings.TrimPrefix(*app.Path, "pushed:")
+		webpDir, err := s.ensureDeviceImageDir(device.ID)
+		if err != nil {
+			slog.Error("Failed to get device webp directory for push preview", "device_id", device.ID, "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		pushedImagePath, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			http.Error(w, "Image not found", http.StatusNotFound)
+			return
+		}
+		imgBytes, err := os.ReadFile(pushedImagePath)
+		if err != nil {
+			slog.Error("Failed to read pushed image for preview", "path", pushedImagePath, "error", err)
+			http.Error(w, "Image not found", http.StatusNotFound)
+			return
+		}
+		// Notify device via Websocket (Broadcaster) - no need to re-save, image already exists
+		s.Broadcaster.Notify(device.ID, imgBytes)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	// Parse Config from Body
 	var configBody map[string]any
