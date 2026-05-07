@@ -674,12 +674,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Image not found", http.StatusNotFound)
 			return
 		}
-		// Push preview image to device (ephemeral)
-		if err := s.savePushedImage(device.ID, app.Iname, imgBytes); err != nil {
-			http.Error(w, "Failed to push preview", http.StatusInternalServerError)
-			return
-		}
-		// Notify device via Websocket (Broadcaster)
+		// Notify device via Websocket (Broadcaster) - no need to re-save, image already exists
 		s.Broadcaster.Notify(device.ID, imgBytes)
 		w.WriteHeader(http.StatusOK)
 		return
