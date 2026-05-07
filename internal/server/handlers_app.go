@@ -564,7 +564,12 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		}
 		if app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
 			installationID := strings.TrimPrefix(*app.Path, "pushed:")
-			path := filepath.Join(webpDir, "pushed", installationID+".webp")
+			path, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
+			if err != nil {
+				slog.Error("Failed to resolve pushed image path", "error", err)
+				s.sendDefaultImage(w, r, device)
+				return
+			}
 			if _, err := os.Stat(path); err == nil {
 				http.ServeFile(w, r, path)
 				return
