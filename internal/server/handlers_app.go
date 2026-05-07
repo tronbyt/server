@@ -621,7 +621,12 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 	// For pushed apps, look up by installationID (stored in path as "pushed:{installationID}")
 	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
 		installationID := strings.TrimPrefix(*app.Path, "pushed:")
-		path := filepath.Join(webpDir, "pushed", installationID+".webp")
+		path, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			s.sendDefaultImage(w, r, device)
+			return
+		}
 		if _, err := os.Stat(path); err == nil {
 			http.ServeFile(w, r, path)
 			return
@@ -657,7 +662,12 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		pushedImagePath := filepath.Join(webpDir, "pushed", installationID+".webp")
+		pushedImagePath, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			http.Error(w, "Image not found", http.StatusNotFound)
+			return
+		}
 		imgBytes, err := os.ReadFile(pushedImagePath)
 		if err != nil {
 			slog.Error("Failed to read pushed image for preview", "path", pushedImagePath, "error", err)

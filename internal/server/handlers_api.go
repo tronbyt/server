@@ -328,7 +328,12 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 	if existingApp != nil && existingApp.Pushed {
 		if existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") {
 			installationID := strings.TrimPrefix(*existingApp.Path, "pushed:")
-pushedImagePath, _ := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), installationID+".webp")
+			pushedImagePath, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), installationID+".webp")
+			if err != nil {
+				slog.Error("Failed to resolve pushed image path", "error", err)
+				http.Error(w, "Image not found", http.StatusNotFound)
+				return
+			}
 			if imgBytes, err := os.ReadFile(pushedImagePath); err == nil {
 				// Notify device via Websocket (unless background)
 				if !dataReq.Background {
