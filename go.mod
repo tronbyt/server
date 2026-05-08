@@ -3,7 +3,7 @@ module tronbyt-server
 go 1.26.1
 
 require (
-	github.com/caarlos0/env/v11 v11.4.0
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/cyphar/filepath-securejoin v0.6.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.2
