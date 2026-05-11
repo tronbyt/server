@@ -6,11 +6,24 @@
 <h1>{{ t .Localizer "Log In" }}</h1>
 {{ end }}
 {{ define "content" }}
+{{ if .Flashes }}
+<div class="w3-panel w3-red">
+    {{ range .Flashes }}
+    <p>{{ . }}</p>
+    {{ end }}
+</div>
+{{ end }}
 <form method="post">
     <label for="username">{{ t .Localizer "Username" }}</label>
-    <input name="username" id="username" required>
+    <input class="w3-input w3-border" name="username" id="username" required>
+    <br>
     <label for="password">{{ t .Localizer "Password" }}</label>
-    <input type="password" name="password" id="password" required>
+    <input class="w3-input w3-border"
+           type="password"
+           name="password"
+           id="password"
+           required>
+    <br>
     <div>
         <input type="checkbox" name="remember" id="remember">
         <label for="remember">{{ t .Localizer "Remember Me" }}</label>
@@ -31,12 +44,12 @@
     {{ end }}
 </div>
 <script>
-    function loginWebAuthn() {
+    (function () {
         if (!window.PublicKeyCredential || !navigator.credentials) {
             const el = document.getElementById('webauthn-login-container');
             if (el) el.style.display = 'none';
         }
-    });
+    })();
 
     function bufferDecode(value) {
         return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
