@@ -23,7 +23,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
 	github.com/tronbyt/pixlet v0.52.0
-	golang.org/x/crypto v0.50.0
+	golang.org/x/crypto v0.51.0
 	golang.org/x/mod v0.36.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/text v0.37.0
@@ -136,7 +136,7 @@ require (
 	golang.org/x/image v0.39.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
