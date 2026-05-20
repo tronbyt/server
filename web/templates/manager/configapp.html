@@ -1515,8 +1515,12 @@
              }
          }
       } else {
-         // Clear recurrence_pattern when custom recurrence is disabled
+         // Clear recurrence fields when custom recurrence is disabled
          settings.recurrence_pattern = null;
+         settings.recurrence_type = 'daily';
+         settings.recurrence_interval = 1;
+         settings.recurrence_start_date = '';
+         settings.recurrence_end_date = '';
       }
       return settings;
   }
