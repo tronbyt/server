@@ -1514,6 +1514,9 @@
                  settings.recurrence_pattern.day_of_week = settings.day_of_week_pattern;
              }
          }
+      } else {
+         // Clear recurrence_pattern when custom recurrence is disabled
+         settings.recurrence_pattern = null;
       }
       return settings;
   }

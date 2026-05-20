@@ -223,8 +223,22 @@ func tmplSlice(args ...string) []string {
 	return args
 }
 
-func tmplContains(slice []string, item string) bool {
-	return slices.Contains(slice, item)
+func tmplContains(slice any, item string) bool {
+	switch s := slice.(type) {
+	case []string:
+		return slices.Contains(s, item)
+	case []any:
+		for _, v := range s {
+			if str, ok := v.(string); ok && str == item {
+				return true
+			}
+		}
+		return false
+	case nil:
+		return false
+	default:
+		return false
+	}
 }
 
 func tmplInstallationID(app data.App) string {
