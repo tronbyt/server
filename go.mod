@@ -7,7 +7,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/cyphar/filepath-securejoin v0.6.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.3
-	github.com/go-webauthn/webauthn v0.17.2
+	github.com/go-webauthn/webauthn v0.17.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/gorilla/websocket v1.5.3
@@ -63,7 +63,7 @@ require (
 	github.com/ericpauley/go-quantize v0.0.0-20200331213906-ae555eb2afa4 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gen2brain/webp v0.5.5 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
@@ -74,7 +74,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/go-webauthn/x v0.2.3 // indirect
+	github.com/go-webauthn/x v0.2.5 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hashstructure v0.6.0 // indirect
 	github.com/gohugoio/hugo v0.161.0 // indirect
