@@ -35,6 +35,7 @@ const (
 	DeviceTronbytS3Wide
 	DeviceMatrixPortal
 	DeviceMatrixPortalWS
+	DeviceWaveshareS3
 	DevicePixoticker
 	DeviceRaspberryPi
 	DeviceRaspberryPiWide
@@ -49,6 +50,7 @@ var DeviceTypeToString = map[DeviceType]string{
 	DeviceTronbytS3Wide:   "tronbyt_s3_wide",
 	DeviceMatrixPortal:    "matrixportal_s3",
 	DeviceMatrixPortalWS:  "matrixportal_s3_waveshare",
+	DeviceWaveshareS3:     "waveshare_s3",
 	DevicePixoticker:      "pixoticker",
 	DeviceRaspberryPi:     "raspberrypi",
 	DeviceRaspberryPiWide: "raspberrypi_wide",
@@ -84,6 +86,8 @@ func (dt DeviceType) String() string {
 		return "MatrixPortal S3"
 	case DeviceMatrixPortalWS:
 		return "MatrixPortal S3 Waveshare"
+	case DeviceWaveshareS3:
+		return "Waveshare S3"
 	case DeviceOther:
 		return "Other"
 	default:
@@ -628,7 +632,7 @@ func (dt DeviceType) Supports2x() bool {
 
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
-	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -638,7 +642,7 @@ func (dt DeviceType) SupportsFirmware() bool {
 func (dt DeviceType) SupportsOTA() bool {
 	switch dt {
 	// DevicePixoticker is intentionally omitted (not enough flash memory)
-	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -664,6 +668,8 @@ func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 		return "matrixportal-s3.bin"
 	case DeviceMatrixPortalWS:
 		return "matrixportal-s3-waveshare.bin"
+	case DeviceWaveshareS3:
+		return "waveshare-s3.bin"
 	default:
 		return ""
 	}
@@ -677,6 +683,8 @@ func (dt DeviceType) MergedFilename(swapColors bool) string {
 		return "tronbyt-S3_merged.bin"
 	case DeviceMatrixPortal, DeviceMatrixPortalWS:
 		return "matrixportal-s3_merged.bin"
+	case DeviceWaveshareS3:
+		return "waveshare-s3_merged.bin"
 	default:
 		return ""
 	}
