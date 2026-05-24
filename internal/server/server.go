@@ -272,7 +272,7 @@ func (s *Server) routes() {
 	}))
 	s.Router.HandleFunc("GET /settings/admin", s.RequireLogin(s.handleAdminIndex))
 	s.Router.HandleFunc("POST /settings/admin/oidc", s.RequireLogin(s.handleAdminSettingsPost))
-	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet)) // Keep old path just in case
+	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet))   // Keep old path just in case
 	s.Router.HandleFunc("POST /admin/settings", s.RequireLogin(s.handleAdminSettingsPost)) // Keep old path just in case
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 	s.Router.HandleFunc("DELETE /settings/admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
