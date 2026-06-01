@@ -6,6 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/cyphar/filepath-securejoin v0.6.1
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-git/go-git/v6 v6.0.0-alpha.3
 	github.com/go-webauthn/webauthn v0.17.2
 	github.com/google/uuid v1.6.0
@@ -62,7 +63,6 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ericpauley/go-quantize v0.0.0-20200331213906-ae555eb2afa4 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gen2brain/webp v0.5.5 // indirect

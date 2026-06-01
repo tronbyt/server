@@ -63,15 +63,16 @@ func serve(cfg *config.Settings, srv *server.Server) error {
 	// TLS Config (Shared)
 	var tlsConfig *tls.Config
 	if cfg.SSLCertFile != "" && cfg.SSLKeyFile != "" {
-		cert, err := tls.LoadX509KeyPair(cfg.SSLCertFile, cfg.SSLKeyFile)
+		cw, err := newCertWatcher(cfg.SSLCertFile, cfg.SSLKeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to load TLS certificates: %w", err)
 		}
 		tlsConfig = &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			NextProtos:   []string{"h2", "http/1.1"},
+			GetCertificate: cw.getCertificate,
+			NextProtos:     []string{"h2", "http/1.1"},
 		}
 		slog.Info("TLS certificates loaded", "cert", cfg.SSLCertFile, "key", cfg.SSLKeyFile)
+		cw.watch()
 	}
 
 	// HTTP/3 (QUIC) Support
