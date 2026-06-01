@@ -116,14 +116,11 @@ func TestCertWatcherReload(t *testing.T) {
 	// Write a new certificate pair to the same paths.
 	generateTestCert(t, dir, "initial") // same prefix overwrites the files
 
-	// Wait for debounce + reload (debounce is 10ms, give some extra time).
-	time.Sleep(50 * time.Millisecond)
-
-	// Get the new certificate.
-	newSerial := certSerial(cw)
-	require.NotNil(t, newSerial)
-
-	assert.NotEqual(t, origSerial.String(), newSerial.String(),
+	// Wait for debounce + reload and verify the certificate is updated.
+	assert.Eventually(t, func() bool {
+		newSerial := certSerial(cw)
+		return newSerial != nil && origSerial.String() != newSerial.String()
+	}, 500*time.Millisecond, 10*time.Millisecond,
 		"certificate should have been reloaded with different serial")
 }
 
@@ -192,13 +189,11 @@ func TestCertWatcherAtomicSave(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, newKeyData, keyData)
 
-	// Wait for debounce (debounce is 10ms, give some extra time).
-	time.Sleep(50 * time.Millisecond)
-
-	newSerial := certSerial(cw)
-	require.NotNil(t, newSerial)
-
-	assert.NotEqual(t, origSerial.String(), newSerial.String(),
+	// Wait for debounce + reload and verify the certificate is updated.
+	assert.Eventually(t, func() bool {
+		newSerial := certSerial(cw)
+		return newSerial != nil && origSerial.String() != newSerial.String()
+	}, 500*time.Millisecond, 10*time.Millisecond,
 		"certificate should have been reloaded after atomic save")
 }
 
