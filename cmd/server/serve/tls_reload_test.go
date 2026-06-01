@@ -100,6 +100,7 @@ func TestCertWatcherReload(t *testing.T) {
 
 	cw, err := newCertWatcher(certFile, keyFile)
 	require.NoError(t, err)
+	cw.debounceDelay = 10 * time.Millisecond
 	defer func() { _ = cw.Close() }()
 
 	// Get the original cert's serial number.
@@ -110,13 +111,13 @@ func TestCertWatcherReload(t *testing.T) {
 	cw.watch()
 
 	// Give the watcher time to set up.
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Write a new certificate pair to the same paths.
 	generateTestCert(t, dir, "initial") // same prefix overwrites the files
 
-	// Wait for debounce + reload (debounce is 1s, give some extra time).
-	time.Sleep(1500 * time.Millisecond)
+	// Wait for debounce + reload (debounce is 10ms, give some extra time).
+	time.Sleep(50 * time.Millisecond)
 
 	// Get the new certificate.
 	newSerial := certSerial(cw)
@@ -160,13 +161,14 @@ func TestCertWatcherAtomicSave(t *testing.T) {
 
 	cw, err := newCertWatcher(certFile, keyFile)
 	require.NoError(t, err)
+	cw.debounceDelay = 10 * time.Millisecond
 	defer func() { _ = cw.Close() }()
 
 	origSerial := certSerial(cw)
 	require.NotNil(t, origSerial)
 
 	cw.watch()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Simulate atomic save: create temp files, then rename over originals.
 	tmpDir := t.TempDir()
@@ -190,8 +192,8 @@ func TestCertWatcherAtomicSave(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, newKeyData, keyData)
 
-	// Wait for debounce.
-	time.Sleep(1500 * time.Millisecond)
+	// Wait for debounce (debounce is 10ms, give some extra time).
+	time.Sleep(50 * time.Millisecond)
 
 	newSerial := certSerial(cw)
 	require.NotNil(t, newSerial)
