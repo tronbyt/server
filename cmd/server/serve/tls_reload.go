@@ -98,33 +98,23 @@ func (cw *certWatcher) watch() {
 
 // watchLoop runs the fsnotify event loop and triggers debounced reloads.
 func (cw *certWatcher) watchLoop(watcher *fsnotify.Watcher) {
+	const debounceDelay = 1 * time.Second
+	var timer *time.Timer
+
 	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
 		if err := watcher.Close(); err != nil {
 			slog.Debug("Error closing TLS file watcher", "error", err)
 		}
 	}()
-
-	const debounceDelay = 1 * time.Second
-	var timer *time.Timer
 
 	for {
 		select {
 		case event, ok := <-watcher.Events:
 			if !ok {
 				return
-			}
-
-			// When a watched file is removed or renamed (atomic save),
-			// re-add the watch after a brief delay so the new inode is
-			// picked up.
-			if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {
-				if event.Name == cw.certFile || event.Name == cw.keyFile {
-					time.Sleep(50 * time.Millisecond)
-					if err := watcher.Add(event.Name); err != nil {
-						slog.Debug("Could not re-add TLS file watch (file may not exist yet)",
-							"error", err, "file", event.Name)
-					}
-				}
 			}
 
 			// Determine if the event is for one of our files. For parent
@@ -138,6 +128,17 @@ func (cw *certWatcher) watchLoop(watcher *fsnotify.Watcher) {
 			// Only react to writes and creates (not chmod, etc.).
 			if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
 				continue
+			}
+
+			// If a file was recreated (e.g., via atomic save), re-add the
+			// watch to ensure we continue monitoring it. The parent
+			// directory watch catches Create events when a new inode
+			// replaces the old one.
+			if event.Op&fsnotify.Create != 0 {
+				if err := watcher.Add(event.Name); err != nil {
+					slog.Debug("Failed to re-add TLS file watch",
+						"error", err, "file", event.Name)
+				}
 			}
 
 			// Debounce: reset the timer on each relevant event; reload
