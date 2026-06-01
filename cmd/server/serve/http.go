@@ -67,6 +67,11 @@ func serve(cfg *config.Settings, srv *server.Server) error {
 		if err != nil {
 			return fmt.Errorf("failed to load TLS certificates: %w", err)
 		}
+		defer func() {
+			if err := cw.Close(); err != nil {
+				slog.Debug("Error closing TLS cert watcher", "error", err)
+			}
+		}()
 		tlsConfig = &tls.Config{
 			GetCertificate: cw.getCertificate,
 			NextProtos:     []string{"h2", "http/1.1"},

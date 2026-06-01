@@ -17,18 +17,31 @@ type certWatcher struct {
 	cert     *tls.Certificate
 	certFile string
 	keyFile  string
+	watcher  *fsnotify.Watcher
 }
 
 // newCertWatcher creates a certWatcher and performs the initial certificate load.
 func newCertWatcher(certFile, keyFile string) (*certWatcher, error) {
 	cw := &certWatcher{
-		certFile: certFile,
-		keyFile:  keyFile,
+		certFile: filepath.Clean(certFile),
+		keyFile:  filepath.Clean(keyFile),
 	}
 	if err := cw.reload(); err != nil {
 		return nil, err
 	}
 	return cw, nil
+}
+
+// Close stops the file watcher and releases resources.
+func (cw *certWatcher) Close() error {
+	cw.mu.Lock()
+	defer cw.mu.Unlock()
+	if cw.watcher != nil {
+		err := cw.watcher.Close()
+		cw.watcher = nil
+		return err
+	}
+	return nil
 }
 
 // reload loads the certificate from disk and swaps it under the write lock.
@@ -90,6 +103,11 @@ func (cw *certWatcher) watch() {
 		}
 	}
 
+	// Store the watcher so Close() can shut it down.
+	cw.mu.Lock()
+	cw.watcher = watcher
+	cw.mu.Unlock()
+
 	slog.Info("Watching TLS certificate files for changes",
 		"cert", cw.certFile, "key", cw.keyFile)
 
@@ -97,16 +115,17 @@ func (cw *certWatcher) watch() {
 }
 
 // watchLoop runs the fsnotify event loop and triggers debounced reloads.
+// All work (including reloads) runs on this single goroutine: a select-based
+// timer ensures that only one reload can be in flight at a time, and rapid
+// successive events are coalesced into a single reload after a quiet period.
 func (cw *certWatcher) watchLoop(watcher *fsnotify.Watcher) {
 	const debounceDelay = 1 * time.Second
 	var timer *time.Timer
+	var delayChan <-chan time.Time
 
 	defer func() {
 		if timer != nil {
 			timer.Stop()
-		}
-		if err := watcher.Close(); err != nil {
-			slog.Debug("Error closing TLS file watcher", "error", err)
 		}
 	}()
 
@@ -146,11 +165,14 @@ func (cw *certWatcher) watchLoop(watcher *fsnotify.Watcher) {
 			if timer != nil {
 				timer.Stop()
 			}
-			timer = time.AfterFunc(debounceDelay, func() {
-				if err := cw.reload(); err != nil {
-					slog.Error("Failed to reload TLS certificate", "error", err)
-				}
-			})
+			timer = time.NewTimer(debounceDelay)
+			delayChan = timer.C
+
+		case <-delayChan:
+			delayChan = nil
+			if err := cw.reload(); err != nil {
+				slog.Error("Failed to reload TLS certificate", "error", err)
+			}
 
 		case err, ok := <-watcher.Errors:
 			if !ok {

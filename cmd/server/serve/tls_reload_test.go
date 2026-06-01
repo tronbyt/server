@@ -100,6 +100,7 @@ func TestCertWatcherReload(t *testing.T) {
 
 	cw, err := newCertWatcher(certFile, keyFile)
 	require.NoError(t, err)
+	defer func() { _ = cw.Close() }()
 
 	// Get the original cert's serial number.
 	origSerial := certSerial(cw)
@@ -159,6 +160,7 @@ func TestCertWatcherAtomicSave(t *testing.T) {
 
 	cw, err := newCertWatcher(certFile, keyFile)
 	require.NoError(t, err)
+	defer func() { _ = cw.Close() }()
 
 	origSerial := certSerial(cw)
 	require.NotNil(t, origSerial)
