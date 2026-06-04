@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -327,7 +328,7 @@ def main(config):
 		t.Errorf("Expected body 'App pushed.', got '%s'", rr.Body.String())
 	}
 
-	// Verify image exists
+	// Verify image exists (installID-based: testinstall.webp)
 	expectedPath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", "testinstall.webp")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("Expected pushed image to exist at %s, but it didn't", expectedPath)
@@ -958,4 +959,116 @@ func TestHandleRebootDeviceAPI(t *testing.T) {
 	if rr.Body.String() != "Reboot command sent." {
 		t.Errorf("Expected body 'Reboot command sent.', got '%s'", rr.Body.String())
 	}
+}
+
+func TestSavePushedImage_CoalesceID(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice"
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save 5 coalesced pushes with the same coalesceID — only 1 should remain
+	for i := range 5 {
+		imgData := fmt.Appendf(nil, "coalesced image %d", i)
+		if err := s.savePushedImage(deviceID, "", "mycoalesce", imgData); err != nil {
+			t.Fatalf("Failed to save coalesced push %d: %v", i, err)
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// With coalesceID, at most 1 file with that ID (__{timestamp}_{coalesceID}.webp)
+	coalescedCount := 0
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "__") && strings.HasSuffix(entry.Name(), "_mycoalesce.webp") {
+			coalescedCount++
+		}
+	}
+	if coalescedCount != 1 {
+		t.Errorf("Expected 1 coalesced file, got %d: %v", coalescedCount, entryNames(pushedDir))
+	}
+}
+
+func TestSavePushedImage_Anonymous(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice2"
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save 5 anonymous pushes (no installID, no coalesceID) — all should remain
+	for i := range 5 {
+		imgData := fmt.Appendf(nil, "anonymous image %d", i)
+		if err := s.savePushedImage(deviceID, "", "", imgData); err != nil {
+			t.Fatalf("Failed to save anonymous push %d: %v", i, err)
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// All 5 files should remain (unbounded anonymous queue)
+	// Anonymous: __{timestamp}.webp (only digits between __ and .webp)
+	ephemeralCount := 0
+	for _, entry := range entries {
+		if isAnonymousEphemeral(entry.Name()) {
+			ephemeralCount++
+		}
+	}
+	if ephemeralCount != 5 {
+		t.Errorf("Expected 5 anonymous ephemeral files, got %d: %v", ephemeralCount, entryNames(pushedDir))
+	}
+}
+
+func TestSavePushedImage_InstallID_Replaces(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice3"
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save 5 images with same installID
+	for i := range 5 {
+		imgData := fmt.Appendf(nil, "image %d", i)
+		if err := s.savePushedImage(deviceID, "myapp", "", imgData); err != nil {
+			t.Fatalf("Failed to save pushed image %d: %v", i, err)
+		}
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// With installID, file is always "myapp.webp" → overwrites → 1 file
+	if len(entries) != 1 {
+		t.Errorf("Expected 1 file with installID (always overwrites), got %d: %v", len(entries), entryNames(pushedDir))
+	}
+	if entries[0].Name() != "myapp.webp" {
+		t.Errorf("Expected file 'myapp.webp', got '%s'", entries[0].Name())
+	}
+}
+
+func entryNames(dir string) []string {
+	entries, _ := os.ReadDir(dir)
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
+}
+
+// isAnonymousEphemeral returns true for __{timestamp}.webp files
+// (no underscore between the timestamp and .webp).
+func isAnonymousEphemeral(name string) bool {
+	if !strings.HasPrefix(name, "__") || !strings.HasSuffix(name, ".webp") {
+		return false
+	}
+	inner := name[2 : len(name)-5] // strip "__" and ".webp"
+	return !strings.Contains(inner, "_")
 }

@@ -718,7 +718,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Push preview image to device (ephemeral)
-	if err := s.savePushedImage(device.ID, app.Iname, imgBytes); err != nil {
+	if err := s.savePushedImage(device.ID, app.Iname, "", imgBytes); err != nil {
 		http.Error(w, "Failed to push preview", http.StatusInternalServerError)
 		return
 	}
