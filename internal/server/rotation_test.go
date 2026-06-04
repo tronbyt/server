@@ -528,26 +528,21 @@ func TestGetNextAppImage_EphemeralBrokenFileSkipsToNext(t *testing.T) {
 		t.Fatalf("failed to create pushed dir: %v", err)
 	}
 
-	// Create 3 ephemeral files. Make the oldest one unreadable via chmod.
-	var oldestPath string
+	// Create 3 ephemeral files. Make the oldest one a directory so
+	// os.ReadFile fails (works even when tests run as root).
 	for i := range 3 {
 		fname := filepath.Join(pushedDir, fmt.Sprintf("__%d.webp", time.Now().UnixNano()+int64(i)))
-		if err := os.WriteFile(fname, fmt.Appendf(nil, "image %d", i), 0644); err != nil {
-			t.Fatalf("failed to write ephemeral file: %v", err)
-		}
 		if i == 0 {
-			oldestPath = fname
-			if err := os.Chmod(fname, 0000); err != nil {
-				t.Fatalf("failed to chmod oldest file: %v", err)
+			if err := os.Mkdir(fname, 0755); err != nil {
+				t.Fatalf("failed to create broken directory: %v", err)
+			}
+		} else {
+			if err := os.WriteFile(fname, fmt.Appendf(nil, "image %d", i), 0644); err != nil {
+				t.Fatalf("failed to write ephemeral file: %v", err)
 			}
 		}
 		time.Sleep(1 * time.Millisecond)
 	}
-	defer func() {
-		if err := os.Chmod(oldestPath, 0644); err != nil {
-			t.Logf("failed to restore chmod on oldest file: %v", err)
-		}
-	}()
 
 	// GetNextAppImage should skip the broken oldest file and serve the next one
 	imgData, _, err := s.GetNextAppImage(ctx, &device, &user)
@@ -573,7 +568,7 @@ func TestGetNextAppImage_EphemeralBrokenFileSkipsToNext(t *testing.T) {
 func countPrefix(entries []os.DirEntry, prefix string) int {
 	count := 0
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), prefix) {
+		if strings.HasPrefix(e.Name(), prefix) && !e.IsDir() {
 			count++
 		}
 	}

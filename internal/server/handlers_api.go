@@ -528,7 +528,7 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []
 		if entries, err := os.ReadDir(dir); err == nil {
 			for _, entry := range entries {
 				name := entry.Name()
-				if strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+				if !entry.IsDir() && strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
 					inner := name[2 : len(name)-5] // strip "__" and ".webp"
 					if _, fileCoalesceID, found := strings.Cut(inner, "_"); found {
 						if fileCoalesceID == coalesceID {
