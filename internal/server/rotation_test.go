@@ -2,6 +2,10 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -440,4 +444,74 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	if dbDevice.PinnedApp != nil {
 		t.Error("Auto-unpin not reflected in DB")
 	}
+}
+
+func TestGetNextAppImage_EphemeralCleanup(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	// Create a user
+	user := data.User{Username: "testuser"}
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	// Create a device without apps (so it always falls through to default after ephemeral)
+	device := data.Device{
+		ID:       "testdevice",
+		Username: user.Username,
+	}
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
+		t.Fatalf("failed to create device: %v", err)
+	}
+
+	// Create a bunch of ephemeral __*.webp files
+	pushedDir := filepath.Join(s.DataDir, "webp", device.ID, "pushed")
+	if err := os.MkdirAll(pushedDir, 0755); err != nil {
+		t.Fatalf("failed to create pushed dir: %v", err)
+	}
+
+	for i := range 5 {
+		fname := filepath.Join(pushedDir, fmt.Sprintf("__%d.webp", time.Now().UnixNano()+int64(i)))
+		if err := os.WriteFile(fname, fmt.Appendf(nil, "image %d", i), 0644); err != nil {
+			t.Fatalf("failed to write ephemeral file: %v", err)
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	// Verify 5 files exist
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("failed to read pushed dir: %v", err)
+	}
+	ephemeralCount := countPrefix(entries, "__")
+	if ephemeralCount != 5 {
+		t.Fatalf("expected 5 ephemeral files before test, got %d", ephemeralCount)
+	}
+
+	// Call GetNextAppImage — serves oldest, deletes only that one
+	_, _, err = s.GetNextAppImage(ctx, &device, &user)
+	if err != nil {
+		t.Fatalf("GetNextAppImage failed: %v", err)
+	}
+
+	// Verify one file was consumed
+	entries, err = os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("failed to read pushed dir: %v", err)
+	}
+	ephemeralCount = countPrefix(entries, "__")
+	if ephemeralCount != 4 {
+		t.Errorf("expected 4 ephemeral files after one poll (deletes oldest only), got %d", ephemeralCount)
+	}
+}
+
+func countPrefix(entries []os.DirEntry, prefix string) int {
+	count := 0
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), prefix) {
+			count++
+		}
+	}
+	return count
 }

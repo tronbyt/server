@@ -27,7 +27,7 @@ func TestHandleNextApp(t *testing.T) {
 		t.Fatalf("Failed to create app: %v", err)
 	}
 
-	if err := s.savePushedImage("testdevice", "testapp", []byte("dummy image")); err != nil {
+	if err := s.savePushedImage("testdevice", "testapp", "", []byte("dummy image")); err != nil {
 		t.Fatalf("Failed to save pushed image: %v", err)
 	}
 
@@ -106,7 +106,7 @@ func TestHandleNextApp_APIKey(t *testing.T) {
 		Path:      &path,
 	}
 	s.DB.Create(&app)
-	if err := s.savePushedImage("testdevice", "testapp", []byte("dummy image")); err != nil {
+	if err := s.savePushedImage("testdevice", "testapp", "", []byte("dummy image")); err != nil {
 		t.Fatalf("Failed to save pushed image: %v", err)
 	}
 

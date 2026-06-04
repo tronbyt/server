@@ -243,6 +243,7 @@ type PushAppData struct {
 	AppID             string         `json:"app_id"`
 	InstallationID    string         `json:"installationID"`
 	InstallationIDAlt string         `json:"installationId"`
+	CoalesceID        string         `json:"coalesceID"`
 	Background        bool           `json:"background"`
 }
 
@@ -380,7 +381,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !sent || installationID != "" {
-		if err := s.savePushedImage(device.ID, installationID, imgBytes); err != nil {
+		if err := s.savePushedImage(device.ID, installationID, dataReq.CoalesceID, imgBytes); err != nil {
 			http.Error(w, "Failed to save image", http.StatusInternalServerError)
 			return
 		}
@@ -442,6 +443,7 @@ func (s *Server) handleGetInstallation(w http.ResponseWriter, r *http.Request) {
 type PushData struct {
 	InstallationID    string `json:"installationID"`
 	InstallationIDAlt string `json:"installationId"`
+	CoalesceID        string `json:"coalesceID"`
 	Image             string `json:"image"`
 	Background        bool   `json:"background"`
 }
@@ -479,7 +481,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !sent || installID != "" {
-		if err := s.savePushedImage(device.ID, installID, imgBytes); err != nil {
+		if err := s.savePushedImage(device.ID, installID, dataReq.CoalesceID, imgBytes); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -492,7 +494,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) savePushedImage(deviceID, installID string, data []byte) error {
+func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []byte) error {
 	dir, err := s.ensureDeviceImageDir(deviceID)
 	if err != nil {
 		return fmt.Errorf("failed to get device webp directory: %w", err)
@@ -505,8 +507,25 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 
 	var filename string
 	if installID != "" {
+		// Image push with installID: stable filename, always replaces
 		filename = installID + ".webp"
+	} else if coalesceID != "" {
+		// Coalesced push: delete existing file with same coalesceID, then save.
+		// At most 1 pending push per coalesceID.
+		suffix := "_" + coalesceID + ".webp"
+		if entries, err := os.ReadDir(dir); err == nil {
+			for _, entry := range entries {
+				name := entry.Name()
+				if strings.HasPrefix(name, "__") && strings.HasSuffix(name, suffix) {
+					if err := os.Remove(filepath.Join(dir, name)); err != nil {
+						slog.Warn("Failed to remove coalesced push", "name", name, "error", err)
+					}
+				}
+			}
+		}
+		filename = fmt.Sprintf("__%d%s", time.Now().UnixNano(), suffix)
 	} else {
+		// Anonymous push: unbounded ephemeral queue
 		filename = fmt.Sprintf("__%d.webp", time.Now().UnixNano())
 	}
 
