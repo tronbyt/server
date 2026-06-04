@@ -20,7 +20,7 @@ import (
 type BypassCache struct {
 	inner runtime.Cache
 
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	prefixes map[string]int // active bypass prefix -> refcount
 }
 
@@ -79,10 +79,12 @@ func (c *BypassCache) remove(prefix string) {
 }
 
 func (c *BypassCache) bypassed(key string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for prefix := range c.prefixes {
-		if strings.HasPrefix(key, prefix) {
+		// Guard against an empty prefix, which would match every key and
+		// inadvertently bypass the entire cache.
+		if prefix != "" && strings.HasPrefix(key, prefix) {
 			return true
 		}
 	}
