@@ -36,19 +36,21 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 				return ephemeral[i].Name() < ephemeral[j].Name()
 			})
 
-			oldestPath := filepath.Join(pushedDir, ephemeral[0].Name())
-			imgData, err := os.ReadFile(oldestPath)
-			if err == nil {
-				// Delete only the one served; coalesceID handles dedup at write time
-				if err := os.Remove(oldestPath); err != nil {
-					slog.Warn("Failed to remove ephemeral image", "path", oldestPath, "error", err)
+			for _, entry := range ephemeral {
+				entryPath := filepath.Join(pushedDir, entry.Name())
+				imgData, err := os.ReadFile(entryPath)
+				if err == nil {
+					// Delete only the one served; coalesceID handles dedup at write time
+					if err := os.Remove(entryPath); err != nil {
+						slog.Warn("Failed to remove ephemeral image", "path", entryPath, "error", err)
+					}
+					return imgData, nil, nil
 				}
-				return imgData, nil, nil
-			}
-			// If reading failed, clean it up
-			slog.Warn("Failed to read ephemeral image, cleaning up", "path", oldestPath, "error", err)
-			if err := os.Remove(oldestPath); err != nil {
-				slog.Warn("Failed to remove broken ephemeral image", "path", oldestPath, "error", err)
+				// If reading failed, clean it up and try the next one
+				slog.Warn("Failed to read ephemeral image, cleaning up", "path", entryPath, "error", err)
+				if err := os.Remove(entryPath); err != nil {
+					slog.Warn("Failed to remove broken ephemeral image", "path", entryPath, "error", err)
+				}
 			}
 		}
 	}

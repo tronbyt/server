@@ -993,6 +993,71 @@ func TestSavePushedImage_CoalesceID(t *testing.T) {
 	}
 }
 
+func TestSavePushedImage_CoalesceID_SuffixCollision(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice-collision"
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save with coalesceID "foo"
+	if err := s.savePushedImage(deviceID, "", "foo", []byte("foo")); err != nil {
+		t.Fatalf("Failed to save with coalesceID 'foo': %v", err)
+	}
+	// Save with coalesceID "bar_foo" (must not collide with "foo")
+	if err := s.savePushedImage(deviceID, "", "bar_foo", []byte("bar_foo")); err != nil {
+		t.Fatalf("Failed to save with coalesceID 'bar_foo': %v", err)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// Both files should exist — "bar_foo" must not have deleted "foo"'s file.
+	// Extract coalesceID from filenames properly (split at first _ after __).
+	fooCount := 0
+	barFooCount := 0
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+			inner := name[2 : len(name)-5]
+			if _, fileCoalesceID, found := strings.Cut(inner, "_"); found {
+				switch fileCoalesceID {
+				case "foo":
+					fooCount++
+				case "bar_foo":
+					barFooCount++
+				}
+			}
+		}
+	}
+	if fooCount != 1 {
+		t.Errorf("Expected 1 file for coalesceID 'foo', got %d: %v", fooCount, entryNames(pushedDir))
+	}
+	if barFooCount != 1 {
+		t.Errorf("Expected 1 file for coalesceID 'bar_foo', got %d: %v", barFooCount, entryNames(pushedDir))
+	}
+}
+
+func TestSavePushedImage_CoalesceID_Invalid(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	// Too long
+	longID := strings.Repeat("a", 65)
+	if err := s.savePushedImage("testdevice", "", longID, []byte("x")); err == nil {
+		t.Error("Expected error for coalesceID > 64 chars, got nil")
+	}
+
+	// Invalid characters (slash)
+	if err := s.savePushedImage("testdevice", "", "foo/bar", []byte("x")); err == nil {
+		t.Error("Expected error for coalesceID with slash, got nil")
+	}
+
+	// Invalid characters (dot)
+	if err := s.savePushedImage("testdevice", "", "foo.bar", []byte("x")); err == nil {
+		t.Error("Expected error for coalesceID with dot, got nil")
+	}
+}
+
 func TestSavePushedImage_Anonymous(t *testing.T) {
 	s := newTestServerAPI(t)
 	deviceID := "testdevice2"
