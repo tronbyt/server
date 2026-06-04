@@ -64,6 +64,7 @@ func run(cmd *cobra.Command, args []string) error {
 	defer cache.Close()
 
 	srv := server.NewServer(db, cfg)
+	srv.SchemaCache = cache
 
 	// Firmware Update (production only)
 	if cfg.Production {

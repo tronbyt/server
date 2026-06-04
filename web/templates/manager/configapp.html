@@ -77,7 +77,16 @@
 {{ end }}
 <form method="post" id="dynamicForm">
     <!-- Schema Config Section -->
-    <h2>{{ t .Localizer "App Configuration" }}</h2>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px">
+        <h2>{{ t .Localizer "App Configuration" }}</h2>
+        <button type="button"
+                class="w3-button w3-blue w3-round"
+                id="refreshSchemaButton"
+                title="{{ t .Localizer "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them." }}">
+            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+            <span class="button-label">{{ t .Localizer "Refresh options" }}</span>
+        </button>
+    </div>
     <table id="schemaConfigContainer"
            class="form-table"
            style="border-spacing: 0 15px">
@@ -712,7 +721,8 @@
 </div>
 <script>
   // Make the schema and config objects available to JavaScript
-  const schema = {{ .Schema }};
+  // (mutable so the "Refresh options" button can swap in a freshly-fetched schema)
+  let schema = {{ .Schema }};
   const config = {{ .AppConfig | json }} || {};
   const deleteOnCancel = {{ .DeleteOnCancel }};
 
@@ -1658,6 +1668,17 @@
       });
   }
 
+  // Re-render the schema config table from the current `schema` and `config`.
+  // Used after the "Refresh options" button swaps in a freshly-fetched schema.
+  function rebuildSchemaForm() {
+    const formTable = document.getElementById("schemaConfigContainer");
+    if (!formTable) return;
+    formTable.innerHTML = "";
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => formTable.appendChild(row));
+    createGeneratedFormFields(schema, config);
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     const previewImage = document.getElementById('previewImage');
     if (previewImage) {
@@ -1685,6 +1706,32 @@
     initializeToggleButtons();
     initializeRecurrenceOptions();
     updateConfigAndPreview();
+
+    // "Refresh options" — refetch the schema (bypassing the app's http.get
+    // cache) and rebuild the form without losing the current selections.
+    const refreshSchemaButton = document.getElementById("refreshSchemaButton");
+    if (refreshSchemaButton) {
+      const refreshLabel = refreshSchemaButton.querySelector(".button-label");
+      refreshSchemaButton.addEventListener("click", async function () {
+        const originalLabel = refreshLabel ? refreshLabel.textContent : "";
+        refreshSchemaButton.disabled = true;
+        if (refreshLabel) refreshLabel.textContent = "{{ t .Localizer "Refreshing..." }}";
+        try {
+          const url = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema?refresh=true";
+          const response = await fetch(url, { headers: { "Accept": "application/json" } });
+          if (!response.ok) throw new Error("Failed to refresh schema");
+          schema = await response.json();
+          rebuildSchemaForm();
+          updateConfigAndPreview();
+        } catch (error) {
+          console.error("Error refreshing options:", error);
+          alert("{{ t .Localizer "Failed to refresh options. Please try again." }}");
+        } finally {
+          refreshSchemaButton.disabled = false;
+          if (refreshLabel) refreshLabel.textContent = originalLabel;
+        }
+      });
+    }
 
     form.addEventListener("submit", function (event) {
       event.preventDefault();

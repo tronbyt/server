@@ -1,4 +1,13 @@
 {
+  "Refresh options": {
+    "other": "Optionen aktualisieren"
+  },
+  "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them.": {
+    "other": "Dropdown-Optionen aus ihrer Quelle neu laden. Verwenden Sie dies, wenn die Optionen einer App online abgerufen werden und Sie sie aktualisiert haben."
+  },
+  "Failed to refresh options. Please try again.": {
+    "other": "Optionen konnten nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+  },
   "OIDC Support": {
     "other": "OIDC-Unterstützung"
   },
