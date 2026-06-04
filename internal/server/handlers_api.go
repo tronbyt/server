@@ -510,20 +510,37 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []
 		// Image push with installID: stable filename, always replaces
 		filename = installID + ".webp"
 	} else if coalesceID != "" {
+		// Validate coalesceID to prevent path traversal and suffix collisions.
+		if len(coalesceID) > 64 {
+			return fmt.Errorf("coalesceID exceeds maximum length of 64 characters")
+		}
+		for _, r := range coalesceID {
+			isValid := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-'
+			if !isValid {
+				return fmt.Errorf("coalesceID contains invalid characters (only alphanumeric, underscore, and dash allowed)")
+			}
+		}
+
 		// Coalesced push: delete existing file with same coalesceID, then save.
 		// At most 1 pending push per coalesceID.
-		suffix := "_" + coalesceID + ".webp"
+		// Filename format: __{timestamp}_{coalesceID}.webp
+		// Extract coalesceID by splitting at the first underscore after the "__" prefix.
 		if entries, err := os.ReadDir(dir); err == nil {
 			for _, entry := range entries {
 				name := entry.Name()
-				if strings.HasPrefix(name, "__") && strings.HasSuffix(name, suffix) {
-					if err := os.Remove(filepath.Join(dir, name)); err != nil {
-						slog.Warn("Failed to remove coalesced push", "name", name, "error", err)
+				if strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+					inner := name[2 : len(name)-5] // strip "__" and ".webp"
+					if _, fileCoalesceID, found := strings.Cut(inner, "_"); found {
+						if fileCoalesceID == coalesceID {
+							if err := os.Remove(filepath.Join(dir, name)); err != nil {
+								slog.Warn("Failed to remove coalesced push", "name", name, "error", err)
+							}
+						}
 					}
 				}
 			}
 		}
-		filename = fmt.Sprintf("__%d%s", time.Now().UnixNano(), suffix)
+		filename = fmt.Sprintf("__%d_%s.webp", time.Now().UnixNano(), coalesceID)
 	} else {
 		// Anonymous push: unbounded ephemeral queue
 		filename = fmt.Sprintf("__%d.webp", time.Now().UnixNano())

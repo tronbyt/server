@@ -506,6 +506,70 @@ func TestGetNextAppImage_EphemeralCleanup(t *testing.T) {
 	}
 }
 
+func TestGetNextAppImage_EphemeralBrokenFileSkipsToNext(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "testuser"}
+	if err := gorm.G[data.User](s.DB).Create(ctx, &user); err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	device := data.Device{
+		ID:       "testdevice-broken",
+		Username: user.Username,
+	}
+	if err := gorm.G[data.Device](s.DB).Create(ctx, &device); err != nil {
+		t.Fatalf("failed to create device: %v", err)
+	}
+
+	pushedDir := filepath.Join(s.DataDir, "webp", device.ID, "pushed")
+	if err := os.MkdirAll(pushedDir, 0755); err != nil {
+		t.Fatalf("failed to create pushed dir: %v", err)
+	}
+
+	// Create 3 ephemeral files. Make the oldest one unreadable via chmod.
+	var oldestPath string
+	for i := range 3 {
+		fname := filepath.Join(pushedDir, fmt.Sprintf("__%d.webp", time.Now().UnixNano()+int64(i)))
+		if err := os.WriteFile(fname, fmt.Appendf(nil, "image %d", i), 0644); err != nil {
+			t.Fatalf("failed to write ephemeral file: %v", err)
+		}
+		if i == 0 {
+			oldestPath = fname
+			if err := os.Chmod(fname, 0000); err != nil {
+				t.Fatalf("failed to chmod oldest file: %v", err)
+			}
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+	defer func() {
+		if err := os.Chmod(oldestPath, 0644); err != nil {
+			t.Logf("failed to restore chmod on oldest file: %v", err)
+		}
+	}()
+
+	// GetNextAppImage should skip the broken oldest file and serve the next one
+	imgData, _, err := s.GetNextAppImage(ctx, &device, &user)
+	if err != nil {
+		t.Fatalf("GetNextAppImage failed: %v", err)
+	}
+	if len(imgData) == 0 {
+		t.Error("Expected non-empty image data (second file), got empty")
+	}
+
+	// Both the broken oldest and the served second file should be deleted;
+	// only the third file remains.
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("failed to read pushed dir: %v", err)
+	}
+	ephemeralCount := countPrefix(entries, "__")
+	if ephemeralCount != 1 {
+		t.Errorf("expected 1 remaining ephemeral file, got %d", ephemeralCount)
+	}
+}
+
 func countPrefix(entries []os.DirEntry, prefix string) int {
 	count := 0
 	for _, e := range entries {
