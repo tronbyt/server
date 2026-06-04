@@ -26,7 +26,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	if entries, err := os.ReadDir(pushedDir); err == nil {
 		var ephemeral []os.DirEntry
 		for _, entry := range entries {
-			if strings.HasPrefix(entry.Name(), "__") {
+			if strings.HasPrefix(entry.Name(), "__") && strings.HasSuffix(entry.Name(), ".webp") && !entry.IsDir() {
 				ephemeral = append(ephemeral, entry)
 			}
 		}
