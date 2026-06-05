@@ -6,7 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/google/uuid v1.6.0
