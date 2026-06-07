@@ -557,24 +557,30 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []
 	}
 
 	// Clean up anonymous ephemeral files older than 24 hours.
-	// The filename embeds a nanosecond timestamp: __{nanos}.webp
-	cutoff := time.Now().UnixNano() - 24*int64(time.Hour)
-	if entries, readErr := os.ReadDir(dir); readErr == nil {
-		for _, entry := range entries {
-			name := entry.Name()
-			if !entry.IsDir() && strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
-				// Anonymous pushes: __{nanos}.webp (no underscore between __ and .webp suffix)
-				inner := name[2 : len(name)-5]
-				if strings.Contains(inner, "_") {
-					continue // coalesced push, not anonymous
-				}
-				if ts, parseErr := strconv.ParseInt(inner, 10, 64); parseErr == nil && ts < cutoff {
-					if err := os.Remove(filepath.Join(dir, name)); err != nil {
-						slog.Warn("Failed to remove expired ephemeral image", "name", name, "error", err)
+	// Only runs when saving an anonymous push (coalesced and installID-based
+	// pushes are already bounded). Runs in a background goroutine to avoid
+	// blocking the HTTP response.
+	if installID == "" && coalesceID == "" {
+		go func() {
+			cutoff := time.Now().UnixNano() - 24*int64(time.Hour)
+			if entries, readErr := os.ReadDir(dir); readErr == nil {
+				for _, entry := range entries {
+					name := entry.Name()
+					if !entry.IsDir() && strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+						// Anonymous pushes: __{nanos}.webp (no underscore between __ and .webp suffix)
+						inner := name[2 : len(name)-5]
+						if strings.Contains(inner, "_") {
+							continue // coalesced push, not anonymous
+						}
+						if ts, parseErr := strconv.ParseInt(inner, 10, 64); parseErr == nil && ts < cutoff {
+							if err := os.Remove(filepath.Join(dir, name)); err != nil && !os.IsNotExist(err) {
+								slog.Warn("Failed to remove expired ephemeral image", "name", name, "error", err)
+							}
+						}
 					}
 				}
 			}
-		}
+		}()
 	}
 
 	return nil
