@@ -1038,6 +1038,43 @@ func TestSavePushedImage_CoalesceID_SuffixCollision(t *testing.T) {
 	}
 }
 
+func TestSavePushedImage_AnonymousExpiry(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice-expiry"
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Create an anonymous file with timestamp from 48 hours ago
+	oldNanos := time.Now().UnixNano() - 48*int64(time.Hour)
+	oldName := fmt.Sprintf("__%d.webp", oldNanos)
+	if err := os.MkdirAll(pushedDir, 0755); err != nil {
+		t.Fatalf("failed to create pushed dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(pushedDir, oldName), []byte("old"), 0644); err != nil {
+		t.Fatalf("failed to write old file: %v", err)
+	}
+
+	// Save a new push — should trigger cleanup of the 48-hour-old file
+	if err := s.savePushedImage(deviceID, "", "", []byte("new")); err != nil {
+		t.Fatalf("Failed to save anonymous push: %v", err)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// Only the new file should remain; the 48-hour-old file should be cleaned up
+	ephemeralCount := 0
+	for _, entry := range entries {
+		if isAnonymousEphemeral(entry.Name()) {
+			ephemeralCount++
+		}
+	}
+	if ephemeralCount != 1 {
+		t.Errorf("Expected 1 anonymous ephemeral file (48h old cleaned up), got %d: %v", ephemeralCount, entryNames(pushedDir))
+	}
+}
+
 func TestSavePushedImage_CoalesceID_Invalid(t *testing.T) {
 	s := newTestServerAPI(t)
 
