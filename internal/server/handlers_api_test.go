@@ -1053,26 +1053,25 @@ func TestSavePushedImage_AnonymousExpiry(t *testing.T) {
 		t.Fatalf("failed to write old file: %v", err)
 	}
 
-	// Save a new push — should trigger cleanup of the 48-hour-old file
+	// Save a new anonymous push — triggers async cleanup of the 48-hour-old file
 	if err := s.savePushedImage(deviceID, "", "", []byte("new")); err != nil {
 		t.Fatalf("Failed to save anonymous push: %v", err)
 	}
 
-	entries, err := os.ReadDir(pushedDir)
-	if err != nil {
-		t.Fatalf("Failed to read pushed dir: %v", err)
-	}
-
-	// Only the new file should remain; the 48-hour-old file should be cleaned up
-	ephemeralCount := 0
-	for _, entry := range entries {
-		if isAnonymousEphemeral(entry.Name()) {
-			ephemeralCount++
+	// Cleanup runs in a background goroutine; wait for it.
+	assert.Eventually(t, func() bool {
+		entries, err := os.ReadDir(pushedDir)
+		if err != nil {
+			return false
 		}
-	}
-	if ephemeralCount != 1 {
-		t.Errorf("Expected 1 anonymous ephemeral file (48h old cleaned up), got %d: %v", ephemeralCount, entryNames(pushedDir))
-	}
+		count := 0
+		for _, entry := range entries {
+			if isAnonymousEphemeral(entry.Name()) {
+				count++
+			}
+		}
+		return count == 1
+	}, 2*time.Second, 10*time.Millisecond, "Expected 1 anonymous ephemeral file after async cleanup")
 }
 
 func TestSavePushedImage_CoalesceID_Invalid(t *testing.T) {
