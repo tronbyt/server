@@ -440,6 +440,94 @@ def main(config):
 	assert.NoError(t, err, "re-render should have created the missing cached image")
 }
 
+// seedPushedInstallation creates a pushed app DB record and writes sentinel bytes as
+// the cached webp so tests can detect whether the file was replaced or left intact.
+func seedPushedInstallation(t *testing.T, s *Server, deviceID, installID string) []byte {
+	t.Helper()
+	ctx := context.Background()
+	installPath := "pushed:" + installID
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       "200",
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Pushed:      true,
+		Path:        &installPath,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+	require.NoError(t, os.MkdirAll(pushedDir, 0755))
+	sentinel := []byte("sentinel-cached-image")
+	require.NoError(t, os.WriteFile(filepath.Join(pushedDir, installID+".webp"), sentinel, 0644))
+	return sentinel
+}
+
+func setupColorApp(t *testing.T, s *Server) string {
+	t.Helper()
+	appID := "colorapp"
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	star := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(star), 0644))
+	s.RefreshSystemAppsCache()
+	return appID
+}
+
+// TestHandlePushAppConfigReplacesCache verifies that providing a config always
+// triggers a fresh render, replacing the cached image rather than serving it.
+func TestHandlePushAppConfigReplacesCache(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+	installID := "cached-install"
+	sentinel := seedPushedInstallation(t, s, deviceID, installID)
+
+	body, _ := json.Marshal(PushAppData{
+		InstallationID: installID,
+		AppID:          appID,
+		Config:         map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	result, err := os.ReadFile(filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp"))
+	require.NoError(t, err)
+	assert.NotEqual(t, sentinel, result,
+		"providing config must trigger a fresh render, not serve the cached image")
+}
+
+// TestHandlePushAppNoCacheConfigServesCache verifies that omitting config and app_id
+// serves the existing cached image without re-rendering.
+func TestHandlePushAppNoCacheConfigServesCache(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	installID := "cached-install"
+	sentinel := seedPushedInstallation(t, s, deviceID, installID)
+
+	body, _ := json.Marshal(PushAppData{InstallationID: installID})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	result, err := os.ReadFile(filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp"))
+	require.NoError(t, err)
+	assert.Equal(t, sentinel, result,
+		"omitting config and app_id must serve the cached image without re-rendering")
+}
+
 func TestHandleListInstallations(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
