@@ -387,6 +387,59 @@ def main(config):
 		"pushing to an existing installationID should not create a second installation")
 }
 
+// TestHandlePushAppMissingCachedImage verifies that when the cached webp is missing,
+// the handler falls through to the render path rather than erroring. A push that
+// provides an appID and config should succeed and produce a new image.
+func TestHandlePushAppMissingCachedImage(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "colorapp"
+	installID := "orphaned"
+	installPath := "pushed:" + installID
+
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	starContent := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644))
+	s.RefreshSystemAppsCache()
+
+	// Seed a pushed app record without creating the corresponding webp file.
+	pushedApp := data.App{
+		DeviceID:    deviceID,
+		Iname:       "100",
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Pushed:      true,
+		Path:        &installPath,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &pushedApp))
+
+	// Providing appID + config should fall through to a fresh render and succeed.
+	body, _ := json.Marshal(PushAppData{
+		InstallationID: installID,
+		AppID:          appID,
+		Config:         map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	_, err := os.Stat(imagePath)
+	assert.NoError(t, err, "re-render should have created the missing cached image")
+}
+
 func TestHandleListInstallations(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"

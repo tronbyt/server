@@ -310,7 +310,12 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Image not found", http.StatusNotFound)
 			return
 		}
-		if imgBytes, err := os.ReadFile(pushedImagePath); err == nil {
+		imgBytes, err := os.ReadFile(pushedImagePath)
+		if err != nil {
+			// No cached image — fall through to the render path so the caller can
+			// recover by providing an appID and config.
+			slog.Warn("Cached pushed image missing, falling through to render", "path", pushedImagePath)
+		} else {
 			if !dataReq.Background {
 				s.Broadcaster.Notify(device.ID, imgBytes)
 			}
