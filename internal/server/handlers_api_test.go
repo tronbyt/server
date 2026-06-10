@@ -528,6 +528,73 @@ func TestHandlePushAppNoCacheConfigServesCache(t *testing.T) {
 		"omitting config and app_id must serve the cached image without re-rendering")
 }
 
+func TestHandlePushAppAppIDOnly(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+
+	body, _ := json.Marshal(PushAppData{
+		AppID:  appID,
+		Config: map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ?", deviceID, true).Count(context.Background(), "*")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), count, "push with no installationID must not create an installation record")
+}
+
+func TestHandlePushAppNoAppIDNoInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+
+	body, _ := json.Marshal(PushAppData{})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandlePushAppBackground(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+	installID := "bg-install"
+
+	ch := s.Broadcaster.Subscribe(deviceID)
+	defer s.Broadcaster.Unsubscribe(deviceID, ch)
+
+	body, _ := json.Marshal(PushAppData{
+		AppID:          appID,
+		InstallationID: installID,
+		Config:         map[string]any{"color": "#ff0000"},
+		Background:     true,
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	// Image must be saved.
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	_, err := os.Stat(imagePath)
+	assert.NoError(t, err, "background push must save the rendered image")
+
+	// Broadcaster must not have been notified.
+	select {
+	case <-ch:
+		t.Error("background push must not notify the device broadcaster")
+	default:
+	}
+}
+
 func TestHandleListInstallations(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
