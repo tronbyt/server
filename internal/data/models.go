@@ -978,6 +978,18 @@ func (d *Device) GetApp(iname string) *App {
 	return nil
 }
 
+// GetPushedApp looks up a pushed app by the user-supplied installationID, which is
+// stored in Path as "pushed:<installationID>" rather than in Iname.
+func (d *Device) GetPushedApp(installationID string) *App {
+	target := "pushed:" + installationID
+	for i := range d.Apps {
+		if d.Apps[i].Pushed && d.Apps[i].Path != nil && *d.Apps[i].Path == target {
+			return d.Apps[i]
+		}
+	}
+	return nil
+}
+
 // BrightnessUIScale returns the current brightness level (0-5) for the UI.
 func (d Device) BrightnessUIScale() int {
 	var customScale map[int]int
