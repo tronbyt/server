@@ -335,6 +335,58 @@ def main(config):
 	}
 }
 
+func TestHandlePushAppUpdatesExistingInstallation(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "colorapp"
+
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+
+	starContent := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644))
+	s.RefreshSystemAppsCache()
+
+	const installID = "100"
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+
+	doPush := func(color string) {
+		body, _ := json.Marshal(PushAppData{
+			AppID:          appID,
+			Config:         map[string]any{"color": color},
+			InstallationID: installID,
+		})
+		req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+		rr := httptest.NewRecorder()
+		s.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	doPush("#ff0000")
+	imgRed, err := os.ReadFile(imagePath)
+	require.NoError(t, err)
+
+	doPush("#0000ff")
+	imgBlue, err := os.ReadFile(imagePath)
+	require.NoError(t, err)
+
+	// Re-pushing with a different color config must produce a different image.
+	assert.NotEqual(t, imgRed, imgBlue,
+		"re-pushing to an existing installationID with new config should update the saved image")
+
+	// Exactly one pushed installation should exist.
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ?", deviceID, true).Count(context.Background(), "*")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count,
+		"pushing to an existing installationID should not create a second installation")
+}
+
 func TestHandleListInstallations(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
