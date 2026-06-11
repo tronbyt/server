@@ -1016,6 +1016,24 @@
   function createLocationField(field, config) {
     const { container, searchInput, resultsList } = createLocationSearchElements(field);
 
+    // A location counts as "set" only if it carries real content. A bare {} or
+    // a zeroed struct (lat/lng 0,0, empty timezone) does NOT count -- writing
+    // that breaks apps that do config.get("location", DEFAULT). (lat/lng of
+    // exactly 0 alone is treated as blank; a real equatorial location still has
+    // a timezone, locality, or place_id set.)
+    const locationHasContent = (loc) => {
+      if (!loc) return false;
+      if (typeof loc === "string") {
+        try {
+          loc = JSON.parse(loc);
+        } catch (e) {
+          return loc.trim() !== "" && loc.trim() !== "{}";
+        }
+      }
+      return !!(loc && (loc.timezone || loc.description || loc.locality ||
+                        loc.place_id || loc.lat || loc.lng));
+    };
+
     let initialLocationJsonString = config[field.id] || (deviceLocation !== null ? JSON.stringify(deviceLocation) : undefined) || field.default || "{}";
     if (typeof initialLocationJsonString !== 'string') {
       initialLocationJsonString = JSON.stringify(initialLocationJsonString);
@@ -1058,16 +1076,9 @@
     if (deleteOnCancel && (config[field.id] == null || config[field.id] === "")) {
       try {
         const seedLoc = JSON.parse(initialLocationJsonString);
-        // Only seed a location that actually has content. A blank device
-        // location must NOT be written, or the app receives lat/lng 0,0 and an
-        // empty timezone and errors at render time. (lat/lng of exactly 0 alone
-        // is treated as blank; a real equatorial location still has a timezone,
-        // locality, or place_id set.)
-        const hasContent = seedLoc && (
-          seedLoc.timezone || seedLoc.description || seedLoc.locality ||
-          seedLoc.place_id || seedLoc.lat || seedLoc.lng
-        );
-        if (hasContent) {
+        // Only seed a location that actually has content -- a blank device
+        // location must NOT be written (see locationHasContent above).
+        if (locationHasContent(seedLoc)) {
           config[field.id] = seedLoc;
         }
       } catch (e) {
@@ -1086,14 +1097,22 @@
     clearButton.className = "w3-button w3-round w3-small";
     clearButton.style.marginTop = "4px";
     clearButton.textContent = "{{ t .Localizer "Clear location" }}";
+    container.appendChild(clearButton);
+
+    // Keep the button always visible, but disabled when there is no location to
+    // clear, so its purpose stays discoverable.
+    const syncClearButtonState = () => {
+      clearButton.disabled = !locationHasContent(config[field.id]);
+    };
+
     clearButton.addEventListener("click", function () {
       delete config[field.id];
       searchInput.value = "";
       hiddenInput.value = "{}";
       resultsList.innerHTML = "";
+      syncClearButtonState();
       updateConfigAndPreview();
     });
-    container.appendChild(clearButton);
 
     enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
       // location is a JSON string
@@ -1102,8 +1121,11 @@
       } catch (e) {
           config[field.id] = location;
       }
+      syncClearButtonState();
       updateConfigAndPreview();
     });
+
+    syncClearButtonState();
 
     return container;
   }
