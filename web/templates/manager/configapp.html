@@ -717,7 +717,7 @@
   const deleteOnCancel = {{ .DeleteOnCancel }};
 
   // Device Location
-  const deviceLocation = {{ if .Device.Location }}{{ json .Device.Location }}{{ else }}null{{ end }};
+  const deviceLocation = {{ if .Device.HasLocation }}{{ json .Device.Location }}{{ else }}null{{ end }};
 
   // Initialize toggle buttons for config and debug content
   function initializeToggleButtons() {
@@ -1052,7 +1052,16 @@
     if (config[field.id] == null || config[field.id] === "") {
       try {
         const seedLoc = JSON.parse(initialLocationJsonString);
-        if (seedLoc && Object.keys(seedLoc).length > 0) {
+        // Only seed a location that actually has content. A blank device
+        // location must NOT be written, or the app receives lat/lng 0,0 and an
+        // empty timezone and errors at render time. (lat/lng of exactly 0 alone
+        // is treated as blank; a real equatorial location still has a timezone,
+        // locality, or place_id set.)
+        const hasContent = seedLoc && (
+          seedLoc.timezone || seedLoc.description || seedLoc.locality ||
+          seedLoc.place_id || seedLoc.lat || seedLoc.lng
+        );
+        if (hasContent) {
           config[field.id] = seedLoc;
         }
       } catch (e) {
