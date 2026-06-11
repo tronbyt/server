@@ -1041,6 +1041,25 @@
     hiddenInput.value = initialLocationJsonString;
     container.appendChild(hiddenInput);
 
+    // Seed the config object with the resolved location (saved value, device
+    // location fallback, or field default). collectSettings() serializes the
+    // `config` object on save -- NOT the hidden inputs -- so without this seed
+    // the device-location fallback shown in the UI silently fails to persist,
+    // and the app falls back to its own hardcoded default location at render
+    // time. The onChange callback below only fires when the user re-picks from
+    // the search box, which is exactly the step users skip. (LocationBased
+    // fields seed config via fetchOptionsForLocation's dispatched change event.)
+    if (config[field.id] == null || config[field.id] === "") {
+      try {
+        const seedLoc = JSON.parse(initialLocationJsonString);
+        if (seedLoc && Object.keys(seedLoc).length > 0) {
+          config[field.id] = seedLoc;
+        }
+      } catch (e) {
+        // initialLocationJsonString was "{}" or invalid; nothing to seed.
+      }
+    }
+
     enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
       // location is a JSON string
       try {
