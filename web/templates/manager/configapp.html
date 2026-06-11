@@ -1041,15 +1041,21 @@
     hiddenInput.value = initialLocationJsonString;
     container.appendChild(hiddenInput);
 
-    // Seed the config object with the resolved location (saved value, device
-    // location fallback, or field default). collectSettings() serializes the
-    // `config` object on save -- NOT the hidden inputs -- so without this seed
-    // the device-location fallback shown in the UI silently fails to persist,
-    // and the app falls back to its own hardcoded default location at render
-    // time. The onChange callback below only fires when the user re-picks from
-    // the search box, which is exactly the step users skip. (LocationBased
-    // fields seed config via fetchOptionsForLocation's dispatched change event.)
-    if (config[field.id] == null || config[field.id] === "") {
+    // Seed the config object with the resolved location (device location
+    // fallback or field default). collectSettings() serializes the `config`
+    // object on save -- NOT the hidden inputs -- so without this seed the
+    // device-location fallback shown in the UI silently fails to persist, and
+    // the app falls back to its own hardcoded default location at render time.
+    // The onChange callback below only fires when the user re-picks from the
+    // search box, which is exactly the step users skip. (LocationBased fields
+    // seed config via fetchOptionsForLocation's dispatched change event.)
+    //
+    // Only auto-fill when FIRST adding the app instance. delete_on_cancel=true
+    // marks the initial config of a just-added app; on later edits it is false.
+    // Gating on it means a location the user intentionally left blank stays
+    // blank on edit instead of silently inheriting the (possibly since-changed)
+    // device location. Blank is only auto-filled at creation, never on edit.
+    if (deleteOnCancel && (config[field.id] == null || config[field.id] === "")) {
       try {
         const seedLoc = JSON.parse(initialLocationJsonString);
         // Only seed a location that actually has content. A blank device
