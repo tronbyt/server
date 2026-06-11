@@ -1075,6 +1075,26 @@
       }
     }
 
+    // Clear button: lets the user blank out a location on an existing app.
+    // Emptying the search box alone does nothing (it is just a search field),
+    // so without this there is no way to remove a previously-saved location.
+    // We DELETE the key (rather than store {}) so the saved config omits it and
+    // the app falls back to its own default -- an empty object would be truthy
+    // and break apps that do config.get("location", DEFAULT).
+    const clearButton = document.createElement("button");
+    clearButton.type = "button";
+    clearButton.className = "w3-button w3-round w3-small";
+    clearButton.style.marginTop = "4px";
+    clearButton.textContent = "{{ t .Localizer "Clear location" }}";
+    clearButton.addEventListener("click", function () {
+      delete config[field.id];
+      searchInput.value = "";
+      hiddenInput.value = "{}";
+      resultsList.innerHTML = "";
+      updateConfigAndPreview();
+    });
+    container.appendChild(clearButton);
+
     enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
       // location is a JSON string
       try {
