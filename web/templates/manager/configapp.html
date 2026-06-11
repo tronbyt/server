@@ -1094,7 +1094,7 @@
     // and break apps that do config.get("location", DEFAULT).
     const clearButton = document.createElement("button");
     clearButton.type = "button";
-    clearButton.className = "w3-button w3-round w3-small";
+    clearButton.className = "w3-button w3-border w3-round w3-small";
     clearButton.style.marginTop = "4px";
     clearButton.textContent = "{{ t .Localizer "Clear location" }}";
     container.appendChild(clearButton);
@@ -1125,6 +1125,9 @@
       updateConfigAndPreview();
     });
 
+    // importConfig() updates config[field.id] and dispatches an "input" event on
+    // the hidden input (matched by data-config-id); sync the button off that too.
+    hiddenInput.addEventListener("input", syncClearButtonState);
     syncClearButtonState();
 
     return container;
