@@ -1,4 +1,13 @@
 {
+  "Refresh options": {
+    "other": "Refresh options"
+  },
+  "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them.": {
+    "other": "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them."
+  },
+  "Failed to refresh options. Please try again.": {
+    "other": "Failed to refresh options. Please try again."
+  },
   "OIDC Support": {
     "other": "OIDC Support"
   },
