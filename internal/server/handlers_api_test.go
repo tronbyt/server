@@ -335,6 +335,266 @@ def main(config):
 	}
 }
 
+func TestHandlePushAppUpdatesExistingInstallation(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "colorapp"
+
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+
+	starContent := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644))
+	s.RefreshSystemAppsCache()
+
+	const installID = "100"
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+
+	doPush := func(color string) {
+		body, _ := json.Marshal(PushAppData{
+			AppID:          appID,
+			Config:         map[string]any{"color": color},
+			InstallationID: installID,
+		})
+		req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+		rr := httptest.NewRecorder()
+		s.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	doPush("#ff0000")
+	imgRed, err := os.ReadFile(imagePath)
+	require.NoError(t, err)
+
+	doPush("#0000ff")
+	imgBlue, err := os.ReadFile(imagePath)
+	require.NoError(t, err)
+
+	// Re-pushing with a different color config must produce a different image.
+	assert.NotEqual(t, imgRed, imgBlue,
+		"re-pushing to an existing installationID with new config should update the saved image")
+
+	// Exactly one pushed installation should exist.
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ?", deviceID, true).Count(context.Background(), "*")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count,
+		"pushing to an existing installationID should not create a second installation")
+}
+
+// TestHandlePushAppMissingCachedImage verifies that when the cached webp is missing,
+// the handler falls through to the render path rather than erroring. A push that
+// provides an appID and config should succeed and produce a new image.
+func TestHandlePushAppMissingCachedImage(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "colorapp"
+	installID := "orphaned"
+	installPath := "pushed:" + installID
+
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	starContent := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644))
+	s.RefreshSystemAppsCache()
+
+	// Seed a pushed app record without creating the corresponding webp file.
+	pushedApp := data.App{
+		DeviceID:    deviceID,
+		Iname:       "100",
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Pushed:      true,
+		Path:        &installPath,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &pushedApp))
+
+	// Providing appID + config should fall through to a fresh render and succeed.
+	body, _ := json.Marshal(PushAppData{
+		InstallationID: installID,
+		AppID:          appID,
+		Config:         map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	_, err := os.Stat(imagePath)
+	assert.NoError(t, err, "re-render should have created the missing cached image")
+}
+
+// seedPushedInstallation creates a pushed app DB record and writes sentinel bytes as
+// the cached webp so tests can detect whether the file was replaced or left intact.
+func seedPushedInstallation(t *testing.T, s *Server, deviceID, installID string) []byte {
+	t.Helper()
+	ctx := context.Background()
+	installPath := "pushed:" + installID
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       "200",
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Pushed:      true,
+		Path:        &installPath,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+	require.NoError(t, os.MkdirAll(pushedDir, 0755))
+	sentinel := []byte("sentinel-cached-image")
+	require.NoError(t, os.WriteFile(filepath.Join(pushedDir, installID+".webp"), sentinel, 0644))
+	return sentinel
+}
+
+func setupColorApp(t *testing.T, s *Server) string {
+	t.Helper()
+	appID := "colorapp"
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	star := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(star), 0644))
+	s.RefreshSystemAppsCache()
+	return appID
+}
+
+// TestHandlePushAppConfigReplacesCache verifies that providing a config always
+// triggers a fresh render, replacing the cached image rather than serving it.
+func TestHandlePushAppConfigReplacesCache(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+	installID := "cached-install"
+	sentinel := seedPushedInstallation(t, s, deviceID, installID)
+
+	body, _ := json.Marshal(PushAppData{
+		InstallationID: installID,
+		AppID:          appID,
+		Config:         map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	result, err := os.ReadFile(filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp"))
+	require.NoError(t, err)
+	assert.NotEqual(t, sentinel, result,
+		"providing config must trigger a fresh render, not serve the cached image")
+}
+
+// TestHandlePushAppNoCacheConfigServesCache verifies that omitting config and app_id
+// serves the existing cached image without re-rendering.
+func TestHandlePushAppNoCacheConfigServesCache(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	installID := "cached-install"
+	sentinel := seedPushedInstallation(t, s, deviceID, installID)
+
+	body, _ := json.Marshal(PushAppData{InstallationID: installID})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	result, err := os.ReadFile(filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp"))
+	require.NoError(t, err)
+	assert.Equal(t, sentinel, result,
+		"omitting config and app_id must serve the cached image without re-rendering")
+}
+
+func TestHandlePushAppAppIDOnly(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+
+	body, _ := json.Marshal(PushAppData{
+		AppID:  appID,
+		Config: map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ?", deviceID, true).Count(context.Background(), "*")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), count, "push with no installationID must not create an installation record")
+}
+
+func TestHandlePushAppNoAppIDNoInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+
+	body, _ := json.Marshal(PushAppData{})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandlePushAppBackground(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+	installID := "bg-install"
+
+	ch := s.Broadcaster.Subscribe(deviceID)
+	defer s.Broadcaster.Unsubscribe(deviceID, ch)
+
+	body, _ := json.Marshal(PushAppData{
+		AppID:          appID,
+		InstallationID: installID,
+		Config:         map[string]any{"color": "#ff0000"},
+		Background:     true,
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	// Image must be saved.
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	_, err := os.Stat(imagePath)
+	assert.NoError(t, err, "background push must save the rendered image")
+
+	// Broadcaster must not have been notified.
+	select {
+	case <-ch:
+		t.Error("background push must not notify the device broadcaster")
+	default:
+	}
+}
+
 func TestHandleListInstallations(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"

@@ -283,14 +283,50 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		installationID = dataReq.InstallationIDAlt
 	}
 
-	// Look up existing app if installationID is provided to get Path, DisplayTime and filters
+	// Look up existing pushed app first (by path), then fall back to iname lookup.
 	var existingApp *data.App
 	var appPath string
 	if installationID != "" {
-		existingApp = device.GetApp(installationID)
-		if existingApp != nil && existingApp.Path != nil && *existingApp.Path != "" {
-			// Infer app path from existing installation
+		existingApp = device.GetPushedApp(installationID)
+		if existingApp == nil {
+			existingApp = device.GetApp(installationID)
+		}
+		// Only derive appPath from non-pushed installations; "pushed:<id>" is not a real app path.
+		if existingApp != nil && existingApp.Path != nil && *existingApp.Path != "" &&
+			!strings.HasPrefix(*existingApp.Path, "pushed:") {
 			appPath, _ = securejoin.SecureJoin(s.DataDir, *existingApp.Path)
+		}
+	}
+
+	// For pushed apps with a cached image and no new config/app being sent, skip
+	// re-rendering and re-push the existing image directly.
+	if existingApp != nil && existingApp.Pushed &&
+		existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") &&
+		len(dataReq.Config) == 0 && dataReq.AppID == "" {
+		cachedID := strings.TrimPrefix(*existingApp.Path, "pushed:")
+		pushedImagePath, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), cachedID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			http.Error(w, "Image not found", http.StatusNotFound)
+			return
+		}
+		imgBytes, err := os.ReadFile(pushedImagePath)
+		if err != nil {
+			// No cached image — fall through to the render path so the caller can
+			// recover by providing an appID and config.
+			slog.Warn("Cached pushed image missing, falling through to render", "path", pushedImagePath)
+		} else {
+			if !dataReq.Background {
+				s.Broadcaster.Notify(device.ID, imgBytes)
+			}
+			if err := s.ensurePushedApp(r.Context(), device.ID, cachedID); err != nil {
+				slog.Error("Error adding pushed app", "error", err)
+			}
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write([]byte("App pushed.")); err != nil {
+				slog.Error("Failed to write response", "error", err)
+			}
+			return
 		}
 	}
 
@@ -323,33 +359,6 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		if appPath == "" {
 			http.Error(w, "App not found", http.StatusNotFound)
 			return
-		}
-	}
-
-	// For pushed apps (existing app with "pushed:" path), skip rendering and push existing image
-	if existingApp != nil && existingApp.Pushed {
-		if existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") {
-			installationID := strings.TrimPrefix(*existingApp.Path, "pushed:")
-			pushedImagePath, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), installationID+".webp")
-			if err != nil {
-				slog.Error("Failed to resolve pushed image path", "error", err)
-				http.Error(w, "Image not found", http.StatusNotFound)
-				return
-			}
-			if imgBytes, err := os.ReadFile(pushedImagePath); err == nil {
-				// Notify device via Websocket (unless background)
-				if !dataReq.Background {
-					s.Broadcaster.Notify(device.ID, imgBytes)
-				}
-				if err := s.ensurePushedApp(r.Context(), device.ID, installationID); err != nil {
-					slog.Error("Error adding pushed app", "error", err)
-				}
-				w.WriteHeader(http.StatusOK)
-				if _, err := w.Write([]byte("App pushed.")); err != nil {
-					slog.Error("Failed to write response", "error", err)
-				}
-				return
-			}
 		}
 	}
 
