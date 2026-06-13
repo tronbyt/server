@@ -690,6 +690,19 @@ func (dt DeviceType) MergedFilename(swapColors bool) string {
 	}
 }
 
+// HasLocation reports whether the device has a usable saved location, as
+// opposed to the zero-value DeviceLocation struct that exists before the user
+// picks one. Needed because Go templates treat any struct value as truthy, so
+// `{{ if .Device.Location }}` is always true even when the location is blank.
+func (d *Device) HasLocation() bool {
+	if d == nil {
+		return false
+	}
+	l := d.Location
+	return l.Timezone != "" || l.Description != "" || l.Locality != "" ||
+		l.PlaceID != "" || l.Lat != 0 || l.Lng != 0
+}
+
 func (d *Device) GetTimezone() string {
 	if d.Timezone != nil && *d.Timezone != "" {
 		return *d.Timezone
