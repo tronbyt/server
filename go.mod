@@ -51,7 +51,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bep/godartsass/v2 v2.5.0 // indirect
 	github.com/bep/golibsass v1.2.0 // indirect
-	github.com/bits-and-blooms/bitset v1.24.4 // indirect
+	github.com/bits-and-blooms/bitset v1.24.5 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -76,7 +76,7 @@ require (
 	github.com/go-webauthn/x v0.2.6 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gohugoio/hashstructure v0.6.0 // indirect
-	github.com/gohugoio/hugo v0.162.0 // indirect
+	github.com/gohugoio/hugo v0.163.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
@@ -120,7 +120,7 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/tdewolff/parse/v2 v2.8.12 // indirect
 	github.com/tdewolff/test v1.0.12 // indirect
-	github.com/tetratelabs/wazero v1.11.1-0.20260521072212-475a1f8f0dc3 // indirect
+	github.com/tetratelabs/wazero v1.12.0 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tronbyt/gg v0.0.0-20220808163829-95806fa1d427 // indirect
 	github.com/tronbyt/go-libwebp v0.0.0-20251221160926-0c04b4a7738a // indirect
@@ -131,7 +131,7 @@ require (
 	go.starlark.net v0.0.0-20260326113308-fadfc96def35 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/image v0.41.0 // indirect
+	golang.org/x/image v0.42.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
