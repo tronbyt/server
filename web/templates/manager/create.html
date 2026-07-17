@@ -45,9 +45,7 @@
                     <option value="{{ .Value.Slug }}"
                             {{ if eq $deviceType .Value.Slug }}
                             selected
-                            {{ end }}>
-                        {{ .Label }}
-                    </option>
+                            {{ end }}>{{ .Label }}</option>
                     {{ end }}
                 </select>
             </div>

@@ -35,7 +35,7 @@ repos:
         types: [go]
         pass_filenames: false
   - repo: https://github.com/djlint/djLint
-    rev: v1.36.4
+    rev: v1.40.8
     hooks:
       - id: djlint-reformat-golang
         files: "\\.html"

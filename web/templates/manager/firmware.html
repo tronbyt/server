@@ -67,8 +67,7 @@
                         {{ if .AvailableFirmwareVersions }}
                         <select name="version" form="firmware-form" class="settings-input">
                             {{ range .AvailableFirmwareVersions }}
-                            <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}
-                            </option>
+                            <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
                             {{ end }}
                         </select>
                     {{ else }}

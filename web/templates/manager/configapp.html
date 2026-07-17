@@ -197,8 +197,7 @@
                     <option value="{{ .Value }}"
                             {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}
                             selected
-                            {{ end }}>{{ t $.Localizer .Name }}
-                    </option>
+                            {{ end }}>{{ t $.Localizer .Name }}</option>
                     {{ end }}
                 </select>
             </td>
@@ -224,8 +223,7 @@
                         id="show_full_animation"
                         class="form-control">
                     {{ range .ShowFullAnimationOptions }}
-                    <option value="{{ .Value }}" {{ if eq $sfa .Value }} selected {{ end }}>{{ t $.Localizer .Name }}
-                    </option>
+                    <option value="{{ .Value }}" {{ if eq $sfa .Value }} selected {{ end }}>{{ t $.Localizer .Name }}</option>
                     {{ end }}
                 </select>
             </td>
@@ -388,23 +386,19 @@
                         <option value="daily"
                                 {{ if eq (string .App.RecurrenceType) "daily" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Daily" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Daily" }}</option>
                         <option value="weekly"
                                 {{ if eq (string .App.RecurrenceType) "weekly" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Weekly" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Weekly" }}</option>
                         <option value="monthly"
                                 {{ if eq (string .App.RecurrenceType) "monthly" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Monthly" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Monthly" }}</option>
                         <option value="yearly"
                                 {{ if eq (string .App.RecurrenceType) "yearly" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Yearly" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Yearly" }}</option>
                     </select>
                 </td>
             </tr>
@@ -542,13 +536,11 @@
                             <option value="day_of_month"
                                     {{ if eq $current_pattern "day_of_month" }}
                                     selected
-                                    {{ end }}>{{ t .Localizer "Day of Month" }}
-                            </option>
+                                    {{ end }}>{{ t .Localizer "Day of Month" }}</option>
                             <option value="day_of_week"
                                     {{ if eq $current_pattern "day_of_week" }}
                                     selected
-                                    {{ end }}>{{ t .Localizer "Day of Week" }}
-                            </option>
+                                    {{ end }}>{{ t .Localizer "Day of Week" }}</option>
                         </select>
                     </td>
                 </tr>
