@@ -49,7 +49,7 @@ jobs:
 
       - name: Lint Templates
         run: |
-          pip install djlint
+          pip install djlint==1.40.8
           djlint web/templates --profile=golang --check
 
       - name: Lint Dockerfile
