@@ -53,11 +53,12 @@ func preRun(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Initialize slog before anything else that might log
-	slog.SetDefault(slog.New(tint.NewHandler(cmd.ErrOrStderr(), &tint.Options{
+	opts := &tint.Options{
 		Level:      slog.LevelInfo,
 		TimeFormat: time.RFC3339,
 		NoColor:    !color,
-	})))
+	}
+	slog.SetDefault(slog.New(tint.NewHandler(cmd.ErrOrStderr(), opts)))
 
 	// Load configuration early to get default DB path
 	cfg, err := config.LoadSettings()
@@ -89,11 +90,12 @@ func preRun(cmd *cobra.Command, _ []string) error {
 			Level: level,
 		})
 	} else {
-		logHandler = tint.NewHandler(cmd.ErrOrStderr(), &tint.Options{
+		opts = &tint.Options{
 			Level:      level,
 			TimeFormat: time.RFC3339,
 			NoColor:    !color,
-		})
+		}
+		logHandler = tint.NewHandler(cmd.ErrOrStderr(), opts)
 	}
 	slog.SetDefault(slog.New(logHandler))
 
