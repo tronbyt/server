@@ -58,7 +58,7 @@ func preRun(cmd *cobra.Command, _ []string) error {
 		TimeFormat: time.RFC3339,
 		NoColor:    !color,
 	}
-	handler := tint.NewHandler(cmd.ErrOrStderr(), opts)
+	handler := tint.NewHandler(cmd.ErrOrStderr(), opts) //nolint:govet
 	slog.SetDefault(slog.New(handler))
 
 	// Load configuration early to get default DB path
@@ -96,7 +96,7 @@ func preRun(cmd *cobra.Command, _ []string) error {
 			TimeFormat: time.RFC3339,
 			NoColor:    !color,
 		}
-		logHandler = tint.NewHandler(cmd.ErrOrStderr(), opts)
+		logHandler = tint.NewHandler(cmd.ErrOrStderr(), opts) //nolint:govet
 	}
 	slog.SetDefault(slog.New(logHandler))
 
