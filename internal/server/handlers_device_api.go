@@ -123,18 +123,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/webp")
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
-	// Check for Pending Update
-	if updateURL := device.PendingUpdateURL; updateURL != "" {
-		slog.Info("Sending OTA update header", "device", device.ID, "url", updateURL)
-		w.Header().Set("Tronbyt-OTA-URL", updateURL)
-
-		// Clear pending update
-		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", ""); err != nil {
-			slog.Error("Failed to clear pending update", "error", err)
-		} else {
-			device.PendingUpdateURL = ""
-		}
-	}
+	s.sendPendingHTTPDeviceHeaders(w, r.Context(), device)
 
 	// Determine Brightness
 	brightness := device.GetEffectiveBrightness()
