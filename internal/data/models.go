@@ -35,6 +35,7 @@ const (
 	DeviceTronbytS3Wide
 	DeviceMatrixPortal
 	DeviceMatrixPortalWS
+	DeviceWaveshareS3
 	DevicePixoticker
 	DeviceRaspberryPi
 	DeviceRaspberryPiWide
@@ -49,6 +50,7 @@ var DeviceTypeToString = map[DeviceType]string{
 	DeviceTronbytS3Wide:   "tronbyt_s3_wide",
 	DeviceMatrixPortal:    "matrixportal_s3",
 	DeviceMatrixPortalWS:  "matrixportal_s3_waveshare",
+	DeviceWaveshareS3:     "waveshare_s3",
 	DevicePixoticker:      "pixoticker",
 	DeviceRaspberryPi:     "raspberrypi",
 	DeviceRaspberryPiWide: "raspberrypi_wide",
@@ -84,6 +86,8 @@ func (dt DeviceType) String() string {
 		return "MatrixPortal S3"
 	case DeviceMatrixPortalWS:
 		return "MatrixPortal S3 Waveshare"
+	case DeviceWaveshareS3:
+		return "Waveshare S3"
 	case DeviceOther:
 		return "Other"
 	default:
@@ -614,6 +618,10 @@ type Device struct {
 	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
+	// HTTP device commands (delivered via /next response headers)
+	PendingImageURL string `json:"pending_image_url,omitempty"`
+	PendingReboot   bool   `json:"pending_reboot,omitempty"`
+
 	Apps []*App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
 
@@ -628,7 +636,7 @@ func (dt DeviceType) Supports2x() bool {
 
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
-	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -638,7 +646,7 @@ func (dt DeviceType) SupportsFirmware() bool {
 func (dt DeviceType) SupportsOTA() bool {
 	switch dt {
 	// DevicePixoticker is intentionally omitted (not enough flash memory)
-	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -664,6 +672,8 @@ func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 		return "matrixportal-s3.bin"
 	case DeviceMatrixPortalWS:
 		return "matrixportal-s3-waveshare.bin"
+	case DeviceWaveshareS3:
+		return "waveshare-s3.bin"
 	default:
 		return ""
 	}
@@ -677,9 +687,24 @@ func (dt DeviceType) MergedFilename(swapColors bool) string {
 		return "tronbyt-S3_merged.bin"
 	case DeviceMatrixPortal, DeviceMatrixPortalWS:
 		return "matrixportal-s3_merged.bin"
+	case DeviceWaveshareS3:
+		return "waveshare-s3_merged.bin"
 	default:
 		return ""
 	}
+}
+
+// HasLocation reports whether the device has a usable saved location, as
+// opposed to the zero-value DeviceLocation struct that exists before the user
+// picks one. Needed because Go templates treat any struct value as truthy, so
+// `{{ if .Device.Location }}` is always true even when the location is blank.
+func (d *Device) HasLocation() bool {
+	if d == nil {
+		return false
+	}
+	l := d.Location
+	return l.Timezone != "" || l.Description != "" || l.Locality != "" ||
+		l.PlaceID != "" || l.Lat != 0 || l.Lng != 0
 }
 
 func (d *Device) GetTimezone() string {
@@ -960,10 +985,29 @@ func (d *Device) SupportsFirmwareFeatures() bool {
 	return semver.Compare(v, minFirmwareFeaturesVersion) >= 0
 }
 
+func (d *Device) SupportsHTTPFirmwareCommands() bool {
+	if d.Info.ProtocolType != ProtocolHTTP {
+		return false
+	}
+	return d.Type.SupportsFirmware()
+}
+
 // GetApp looks up an app by its iname (installation ID) in the device's Apps list.
 func (d *Device) GetApp(iname string) *App {
 	for i := range d.Apps {
 		if d.Apps[i].Iname == iname {
+			return d.Apps[i]
+		}
+	}
+	return nil
+}
+
+// GetPushedApp looks up a pushed app by the user-supplied installationID, which is
+// stored in Path as "pushed:<installationID>" rather than in Iname.
+func (d *Device) GetPushedApp(installationID string) *App {
+	target := "pushed:" + installationID
+	for i := range d.Apps {
+		if d.Apps[i].Pushed && d.Apps[i].Path != nil && *d.Apps[i].Path == target {
 			return d.Apps[i]
 		}
 	}

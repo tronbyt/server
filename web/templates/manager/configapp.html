@@ -77,7 +77,20 @@
 {{ end }}
 <form method="post" id="dynamicForm">
     <!-- Schema Config Section -->
-    <h2>{{ t .Localizer "App Configuration" }}</h2>
+    <div style="display:flex;
+                align-items:center;
+                justify-content:space-between;
+                flex-wrap:wrap;
+                gap:10px">
+        <h2>{{ t .Localizer "App Configuration" }}</h2>
+        <button type="button"
+                class="w3-button w3-blue w3-round"
+                id="refreshSchemaButton"
+                title="{{ t .Localizer "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them." }}">
+            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+            <span class="button-label">{{ t .Localizer "Refresh options" }}</span>
+        </button>
+    </div>
     <table id="schemaConfigContainer"
            class="form-table"
            style="border-spacing: 0 15px">
@@ -184,8 +197,7 @@
                     <option value="{{ .Value }}"
                             {{ if eq (derefOr $.App.ColorFilter "inherit") .Value }}
                             selected
-                            {{ end }}>{{ t $.Localizer .Name }}
-                    </option>
+                            {{ end }}>{{ t $.Localizer .Name }}</option>
                     {{ end }}
                 </select>
             </td>
@@ -211,8 +223,7 @@
                         id="show_full_animation"
                         class="form-control">
                     {{ range .ShowFullAnimationOptions }}
-                    <option value="{{ .Value }}" {{ if eq $sfa .Value }} selected {{ end }}>{{ t $.Localizer .Name }}
-                    </option>
+                    <option value="{{ .Value }}" {{ if eq $sfa .Value }} selected {{ end }}>{{ t $.Localizer .Name }}</option>
                     {{ end }}
                 </select>
             </td>
@@ -375,23 +386,19 @@
                         <option value="daily"
                                 {{ if eq (string .App.RecurrenceType) "daily" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Daily" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Daily" }}</option>
                         <option value="weekly"
                                 {{ if eq (string .App.RecurrenceType) "weekly" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Weekly" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Weekly" }}</option>
                         <option value="monthly"
                                 {{ if eq (string .App.RecurrenceType) "monthly" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Monthly" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Monthly" }}</option>
                         <option value="yearly"
                                 {{ if eq (string .App.RecurrenceType) "yearly" }}
                                 selected
-                                {{ end }}>{{ t .Localizer "Yearly" }}
-                        </option>
+                                {{ end }}>{{ t .Localizer "Yearly" }}</option>
                     </select>
                 </td>
             </tr>
@@ -529,13 +536,11 @@
                             <option value="day_of_month"
                                     {{ if eq $current_pattern "day_of_month" }}
                                     selected
-                                    {{ end }}>{{ t .Localizer "Day of Month" }}
-                            </option>
+                                    {{ end }}>{{ t .Localizer "Day of Month" }}</option>
                             <option value="day_of_week"
                                     {{ if eq $current_pattern "day_of_week" }}
                                     selected
-                                    {{ end }}>{{ t .Localizer "Day of Week" }}
-                            </option>
+                                    {{ end }}>{{ t .Localizer "Day of Week" }}</option>
                         </select>
                     </td>
                 </tr>
@@ -712,12 +717,13 @@
 </div>
 <script>
   // Make the schema and config objects available to JavaScript
-  const schema = {{ .Schema }};
+  // (mutable so the "Refresh options" button can swap in a freshly-fetched schema)
+  let schema = {{ .Schema }};
   const config = {{ .AppConfig | json }} || {};
   const deleteOnCancel = {{ .DeleteOnCancel }};
 
   // Device Location
-  const deviceLocation = {{ if .Device.Location }}{{ json .Device.Location }}{{ else }}null{{ end }};
+  const deviceLocation = {{ if .Device.HasLocation }}{{ json .Device.Location }}{{ else }}null{{ end }};
 
   // Initialize toggle buttons for config and debug content
   function initializeToggleButtons() {
@@ -1016,6 +1022,24 @@
   function createLocationField(field, config) {
     const { container, searchInput, resultsList } = createLocationSearchElements(field);
 
+    // A location counts as "set" only if it carries real content. A bare {} or
+    // a zeroed struct (lat/lng 0,0, empty timezone) does NOT count -- writing
+    // that breaks apps that do config.get("location", DEFAULT). (lat/lng of
+    // exactly 0 alone is treated as blank; a real equatorial location still has
+    // a timezone, locality, or place_id set.)
+    const locationHasContent = (loc) => {
+      if (!loc) return false;
+      if (typeof loc === "string") {
+        try {
+          loc = JSON.parse(loc);
+        } catch (e) {
+          return loc.trim() !== "" && loc.trim() !== "{}";
+        }
+      }
+      return !!(loc && (loc.timezone || loc.description || loc.locality ||
+                        loc.place_id || loc.lat || loc.lng));
+    };
+
     let initialLocationJsonString = config[field.id] || (deviceLocation !== null ? JSON.stringify(deviceLocation) : undefined) || field.default || "{}";
     if (typeof initialLocationJsonString !== 'string') {
       initialLocationJsonString = JSON.stringify(initialLocationJsonString);
@@ -1041,6 +1065,61 @@
     hiddenInput.value = initialLocationJsonString;
     container.appendChild(hiddenInput);
 
+    // Seed the config object with the resolved location (device location
+    // fallback or field default). collectSettings() serializes the `config`
+    // object on save -- NOT the hidden inputs -- so without this seed the
+    // device-location fallback shown in the UI silently fails to persist, and
+    // the app falls back to its own hardcoded default location at render time.
+    // The onChange callback below only fires when the user re-picks from the
+    // search box, which is exactly the step users skip. (LocationBased fields
+    // seed config via fetchOptionsForLocation's dispatched change event.)
+    //
+    // Only auto-fill when FIRST adding the app instance. delete_on_cancel=true
+    // marks the initial config of a just-added app; on later edits it is false.
+    // Gating on it means a location the user intentionally left blank stays
+    // blank on edit instead of silently inheriting the (possibly since-changed)
+    // device location. Blank is only auto-filled at creation, never on edit.
+    if (deleteOnCancel && (config[field.id] == null || config[field.id] === "")) {
+      try {
+        const seedLoc = JSON.parse(initialLocationJsonString);
+        // Only seed a location that actually has content -- a blank device
+        // location must NOT be written (see locationHasContent above).
+        if (locationHasContent(seedLoc)) {
+          config[field.id] = seedLoc;
+        }
+      } catch (e) {
+        // initialLocationJsonString was "{}" or invalid; nothing to seed.
+      }
+    }
+
+    // Clear button: lets the user blank out a location on an existing app.
+    // Emptying the search box alone does nothing (it is just a search field),
+    // so without this there is no way to remove a previously-saved location.
+    // We DELETE the key (rather than store {}) so the saved config omits it and
+    // the app falls back to its own default -- an empty object would be truthy
+    // and break apps that do config.get("location", DEFAULT).
+    const clearButton = document.createElement("button");
+    clearButton.type = "button";
+    clearButton.className = "w3-button w3-border w3-round w3-small";
+    clearButton.style.marginTop = "4px";
+    clearButton.textContent = "{{ t .Localizer "Clear location" }}";
+    container.appendChild(clearButton);
+
+    // Keep the button always visible, but disabled when there is no location to
+    // clear, so its purpose stays discoverable.
+    const syncClearButtonState = () => {
+      clearButton.disabled = !locationHasContent(config[field.id]);
+    };
+
+    clearButton.addEventListener("click", function () {
+      delete config[field.id];
+      searchInput.value = "";
+      hiddenInput.value = "{}";
+      resultsList.innerHTML = "";
+      syncClearButtonState();
+      updateConfigAndPreview();
+    });
+
     enableLocationSearch(searchInput, resultsList, hiddenInput, location => {
       // location is a JSON string
       try {
@@ -1048,8 +1127,14 @@
       } catch (e) {
           config[field.id] = location;
       }
+      syncClearButtonState();
       updateConfigAndPreview();
     });
+
+    // importConfig() updates config[field.id] and dispatches an "input" event on
+    // the hidden input (matched by data-config-id); sync the button off that too.
+    hiddenInput.addEventListener("input", syncClearButtonState);
+    syncClearButtonState();
 
     return container;
   }
@@ -1514,6 +1599,13 @@
                  settings.recurrence_pattern.day_of_week = settings.day_of_week_pattern;
              }
          }
+      } else {
+         // Clear recurrence fields when custom recurrence is disabled
+         settings.recurrence_pattern = null;
+         settings.recurrence_type = 'daily';
+         settings.recurrence_interval = 1;
+         settings.recurrence_start_date = '';
+         settings.recurrence_end_date = '';
       }
       return settings;
   }
@@ -1651,6 +1743,17 @@
       });
   }
 
+  // Re-render the schema config table from the current `schema` and `config`.
+  // Used after the "Refresh options" button swaps in a freshly-fetched schema.
+  function rebuildSchemaForm() {
+    const formTable = document.getElementById("schemaConfigContainer");
+    if (!formTable) return;
+    formTable.innerHTML = "";
+    const formFields = createFormFields(schema, config);
+    formFields.forEach(row => formTable.appendChild(row));
+    createGeneratedFormFields(schema, config);
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     const previewImage = document.getElementById('previewImage');
     if (previewImage) {
@@ -1678,6 +1781,32 @@
     initializeToggleButtons();
     initializeRecurrenceOptions();
     updateConfigAndPreview();
+
+    // "Refresh options" — refetch the schema (bypassing the app's http.get
+    // cache) and rebuild the form without losing the current selections.
+    const refreshSchemaButton = document.getElementById("refreshSchemaButton");
+    if (refreshSchemaButton) {
+      const refreshLabel = refreshSchemaButton.querySelector(".button-label");
+      refreshSchemaButton.addEventListener("click", async function () {
+        const originalLabel = refreshLabel ? refreshLabel.textContent : "";
+        refreshSchemaButton.disabled = true;
+        if (refreshLabel) refreshLabel.textContent = "{{ t .Localizer "Refreshing..." }}";
+        try {
+          const url = "/devices/{{ .Device.ID }}/{{ .App.Iname }}/schema?refresh=true";
+          const response = await fetch(url, { headers: { "Accept": "application/json" } });
+          if (!response.ok) throw new Error("Failed to refresh schema");
+          schema = await response.json();
+          rebuildSchemaForm();
+          updateConfigAndPreview();
+        } catch (error) {
+          console.error("Error refreshing options:", error);
+          alert("{{ t .Localizer "Failed to refresh options. Please try again." }}");
+        } finally {
+          refreshSchemaButton.disabled = false;
+          if (refreshLabel) refreshLabel.textContent = originalLabel;
+        }
+      });
+    }
 
     form.addEventListener("submit", function (event) {
       event.preventDefault();

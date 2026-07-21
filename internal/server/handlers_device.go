@@ -338,11 +338,15 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	firmwareImgURL := ""
 	if device.Info.ImageURL != nil {
 		firmwareImgURL = *device.Info.ImageURL
+	} else if device.Info.ProtocolType == data.ProtocolHTTP {
+		firmwareImgURL = device.ImgURL
 	}
 	if device.RequireAPIKey {
 		defaultImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
 		defaultWsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
-		firmwareImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
+		// Preserve the device's actual active URL (could be WebSocket or HTTP)
+		// and just append the API key to it, instead of replacing with a new HTTP URL
+		firmwareImgURL = appendKeyToURLString(firmwareImgURL, device.APIKey)
 	}
 
 	s.renderTemplate(w, r, "update", TemplateData{
@@ -1110,7 +1114,7 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleRebootDevice(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	if err := s.sendRebootCommand(device.ID); err != nil {
+	if err := s.sendRebootCommand(r.Context(), device.ID); err != nil {
 		slog.Error("Failed to send reboot command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -1162,13 +1166,11 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("Failed to marshal firmware settings payload", "error", err)
+	if err := s.sendFirmwareSettingsCommand(r.Context(), device.ID, payload); err != nil {
+		slog.Error("Failed to send firmware settings command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
 
 	w.WriteHeader(http.StatusOK)
 }

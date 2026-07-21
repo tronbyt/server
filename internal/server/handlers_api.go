@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -243,6 +244,7 @@ type PushAppData struct {
 	AppID             string         `json:"app_id"`
 	InstallationID    string         `json:"installationID"`
 	InstallationIDAlt string         `json:"installationId"`
+	CoalesceID        string         `json:"coalesceID"`
 	Background        bool           `json:"background"`
 }
 
@@ -281,14 +283,50 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		installationID = dataReq.InstallationIDAlt
 	}
 
-	// Look up existing app if installationID is provided to get Path, DisplayTime and filters
+	// Look up existing pushed app first (by path), then fall back to iname lookup.
 	var existingApp *data.App
 	var appPath string
 	if installationID != "" {
-		existingApp = device.GetApp(installationID)
-		if existingApp != nil && existingApp.Path != nil && *existingApp.Path != "" {
-			// Infer app path from existing installation
+		existingApp = device.GetPushedApp(installationID)
+		if existingApp == nil {
+			existingApp = device.GetApp(installationID)
+		}
+		// Only derive appPath from non-pushed installations; "pushed:<id>" is not a real app path.
+		if existingApp != nil && existingApp.Path != nil && *existingApp.Path != "" &&
+			!strings.HasPrefix(*existingApp.Path, "pushed:") {
 			appPath, _ = securejoin.SecureJoin(s.DataDir, *existingApp.Path)
+		}
+	}
+
+	// For pushed apps with a cached image and no new config/app being sent, skip
+	// re-rendering and re-push the existing image directly.
+	if existingApp != nil && existingApp.Pushed &&
+		existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") &&
+		len(dataReq.Config) == 0 && dataReq.AppID == "" {
+		cachedID := strings.TrimPrefix(*existingApp.Path, "pushed:")
+		pushedImagePath, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), cachedID+".webp")
+		if err != nil {
+			slog.Error("Failed to resolve pushed image path", "error", err)
+			http.Error(w, "Image not found", http.StatusNotFound)
+			return
+		}
+		imgBytes, err := os.ReadFile(pushedImagePath)
+		if err != nil {
+			// No cached image — fall through to the render path so the caller can
+			// recover by providing an appID and config.
+			slog.Warn("Cached pushed image missing, falling through to render", "path", pushedImagePath)
+		} else {
+			if !dataReq.Background {
+				s.Broadcaster.Notify(device.ID, imgBytes)
+			}
+			if err := s.ensurePushedApp(r.Context(), device.ID, cachedID); err != nil {
+				slog.Error("Error adding pushed app", "error", err)
+			}
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write([]byte("App pushed.")); err != nil {
+				slog.Error("Failed to write response", "error", err)
+			}
+			return
 		}
 	}
 
@@ -324,33 +362,6 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// For pushed apps (existing app with "pushed:" path), skip rendering and push existing image
-	if existingApp != nil && existingApp.Pushed {
-		if existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") {
-			installationID := strings.TrimPrefix(*existingApp.Path, "pushed:")
-			pushedImagePath, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), installationID+".webp")
-			if err != nil {
-				slog.Error("Failed to resolve pushed image path", "error", err)
-				http.Error(w, "Image not found", http.StatusNotFound)
-				return
-			}
-			if imgBytes, err := os.ReadFile(pushedImagePath); err == nil {
-				// Notify device via Websocket (unless background)
-				if !dataReq.Background {
-					s.Broadcaster.Notify(device.ID, imgBytes)
-				}
-				if err := s.ensurePushedApp(r.Context(), device.ID, installationID); err != nil {
-					slog.Error("Error adding pushed app", "error", err)
-				}
-				w.WriteHeader(http.StatusOK)
-				if _, err := w.Write([]byte("App pushed.")); err != nil {
-					slog.Error("Failed to write response", "error", err)
-				}
-				return
-			}
-		}
-	}
-
 	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, appPath, dataReq.Config)
 	if err != nil {
 		slog.Error("Failed to render app", "error", err)
@@ -380,7 +391,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !sent || installationID != "" {
-		if err := s.savePushedImage(device.ID, installationID, imgBytes); err != nil {
+		if err := s.savePushedImage(device.ID, installationID, dataReq.CoalesceID, imgBytes); err != nil {
 			http.Error(w, "Failed to save image", http.StatusInternalServerError)
 			return
 		}
@@ -442,6 +453,7 @@ func (s *Server) handleGetInstallation(w http.ResponseWriter, r *http.Request) {
 type PushData struct {
 	InstallationID    string `json:"installationID"`
 	InstallationIDAlt string `json:"installationId"`
+	CoalesceID        string `json:"coalesceID"`
 	Image             string `json:"image"`
 	Background        bool   `json:"background"`
 }
@@ -479,7 +491,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !sent || installID != "" {
-		if err := s.savePushedImage(device.ID, installID, imgBytes); err != nil {
+		if err := s.savePushedImage(device.ID, installID, dataReq.CoalesceID, imgBytes); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
 			return
 		}
@@ -492,7 +504,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) savePushedImage(deviceID, installID string, data []byte) error {
+func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []byte) error {
 	dir, err := s.ensureDeviceImageDir(deviceID)
 	if err != nil {
 		return fmt.Errorf("failed to get device webp directory: %w", err)
@@ -505,8 +517,42 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 
 	var filename string
 	if installID != "" {
+		// Image push with installID: stable filename, always replaces
 		filename = installID + ".webp"
+	} else if coalesceID != "" {
+		// Validate coalesceID to prevent path traversal and suffix collisions.
+		if len(coalesceID) > 64 {
+			return fmt.Errorf("coalesceID exceeds maximum length of 64 characters")
+		}
+		for _, r := range coalesceID {
+			isValid := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-'
+			if !isValid {
+				return fmt.Errorf("coalesceID contains invalid characters (only alphanumeric, underscore, and dash allowed)")
+			}
+		}
+
+		// Coalesced push: delete existing file with same coalesceID, then save.
+		// At most 1 pending push per coalesceID.
+		// Filename format: __{timestamp}_{coalesceID}.webp
+		// Extract coalesceID by splitting at the first underscore after the "__" prefix.
+		if entries, err := os.ReadDir(dir); err == nil {
+			for _, entry := range entries {
+				name := entry.Name()
+				if !entry.IsDir() && strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+					inner := name[2 : len(name)-5] // strip "__" and ".webp"
+					if _, fileCoalesceID, found := strings.Cut(inner, "_"); found {
+						if fileCoalesceID == coalesceID {
+							if err := os.Remove(filepath.Join(dir, name)); err != nil {
+								slog.Warn("Failed to remove coalesced push", "name", name, "error", err)
+							}
+						}
+					}
+				}
+			}
+		}
+		filename = fmt.Sprintf("__%d_%s.webp", time.Now().UnixNano(), coalesceID)
 	} else {
+		// Anonymous push: unbounded ephemeral queue
 		filename = fmt.Sprintf("__%d.webp", time.Now().UnixNano())
 	}
 
@@ -515,7 +561,38 @@ func (s *Server) savePushedImage(deviceID, installID string, data []byte) error 
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return err
+	}
+
+	// Clean up anonymous ephemeral files older than 24 hours.
+	// Only runs when saving an anonymous push (coalesced and installID-based
+	// pushes are already bounded). Runs in a background goroutine to avoid
+	// blocking the HTTP response.
+	if installID == "" && coalesceID == "" {
+		go func() {
+			cutoff := time.Now().UnixNano() - 24*int64(time.Hour)
+			if entries, readErr := os.ReadDir(dir); readErr == nil {
+				for _, entry := range entries {
+					name := entry.Name()
+					if !entry.IsDir() && strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+						// Anonymous pushes: __{nanos}.webp (no underscore between __ and .webp suffix)
+						inner := name[2 : len(name)-5]
+						if strings.Contains(inner, "_") {
+							continue // coalesced push, not anonymous
+						}
+						if ts, parseErr := strconv.ParseInt(inner, 10, 64); parseErr == nil && ts < cutoff {
+							if err := os.Remove(filepath.Join(dir, name)); err != nil && !os.IsNotExist(err) {
+								slog.Warn("Failed to remove expired ephemeral image", "name", name, "error", err)
+							}
+						}
+					}
+				}
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string) error {
@@ -907,7 +984,7 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleRebootDeviceAPI(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	if err := s.sendRebootCommand(device.ID); err != nil {
+	if err := s.sendRebootCommand(r.Context(), device.ID); err != nil {
 		slog.Error("Failed to send reboot command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -980,13 +1057,11 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 		return
 	}
 
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("Failed to marshal firmware settings payload", "error", err)
+	if err := s.sendFirmwareSettingsCommand(r.Context(), device.ID, payload); err != nil {
+		slog.Error("Failed to send firmware settings command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
 
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("Firmware settings updated.")); err != nil {

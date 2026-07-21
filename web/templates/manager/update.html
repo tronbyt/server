@@ -84,8 +84,7 @@
                             <option value="{{ .Value.Slug }}"
                                     {{ if eq $deviceType.Slug .Value.Slug }}
                                     selected
-                                    {{ end }}>{{ .Label }}
-                            </option>
+                                    {{ end }}>{{ .Label }}</option>
                             {{ end }}
                         </select>
                     </div>
@@ -193,8 +192,7 @@
                             <option value="{{ .Value }}"
                                     {{ if eq (derefOr $.Device.ColorFilter "none") .Value }}
                                     selected
-                                    {{ end }}>{{ t $.Localizer .Name }}
-                            </option>
+                                    {{ end }}>{{ t $.Localizer .Name }}</option>
                             {{ end }}
                         </select>
                     </div>
@@ -301,8 +299,7 @@
                                 <option value="{{ .Iname }}"
                                         {{ if and $.Device.InterstitialApp (eq (deref $.Device.InterstitialApp) .Iname) }}
                                         selected
-                                        {{ end }}>{{ .Iname }} {{ .Name }}
-                                </option>
+                                        {{ end }}>{{ .Iname }} {{ .Name }}</option>
                                 {{ end }}
                             </select>
                             <p class="settings-help">
@@ -383,8 +380,7 @@
                                 <option value="{{ .Iname }}"
                                         {{ if eq $.Device.NightModeApp .Iname }}
                                         selected
-                                        {{ end }}>{{ .Iname }} {{ .Name }}
-                                </option>
+                                        {{ end }}>{{ .Iname }} {{ .Name }}</option>
                                 {{ end }}
                             </select>
                             <p class="settings-help">
@@ -404,8 +400,7 @@
                                 <option value="{{ .Value }}"
                                         {{ if eq (derefOr $.Device.NightColorFilter "none") .Value }}
                                         selected
-                                        {{ end }}>{{ t $.Localizer .Name }}
-                                </option>
+                                        {{ end }}>{{ t $.Localizer .Name }}</option>
                                 {{ end }}
                             </select>
                         </div>
@@ -471,8 +466,7 @@
                                 <option value="{{ .Value }}"
                                         {{ if eq (derefOr $.Device.DimColorFilter "none") .Value }}
                                         selected
-                                        {{ end }}>{{ t $.Localizer .Name }}
-                                </option>
+                                        {{ end }}>{{ t $.Localizer .Name }}</option>
                                 {{ end }}
                             </select>
                         </div>
@@ -599,8 +593,7 @@
                         <div class="settings-field-control">
                             <select id="firmware_version_select" class="settings-input">
                                 {{ range .AvailableFirmwareVersions }}
-                                <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}
-                                </option>
+                                <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
                                 {{ end }}
                             </select>
                         </div>
@@ -714,18 +707,15 @@
                                 <option value="0"
                                         {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}
                                         selected
-                                        {{ end }}>{{ t .Localizer "None" }}
-                                </option>
+                                        {{ end }}>{{ t .Localizer "None" }}</option>
                                 <option value="1"
                                         {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}
                                         selected
-                                        {{ end }}>{{ t .Localizer "Minimum" }}
-                                </option>
+                                        {{ end }}>{{ t .Localizer "Minimum" }}</option>
                                 <option value="2"
                                         {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}
                                         selected
-                                        {{ end }}>{{ t .Localizer "Maximum" }}
-                                </option>
+                                        {{ end }}>{{ t .Localizer "Maximum" }}</option>
                             </select>
                         </div>
                     </div>
@@ -770,6 +760,43 @@
                             <p class="settings-help settings-note-danger">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                                 {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button type="button"
+                            class="w3-button w3-deep-orange"
+                            onclick="rebootDevice()">
+                        <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
+                    </button>
+                </div>
+            </div>
+            {{ else if .Device.SupportsHTTPFirmwareCommands }}
+            <div class="settings-card-subsection">
+                <h3>{{ t .Localizer "Live Firmware Settings" }}</h3>
+                <p class="settings-help">
+                    {{ t .Localizer "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll." }}
+                </p>
+                <div class="settings-field-list">
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">{{ t .Localizer "Image URL" }}</div>
+                        <div class="settings-field-control">
+                            <div class="settings-inline-group">
+                                <input type="text"
+                                       id="reported_img_url"
+                                       value="{{ .FirmwareImgURL }}"
+                                       class="settings-input settings-input-wide">
+                                <button type="button"
+                                        class="w3-button w3-blue"
+                                        onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
+                                        title="{{ t .Localizer "Sync current Image URL to device via HTTP headers" }}">
+                                    <i class="fa-solid fa-sync"></i>
+                                </button>
+                            </div>
+                            <p class="settings-help settings-note-danger">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
                             </p>
                         </div>
                     </div>

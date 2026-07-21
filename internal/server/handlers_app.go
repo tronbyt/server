@@ -321,6 +321,11 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	app := GetApp(r)
 
+	// The schema (including dynamically-fetched dropdown options) is rendered
+	// into the page once, server-side. Prevent the browser from serving a stale
+	// cached page so a reload always re-runs get_schema.
+	w.Header().Set("Cache-Control", "no-cache")
+
 	// Get Schema
 	var schemaBytes []byte
 	if app.Path != nil && *app.Path != "" {
@@ -361,6 +366,63 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
 		AppMetadata:              appMetadata,
 	})
+}
+
+// handleAppSchemaGet returns the app's schema JSON (same shape as the schema
+// embedded in the config page). With ?refresh=true it forces the app's cached
+// HTTP responses to be refetched so dynamic dropdown options reflect the latest
+// upstream data without waiting out the app's http.get TTL.
+func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+	app := GetApp(r)
+
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Content-Type", "application/json")
+
+	schemaBytes := []byte("{}")
+	if app.Path != nil && *app.Path != "" {
+		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+		if err != nil {
+			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+			http.Error(w, "Invalid app path", http.StatusBadRequest)
+			return
+		}
+
+		if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+			getSchema := func() error {
+				b, err := renderer.GetSchema(r.Context(), appPath, 64, 32, device.Type.Supports2x())
+				if err != nil {
+					return err
+				}
+				if len(b) > 0 {
+					schemaBytes = b
+				}
+				return nil
+			}
+
+			// On refresh, bypass the cached http.get responses for this app so
+			// get_schema refetches dropdown data from origin. The cache key
+			// prefix mirrors pixlet's: "httpcache:<app id>:" where the app id is
+			// the base name of the applet path (see runtime/httpcache.go).
+			if r.URL.Query().Get("refresh") == "true" && s.SchemaCache != nil {
+				prefix := fmt.Sprintf("httpcache:%s:", filepath.Base(appPath))
+				err = s.SchemaCache.WithBypass(prefix, getSchema)
+			} else {
+				err = getSchema()
+			}
+			if err != nil {
+				// Return an error so the client keeps the currently-rendered
+				// options instead of replacing them with an empty form.
+				slog.Error("Failed to get app schema", "error", err)
+				http.Error(w, "Failed to load schema", http.StatusBadGateway)
+				return
+			}
+		}
+	}
+
+	if _, err := w.Write(schemaBytes); err != nil {
+		slog.Error("Failed to write schema response", "error", err)
+	}
 }
 
 func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
@@ -718,7 +780,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Push preview image to device (ephemeral)
-	if err := s.savePushedImage(device.ID, app.Iname, imgBytes); err != nil {
+	if err := s.savePushedImage(device.ID, app.Iname, "", imgBytes); err != nil {
 		http.Error(w, "Failed to push preview", http.StatusInternalServerError)
 		return
 	}

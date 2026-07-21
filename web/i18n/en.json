@@ -1,4 +1,13 @@
 {
+  "Refresh options": {
+    "other": "Refresh options"
+  },
+  "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them.": {
+    "other": "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them."
+  },
+  "Failed to refresh options. Please try again.": {
+    "other": "Failed to refresh options. Please try again."
+  },
   "OIDC Support": {
     "other": "OIDC Support"
   },
@@ -484,6 +493,9 @@
   },
   "MatrixPortal S3 Waveshare": {
     "other": "MatrixPortal S3 Waveshare"
+  },
+  "Waveshare S3": {
+    "other": "Waveshare S3"
   },
   "Other": {
     "other": "Other"
@@ -1936,6 +1948,12 @@
   },
   "Sync current Image URL to device via WebSocket": {
     "other": "Sync current Image URL to device via WebSocket"
+  },
+  "Sync current Image URL to device via HTTP headers": {
+    "other": "Sync current Image URL to device via HTTP headers"
+  },
+  "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll.": {
+    "other": "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll."
   },
   "Sync Hostname to device via WebSocket": {
     "other": "Sync Hostname to device via WebSocket"

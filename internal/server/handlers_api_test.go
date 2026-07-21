@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -327,10 +328,270 @@ def main(config):
 		t.Errorf("Expected body 'App pushed.', got '%s'", rr.Body.String())
 	}
 
-	// Verify image exists
+	// Verify image exists (installID-based: testinstall.webp)
 	expectedPath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", "testinstall.webp")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("Expected pushed image to exist at %s, but it didn't", expectedPath)
+	}
+}
+
+func TestHandlePushAppUpdatesExistingInstallation(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "colorapp"
+
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+
+	starContent := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644))
+	s.RefreshSystemAppsCache()
+
+	const installID = "100"
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+
+	doPush := func(color string) {
+		body, _ := json.Marshal(PushAppData{
+			AppID:          appID,
+			Config:         map[string]any{"color": color},
+			InstallationID: installID,
+		})
+		req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+		rr := httptest.NewRecorder()
+		s.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	doPush("#ff0000")
+	imgRed, err := os.ReadFile(imagePath)
+	require.NoError(t, err)
+
+	doPush("#0000ff")
+	imgBlue, err := os.ReadFile(imagePath)
+	require.NoError(t, err)
+
+	// Re-pushing with a different color config must produce a different image.
+	assert.NotEqual(t, imgRed, imgBlue,
+		"re-pushing to an existing installationID with new config should update the saved image")
+
+	// Exactly one pushed installation should exist.
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ?", deviceID, true).Count(context.Background(), "*")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count,
+		"pushing to an existing installationID should not create a second installation")
+}
+
+// TestHandlePushAppMissingCachedImage verifies that when the cached webp is missing,
+// the handler falls through to the render path rather than erroring. A push that
+// provides an appID and config should succeed and produce a new image.
+func TestHandlePushAppMissingCachedImage(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := "colorapp"
+	installID := "orphaned"
+	installPath := "pushed:" + installID
+
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	starContent := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(starContent), 0644))
+	s.RefreshSystemAppsCache()
+
+	// Seed a pushed app record without creating the corresponding webp file.
+	pushedApp := data.App{
+		DeviceID:    deviceID,
+		Iname:       "100",
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Pushed:      true,
+		Path:        &installPath,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &pushedApp))
+
+	// Providing appID + config should fall through to a fresh render and succeed.
+	body, _ := json.Marshal(PushAppData{
+		InstallationID: installID,
+		AppID:          appID,
+		Config:         map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	_, err := os.Stat(imagePath)
+	assert.NoError(t, err, "re-render should have created the missing cached image")
+}
+
+// seedPushedInstallation creates a pushed app DB record and writes sentinel bytes as
+// the cached webp so tests can detect whether the file was replaced or left intact.
+func seedPushedInstallation(t *testing.T, s *Server, deviceID, installID string) []byte {
+	t.Helper()
+	ctx := context.Background()
+	installPath := "pushed:" + installID
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       "200",
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Pushed:      true,
+		Path:        &installPath,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+	require.NoError(t, os.MkdirAll(pushedDir, 0755))
+	sentinel := []byte("sentinel-cached-image")
+	require.NoError(t, os.WriteFile(filepath.Join(pushedDir, installID+".webp"), sentinel, 0644))
+	return sentinel
+}
+
+func setupColorApp(t *testing.T, s *Server) string {
+	t.Helper()
+	appID := "colorapp"
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", appID)
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	star := `
+load("render.star", "render")
+def main(config):
+    color = config.get("color", "#ffffff")
+    return render.Root(child=render.Box(width=64, height=32, color=color))
+`
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, appID+".star"), []byte(star), 0644))
+	s.RefreshSystemAppsCache()
+	return appID
+}
+
+// TestHandlePushAppConfigReplacesCache verifies that providing a config always
+// triggers a fresh render, replacing the cached image rather than serving it.
+func TestHandlePushAppConfigReplacesCache(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+	installID := "cached-install"
+	sentinel := seedPushedInstallation(t, s, deviceID, installID)
+
+	body, _ := json.Marshal(PushAppData{
+		InstallationID: installID,
+		AppID:          appID,
+		Config:         map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	result, err := os.ReadFile(filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp"))
+	require.NoError(t, err)
+	assert.NotEqual(t, sentinel, result,
+		"providing config must trigger a fresh render, not serve the cached image")
+}
+
+// TestHandlePushAppNoCacheConfigServesCache verifies that omitting config and app_id
+// serves the existing cached image without re-rendering.
+func TestHandlePushAppNoCacheConfigServesCache(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	installID := "cached-install"
+	sentinel := seedPushedInstallation(t, s, deviceID, installID)
+
+	body, _ := json.Marshal(PushAppData{InstallationID: installID})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	result, err := os.ReadFile(filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp"))
+	require.NoError(t, err)
+	assert.Equal(t, sentinel, result,
+		"omitting config and app_id must serve the cached image without re-rendering")
+}
+
+func TestHandlePushAppAppIDOnly(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+
+	body, _ := json.Marshal(PushAppData{
+		AppID:  appID,
+		Config: map[string]any{"color": "#ff0000"},
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND pushed = ?", deviceID, true).Count(context.Background(), "*")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), count, "push with no installationID must not create an installation record")
+}
+
+func TestHandlePushAppNoAppIDNoInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+
+	body, _ := json.Marshal(PushAppData{})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandlePushAppBackground(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "device_api_key"
+	deviceID := "testdevice"
+	appID := setupColorApp(t, s)
+	installID := "bg-install"
+
+	ch := s.Broadcaster.Subscribe(deviceID)
+	defer s.Broadcaster.Unsubscribe(deviceID, ch)
+
+	body, _ := json.Marshal(PushAppData{
+		AppID:          appID,
+		InstallationID: installID,
+		Config:         map[string]any{"color": "#ff0000"},
+		Background:     true,
+	})
+	req := newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	// Image must be saved.
+	imagePath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
+	_, err := os.Stat(imagePath)
+	assert.NoError(t, err, "background push must save the rendered image")
+
+	// Broadcaster must not have been notified.
+	select {
+	case <-ch:
+		t.Error("background push must not notify the device broadcaster")
+	default:
 	}
 }
 
@@ -938,6 +1199,14 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for broadcaster notification")
 	}
+
+	var updatedDevice data.Device
+	if err := s.DB.First(&updatedDevice, "id = ?", deviceID).Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	if updatedDevice.PendingImageURL != "http://example.com/test.png" {
+		t.Errorf("expected pending image URL to be queued, got %q", updatedDevice.PendingImageURL)
+	}
 }
 
 func TestHandleRebootDeviceAPI(t *testing.T) {
@@ -958,4 +1227,225 @@ func TestHandleRebootDeviceAPI(t *testing.T) {
 	if rr.Body.String() != "Reboot command sent." {
 		t.Errorf("Expected body 'Reboot command sent.', got '%s'", rr.Body.String())
 	}
+
+	var updatedDevice data.Device
+	if err := s.DB.First(&updatedDevice, "id = ?", deviceID).Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	if !updatedDevice.PendingReboot {
+		t.Error("expected pending reboot to be queued")
+	}
+}
+
+func TestSavePushedImage_CoalesceID(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice"
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save 5 coalesced pushes with the same coalesceID — only 1 should remain
+	for i := range 5 {
+		imgData := fmt.Appendf(nil, "coalesced image %d", i)
+		if err := s.savePushedImage(deviceID, "", "mycoalesce", imgData); err != nil {
+			t.Fatalf("Failed to save coalesced push %d: %v", i, err)
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// With coalesceID, at most 1 file with that ID (__{timestamp}_{coalesceID}.webp)
+	coalescedCount := 0
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "__") && strings.HasSuffix(entry.Name(), "_mycoalesce.webp") {
+			coalescedCount++
+		}
+	}
+	if coalescedCount != 1 {
+		t.Errorf("Expected 1 coalesced file, got %d: %v", coalescedCount, entryNames(pushedDir))
+	}
+}
+
+func TestSavePushedImage_CoalesceID_SuffixCollision(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice-collision"
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save with coalesceID "foo"
+	if err := s.savePushedImage(deviceID, "", "foo", []byte("foo")); err != nil {
+		t.Fatalf("Failed to save with coalesceID 'foo': %v", err)
+	}
+	// Save with coalesceID "bar_foo" (must not collide with "foo")
+	if err := s.savePushedImage(deviceID, "", "bar_foo", []byte("bar_foo")); err != nil {
+		t.Fatalf("Failed to save with coalesceID 'bar_foo': %v", err)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// Both files should exist — "bar_foo" must not have deleted "foo"'s file.
+	// Extract coalesceID from filenames properly (split at first _ after __).
+	fooCount := 0
+	barFooCount := 0
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.HasPrefix(name, "__") && strings.HasSuffix(name, ".webp") {
+			inner := name[2 : len(name)-5]
+			if _, fileCoalesceID, found := strings.Cut(inner, "_"); found {
+				switch fileCoalesceID {
+				case "foo":
+					fooCount++
+				case "bar_foo":
+					barFooCount++
+				}
+			}
+		}
+	}
+	if fooCount != 1 {
+		t.Errorf("Expected 1 file for coalesceID 'foo', got %d: %v", fooCount, entryNames(pushedDir))
+	}
+	if barFooCount != 1 {
+		t.Errorf("Expected 1 file for coalesceID 'bar_foo', got %d: %v", barFooCount, entryNames(pushedDir))
+	}
+}
+
+func TestSavePushedImage_AnonymousExpiry(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice-expiry"
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Create an anonymous file with timestamp from 48 hours ago
+	oldNanos := time.Now().UnixNano() - 48*int64(time.Hour)
+	oldName := fmt.Sprintf("__%d.webp", oldNanos)
+	if err := os.MkdirAll(pushedDir, 0755); err != nil {
+		t.Fatalf("failed to create pushed dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(pushedDir, oldName), []byte("old"), 0644); err != nil {
+		t.Fatalf("failed to write old file: %v", err)
+	}
+
+	// Save a new anonymous push — triggers async cleanup of the 48-hour-old file
+	if err := s.savePushedImage(deviceID, "", "", []byte("new")); err != nil {
+		t.Fatalf("Failed to save anonymous push: %v", err)
+	}
+
+	// Cleanup runs in a background goroutine; wait for it.
+	assert.Eventually(t, func() bool {
+		entries, err := os.ReadDir(pushedDir)
+		if err != nil {
+			return false
+		}
+		count := 0
+		for _, entry := range entries {
+			if isAnonymousEphemeral(entry.Name()) {
+				count++
+			}
+		}
+		return count == 1
+	}, 2*time.Second, 10*time.Millisecond, "Expected 1 anonymous ephemeral file after async cleanup")
+}
+
+func TestSavePushedImage_CoalesceID_Invalid(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	// Too long
+	longID := strings.Repeat("a", 65)
+	if err := s.savePushedImage("testdevice", "", longID, []byte("x")); err == nil {
+		t.Error("Expected error for coalesceID > 64 chars, got nil")
+	}
+
+	// Invalid characters (slash)
+	if err := s.savePushedImage("testdevice", "", "foo/bar", []byte("x")); err == nil {
+		t.Error("Expected error for coalesceID with slash, got nil")
+	}
+
+	// Invalid characters (dot)
+	if err := s.savePushedImage("testdevice", "", "foo.bar", []byte("x")); err == nil {
+		t.Error("Expected error for coalesceID with dot, got nil")
+	}
+}
+
+func TestSavePushedImage_Anonymous(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice2"
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save 5 anonymous pushes (no installID, no coalesceID) — all should remain
+	for i := range 5 {
+		imgData := fmt.Appendf(nil, "anonymous image %d", i)
+		if err := s.savePushedImage(deviceID, "", "", imgData); err != nil {
+			t.Fatalf("Failed to save anonymous push %d: %v", i, err)
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// All 5 files should remain (unbounded anonymous queue)
+	// Anonymous: __{timestamp}.webp (only digits between __ and .webp)
+	ephemeralCount := 0
+	for _, entry := range entries {
+		if isAnonymousEphemeral(entry.Name()) {
+			ephemeralCount++
+		}
+	}
+	if ephemeralCount != 5 {
+		t.Errorf("Expected 5 anonymous ephemeral files, got %d: %v", ephemeralCount, entryNames(pushedDir))
+	}
+}
+
+func TestSavePushedImage_InstallID_Replaces(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice3"
+
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+
+	// Save 5 images with same installID
+	for i := range 5 {
+		imgData := fmt.Appendf(nil, "image %d", i)
+		if err := s.savePushedImage(deviceID, "myapp", "", imgData); err != nil {
+			t.Fatalf("Failed to save pushed image %d: %v", i, err)
+		}
+	}
+
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		t.Fatalf("Failed to read pushed dir: %v", err)
+	}
+
+	// With installID, file is always "myapp.webp" → overwrites → 1 file
+	if len(entries) != 1 {
+		t.Errorf("Expected 1 file with installID (always overwrites), got %d: %v", len(entries), entryNames(pushedDir))
+	}
+	if entries[0].Name() != "myapp.webp" {
+		t.Errorf("Expected file 'myapp.webp', got '%s'", entries[0].Name())
+	}
+}
+
+func entryNames(dir string) []string {
+	entries, _ := os.ReadDir(dir)
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
+}
+
+// isAnonymousEphemeral returns true for __{timestamp}.webp files
+// (no underscore between the timestamp and .webp).
+func isAnonymousEphemeral(name string) bool {
+	if !strings.HasPrefix(name, "__") || !strings.HasSuffix(name, ".webp") {
+		return false
+	}
+	inner := name[2 : len(name)-5] // strip "__" and ".webp"
+	return !strings.Contains(inner, "_")
 }

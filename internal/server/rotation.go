@@ -20,17 +20,36 @@ import (
 
 func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
 	// 1. Check Pushed Ephemeral Images (__*)
+	// Serve the oldest and delete only that one. Anonymous pushes accumulate
+	// unbounded; callers should use coalesceID to limit queue depth.
 	pushedDir := filepath.Join(s.DataDir, "webp", device.ID, "pushed")
 	if entries, err := os.ReadDir(pushedDir); err == nil {
+		var ephemeral []os.DirEntry
 		for _, entry := range entries {
-			if strings.HasPrefix(entry.Name(), "__") {
-				fullPath := filepath.Join(pushedDir, entry.Name())
-				data, err := os.ReadFile(fullPath)
+			if strings.HasPrefix(entry.Name(), "__") && strings.HasSuffix(entry.Name(), ".webp") && !entry.IsDir() {
+				ephemeral = append(ephemeral, entry)
+			}
+		}
+		if len(ephemeral) > 0 {
+			// Sort ascending by name (lower timestamp = older)
+			sort.Slice(ephemeral, func(i, j int) bool {
+				return ephemeral[i].Name() < ephemeral[j].Name()
+			})
+
+			for _, entry := range ephemeral {
+				entryPath := filepath.Join(pushedDir, entry.Name())
+				imgData, err := os.ReadFile(entryPath)
 				if err == nil {
-					if err := os.Remove(fullPath); err != nil {
-						slog.Error("Failed to remove ephemeral image", "path", fullPath, "error", err)
+					// Delete only the one served; coalesceID handles dedup at write time
+					if err := os.Remove(entryPath); err != nil {
+						slog.Warn("Failed to remove ephemeral image", "path", entryPath, "error", err)
 					}
-					return data, nil, nil
+					return imgData, nil, nil
+				}
+				// If reading failed, clean it up and try the next one
+				slog.Warn("Failed to read ephemeral image, cleaning up", "path", entryPath, "error", err)
+				if err := os.Remove(entryPath); err != nil {
+					slog.Warn("Failed to remove broken ephemeral image", "path", entryPath, "error", err)
 				}
 			}
 		}

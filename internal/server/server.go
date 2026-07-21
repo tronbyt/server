@@ -53,8 +53,19 @@ type Server struct {
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
 
+	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
+	// cached HTTP responses so dynamic schema data (e.g. dropdown options
+	// fetched in get_schema) can be refreshed before the app's TTL expires.
+	SchemaCache SchemaCacheBypasser
+
 	UpdateAvailable  bool
 	LatestReleaseURL string
+}
+
+// SchemaCacheBypasser forces cache reads for keys with the given prefix to miss
+// for the duration of fn, so http.get calls made during fn refetch from origin.
+type SchemaCacheBypasser interface {
+	WithBypass(prefix string, fn func() error) error
 }
 
 // Map template names to their file paths relative to web/templates.
@@ -272,7 +283,7 @@ func (s *Server) routes() {
 	}))
 	s.Router.HandleFunc("GET /settings/admin", s.RequireLogin(s.handleAdminIndex))
 	s.Router.HandleFunc("POST /settings/admin/oidc", s.RequireLogin(s.handleAdminSettingsPost))
-	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet)) // Keep old path just in case
+	s.Router.HandleFunc("GET /admin/settings", s.RequireLogin(s.handleAdminSettingsGet))   // Keep old path just in case
 	s.Router.HandleFunc("POST /admin/settings", s.RequireLogin(s.handleAdminSettingsPost)) // Keep old path just in case
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 	s.Router.HandleFunc("DELETE /settings/admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
@@ -292,6 +303,7 @@ func (s *Server) routes() {
 
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/delete", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleDeleteApp))))
 	s.Router.HandleFunc("GET /devices/{id}/{iname}/config", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleConfigAppGet))))
+	s.Router.HandleFunc("GET /devices/{id}/{iname}/schema", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleAppSchemaGet))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/config", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleConfigAppPost))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/schema_handler/{handler}", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleSchemaHandler))))
 

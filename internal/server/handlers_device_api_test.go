@@ -27,7 +27,7 @@ func TestHandleNextApp(t *testing.T) {
 		t.Fatalf("Failed to create app: %v", err)
 	}
 
-	if err := s.savePushedImage("testdevice", "testapp", []byte("dummy image")); err != nil {
+	if err := s.savePushedImage("testdevice", "testapp", "", []byte("dummy image")); err != nil {
 		t.Fatalf("Failed to save pushed image: %v", err)
 	}
 
@@ -86,6 +86,55 @@ func TestHandleNextApp_FirmwareUpdate(t *testing.T) {
 	}
 }
 
+func TestHandleNextApp_PendingHTTPHeaders(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	device := data.Device{
+		ID:               "httpdevice",
+		Username:         "admin",
+		PendingUpdateURL: "http://example.com/firmware.bin",
+		PendingImageURL:  "http://example.com/new-next",
+		PendingReboot:    true,
+	}
+	if err := s.DB.Create(&device).Error; err != nil {
+		t.Fatalf("Failed to create device: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/httpdevice/next", nil)
+	req.SetPathValue("id", "httpdevice")
+
+	rr := httptest.NewRecorder()
+	s.handleNextApp(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	if got := rr.Header().Get("Tronbyt-OTA-URL"); got != "http://example.com/firmware.bin" {
+		t.Errorf("Expected Tronbyt-OTA-URL header, got %q", got)
+	}
+	if got := rr.Header().Get("Tronbyt-Image-URL"); got != "http://example.com/new-next" {
+		t.Errorf("Expected Tronbyt-Image-URL header, got %q", got)
+	}
+	if got := rr.Header().Get("Tronbyt-Reboot"); got != "true" {
+		t.Errorf("Expected Tronbyt-Reboot header, got %q", got)
+	}
+
+	var updatedDevice data.Device
+	if err := s.DB.First(&updatedDevice, "id = ?", "httpdevice").Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	if updatedDevice.PendingUpdateURL != "" {
+		t.Errorf("Expected pending update URL to be cleared, got %q", updatedDevice.PendingUpdateURL)
+	}
+	if updatedDevice.PendingImageURL != "" {
+		t.Errorf("Expected pending image URL to be cleared, got %q", updatedDevice.PendingImageURL)
+	}
+	if updatedDevice.PendingReboot {
+		t.Error("Expected pending reboot to be cleared")
+	}
+}
+
 func TestHandleNextApp_APIKey(t *testing.T) {
 	s := newTestServerAPI(t)
 
@@ -106,7 +155,7 @@ func TestHandleNextApp_APIKey(t *testing.T) {
 		Path:      &path,
 	}
 	s.DB.Create(&app)
-	if err := s.savePushedImage("testdevice", "testapp", []byte("dummy image")); err != nil {
+	if err := s.savePushedImage("testdevice", "testapp", "", []byte("dummy image")); err != nil {
 		t.Fatalf("Failed to save pushed image: %v", err)
 	}
 

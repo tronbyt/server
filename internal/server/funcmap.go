@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"log/slog"
 	"reflect"
-	"slices"
 	"strings"
 	"time"
 
@@ -223,8 +222,31 @@ func tmplSlice(args ...string) []string {
 	return args
 }
 
-func tmplContains(slice []string, item string) bool {
-	return slices.Contains(slice, item)
+func tmplContains(slice any, item string) bool {
+	if slice == nil {
+		return false
+	}
+
+	rv := reflect.ValueOf(slice)
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return false
+		}
+		rv = rv.Elem()
+	}
+
+	if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+		return false
+	}
+
+	for i := 0; i < rv.Len(); i++ {
+		v := rv.Index(i).Interface()
+		if str, ok := v.(string); ok && str == item {
+			return true
+		}
+	}
+
+	return false
 }
 
 func tmplInstallationID(app data.App) string {

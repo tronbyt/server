@@ -45,7 +45,7 @@
             <a href="/">{{ t .Localizer "Home" }}</a>
         </li>
         <li>
-            <a href="/settings/account">{{ t .Localizer "System Settings" }}</a>
+            <a href="/settings/content">{{ t .Localizer "System Settings" }}</a>
         </li>
         {{ if not .IsAutoLoginActive }}
         <li>
@@ -59,18 +59,15 @@
                     <option value="light"
                             {{ if eq (string .User.ThemePreference) "light" }}
                             selected
-                            {{ end }}>{{ t .Localizer "Light" }}
-                    </option>
+                            {{ end }}>{{ t .Localizer "Light" }}</option>
                     <option value="dark"
                             {{ if eq (string .User.ThemePreference) "dark" }}
                             selected
-                            {{ end }}>{{ t .Localizer "Dark" }}
-                    </option>
+                            {{ end }}>{{ t .Localizer "Dark" }}</option>
                     <option value="system"
                             {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
                             selected
-                            {{ end }}>{{ t .Localizer "System" }}
-                    </option>
+                            {{ end }}>{{ t .Localizer "System" }}</option>
                 </select>
             </div>
         </li>
@@ -105,7 +102,7 @@
             <a href="/" onclick="closeMobileMenu()">{{ t .Localizer "Home" }}</a>
         </li>
         <li>
-            <a href="/settings/account" onclick="closeMobileMenu()">{{ t .Localizer "System Settings" }}</a>
+            <a href="/settings/content" onclick="closeMobileMenu()">{{ t .Localizer "System Settings" }}</a>
         </li>
         {{ if not .IsAutoLoginActive }}
         <li>
@@ -119,18 +116,15 @@
                     <option value="light"
                             {{ if eq (string .User.ThemePreference) "light" }}
                             selected
-                            {{ end }}>{{ t .Localizer "Light" }}
-                    </option>
+                            {{ end }}>{{ t .Localizer "Light" }}</option>
                     <option value="dark"
                             {{ if eq (string .User.ThemePreference) "dark" }}
                             selected
-                            {{ end }}>{{ t .Localizer "Dark" }}
-                    </option>
+                            {{ end }}>{{ t .Localizer "Dark" }}</option>
                     <option value="system"
                             {{ if or (eq (string .User.ThemePreference) "system") (eq (string .User.ThemePreference) "") }}
                             selected
-                            {{ end }}>{{ t .Localizer "System" }}
-                    </option>
+                            {{ end }}>{{ t .Localizer "System" }}</option>
                 </select>
             </div>
         </li>
@@ -153,10 +147,10 @@
     {{ if .SettingsSection }}
     <nav class="settings-subnav"
          aria-label="{{ t .Localizer "System Settings" }}">
-        <a href="/settings/account"
-           class="settings-subnav-link {{ if eq .SettingsSection "account" }}active{{ end }}">{{ t .Localizer "Account" }}</a>
         <a href="/settings/content"
            class="settings-subnav-link {{ if eq .SettingsSection "content" }}active{{ end }}">{{ t .Localizer "Content and Firmware" }}</a>
+        <a href="/settings/account"
+           class="settings-subnav-link {{ if eq .SettingsSection "account" }}active{{ end }}">{{ t .Localizer "Account" }}</a>
         {{ if and .User .User.IsAdmin }}
         <a href="/settings/admin"
            class="settings-subnav-link {{ if eq .SettingsSection "admin" }}active{{ end }}">{{ t .Localizer "Admin" }}</a>
