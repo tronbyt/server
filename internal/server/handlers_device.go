@@ -342,7 +342,9 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	if device.RequireAPIKey {
 		defaultImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
 		defaultWsURL = s.getWebsocketURLWithKey(r, device.ID, device.APIKey)
-		firmwareImgURL = s.getImageURLWithKey(r, device.ID, device.APIKey)
+		// Preserve the device's actual active URL (could be WebSocket or HTTP)
+		// and just append the API key to it, instead of replacing with a new HTTP URL
+		firmwareImgURL = appendKeyToURLString(firmwareImgURL, device.APIKey)
 	}
 
 	s.renderTemplate(w, r, "update", TemplateData{
