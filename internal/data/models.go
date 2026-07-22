@@ -618,6 +618,10 @@ type Device struct {
 	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
+	// HTTP device commands (delivered via /next response headers)
+	PendingImageURL string `json:"pending_image_url,omitempty"`
+	PendingReboot   bool   `json:"pending_reboot,omitempty"`
+
 	Apps []*App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
 
@@ -979,6 +983,13 @@ func (d *Device) SupportsFirmwareFeatures() bool {
 	}
 
 	return semver.Compare(v, minFirmwareFeaturesVersion) >= 0
+}
+
+func (d *Device) SupportsHTTPFirmwareCommands() bool {
+	if d.Info.ProtocolType != ProtocolHTTP {
+		return false
+	}
+	return d.Type.SupportsFirmware()
 }
 
 // GetApp looks up an app by its iname (installation ID) in the device's Apps list.

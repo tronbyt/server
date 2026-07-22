@@ -673,9 +673,62 @@ func (s *Server) getWebsocketURLWithKey(r *http.Request, deviceID string, apiKey
 
 var rebootPayloadJSON = []byte(`{"reboot":true}`)
 
-func (s *Server) sendRebootCommand(deviceID string) error {
+func (s *Server) sendRebootCommand(ctx context.Context, deviceID string) error {
+	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).Update(ctx, "pending_reboot", true); err != nil {
+		return err
+	}
 	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: rebootPayloadJSON})
 	return nil
+}
+
+func (s *Server) sendFirmwareSettingsCommand(ctx context.Context, deviceID string, payload map[string]any) error {
+	if imageURL, ok := payload["image_url"].(string); ok && imageURL != "" {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).Update(ctx, "pending_image_url", imageURL); err != nil {
+			return err
+		}
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	s.Broadcaster.Notify(deviceID, DeviceCommandMessage{Payload: jsonPayload})
+	return nil
+}
+
+func (s *Server) sendPendingHTTPDeviceHeaders(w http.ResponseWriter, ctx context.Context, device *data.Device) {
+	if updateURL := device.PendingUpdateURL; updateURL != "" {
+		slog.Info("Sending OTA update header", "device", device.ID, "url", updateURL)
+		w.Header().Set("Tronbyt-OTA-URL", updateURL)
+
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_update_url", ""); err != nil {
+			slog.Error("Failed to clear pending update", "error", err)
+		} else {
+			device.PendingUpdateURL = ""
+		}
+	}
+
+	if imageURL := device.PendingImageURL; imageURL != "" {
+		slog.Info("Sending image URL update header", "device", device.ID, "url", imageURL)
+		w.Header().Set("Tronbyt-Image-URL", imageURL)
+
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_image_url", ""); err != nil {
+			slog.Error("Failed to clear pending image URL", "error", err)
+		} else {
+			device.PendingImageURL = ""
+		}
+	}
+
+	if device.PendingReboot {
+		slog.Info("Sending reboot header", "device", device.ID)
+		w.Header().Set("Tronbyt-Reboot", "true")
+
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_reboot", false); err != nil {
+			slog.Error("Failed to clear pending reboot", "error", err)
+		} else {
+			device.PendingReboot = false
+		}
+	}
 }
 
 // orderedAppsPreload defines a GORM preload function to sort associated apps by their 'order' field.

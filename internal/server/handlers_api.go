@@ -984,7 +984,7 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleRebootDeviceAPI(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	if err := s.sendRebootCommand(device.ID); err != nil {
+	if err := s.sendRebootCommand(r.Context(), device.ID); err != nil {
 		slog.Error("Failed to send reboot command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -1057,13 +1057,11 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 		return
 	}
 
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		slog.Error("Failed to marshal firmware settings payload", "error", err)
+	if err := s.sendFirmwareSettingsCommand(r.Context(), device.ID, payload); err != nil {
+		slog.Error("Failed to send firmware settings command", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	s.Broadcaster.Notify(device.ID, DeviceCommandMessage{Payload: jsonPayload})
 
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("Firmware settings updated.")); err != nil {

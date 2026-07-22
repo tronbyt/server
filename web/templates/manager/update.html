@@ -772,6 +772,43 @@
                     </button>
                 </div>
             </div>
+            {{ else if .Device.SupportsHTTPFirmwareCommands }}
+            <div class="settings-card-subsection">
+                <h3>{{ t .Localizer "Live Firmware Settings" }}</h3>
+                <p class="settings-help">
+                    {{ t .Localizer "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll." }}
+                </p>
+                <div class="settings-field-list">
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">{{ t .Localizer "Image URL" }}</div>
+                        <div class="settings-field-control">
+                            <div class="settings-inline-group">
+                                <input type="text"
+                                       id="reported_img_url"
+                                       value="{{ .FirmwareImgURL }}"
+                                       class="settings-input settings-input-wide">
+                                <button type="button"
+                                        class="w3-button w3-blue"
+                                        onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
+                                        title="{{ t .Localizer "Sync current Image URL to device via HTTP headers" }}">
+                                    <i class="fa-solid fa-sync"></i>
+                                </button>
+                            </div>
+                            <p class="settings-help settings-note-danger">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button type="button"
+                            class="w3-button w3-deep-orange"
+                            onclick="rebootDevice()">
+                        <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
+                    </button>
+                </div>
+            </div>
             {{ end }}
             <div class="settings-card-subsection">
                 <h3>{{ t .Localizer "Configuration Management" }}</h3>

@@ -1946,6 +1946,12 @@
   "Sync current Image URL to device via WebSocket": {
     "other": "Aktuelle Bild-URL via WebSocket an Gerät senden"
   },
+  "Sync current Image URL to device via HTTP headers": {
+    "other": "Aktuelle Bild-URL via HTTP-Header an Gerät senden"
+  },
+  "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll.": {
+    "other": "HTTP-Firmware-Befehle erfordern Firmware-Version 1.6.5 oder höher. Befehle werden beim nächsten Bildabruf des Geräts übermittelt."
+  },
   "Sync Hostname to device via WebSocket": {
     "other": "Hostname via WebSocket an Gerät senden"
   },

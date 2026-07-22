@@ -1199,6 +1199,14 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for broadcaster notification")
 	}
+
+	var updatedDevice data.Device
+	if err := s.DB.First(&updatedDevice, "id = ?", deviceID).Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	if updatedDevice.PendingImageURL != "http://example.com/test.png" {
+		t.Errorf("expected pending image URL to be queued, got %q", updatedDevice.PendingImageURL)
+	}
 }
 
 func TestHandleRebootDeviceAPI(t *testing.T) {
@@ -1218,6 +1226,14 @@ func TestHandleRebootDeviceAPI(t *testing.T) {
 
 	if rr.Body.String() != "Reboot command sent." {
 		t.Errorf("Expected body 'Reboot command sent.', got '%s'", rr.Body.String())
+	}
+
+	var updatedDevice data.Device
+	if err := s.DB.First(&updatedDevice, "id = ?", deviceID).Error; err != nil {
+		t.Fatalf("Failed to fetch device: %v", err)
+	}
+	if !updatedDevice.PendingReboot {
+		t.Error("expected pending reboot to be queued")
 	}
 }
 

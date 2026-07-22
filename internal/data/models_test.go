@@ -59,3 +59,22 @@ func TestDeviceGetDimModeIsActiveUsesManualOverride(t *testing.T) {
 
 	assert.True(t, device.GetDimModeIsActive())
 }
+
+func TestDeviceSupportsHTTPFirmwareCommands(t *testing.T) {
+	httpDevice := Device{
+		Type: DeviceTidbytGen1,
+		Info: DeviceInfo{ProtocolType: ProtocolHTTP},
+	}
+	wsDevice := Device{
+		Type: DeviceTidbytGen1,
+		Info: DeviceInfo{ProtocolType: ProtocolWS},
+	}
+	otherDevice := Device{
+		Type: DeviceOther,
+		Info: DeviceInfo{ProtocolType: ProtocolHTTP},
+	}
+
+	assert.True(t, httpDevice.SupportsHTTPFirmwareCommands())
+	assert.False(t, wsDevice.SupportsHTTPFirmwareCommands())
+	assert.False(t, otherDevice.SupportsHTTPFirmwareCommands())
+}
