@@ -43,7 +43,7 @@ jobs:
           args: --timeout=5m
 
       - name: Setup Python for djLint
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 
