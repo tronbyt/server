@@ -106,6 +106,7 @@ The server can be configured via environment variables or `.env` file:
 *   `SINGLE_USER_AUTO_LOGIN`: Skip login when only one user exists (default: `false`).
 *   `SYSTEM_APPS_REPO`: Git repository URL for system apps (default: `https://github.com/tronbyt/apps.git`).
 *   `SYSTEM_APPS_AUTO_REFRESH`: Automatically refresh the system apps repository (default: `false`).
+*   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
 *   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).
