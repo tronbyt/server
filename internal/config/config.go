@@ -19,6 +19,7 @@ type Settings struct {
 	SingleUserAutoLogin    bool   `env:"SINGLE_USER_AUTO_LOGIN"`
 	SystemAppsAutoRefresh  bool   `env:"SYSTEM_APPS_AUTO_REFRESH"`
 	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO"         envDefault:"https://github.com/tronbyt/apps.git"`
+	CustomAppsAutoRefresh  bool   `env:"CUSTOM_APPS_AUTO_REFRESH"`
 	GitHubToken            string `env:"GITHUB_TOKEN"`
 	RedisURL               string `env:"REDIS_URL"`
 	Host                   string `env:"TRONBYT_HOST"             envDefault:""`

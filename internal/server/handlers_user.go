@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
@@ -273,6 +275,45 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.flashAndRedirect(w, r, "User repository refreshed successfully.", "/settings/content", http.StatusSeeOther)
+}
+
+// autoRefreshCustomAppsRepos periodically re-pulls every user's custom apps
+// repo, mirroring autoRefreshSystemRepo for the per-user equivalent.
+func (s *Server) autoRefreshCustomAppsRepos() {
+	if !s.Config.CustomAppsAutoRefresh {
+		return
+	}
+
+	slog.Info("Scheduled custom apps auto-refresh enabled (every 12h)")
+
+	ticker := time.NewTicker(12 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		if !s.Config.CustomAppsAutoRefresh {
+			slog.Info("Custom apps auto-refresh disabled, stopping ticker")
+			return
+		}
+		slog.Info("Performing scheduled custom apps refresh")
+		s.refreshAllCustomAppsRepos()
+	}
+}
+
+// refreshAllCustomAppsRepos re-pulls the custom apps repo for every user that
+// has one configured. A failure for one user is logged and does not stop the
+// others from refreshing.
+func (s *Server) refreshAllCustomAppsRepos() {
+	users, err := gorm.G[data.User](s.DB).Where("app_repo_url <> ?", "").Find(context.Background())
+	if err != nil {
+		slog.Error("Failed to list users with custom apps repos", "error", err)
+		return
+	}
+
+	for _, user := range users {
+		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
+		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
+			slog.Error("Scheduled refresh of custom apps repo failed", "user", user.Username, "error", err)
+		}
+	}
 }
 
 func (s *Server) handleExportUserConfig(w http.ResponseWriter, r *http.Request) {
