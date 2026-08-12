@@ -205,6 +205,14 @@ type AppPayload struct {
 	RecurrencePattern   map[string]any      `json:"recurrencePattern"`
 	RecurrenceStartDate *string             `json:"recurrenceStartDate"`
 	RecurrenceEndDate   *string             `json:"recurrenceEndDate"`
+
+	// Render behavior. Config is deliberately absent: it holds whatever the
+	// app's schema defines, which for many apps includes API keys and OAuth
+	// tokens, and a device API key is a lower bar than a session. It can be
+	// written via PATCH but is never read back.
+	AutoPin           bool              `json:"autoPin"`
+	ColorFilter       *data.ColorFilter `json:"colorFilter"`
+	ShowFullAnimation *bool             `json:"showFullAnimation"`
 }
 
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
@@ -230,6 +238,10 @@ func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 		RecurrencePattern:   app.RecurrencePattern,
 		RecurrenceStartDate: app.RecurrenceStartDate,
 		RecurrenceEndDate:   app.RecurrenceEndDate,
+
+		AutoPin:           app.AutoPin,
+		ColorFilter:       app.ColorFilter,
+		ShowFullAnimation: app.ShowFullAnimation,
 	}
 }
 
@@ -765,6 +777,17 @@ type InstallationUpdate struct {
 	RecurrencePattern   *map[string]any      `json:"recurrencePattern"`
 	RecurrenceStartDate *string              `json:"recurrenceStartDate"`
 	RecurrenceEndDate   *string              `json:"recurrenceEndDate"`
+
+	// Render behavior
+	AutoPin           *bool   `json:"autoPin"`
+	ColorFilter       *string `json:"colorFilter"`       // "" or "inherit" clears
+	ShowFullAnimation *string `json:"showFullAnimation"` // "auto" clears; else a bool
+
+	// App config, matching what the config page already stores. Write-only:
+	// GET never returns it, because it commonly holds API keys and OAuth
+	// tokens. Replaces the whole map, as the config page does -- there is no
+	// per-key merge.
+	Config *map[string]any `json:"config"`
 }
 
 func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request) {
@@ -911,6 +934,40 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	// Render behavior
+	if update.AutoPin != nil {
+		app.AutoPin = *update.AutoPin
+	}
+	if update.ColorFilter != nil {
+		switch *update.ColorFilter {
+		case "", string(data.ColorFilterInherit):
+			app.ColorFilter = nil
+		default:
+			if !s.isValidColorFilter(*update.ColorFilter) {
+				http.Error(w, "Invalid colorFilter", http.StatusBadRequest)
+				return
+			}
+			val := data.ColorFilter(*update.ColorFilter)
+			app.ColorFilter = &val
+		}
+	}
+	if update.ShowFullAnimation != nil {
+		switch *update.ShowFullAnimation {
+		case "", "auto":
+			app.ShowFullAnimation = nil
+		default:
+			val, err := strconv.ParseBool(*update.ShowFullAnimation)
+			if err != nil {
+				http.Error(w, `Invalid showFullAnimation: want "auto", "true" or "false"`, http.StatusBadRequest)
+				return
+			}
+			app.ShowFullAnimation = &val
+		}
+	}
+	if update.Config != nil {
+		app.Config = *update.Config
+	}
+
 	if err := s.DB.Save(app).Error; err != nil {
 		http.Error(w, "Failed to update app", http.StatusInternalServerError)
 		return
@@ -921,7 +978,11 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(app); err != nil {
+	// Respond with the same shape GET returns. This used to encode data.App
+	// directly, which carried the app's whole config -- API keys and OAuth
+	// tokens included -- back out over the wire, contradicting the omission
+	// of config from the GET payload.
+	if err := json.NewEncoder(w).Encode(s.toAppPayload(device, app)); err != nil {
 		slog.Error("Failed to encode app", "error", err)
 	}
 }

@@ -933,8 +933,10 @@ func TestHandlePatchInstallationSchedule(t *testing.T) {
 		t.Errorf("Expected recurrenceEndDate '2026-12-31', got %v", updated.RecurrenceEndDate)
 	}
 
-	// Verify the response JSON also contains the schedule fields
-	var respApp data.App
+	// Verify the response JSON also contains the schedule fields. PATCH now
+	// answers with the same AppPayload shape GET uses, rather than a raw
+	// data.App.
+	var respApp AppPayload
 	if err := json.NewDecoder(rr.Body).Decode(&respApp); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
@@ -1448,4 +1450,121 @@ func isAnonymousEphemeral(name string) bool {
 	}
 	inner := name[2 : len(name)-5] // strip "__" and ".webp"
 	return !strings.Contains(inner, "_")
+}
+
+func TestHandlePatchInstallationConfigAndRenderFields(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installID := "configapp"
+
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Config App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
+		t.Fatalf("Failed to create dummy app: %v", err)
+	}
+
+	autoPin := true
+	colorFilter := "dimmed"
+	showFullAnimation := "true"
+	cfg := map[string]any{"stop_id": "place-north", "api_key": "secret-token"}
+
+	update := InstallationUpdate{
+		AutoPin:           &autoPin,
+		ColorFilter:       &colorFilter,
+		ShowFullAnimation: &showFullAnimation,
+		Config:            &cfg,
+	}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated app state: %v", err)
+	}
+	if !updated.AutoPin {
+		t.Errorf("Expected autoPin true, got false")
+	}
+	if updated.ColorFilter == nil || *updated.ColorFilter != data.ColorFilterDimmed {
+		t.Errorf("Expected colorFilter dimmed, got %v", updated.ColorFilter)
+	}
+	if updated.ShowFullAnimation == nil || !*updated.ShowFullAnimation {
+		t.Errorf("Expected showFullAnimation true, got %v", updated.ShowFullAnimation)
+	}
+	if updated.Config["stop_id"] != "place-north" {
+		t.Errorf("Expected config to be stored, got %v", updated.Config)
+	}
+
+	// Config is write-only: it must not come back out in the PATCH response.
+	if bytes.Contains(rr.Body.Bytes(), []byte("secret-token")) {
+		t.Errorf("PATCH response leaked app config: %s", rr.Body.String())
+	}
+
+	// ...nor in the GET payload.
+	req = newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, nil)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	if bytes.Contains(rr.Body.Bytes(), []byte("secret-token")) {
+		t.Errorf("GET response leaked app config: %s", rr.Body.String())
+	}
+
+	// The non-secret render fields are readable, so a client can diff them.
+	var payload AppPayload
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("Failed to decode GET response: %v", err)
+	}
+	if !payload.AutoPin {
+		t.Errorf("GET autoPin: expected true, got false")
+	}
+	if payload.ColorFilter == nil || *payload.ColorFilter != data.ColorFilterDimmed {
+		t.Errorf("GET colorFilter: expected dimmed, got %v", payload.ColorFilter)
+	}
+
+	// "auto" and "inherit" clear back to the device default.
+	auto := "auto"
+	inherit := "inherit"
+	clear := InstallationUpdate{ShowFullAnimation: &auto, ColorFilter: &inherit}
+	body, _ = json.Marshal(clear)
+	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("clear: got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+	cleared, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch cleared app state: %v", err)
+	}
+	if cleared.ShowFullAnimation != nil {
+		t.Errorf("Expected showFullAnimation cleared, got %v", *cleared.ShowFullAnimation)
+	}
+	if cleared.ColorFilter != nil {
+		t.Errorf("Expected colorFilter cleared, got %v", *cleared.ColorFilter)
+	}
+
+	// An unknown filter is rejected rather than stored.
+	bogus := "chartreuse"
+	body, _ = json.Marshal(InstallationUpdate{ColorFilter: &bogus})
+	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("bogus colorFilter: got status %v want %v", rr.Code, http.StatusBadRequest)
+	}
 }
