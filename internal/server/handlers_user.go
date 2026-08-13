@@ -252,7 +252,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true); err != nil {
+		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
 			slog.Error("Failed to sync user repo", "error", err)
 			s.flashAndRedirect(w, r, "Failed to sync user repository. Check server logs.", "/settings/content", http.StatusSeeOther)
 			return
@@ -267,7 +267,7 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 
 	if user.AppRepoURL != "" {
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
-		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
+		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
 			slog.Error("Failed to refresh user repo", "error", err)
 			s.flashAndRedirect(w, r, "Failed to refresh user repository. Check server logs.", "/settings/content", http.StatusSeeOther)
 			return
@@ -310,7 +310,7 @@ func (s *Server) refreshAllCustomAppsRepos() {
 
 	for _, user := range users {
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
-		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true); err != nil {
+		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
 			slog.Error("Scheduled refresh of custom apps repo failed", "user", user.Username, "error", err)
 		}
 	}
