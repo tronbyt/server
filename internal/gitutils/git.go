@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v6"
@@ -94,7 +95,9 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 }
 
 // EnsureRepo clones a repo if it doesn't exist, or pulls if it does and update is true.
-func EnsureRepo(path string, repoURL string, token string, update bool) error {
+// maxSize is the maximum allowed size in bytes of the repo directory; a repo
+// larger than that is re-cloned from scratch on the next update. Pass 0 to disable.
+func EnsureRepo(path string, repoURL string, token string, update bool, maxSize int64) error {
 	slog.Info("Checking git repo", "path", path, "url", repoURL)
 
 	var clientOpts []client.Option
@@ -113,20 +116,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 
 	// Check if path exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		slog.Info("Cloning repo", "url", repoURL)
-		r, err := git.PlainClone(path, &git.CloneOptions{
-			URL:           repoURL,
-			Progress:      &logWriter{},
-			Depth:         1,
-			SingleBranch:  true,
-			Tags:          git.NoTags,
-			ClientOptions: clientOpts,
-		})
-		if err == nil {
-			_ = r.Close()
-		}
-
-		return err
+		return cloneRepo(path, repoURL, clientOpts)
 	}
 
 	// Repo exists, open it
@@ -137,7 +127,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove invalid repo directory: %w", err)
 			}
-			return EnsureRepo(path, repoURL, token, update)
+			return EnsureRepo(path, repoURL, token, update, maxSize)
 		}
 		// If not a git repo, maybe remove and re-clone?
 		// For safety, error out.
@@ -162,12 +152,28 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 			return fmt.Errorf("failed to remove old repo: %w", err)
 		}
 
-		return EnsureRepo(path, repoURL, token, update)
+		return EnsureRepo(path, repoURL, token, update, maxSize)
 	}
 
 	if !update {
 		slog.Info("Skipping repo update (update=false)")
 		return nil
+	}
+
+	// Shallow fetches accumulate objects that go-git never prunes, so the
+	// repository grows unboundedly over time. Once it exceeds the size limit,
+	// re-clone it from scratch to reset it. The new clone goes to a temp dir
+	// and is swapped in only on success, so a failed re-clone leaves the
+	// existing repository untouched.
+	if maxSize > 0 {
+		size, err := dirSize(path)
+		if err != nil {
+			slog.Warn("Failed to measure repo size, skipping re-clone check", "error", err)
+		} else if size > maxSize {
+			slog.Info("Repo too large, re-cloning", "size", size, "limit", maxSize)
+			_ = r.Close()
+			return recloneRepo(path, repoURL, clientOpts)
+		}
 	}
 
 	// Pull
@@ -212,7 +218,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 			if err := os.RemoveAll(path); err != nil {
 				return fmt.Errorf("failed to remove broken repo: %w", err)
 			}
-			return EnsureRepo(path, repoURL, token, update)
+			return EnsureRepo(path, repoURL, token, update, maxSize)
 		}
 		return fmt.Errorf("failed to fetch repo: %w", err)
 	}
@@ -227,7 +233,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		if err := os.RemoveAll(path); err != nil {
 			return fmt.Errorf("failed to remove broken repo: %w", err)
 		}
-		return EnsureRepo(path, repoURL, token, update)
+		return EnsureRepo(path, repoURL, token, update, maxSize)
 	}
 
 	// Hard Reset the worktree to the remote commit
@@ -244,5 +250,62 @@ func EnsureRepo(path string, repoURL string, token string, update bool) error {
 		slog.Warn("Failed to clean repo", "error", err)
 	}
 
+	return nil
+}
+
+// dirSize returns the total size in bytes of all regular files under path.
+func dirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Mode().IsRegular() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
+
+// cloneRepo performs a shallow, single-branch, tag-less clone of repoURL into path.
+func cloneRepo(path string, repoURL string, clientOpts []client.Option) error {
+	slog.Info("Cloning repo", "url", repoURL)
+	r, err := git.PlainClone(path, &git.CloneOptions{
+		URL:           repoURL,
+		Progress:      &logWriter{},
+		Depth:         1,
+		SingleBranch:  true,
+		Tags:          git.NoTags,
+		ClientOptions: clientOpts,
+	})
+	if err == nil {
+		_ = r.Close()
+	}
+	return err
+}
+
+// recloneRepo re-clones repoURL into path atomically: the new clone is written
+// to a temporary directory in the same parent and moved into place only after
+// it succeeds, so a failed re-clone leaves the existing repository intact.
+func recloneRepo(path string, repoURL string, clientOpts []client.Option) error {
+	tmp, err := os.MkdirTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir for re-clone: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+
+	if err := os.RemoveAll(tmp); err != nil {
+		return fmt.Errorf("failed to prepare temp dir for re-clone: %w", err)
+	}
+	if err := cloneRepo(tmp, repoURL, clientOpts); err != nil {
+		return fmt.Errorf("failed to re-clone repo: %w", err)
+	}
+	if err := os.RemoveAll(path); err != nil {
+		return fmt.Errorf("failed to remove oversized repo: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fmt.Errorf("failed to move re-cloned repo into place: %w", err)
+	}
 	return nil
 }
