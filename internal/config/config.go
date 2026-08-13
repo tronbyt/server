@@ -19,6 +19,8 @@ type Settings struct {
 	SingleUserAutoLogin    bool   `env:"SINGLE_USER_AUTO_LOGIN"`
 	SystemAppsAutoRefresh  bool   `env:"SYSTEM_APPS_AUTO_REFRESH"`
 	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO"         envDefault:"https://github.com/tronbyt/apps.git"`
+	MaxRepoSizeMB          int64  `env:"MAX_REPO_SIZE_MB"         envDefault:"750"`
+	CustomAppsAutoRefresh  bool   `env:"CUSTOM_APPS_AUTO_REFRESH"`
 	GitHubToken            string `env:"GITHUB_TOKEN"`
 	RedisURL               string `env:"REDIS_URL"`
 	Host                   string `env:"TRONBYT_HOST"             envDefault:""`
@@ -45,6 +47,12 @@ type Settings struct {
 
 func (s *Settings) SystemAppsDir() string {
 	return filepath.Join(s.DataDir, "system-apps")
+}
+
+// MaxRepoSize returns the maximum allowed size in bytes of a git repo
+// (system apps or custom app repos) before it is re-cloned from scratch.
+func (s *Settings) MaxRepoSize() int64 {
+	return s.MaxRepoSizeMB * 1024 * 1024
 }
 
 // TemplateConfig holds configuration values needed in templates.

@@ -39,7 +39,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Clone/Update System Apps Repo
-	if err := gitutils.EnsureRepo(cfg.SystemAppsDir(), cfg.SystemAppsRepo, cfg.GitHubToken, cfg.Production); err != nil {
+	if err := gitutils.EnsureRepo(cfg.SystemAppsDir(), cfg.SystemAppsRepo, cfg.GitHubToken, cfg.Production, cfg.MaxRepoSize()); err != nil {
 		slog.Error("Failed to update system apps repo", "error", err)
 	}
 
