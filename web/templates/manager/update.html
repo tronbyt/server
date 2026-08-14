@@ -306,7 +306,7 @@
                                id="custom_brightness_scale_hidden"
                                value="{{ .Device.CustomBrightnessScale }}">
                         <p class="settings-help">
-                            <strong>{{ t .Localizer "Default system scale" }}</strong>: {{ range $i, $v := $defaultScale }}{{ $i }}={{ trim $v }}{{ if lt $i 5 }}, {{ end }}{{ end }}
+                            <strong>{{ t .Localizer "Device default" }}:</strong> {{ range $i, $v := $defaultScale }}{{ $i }}={{ trim $v }}{{ if lt $i 5 }}, {{ end }}{{ end }}
                         </p>
                     </div>
                 </div>

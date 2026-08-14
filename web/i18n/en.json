@@ -1478,8 +1478,8 @@
   "Each value should be between 0-100. Higher levels should generally have higher values.": {
     "other": "Each value should be between 0-100. Higher levels should generally have higher values."
   },
-  "Default system scale": {
-    "other": "Default system scale"
+  "Device default": {
+    "other": "Device default"
   },
   "Interstitial App Settings": {
     "other": "Interstitial App Settings"
