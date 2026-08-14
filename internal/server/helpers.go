@@ -96,6 +96,7 @@ type TemplateData struct {
 	BrightnessUI             int
 	NightBrightnessUI        int
 	DimBrightnessUI          int
+	DefaultBrightnessScale   string
 
 	// Firmware
 	FirmwareBinsAvailable     bool

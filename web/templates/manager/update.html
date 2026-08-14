@@ -6,12 +6,50 @@
 <link rel="stylesheet" href="/static/css/update-simple.css">
 <script src="/static/js/location.js"></script>
 <script>
+    const defaultBrightnessScale = '{{ .DefaultBrightnessScale }}';
+
+    function getBrightnessScaleValues() {
+        const checkbox = document.getElementById('use_custom_brightness_scale');
+        if (checkbox && checkbox.checked) {
+            const values = [];
+            for (let i = 0; i < 6; i++) {
+                const input = document.getElementById('brightness_level_' + i);
+                const value = input ? parseInt(input.value, 10) : NaN;
+                values.push(isNaN(value) ? 0 : value);
+            }
+            return values;
+        }
+        return defaultBrightnessScale.split(',').map(s => parseInt(s.trim(), 10));
+    }
+
+    function sendBrightnessToDevice(percent) {
+        const formData = new URLSearchParams();
+        formData.append('brightness_percent', percent);
+
+        fetch('/devices/{{ .Device.ID }}/update_brightness', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString()
+        }).then(response => {
+            if (!response.ok) {
+                console.error('Failed to update brightness');
+            } else {
+                console.log('Brightness updated successfully to', percent);
+            }
+        }).catch(error => {
+            console.error('Unexpected error:', error);
+        });
+    }
+
     function setBrightnessUpdate(brightness) {
         document.getElementById('brightness').value = brightness;
         const buttons = document.querySelectorAll('#brightness-panel .brightness-btn');
         buttons.forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.brightness) === parseInt(brightness));
         });
+        sendBrightnessToDevice(getBrightnessScaleValues()[brightness]);
     }
 
     function setNightBrightnessUpdate(brightness) {
@@ -235,7 +273,7 @@
                                 {{ if ne .Device.CustomBrightnessScale "" }}
                                 {{ $scaleValues = split .Device.CustomBrightnessScale "," }}
                                 {{ end }}
-                                {{ $defaultScale := slice "0" "3" "5" "12" "35" "100" }}
+                                {{ $defaultScale := split .DefaultBrightnessScale "," }}
                                 {{ range $i := seq 0 5 }}
                                 <div>
                                     <label for="brightness_level_{{ $i }}">{{ t $.Localizer "Level" }} {{ $i }}</label>
@@ -259,7 +297,7 @@
                                id="custom_brightness_scale_hidden"
                                value="{{ .Device.CustomBrightnessScale }}">
                         <p class="settings-help">
-                            <strong>{{ t .Localizer "Default system scale" }}</strong>: 0=0, 1=3, 2=5, 3=12, 4=35, 5=100
+                            <strong>{{ t .Localizer "Default system scale" }}</strong>: {{ range $i, $v := $defaultScale }}{{ $i }}={{ trim $v }}{{ if lt $i 5 }}, {{ end }}{{ end }}
                         </p>
                     </div>
                 </div>
