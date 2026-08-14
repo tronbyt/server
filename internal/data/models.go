@@ -65,6 +65,46 @@ var StringToDeviceType = func() map[string]DeviceType {
 	return m
 }()
 
+// DefaultBrightnessScale is the system-wide default brightness scale (UI level 0-5 -> brightness percent)
+// used when a device type has no type-specific default configured.
+const DefaultBrightnessScale = "0,3,5,12,35,100"
+
+// TidbytGen1BrightnessScale, TidbytGen2BrightnessScale, and S3BrightnessScale are the
+// default brightness scales for the respective device families.
+// Set max for Gen1 to 50 to hopefully safeguard against burnouts from high current.
+const (
+	TidbytGen1BrightnessScale = "0,1,15,25,35,50"
+	TidbytGen2BrightnessScale = "0,3,8,16,35,100"
+	S3BrightnessScale         = "0,1,8,12,35,100"
+)
+
+// DeviceTypeDefaultBrightnessScale maps each device type to its default brightness scale
+// (UI level 0-5 -> brightness percent 0-100). Devices that do not have their own custom
+// scale fall back to their type's default.
+var DeviceTypeDefaultBrightnessScale = map[DeviceType]string{
+	DeviceUnknown:         S3BrightnessScale,
+	DeviceTidbytGen1:      TidbytGen1BrightnessScale,
+	DeviceTidbytGen2:      TidbytGen2BrightnessScale,
+	DeviceTronbytS3:       S3BrightnessScale,
+	DeviceTronbytS3Wide:   S3BrightnessScale,
+	DeviceMatrixPortal:    S3BrightnessScale,
+	DeviceMatrixPortalWS:  S3BrightnessScale,
+	DeviceWaveshareS3:     S3BrightnessScale,
+	DevicePixoticker:      S3BrightnessScale,
+	DeviceRaspberryPi:     S3BrightnessScale,
+	DeviceRaspberryPiWide: S3BrightnessScale,
+	DeviceOther:           S3BrightnessScale,
+}
+
+// DefaultBrightnessScale returns the default brightness scale string for the device type,
+// falling back to the system-wide default if the type has no specific value.
+func (dt DeviceType) DefaultBrightnessScale() string {
+	if s, ok := DeviceTypeDefaultBrightnessScale[dt]; ok && s != "" {
+		return s
+	}
+	return DefaultBrightnessScale
+}
+
 // String returns the human-readable display name for the DeviceType.
 func (dt DeviceType) String() string {
 	switch dt {
@@ -1014,11 +1054,22 @@ func (d *Device) GetPushedApp(installationID string) *App {
 	return nil
 }
 
+// BrightnessScale returns the effective brightness scale string for the device:
+// its custom scale if set, otherwise its type's default scale.
+func (d Device) BrightnessScale() string {
+	if d.CustomBrightnessScale != "" {
+		return d.CustomBrightnessScale
+	}
+	return d.Type.DefaultBrightnessScale()
+}
+
+// BrightnessScaleMap returns the device's effective brightness scale parsed as a
+// map, or nil if it cannot be parsed.
+func (d Device) BrightnessScaleMap() map[int]int {
+	return ParseCustomBrightnessScale(d.BrightnessScale())
+}
+
 // BrightnessUIScale returns the current brightness level (0-5) for the UI.
 func (d Device) BrightnessUIScale() int {
-	var customScale map[int]int
-	if d.CustomBrightnessScale != "" {
-		customScale = ParseCustomBrightnessScale(d.CustomBrightnessScale)
-	}
-	return d.Brightness.UIScale(customScale)
+	return d.Brightness.UIScale(d.BrightnessScaleMap())
 }

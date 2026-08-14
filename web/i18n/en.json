@@ -1988,6 +1988,12 @@
   "Reboot Device": {
     "other": "Reboot Device"
   },
+  "Confirm and Reboot": {
+    "other": "Confirm and Reboot"
+  },
+  "Send the current Image URL to the device and reboot? Continue?": {
+    "other": "Send the current Image URL to the device and reboot? Continue?"
+  },
   "Are you sure you want to reboot the device?": {
     "other": "Are you sure you want to reboot the device?"
   },
