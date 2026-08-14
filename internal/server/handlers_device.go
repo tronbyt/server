@@ -215,6 +215,8 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		deviceType = data.DeviceOther
 	}
 
+	deviceScale := data.ParseCustomBrightnessScale(deviceType.DefaultBrightnessScale())
+
 	// Create new device
 	newDevice := data.Device{
 		ID:                    deviceID,
@@ -226,7 +228,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		ImgURL:                formData.ImgURL, // Can be overridden by default logic later
 		WsURL:                 formData.WsURL,  // Can be overridden by default logic later
 		Notes:                 formData.Notes,
-		Brightness:            data.BrightnessFromUIScale(formData.Brightness, nil),
+		Brightness:            data.BrightnessFromUIScale(formData.Brightness, deviceScale),
 		CustomBrightnessScale: "",
 		NightBrightness:       0,
 		DefaultInterval:       15,
@@ -297,11 +299,8 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 	}
 	device = &freshDevice
 
-	// Parse custom brightness scale if device has one
-	var customScale map[int]int
-	if device.CustomBrightnessScale != "" {
-		customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
-	}
+	// Resolve the effective brightness scale (custom or type default)
+	customScale := device.BrightnessScaleMap()
 
 	// Calculate UI Brightness
 	bUI := device.Brightness.UIScale(customScale)
@@ -361,6 +360,7 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		BrightnessUI:              bUI,
 		NightBrightnessUI:         nbUI,
 		DimBrightnessUI:           dbUI,
+		DefaultBrightnessScale:    device.Type.DefaultBrightnessScale(),
 		FirmwareAvailable:         firmwareAvailable,
 		FirmwareVersion:           firmwareVersion,
 		AvailableFirmwareVersions: availableVersions,
@@ -421,10 +421,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Parse Scale
-	var customScale map[int]int
-	if device.CustomBrightnessScale != "" {
-		customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
-	}
+	customScale := device.BrightnessScaleMap()
 
 	if bUI, err := strconv.Atoi(r.FormValue("brightness")); err == nil {
 		device.Brightness = data.BrightnessFromUIScale(bUI, customScale)
@@ -818,21 +815,36 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 func (s *Server) handleUpdateBrightness(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
-	brightnessStr := r.FormValue("brightness")
-	bUI, err := strconv.Atoi(brightnessStr)
-	if err != nil || bUI < 0 || bUI > 5 {
-		slog.Warn("Invalid brightness value", "device", device.ID, "value", brightnessStr)
-		http.Error(w, "Brightness must be between 0 and 5", http.StatusBadRequest)
-		return
+	// Resolve the effective brightness scale (custom or type default)
+	customScale := device.BrightnessScaleMap()
+
+	var brightness data.Brightness
+	var bUI int
+
+	// A raw percent value (0-100) takes precedence and is used as-is so the
+	// device edit page can test custom brightness scale values before saving.
+	if percentStr := r.FormValue("brightness_percent"); percentStr != "" {
+		percent, err := strconv.Atoi(percentStr)
+		if err != nil || percent < 0 || percent > 100 {
+			slog.Warn("Invalid brightness percent", "device", device.ID, "value", percentStr)
+			http.Error(w, "Brightness must be between 0 and 100", http.StatusBadRequest)
+			return
+		}
+		brightness = data.Brightness(percent)
+		bUI = brightness.UIScale(customScale)
+	} else {
+		brightnessStr := r.FormValue("brightness")
+		var err error
+		bUI, err = strconv.Atoi(brightnessStr)
+		if err != nil || bUI < 0 || bUI > 5 {
+			slog.Warn("Invalid brightness value", "device", device.ID, "value", brightnessStr)
+			http.Error(w, "Brightness must be between 0 and 5", http.StatusBadRequest)
+			return
+		}
+		brightness = data.BrightnessFromUIScale(bUI, customScale)
 	}
 
-	// Parse Scale
-	var customScale map[int]int
-	if device.CustomBrightnessScale != "" {
-		customScale = data.ParseCustomBrightnessScale(device.CustomBrightnessScale)
-	}
-
-	device.Brightness = data.BrightnessFromUIScale(bUI, customScale)
+	device.Brightness = brightness
 
 	if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
 		slog.Error("Failed to update device brightness", "device", device.ID, "error", err)

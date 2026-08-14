@@ -1475,8 +1475,8 @@
   "Each value should be between 0-100. Higher levels should generally have higher values.": {
     "other": "Jeder Wert sollte zwischen 0-100 liegen. Höhere Stufen sollten im Allgemeinen höhere Werte haben."
   },
-  "Default system scale": {
-    "other": "Standard-Systemskala"
+  "Device default": {
+    "other": "Gerätestandard"
   },
   "Interstitial App Settings": {
     "other": "Interstitial-App-Einstellungen"
@@ -1984,6 +1984,12 @@
   },
   "Reboot Device": {
     "other": "Gerät neu starten"
+  },
+  "Confirm and Reboot": {
+    "other": "Bestätigen und neu starten"
+  },
+  "Send the current Image URL to the device and reboot? Continue?": {
+    "other": "Aktuelle Bild-URL an das Gerät senden und neu starten? Fortfahren?"
   },
   "Are you sure you want to reboot the device?": {
     "other": "Sind Sie sicher, dass Sie das Gerät neu starten möchten?"
