@@ -94,7 +94,16 @@
                 </button>
             </div>
         </header>
-        <section class="settings-card">
+        <nav class="settings-subnav"
+             aria-label="{{ t .Localizer "Device Settings" }}">
+            <a class="settings-subnav-link" href="#section-core-setup">{{ t .Localizer "Core Device Setup" }}</a>
+            <a class="settings-subnav-link" href="#section-display">{{ t .Localizer "Display Behavior" }}</a>
+            <a class="settings-subnav-link" href="#section-scheduled">{{ t .Localizer "Scheduled Behavior" }}</a>
+            <a class="settings-subnav-link" href="#section-regional">{{ t .Localizer "Regional and App Context" }}</a>
+            <a class="settings-subnav-link" href="#section-maintenance">{{ t .Localizer "Maintenance" }}</a>
+            <a class="settings-subnav-link" href="#section-api">{{ t .Localizer "Advanced Device API" }}</a>
+        </nav>
+        <section class="settings-card" id="section-core-setup">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Core Device Setup" }}</h2>
             </div>
@@ -198,7 +207,7 @@
                 </div>
             </div>
         </section>
-        <section class="settings-card">
+        <section class="settings-card" id="section-display">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Display Behavior" }}</h2>
             </div>
@@ -303,7 +312,7 @@
                 </div>
             </div>
         </section>
-        <section class="settings-card">
+        <section class="settings-card" id="section-scheduled">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Scheduled Behavior" }}</h2>
             </div>
@@ -512,7 +521,7 @@
                 </div>
             </div>
         </section>
-        <section class="settings-card">
+        <section class="settings-card" id="section-regional">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Regional and App Context" }}</h2>
             </div>
@@ -557,59 +566,7 @@
                 </div>
             </div>
         </section>
-        <section class="settings-card">
-            <div class="settings-card-header">
-                <h2>{{ t .Localizer "Advanced Device API" }}</h2>
-            </div>
-            <div class="settings-field-list">
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="device_id">{{ t .Localizer "Device ID" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <input id="device_id"
-                               value="{{ .Device.ID }}"
-                               readonly
-                               class="settings-input">
-                    </div>
-                </div>
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="api_key">{{ t .Localizer "Device API Key" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <input name="api_key"
-                               id="api_key"
-                               value="{{ .Device.APIKey }}"
-                               oninput="updateExampleCommands()"
-                               class="settings-input settings-input-wide">
-                    </div>
-                </div>
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="curl_example">{{ t .Localizer "Example curl Command" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <textarea id="curl_example"
-                                  rows="3"
-                                  readonly
-                                  class="device-example-command-input"></textarea>
-                    </div>
-                </div>
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="pixlet_example">{{ t .Localizer "Example pixlet Command" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <textarea id="pixlet_example"
-                                  rows="3"
-                                  readonly
-                                  class="device-example-command-input"></textarea>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <section class="settings-card">
+        <section class="settings-card" id="section-maintenance">
             <div class="settings-card-header">
                 <h2>{{ t .Localizer "Maintenance" }}</h2>
             </div>
@@ -667,10 +624,9 @@
                                        value="{{ .FirmwareImgURL }}"
                                        class="settings-input settings-input-wide">
                                 <button type="button"
-                                        class="w3-button w3-blue"
-                                        onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
-                                        title="{{ t .Localizer "Sync current Image URL to device via WebSocket" }}">
-                                    <i class="fa-solid fa-sync"></i>
+                                        class="w3-button w3-deep-orange"
+                                        onclick="confirmImageURLAndReboot()">
+                                    <i class="fa-solid fa-circle-check"></i> {{ t .Localizer "Confirm and Reboot" }}
                                 </button>
                             </div>
                             <p class="settings-help settings-note-danger">
@@ -688,9 +644,9 @@
                                        value="{{ derefOr .Device.Info.Hostname "" }}"
                                        class="settings-input">
                                 <button type="button"
-                                        class="w3-button w3-blue"
+                                        class="w3-button w3-green"
                                         onclick="updateFirmwareSettings({hostname: document.getElementById('reported_hostname').value})">
-                                    <i class="fa-solid fa-sync"></i>
+                                    <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
                                 </button>
                             </div>
                         </div>
@@ -704,9 +660,9 @@
                                        value="{{ derefOr .Device.Info.SNTPServer "" }}"
                                        class="settings-input">
                                 <button type="button"
-                                        class="w3-button w3-blue"
+                                        class="w3-button w3-green"
                                         onclick="updateFirmwareSettings({sntp_server: document.getElementById('reported_sntp_server').value})">
-                                    <i class="fa-solid fa-sync"></i>
+                                    <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
                                 </button>
                             </div>
                         </div>
@@ -720,9 +676,9 @@
                                        value="{{ derefOr .Device.Info.SyslogAddr "" }}"
                                        class="settings-input">
                                 <button type="button"
-                                        class="w3-button w3-blue"
+                                        class="w3-button w3-green"
                                         onclick="updateFirmwareSettings({syslog_addr: document.getElementById('reported_syslog_addr').value})">
-                                    <i class="fa-solid fa-sync"></i>
+                                    <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
                                 </button>
                             </div>
                         </div>
@@ -826,10 +782,9 @@
                                        value="{{ .FirmwareImgURL }}"
                                        class="settings-input settings-input-wide">
                                 <button type="button"
-                                        class="w3-button w3-blue"
-                                        onclick="updateFirmwareSettings({image_url: document.getElementById('reported_img_url').value})"
-                                        title="{{ t .Localizer "Sync current Image URL to device via HTTP headers" }}">
-                                    <i class="fa-solid fa-sync"></i>
+                                        class="w3-button w3-deep-orange"
+                                        onclick="confirmImageURLAndReboot()">
+                                    <i class="fa-solid fa-circle-check"></i> {{ t .Localizer "Confirm and Reboot" }}
                                 </button>
                             </div>
                             <p class="settings-help settings-note-danger">
@@ -864,35 +819,59 @@
                 </div>
             </div>
         </section>
-        <section class="settings-card">
+        <section class="settings-card" id="section-api">
             <div class="settings-card-header">
-                <h2>{{ t .Localizer "Notes" }}</h2>
+                <h2>{{ t .Localizer "Advanced Device API" }}</h2>
             </div>
-            <div class="settings-field-row">
-                <div class="settings-field-label">
-                    <label for="notes">{{ t .Localizer "Notes" }}</label>
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="device_id">{{ t .Localizer "Device ID" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input id="device_id"
+                               value="{{ .Device.ID }}"
+                               readonly
+                               class="settings-input">
+                    </div>
                 </div>
-                <div class="settings-field-control">
-                    <input name="notes"
-                           id="notes"
-                           value="{{ .Device.Notes }}"
-                           class="settings-input settings-input-wide"
-                           placeholder="{{ t .Localizer "Optional notes about this device" }}">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="api_key">{{ t .Localizer "Device API Key" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input name="api_key"
+                               id="api_key"
+                               value="{{ .Device.APIKey }}"
+                               oninput="updateExampleCommands()"
+                               class="settings-input settings-input-wide">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="curl_example">{{ t .Localizer "Example curl Command" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <textarea id="curl_example"
+                                  rows="3"
+                                  readonly
+                                  class="device-example-command-input"></textarea>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="pixlet_example">{{ t .Localizer "Example pixlet Command" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <textarea id="pixlet_example"
+                                  rows="3"
+                                  readonly
+                                  class="device-example-command-input"></textarea>
+                    </div>
                 </div>
             </div>
         </section>
-        <section class="settings-card">
-            <div class="settings-card-header">
-                <h2>{{ t .Localizer "Danger Zone" }}</h2>
-            </div>
-            <div class="settings-actions">
-                <button type="button"
-                        class="w3-button w3-red"
-                        onclick="if (confirm('{{ t .Localizer "Delete device and ALL apps? This action cannot be undone." }}')) { document.getElementById('device-form').action = '/devices/{{ .Device.ID }}/delete'; document.getElementById('device-form').submit(); }">
-                    <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete Device" }}
-                </button>
-            </div>
-        </section>
+        <input type="hidden" name="notes" value="{{ .Device.Notes }}">
     </div>
 </form>
 <form action="/devices/{{ .Device.ID }}/import_config"
@@ -1016,7 +995,7 @@
             params.append(key, value);
         }
 
-        fetch(`/devices/{{ .Device.ID }}/update_firmware_settings`, {
+        return fetch(`/devices/{{ .Device.ID }}/update_firmware_settings`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -1025,7 +1004,25 @@
         }).then(response => {
             if (!response.ok) {
                 alert("Failed to update settings");
+                throw new Error("Failed to update settings");
             }
+            return response;
+        });
+    }
+
+    function confirmImageURLAndReboot() {
+        const imageUrl = document.getElementById('reported_img_url').value;
+        if (!confirm('{{ t .Localizer "Send the current Image URL to the device and reboot? Continue?" }}')) {
+            return;
+        }
+        updateFirmwareSettings({image_url: imageUrl}).then(() => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/devices/{{ .Device.ID }}/reboot';
+            document.body.appendChild(form);
+            form.submit();
+        }).catch(() => {
+            // Settings update failed; alert already shown above.
         });
     }
 
