@@ -257,6 +257,25 @@
                 deviceIdInput.value = slugify(nameInput.value);
             }
         }
+
+        // Warn before saving without a location so schedule times aren't
+        // silently interpreted in the server's timezone.
+        var noLocationMessage = "{{ t .Localizer "No location is set for this device, so schedule times use the server's timezone. Add a location so schedule times match your local time." }}";
+        document.getElementById('create-device-form').addEventListener('submit', function(event) {
+            var locationRaw = document.getElementById('location').value;
+            var hasTimezone = false;
+            if (locationRaw) {
+                try {
+                    var locationData = JSON.parse(locationRaw);
+                    hasTimezone = !!(locationData && locationData.timezone);
+                } catch (e) {
+                    hasTimezone = false;
+                }
+            }
+            if (!hasTimezone && !confirm(noLocationMessage)) {
+                event.preventDefault();
+            }
+        });
     });
 </script>
 {{ end }}

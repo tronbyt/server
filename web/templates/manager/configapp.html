@@ -247,6 +247,14 @@
     <!-- Schedule Section -->
     <div class="schedule-section">
         <h2>{{ t .Localizer "Schedule" }}</h2>
+        {{ if and .Device (not .Device.HasTimezone) }}
+        <p class="settings-help settings-note-danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            {{ t .Localizer "No location is set for this device, so schedule times use the server's timezone." }}
+            <a href="/devices/{{ .Device.ID }}/update#section-regional">{{ t .Localizer "Add a location" }}</a>
+            {{ t .Localizer "so schedule times match your local time." }}
+        </p>
+        {{ end }}
         <table class="form-table">
             <!-- Start Time -->
             <tr>

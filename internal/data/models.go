@@ -747,6 +747,19 @@ func (d *Device) HasLocation() bool {
 		l.PlaceID != "" || l.Lat != 0 || l.Lng != 0
 }
 
+// HasTimezone reports whether the device has a usable timezone, either via the
+// explicit Timezone override or the location's timezone. When false, schedule
+// evaluation falls back to the server's local timezone.
+func (d *Device) HasTimezone() bool {
+	if d == nil {
+		return false
+	}
+	if d.Timezone != nil && *d.Timezone != "" {
+		return true
+	}
+	return d.Location.Timezone != ""
+}
+
 func (d *Device) GetTimezone() string {
 	if d.Timezone != nil && *d.Timezone != "" {
 		return *d.Timezone
