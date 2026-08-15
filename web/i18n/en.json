@@ -2116,5 +2116,8 @@
   },
   "recommended": {
     "other": "recommended"
+  },
+  "You are accessing this server via localhost. For proper firmware generation you should use:": {
+    "other": "You are accessing this server via localhost. For proper firmware generation you should use:"
   }
 }

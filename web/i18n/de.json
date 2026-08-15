@@ -2113,5 +2113,8 @@
   },
   "recommended": {
     "other": "empfohlen"
+  },
+  "You are accessing this server via localhost. For proper firmware generation you should use:": {
+    "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
   }
 }

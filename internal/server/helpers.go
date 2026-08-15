@@ -109,6 +109,7 @@ type TemplateData struct {
 	UserCount                 int    // Number of users, for registration logic
 	DeleteOnCancel            bool   // Indicate if app should be deleted on cancel
 	URLWarning                string // Warning about localhost in image URL
+	DetectedAccessURL         string // Suggested URL (LAN IP) to use instead of localhost
 	ReadOnly                  bool   // Indicate if the view should be read-only
 	Partial                   string
 	SettingsSection           string
@@ -158,6 +159,11 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	// Set version
 	tmplData.ServerVersion = version.Version
 	tmplData.CommitHash = version.Commit
+
+	// Suggest a LAN URL to replace localhost on login pages
+	if name == "login" && tmplData.DetectedAccessURL == "" {
+		tmplData.DetectedAccessURL = s.detectedAccessURL(r)
+	}
 
 	// Set Update Info
 	tmplData.UpdateAvailable = s.UpdateAvailable
@@ -437,6 +443,69 @@ func (s *Server) isTrustedNetwork(r *http.Request) bool {
 	}
 
 	return ip.IsLoopback() || ip.IsPrivate()
+}
+
+// isLoopbackHost reports whether the request host refers to the local machine.
+func isLoopbackHost(r *http.Request) bool {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.TrimSpace(host))
+	return host == "localhost" || host == "::1" || host == "127.0.0.1"
+}
+
+// requestScheme returns the scheme used for the current request.
+func requestScheme(r *http.Request) string {
+	if r.TLS != nil || (r.URL != nil && r.URL.Scheme == "https") {
+		return "https"
+	}
+	return "http"
+}
+
+// requestPort returns the port used for the current request, falling back to
+// the well-known port for the request scheme.
+func requestPort(r *http.Request) string {
+	if _, port, err := net.SplitHostPort(r.Host); err == nil && port != "" {
+		return port
+	}
+	if requestScheme(r) == "https" {
+		return "443"
+	}
+	return "80"
+}
+
+// detectedIPAddress returns the IP address clients on the LAN can use to reach
+// this server. It finds the IP of the interface used for outbound traffic via
+// the OS routing table (no packets are actually sent).
+func (s *Server) detectedIPAddress() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = conn.Close() }()
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok || localAddr == nil {
+		return ""
+	}
+	ip := localAddr.IP
+	if ip == nil || ip.IsLoopback() || ip.IsUnspecified() {
+		return ""
+	}
+	return ip.String()
+}
+
+// detectedAccessURL returns a URL that LAN clients can use to reach this
+// server instead of localhost, or "" if one cannot be determined.
+func (s *Server) detectedAccessURL(r *http.Request) string {
+	if !isLoopbackHost(r) {
+		return ""
+	}
+	ip := s.detectedIPAddress()
+	if ip == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s://%s:%s", requestScheme(r), ip, requestPort(r))
 }
 
 // saveSession saves the session with dynamic Secure flag based on request scheme.

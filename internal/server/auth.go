@@ -71,6 +71,13 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 	}
 }
 
+func (s *Server) loginTemplateData(r *http.Request, flashes []string) TemplateData {
+	return TemplateData{
+		OIDCEnabled: s.Config.OIDCEnabled,
+		Flashes:     flashes,
+	}
+}
+
 func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleLoginGet called")
 
@@ -130,7 +137,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.renderTemplate(w, r, "login", TemplateData{OIDCEnabled: s.Config.OIDCEnabled})
+	s.renderTemplate(w, r, "login", s.loginTemplateData(r, nil))
 }
 
 func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +149,7 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("Login failed: user not found", "username", username)
 		localizer := s.getLocalizer(r)
-		s.renderTemplate(w, r, "login", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username or password"})}})
+		s.renderTemplate(w, r, "login", s.loginTemplateData(r, []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username or password"})}))
 		return
 	}
 
@@ -156,7 +163,7 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		slog.Warn("Login failed: invalid password", "username", username)
 		localizer := s.getLocalizer(r)
-		s.renderTemplate(w, r, "login", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username or password"})}})
+		s.renderTemplate(w, r, "login", s.loginTemplateData(r, []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username or password"})}))
 		return
 	}
 

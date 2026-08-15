@@ -6,6 +6,13 @@
 <h1>{{ t .Localizer "Log In" }}</h1>
 {{ end }}
 {{ define "content" }}
+{{ if .DetectedAccessURL }}
+<div class="w3-panel w3-yellow w3-border w3-border-amber w3-round w3-padding">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    {{ t .Localizer "You are accessing this server via localhost. For proper firmware generation you should use:" }}
+    <strong><a href="{{ .DetectedAccessURL }}">{{ .DetectedAccessURL }}</a></strong>
+</div>
+{{ end }}
 <form method="post">
     <label for="username">{{ t .Localizer "Username" }}</label>
     <input name="username" id="username" required>
