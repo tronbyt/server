@@ -1094,6 +1094,18 @@
   "Schedule": {
     "other": "Schedule"
   },
+  "No location is set for this device, so schedule times use the server's timezone.": {
+    "other": "No location is set for this device, so schedule times use the server's timezone."
+  },
+  "Add a location": {
+    "other": "Add a location"
+  },
+  "so schedule times match your local time.": {
+    "other": "so schedule times match your local time."
+  },
+  "No location is set for this device, so schedule times use the server's timezone. Add a location so schedule times match your local time.": {
+    "other": "No location is set for this device, so schedule times use the server's timezone. Add a location so schedule times match your local time."
+  },
   "Start Time": {
     "other": "Start Time"
   },

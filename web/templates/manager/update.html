@@ -542,6 +542,12 @@
                                name="location"
                                id="location"
                                value='{{ if .Device.Location }}{{ json .Device.Location }}{{ else }}{{ "{}" }}{{ end }}'>
+                        {{ if not .Device.HasTimezone }}
+                        <p class="settings-help settings-note-danger">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ t .Localizer "No location is set for this device, so schedule times use the server's timezone. Add a location so schedule times match your local time." }}
+                        </p>
+                        {{ end }}
                     </div>
                 </div>
                 <div class="settings-field-row">

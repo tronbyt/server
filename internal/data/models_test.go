@@ -60,6 +60,33 @@ func TestDeviceGetDimModeIsActiveUsesManualOverride(t *testing.T) {
 	assert.True(t, device.GetDimModeIsActive())
 }
 
+func TestDeviceHasTimezone(t *testing.T) {
+	tz := "America/New_York"
+
+	assert.False(t, (*Device)(nil).HasTimezone())
+
+	assert.False(t, (&Device{}).HasTimezone())
+
+	device := &Device{
+		Location: DeviceLocation{Timezone: tz},
+	}
+	assert.True(t, device.HasTimezone())
+
+	device = &Device{
+		Location: DeviceLocation{Description: "Somewhere"},
+	}
+	assert.False(t, device.HasTimezone())
+
+	device = &Device{
+		Timezone: &tz,
+	}
+	assert.True(t, device.HasTimezone())
+
+	empty := ""
+	device = &Device{Timezone: &empty}
+	assert.False(t, device.HasTimezone())
+}
+
 func TestDeviceSupportsHTTPFirmwareCommands(t *testing.T) {
 	httpDevice := Device{
 		Type: DeviceTidbytGen1,
