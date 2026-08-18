@@ -124,6 +124,25 @@ type TemplateData struct {
 	OIDCUsernameClaim    string
 	OIDCAdminGroupClaim  string
 	OIDCAdminGroupValue  string
+
+	// Third-party connections (/connections page and nav link)
+	ConnectionProviders []ConnectionProviderView
+	HasConnections      bool
+	DeviceFlow          *DeviceFlowView
+}
+
+// DeviceFlowView is the waiting page's model for one in-flight device
+// authorization.
+type DeviceFlowView struct {
+	ID                      string
+	ProviderName            string
+	ProviderDisplayName     string
+	UserCode                string
+	VerificationURI         string
+	VerificationURIComplete string
+	ExpiresInSeconds        int
+	ShownOnDisplays         int
+	ReturnTo                string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.
@@ -169,6 +188,10 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	// Set Update Info
 	tmplData.UpdateAvailable = s.UpdateAvailable
 	tmplData.LatestReleaseURL = s.LatestReleaseURL
+
+	// Show the Connections nav link only when the admin has configured at
+	// least one provider's client credentials.
+	tmplData.HasConnections = s.anyConnectionProviderConfigured()
 
 	// Get User from session if not provided in tmplData
 	session, _ := s.Store.Get(r, "session-name")

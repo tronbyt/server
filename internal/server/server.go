@@ -21,6 +21,7 @@ import (
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/config"
+	"tronbyt-server/internal/connections"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/web"
 
@@ -49,6 +50,22 @@ type Server struct {
 	PromGatherer  prometheus.Gatherer
 	metrics       *appMetrics
 	OIDCProvider  *OIDCProvider
+
+	// Connections is the third-party OAuth2 connection store (Strava etc).
+	// Always non-nil; provider availability is gated per-call by config.
+	Connections         *connections.Service
+	ConnectionsRegistry *connections.Registry
+
+	// oauth2FieldsCache memoizes per-app oauth2 schema fields so token
+	// injection doesn't re-evaluate starlark on every render. See
+	// oauth2FieldsForApp.
+	oauth2FieldsCache map[string]oauth2FieldsEntry
+	oauth2FieldsMu    sync.RWMutex
+
+	// deviceFlows tracks in-flight device authorization grants. In memory
+	// only — a flow is shorter-lived than the user code itself.
+	deviceFlows   map[string]*deviceFlow
+	deviceFlowsMu sync.RWMutex
 
 	systemAppsCache      []apps.AppMetadata
 	systemAppsCacheMutex sync.RWMutex
@@ -89,6 +106,8 @@ var templateFiles = map[string]string{
 	"update":           "manager/update.html",
 	"device_tv":        "manager/device_tv.html",
 	"settings":         "admin/settings.html",
+	"connections":      "manager/connections.html",
+	"deviceconnect":    "manager/deviceconnect.html",
 }
 
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -172,6 +191,20 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 			s.OIDCProvider = prov
 			slog.Info("OIDC provider initialized", "issuer", cfg.OIDCIssuerURL)
 		}
+	}
+
+	// Third-party OAuth2 connections (Strava etc). Token encryption is keyed
+	// off the same secret_key used for sessions.
+	s.ConnectionsRegistry = connections.NewRegistry(
+		connections.Strava(),
+		connections.Spotify(),
+		connections.GitHub(),
+	)
+	s.Connections = &connections.Service{
+		DB:       s.DB,
+		Registry: s.ConnectionsRegistry,
+		Secret:   secretKey,
+		GetCreds: cfg.ConnectionClientCreds,
 	}
 
 	s.Store = sessions.NewCookieStore([]byte(secretKey))

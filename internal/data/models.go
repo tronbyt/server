@@ -540,6 +540,24 @@ type User struct {
 	Devices        []Device             `gorm:"foreignKey:Username;references:Username" json:"devices"`
 	Credentials    []WebAuthnCredential `gorm:"foreignKey:UserID;references:Username"   json:"credentials"`
 	OIDCIdentities []OIDCIdentity       `gorm:"foreignKey:UserID;references:Username"   json:"oidc_identities"`
+	Connections    []Connection         `gorm:"foreignKey:UserID;references:Username"   json:"connections"`
+}
+
+// Connection links a user to a third-party OAuth2 provider (e.g. Strava).
+// Tokens are stored encrypted with a key derived from the server's secret_key.
+type Connection struct {
+	ID              uint   `gorm:"primaryKey"`
+	UserID          string `gorm:"uniqueIndex:idx_user_provider,priority:1;not null"`
+	User            User   `gorm:"foreignKey:UserID;references:Username"             json:"-"`
+	Provider        string `gorm:"uniqueIndex:idx_user_provider,priority:2;not null"` // "strava", "google", ...
+	ExternalID      string // Provider-side user id (e.g. Strava athlete.id)
+	DisplayName     string // Optional human label shown in UI
+	Scopes          string // Space-separated scopes actually granted
+	AccessToken     []byte `json:"-"` // AES-GCM encrypted
+	RefreshToken    []byte `json:"-"` // AES-GCM encrypted
+	AccessExpiresAt time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type WebAuthnCredential struct {

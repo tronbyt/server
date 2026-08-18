@@ -1,0 +1,69 @@
+{{ define "connections" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "Connections" }}{{ end }}
+{{ define "header" }}<h2>{{ t .Localizer "Connected Accounts" }}</h2>{{ end }}
+{{ define "content" }}
+<div class="w3-container" style="max-width: 720px;">
+    <p style="color: #888;">
+        {{ t .Localizer "Connect an account once, and any app that uses it renders with a fresh token automatically — no API keys to paste." }}
+    </p>
+    {{ if not .ConnectionProviders }}
+    <p class="flash">
+        {{ t .Localizer "No connection providers are configured on this server. To enable one, register an OAuth application with the provider and set its client ID and secret in the server environment (see .env.example)." }}
+    </p>
+    {{ end }}
+    {{ range .ConnectionProviders }}
+    <div class="w3-card w3-round"
+         style="padding: 16px;
+                margin-bottom: 12px">
+        <div style="display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    flex-wrap: wrap">
+            <div>
+                <strong>{{ .DisplayName }}</strong>
+                {{ if .Connected }}
+                <div style="margin-top: 4px;">
+                    <i class="fa-solid fa-circle-check" style="color:#2ecc71"></i>
+                    {{ t $.Localizer "Connected as" }} {{ .Label }}
+                </div>
+                {{ if .Scopes }}
+                <div style="font-size: 12px;
+                            color: #888;
+                            margin-top: 2px">{{ t $.Localizer "Scopes:" }} {{ .Scopes }}</div>
+                {{ end }}
+                {{ else }}
+                <div style="margin-top: 4px; color: #888;">{{ t $.Localizer "Not connected" }}</div>
+                {{ end }}
+            </div>
+            <div>
+                {{ if .Connected }}
+                <form method="post"
+                      action="/connections/{{ .ConnectionID }}/disconnect"
+                      style="display:inline">
+                    <input type="hidden" name="return_to" value="/connections">
+                    <button type="submit"
+                            class="w3-button w3-round"
+                            style="background-color:#888;
+                                   color:#fff">{{ t $.Localizer "Disconnect" }}</button>
+                </form>
+                {{ else if .DeviceFlow }}
+                <a class="w3-button w3-round"
+                   style="background-color: var(--primary-color);
+                          color:#fff"
+                   href="/connections/device/{{ .Name }}?return_to=%2Fconnections"
+                   title="{{ t $.Localizer "Shows a short code here and on your display" }}">{{ t $.Localizer "Connect with a code" }}</a>
+                {{ else }}
+                <a class="w3-button w3-round"
+                   style="background-color: var(--primary-color);
+                          color:#fff"
+                   href="/connections/start/{{ .Name }}?return_to=%2Fconnections">{{ t $.Localizer "Connect" }}</a>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+    {{ end }}
+</div>
+{{ end }}

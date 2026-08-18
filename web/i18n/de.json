@@ -2143,5 +2143,50 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
+  },
+  "Connections": {
+    "other": "Verbindungen"
+  },
+  "Connected Accounts": {
+    "other": "Verbundene Konten"
+  },
+  "Connect an account once, and any app that uses it renders with a fresh token automatically — no API keys to paste.": {
+    "other": "Verbinden Sie ein Konto einmal, und jede App, die es nutzt, wird automatisch mit einem frischen Token gerendert — keine API-Schlüssel zum Einfügen."
+  },
+  "No connection providers are configured on this server. To enable one, register an OAuth application with the provider and set its client ID and secret in the server environment (see .env.example).": {
+    "other": "Auf diesem Server sind keine Verbindungsanbieter konfiguriert. Registrieren Sie zum Aktivieren eine OAuth-Anwendung beim Anbieter und hinterlegen Sie deren Client-ID und Secret in der Server-Umgebung (siehe .env.example)."
+  },
+  "Connected as": {
+    "other": "Verbunden als"
+  },
+  "Scopes:": {
+    "other": "Berechtigungen:"
+  },
+  "Not connected": {
+    "other": "Nicht verbunden"
+  },
+  "Disconnect": {
+    "other": "Trennen"
+  },
+  "Connect": {
+    "other": "Verbinden"
+  },
+  "Connect with a code": {
+    "other": "Mit einem Code verbinden"
+  },
+  "Shows a short code here and on your display": {
+    "other": "Zeigt einen kurzen Code hier und auf Ihrem Display an"
+  },
+  "Go to this address on your phone or computer and enter the code:": {
+    "other": "Öffnen Sie diese Adresse auf Ihrem Telefon oder Computer und geben Sie den Code ein:"
+  },
+  "This code is also showing on your display.": {
+    "other": "Dieser Code wird auch auf Ihrem Display angezeigt."
+  },
+  "Waiting for you to approve…": {
+    "other": "Warten auf Ihre Bestätigung…"
+  },
+  "Continue": {
+    "other": "Weiter"
   }
 }

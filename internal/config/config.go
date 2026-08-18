@@ -44,6 +44,32 @@ type Settings struct {
 	OIDCAdminGroupClaim  string `env:"OIDC_ADMIN_GROUP_CLAIM" envDefault:"groups"`
 	OIDCAdminGroupValue  string `env:"OIDC_ADMIN_GROUP_VALUE"`
 	OIDCUsernameClaim    string `env:"OIDC_USERNAME_CLAIM"    envDefault:"preferred_username"`
+
+	// Third-party OAuth2 connections (per-provider client credentials).
+	// Empty values disable that provider's "Connect" button.
+	StravaClientID      string `env:"STRAVA_CLIENT_ID"`
+	StravaClientSecret  string `env:"STRAVA_CLIENT_SECRET"`
+	SpotifyClientID     string `env:"SPOTIFY_CLIENT_ID"`
+	SpotifyClientSecret string `env:"SPOTIFY_CLIENT_SECRET"`
+	// GitHub uses the device flow, which needs no secret — a client id
+	// alone is enough to enable it.
+	GitHubClientID     string `env:"GITHUB_CLIENT_ID"`
+	GitHubClientSecret string `env:"GITHUB_CLIENT_SECRET"`
+}
+
+// ConnectionClientCreds returns the (client_id, client_secret) pair for a
+// provider name, or empty strings if not configured.
+func (s *Settings) ConnectionClientCreds(provider string) (string, string) {
+	switch provider {
+	case "strava":
+		return s.StravaClientID, s.StravaClientSecret
+	case "spotify":
+		return s.SpotifyClientID, s.SpotifyClientSecret
+	case "github":
+		return s.GitHubClientID, s.GitHubClientSecret
+	default:
+		return "", ""
+	}
 }
 
 func (s *Settings) SystemAppsDir() string {

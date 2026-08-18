@@ -949,6 +949,9 @@
         case "typeahead":
           inputElement = createTypeaheadField(field, config);
           break;
+        case "oauth2":
+          inputElement = createOAuth2Field(field);
+          break;
         default:
           inputElement = document.createElement("input");
           inputElement.value = config[field.id] || "";
@@ -1714,6 +1717,99 @@ function createImageUploadField(field, config) {
     return inputElement;
   }
 
+  // createOAuth2Field renders a Connect/Connected button for an OAuth2
+  // schema field. The actual OAuth flow runs server-side: clicking
+  // "Connect" navigates to /connections/start/<provider>, which redirects
+  // through the provider and back to /oauth-callback, then to this page.
+  // The annotated schema fields (tronbyt_*) tell us provider state.
+  function createOAuth2Field(field) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "oauth2-field";
+    wrapper.dataset.configId = field.id;
+    wrapper.setAttribute("data-ignore-config", "true");
+
+    const provider = field.tronbyt_provider || "";
+    const providerLabel = field.tronbyt_display_name || field.name || provider || "this provider";
+
+    if (!provider) {
+      const note = document.createElement("p");
+      note.className = "flash";
+      note.textContent =
+        "This app uses an OAuth2 provider Tronbyt does not yet recognize " +
+        "(authorization endpoint: " + (field.authorization_endpoint || "?") + "). " +
+        "Add provider support in internal/connections to enable.";
+      wrapper.appendChild(note);
+      return wrapper;
+    }
+
+    if (!field.tronbyt_configured) {
+      const note = document.createElement("p");
+      note.className = "flash";
+      note.textContent =
+        providerLabel + " is not configured on this server. " +
+        "Set " + provider.toUpperCase() + "_CLIENT_ID and " +
+        provider.toUpperCase() + "_CLIENT_SECRET in the server env.";
+      wrapper.appendChild(note);
+      return wrapper;
+    }
+
+    if (field.tronbyt_connected) {
+      const status = document.createElement("p");
+      status.style.margin = "0 0 8px 0";
+      const label = field.tronbyt_label || providerLabel;
+      status.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> ' +
+        "Connected as " + escapeHTML(label);
+      wrapper.appendChild(status);
+
+      const disconnect = document.createElement("form");
+      disconnect.method = "POST";
+      disconnect.action = "/connections/" + encodeURIComponent(field.tronbyt_connection_id) + "/disconnect";
+      disconnect.style.display = "inline";
+      const ret = document.createElement("input");
+      ret.type = "hidden";
+      ret.name = "return_to";
+      ret.value = window.location.pathname + window.location.search;
+      disconnect.appendChild(ret);
+      const btn = document.createElement("button");
+      btn.type = "submit";
+      btn.className = "w3-button w3-round";
+      btn.style.backgroundColor = "#888";
+      btn.style.color = "#fff";
+      btn.textContent = "Disconnect";
+      disconnect.appendChild(btn);
+      wrapper.appendChild(disconnect);
+      return wrapper;
+    }
+
+    const connect = document.createElement("a");
+    connect.className = "w3-button w3-round";
+    connect.style.backgroundColor = "var(--primary-color)";
+    connect.style.color = "#fff";
+    const params = new URLSearchParams();
+    params.set("return_to", window.location.pathname + window.location.search);
+    if (field.tronbyt_scopes) {
+      params.set("scopes", field.tronbyt_scopes);
+    }
+    // Device-flow providers show a short code here and on the display
+    // instead of bouncing through a redirect URI.
+    if (field.tronbyt_device_flow) {
+      connect.textContent = "Connect " + providerLabel + " with a code";
+      connect.title = "Shows a short code here and on your display";
+      connect.href = "/connections/device/" + encodeURIComponent(provider) + "?" + params.toString();
+    } else {
+      connect.textContent = "Connect " + providerLabel;
+      connect.href = "/connections/start/" + encodeURIComponent(provider) + "?" + params.toString();
+    }
+    wrapper.appendChild(connect);
+    return wrapper;
+  }
+
+  function escapeHTML(s) {
+    const div = document.createElement("div");
+    div.textContent = String(s == null ? "" : s);
+    return div.innerHTML;
+  }
+
   function createGeneratedField(field, config) {
     const sourceField = document.getElementById("schema_" + field.source);
     if (!sourceField) {
@@ -1731,7 +1827,7 @@ function createImageUploadField(field, config) {
         const response = await fetch(handlerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: field.id, param: sourceValue, config: config })
+          body: JSON.stringify({ id: field.id, param: sourceValue, source: field.source, config: config })
         });
 
         if (!response.ok) throw new Error("Failed to fetch generated fields");

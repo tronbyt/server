@@ -364,6 +364,10 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		schemaBytes = []byte("{}")
 	}
 
+	// Annotate OAuth2 fields with provider state so the form can render
+	// the right Connect/Connected button without leaking client_ids.
+	schemaBytes = s.annotateSchemaForUI(r.Context(), schemaBytes, user.Username)
+
 	deleteOnCancel := r.URL.Query().Get("delete_on_cancel") == "true"
 
 	var appMetadata *apps.AppMetadata
@@ -568,6 +572,7 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse Body
 	var payload struct {
 		Param  string         `json:"param"`
+		Source string         `json:"source"`
 		Config map[string]any `json:"config"`
 	}
 
@@ -588,6 +593,21 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Schema handlers back generated/typeahead fields, and the canonical
+	// OAuth pattern is schema.Generated(source = <oauth2 field id>), whose
+	// handler expects the token as its parameter. Inject connection tokens
+	// into the config, and when the source names an oauth2 field (the
+	// browser sends no value for those) pass the injected token as param.
+	// Gating on the injected set means a client-supplied source can only
+	// select a token the same user could already read via config.
+	injected := s.injectConnectionTokens(r.Context(), payload.Config, appPath, device.Username)
+	param := payload.Param
+	if param == "" && injected[payload.Source] {
+		if tok, ok := payload.Config[payload.Source].(string); ok {
+			param = tok
+		}
+	}
+
 	// Call Handler
 	result, err := renderer.CallSchemaHandler(
 		r.Context(),
@@ -596,7 +616,7 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		64, 32,
 		device.Type.Supports2x(),
 		handler,
-		payload.Param)
+		param)
 	if err != nil {
 		slog.Error("Schema handler failed", "handler", handler, "error", err)
 		http.Error(w, "Schema handler failed", http.StatusInternalServerError)
