@@ -14,6 +14,13 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	// maxDisplayingAckTimeoutSeconds is a safety cap for v1+ firmware when displaying
+	// ACK never arrives (dropped image, firmware bug). Long enough for very long WebP
+	// animations but prevents indefinite rotation stall.
+	maxDisplayingAckTimeoutSeconds = 600
+)
+
 type WSMessage struct {
 	Queued     *int        `json:"queued"`
 	Displaying *int        `json:"displaying"`
@@ -280,12 +287,15 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			sendImmediate = false
 		}
 
-		// 3. Wait for displaying ACK, legacy dwell timeout, or interrupt.
-		// v1+ firmware sends displaying only when the image is on screen (including long
-		// animations), so we wait indefinitely rather than advancing on a fixed timeout.
+		// 3. Wait for displaying ACK, safety/legacy timeout, or interrupt.
+		// v1+ firmware sends displaying when the image is on screen (including long
+		// animations). We wait for that ACK, with a long safety timeout if it never arrives.
 		var timer *time.Timer
 		var timerC <-chan time.Time
-		if device.Info.ProtocolVersion == nil {
+		if device.Info.ProtocolVersion != nil {
+			timer = time.NewTimer(time.Duration(maxDisplayingAckTimeoutSeconds) * time.Second)
+			timerC = timer.C
+		} else {
 			timer = time.NewTimer(time.Duration(dwell) * time.Second)
 			timerC = timer.C
 		}
@@ -370,7 +380,18 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 				}
 			case <-timerC:
-				// Legacy firmware: no displaying ACK, fall back to dwell time.
+				if device.Info.ProtocolVersion != nil {
+					appIname := ""
+					if app != nil {
+						appIname = app.Iname
+					}
+					slog.Warn(
+						"Timed out waiting for displaying ACK, advancing rotation",
+						"device", device.ID,
+						"app", appIname,
+						"timeout_secs", maxDisplayingAckTimeoutSeconds,
+					)
+				}
 				waiting = false
 			case <-stopCh:
 				if timer != nil {

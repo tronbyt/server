@@ -103,7 +103,7 @@ The device sends JSON messages to the server to acknowledge the state of images.
 The server uses a sophisticated acknowledgment system to manage the flow of images.
 
 *   After sending an image, the server waits for an `Image Displaying` message from the device before sending the next image.
-*   **v1+ Firmware (protocol_version ≥ 1)**: The server waits indefinitely for `displaying` so long-running animations are not interrupted by a fixed timeout. Pushed preview images can still interrupt the wait.
+*   **v1+ Firmware (protocol_version ≥ 1)**: The server waits for `displaying` before sending the next image. If no ACK arrives within 10 minutes (safety cap for dropped images or firmware bugs), the server logs a warning and advances rotation. Pushed preview images can interrupt the wait immediately.
 *   **Legacy Firmware**: Devices without `protocol_version` do not send `displaying` ACKs. The server falls back to a dwell-time delay before sending the next image.
 *   **Push Notifications**: The waiting process can be interrupted by server-side events, such as:
     *   An ephemeral app being pushed to the device.
