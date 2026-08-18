@@ -102,8 +102,9 @@ The device sends JSON messages to the server to acknowledge the state of images.
 
 The server uses a sophisticated acknowledgment system to manage the flow of images.
 
-*   After sending an image, the server waits for an `Image Displaying` message from the device.
-*   **Timeout for Old Firmware**: If the server doesn't receive an acknowledgment within a certain timeout period, it assumes the device is running older firmware that doesn't send acknowledgments. It then falls back to a simple time-based delay (`dwell_time`) between sending images.
+*   After sending an image, the server waits for an `Image Displaying` message from the device before sending the next image.
+*   **v1+ Firmware (protocol_version ≥ 1)**: The server waits indefinitely for `displaying` so long-running animations are not interrupted by a fixed timeout. Pushed preview images can still interrupt the wait.
+*   **Legacy Firmware**: Devices without `protocol_version` do not send `displaying` ACKs. The server falls back to a dwell-time delay before sending the next image.
 *   **Push Notifications**: The waiting process can be interrupted by server-side events, such as:
     *   An ephemeral app being pushed to the device.
     *   A change in the device's settings (e.g., brightness).

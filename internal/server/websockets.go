@@ -14,12 +14,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	// minAckTimeoutSeconds is the minimum time to wait for device ACK.
-	// This accounts for the previous app's dwell time, network latency, and processing overhead.
-	minAckTimeoutSeconds = 30
-)
-
 type WSMessage struct {
 	Queued     *int        `json:"queued"`
 	Displaying *int        `json:"displaying"`
@@ -286,18 +280,15 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			sendImmediate = false
 		}
 
-		// 3. Wait for ACK or Timeout or Interrupt
-		var timeoutSec int
-		if device.Info.ProtocolVersion != nil {
-			// Device may delay ACK until previous app completes its dwell time.
-			// Wait at least minAckTimeoutSeconds OR 2x the dwell time, whichever is greater.
-			timeoutSec = max(dwell*2, minAckTimeoutSeconds)
-		} else {
-			// Old firmware: wait exactly dwell time
-			timeoutSec = dwell
+		// 3. Wait for displaying ACK, legacy dwell timeout, or interrupt.
+		// v1+ firmware sends displaying only when the image is on screen (including long
+		// animations), so we wait indefinitely rather than advancing on a fixed timeout.
+		var timer *time.Timer
+		var timerC <-chan time.Time
+		if device.Info.ProtocolVersion == nil {
+			timer = time.NewTimer(time.Duration(dwell) * time.Second)
+			timerC = timer.C
 		}
-
-		timer := time.NewTimer(time.Duration(timeoutSec) * time.Second)
 
 		interrupted := false
 		waiting := true
@@ -325,7 +316,6 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						slog.Debug("Received ACK for default or pushed image (no app context)", "device", device.ID)
 					}
 				}
-				// If just Queued, we keep waiting for Displaying.
 			case val := <-broadcastCh:
 				// Update available (Reload device first)
 				reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
@@ -379,15 +369,24 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						lastSentBrightness = newBrightness
 					}
 				}
-			case <-timer.C:
-				// Timeout
+			case <-timerC:
+				// Legacy firmware: no displaying ACK, fall back to dwell time.
 				waiting = false
 			case <-stopCh:
-				timer.Stop()
+				if timer != nil {
+					timer.Stop()
+				}
 				return
 			}
 		}
-		timer.Stop()
+		if timer != nil {
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+		}
 
 		if interrupted {
 			continue
