@@ -991,17 +991,39 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 // removeAppRenders deletes the rendered webp files belonging to an
 // installation, both the timestamped renders and any pushed image.
 func (s *Server) removeAppRenders(deviceID, iname string) {
+	// iname becomes a path component here. Every app the UI and the API
+	// create gets a server-generated numeric iname, but handleImportDeviceConfig
+	// stores whatever an uploaded config carries, so treat it as untrusted:
+	// only a plain filename component is safe to build a path from.
+	if !isSafePathComponent(iname) {
+		slog.Error("Refusing render cleanup for unsafe installation name", "device_id", deviceID, "iname", iname)
+		return
+	}
+
 	webpDir, err := s.ensureDeviceImageDir(deviceID)
 	if err != nil {
 		slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
 		return
 	}
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
-	for _, match := range matches {
-		if err := os.Remove(match); err != nil {
-			slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
+
+	// Match on the name rather than globbing: glob metacharacters in an
+	// imported iname would otherwise widen the pattern past this app's files.
+	entries, err := os.ReadDir(webpDir)
+	if err != nil {
+		slog.Error("Failed to read device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
+		return
+	}
+	suffix := fmt.Sprintf("-%s.webp", iname)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), suffix) {
+			continue
+		}
+		path := filepath.Join(webpDir, entry.Name())
+		if err := os.Remove(path); err != nil {
+			slog.Error("Failed to remove webp file on app disable", "path", path, "error", err)
 		}
 	}
+
 	// Also check for pushed webp files
 	pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", iname))
 	if _, err := os.Stat(pushedWebpPath); err == nil {
@@ -1009,6 +1031,15 @@ func (s *Server) removeAppRenders(deviceID, iname string) {
 			slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
 		}
 	}
+}
+
+// isSafePathComponent reports whether name can be joined into a path as a
+// single element without escaping the directory it is joined to.
+func isSafePathComponent(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	return filepath.Base(name) == name
 }
 
 func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {

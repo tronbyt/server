@@ -1589,3 +1589,33 @@ func TestHandlePatchInstallationDisableRemovesRenders(t *testing.T) {
 	assert.NoFileExists(t, rendered, "rendered webp should be removed on disable")
 	assert.NoFileExists(t, pushed, "pushed webp should be removed on disable")
 }
+
+func TestRemoveAppRendersRejectsUnsafeIname(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice"
+
+	webpDir, err := s.ensureDeviceImageDir(deviceID)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Join(webpDir, "pushed"), 0755))
+
+	// A file the cleanup has no business touching: it sits beside the device
+	// directory, where another device's renders live. Joining the pushed-image
+	// path with a traversing iname lands exactly here.
+	victim := filepath.Join(s.DataDir, "webp", "victim.webp")
+	require.NoError(t, os.WriteFile(victim, []byte("victim"), 0644))
+
+	// An unrelated render belonging to another installation on this device.
+	other := filepath.Join(webpDir, "1700000000-other.webp")
+	require.NoError(t, os.WriteFile(other, []byte("other"), 0644))
+
+	// Traversal: an iname like this can only arrive via an imported config,
+	// which stores the uploaded value verbatim.
+	s.removeAppRenders(deviceID, "../../victim")
+	assert.FileExists(t, victim, "traversal iname must not reach outside the device directory")
+
+	// Glob metacharacters must not widen the match past this app's files.
+	s.removeAppRenders(deviceID, "*")
+	assert.FileExists(t, other, "glob metacharacter in iname must not match other installations")
+
+	assert.FileExists(t, victim, "unrelated file must survive both attempts")
+}
