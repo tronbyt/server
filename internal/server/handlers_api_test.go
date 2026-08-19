@@ -933,8 +933,10 @@ func TestHandlePatchInstallationSchedule(t *testing.T) {
 		t.Errorf("Expected recurrenceEndDate '2026-12-31', got %v", updated.RecurrenceEndDate)
 	}
 
-	// Verify the response JSON also contains the schedule fields
-	var respApp data.App
+	// Verify the response JSON also contains the schedule fields. PATCH now
+	// answers with the same AppPayload shape GET uses, rather than a raw
+	// data.App.
+	var respApp AppPayload
 	if err := json.NewDecoder(rr.Body).Decode(&respApp); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
@@ -1448,4 +1450,172 @@ func isAnonymousEphemeral(name string) bool {
 	}
 	inner := name[2 : len(name)-5] // strip "__" and ".webp"
 	return !strings.Contains(inner, "_")
+}
+
+func TestHandlePatchInstallationConfigAndRenderFields(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installID := "configapp"
+
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Config App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(context.Background(), &app), "Failed to create dummy app")
+
+	autoPin := true
+	colorFilter := "dimmed"
+	showFullAnimation := "true"
+	cfg := map[string]any{"stop_id": "place-north", "api_key": "secret-token"}
+
+	update := InstallationUpdate{
+		AutoPin:           &autoPin,
+		ColorFilter:       &colorFilter,
+		ShowFullAnimation: &showFullAnimation,
+		Config:            &cfg,
+	}
+	body, err := json.Marshal(update)
+	require.NoError(t, err)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, "PATCH body: %s", rr.Body.String())
+
+	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	require.NoError(t, err, "Failed to fetch updated app state")
+	assert.True(t, updated.AutoPin, "Expected autoPin true")
+	if assert.NotNil(t, updated.ColorFilter, "Expected colorFilter dimmed") {
+		assert.Equal(t, data.ColorFilterDimmed, *updated.ColorFilter)
+	}
+	if assert.NotNil(t, updated.ShowFullAnimation, "Expected showFullAnimation true") {
+		assert.True(t, *updated.ShowFullAnimation)
+	}
+	assert.Equal(t, "place-north", updated.Config["stop_id"], "Expected config to be stored")
+
+	// Config is write-only: it must not come back out in the PATCH response.
+	assert.NotContains(t, rr.Body.String(), "secret-token", "PATCH response leaked app config")
+
+	// ...nor in the GET payload.
+	req = newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, nil)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, "GET body: %s", rr.Body.String())
+	assert.NotContains(t, rr.Body.String(), "secret-token", "GET response leaked app config")
+
+	// The non-secret render fields are readable, so a client can diff them.
+	var payload AppPayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload), "Failed to decode GET response")
+	assert.True(t, payload.AutoPin, "GET autoPin: expected true")
+	if assert.NotNil(t, payload.ColorFilter, "GET colorFilter: expected dimmed") {
+		assert.Equal(t, data.ColorFilterDimmed, *payload.ColorFilter)
+	}
+
+	// "auto" and "inherit" clear back to the device default.
+	auto := "auto"
+	inherit := "inherit"
+	clearUpdate := InstallationUpdate{ShowFullAnimation: &auto, ColorFilter: &inherit}
+	body, err = json.Marshal(clearUpdate)
+	require.NoError(t, err)
+	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, "clear body: %s", rr.Body.String())
+	cleared, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	require.NoError(t, err, "Failed to fetch cleared app state")
+	assert.Nil(t, cleared.ShowFullAnimation, "Expected showFullAnimation cleared")
+	assert.Nil(t, cleared.ColorFilter, "Expected colorFilter cleared")
+
+	// An unknown filter is rejected rather than stored -- and rejected before
+	// the valid half of the same request is applied.
+	bogus := "chartreuse"
+	pinned := true
+	body, err = json.Marshal(InstallationUpdate{ColorFilter: &bogus, Pinned: &pinned})
+	require.NoError(t, err)
+	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusBadRequest, rr.Code, "bogus colorFilter")
+
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	assert.Nil(t, device.PinnedApp, "rejected request must not have pinned the app")
+}
+
+func TestHandlePatchInstallationDisableRemovesRenders(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installID := "disableapp"
+
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Disable App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(context.Background(), &app))
+
+	webpDir := filepath.Join(s.DataDir, "webp", deviceID)
+	pushedDir := filepath.Join(webpDir, "pushed")
+	require.NoError(t, os.MkdirAll(pushedDir, 0755))
+	rendered := filepath.Join(webpDir, fmt.Sprintf("1700000000-%s.webp", installID))
+	pushed := filepath.Join(pushedDir, installID+".webp")
+	require.NoError(t, os.WriteFile(rendered, []byte("render"), 0644))
+	require.NoError(t, os.WriteFile(pushed, []byte("push"), 0644))
+
+	disabled := false
+	body, err := json.Marshal(InstallationUpdate{Enabled: &disabled})
+	require.NoError(t, err)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, "PATCH body: %s", rr.Body.String())
+
+	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	require.NoError(t, err)
+	assert.False(t, updated.Enabled, "app should be disabled")
+
+	// Cleanup runs after the commit, but still within the request.
+	assert.NoFileExists(t, rendered, "rendered webp should be removed on disable")
+	assert.NoFileExists(t, pushed, "pushed webp should be removed on disable")
+}
+
+func TestRemoveAppRendersRejectsUnsafeIname(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice"
+
+	webpDir, err := s.ensureDeviceImageDir(deviceID)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Join(webpDir, "pushed"), 0755))
+
+	// A file the cleanup has no business touching: it sits beside the device
+	// directory, where another device's renders live. Joining the pushed-image
+	// path with a traversing iname lands exactly here.
+	victim := filepath.Join(s.DataDir, "webp", "victim.webp")
+	require.NoError(t, os.WriteFile(victim, []byte("victim"), 0644))
+
+	// An unrelated render belonging to another installation on this device.
+	other := filepath.Join(webpDir, "1700000000-other.webp")
+	require.NoError(t, os.WriteFile(other, []byte("other"), 0644))
+
+	// Traversal: an iname like this can only arrive via an imported config,
+	// which stores the uploaded value verbatim.
+	s.removeAppRenders(deviceID, "../../victim")
+	assert.FileExists(t, victim, "traversal iname must not reach outside the device directory")
+
+	// Glob metacharacters must not widen the match past this app's files.
+	s.removeAppRenders(deviceID, "*")
+	assert.FileExists(t, other, "glob metacharacter in iname must not match other installations")
+
+	assert.FileExists(t, victim, "unrelated file must survive both attempts")
 }

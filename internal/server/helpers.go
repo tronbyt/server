@@ -307,6 +307,17 @@ func (s *Server) getColorFilterChoices() []ColorFilterOption {
 	}
 }
 
+// isValidColorFilter reports whether v names a filter the renderer knows,
+// using the same list the app config page offers.
+func (s *Server) isValidColorFilter(v string) bool {
+	for _, c := range s.getColorFilterChoices() {
+		if c.Value == v {
+			return true
+		}
+	}
+	return false
+}
+
 // generateSecureToken generates a URL-safe, base64 encoded, securely random string.
 // This is used for generating API keys and device IDs.
 func generateSecureToken(length int) (string, error) {
