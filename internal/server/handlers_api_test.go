@@ -1467,9 +1467,7 @@ func TestHandlePatchInstallationConfigAndRenderFields(t *testing.T) {
 		Enabled:     true,
 		Order:       0,
 	}
-	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
-		t.Fatalf("Failed to create dummy app: %v", err)
-	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(context.Background(), &app), "Failed to create dummy app")
 
 	autoPin := true
 	colorFilter := "dimmed"
@@ -1482,89 +1480,70 @@ func TestHandlePatchInstallationConfigAndRenderFields(t *testing.T) {
 		ShowFullAnimation: &showFullAnimation,
 		Config:            &cfg,
 	}
-	body, _ := json.Marshal(update)
+	body, err := json.Marshal(update)
+	require.NoError(t, err)
 	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
 	rr := httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
-	}
+	require.Equal(t, http.StatusOK, rr.Code, "PATCH body: %s", rr.Body.String())
 
 	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
-	if err != nil {
-		t.Fatalf("Failed to fetch updated app state: %v", err)
+	require.NoError(t, err, "Failed to fetch updated app state")
+	assert.True(t, updated.AutoPin, "Expected autoPin true")
+	if assert.NotNil(t, updated.ColorFilter, "Expected colorFilter dimmed") {
+		assert.Equal(t, data.ColorFilterDimmed, *updated.ColorFilter)
 	}
-	if !updated.AutoPin {
-		t.Errorf("Expected autoPin true, got false")
+	if assert.NotNil(t, updated.ShowFullAnimation, "Expected showFullAnimation true") {
+		assert.True(t, *updated.ShowFullAnimation)
 	}
-	if updated.ColorFilter == nil || *updated.ColorFilter != data.ColorFilterDimmed {
-		t.Errorf("Expected colorFilter dimmed, got %v", updated.ColorFilter)
-	}
-	if updated.ShowFullAnimation == nil || !*updated.ShowFullAnimation {
-		t.Errorf("Expected showFullAnimation true, got %v", updated.ShowFullAnimation)
-	}
-	if updated.Config["stop_id"] != "place-north" {
-		t.Errorf("Expected config to be stored, got %v", updated.Config)
-	}
+	assert.Equal(t, "place-north", updated.Config["stop_id"], "Expected config to be stored")
 
 	// Config is write-only: it must not come back out in the PATCH response.
-	if bytes.Contains(rr.Body.Bytes(), []byte("secret-token")) {
-		t.Errorf("PATCH response leaked app config: %s", rr.Body.String())
-	}
+	assert.NotContains(t, rr.Body.String(), "secret-token", "PATCH response leaked app config")
 
 	// ...nor in the GET payload.
 	req = newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, nil)
 	rr = httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("GET got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
-	}
-	if bytes.Contains(rr.Body.Bytes(), []byte("secret-token")) {
-		t.Errorf("GET response leaked app config: %s", rr.Body.String())
-	}
+	require.Equal(t, http.StatusOK, rr.Code, "GET body: %s", rr.Body.String())
+	assert.NotContains(t, rr.Body.String(), "secret-token", "GET response leaked app config")
 
 	// The non-secret render fields are readable, so a client can diff them.
 	var payload AppPayload
-	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
-		t.Fatalf("Failed to decode GET response: %v", err)
-	}
-	if !payload.AutoPin {
-		t.Errorf("GET autoPin: expected true, got false")
-	}
-	if payload.ColorFilter == nil || *payload.ColorFilter != data.ColorFilterDimmed {
-		t.Errorf("GET colorFilter: expected dimmed, got %v", payload.ColorFilter)
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload), "Failed to decode GET response")
+	assert.True(t, payload.AutoPin, "GET autoPin: expected true")
+	if assert.NotNil(t, payload.ColorFilter, "GET colorFilter: expected dimmed") {
+		assert.Equal(t, data.ColorFilterDimmed, *payload.ColorFilter)
 	}
 
 	// "auto" and "inherit" clear back to the device default.
 	auto := "auto"
 	inherit := "inherit"
-	clear := InstallationUpdate{ShowFullAnimation: &auto, ColorFilter: &inherit}
-	body, _ = json.Marshal(clear)
+	clearUpdate := InstallationUpdate{ShowFullAnimation: &auto, ColorFilter: &inherit}
+	body, err = json.Marshal(clearUpdate)
+	require.NoError(t, err)
 	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
 	rr = httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("clear: got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
-	}
+	require.Equal(t, http.StatusOK, rr.Code, "clear body: %s", rr.Body.String())
 	cleared, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
-	if err != nil {
-		t.Fatalf("Failed to fetch cleared app state: %v", err)
-	}
-	if cleared.ShowFullAnimation != nil {
-		t.Errorf("Expected showFullAnimation cleared, got %v", *cleared.ShowFullAnimation)
-	}
-	if cleared.ColorFilter != nil {
-		t.Errorf("Expected colorFilter cleared, got %v", *cleared.ColorFilter)
-	}
+	require.NoError(t, err, "Failed to fetch cleared app state")
+	assert.Nil(t, cleared.ShowFullAnimation, "Expected showFullAnimation cleared")
+	assert.Nil(t, cleared.ColorFilter, "Expected colorFilter cleared")
 
-	// An unknown filter is rejected rather than stored.
+	// An unknown filter is rejected rather than stored -- and rejected before
+	// the valid half of the same request is applied.
 	bogus := "chartreuse"
-	body, _ = json.Marshal(InstallationUpdate{ColorFilter: &bogus})
+	pinned := true
+	body, err = json.Marshal(InstallationUpdate{ColorFilter: &bogus, Pinned: &pinned})
+	require.NoError(t, err)
 	req = newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
 	rr = httptest.NewRecorder()
 	s.ServeHTTP(rr, req)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("bogus colorFilter: got status %v want %v", rr.Code, http.StatusBadRequest)
-	}
+	assert.Equal(t, http.StatusBadRequest, rr.Code, "bogus colorFilter")
+
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	assert.Nil(t, device.PinnedApp, "rejected request must not have pinned the app")
 }

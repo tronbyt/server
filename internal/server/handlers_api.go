@@ -807,51 +807,11 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if update.Enabled != nil {
-		app.Enabled = *update.Enabled
-		if !app.Enabled {
-			// Delete associated webp files when app is disabled
-			webpDir, err := s.ensureDeviceImageDir(device.ID)
-			if err != nil {
-				slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", device.ID, "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
-			for _, match := range matches {
-				if err := os.Remove(match); err != nil {
-					slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
-				}
-			}
-			// Also check for pushed webp files
-			pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", app.Iname))
-			if _, err := os.Stat(pushedWebpPath); err == nil {
-				if err := os.Remove(pushedWebpPath); err != nil {
-					slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
-				}
-			}
-		} else {
-			// Reset LastRender when app is enabled
-			app.LastRender = time.Time{}
-		}
-	}
 	if update.RenderIntervalMin != nil {
 		app.UInterval = *update.RenderIntervalMin
 	}
 	if update.DisplayTimeSec != nil {
 		app.DisplayTime = *update.DisplayTimeSec
-	}
-	if update.Pinned != nil {
-		if *update.Pinned {
-			device.PinnedApp = &app.Iname
-		} else if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-			device.PinnedApp = nil
-		}
-		// Save device for pinned change
-		if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
-			http.Error(w, "Failed to update device pin status", http.StatusInternalServerError)
-			return
-		}
 	}
 
 	// Schedule fields
@@ -966,6 +926,50 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	}
 	if update.Config != nil {
 		app.Config = *update.Config
+	}
+
+	// Side effects last. Everything above either validates or stages an
+	// in-memory change, so a request carrying one good field and one bad one
+	// returns 400 without having deleted a render or repinned the device.
+	if update.Enabled != nil {
+		app.Enabled = *update.Enabled
+		if !app.Enabled {
+			// Delete associated webp files when app is disabled
+			webpDir, err := s.ensureDeviceImageDir(device.ID)
+			if err != nil {
+				slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", device.ID, "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
+			for _, match := range matches {
+				if err := os.Remove(match); err != nil {
+					slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
+				}
+			}
+			// Also check for pushed webp files
+			pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", app.Iname))
+			if _, err := os.Stat(pushedWebpPath); err == nil {
+				if err := os.Remove(pushedWebpPath); err != nil {
+					slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
+				}
+			}
+		} else {
+			// Reset LastRender when app is enabled
+			app.LastRender = time.Time{}
+		}
+	}
+	if update.Pinned != nil {
+		if *update.Pinned {
+			device.PinnedApp = &app.Iname
+		} else if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+			device.PinnedApp = nil
+		}
+		// Save device for pinned change
+		if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
+			http.Error(w, "Failed to update device pin status", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if err := s.DB.Save(app).Error; err != nil {
