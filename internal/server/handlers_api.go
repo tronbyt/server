@@ -933,28 +933,7 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	// returns 400 without having deleted a render or repinned the device.
 	if update.Enabled != nil {
 		app.Enabled = *update.Enabled
-		if !app.Enabled {
-			// Delete associated webp files when app is disabled
-			webpDir, err := s.ensureDeviceImageDir(device.ID)
-			if err != nil {
-				slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", device.ID, "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
-			for _, match := range matches {
-				if err := os.Remove(match); err != nil {
-					slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
-				}
-			}
-			// Also check for pushed webp files
-			pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", app.Iname))
-			if _, err := os.Stat(pushedWebpPath); err == nil {
-				if err := os.Remove(pushedWebpPath); err != nil {
-					slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
-				}
-			}
-		} else {
+		if app.Enabled {
 			// Reset LastRender when app is enabled
 			app.LastRender = time.Time{}
 		}
@@ -965,16 +944,34 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		} else if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
 			device.PinnedApp = nil
 		}
-		// Save device for pinned change
-		if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
-			http.Error(w, "Failed to update device pin status", http.StatusInternalServerError)
-			return
-		}
 	}
 
-	if err := s.DB.Save(app).Error; err != nil {
+	// The pin lives on the device row and everything else on the app row, so
+	// write both in one transaction rather than letting a failed app save
+	// leave the pin moved.
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if update.Pinned != nil {
+			var pinned any
+			if device.PinnedApp != nil {
+				pinned = *device.PinnedApp
+			}
+			if _, err := gorm.G[data.Device](tx).Where("id = ?", device.ID).Update(r.Context(), "pinned_app", pinned); err != nil {
+				return fmt.Errorf("update device pin status: %w", err)
+			}
+		}
+		return tx.Save(app).Error
+	}); err != nil {
+		slog.Error("Failed to update installation", "device_id", device.ID, "iname", app.Iname, "error", err)
 		http.Error(w, "Failed to update app", http.StatusInternalServerError)
 		return
+	}
+
+	// Render cleanup is post-commit reconciliation: deleting an app's webp
+	// files cannot be rolled back, so it waits until the disable is durable.
+	// A failure here leaves stale files, not a wrong app state, so it logs
+	// rather than failing a request that already succeeded.
+	if update.Enabled != nil && !app.Enabled {
+		s.removeAppRenders(device.ID, app.Iname)
 	}
 
 	// Notify Dashboard
@@ -988,6 +985,29 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	// of config from the GET payload.
 	if err := json.NewEncoder(w).Encode(s.toAppPayload(device, app)); err != nil {
 		slog.Error("Failed to encode app", "error", err)
+	}
+}
+
+// removeAppRenders deletes the rendered webp files belonging to an
+// installation, both the timestamped renders and any pushed image.
+func (s *Server) removeAppRenders(deviceID, iname string) {
+	webpDir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
+		return
+	}
+	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", iname)))
+	for _, match := range matches {
+		if err := os.Remove(match); err != nil {
+			slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
+		}
+	}
+	// Also check for pushed webp files
+	pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", iname))
+	if _, err := os.Stat(pushedWebpPath); err == nil {
+		if err := os.Remove(pushedWebpPath); err != nil {
+			slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
+		}
 	}
 }
 

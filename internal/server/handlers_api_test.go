@@ -1547,3 +1547,45 @@ func TestHandlePatchInstallationConfigAndRenderFields(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, device.PinnedApp, "rejected request must not have pinned the app")
 }
+
+func TestHandlePatchInstallationDisableRemovesRenders(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installID := "disableapp"
+
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       installID,
+		Name:        "Disable App",
+		UInterval:   10,
+		DisplayTime: 10,
+		Enabled:     true,
+		Order:       0,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(context.Background(), &app))
+
+	webpDir := filepath.Join(s.DataDir, "webp", deviceID)
+	pushedDir := filepath.Join(webpDir, "pushed")
+	require.NoError(t, os.MkdirAll(pushedDir, 0755))
+	rendered := filepath.Join(webpDir, fmt.Sprintf("1700000000-%s.webp", installID))
+	pushed := filepath.Join(pushedDir, installID+".webp")
+	require.NoError(t, os.WriteFile(rendered, []byte("render"), 0644))
+	require.NoError(t, os.WriteFile(pushed, []byte("push"), 0644))
+
+	disabled := false
+	body, err := json.Marshal(InstallationUpdate{Enabled: &disabled})
+	require.NoError(t, err)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, "PATCH body: %s", rr.Body.String())
+
+	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	require.NoError(t, err)
+	assert.False(t, updated.Enabled, "app should be disabled")
+
+	// Cleanup runs after the commit, but still within the request.
+	assert.NoFileExists(t, rendered, "rendered webp should be removed on disable")
+	assert.NoFileExists(t, pushed, "pushed webp should be removed on disable")
+}
