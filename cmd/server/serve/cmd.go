@@ -74,7 +74,7 @@ func run(cmd *cobra.Command, args []string) error {
 					slog.Error("Panic during background firmware update", "panic", r)
 				}
 			}()
-			if err := srv.UpdateFirmwareBinaries(); err != nil {
+			if err := srv.UpdateFirmwareBinaries(server.FirmwareReleasesAtStartup); err != nil {
 				slog.Error("Failed to update firmware binaries in background", "error", err)
 			}
 		}()
