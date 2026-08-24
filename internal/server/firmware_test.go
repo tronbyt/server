@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,9 @@ import (
 
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/firmware"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleFirmwareGenerateGet(t *testing.T) {
@@ -100,4 +104,56 @@ func TestHandleFirmwareGeneratePost(t *testing.T) {
 	if rr.Body.Len() == 0 {
 		t.Error("Expected firmware binary in response")
 	}
+}
+
+func TestUpdateFirmwareBinariesRejectsHTMLAndRetriesAPI(t *testing.T) {
+	s := newTestServerAPI(t)
+	s.Config.GitHubToken = "test-token"
+	t.Setenv("FIRMWARE_REPO", "")
+
+	firmwareBytes := make([]byte, 64)
+	firmwareBytes[0] = 0xE9
+
+	var browserHits, apiHits int
+	var apiAccept, apiAuth string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases"):
+			base := "http://" + r.Host
+			w.Header().Set("Content-Type", "application/json")
+			if _, err := fmt.Fprintf(w, `[{"tag_name":"v9.9.9","assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/api-asset","browser_download_url":"%s/browser"}]}]`, base, base); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		case r.URL.Path == "/browser":
+			browserHits++
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte("<!DOCTYPE html><html><body>Sign in to GitHub</body></html>"))
+		case r.URL.Path == "/api-asset":
+			apiHits++
+			apiAccept = r.Header.Get("Accept")
+			apiAuth = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(firmwareBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	require.NoError(t, s.UpdateFirmwareBinaries(1))
+
+	assert.Equal(t, 1, browserHits)
+	assert.Equal(t, 1, apiHits, "API asset endpoint should be retried after HTML login response")
+	assert.Equal(t, "application/octet-stream", apiAccept)
+	assert.Equal(t, "Bearer test-token", apiAuth)
+
+	localPath := filepath.Join(s.DataDir, "firmware", "releases", "v9.9.9", "tidbyt-gen1.bin")
+	got, err := os.ReadFile(localPath)
+	require.NoError(t, err)
+	assert.Equal(t, firmwareBytes, got)
+
+	_, err = os.Stat(localPath + ".tmp")
+	assert.True(t, os.IsNotExist(err), "temporary file should be cleaned up")
 }

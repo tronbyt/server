@@ -31,6 +31,13 @@ const FirmwareReleasesToList = 5
 // The rest can be fetched on demand via the "update firmware" admin action.
 const FirmwareReleasesAtStartup = 2
 
+func (s *Server) githubAPIBaseURL() string {
+	if s.githubAPIBase != "" {
+		return strings.TrimRight(s.githubAPIBase, "/")
+	}
+	return "https://api.github.com"
+}
+
 // UpdateFirmwareBinaries downloads firmware binaries for the most recent
 // maxReleases releases. Asset downloads use the public browser download URL,
 // which does not count against the GitHub API rate limit; the API asset URL is
@@ -59,7 +66,7 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 	}
 
 	// Fetch last 5 releases
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=5", owner, repo)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=5", s.githubAPIBaseURL(), owner, repo)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -239,6 +246,18 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 				if err := outFile.Close(); err != nil {
 					_ = os.Remove(tempPath)
 					slog.Error("Failed to close temp firmware file", "file", tempPath, "error", err)
+					return false
+				}
+
+				content, err := os.ReadFile(tempPath)
+				if err != nil {
+					_ = os.Remove(tempPath)
+					slog.Error("Failed to read temp firmware file", "file", tempPath, "error", err)
+					return false
+				}
+				if !firmware.LooksLikeFirmware(content) {
+					_ = os.Remove(tempPath)
+					slog.Error("Downloaded content is not a firmware binary", "asset", asset.Name)
 					return false
 				}
 
