@@ -12,8 +12,6 @@ import (
 
 	"tronbyt-server/internal/connections"
 	"tronbyt-server/internal/data"
-
-	"golang.org/x/oauth2"
 )
 
 // connectionPendingKey is the session key under which we stash the
@@ -182,7 +180,7 @@ func (s *Server) handleConnectionStart(w http.ResponseWriter, r *http.Request) {
 	redirectURL := s.connectionCallbackURL(r)
 	cfg := provider.OAuth2Config(clientID, clientSecret, redirectURL, splitScopes(scopes))
 
-	authURL := cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+	authURL := cfg.AuthCodeURL(state, provider.AuthCodeOptions()...)
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
 }
 

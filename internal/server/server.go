@@ -199,6 +199,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		connections.Strava(),
 		connections.Spotify(),
 		connections.GitHub(),
+		connections.Google(),
 	)
 	s.Connections = &connections.Service{
 		DB:       s.DB,

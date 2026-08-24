@@ -55,6 +55,8 @@ type Settings struct {
 	// alone is enough to enable it.
 	GitHubClientID     string `env:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret string `env:"GITHUB_CLIENT_SECRET"`
+	GoogleClientID     string `env:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret string `env:"GOOGLE_CLIENT_SECRET"`
 }
 
 // ConnectionClientCreds returns the (client_id, client_secret) pair for a
@@ -67,6 +69,8 @@ func (s *Settings) ConnectionClientCreds(provider string) (string, string) {
 		return s.SpotifyClientID, s.SpotifyClientSecret
 	case "github":
 		return s.GitHubClientID, s.GitHubClientSecret
+	case "google":
+		return s.GoogleClientID, s.GoogleClientSecret
 	default:
 		return "", ""
 	}

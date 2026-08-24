@@ -192,6 +192,7 @@ returns the winner's fresh token.
 | Strava | redirect (params) | Scopes must be **comma**-joined (`ScopeJoin`), not space-joined. Rotates refresh tokens. Athlete summary comes back in the token response. New apps are capped at 1 connected athlete ("Single Player Mode"), self-service upgrade to 10. The app's "Authorization Callback Domain" is the bare host, no scheme or port; `localhost`/`127.0.0.1` are always accepted. |
 | Spotify | redirect (Basic header) | May omit `refresh_token` on refresh (keep the stored one). Redirect URIs must be HTTPS *except* literal loopback addresses — `http://127.0.0.1:8000/oauth-callback` works, but `localhost`, LAN IPs, and `.local` names over plain http are rejected. Development Mode allows 5 allowlisted users and requires the app owner to have Premium. |
 | GitHub | **device** | Public client: client ID alone enables it, no secret and no redirect URI. Requires "Enable Device Flow" on the OAuth app (off by default; otherwise the flow fails with `device_flow_disabled`). Newly registered OAuth apps have **"Expire user access tokens" on by default** — 8-hour tokens plus a 6-month refresh token — so the refresh path matters here, and refreshing a device-flow token needs no secret either (see `refreshCreds`). GitHub answers a pending poll with HTTP **200** and an RFC error body, which the oauth2 library handles correctly. |
+| Google | redirect (params) | Redirect flow only: Google's device-flow scope allowlist (TV-class scopes) excludes API scopes like `analytics.readonly`. A refresh token is only issued with `access_type=offline`, and only guaranteed on re-auth with `prompt=consent` — pinned explicitly via `AuthCodeParams` on the `Provider` rather than inherited from the default options, whose spelling tracks `oauth2.ApprovalForce` (it has changed once already, from `approval_prompt=force`, which Google now rejects when `prompt` is present). Refresh responses don't rotate the refresh token. **Consent-screen status matters**: a project in "Testing" issues refresh tokens that expire after 7 days; publishing to "In production" (verification not required — users click through a warning) makes them durable, at the cost of a 100-user lifetime cap that self-hosters will never hit. `analytics.readonly` is a "sensitive" (not restricted) scope, so no security assessment is needed. |
 
 The redirect-flow providers are confidential clients: the token exchange
 needs the admin's client secret, which is why the server brokers it.
@@ -299,10 +300,11 @@ non-standard refresh shape) can extend `Provider` with a
 
 Several of the best ambient-display sources need no OAuth at all —
 Goodreads shelf RSS, Last.fm, Todoist personal tokens, Open Library — and
-a couple of the most-wanted OAuth providers are hostile to this model:
-Google refresh tokens expire after 7 days while a Cloud project sits in
-"Testing" status (admins must push their own project to production), and
-Fitbit's API is being retired into Google's restricted-scope regime.
+some OAuth providers carry sharp edges: Google refresh tokens expire
+after 7 days while a Cloud project sits in "Testing" status (supported
+now, but admins must publish their consent screen to production — see
+the provider table), and Fitbit's API is being retired into Google's
+restricted-scope regime.
 Providers offering the **device authorization grant** (GitHub, Trakt,
 Microsoft, YouTube) are a better fit for a device on a shelf: no redirect
 URI at all, and the code can be shown on the matrix itself. That would

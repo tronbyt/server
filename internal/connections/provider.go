@@ -59,6 +59,17 @@ type Provider struct {
 	// DefaultScopes is used when the schema does not declare scopes.
 	DefaultScopes []string
 
+	// AuthCodeParams overrides the extra query parameters sent on the
+	// authorize redirect. When nil, AuthCodeOptions falls back to
+	// oauth2.AccessTypeOffline + oauth2.ApprovalForce, which today spell
+	// access_type=offline + prompt=consent. Set this when a provider
+	// needs exact parameters (Google's refresh-token issuance hinges on
+	// these two, so it pins them rather than track the library constants'
+	// spelling — ApprovalForce has already changed once, from the legacy
+	// approval_prompt=force). An empty non-nil slice means "no extra
+	// parameters".
+	AuthCodeParams []oauth2.AuthCodeOption
+
 	// Identify is called after a successful token exchange to fetch a
 	// stable provider-side user id (and optional display name). It receives
 	// a fresh access token. Optional — if nil, ExternalID stays empty.
@@ -86,6 +97,18 @@ func (p *Provider) OAuth2Config(clientID, clientSecret, redirectURL string, scop
 			AuthStyle:     p.AuthStyle,
 		},
 	}
+}
+
+// AuthCodeOptions returns the oauth2.AuthCodeOption list for the
+// authorize redirect: offline access plus a forced consent screen, so a
+// re-connect always yields a fresh refresh token. Providers set
+// AuthCodeParams when the default parameter spelling doesn't work for
+// them (see that field's comment).
+func (p *Provider) AuthCodeOptions() []oauth2.AuthCodeOption {
+	if p.AuthCodeParams != nil {
+		return p.AuthCodeParams
+	}
+	return []oauth2.AuthCodeOption{oauth2.AccessTypeOffline, oauth2.ApprovalForce}
 }
 
 // SupportsDeviceAuth reports whether this provider offers the device
