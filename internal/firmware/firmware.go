@@ -18,7 +18,31 @@ const (
 	// MergedAppOffset is the offset where the app binary starts in a merged firmware image.
 	// Merged binaries contain: bootloader (0x0/0x1000) + partition table (0x8000) + app (0x10000).
 	MergedAppOffset = 0x10000
+
+	// espImageMagic is the ESP-IDF firmware image header magic byte.
+	espImageMagic = 0xE9
+	// esp32BootloaderOffset is where the bootloader starts in classic ESP32 merged images.
+	esp32BootloaderOffset = 0x1000
+	// espImageHeaderMinSize is the ESP-IDF image header size.
+	espImageHeaderMinSize = 24
 )
+
+// LooksLikeFirmware reports whether data appears to be an ESP32 firmware image:
+// an OTA app binary (magic 0xE9 at offset 0) or a merged image with the
+// bootloader at 0x0 or 0x1000.
+func LooksLikeFirmware(data []byte) bool {
+	if hasESPImageHeader(data) {
+		return true
+	}
+	if len(data) > esp32BootloaderOffset && hasESPImageHeader(data[esp32BootloaderOffset:]) {
+		return true
+	}
+	return false
+}
+
+func hasESPImageHeader(data []byte) bool {
+	return len(data) >= espImageHeaderMinSize && data[0] == espImageMagic
+}
 
 func Generate(firmwareDir string, deviceType data.DeviceType, ssid, password, url string, swapColors bool) ([]byte, error) {
 	filename := deviceType.FirmwareFilename(swapColors)

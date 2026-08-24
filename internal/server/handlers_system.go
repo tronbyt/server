@@ -23,7 +23,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateFirmware(w http.ResponseWriter, r *http.Request) {
-	err := s.UpdateFirmwareBinaries()
+	err := s.UpdateFirmwareBinaries(FirmwareReleasesToList)
 	if err != nil {
 		slog.Error("Failed to update firmware binaries", "error", err)
 	}

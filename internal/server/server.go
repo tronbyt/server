@@ -60,6 +60,9 @@ type Server struct {
 
 	UpdateAvailable  bool
 	LatestReleaseURL string
+
+	// githubAPIBase, when set, replaces https://api.github.com (used by tests).
+	githubAPIBase string
 }
 
 // SchemaCacheBypasser forces cache reads for keys with the given prefix to miss

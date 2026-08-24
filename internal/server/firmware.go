@@ -24,7 +24,25 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *Server) UpdateFirmwareBinaries() error {
+// FirmwareReleasesToList is the number of releases fetched from the GitHub API.
+const FirmwareReleasesToList = 5
+
+// FirmwareReleasesAtStartup is the number of releases downloaded at server start.
+// The rest can be fetched on demand via the "update firmware" admin action.
+const FirmwareReleasesAtStartup = 2
+
+func (s *Server) githubAPIBaseURL() string {
+	if s.githubAPIBase != "" {
+		return strings.TrimRight(s.githubAPIBase, "/")
+	}
+	return "https://api.github.com"
+}
+
+// UpdateFirmwareBinaries downloads firmware binaries for the most recent
+// maxReleases releases. Asset downloads use the public browser download URL,
+// which does not count against the GitHub API rate limit; the API asset URL is
+// only used as a fallback for private repositories.
+func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 	firmwareRepo := os.Getenv("FIRMWARE_REPO")
 	if firmwareRepo == "" {
 		firmwareRepo = "https://github.com/tronbyt/firmware-esp32"
@@ -48,7 +66,7 @@ func (s *Server) UpdateFirmwareBinaries() error {
 	}
 
 	// Fetch last 5 releases
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=5", owner, repo)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=5", s.githubAPIBaseURL(), owner, repo)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -104,8 +122,9 @@ func (s *Server) UpdateFirmwareBinaries() error {
 	var releases []struct {
 		TagName string `json:"tag_name"`
 		Assets  []struct {
-			Name string `json:"name"`
-			URL  string `json:"url"` // API URL
+			Name               string `json:"name"`
+			URL                string `json:"url"`                  // API URL
+			BrowserDownloadURL string `json:"browser_download_url"` // Direct download URL (not rate limited)
 		} `json:"assets"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
@@ -156,7 +175,11 @@ func (s *Server) UpdateFirmwareBinaries() error {
 		"waveshare-s3_merged.bin":    "waveshare-s3_merged.bin",
 	}
 
-	for _, release := range releases {
+	for i, release := range releases {
+		if i >= maxReleases {
+			break
+		}
+
 		versionDir := filepath.Join(releasesDir, release.TagName)
 		if err := os.MkdirAll(versionDir, 0755); err != nil {
 			slog.Error("Failed to create version dir", "version", release.TagName, "error", err)
@@ -178,62 +201,81 @@ func (s *Server) UpdateFirmwareBinaries() error {
 
 			slog.Info("Downloading firmware asset", "version", release.TagName, "asset", asset.Name)
 
-			dReq, err := http.NewRequest(http.MethodGet, asset.URL, nil)
-			if err != nil {
-				slog.Error("Failed to create firmware download request", "asset", asset.Name, "error", err)
-				continue
-			}
-			dReq.Header.Set("Accept", "application/octet-stream")
-			if token != "" {
-				dReq.Header.Set("Authorization", "Bearer "+token)
-			}
+			downloadAsset := func(downloadURL string, useAPIEndpoint bool) bool {
+				dReq, err := http.NewRequest(http.MethodGet, downloadURL, nil)
+				if err != nil {
+					slog.Error("Failed to create firmware download request", "asset", asset.Name, "error", err)
+					return false
+				}
+				if useAPIEndpoint {
+					dReq.Header.Set("Accept", "application/octet-stream")
+					if token != "" {
+						dReq.Header.Set("Authorization", "Bearer "+token)
+					}
+				}
 
-			dResp, err := client.Do(dReq)
-			if err != nil {
-				slog.Error("Failed to download firmware asset", "asset", asset.Name, "error", err)
-				continue
-			}
-
-			// Closure to handle defer properly in loop
-			func() {
+				dResp, err := client.Do(dReq)
+				if err != nil {
+					slog.Error("Failed to download firmware asset", "asset", asset.Name, "error", err)
+					return false
+				}
 				defer func() {
 					if err := dResp.Body.Close(); err != nil {
 						slog.Error("Failed to close response body", "asset", asset.Name, "error", err)
 					}
 				}()
+
 				if dResp.StatusCode != http.StatusOK {
-					if dResp.StatusCode == http.StatusForbidden {
-						slog.Warn("Failed to download firmware asset (rate limit)", "asset", asset.Name, "status", dResp.StatusCode)
-					} else {
-						slog.Error("Failed to download firmware asset (bad status)", "asset", asset.Name, "status", dResp.StatusCode)
-					}
-					return
+					slog.Error("Failed to download firmware asset", "asset", asset.Name, "status", dResp.StatusCode)
+					return false
 				}
 
 				tempPath := localPath + ".tmp"
 				outFile, err := os.Create(tempPath)
 				if err != nil {
 					slog.Error("Failed to create temp firmware file", "file", tempPath, "error", err)
-					return
+					return false
 				}
 
 				if _, err := io.Copy(outFile, dResp.Body); err != nil {
 					_ = outFile.Close()
 					_ = os.Remove(tempPath)
 					slog.Error("Failed to write firmware file", "file", localPath, "error", err)
-					return
+					return false
 				}
 				if err := outFile.Close(); err != nil {
 					_ = os.Remove(tempPath)
 					slog.Error("Failed to close temp firmware file", "file", tempPath, "error", err)
-					return
+					return false
+				}
+
+				content, err := os.ReadFile(tempPath)
+				if err != nil {
+					_ = os.Remove(tempPath)
+					slog.Error("Failed to read temp firmware file", "file", tempPath, "error", err)
+					return false
+				}
+				if !firmware.LooksLikeFirmware(content) {
+					_ = os.Remove(tempPath)
+					slog.Error("Downloaded content is not a firmware binary", "asset", asset.Name)
+					return false
 				}
 
 				if err := os.Rename(tempPath, localPath); err != nil {
 					slog.Error("Failed to rename firmware file", "from", tempPath, "to", localPath, "error", err)
 					_ = os.Remove(tempPath)
+					return false
 				}
-			}()
+				return true
+			}
+
+			// Prefer the browser download URL: it redirects to S3 and does not
+			// count against the GitHub API rate limit. Fall back to the API
+			// asset endpoint for private repositories.
+			if !downloadAsset(asset.BrowserDownloadURL, false) && token != "" {
+				slog.Info("Retrying firmware download via API endpoint", "version", release.TagName, "asset", asset.Name)
+				downloadAsset(asset.URL, true)
+			}
 		}
 	}
 
