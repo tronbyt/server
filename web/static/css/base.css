@@ -268,3 +268,41 @@ input[type="range"] {
   font-weight: 500;
   color: var(--muted-text);
 }
+
+/* Authenticator (passkey) icons */
+.authenticator-icon-container {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.authenticator-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.auth-icon-light {
+  display: block;
+}
+
+.auth-icon-dark {
+  display: none;
+}
+
+[data-theme="dark"] .auth-icon-light {
+  display: none;
+}
+
+[data-theme="dark"] .auth-icon-dark {
+  display: block;
+}
+
+.authenticator-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
