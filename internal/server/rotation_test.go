@@ -490,7 +490,7 @@ func TestGetNextAppImage_EphemeralCleanup(t *testing.T) {
 	}
 
 	// Call GetNextAppImage — serves oldest, deletes only that one
-	_, _, err = s.GetNextAppImage(ctx, &device, &user)
+	_, _, err = s.GetNextAppImage(ctx, &device, &user, "")
 	if err != nil {
 		t.Fatalf("GetNextAppImage failed: %v", err)
 	}
@@ -545,7 +545,7 @@ func TestGetNextAppImage_EphemeralBrokenFileSkipsToNext(t *testing.T) {
 	}
 
 	// GetNextAppImage should skip the broken oldest file and serve the next one
-	imgData, _, err := s.GetNextAppImage(ctx, &device, &user)
+	imgData, _, err := s.GetNextAppImage(ctx, &device, &user, "")
 	if err != nil {
 		t.Fatalf("GetNextAppImage failed: %v", err)
 	}

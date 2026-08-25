@@ -18,7 +18,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User) ([]byte, *data.App, error) {
+// GetNextAppImage picks what a device should display next.
+//
+// baseURL is this server's address as seen by the requesting device; it is
+// used to draw a setup screen when the device has no apps, and may be empty
+// when no request context is available (the placeholder is used instead).
+func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user *data.User, baseURL string) ([]byte, *data.App, error) {
 	// 1. Check Pushed Ephemeral Images (__*)
 	// Serve the oldest and delete only that one. Anonymous pushes accumulate
 	// unbounded; callers should use coalesceID to limit queue depth.
@@ -66,6 +71,20 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 
 	// 2. Apps Check
 	if len(device.Apps) == 0 {
+		// Nothing installed yet: show where to install something rather than
+		// a placeholder that gives no way to act on it.
+		if baseURL != "" {
+			width, height := 64, 32
+			if device.Type.Supports2x() {
+				width, height = 128, 64
+			}
+			if img, err := renderSetupImage(ctx, width, height, baseURL); err == nil {
+				return img, nil, nil
+			} else {
+				slog.Warn("Could not render setup image, falling back to default",
+					"device", device.ID, "error", err)
+			}
+		}
 		slog.Debug("No apps on device, returning default image", "device", device.ID)
 		return getDefaultImage()
 	}
