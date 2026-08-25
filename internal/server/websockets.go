@@ -199,10 +199,12 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh)
+	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh, s.GetBaseURL(r))
 }
 
-func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}) {
+// baseURL is this server's address as the device connected to it, captured
+// when the socket opened — the write loop outlives the request that made it.
+func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}, baseURL string) {
 	var pendingImage []byte
 	device := *initialDevice
 	lastSentBrightness := -1
@@ -227,7 +229,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			imgData = pendingImage
 			pendingImage = nil
 		} else {
-			imgData, app, err = s.GetNextAppImage(ctx, &device, user)
+			imgData, app, err = s.GetNextAppImage(ctx, &device, user, baseURL)
 			if err != nil {
 				slog.Error("Failed to get next app", "error", err)
 
