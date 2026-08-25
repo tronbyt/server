@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	// minAckTimeoutSeconds is the minimum time to wait for device ACK.
-	// This accounts for the previous app's dwell time, network latency, and processing overhead.
-	minAckTimeoutSeconds = 30
+	// maxDisplayingAckTimeoutSeconds is a safety cap for v1+ firmware when displaying
+	// ACK never arrives (dropped image, firmware bug). Long enough for very long WebP
+	// animations but prevents indefinite rotation stall.
+	maxDisplayingAckTimeoutSeconds = 600
 )
 
 type WSMessage struct {
@@ -198,10 +199,12 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh)
+	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh, s.GetBaseURL(r))
 }
 
-func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}) {
+// baseURL is this server's address as the device connected to it, captured
+// when the socket opened — the write loop outlives the request that made it.
+func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}, baseURL string) {
 	var pendingImage []byte
 	device := *initialDevice
 	lastSentBrightness := -1
@@ -226,7 +229,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			imgData = pendingImage
 			pendingImage = nil
 		} else {
-			imgData, app, err = s.GetNextAppImage(ctx, &device, user)
+			imgData, app, err = s.GetNextAppImage(ctx, &device, user, baseURL)
 			if err != nil {
 				slog.Error("Failed to get next app", "error", err)
 
@@ -286,18 +289,18 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			sendImmediate = false
 		}
 
-		// 3. Wait for ACK or Timeout or Interrupt
-		var timeoutSec int
+		// 3. Wait for displaying ACK, safety/legacy timeout, or interrupt.
+		// v1+ firmware sends displaying when the image is on screen (including long
+		// animations). We wait for that ACK, with a long safety timeout if it never arrives.
+		var timer *time.Timer
+		var timerC <-chan time.Time
 		if device.Info.ProtocolVersion != nil {
-			// Device may delay ACK until previous app completes its dwell time.
-			// Wait at least minAckTimeoutSeconds OR 2x the dwell time, whichever is greater.
-			timeoutSec = max(dwell*2, minAckTimeoutSeconds)
+			timer = time.NewTimer(time.Duration(maxDisplayingAckTimeoutSeconds) * time.Second)
+			timerC = timer.C
 		} else {
-			// Old firmware: wait exactly dwell time
-			timeoutSec = dwell
+			timer = time.NewTimer(time.Duration(dwell) * time.Second)
+			timerC = timer.C
 		}
-
-		timer := time.NewTimer(time.Duration(timeoutSec) * time.Second)
 
 		interrupted := false
 		waiting := true
@@ -325,7 +328,6 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						slog.Debug("Received ACK for default or pushed image (no app context)", "device", device.ID)
 					}
 				}
-				// If just Queued, we keep waiting for Displaying.
 			case val := <-broadcastCh:
 				// Update available (Reload device first)
 				reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
@@ -379,15 +381,35 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						lastSentBrightness = newBrightness
 					}
 				}
-			case <-timer.C:
-				// Timeout
+			case <-timerC:
+				if device.Info.ProtocolVersion != nil {
+					appIname := ""
+					if app != nil {
+						appIname = app.Iname
+					}
+					slog.Warn(
+						"Timed out waiting for displaying ACK, advancing rotation",
+						"device", device.ID,
+						"app", appIname,
+						"timeout_secs", maxDisplayingAckTimeoutSeconds,
+					)
+				}
 				waiting = false
 			case <-stopCh:
-				timer.Stop()
+				if timer != nil {
+					timer.Stop()
+				}
 				return
 			}
 		}
-		timer.Stop()
+		if timer != nil {
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+		}
 
 		if interrupted {
 			continue

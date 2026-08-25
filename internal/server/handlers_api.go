@@ -205,6 +205,14 @@ type AppPayload struct {
 	RecurrencePattern   map[string]any      `json:"recurrencePattern"`
 	RecurrenceStartDate *string             `json:"recurrenceStartDate"`
 	RecurrenceEndDate   *string             `json:"recurrenceEndDate"`
+
+	// Render behavior. Config is deliberately absent: it holds whatever the
+	// app's schema defines, which for many apps includes API keys and OAuth
+	// tokens, and a device API key is a lower bar than a session. It can be
+	// written via PATCH but is never read back.
+	AutoPin           bool              `json:"autoPin"`
+	ColorFilter       *data.ColorFilter `json:"colorFilter"`
+	ShowFullAnimation *bool             `json:"showFullAnimation"`
 }
 
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
@@ -230,6 +238,10 @@ func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 		RecurrencePattern:   app.RecurrencePattern,
 		RecurrenceStartDate: app.RecurrenceStartDate,
 		RecurrenceEndDate:   app.RecurrenceEndDate,
+
+		AutoPin:           app.AutoPin,
+		ColorFilter:       app.ColorFilter,
+		ShowFullAnimation: app.ShowFullAnimation,
 	}
 }
 
@@ -765,6 +777,17 @@ type InstallationUpdate struct {
 	RecurrencePattern   *map[string]any      `json:"recurrencePattern"`
 	RecurrenceStartDate *string              `json:"recurrenceStartDate"`
 	RecurrenceEndDate   *string              `json:"recurrenceEndDate"`
+
+	// Render behavior
+	AutoPin           *bool   `json:"autoPin"`
+	ColorFilter       *string `json:"colorFilter"`       // "" or "inherit" clears
+	ShowFullAnimation *string `json:"showFullAnimation"` // "auto" clears; else a bool
+
+	// App config, matching what the config page already stores. Write-only:
+	// GET never returns it, because it commonly holds API keys and OAuth
+	// tokens. Replaces the whole map, as the config page does -- there is no
+	// per-key merge.
+	Config *map[string]any `json:"config"`
 }
 
 func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request) {
@@ -784,51 +807,11 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if update.Enabled != nil {
-		app.Enabled = *update.Enabled
-		if !app.Enabled {
-			// Delete associated webp files when app is disabled
-			webpDir, err := s.ensureDeviceImageDir(device.ID)
-			if err != nil {
-				slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", device.ID, "error", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
-			for _, match := range matches {
-				if err := os.Remove(match); err != nil {
-					slog.Error("Failed to remove webp file on app disable", "path", match, "error", err)
-				}
-			}
-			// Also check for pushed webp files
-			pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", app.Iname))
-			if _, err := os.Stat(pushedWebpPath); err == nil {
-				if err := os.Remove(pushedWebpPath); err != nil {
-					slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
-				}
-			}
-		} else {
-			// Reset LastRender when app is enabled
-			app.LastRender = time.Time{}
-		}
-	}
 	if update.RenderIntervalMin != nil {
 		app.UInterval = *update.RenderIntervalMin
 	}
 	if update.DisplayTimeSec != nil {
 		app.DisplayTime = *update.DisplayTimeSec
-	}
-	if update.Pinned != nil {
-		if *update.Pinned {
-			device.PinnedApp = &app.Iname
-		} else if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
-			device.PinnedApp = nil
-		}
-		// Save device for pinned change
-		if err := s.DB.Omit("Apps").Save(device).Error; err != nil {
-			http.Error(w, "Failed to update device pin status", http.StatusInternalServerError)
-			return
-		}
 	}
 
 	// Schedule fields
@@ -911,9 +894,84 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	if err := s.DB.Save(app).Error; err != nil {
+	// Render behavior
+	if update.AutoPin != nil {
+		app.AutoPin = *update.AutoPin
+	}
+	if update.ColorFilter != nil {
+		switch *update.ColorFilter {
+		case "", string(data.ColorFilterInherit):
+			app.ColorFilter = nil
+		default:
+			if !s.isValidColorFilter(*update.ColorFilter) {
+				http.Error(w, "Invalid colorFilter", http.StatusBadRequest)
+				return
+			}
+			val := data.ColorFilter(*update.ColorFilter)
+			app.ColorFilter = &val
+		}
+	}
+	if update.ShowFullAnimation != nil {
+		switch *update.ShowFullAnimation {
+		case "", "auto":
+			app.ShowFullAnimation = nil
+		default:
+			val, err := strconv.ParseBool(*update.ShowFullAnimation)
+			if err != nil {
+				http.Error(w, `Invalid showFullAnimation: want "auto", "true" or "false"`, http.StatusBadRequest)
+				return
+			}
+			app.ShowFullAnimation = &val
+		}
+	}
+	if update.Config != nil {
+		app.Config = *update.Config
+	}
+
+	// Side effects last. Everything above either validates or stages an
+	// in-memory change, so a request carrying one good field and one bad one
+	// returns 400 without having deleted a render or repinned the device.
+	if update.Enabled != nil {
+		app.Enabled = *update.Enabled
+		if app.Enabled {
+			// Reset LastRender when app is enabled
+			app.LastRender = time.Time{}
+		}
+	}
+	if update.Pinned != nil {
+		if *update.Pinned {
+			device.PinnedApp = &app.Iname
+		} else if device.PinnedApp != nil && *device.PinnedApp == app.Iname {
+			device.PinnedApp = nil
+		}
+	}
+
+	// The pin lives on the device row and everything else on the app row, so
+	// write both in one transaction rather than letting a failed app save
+	// leave the pin moved.
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if update.Pinned != nil {
+			var pinned any
+			if device.PinnedApp != nil {
+				pinned = *device.PinnedApp
+			}
+			if _, err := gorm.G[data.Device](tx).Where("id = ?", device.ID).Update(r.Context(), "pinned_app", pinned); err != nil {
+				return fmt.Errorf("update device pin status: %w", err)
+			}
+		}
+		return tx.Save(app).Error
+	}); err != nil {
+		slog.Error("Failed to update installation", "device_id", device.ID, "iname", app.Iname, "error", err)
 		http.Error(w, "Failed to update app", http.StatusInternalServerError)
 		return
+	}
+
+	// Render cleanup is post-commit reconciliation: deleting an app's webp
+	// files cannot be rolled back, so it waits until the disable is durable.
+	// A failure here leaves stale files, not a wrong app state, so it logs
+	// rather than failing a request that already succeeded.
+	if update.Enabled != nil && !app.Enabled {
+		s.removeAppRenders(device.ID, app.Iname)
 	}
 
 	// Notify Dashboard
@@ -921,9 +979,67 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(app); err != nil {
+	// Respond with the same shape GET returns. This used to encode data.App
+	// directly, which carried the app's whole config -- API keys and OAuth
+	// tokens included -- back out over the wire, contradicting the omission
+	// of config from the GET payload.
+	if err := json.NewEncoder(w).Encode(s.toAppPayload(device, app)); err != nil {
 		slog.Error("Failed to encode app", "error", err)
 	}
+}
+
+// removeAppRenders deletes the rendered webp files belonging to an
+// installation, both the timestamped renders and any pushed image.
+func (s *Server) removeAppRenders(deviceID, iname string) {
+	// iname becomes a path component here. Every app the UI and the API
+	// create gets a server-generated numeric iname, but handleImportDeviceConfig
+	// stores whatever an uploaded config carries, so treat it as untrusted:
+	// only a plain filename component is safe to build a path from.
+	if !isSafePathComponent(iname) {
+		slog.Error("Refusing render cleanup for unsafe installation name", "device_id", deviceID, "iname", iname)
+		return
+	}
+
+	webpDir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
+		return
+	}
+
+	// Match on the name rather than globbing: glob metacharacters in an
+	// imported iname would otherwise widen the pattern past this app's files.
+	entries, err := os.ReadDir(webpDir)
+	if err != nil {
+		slog.Error("Failed to read device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
+		return
+	}
+	suffix := fmt.Sprintf("-%s.webp", iname)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), suffix) {
+			continue
+		}
+		path := filepath.Join(webpDir, entry.Name())
+		if err := os.Remove(path); err != nil {
+			slog.Error("Failed to remove webp file on app disable", "path", path, "error", err)
+		}
+	}
+
+	// Also check for pushed webp files
+	pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", iname))
+	if _, err := os.Stat(pushedWebpPath); err == nil {
+		if err := os.Remove(pushedWebpPath); err != nil {
+			slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
+		}
+	}
+}
+
+// isSafePathComponent reports whether name can be joined into a path as a
+// single element without escaping the directory it is joined to.
+func isSafePathComponent(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	return filepath.Base(name) == name
 }
 
 func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {

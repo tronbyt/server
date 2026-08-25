@@ -1091,6 +1091,18 @@
   "Schedule": {
     "other": "Zeitplan"
   },
+  "No location is set for this device, so schedule times use the server's timezone.": {
+    "other": "F\u00fcr dieses Ger\u00e4t ist kein Standort festgelegt, daher verwenden die Zeitplanzeiten die Zeitzone des Servers."
+  },
+  "Add a location": {
+    "other": "F\u00fcge einen Standort hinzu"
+  },
+  "so schedule times match your local time.": {
+    "other": "damit die Zeitplanzeiten deiner lokalen Zeit entsprechen."
+  },
+  "No location is set for this device, so schedule times use the server's timezone. Add a location so schedule times match your local time.": {
+    "other": "F\u00fcr dieses Ger\u00e4t ist kein Standort festgelegt, daher verwenden die Zeitplanzeiten die Zeitzone des Servers. F\u00fcge einen Standort hinzu, damit die Zeitplanzeiten deiner lokalen Zeit entsprechen."
+  },
   "Start Time": {
     "other": "Startzeit"
   },
@@ -2113,5 +2125,8 @@
   },
   "recommended": {
     "other": "empfohlen"
+  },
+  "You are accessing this server via localhost. For proper firmware generation you should use:": {
+    "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
   }
 }

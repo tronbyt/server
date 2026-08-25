@@ -153,22 +153,39 @@ Returns all app installations on a device.
 {
   "installations": [
     {
-      "id": 1,
-      "iname": "my-clock",
-      "name": "Clock",
-      "app_id": "clock",
+      "id": "my-clock",
+      "appID": "clock",
       "enabled": true,
-      "display_time": 30,
-      "u_interval": 0,
-      "last_render": "2024-01-01T00:00:00Z",
-      "config": {
-        "timezone": "America/New_York"
-      },
-      "pinned": false
+      "pinned": false,
+      "pushed": false,
+      "renderIntervalMin": 0,
+      "displayTimeSec": 30,
+      "lastRenderAt": 1704067200,
+      "isInactive": false,
+
+      "startTime": "09:00",
+      "endTime": "17:00",
+      "days": ["monday", "wednesday", "friday"],
+
+      "useCustomRecurrence": false,
+      "recurrenceType": "",
+      "recurrenceInterval": 0,
+      "recurrencePattern": null,
+      "recurrenceStartDate": null,
+      "recurrenceEndDate": null,
+
+      "autoPin": false,
+      "colorFilter": null,
+      "showFullAnimation": null
     }
   ]
 }
 ```
+
+App `config` is **not** returned. It holds whatever the app's schema defines,
+which for many apps includes API keys and OAuth tokens, and a device API key is
+a lower bar than a logged-in session. Config can be written (see below) but
+never read back.
 
 ### Get Installation
 
@@ -185,7 +202,8 @@ PATCH /v0/devices/{id}/installations/{iname}
 Content-Type: application/json
 ```
 
-Update installation settings. All fields are optional.
+Update installation settings. All fields are optional; omitting one leaves it
+alone.
 
 **Request:**
 ```json
@@ -193,11 +211,29 @@ Update installation settings. All fields are optional.
   "enabled": true,
   "pinned": false,
   "renderIntervalMin": 5,
-  "displayTimeSec": 30
+  "displayTimeSec": 30,
+
+  "startTime": "09:00",
+  "endTime": "17:00",
+  "days": ["monday", "wednesday", "friday"],
+
+  "autoPin": false,
+  "colorFilter": "dimmed",
+  "showFullAnimation": "true",
+
+  "config": { "timezone": "America/New_York" }
 }
 ```
 
-**Response:** Updated installation object.
+| Field | Notes |
+|-------|-------|
+| `startTime` / `endTime` | `"HH:MM"`. `""` clears. A start later than the end wraps overnight. |
+| `days` | Lowercase day names. `[]` means every day. |
+| `colorFilter` | One of the filters the app config page offers. `""` or `"inherit"` falls back to the device setting. |
+| `showFullAnimation` | `"true"` / `"false"`, or `"auto"` to inherit. Lets an animation run past the app's display time. |
+| `config` | Replaces the app's whole config map — there is no per-key merge, so send the full object. **Write-only:** it is never returned by GET or in this response. |
+
+**Response:** Updated installation object, in the same shape `GET` returns.
 
 ### Delete Installation
 

@@ -103,7 +103,7 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to update device info transaction", "device", device.ID, "error", err)
 	}
 
-	imgData, app, err := s.GetNextAppImage(r.Context(), device, user)
+	imgData, app, err := s.GetNextAppImage(r.Context(), device, user, s.GetBaseURL(r))
 	if err != nil {
 		// Send default image if error (or not found)
 		slog.Error("Failed to get next app image", "device", device.ID, "error", err)
