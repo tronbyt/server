@@ -26,6 +26,7 @@ type OIDCProvider struct {
 	clientID     string
 	clientSecret string
 	issuerURL    string
+	supportsPKCE bool
 }
 
 func (s *Server) setupOIDCProvider(ctx context.Context) (*OIDCProvider, error) {
@@ -48,7 +49,22 @@ func (s *Server) setupOIDCProvider(ctx context.Context) (*OIDCProvider, error) {
 		clientID:     s.Config.OIDCClientID,
 		clientSecret: s.Config.OIDCClientSecret,
 		issuerURL:    s.Config.OIDCIssuerURL,
+		supportsPKCE: providerSupportsPKCE(provider),
 	}, nil
+}
+
+// providerSupportsPKCE reports whether the OIDC provider advertises S256 PKCE
+// support in its discovery metadata. When the field is absent, providers are
+// assumed not to support PKCE per RFC 8414.
+func providerSupportsPKCE(provider *oidc.Provider) bool {
+	var metadata struct {
+		CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
+	}
+	if err := provider.Claims(&metadata); err != nil {
+		slog.Warn("Failed to read OIDC provider metadata for PKCE detection", "error", err)
+		return false
+	}
+	return slices.Contains(metadata.CodeChallengeMethodsSupported, "S256")
 }
 
 // oauth2Config returns the OAuth2 configuration with a dynamic redirect URI.
@@ -119,6 +135,16 @@ func (s *Server) startOIDCAuth(w http.ResponseWriter, r *http.Request, isLinking
 		delete(session.Values, "oidc_link")
 	}
 
+	// Generate a PKCE verifier when the provider supports S256. The verifier is
+	// kept in the session and matched against the code challenge on exchange.
+	codeVerifier := ""
+	if prov.supportsPKCE {
+		codeVerifier = oauth2.GenerateVerifier()
+		session.Values["oidc_code_verifier"] = codeVerifier
+	} else {
+		delete(session.Values, "oidc_code_verifier")
+	}
+
 	if err := s.saveSession(w, r, session); err != nil {
 		slog.Error("Failed to save session", "error", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -126,11 +152,18 @@ func (s *Server) startOIDCAuth(w http.ResponseWriter, r *http.Request, isLinking
 	}
 	slog.Debug("OIDC state and nonce saved to session", "state_length", len(state), "nonce_length", len(nonce))
 
-	// Build auth URL with nonce
+	// Build auth URL with nonce and, when supported, the PKCE code challenge.
 	oauth2Cfg := prov.oauth2Config(s.GetBaseURL(r))
-	authURL := oauth2Cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("nonce", nonce))
+	opts := []oauth2.AuthCodeOption{
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("nonce", nonce),
+	}
+	if codeVerifier != "" {
+		opts = append(opts, oauth2.S256ChallengeOption(codeVerifier))
+	}
+	authURL := oauth2Cfg.AuthCodeURL(state, opts...)
 
-	slog.Debug("Redirecting to OIDC provider", "url", authURL, "linking", isLinking)
+	slog.Debug("Redirecting to OIDC provider", "url", authURL, "linking", isLinking, "pkce", codeVerifier != "")
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
 }
 
@@ -191,9 +224,13 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		expectedNonce = ""
 	}
 
-	// Clear state/nonce from session
+	// Retrieve the PKCE verifier (if one was stored during the auth request).
+	codeVerifier, _ := session.Values["oidc_code_verifier"].(string)
+
+	// Clear state/nonce/verifier from session
 	delete(session.Values, "oidc_state")
 	delete(session.Values, "oidc_nonce")
+	delete(session.Values, "oidc_code_verifier")
 
 	// Get code
 	code := r.URL.Query().Get("code")
@@ -216,7 +253,11 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	oauth2Cfg := prov.oauth2Config(s.GetBaseURL(r))
-	token, err := oauth2Cfg.Exchange(ctx, code)
+	var exchangeOpts []oauth2.AuthCodeOption
+	if codeVerifier != "" {
+		exchangeOpts = append(exchangeOpts, oauth2.VerifierOption(codeVerifier))
+	}
+	token, err := oauth2Cfg.Exchange(ctx, code, exchangeOpts...)
 	if err != nil {
 		slog.Error("Failed to exchange code for tokens", "error", err)
 		s.renderTemplate(w, r, "login", TemplateData{
