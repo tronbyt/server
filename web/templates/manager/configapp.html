@@ -1241,13 +1241,16 @@ function createImageUploadField(field, config) {
   zoomLabel.style.marginTop = "8px";
   container.appendChild(zoomLabel);
 
+  // Integer 0–100 mapped onto [minScale, maxScale]. Gecko constraint-validates
+  // range inputs, so a float min with step="0.01" blocks submit with
+  // "Please select a valid value" and two long decimal neighbors.
   const zoomInput = document.createElement("input");
   zoomInput.type = "range";
   zoomInput.id = `${field.id}_zoom`;
-  zoomInput.min = "0.1";
-  zoomInput.max = "5";
-  zoomInput.step = "0.01";
-  zoomInput.value = "1";
+  zoomInput.min = "0";
+  zoomInput.max = "100";
+  zoomInput.step = "1";
+  zoomInput.value = "0";
   zoomInput.style.width = "100%";
   zoomInput.style.display = "none";
   zoomInput.setAttribute("data-ignore-config", "true");
@@ -1261,6 +1264,8 @@ function createImageUploadField(field, config) {
   hiddenInput.value = config[field.id] || "";
   container.appendChild(hiddenInput);
 
+  let minScale = 1;
+  let maxScale = 5;
   let imageScale = 1;
   let imageX = 0;
   let imageY = 0;
@@ -1289,6 +1294,11 @@ function createImageUploadField(field, config) {
     } else {
       imageY = Math.min(0, Math.max(areaHeight - imageHeight, imageY));
     }
+  }
+
+  function scaleFromZoomSlider() {
+    const t = Number(zoomInput.value) / 100;
+    return minScale + t * (maxScale - minScale);
   }
 
   function updateImagePosition() {
@@ -1335,14 +1345,15 @@ function createImageUploadField(field, config) {
       const areaWidth = cropArea.clientWidth;
       const areaHeight = cropArea.clientHeight;
 
-      imageScale = Math.max(
+      const initialScale = Math.max(
         areaWidth / cropImage.naturalWidth,
         areaHeight / cropImage.naturalHeight
       );
 
-      zoomInput.min = imageScale;
-      zoomInput.value = imageScale;
-      zoomInput.max = Math.max(imageScale * 5, 5);
+      minScale = initialScale;
+      maxScale = Math.max(initialScale * 5, 5);
+      imageScale = minScale;
+      zoomInput.value = "0";
 
       imageX =
         (areaWidth - cropImage.naturalWidth * imageScale) / 2;
@@ -1385,7 +1396,7 @@ function createImageUploadField(field, config) {
 
   zoomInput.addEventListener("input", () => {
     const oldScale = imageScale;
-    const newScale = parseFloat(zoomInput.value);
+    const newScale = scaleFromZoomSlider();
 
     const centerX = cropArea.clientWidth / 2;
     const centerY = cropArea.clientHeight / 2;
