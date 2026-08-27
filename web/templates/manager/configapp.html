@@ -1188,39 +1188,6 @@
     return container;
   }
 
-  function createImageUploadField(field, config) {
-    const container = document.createElement("div");
-
-    const uploadLabel = document.createElement("label");
-    uploadLabel.htmlFor = `${field.id}_upload`;
-    uploadLabel.textContent = "{{ t .Localizer "Upload Image" }}";
-    container.appendChild(uploadLabel);
-
-    const uploadInput = document.createElement("input");
-    uploadInput.type = "file";
-    uploadInput.id = `${field.id}_upload`;
-    uploadInput.setAttribute("data-ignore-config", "true");
-    uploadInput.accept = "image/png, image/jpeg, image/gif, image/svg+xml, image/webp";
-    container.appendChild(uploadInput);
-
-    const hiddenInput = document.createElement("input");
-    hiddenInput.type = "hidden";
-    hiddenInput.id = "schema_" + field.id;
-    hiddenInput.dataset.configId = field.id;
-    hiddenInput.name = field.id;
-    hiddenInput.value = config[field.id] || "";
-    container.appendChild(hiddenInput);
-
-    const previewImage = document.createElement("img");
-    previewImage.id = `${field.id}_preview`;
-    previewImage.src = config[field.id] ? `data:image/png;base64,${config[field.id]}` : "";
-    previewImage.alt = "{{ t .Localizer "Preview" }}";
-    previewImage.style.maxWidth = "100%";
-    previewImage.style.height = "auto";
-    previewImage.style.marginTop = "10px";
-    previewImage.style.display = config[field.id] ? "inline" : "none";
-    container.appendChild(previewImage);
-
 function createImageUploadField(field, config) {
   const container = document.createElement("div");
 
@@ -1233,8 +1200,56 @@ function createImageUploadField(field, config) {
   uploadInput.type = "file";
   uploadInput.id = `${field.id}_upload`;
   uploadInput.setAttribute("data-ignore-config", "true");
-  uploadInput.accept = "image/png, image/jpeg, image/gif, image/svg+xml, image/webp";
+  uploadInput.accept = "image/png, image/jpeg, image/gif, image/webp";
   container.appendChild(uploadInput);
+
+  const cropArea = document.createElement("div");
+  cropArea.style.width = "100%";
+  cropArea.style.maxWidth = "640px";
+  cropArea.style.aspectRatio = "2 / 1";
+  cropArea.style.position = "relative";
+  cropArea.style.overflow = "hidden";
+  cropArea.style.background = "#000";
+  cropArea.style.marginTop = "10px";
+  cropArea.style.cursor = "grab";
+  cropArea.style.display = "none";
+  cropArea.setAttribute("data-ignore-config", "true");
+  container.appendChild(cropArea);
+
+  const cropImage = document.createElement("img");
+  cropImage.style.position = "absolute";
+  cropImage.style.left = "0";
+  cropImage.style.top = "0";
+  cropImage.style.transformOrigin = "0 0";
+  cropImage.style.maxWidth = "none";
+  cropImage.style.userSelect = "none";
+  cropImage.style.pointerEvents = "none";
+  cropArea.appendChild(cropImage);
+
+  const cropFrame = document.createElement("div");
+  cropFrame.style.position = "absolute";
+  cropFrame.style.inset = "0";
+  cropFrame.style.border = "2px solid white";
+  cropFrame.style.boxSizing = "border-box";
+  cropFrame.style.pointerEvents = "none";
+  cropArea.appendChild(cropFrame);
+
+  const zoomLabel = document.createElement("label");
+  zoomLabel.textContent = "Zoom";
+  zoomLabel.style.display = "none";
+  zoomLabel.style.marginTop = "8px";
+  container.appendChild(zoomLabel);
+
+  const zoomInput = document.createElement("input");
+  zoomInput.type = "range";
+  zoomInput.min = "0.1";
+  zoomInput.max = "5";
+  zoomInput.step = "0.01";
+  zoomInput.value = "1";
+  zoomInput.style.width = "100%";
+  zoomInput.style.display = "none";
+  zoomInput.setAttribute("data-ignore-config", "true");
+  container.appendChild(zoomInput);
 
   const hiddenInput = document.createElement("input");
   hiddenInput.type = "hidden";
@@ -1244,15 +1259,53 @@ function createImageUploadField(field, config) {
   hiddenInput.value = config[field.id] || "";
   container.appendChild(hiddenInput);
 
-  const previewImage = document.createElement("img");
-  previewImage.id = `${field.id}_preview`;
-  previewImage.src = config[field.id] ? `data:image/png;base64,${config[field.id]}` : "";
-  previewImage.alt = "{{ t .Localizer "Preview" }}";
-  previewImage.style.maxWidth = "100%";
-  previewImage.style.height = "auto";
-  previewImage.style.marginTop = "10px";
-  previewImage.style.display = config[field.id] ? "inline" : "none";
-  container.appendChild(previewImage);
+  let imageScale = 1;
+  let imageX = 0;
+  let imageY = 0;
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let imageStartX = 0;
+  let imageStartY = 0;
+
+  function updateImagePosition() {
+    cropImage.style.transform =
+      `translate(${imageX}px, ${imageY}px) scale(${imageScale})`;
+  }
+
+  function saveCrop() {
+    if (!cropImage.src) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 32;
+
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, 64, 32);
+
+    const areaWidth = cropArea.clientWidth;
+    const areaHeight = cropArea.clientHeight;
+
+    const outputScaleX = 64 / areaWidth;
+    const outputScaleY = 32 / areaHeight;
+
+    ctx.save();
+    ctx.scale(outputScaleX, outputScaleY);
+
+    ctx.translate(imageX, imageY);
+    ctx.scale(imageScale, imageScale);
+    ctx.drawImage(cropImage, 0, 0);
+
+    ctx.restore();
+
+    const resizedDataUrl = canvas.toDataURL("image/png");
+    const base64Data = resizedDataUrl.split(",")[1];
+
+    hiddenInput.value = base64Data;
+    config[field.id] = base64Data;
+    updateConfigAndPreview();
+  }
 
   uploadInput.addEventListener("change", event => {
     const file = event.target.files[0];
@@ -1261,48 +1314,88 @@ function createImageUploadField(field, config) {
     const reader = new FileReader();
 
     reader.onload = e => {
-      const sourceImage = new Image();
+      cropImage.onload = () => {
+        cropArea.style.display = "block";
+        zoomLabel.style.display = "block";
+        zoomInput.style.display = "block";
 
-      sourceImage.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 32;
+        const areaWidth = cropArea.clientWidth;
+        const areaHeight = cropArea.clientHeight;
 
-        const ctx = canvas.getContext("2d");
-
-        // Black background for any unused space
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, 64, 32);
-
-        // Preserve aspect ratio
-        const scale = Math.min(
-          64 / sourceImage.width,
-          32 / sourceImage.height
+        const initialScale = Math.max(
+          areaWidth / cropImage.naturalWidth,
+          areaHeight / cropImage.naturalHeight
         );
 
-        const width = sourceImage.width * scale;
-        const height = sourceImage.height * scale;
+        imageScale = initialScale;
+        zoomInput.min = initialScale;
+        zoomInput.value = initialScale;
+        zoomInput.max = Math.max(initialScale * 5, 5);
 
-        const x = (64 - width) / 2;
-        const y = (32 - height) / 2;
+        imageX =
+          (areaWidth - cropImage.naturalWidth * imageScale) / 2;
+        imageY =
+          (areaHeight - cropImage.naturalHeight * imageScale) / 2;
 
-        ctx.drawImage(sourceImage, x, y, width, height);
-
-        const resizedDataUrl = canvas.toDataURL("image/png");
-        const base64Data = resizedDataUrl.split(",")[1];
-
-        hiddenInput.value = base64Data;
-        previewImage.src = resizedDataUrl;
-        previewImage.style.display = "inline";
-        config[field.id] = base64Data;
-
-        updateConfigAndPreview();
+        updateImagePosition();
+        saveCrop();
       };
 
-      sourceImage.src = e.target.result;
+      cropImage.src = e.target.result;
     };
 
     reader.readAsDataURL(file);
+  });
+
+  zoomInput.addEventListener("input", () => {
+    const oldScale = imageScale;
+    const newScale = parseFloat(zoomInput.value);
+
+    const centerX = cropArea.clientWidth / 2;
+    const centerY = cropArea.clientHeight / 2;
+
+    imageX =
+      centerX - (centerX - imageX) * (newScale / oldScale);
+    imageY =
+      centerY - (centerY - imageY) * (newScale / oldScale);
+
+    imageScale = newScale;
+
+    updateImagePosition();
+    saveCrop();
+  });
+
+  cropArea.addEventListener("pointerdown", event => {
+    dragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    imageStartX = imageX;
+    imageStartY = imageY;
+
+    cropArea.style.cursor = "grabbing";
+    cropArea.setPointerCapture(event.pointerId);
+  });
+
+  cropArea.addEventListener("pointermove", event => {
+    if (!dragging) return;
+
+    imageX = imageStartX + (event.clientX - dragStartX);
+    imageY = imageStartY + (event.clientY - dragStartY);
+
+    updateImagePosition();
+  });
+
+  cropArea.addEventListener("pointerup", event => {
+    if (!dragging) return;
+
+    dragging = false;
+    cropArea.style.cursor = "grab";
+
+    try {
+      cropArea.releasePointerCapture(event.pointerId);
+    } catch (e) {}
+
+    saveCrop();
   });
 
   return container;
