@@ -1269,6 +1269,7 @@ function createImageUploadField(field, config) {
   let imageScale = 1;
   let imageX = 0;
   let imageY = 0;
+  let preserveAnimation = false;
   let dragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
@@ -1307,8 +1308,94 @@ function createImageUploadField(field, config) {
       `translate(${imageX}px, ${imageY}px) scale(${imageScale})`;
   }
 
+  function storedPayload(value) {
+    const raw = String(value || "");
+    return raw.startsWith("data:") ? raw.slice(raw.indexOf(",") + 1) : raw;
+  }
+
+  // Canvas drawImage + toDataURL flattens animated GIF/WebP to a single PNG frame.
+  function shouldPreserveAnimation(value) {
+    const raw = String(value || "");
+    const payload = storedPayload(raw);
+    if (raw.includes("image/gif") || payload.startsWith("R0lGOD")) {
+      return true;
+    }
+    if (raw.includes("image/webp") || payload.startsWith("UklGR")) {
+      try {
+        return atob(payload.slice(0, 256)).includes("ANIM");
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  function showCropEditor() {
+    cropArea.style.display = "block";
+    zoomLabel.style.display = preserveAnimation ? "none" : "block";
+    zoomInput.style.display = preserveAnimation ? "none" : "block";
+    cropArea.style.cursor = preserveAnimation ? "default" : "grab";
+  }
+
+  function fitImageToCropArea() {
+    const areaWidth = cropArea.clientWidth;
+    const areaHeight = cropArea.clientHeight;
+    if (!areaWidth || !areaHeight || !cropImage.naturalWidth) {
+      return false;
+    }
+
+    const initialScale = Math.max(
+      areaWidth / cropImage.naturalWidth,
+      areaHeight / cropImage.naturalHeight
+    );
+
+    minScale = initialScale;
+    maxScale = Math.max(initialScale * 5, 5);
+    imageScale = minScale;
+    zoomInput.value = "0";
+
+    imageX = (areaWidth - cropImage.naturalWidth * imageScale) / 2;
+    imageY = (areaHeight - cropImage.naturalHeight * imageScale) / 2;
+
+    updateImagePosition();
+    return true;
+  }
+
+  function whenCropAreaSized(callback) {
+    if (cropArea.clientWidth && cropArea.clientHeight) {
+      callback();
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (!cropArea.clientWidth || !cropArea.clientHeight) return;
+      observer.disconnect();
+      callback();
+    });
+    observer.observe(cropArea);
+  }
+
+  function loadImageIntoCropper(src, recrop) {
+    preserveAnimation = shouldPreserveAnimation(src);
+    if (recrop && preserveAnimation) {
+      const base64Data = storedPayload(src);
+      hiddenInput.value = base64Data;
+      config[field.id] = base64Data;
+      updateConfigAndPreview();
+    }
+    cropImage.onload = () => {
+      showCropEditor();
+      whenCropAreaSized(() => {
+        fitImageToCropArea();
+        if (recrop && !preserveAnimation) {
+          saveCrop();
+        }
+      });
+    };
+    cropImage.src = src;
+  }
+
   function saveCrop() {
-    if (!cropImage.src) return;
+    if (preserveAnimation || !cropImage.src) return;
 
     const canvas = document.createElement("canvas");
     canvas.width = 64;
@@ -1336,47 +1423,6 @@ function createImageUploadField(field, config) {
     updateConfigAndPreview();
   }
 
-  function initializeImage(source, preserveExisting) {
-    cropImage.onload = () => {
-      cropArea.style.display = "block";
-      zoomLabel.style.display = "block";
-      zoomInput.style.display = "block";
-
-      const areaWidth = cropArea.clientWidth;
-      const areaHeight = cropArea.clientHeight;
-
-      const initialScale = Math.max(
-        areaWidth / cropImage.naturalWidth,
-        areaHeight / cropImage.naturalHeight
-      );
-
-      minScale = initialScale;
-      maxScale = Math.max(initialScale * 5, 5);
-      imageScale = minScale;
-      zoomInput.value = "0";
-
-      imageX =
-        (areaWidth - cropImage.naturalWidth * imageScale) / 2;
-      imageY =
-        (areaHeight - cropImage.naturalHeight * imageScale) / 2;
-
-      updateImagePosition();
-
-      if (!preserveExisting) {
-        saveCrop();
-      }
-    };
-
-    cropImage.src = source;
-  }
-
-  if (config[field.id]) {
-    initializeImage(
-      `data:image/png;base64,${config[field.id]}`,
-      true
-    );
-  }
-
   let selectionGeneration = 0;
 
   uploadInput.addEventListener("change", event => {
@@ -1388,13 +1434,14 @@ function createImageUploadField(field, config) {
 
     reader.onload = e => {
       if (generation !== selectionGeneration) return;
-      initializeImage(e.target.result, false);
+      loadImageIntoCropper(e.target.result, true);
     };
 
     reader.readAsDataURL(file);
   });
 
   zoomInput.addEventListener("input", () => {
+    if (preserveAnimation) return;
     const oldScale = imageScale;
     const newScale = scaleFromZoomSlider();
 
@@ -1428,6 +1475,7 @@ function createImageUploadField(field, config) {
   }
 
   cropArea.addEventListener("pointerdown", event => {
+    if (preserveAnimation) return;
     dragging = true;
     dragStartX = event.clientX;
     dragStartY = event.clientY;
@@ -1454,6 +1502,22 @@ function createImageUploadField(field, config) {
   cropArea.addEventListener("pointercancel", event => {
     stopDragging(event);
   });
+
+  const existing = config[field.id];
+  if (existing) {
+    const raw = String(existing);
+    let dataUrl = raw;
+    if (!raw.startsWith("data:")) {
+      let mime = "image/png";
+      if (raw.startsWith("/9j/")) mime = "image/jpeg";
+      else if (raw.startsWith("R0lGOD")) mime = "image/gif";
+      else if (raw.startsWith("UklGR")) mime = "image/webp";
+      dataUrl = `data:${mime};base64,${raw}`;
+    }
+    // Wait until the field has been inserted into the form so the crop
+    // area has a layout size before we fit the restored image.
+    queueMicrotask(() => loadImageIntoCropper(dataUrl, false));
+  }
 
   return container;
 }
