@@ -1221,31 +1221,92 @@
     previewImage.style.display = config[field.id] ? "inline" : "none";
     container.appendChild(previewImage);
 
-    uploadInput.addEventListener("change", event => {
-      const file = event.target.files[0];
-      if (!file) return;
+function createImageUploadField(field, config) {
+  const container = document.createElement("div");
 
-      const maxSize = 500 * 1024;
-      if (file.size > maxSize) {
-        alert("{{ t .Localizer "File size exceeds 500KB limit. Please upload a smaller image." }}");
-        uploadInput.value = "";
-        return;
-      }
+  const uploadLabel = document.createElement("label");
+  uploadLabel.htmlFor = `${field.id}_upload`;
+  uploadLabel.textContent = "{{ t .Localizer "Upload Image" }}";
+  container.appendChild(uploadLabel);
 
-      const reader = new FileReader();
-      reader.onload = e => {
-        const base64Data = e.target.result.split(",")[1];
+  const uploadInput = document.createElement("input");
+  uploadInput.type = "file";
+  uploadInput.id = `${field.id}_upload`;
+  uploadInput.setAttribute("data-ignore-config", "true");
+  uploadInput.accept = "image/png, image/jpeg, image/gif, image/svg+xml, image/webp";
+  container.appendChild(uploadInput);
+
+  const hiddenInput = document.createElement("input");
+  hiddenInput.type = "hidden";
+  hiddenInput.id = "schema_" + field.id;
+  hiddenInput.dataset.configId = field.id;
+  hiddenInput.name = field.id;
+  hiddenInput.value = config[field.id] || "";
+  container.appendChild(hiddenInput);
+
+  const previewImage = document.createElement("img");
+  previewImage.id = `${field.id}_preview`;
+  previewImage.src = config[field.id] ? `data:image/png;base64,${config[field.id]}` : "";
+  previewImage.alt = "{{ t .Localizer "Preview" }}";
+  previewImage.style.maxWidth = "100%";
+  previewImage.style.height = "auto";
+  previewImage.style.marginTop = "10px";
+  previewImage.style.display = config[field.id] ? "inline" : "none";
+  container.appendChild(previewImage);
+
+  uploadInput.addEventListener("change", event => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = e => {
+      const sourceImage = new Image();
+
+      sourceImage.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 32;
+
+        const ctx = canvas.getContext("2d");
+
+        // Black background for any unused space
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, 64, 32);
+
+        // Preserve aspect ratio
+        const scale = Math.min(
+          64 / sourceImage.width,
+          32 / sourceImage.height
+        );
+
+        const width = sourceImage.width * scale;
+        const height = sourceImage.height * scale;
+
+        const x = (64 - width) / 2;
+        const y = (32 - height) / 2;
+
+        ctx.drawImage(sourceImage, x, y, width, height);
+
+        const resizedDataUrl = canvas.toDataURL("image/png");
+        const base64Data = resizedDataUrl.split(",")[1];
+
         hiddenInput.value = base64Data;
-        previewImage.src = e.target.result;
+        previewImage.src = resizedDataUrl;
         previewImage.style.display = "inline";
         config[field.id] = base64Data;
+
         updateConfigAndPreview();
       };
-      reader.readAsDataURL(file);
-    });
 
-    return container;
-  }
+      sourceImage.src = e.target.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+
+  return container;
+}
 
   function createTypeaheadField(field, config) {
     let inputElement = document.createElement("div");
