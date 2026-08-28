@@ -1366,13 +1366,17 @@ function createImageUploadField(field, config) {
     );
   }
 
+  let selectionGeneration = 0;
+
   uploadInput.addEventListener("change", event => {
     const file = event.target.files[0];
     if (!file) return;
 
+    const generation = ++selectionGeneration;
     const reader = new FileReader();
 
     reader.onload = e => {
+      if (generation !== selectionGeneration) return;
       initializeImage(e.target.result, false);
     };
 
