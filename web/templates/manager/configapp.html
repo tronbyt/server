@@ -1235,13 +1235,15 @@ function createImageUploadField(field, config) {
   cropArea.appendChild(cropFrame);
 
   const zoomLabel = document.createElement("label");
-  zoomLabel.textContent = "Zoom";
+  zoomLabel.htmlFor = `${field.id}_zoom`;
+  zoomLabel.textContent = "{{ t .Localizer "Zoom" }}";
   zoomLabel.style.display = "none";
   zoomLabel.style.marginTop = "8px";
   container.appendChild(zoomLabel);
 
   const zoomInput = document.createElement("input");
   zoomInput.type = "range";
+  zoomInput.id = `${field.id}_zoom`;
   zoomInput.min = "0.1";
   zoomInput.max = "5";
   zoomInput.step = "0.01";
@@ -1268,7 +1270,29 @@ function createImageUploadField(field, config) {
   let imageStartX = 0;
   let imageStartY = 0;
 
+  function clampImagePosition() {
+    if (!cropImage.naturalWidth || !cropImage.naturalHeight) return;
+
+    const areaWidth = cropArea.clientWidth;
+    const areaHeight = cropArea.clientHeight;
+    const imageWidth = cropImage.naturalWidth * imageScale;
+    const imageHeight = cropImage.naturalHeight * imageScale;
+
+    if (imageWidth <= areaWidth) {
+      imageX = (areaWidth - imageWidth) / 2;
+    } else {
+      imageX = Math.min(0, Math.max(areaWidth - imageWidth, imageX));
+    }
+
+    if (imageHeight <= areaHeight) {
+      imageY = (areaHeight - imageHeight) / 2;
+    } else {
+      imageY = Math.min(0, Math.max(areaHeight - imageHeight, imageY));
+    }
+  }
+
   function updateImagePosition() {
+    clampImagePosition();
     cropImage.style.transform =
       `translate(${imageX}px, ${imageY}px) scale(${imageScale})`;
   }
@@ -1287,16 +1311,11 @@ function createImageUploadField(field, config) {
     const areaWidth = cropArea.clientWidth;
     const areaHeight = cropArea.clientHeight;
 
-    const outputScaleX = 64 / areaWidth;
-    const outputScaleY = 32 / areaHeight;
-
     ctx.save();
-    ctx.scale(outputScaleX, outputScaleY);
-
+    ctx.scale(64 / areaWidth, 32 / areaHeight);
     ctx.translate(imageX, imageY);
     ctx.scale(imageScale, imageScale);
     ctx.drawImage(cropImage, 0, 0);
-
     ctx.restore();
 
     const resizedDataUrl = canvas.toDataURL("image/png");
@@ -1307,6 +1326,46 @@ function createImageUploadField(field, config) {
     updateConfigAndPreview();
   }
 
+  function initializeImage(source, preserveExisting) {
+    cropImage.onload = () => {
+      cropArea.style.display = "block";
+      zoomLabel.style.display = "block";
+      zoomInput.style.display = "block";
+
+      const areaWidth = cropArea.clientWidth;
+      const areaHeight = cropArea.clientHeight;
+
+      imageScale = Math.max(
+        areaWidth / cropImage.naturalWidth,
+        areaHeight / cropImage.naturalHeight
+      );
+
+      zoomInput.min = imageScale;
+      zoomInput.value = imageScale;
+      zoomInput.max = Math.max(imageScale * 5, 5);
+
+      imageX =
+        (areaWidth - cropImage.naturalWidth * imageScale) / 2;
+      imageY =
+        (areaHeight - cropImage.naturalHeight * imageScale) / 2;
+
+      updateImagePosition();
+
+      if (!preserveExisting) {
+        saveCrop();
+      }
+    };
+
+    cropImage.src = source;
+  }
+
+  if (config[field.id]) {
+    initializeImage(
+      `data:image/png;base64,${config[field.id]}`,
+      true
+    );
+  }
+
   uploadInput.addEventListener("change", event => {
     const file = event.target.files[0];
     if (!file) return;
@@ -1314,34 +1373,7 @@ function createImageUploadField(field, config) {
     const reader = new FileReader();
 
     reader.onload = e => {
-      cropImage.onload = () => {
-        cropArea.style.display = "block";
-        zoomLabel.style.display = "block";
-        zoomInput.style.display = "block";
-
-        const areaWidth = cropArea.clientWidth;
-        const areaHeight = cropArea.clientHeight;
-
-        const initialScale = Math.max(
-          areaWidth / cropImage.naturalWidth,
-          areaHeight / cropImage.naturalHeight
-        );
-
-        imageScale = initialScale;
-        zoomInput.min = initialScale;
-        zoomInput.value = initialScale;
-        zoomInput.max = Math.max(initialScale * 5, 5);
-
-        imageX =
-          (areaWidth - cropImage.naturalWidth * imageScale) / 2;
-        imageY =
-          (areaHeight - cropImage.naturalHeight * imageScale) / 2;
-
-        updateImagePosition();
-        saveCrop();
-      };
-
-      cropImage.src = e.target.result;
+      initializeImage(e.target.result, false);
     };
 
     reader.readAsDataURL(file);
@@ -1365,6 +1397,21 @@ function createImageUploadField(field, config) {
     saveCrop();
   });
 
+  function stopDragging(event, save = true) {
+    if (!dragging) return;
+
+    dragging = false;
+    cropArea.style.cursor = "grab";
+
+    if (event && cropArea.hasPointerCapture(event.pointerId)) {
+      cropArea.releasePointerCapture(event.pointerId);
+    }
+
+    if (save) {
+      saveCrop();
+    }
+  }
+
   cropArea.addEventListener("pointerdown", event => {
     dragging = true;
     dragStartX = event.clientX;
@@ -1386,16 +1433,11 @@ function createImageUploadField(field, config) {
   });
 
   cropArea.addEventListener("pointerup", event => {
-    if (!dragging) return;
+    stopDragging(event);
+  });
 
-    dragging = false;
-    cropArea.style.cursor = "grab";
-
-    try {
-      cropArea.releasePointerCapture(event.pointerId);
-    } catch (e) {}
-
-    saveCrop();
+  cropArea.addEventListener("pointercancel", event => {
+    stopDragging(event);
   });
 
   return container;
