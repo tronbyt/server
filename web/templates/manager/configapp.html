@@ -1314,19 +1314,111 @@ function createImageUploadField(field, config) {
   }
 
   // Canvas drawImage + toDataURL flattens animated GIF/WebP to a single PNG frame.
-  function shouldPreserveAnimation(value) {
-    const raw = String(value || "");
-    const payload = storedPayload(raw);
-    if (raw.includes("image/gif") || payload.startsWith("R0lGOD")) {
-      return true;
-    }
-    if (raw.includes("image/webp") || payload.startsWith("UklGR")) {
-      try {
-        return atob(payload.slice(0, 256)).includes("ANIM");
-      } catch (e) {
-        return false;
+  function decodeBase64Bytes(payload) {
+    try {
+      const binary = atob(String(payload || "").replace(/\s/g, ""));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
       }
+      return bytes;
+    } catch (e) {
+      return null;
     }
+  }
+
+  function readU32LE(bytes, offset) {
+    if (offset + 4 > bytes.length) return null;
+    return (
+      bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24)
+    ) >>> 0;
+  }
+
+  function asciiAt(bytes, offset, length) {
+    if (offset + length > bytes.length) return "";
+    return String.fromCharCode(...bytes.subarray(offset, offset + length));
+  }
+
+  function skipGifSubBlocks(bytes, offset) {
+    let i = offset;
+    while (i < bytes.length) {
+      const len = bytes[i];
+      i += 1;
+      if (len === 0) return i;
+      i += len;
+    }
+    return -1;
+  }
+
+  function gifHasMultipleFrames(bytes) {
+    if (bytes.length < 13) return false;
+    const header = asciiAt(bytes, 0, 6);
+    if (header !== "GIF87a" && header !== "GIF89a") return false;
+
+    let i = 13;
+    const packed = bytes[10];
+    if (packed & 0x80) {
+      i += 3 * (1 << ((packed & 0x07) + 1));
+    }
+
+    let frames = 0;
+    while (i < bytes.length) {
+      const marker = bytes[i];
+      if (marker === 0x3B) break;
+      if (marker === 0x2C) {
+        if (i + 10 > bytes.length) return false;
+        const imgPacked = bytes[i + 9];
+        frames += 1;
+        if (frames >= 2) return true;
+        i += 10;
+        if (imgPacked & 0x80) {
+          i += 3 * (1 << ((imgPacked & 0x07) + 1));
+        }
+        if (i >= bytes.length) return false;
+        i += 1;
+        i = skipGifSubBlocks(bytes, i);
+        if (i < 0) return false;
+        continue;
+      }
+      if (marker === 0x21) {
+        if (i + 2 > bytes.length) return false;
+        i = skipGifSubBlocks(bytes, i + 2);
+        if (i < 0) return false;
+        continue;
+      }
+      return false;
+    }
+    return false;
+  }
+
+  function webpHasAnimChunk(bytes) {
+    if (asciiAt(bytes, 0, 4) !== "RIFF" || asciiAt(bytes, 8, 4) !== "WEBP") {
+      return false;
+    }
+    const riffSize = readU32LE(bytes, 4);
+    if (riffSize === null) return false;
+    const end = Math.min(bytes.length, 8 + riffSize);
+    let i = 12;
+    while (i + 8 <= end) {
+      const fourcc = asciiAt(bytes, i, 4);
+      const size = readU32LE(bytes, i + 4);
+      if (size === null) return false;
+      if (fourcc === "ANIM") return true;
+      const payloadEnd = i + 8 + size + (size % 2);
+      if (payloadEnd <= i) return false;
+      i = payloadEnd;
+    }
+    return false;
+  }
+
+  function shouldPreserveAnimation(value) {
+    const bytes = decodeBase64Bytes(storedPayload(value));
+    if (!bytes) return false;
+    if (gifHasMultipleFrames(bytes)) return true;
+    if (webpHasAnimChunk(bytes)) return true;
     return false;
   }
 
