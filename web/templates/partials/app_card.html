@@ -21,9 +21,13 @@
                  alt="{{ t .Localizer "Preview" }}"
                  width="128"
                  height="64">
-            {{ if .App.EmptyLastRender }}
+            {{ if or (not .App.Enabled) .App.EmptyLastRender }}
             <div class="inactive-overlay">
-                <span class="inactive-badge-overlay"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ t .Localizer "INACTIVE" }}</span>
+                {{ if not .App.Enabled }}
+                <span class="inactive-badge-overlay"><i class="fa-solid fa-pause" aria-hidden="true"></i> {{ t .Localizer "Disabled" }}</span>
+                {{ else if .App.EmptyLastRender }}
+                <span class="inactive-badge-overlay"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ t .Localizer "Inactive" }}</span>
+                {{ end }}
             </div>
             {{ end }}
         </div>
