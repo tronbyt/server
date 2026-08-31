@@ -73,7 +73,7 @@
             <ul class="settings-list">
                 {{ range .User.Credentials }}
                 <li class="settings-list-item">
-                    <div class="settings-list-copy">
+                    <div class="authenticator-entry">
                         {{ $iconLight := webauthn_icon .Authenticator false }}
                         {{ $iconDark := webauthn_icon .Authenticator true }}
                         {{ if and $iconLight $iconDark (ne $iconLight $iconDark) }}
