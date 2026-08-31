@@ -701,9 +701,12 @@
                     </div>
                     {{ if eq .Device.Type.Slug "tidbyt_gen2" }}
                     <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Disable Touch Button" }}</div>
+                        <div class="settings-field-label">
+                            <label for="disable_touch">{{ t .Localizer "Disable Touch Button" }}</label>
+                        </div>
                         <div class="settings-field-control">
                             <input type="checkbox"
+                                   id="disable_touch"
                                    {{ if derefOr .Device.Info.DisableTouch false }}
                                    checked
                                    {{ end }}
