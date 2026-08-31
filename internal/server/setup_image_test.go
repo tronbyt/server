@@ -11,6 +11,8 @@ import (
 	"tronbyt-server/web"
 
 	"github.com/skip2/go-qrcode"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tronbyt/pixlet/render"
 	"gorm.io/gorm"
 )
@@ -69,16 +71,10 @@ func TestSetupQRImageDeclinesWhatCannotFit(t *testing.T) {
 
 func TestRenderSetupImageDrawsEveryPanelSize(t *testing.T) {
 	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}, {64, 64}} {
-		data, err := renderSetupImage(context.Background(), c.w, c.h, "http://192.168.1.155:8000")
-		if err != nil {
-			t.Fatalf("%dx%d: %v", c.w, c.h, err)
-		}
-		if len(data) == 0 {
-			t.Fatalf("%dx%d: empty image", c.w, c.h)
-		}
-		if !bytes.HasPrefix(data, []byte("RIFF")) {
-			t.Errorf("%dx%d: not a WebP", c.w, c.h)
-		}
+		img, err := renderSetupImage(context.Background(), c.w, c.h, "http://192.168.1.155:8000")
+		require.NoErrorf(t, err, "%dx%d", c.w, c.h)
+		require.NotEmptyf(t, img, "%dx%d: empty image", c.w, c.h)
+		assert.Truef(t, bytes.HasPrefix(img, []byte("RIFF")), "%dx%d: not a WebP", c.w, c.h)
 	}
 }
 
@@ -131,14 +127,10 @@ func TestGetNextAppImageShowsSetupWhenThereAreNoApps(t *testing.T) {
 func TestSetupImageDrawsTheAddressBesideTheQROnAWidePanel(t *testing.T) {
 	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}} {
 		root, err := setupImageRoot(c.w, c.h, "http://192.168.1.155:8000")
-		if err != nil {
-			t.Fatalf("%dx%d: %v", c.w, c.h, err)
-		}
-		row, ok := setupImageLayout(t, root).(*render.Row)
-		if !ok {
-			t.Fatalf("%dx%d: expected the address beside the QR, got %T",
-				c.w, c.h, setupImageLayout(t, root))
-		}
+		require.NoErrorf(t, err, "%dx%d", c.w, c.h)
+		layout := setupImageLayout(t, root)
+		row, ok := layout.(*render.Row)
+		require.Truef(t, ok, "%dx%d: expected the address beside the QR, got %T", c.w, c.h, layout)
 		assertAddressHasWidth(t, row.Children)
 	}
 }
@@ -149,13 +141,10 @@ func TestSetupImageDrawsTheAddressBesideTheQROnAWidePanel(t *testing.T) {
 // panel — so this asserts the layout, not just that something rendered.
 func TestSetupImageStacksTheAddressOnASquarePanel(t *testing.T) {
 	root, err := setupImageRoot(64, 64, "http://192.168.1.155:8000")
-	if err != nil {
-		t.Fatal(err)
-	}
-	column, ok := setupImageLayout(t, root).(*render.Column)
-	if !ok {
-		t.Fatalf("expected the address stacked under the QR, got %T", setupImageLayout(t, root))
-	}
+	require.NoError(t, err)
+	layout := setupImageLayout(t, root)
+	column, ok := layout.(*render.Column)
+	require.Truef(t, ok, "expected the address stacked under the QR, got %T", layout)
 	assertAddressHasWidth(t, column.Children)
 }
 
@@ -175,9 +164,7 @@ func TestSetupFontFitsThePanel(t *testing.T) {
 func setupImageLayout(t *testing.T, root render.Root) render.Widget {
 	t.Helper()
 	box, ok := root.Child.(*render.Box)
-	if !ok {
-		t.Fatalf("expected the panel-sized Box, got %T", root.Child)
-	}
+	require.Truef(t, ok, "expected the panel-sized Box, got %T", root.Child)
 	return box.Child
 }
 
@@ -188,13 +175,11 @@ func assertAddressHasWidth(t *testing.T, children []render.Widget) {
 			child = padding.Child
 		}
 		if text, ok := child.(*render.WrappedText); ok {
-			if text.Width <= 0 {
-				t.Errorf("the address was left %d px to draw in", text.Width)
-			}
+			assert.Greaterf(t, text.Width, 0, "the address was left %d px to draw in", text.Width)
 			return
 		}
 	}
-	t.Error("no address was drawn")
+	assert.Fail(t, "no address was drawn")
 }
 
 func scaleOf(side, modules int) int {
