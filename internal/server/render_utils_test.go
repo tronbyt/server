@@ -7,10 +7,12 @@ import (
 	"tronbyt-server/internal/data"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetEffectiveFilters_ModeFiltersOverrideApp(t *testing.T) {
 	s := newTestServer(t)
+	require.NotNil(t, s)
 	warm := data.ColorFilterWarm
 	dimmed := data.ColorFilterDimmed
 	redshift := data.ColorFilterRedshift
@@ -113,6 +115,7 @@ func TestGetEffectiveFilters_ModeFiltersOverrideApp(t *testing.T) {
 
 func TestGetEffectiveFilters_ModeOverride(t *testing.T) {
 	s := newTestServer(t)
+	require.NotNil(t, s)
 	warm := data.ColorFilterWarm
 	dimmed := data.ColorFilterDimmed
 
