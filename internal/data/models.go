@@ -35,6 +35,7 @@ const (
 	DeviceTronbytS3Wide
 	DeviceMatrixPortal
 	DeviceMatrixPortalWS
+	DeviceMatrixPortalSquare
 	DeviceWaveshareS3
 	DevicePixoticker
 	DeviceRaspberryPi
@@ -44,19 +45,20 @@ const (
 )
 
 var DeviceTypeToString = map[DeviceType]string{
-	DeviceUnknown:           "unknown",
-	DeviceTidbytGen1:        "tidbyt_gen1",
-	DeviceTidbytGen2:        "tidbyt_gen2",
-	DeviceTronbytS3:         "tronbyt_s3",
-	DeviceTronbytS3Wide:     "tronbyt_s3_wide",
-	DeviceMatrixPortal:      "matrixportal_s3",
-	DeviceMatrixPortalWS:    "matrixportal_s3_waveshare",
-	DeviceWaveshareS3:       "waveshare_s3",
-	DevicePixoticker:        "pixoticker",
-	DeviceRaspberryPi:       "raspberrypi",
-	DeviceRaspberryPiWide:   "raspberrypi_wide",
-	DeviceRaspberryPiSquare: "raspberrypi_square",
-	DeviceOther:             "other",
+	DeviceUnknown:            "unknown",
+	DeviceTidbytGen1:         "tidbyt_gen1",
+	DeviceTidbytGen2:         "tidbyt_gen2",
+	DeviceTronbytS3:          "tronbyt_s3",
+	DeviceTronbytS3Wide:      "tronbyt_s3_wide",
+	DeviceMatrixPortal:       "matrixportal_s3",
+	DeviceMatrixPortalWS:     "matrixportal_s3_waveshare",
+	DeviceMatrixPortalSquare: "matrixportal_s3_square",
+	DeviceWaveshareS3:        "waveshare_s3",
+	DevicePixoticker:         "pixoticker",
+	DeviceRaspberryPi:        "raspberrypi",
+	DeviceRaspberryPiWide:    "raspberrypi_wide",
+	DeviceRaspberryPiSquare:  "raspberrypi_square",
+	DeviceOther:              "other",
 }
 
 var StringToDeviceType = func() map[string]DeviceType {
@@ -84,19 +86,20 @@ const (
 // (UI level 0-5 -> brightness percent 0-100). Devices that do not have their own custom
 // scale fall back to their type's default.
 var DeviceTypeDefaultBrightnessScale = map[DeviceType]string{
-	DeviceUnknown:           S3BrightnessScale,
-	DeviceTidbytGen1:        TidbytGen1BrightnessScale,
-	DeviceTidbytGen2:        TidbytGen2BrightnessScale,
-	DeviceTronbytS3:         S3BrightnessScale,
-	DeviceTronbytS3Wide:     S3BrightnessScale,
-	DeviceMatrixPortal:      S3BrightnessScale,
-	DeviceMatrixPortalWS:    S3BrightnessScale,
-	DeviceWaveshareS3:       S3BrightnessScale,
-	DevicePixoticker:        S3BrightnessScale,
-	DeviceRaspberryPi:       S3BrightnessScale,
-	DeviceRaspberryPiWide:   S3BrightnessScale,
-	DeviceRaspberryPiSquare: S3BrightnessScale,
-	DeviceOther:             S3BrightnessScale,
+	DeviceUnknown:            S3BrightnessScale,
+	DeviceTidbytGen1:         TidbytGen1BrightnessScale,
+	DeviceTidbytGen2:         TidbytGen2BrightnessScale,
+	DeviceTronbytS3:          S3BrightnessScale,
+	DeviceTronbytS3Wide:      S3BrightnessScale,
+	DeviceMatrixPortal:       S3BrightnessScale,
+	DeviceMatrixPortalWS:     S3BrightnessScale,
+	DeviceMatrixPortalSquare: S3BrightnessScale,
+	DeviceWaveshareS3:        S3BrightnessScale,
+	DevicePixoticker:         S3BrightnessScale,
+	DeviceRaspberryPi:        S3BrightnessScale,
+	DeviceRaspberryPiWide:    S3BrightnessScale,
+	DeviceRaspberryPiSquare:  S3BrightnessScale,
+	DeviceOther:              S3BrightnessScale,
 }
 
 // DefaultBrightnessScale returns the default brightness scale string for the device type,
@@ -131,6 +134,8 @@ func (dt DeviceType) String() string {
 		return "MatrixPortal S3"
 	case DeviceMatrixPortalWS:
 		return "MatrixPortal S3 Waveshare"
+	case DeviceMatrixPortalSquare:
+		return "MatrixPortal S3 Square"
 	case DeviceWaveshareS3:
 		return "Waveshare S3"
 	case DeviceOther:
@@ -693,7 +698,7 @@ const (
 // any 2x scaling — see Supports2x and DisplaySize.
 func (dt DeviceType) CanvasSize() (width, height int) {
 	switch dt {
-	case DeviceRaspberryPiSquare:
+	case DeviceRaspberryPiSquare, DeviceMatrixPortalSquare:
 		return 64, 64
 	default:
 		return DefaultCanvasWidth, DefaultCanvasHeight
@@ -713,7 +718,7 @@ func (dt DeviceType) DisplaySize() (width, height int) {
 
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
-	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceWaveshareS3:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -723,7 +728,7 @@ func (dt DeviceType) SupportsFirmware() bool {
 func (dt DeviceType) SupportsOTA() bool {
 	switch dt {
 	// DevicePixoticker is intentionally omitted (not enough flash memory)
-	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceWaveshareS3:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -749,6 +754,8 @@ func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 		return "matrixportal-s3.bin"
 	case DeviceMatrixPortalWS:
 		return "matrixportal-s3-waveshare.bin"
+	case DeviceMatrixPortalSquare:
+		return "matrixportal-s3-square.bin"
 	case DeviceWaveshareS3:
 		return "waveshare-s3.bin"
 	default:
@@ -764,6 +771,8 @@ func (dt DeviceType) MergedFilename(swapColors bool) string {
 		return "tronbyt-S3_merged.bin"
 	case DeviceMatrixPortal, DeviceMatrixPortalWS:
 		return "matrixportal-s3_merged.bin"
+	case DeviceMatrixPortalSquare:
+		return "matrixportal-s3-square_merged.bin"
 	case DeviceWaveshareS3:
 		return "waveshare-s3_merged.bin"
 	default:

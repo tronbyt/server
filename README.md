@@ -13,7 +13,7 @@ However, there are some drawbacks, including the lack of a mobile app, slightly 
 **Supported Devices:**
 *   Tidbyt Gen1 and Gen2
 *   Tronbyt S3 and S3 Wide
-*   MatrixPortal S3 and MatrixPortal S3 Waveshare
+*   MatrixPortal S3, MatrixPortal S3 Waveshare and MatrixPortal S3 Square (64x64)
 *   Raspberry Pi (64x32), Raspberry Pi Wide (128x64) and Raspberry Pi Square (64x64) connected to matrix LED panels
 *   Pixoticker (limited memory, not recommended)
 

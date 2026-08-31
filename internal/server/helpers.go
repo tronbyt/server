@@ -263,6 +263,7 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeOpt
 		data.DeviceTronbytS3Wide,
 		data.DeviceMatrixPortal,
 		data.DeviceMatrixPortalWS,
+		data.DeviceMatrixPortalSquare,
 		data.DeviceWaveshareS3,
 		data.DevicePixoticker,
 		data.DeviceRaspberryPi,
