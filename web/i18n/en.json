@@ -2114,6 +2114,12 @@
   "Skip Boot Animation": {
     "other": "Skip Boot Animation"
   },
+  "Disable Touch Button": {
+    "other": "Disable Touch Button"
+  },
+  "Disables the physical touch button. Requires reboot to take effect.": {
+    "other": "Disables the physical touch button. Requires reboot to take effect."
+  },
   "Leave blank to auto-generate": {
     "other": "Leave blank to auto-generate"
   },

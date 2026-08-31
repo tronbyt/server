@@ -449,6 +449,7 @@ type DeviceInfo struct {
 	APMode             *bool        `json:"ap_mode"`
 	PreferIPv6         *bool        `json:"prefer_ipv6"`
 	SwapColors         *bool        `json:"swap_colors"`
+	DisableTouch       *bool        `json:"disable_touch"`
 	ImageURL           *string      `json:"image_url"`
 	Hostname           *string      `json:"hostname"`
 	SNTPServer         *string      `json:"sntp_server"`
