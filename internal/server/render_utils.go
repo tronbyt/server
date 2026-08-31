@@ -290,11 +290,15 @@ func (s *Server) getEffectiveFiltersAt(device *data.Device, app *data.App, at ti
 }
 
 func (s *Server) filtersChangedSinceLastRender(device *data.Device, app *data.App) bool {
+	return s.filtersChangedSinceLastRenderAt(device, app, time.Now())
+}
+
+func (s *Server) filtersChangedSinceLastRenderAt(device *data.Device, app *data.App, now time.Time) bool {
 	if app.LastRender.IsZero() {
 		return false
 	}
 	at := app.LastRender.In(device.GetLocation())
-	return !slices.Equal(s.getEffectiveFiltersAt(device, app, at), s.getEffectiveFilters(device, app))
+	return !slices.Equal(s.getEffectiveFiltersAt(device, app, at), s.getEffectiveFiltersAt(device, app, now.In(device.GetLocation())))
 }
 
 func deviceModeColorFilterAt(device *data.Device, at time.Time) *data.ColorFilter {

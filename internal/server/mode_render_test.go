@@ -63,20 +63,27 @@ func TestFiltersChangedSinceLastRender(t *testing.T) {
 
 	dimmed := data.ColorFilterDimmed
 	warm := data.ColorFilterWarm
+	tz := "UTC"
 	device := data.Device{
 		NightModeEnabled: true,
 		NightStart:       "22:00",
 		NightEnd:         "06:00",
 		NightColorFilter: &dimmed,
+		Timezone:         &tz,
 	}
 	app := &data.App{
 		ColorFilter: &warm,
-		LastRender:  time.Date(2026, 1, 15, 12, 0, 0, 0, time.Local),
 		UInterval:   60,
 	}
 
-	assert.False(t, s.filtersChangedSinceLastRender(&device, app))
+	noon := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+	app.LastRender = noon
+	assert.False(t, s.filtersChangedSinceLastRenderAt(&device, app, noon))
 
-	app.LastRender = time.Date(2026, 1, 15, 23, 0, 0, 0, time.Local)
-	assert.True(t, s.filtersChangedSinceLastRender(&device, app))
+	night := time.Date(2026, 1, 15, 23, 0, 0, 0, time.UTC)
+	app.LastRender = noon
+	assert.True(t, s.filtersChangedSinceLastRenderAt(&device, app, night))
+
+	app.LastRender = night
+	assert.False(t, s.filtersChangedSinceLastRenderAt(&device, app, night))
 }
