@@ -667,6 +667,7 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		device.DefaultInterval = *update.IntervalSec
 	}
 	nightModeWasEnabled := device.NightModeEnabled
+	modeSnapshotBefore := snapshotDeviceMode(device)
 	nightStartWas := device.NightStart
 	nightEndWas := device.NightEnd
 	dimModeWasEnabled := device.DimModeEnabled
@@ -751,6 +752,7 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	// Notify Dashboard
 	user := GetUser(r)
 	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+	s.invalidateDeviceAppRendersIfModeChanged(r.Context(), device, modeSnapshotBefore)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(s.toDevicePayload(device)); err != nil {
