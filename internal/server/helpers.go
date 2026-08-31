@@ -267,6 +267,7 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeOpt
 		data.DevicePixoticker,
 		data.DeviceRaspberryPi,
 		data.DeviceRaspberryPiWide,
+		data.DeviceRaspberryPiSquare,
 		data.DeviceOther,
 	}
 

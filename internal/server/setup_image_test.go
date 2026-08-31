@@ -11,6 +11,7 @@ import (
 	"tronbyt-server/web"
 
 	"github.com/skip2/go-qrcode"
+	"github.com/tronbyt/pixlet/render"
 	"gorm.io/gorm"
 )
 
@@ -66,8 +67,8 @@ func TestSetupQRImageDeclinesWhatCannotFit(t *testing.T) {
 	}
 }
 
-func TestRenderSetupImageDrawsBothPanelSizes(t *testing.T) {
-	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}} {
+func TestRenderSetupImageDrawsEveryPanelSize(t *testing.T) {
+	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}, {64, 64}} {
 		data, err := renderSetupImage(context.Background(), c.w, c.h, "http://192.168.1.155:8000")
 		if err != nil {
 			t.Fatalf("%dx%d: %v", c.w, c.h, err)
@@ -126,6 +127,38 @@ func TestGetNextAppImageShowsSetupWhenThereAreNoApps(t *testing.T) {
 	}
 }
 
+// A panel wider than it is tall has room for the address beside the QR.
+func TestSetupImageDrawsTheAddressBesideTheQROnAWidePanel(t *testing.T) {
+	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}} {
+		root, err := setupImageRoot(c.w, c.h, "http://192.168.1.155:8000")
+		if err != nil {
+			t.Fatalf("%dx%d: %v", c.w, c.h, err)
+		}
+		row, ok := setupImageLayout(t, root).(*render.Row)
+		if !ok {
+			t.Fatalf("%dx%d: expected the address beside the QR, got %T",
+				c.w, c.h, setupImageLayout(t, root))
+		}
+		assertAddressHasWidth(t, row.Children)
+	}
+}
+
+// A square panel has none: a QR sized to the full height is also the full
+// width, which leaves the address nothing to wrap into. Getting this wrong is
+// silent — the QR still draws and the address is simply squeezed off the
+// panel — so this asserts the layout, not just that something rendered.
+func TestSetupImageStacksTheAddressOnASquarePanel(t *testing.T) {
+	root, err := setupImageRoot(64, 64, "http://192.168.1.155:8000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	column, ok := setupImageLayout(t, root).(*render.Column)
+	if !ok {
+		t.Fatalf("expected the address stacked under the QR, got %T", setupImageLayout(t, root))
+	}
+	assertAddressHasWidth(t, column.Children)
+}
+
 func TestSetupFontFitsThePanel(t *testing.T) {
 	if f := setupFont(64); !strings.Contains(f, "tom-thumb") {
 		t.Errorf("64px panel should use the narrowest face, got %q", f)
@@ -136,6 +169,33 @@ func TestSetupFontFitsThePanel(t *testing.T) {
 }
 
 // helpers
+
+// setupImageLayout unwraps the sizing Box every panel is drawn into, returning
+// the widget that arranges the QR and the address.
+func setupImageLayout(t *testing.T, root render.Root) render.Widget {
+	t.Helper()
+	box, ok := root.Child.(*render.Box)
+	if !ok {
+		t.Fatalf("expected the panel-sized Box, got %T", root.Child)
+	}
+	return box.Child
+}
+
+func assertAddressHasWidth(t *testing.T, children []render.Widget) {
+	t.Helper()
+	for _, child := range children {
+		if padding, ok := child.(*render.Padding); ok {
+			child = padding.Child
+		}
+		if text, ok := child.(*render.WrappedText); ok {
+			if text.Width <= 0 {
+				t.Errorf("the address was left %d px to draw in", text.Width)
+			}
+			return
+		}
+	}
+	t.Error("no address was drawn")
+}
 
 func scaleOf(side, modules int) int {
 	for quiet := 4; quiet >= 1; quiet-- {

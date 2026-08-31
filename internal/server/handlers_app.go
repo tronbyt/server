@@ -352,7 +352,8 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-				schemaBytes, err = renderer.GetSchema(r.Context(), appPath, 64, 32, device.Type.Supports2x())
+				schemaWidth, schemaHeight := device.Type.CanvasSize()
+				schemaBytes, err = renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
 				if err != nil {
 					slog.Error("Failed to get app schema", "error", err)
 					// Fall through with empty schema
@@ -405,8 +406,9 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+			schemaWidth, schemaHeight := device.Type.CanvasSize()
 			getSchema := func() error {
-				b, err := renderer.GetSchema(r.Context(), appPath, 64, 32, device.Type.Supports2x())
+				b, err := renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
 				if err != nil {
 					return err
 				}
@@ -589,11 +591,12 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call Handler
+	handlerWidth, handlerHeight := device.Type.CanvasSize()
 	result, err := renderer.CallSchemaHandler(
 		r.Context(),
 		appPath,
 		payload.Config,
-		64, 32,
+		handlerWidth, handlerHeight,
 		device.Type.Supports2x(),
 		handler,
 		payload.Param)

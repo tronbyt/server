@@ -39,22 +39,24 @@ const (
 	DevicePixoticker
 	DeviceRaspberryPi
 	DeviceRaspberryPiWide
+	DeviceRaspberryPiSquare
 	DeviceOther
 )
 
 var DeviceTypeToString = map[DeviceType]string{
-	DeviceUnknown:         "unknown",
-	DeviceTidbytGen1:      "tidbyt_gen1",
-	DeviceTidbytGen2:      "tidbyt_gen2",
-	DeviceTronbytS3:       "tronbyt_s3",
-	DeviceTronbytS3Wide:   "tronbyt_s3_wide",
-	DeviceMatrixPortal:    "matrixportal_s3",
-	DeviceMatrixPortalWS:  "matrixportal_s3_waveshare",
-	DeviceWaveshareS3:     "waveshare_s3",
-	DevicePixoticker:      "pixoticker",
-	DeviceRaspberryPi:     "raspberrypi",
-	DeviceRaspberryPiWide: "raspberrypi_wide",
-	DeviceOther:           "other",
+	DeviceUnknown:           "unknown",
+	DeviceTidbytGen1:        "tidbyt_gen1",
+	DeviceTidbytGen2:        "tidbyt_gen2",
+	DeviceTronbytS3:         "tronbyt_s3",
+	DeviceTronbytS3Wide:     "tronbyt_s3_wide",
+	DeviceMatrixPortal:      "matrixportal_s3",
+	DeviceMatrixPortalWS:    "matrixportal_s3_waveshare",
+	DeviceWaveshareS3:       "waveshare_s3",
+	DevicePixoticker:        "pixoticker",
+	DeviceRaspberryPi:       "raspberrypi",
+	DeviceRaspberryPiWide:   "raspberrypi_wide",
+	DeviceRaspberryPiSquare: "raspberrypi_square",
+	DeviceOther:             "other",
 }
 
 var StringToDeviceType = func() map[string]DeviceType {
@@ -82,18 +84,19 @@ const (
 // (UI level 0-5 -> brightness percent 0-100). Devices that do not have their own custom
 // scale fall back to their type's default.
 var DeviceTypeDefaultBrightnessScale = map[DeviceType]string{
-	DeviceUnknown:         S3BrightnessScale,
-	DeviceTidbytGen1:      TidbytGen1BrightnessScale,
-	DeviceTidbytGen2:      TidbytGen2BrightnessScale,
-	DeviceTronbytS3:       S3BrightnessScale,
-	DeviceTronbytS3Wide:   S3BrightnessScale,
-	DeviceMatrixPortal:    S3BrightnessScale,
-	DeviceMatrixPortalWS:  S3BrightnessScale,
-	DeviceWaveshareS3:     S3BrightnessScale,
-	DevicePixoticker:      S3BrightnessScale,
-	DeviceRaspberryPi:     S3BrightnessScale,
-	DeviceRaspberryPiWide: S3BrightnessScale,
-	DeviceOther:           S3BrightnessScale,
+	DeviceUnknown:           S3BrightnessScale,
+	DeviceTidbytGen1:        TidbytGen1BrightnessScale,
+	DeviceTidbytGen2:        TidbytGen2BrightnessScale,
+	DeviceTronbytS3:         S3BrightnessScale,
+	DeviceTronbytS3Wide:     S3BrightnessScale,
+	DeviceMatrixPortal:      S3BrightnessScale,
+	DeviceMatrixPortalWS:    S3BrightnessScale,
+	DeviceWaveshareS3:       S3BrightnessScale,
+	DevicePixoticker:        S3BrightnessScale,
+	DeviceRaspberryPi:       S3BrightnessScale,
+	DeviceRaspberryPiWide:   S3BrightnessScale,
+	DeviceRaspberryPiSquare: S3BrightnessScale,
+	DeviceOther:             S3BrightnessScale,
 }
 
 // DefaultBrightnessScale returns the default brightness scale string for the device type,
@@ -118,6 +121,8 @@ func (dt DeviceType) String() string {
 		return "Raspberry Pi"
 	case DeviceRaspberryPiWide:
 		return "Raspberry Pi Wide"
+	case DeviceRaspberryPiSquare:
+		return "Raspberry Pi Square"
 	case DeviceTronbytS3:
 		return "Tronbyt S3"
 	case DeviceTronbytS3Wide:
@@ -673,6 +678,37 @@ func (dt DeviceType) Supports2x() bool {
 	default:
 		return false
 	}
+}
+
+// DefaultCanvasWidth and DefaultCanvasHeight are the classic Tidbyt canvas
+// dimensions, used by every device type that does not define its own and when
+// rendering without a device (catalog previews, for example).
+const (
+	DefaultCanvasWidth  = 64
+	DefaultCanvasHeight = 32
+)
+
+// CanvasSize returns the logical canvas an app is rendered into for this device
+// type, in app pixels. This is the size apps see through `canvas.size()`, before
+// any 2x scaling — see Supports2x and DisplaySize.
+func (dt DeviceType) CanvasSize() (width, height int) {
+	switch dt {
+	case DeviceRaspberryPiSquare:
+		return 64, 64
+	default:
+		return DefaultCanvasWidth, DefaultCanvasHeight
+	}
+}
+
+// DisplaySize returns the physical panel dimensions of this device type, in
+// panel pixels: the canvas size with 2x scaling applied where the type uses it.
+func (dt DeviceType) DisplaySize() (width, height int) {
+	width, height = dt.CanvasSize()
+	if dt.Supports2x() {
+		width *= 2
+		height *= 2
+	}
+	return width, height
 }
 
 func (dt DeviceType) SupportsFirmware() bool {
