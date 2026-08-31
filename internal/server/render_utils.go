@@ -254,13 +254,15 @@ func (s *Server) handleAutoPin(ctx context.Context, app *data.App, device *data.
 func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []string {
 	var filters []string
 
+	// Night/dim mode filters override app-level filters when set to a real filter.
+	if modeFilter := deviceModeColorFilter(device); modeFilter != nil && *modeFilter != data.ColorFilterNone {
+		filters = append(filters, string(*modeFilter))
+		return filters
+	}
+
 	// Determine base device filter
 	var deviceFilter data.ColorFilter
-	if device.GetNightModeIsActive() && device.NightColorFilter != nil {
-		deviceFilter = *device.NightColorFilter
-	} else if device.GetDimModeIsActive() && device.DimColorFilter != nil {
-		deviceFilter = *device.DimColorFilter
-	} else if device.ColorFilter != nil {
+	if device.ColorFilter != nil {
 		deviceFilter = *device.ColorFilter
 	} else {
 		deviceFilter = data.ColorFilterNone
@@ -275,13 +277,20 @@ func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []strin
 		if appFilter != data.ColorFilterNone {
 			filters = append(filters, string(appFilter))
 		}
-	} else {
-		// Inherit from device
-		if deviceFilter != data.ColorFilterNone {
-			filters = append(filters, string(deviceFilter))
-		}
+	} else if deviceFilter != data.ColorFilterNone {
+		filters = append(filters, string(deviceFilter))
 	}
 	return filters
+}
+
+func deviceModeColorFilter(device *data.Device) *data.ColorFilter {
+	if device.GetNightModeIsActive() && device.NightColorFilter != nil {
+		return device.NightColorFilter
+	}
+	if device.GetDimModeIsActive() && device.DimColorFilter != nil {
+		return device.DimColorFilter
+	}
+	return nil
 }
 
 func copyFile(src, dst string) error {
