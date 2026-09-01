@@ -2114,6 +2114,12 @@
   "Skip Boot Animation": {
     "other": "Boot-Animation überspringen"
   },
+  "Disable Touch Button": {
+    "other": "Touch-Taste deaktivieren"
+  },
+  "Disables the physical touch button. Requires reboot to take effect.": {
+    "other": "Deaktiviert die physische Touch-Taste. Neustart erforderlich, damit die Änderung wirksam wird."
+  },
   "Leave blank to auto-generate": {
     "other": "Leer lassen zum automatischen Generieren"
   },

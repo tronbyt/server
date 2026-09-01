@@ -699,6 +699,22 @@
                                    onchange="updateFirmwareSettings({swap_colors: this.checked})">
                         </div>
                     </div>
+                    {{ if eq .Device.Type.Slug "tidbyt_gen2" }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="disable_touch">{{ t .Localizer "Disable Touch Button" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   id="disable_touch"
+                                   {{ if derefOr .Device.Info.DisableTouch false }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({disable_touch: this.checked})">
+                            <p class="settings-help">{{ t .Localizer "Disables the physical touch button. Requires reboot to take effect." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">{{ t .Localizer "WiFi Power Save" }}</div>
                         <div class="settings-field-control">
