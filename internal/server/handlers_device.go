@@ -447,6 +447,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// 5. Night Mode
+	modeSnapshotBefore := snapshotDeviceMode(device)
 	nightModeWasEnabled := device.NightModeEnabled
 	nightStartWas := device.NightStart
 	nightEndWas := device.NightEnd
@@ -624,6 +625,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user := GetUser(r)
+	s.invalidateDeviceAppRendersIfModeChanged(r.Context(), device, modeSnapshotBefore)
 	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -906,6 +908,7 @@ func (s *Server) handleSetDimModeOverride(w http.ResponseWriter, r *http.Request
 
 func (s *Server) setModeOverride(w http.ResponseWriter, r *http.Request, mode string) {
 	device := GetDevice(r)
+	modeSnapshotBefore := snapshotDeviceMode(device)
 
 	active, err := strconv.ParseBool(r.FormValue("active"))
 	if err != nil {
@@ -966,6 +969,7 @@ func (s *Server) setModeOverride(w http.ResponseWriter, r *http.Request, mode st
 	}
 
 	user := GetUser(r)
+	s.invalidateDeviceAppRendersIfModeChanged(r.Context(), device, modeSnapshotBefore)
 	s.notifyDashboard(user.Username, WSEvent{
 		Type:     "device_updated",
 		DeviceID: device.ID,

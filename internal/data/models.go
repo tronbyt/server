@@ -771,7 +771,7 @@ func (d *Device) GetTimezone() string {
 	return "Local"
 }
 
-func (d Device) getLocation() *time.Location {
+func (d Device) GetLocation() *time.Location {
 	loc := time.Local
 	if d.Timezone != nil {
 		if l, err := time.LoadLocation(*d.Timezone); err == nil {
@@ -953,32 +953,43 @@ func (d Device) GetDimModeOverrideActiveAt(now time.Time) bool {
 	return now.Before(d.DimModeOverrideUntil.In(now.Location()))
 }
 
-// GetNightModeIsActive checks if night mode is currently active for a device.
-func (d Device) GetNightModeIsActive() bool {
+// GetNightModeIsActiveAt checks if night mode is active at a specific time.
+func (d Device) GetNightModeIsActiveAt(at time.Time) bool {
 	if !d.NightModeEnabled {
 		return false
 	}
 
-	currentTime := time.Now().In(d.getLocation())
-	if d.GetNightModeOverrideActiveAt(currentTime) {
+	at = at.In(d.GetLocation())
+	if d.GetNightModeOverrideActiveAt(at) {
 		return d.NightModeOverride != nil && *d.NightModeOverride
 	}
-	return d.GetScheduledNightModeIsActiveAt(currentTime)
+	return d.GetScheduledNightModeIsActiveAt(at)
+}
+
+// GetNightModeIsActive checks if night mode is currently active for a device.
+func (d Device) GetNightModeIsActive() bool {
+	return d.GetNightModeIsActiveAt(time.Now())
+}
+
+// GetDimModeIsActiveAt checks if dim mode is active at a specific time.
+func (d Device) GetDimModeIsActiveAt(at time.Time) bool {
+	if !d.DimModeEnabled {
+		return false
+	}
+
+	at = at.In(d.GetLocation())
+	if d.GetNightModeIsActiveAt(at) {
+		return false
+	}
+	if d.GetDimModeOverrideActiveAt(at) {
+		return d.DimModeOverride != nil && *d.DimModeOverride
+	}
+	return d.GetScheduledDimModeIsActiveAt(at)
 }
 
 // GetDimModeIsActive checks if dim mode is active (dimming without full night mode).
 func (d Device) GetDimModeIsActive() bool {
-	if !d.DimModeEnabled {
-		return false
-	}
-	currentTime := time.Now().In(d.getLocation())
-	if d.GetNightModeIsActive() {
-		return false
-	}
-	if d.GetDimModeOverrideActiveAt(currentTime) {
-		return d.DimModeOverride != nil && *d.DimModeOverride
-	}
-	return d.GetScheduledDimModeIsActiveAt(currentTime)
+	return d.GetDimModeIsActiveAt(time.Now())
 }
 
 // GetEffectiveDwellTime returns the display duration for an app, falling back to the device default.
