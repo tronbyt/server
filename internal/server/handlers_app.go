@@ -2,6 +2,7 @@ package server
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,10 +33,25 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// AppManifest reflects a subset of manifest.yaml for internal updates.
-type AppManifest struct {
-	Broken       *bool   `yaml:"broken,omitempty"`
-	BrokenReason *string `yaml:"brokenReason,omitempty"`
+// setManifestKey sets key on a manifest.yaml mapping, appending it when absent.
+// Editing the node tree rather than a typed struct is deliberate: a struct round
+// trip writes back only the fields it declares, so every other key in the file -
+// id, name, supports2x, tags, everything - is destroyed on save.
+func setManifestKey(mapping *yaml.Node, key string, value *yaml.Node) {
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == key {
+			mapping.Content[i+1] = value
+			return
+		}
+	}
+	mapping.Content = append(mapping.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, value)
+}
+
+// manifestScalar builds a scalar node with an explicit tag, so a reason like
+// "true" or "123" stays a string instead of being re-read as another type.
+func manifestScalar(tag, value string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value}
 }
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
@@ -1533,37 +1549,52 @@ func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, b
 		return
 	}
 
-	var manifest AppManifest
 	manifestData, err := os.ReadFile(manifestPath)
 	if err != nil {
 		slog.Error("Failed to read manifest.yaml", "path", manifestPath, "error", err)
 		http.Error(w, "Failed to read manifest", http.StatusInternalServerError)
 		return
 	}
-	if err := yaml.Unmarshal(manifestData, &manifest); err != nil {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(manifestData, &doc); err != nil {
 		slog.Error("Failed to unmarshal manifest.yaml", "path", manifestPath, "error", err)
 		http.Error(w, "Failed to parse manifest", http.StatusInternalServerError)
 		return
 	}
+	mapping := &doc
+	if mapping.Kind == yaml.DocumentNode && len(mapping.Content) > 0 {
+		mapping = mapping.Content[0]
+	}
+	if mapping.Kind != yaml.MappingNode {
+		slog.Error("manifest.yaml is not a mapping", "path", manifestPath)
+		http.Error(w, "Failed to parse manifest", http.StatusInternalServerError)
+		return
+	}
 
-	manifest.Broken = &broken
+	reason := ""
 	if broken {
-		reason := r.URL.Query().Get("broken_reason")
+		reason = r.URL.Query().Get("broken_reason")
 		if reason == "" {
 			reason = "Marked broken by user"
 		}
-		manifest.BrokenReason = &reason
-	} else {
-		emptyReason := ""
-		manifest.BrokenReason = &emptyReason
 	}
+	setManifestKey(mapping, "broken", manifestScalar("!!bool", strconv.FormatBool(broken)))
+	setManifestKey(mapping, "brokenReason", manifestScalar("!!str", reason))
 
-	updatedManifestData, err := yaml.Marshal(&manifest)
-	if err != nil {
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(&doc); err != nil {
 		slog.Error("Failed to marshal updated manifest.yaml", "error", err)
 		http.Error(w, "Failed to update manifest", http.StatusInternalServerError)
 		return
 	}
+	if err := encoder.Close(); err != nil {
+		slog.Error("Failed to finalise updated manifest.yaml", "error", err)
+		http.Error(w, "Failed to update manifest", http.StatusInternalServerError)
+		return
+	}
+	updatedManifestData := buf.Bytes()
 
 	if err := os.WriteFile(manifestPath, updatedManifestData, 0644); err != nil {
 		slog.Error("Failed to write updated manifest.yaml", "path", manifestPath, "error", err)
