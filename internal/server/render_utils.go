@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -141,8 +142,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 	// 3. Starlark App - Check Interval
 	now := time.Now()
+	forceRender := s.filtersChangedSinceLastRender(device, app)
 	// uinterval is minutes
-	if time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
+	if forceRender || time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
@@ -252,15 +254,21 @@ func (s *Server) handleAutoPin(ctx context.Context, app *data.App, device *data.
 }
 
 func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []string {
+	return s.getEffectiveFiltersAt(device, app, time.Now())
+}
+
+func (s *Server) getEffectiveFiltersAt(device *data.Device, app *data.App, at time.Time) []string {
 	var filters []string
+
+	// Night/dim mode filters override app-level filters when set to a real filter.
+	if modeFilter := deviceModeColorFilterAt(device, at); modeFilter != nil && *modeFilter != data.ColorFilterNone {
+		filters = append(filters, string(*modeFilter))
+		return filters
+	}
 
 	// Determine base device filter
 	var deviceFilter data.ColorFilter
-	if device.GetNightModeIsActive() && device.NightColorFilter != nil {
-		deviceFilter = *device.NightColorFilter
-	} else if device.GetDimModeIsActive() && device.DimColorFilter != nil {
-		deviceFilter = *device.DimColorFilter
-	} else if device.ColorFilter != nil {
+	if device.ColorFilter != nil {
 		deviceFilter = *device.ColorFilter
 	} else {
 		deviceFilter = data.ColorFilterNone
@@ -275,13 +283,32 @@ func (s *Server) getEffectiveFilters(device *data.Device, app *data.App) []strin
 		if appFilter != data.ColorFilterNone {
 			filters = append(filters, string(appFilter))
 		}
-	} else {
-		// Inherit from device
-		if deviceFilter != data.ColorFilterNone {
-			filters = append(filters, string(deviceFilter))
-		}
+	} else if deviceFilter != data.ColorFilterNone {
+		filters = append(filters, string(deviceFilter))
 	}
 	return filters
+}
+
+func (s *Server) filtersChangedSinceLastRender(device *data.Device, app *data.App) bool {
+	return s.filtersChangedSinceLastRenderAt(device, app, time.Now())
+}
+
+func (s *Server) filtersChangedSinceLastRenderAt(device *data.Device, app *data.App, now time.Time) bool {
+	if app.LastRender.IsZero() {
+		return false
+	}
+	at := app.LastRender.In(device.GetLocation())
+	return !slices.Equal(s.getEffectiveFiltersAt(device, app, at), s.getEffectiveFiltersAt(device, app, now.In(device.GetLocation())))
+}
+
+func deviceModeColorFilterAt(device *data.Device, at time.Time) *data.ColorFilter {
+	if device.GetNightModeIsActiveAt(at) && device.NightColorFilter != nil {
+		return device.NightColorFilter
+	}
+	if device.GetDimModeIsActiveAt(at) && device.DimColorFilter != nil {
+		return device.DimColorFilter
+	}
+	return nil
 }
 
 func copyFile(src, dst string) error {

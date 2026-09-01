@@ -126,6 +126,7 @@ Update low-level firmware settings. All fields are optional.
   "preferIPv6": false,
   "apMode": false,
   "swapColors": false,
+  "disableTouch": false,
   "wifiPowerSave": 0,
   "imageUrl": "http://example.com/image.webp",
   "hostname": "tronbyt.local",
