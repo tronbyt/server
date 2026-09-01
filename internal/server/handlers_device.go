@@ -625,8 +625,8 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user := GetUser(r)
-	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 	s.invalidateDeviceAppRendersIfModeChanged(r.Context(), device, modeSnapshotBefore)
+	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -969,6 +969,7 @@ func (s *Server) setModeOverride(w http.ResponseWriter, r *http.Request, mode st
 	}
 
 	user := GetUser(r)
+	s.invalidateDeviceAppRendersIfModeChanged(r.Context(), device, modeSnapshotBefore)
 	s.notifyDashboard(user.Username, WSEvent{
 		Type:     "device_updated",
 		DeviceID: device.ID,
@@ -978,8 +979,6 @@ func (s *Server) setModeOverride(w http.ResponseWriter, r *http.Request, mode st
 			wsPrefix + "Managed": true,
 		},
 	})
-
-	s.invalidateDeviceAppRendersIfModeChanged(r.Context(), device, modeSnapshotBefore)
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
