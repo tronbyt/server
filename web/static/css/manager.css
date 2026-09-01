@@ -359,8 +359,10 @@ button.action.w3-button.w3-red {
   width: 256px;
   height: 128px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 8px;
   background-color: rgba(0, 0, 0, 0.6);
   border-radius: 4px;
 }
@@ -416,6 +418,9 @@ button.action.w3-button.w3-red {
 
 .app-status {
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .status-badge {

@@ -995,6 +995,9 @@
   "Disabled": {
     "other": "Deaktiviert"
   },
+  "Inactive": {
+    "other": "Inaktiv"
+  },
   "App:": {
     "other": "App:"
   },
