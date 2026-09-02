@@ -18,6 +18,8 @@ import (
 	"tronbyt-server/internal/data"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
@@ -700,4 +702,75 @@ func TestMarkInstalledApps_AbsolutePaths(t *testing.T) {
 	s.markInstalledApps(device, systemApps, nil)
 
 	assert.True(t, systemApps[0].IsInstalled, "Weather should be installed (absolute to relative conversion match)")
+}
+
+// Toggling broken used to write the manifest back from a struct holding only
+// broken/brokenReason, which destroyed every other key in the file - id, name,
+// supports2x, tags, all of it. The whole point of the endpoint is a two-field
+// edit, so the rest of the file has to survive it verbatim.
+func TestUpdateAppBrokenStatusPreservesTheRestOfTheManifest(t *testing.T) {
+	s := newTestServer(t)
+
+	const original = `id: repro-demo
+name: Repro Demo
+author: bench
+recommendedInterval: 30
+supports2x: true
+tags:
+  - demo
+published: "2026-01-01"
+`
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", "repro_demo")
+	require.NoError(t, os.MkdirAll(appDir, 0o755))
+	manifestPath := filepath.Join(appDir, "manifest.yaml")
+	require.NoError(t, os.WriteFile(manifestPath, []byte(original), 0o644))
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+
+	toggle := func(path string, broken bool) {
+		req, _ := http.NewRequest(http.MethodPost,
+			path+"?app_name=repro_demo&package_name=repro_demo&broken_reason=testing", nil)
+		req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+		rr := httptest.NewRecorder()
+		s.updateAppBrokenStatus(rr, req, broken)
+		require.Equal(t, http.StatusOK, rr.Code)
+	}
+
+	assertSurvived := func(stage string) {
+		t.Helper()
+		var manifest map[string]any
+		raw, err := os.ReadFile(manifestPath)
+		require.NoError(t, err)
+		require.NoError(t, yaml.Unmarshal(raw, &manifest))
+		for key, want := range map[string]any{
+			"id":                  "repro-demo",
+			"name":                "Repro Demo",
+			"author":              "bench",
+			"recommendedInterval": 30,
+			"supports2x":          true,
+			"published":           "2026-01-01",
+		} {
+			assert.Equalf(t, want, manifest[key], "%s: %q was lost or altered", stage, key)
+		}
+		assert.Equalf(t, []any{"demo"}, manifest["tags"], "%s: tags were lost", stage)
+	}
+
+	toggle("/mark_app_broken", true)
+	assertSurvived("after marking broken")
+	var marked map[string]any
+	raw, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	require.NoError(t, yaml.Unmarshal(raw, &marked))
+	assert.Equal(t, true, marked["broken"])
+	assert.Equal(t, "testing", marked["brokenReason"])
+
+	toggle("/unmark_app_broken", false)
+	assertSurvived("after unmarking broken")
+	var cleared map[string]any
+	raw, err = os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	require.NoError(t, yaml.Unmarshal(raw, &cleared))
+	assert.Equal(t, false, cleared["broken"])
+	assert.Equal(t, "", cleared["brokenReason"])
 }
