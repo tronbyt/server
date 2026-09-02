@@ -304,10 +304,15 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Determine file to serve
 	// Pick the best preview from metadata.
+	// A square panel is a different shape, not a bigger one, so a square
+	// preview wins over the 2x preview when the caller asks for one.
 	var file string
-	if appMeta.Supports2x && appMeta.Preview2x != "" {
+	switch {
+	case r.URL.Query().Get("square") == "1" && appMeta.PreviewSquare != "":
+		file = appMeta.PreviewSquare
+	case appMeta.Supports2x && appMeta.Preview2x != "":
 		file = appMeta.Preview2x
-	} else {
+	default:
 		file = appMeta.Preview
 	}
 
