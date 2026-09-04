@@ -679,6 +679,50 @@ func TestHandleGetInstallation(t *testing.T) {
 	}
 }
 
+func TestHandleGetInstallation_ByInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installationID := "my-custom-pushed-app"
+	pushedPath := "pushed:" + installationID
+
+	// Add a pushed app with a numeric iname but custom installationID in path
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       "999", // Server-generated numeric iname
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Order:       0,
+		Pushed:      true,
+		Path:        &pushedPath,
+	}
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
+		t.Fatalf("Failed to create pushed app: %v", err)
+	}
+
+	// Fetch using the user-supplied installationID (not the numeric iname)
+	req := newAPIRequest("GET", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installationID), apiKey, nil)
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v, body: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	var payload AppPayload
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if payload.ID != "999" {
+		t.Errorf("Expected app ID 999, got %s", payload.ID)
+	}
+}
+
 func TestHandlePatchDevice(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
@@ -849,6 +893,52 @@ func TestHandlePatchInstallation(t *testing.T) {
 	}
 	if app.Enabled != newEnabled {
 		t.Errorf("Expected app enabled to be %t, got %t", newEnabled, app.Enabled)
+	}
+}
+
+func TestHandlePatchInstallation_ByInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+	installationID := "my-custom-pushed-app"
+	pushedPath := "pushed:" + installationID
+
+	// Add a pushed app with a numeric iname but custom installationID in path
+	app := data.App{
+		DeviceID:    deviceID,
+		Iname:       "999", // Server-generated numeric iname
+		Name:        "pushed",
+		UInterval:   10,
+		DisplayTime: 0,
+		Enabled:     true,
+		Order:       0,
+		Pushed:      true,
+		Path:        &pushedPath,
+	}
+	if err := gorm.G[data.App](s.DB).Create(context.Background(), &app); err != nil {
+		t.Fatalf("Failed to create pushed app: %v", err)
+	}
+
+	// Patch enabled status using the user-supplied installationID (not the numeric iname)
+	newEnabled := false
+	update := InstallationUpdate{Enabled: &newEnabled}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installationID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %v want %v: %s",
+			rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	// Verify updated app state, keyed by the numeric iname since that's the real primary key
+	updatedApp, err := gorm.G[data.App](s.DB).Where("iname = ?", "999").First(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to fetch updated app state: %v", err)
+	}
+	if updatedApp.Enabled != newEnabled {
+		t.Errorf("Expected app enabled to be %t, got %t", newEnabled, updatedApp.Enabled)
 	}
 }
 
