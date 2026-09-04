@@ -304,10 +304,15 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Determine file to serve
 	// Pick the best preview from metadata.
+	// A square panel is a different shape, not a bigger one, so a square
+	// preview wins over the 2x preview when the caller asks for one.
 	var file string
-	if appMeta.Supports2x && appMeta.Preview2x != "" {
+	switch {
+	case r.URL.Query().Get("square") == "1" && appMeta.PreviewSquare != "":
+		file = appMeta.PreviewSquare
+	case appMeta.Supports2x && appMeta.Preview2x != "":
 		file = appMeta.Preview2x
-	} else {
+	default:
 		file = appMeta.Preview
 	}
 
@@ -352,7 +357,8 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-				schemaBytes, err = renderer.GetSchema(r.Context(), appPath, 64, 32, device.Type.Supports2x())
+				schemaWidth, schemaHeight := device.Type.CanvasSize()
+				schemaBytes, err = renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
 				if err != nil {
 					slog.Error("Failed to get app schema", "error", err)
 					// Fall through with empty schema
@@ -405,8 +411,9 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+			schemaWidth, schemaHeight := device.Type.CanvasSize()
 			getSchema := func() error {
-				b, err := renderer.GetSchema(r.Context(), appPath, 64, 32, device.Type.Supports2x())
+				b, err := renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
 				if err != nil {
 					return err
 				}
@@ -589,11 +596,12 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call Handler
+	handlerWidth, handlerHeight := device.Type.CanvasSize()
 	result, err := renderer.CallSchemaHandler(
 		r.Context(),
 		appPath,
 		payload.Config,
-		64, 32,
+		handlerWidth, handlerHeight,
 		device.Type.Supports2x(),
 		handler,
 		payload.Param)

@@ -48,6 +48,14 @@ type DeviceTypeOption struct {
 	Label string
 }
 
+// DeviceTypeGroup collects the device types that drive the same size of panel.
+// The picker separates them because the choice is not cosmetic: apps are drawn
+// for a given canvas, so a 64x64 device is not a drop-in for a 64x32 one.
+type DeviceTypeGroup struct {
+	Label   string
+	Options []DeviceTypeOption
+}
+
 // DeviceSummary is a lightweight struct for "Copy to" dropdown targets.
 type DeviceSummary struct {
 	ID   string
@@ -72,7 +80,7 @@ type TemplateData struct {
 	Device            *data.Device
 	SystemApps        []apps.AppMetadata
 	CustomApps        []apps.AppMetadata
-	DeviceTypeChoices []DeviceTypeOption
+	DeviceTypeChoices []DeviceTypeGroup
 	Form              CreateDeviceFormData
 
 	// Repo Info for Admin/User Settings
@@ -254,8 +262,15 @@ func (s *Server) getLocalizer(r *http.Request) *i18n.Localizer {
 	return i18n.NewLocalizer(s.Bundle, accept, language.English.String())
 }
 
-// getDeviceTypeChoices returns a slice of device type options with display names.
-func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeOption {
+// deviceTypeGroupOrder is the order the panel sizes appear in the picker:
+// the classic panel first, then the wide one, then the square one. Ordering by
+// pixel count would put 64x64 in the middle, which reads as arbitrary.
+var deviceTypeGroupOrder = [][2]int{{64, 32}, {128, 64}, {64, 64}}
+
+// getDeviceTypeChoices returns the device types grouped by panel size, in
+// deviceTypeGroupOrder. Any size not named there is appended, so a device type
+// added later shows up in the picker even if this list was not updated.
+func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeGroup {
 	allDeviceTypes := []data.DeviceType{
 		data.DeviceTidbytGen1,
 		data.DeviceTidbytGen2,
@@ -263,21 +278,48 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeOpt
 		data.DeviceTronbytS3Wide,
 		data.DeviceMatrixPortal,
 		data.DeviceMatrixPortalWS,
+		data.DeviceMatrixPortalSquare,
 		data.DeviceWaveshareS3,
 		data.DevicePixoticker,
 		data.DeviceRaspberryPi,
 		data.DeviceRaspberryPiWide,
+		data.DeviceRaspberryPiSquare,
 		data.DeviceOther,
 	}
 
-	choices := make([]DeviceTypeOption, 0, len(allDeviceTypes))
+	// Group label doubles as the key. It is the panel size, so it needs no
+	// translation and cannot drift from the sizes the types actually report.
+	groups := make([]DeviceTypeGroup, 0, len(deviceTypeGroupOrder))
+	index := make(map[string]int, len(deviceTypeGroupOrder))
+	for _, size := range deviceTypeGroupOrder {
+		label := fmt.Sprintf("%dx%d", size[0], size[1])
+		index[label] = len(groups)
+		groups = append(groups, DeviceTypeGroup{Label: label})
+	}
+
 	for _, dt := range allDeviceTypes {
-		choices = append(choices, DeviceTypeOption{
+		width, height := dt.DisplaySize()
+		label := fmt.Sprintf("%dx%d", width, height)
+		at, ok := index[label]
+		if !ok {
+			at = len(groups)
+			index[label] = at
+			groups = append(groups, DeviceTypeGroup{Label: label})
+		}
+		groups[at].Options = append(groups[at].Options, DeviceTypeOption{
 			Value: dt,
 			Label: s.localizeOrID(localizer, dt.String()),
 		})
 	}
-	return choices
+
+	// A size with no device types would render as an empty labelled section.
+	populated := groups[:0]
+	for _, g := range groups {
+		if len(g.Options) > 0 {
+			populated = append(populated, g)
+		}
+	}
+	return populated
 }
 
 func (s *Server) getShowFullAnimationChoices() []ShowFullAnimationOption {

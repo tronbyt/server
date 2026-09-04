@@ -50,7 +50,10 @@ func Generate(firmwareDir string, deviceType data.DeviceType, ssid, password, ur
 
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("firmware file not found: %s", path)
+		// Wrapped so callers can tell "this release has no binary for this
+		// device type" (fs.ErrNotExist) from a genuine read failure. Named by
+		// file rather than by path: the absolute path is server-side detail.
+		return nil, fmt.Errorf("reading firmware %s: %w", filename, err)
 	}
 
 	if len(content) < 33 {
@@ -129,7 +132,7 @@ func GenerateMerged(firmwareDir string, deviceType data.DeviceType, ssid, passwo
 
 	mergedContent, err := os.ReadFile(mergedPath)
 	if err != nil {
-		return nil, fmt.Errorf("merged firmware file not found: %s. Please refresh firmware binaries on the Admin page", mergedPath)
+		return nil, fmt.Errorf("reading merged firmware %s: %w", mergedFilename, err)
 	}
 
 	if len(mergedContent) < MergedAppOffset {

@@ -479,6 +479,9 @@
   "Raspberry Pi": {
     "other": "Raspberry Pi"
   },
+  "Raspberry Pi Square": {
+    "other": "Raspberry Pi Square"
+  },
   "Raspberry Pi Wide": {
     "other": "Raspberry Pi Wide"
   },
@@ -490,6 +493,9 @@
   },
   "MatrixPortal S3": {
     "other": "MatrixPortal S3"
+  },
+  "MatrixPortal S3 Square": {
+    "other": "MatrixPortal S3 Square"
   },
   "MatrixPortal S3 Waveshare": {
     "other": "MatrixPortal S3 Waveshare"

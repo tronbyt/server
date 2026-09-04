@@ -36,33 +36,23 @@ var (
 // show yet. Returns an error if baseURL cannot be turned into something worth
 // displaying, so callers can fall back to the placeholder.
 func renderSetupImage(ctx context.Context, width, height int, baseURL string) ([]byte, error) {
+	root, err := setupImageRoot(width, height, baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	screens := encode.ScreensFromRoots([]render.Root{root}, width, height)
+	return screens.EncodeWebP(ctx, 15*time.Second)
+}
+
+// setupImageRoot lays out the QR and the address for a panel of the given size.
+func setupImageRoot(width, height int, baseURL string) (render.Root, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Host == "" {
-		return nil, fmt.Errorf("setup image: unusable base URL %q", baseURL)
+		return render.Root{}, fmt.Errorf("setup image: unusable base URL %q", baseURL)
 	}
 
-	children := []render.Widget{}
-	textWidth := width
-
-	// The QR is optional: on a short panel a long address may not fit at even
-	// one module per pixel, and half a QR is worse than none.
 	const gap = 2
-	if qrImage, side, ok := setupQRImage(baseURL, height); ok {
-		encoded, err := encodePNG(qrImage)
-		if err != nil {
-			return nil, err
-		}
-		// HoldFrames must be at least 1: frameImg divides by it, and a
-		// zero value panics rather than defaulting.
-		qr := &render.Image{Src: encoded, Width: side, Height: side, HoldFrames: 1}
-		// Image decodes Src only when initialized; painting an uninitialized
-		// one panics rather than erroring.
-		if err := qr.InitFromImage(encoded); err != nil {
-			return nil, err
-		}
-		children = append(children, qr)
-		textWidth = width - side - gap
-	}
 
 	// The address without its scheme: it is what someone types, and every
 	// character costs pixels on a 64-wide panel.
@@ -71,7 +61,7 @@ func renderSetupImage(ctx context.Context, width, height int, baseURL string) ([
 		Font:    setupFont(width),
 		Color:   setupTextFg,
 		Align:   "center",
-		Width:   textWidth,
+		Width:   width,
 		// An address has no spaces to wrap on, so it has to break mid-token
 		// or it renders as one clipped line.
 		WordBreak: true,
@@ -79,27 +69,85 @@ func renderSetupImage(ctx context.Context, width, height int, baseURL string) ([
 	// nil thread is safe because Font is set explicitly; the thread is only
 	// consulted to look up a default font.
 	if err := address.Init(nil); err != nil {
-		return nil, err
+		return render.Root{}, err
 	}
-	children = append(children, &render.Padding{
-		Pad:   render.Insets{Left: gap},
-		Child: address,
-	})
 
-	root := render.Root{
+	// A panel wider than it is tall has room for the address beside the QR.
+	// A square or portrait one does not — a QR sized to the full height would
+	// take the full width too and leave the address none — so it stacks them.
+	var child render.Widget
+	if width > height {
+		// The QR is optional: on a short panel a long address may not fit at
+		// even one module per pixel, and half a QR is worse than none.
+		qr, side, err := setupQRWidget(baseURL, height)
+		if err != nil {
+			return render.Root{}, err
+		}
+		children := []render.Widget{}
+		if qr != nil {
+			children = append(children, qr)
+			address.Width = width - side - gap
+		}
+		children = append(children, &render.Padding{
+			Pad:   render.Insets{Left: gap},
+			Child: address,
+		})
+		child = &render.Row{
+			MainAlign:  "start",
+			CrossAlign: "center",
+			Children:   children,
+		}
+	} else {
+		// Whatever the address needs vertically is height the QR cannot have.
+		addressHeight := address.PaintBounds(image.Rect(0, 0, width, height), 0).Dy()
+		qr, _, err := setupQRWidget(baseURL, min(width, height-addressHeight-gap))
+		if err != nil {
+			return render.Root{}, err
+		}
+		children := []render.Widget{}
+		if qr != nil {
+			children = append(children, qr)
+		}
+		children = append(children, &render.Padding{
+			Pad:   render.Insets{Top: gap},
+			Child: address,
+		})
+		child = &render.Column{
+			MainAlign:  "center",
+			CrossAlign: "center",
+			Children:   children,
+		}
+	}
+
+	return render.Root{
 		Child: &render.Box{
 			Width:  width,
 			Height: height,
-			Child: &render.Row{
-				MainAlign:  "start",
-				CrossAlign: "center",
-				Children:   children,
-			},
+			Child:  child,
 		},
-	}
+	}, nil
+}
 
-	screens := encode.ScreensFromRoots([]render.Root{root}, width, height)
-	return screens.EncodeWebP(ctx, 15*time.Second)
+// setupQRWidget builds the QR for content as a widget that fits maxSide pixels
+// square, reporting a nil widget when it cannot be drawn legibly that small.
+func setupQRWidget(content string, maxSide int) (render.Widget, int, error) {
+	img, side, ok := setupQRImage(content, maxSide)
+	if !ok {
+		return nil, 0, nil
+	}
+	encoded, err := encodePNG(img)
+	if err != nil {
+		return nil, 0, err
+	}
+	// HoldFrames must be at least 1: frameImg divides by it, and a
+	// zero value panics rather than defaulting.
+	qr := &render.Image{Src: encoded, Width: side, Height: side, HoldFrames: 1}
+	// Image decodes Src only when initialized; painting an uninitialized
+	// one panics rather than erroring.
+	if err := qr.InitFromImage(encoded); err != nil {
+		return nil, 0, err
+	}
+	return qr, side, nil
 }
 
 // setupFont picks the smallest legible face for the panel. tom-thumb is the

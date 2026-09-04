@@ -11,6 +11,9 @@ import (
 	"tronbyt-server/web"
 
 	"github.com/skip2/go-qrcode"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tronbyt/pixlet/render"
 	"gorm.io/gorm"
 )
 
@@ -66,18 +69,12 @@ func TestSetupQRImageDeclinesWhatCannotFit(t *testing.T) {
 	}
 }
 
-func TestRenderSetupImageDrawsBothPanelSizes(t *testing.T) {
-	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}} {
-		data, err := renderSetupImage(context.Background(), c.w, c.h, "http://192.168.1.155:8000")
-		if err != nil {
-			t.Fatalf("%dx%d: %v", c.w, c.h, err)
-		}
-		if len(data) == 0 {
-			t.Fatalf("%dx%d: empty image", c.w, c.h)
-		}
-		if !bytes.HasPrefix(data, []byte("RIFF")) {
-			t.Errorf("%dx%d: not a WebP", c.w, c.h)
-		}
+func TestRenderSetupImageDrawsEveryPanelSize(t *testing.T) {
+	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}, {64, 64}} {
+		img, err := renderSetupImage(context.Background(), c.w, c.h, "http://192.168.1.155:8000")
+		require.NoErrorf(t, err, "%dx%d", c.w, c.h)
+		require.NotEmptyf(t, img, "%dx%d: empty image", c.w, c.h)
+		assert.Truef(t, bytes.HasPrefix(img, []byte("RIFF")), "%dx%d: not a WebP", c.w, c.h)
 	}
 }
 
@@ -126,6 +123,31 @@ func TestGetNextAppImageShowsSetupWhenThereAreNoApps(t *testing.T) {
 	}
 }
 
+// A panel wider than it is tall has room for the address beside the QR.
+func TestSetupImageDrawsTheAddressBesideTheQROnAWidePanel(t *testing.T) {
+	for _, c := range []struct{ w, h int }{{64, 32}, {128, 64}} {
+		root, err := setupImageRoot(c.w, c.h, "http://192.168.1.155:8000")
+		require.NoErrorf(t, err, "%dx%d", c.w, c.h)
+		layout := setupImageLayout(t, root)
+		row, ok := layout.(*render.Row)
+		require.Truef(t, ok, "%dx%d: expected the address beside the QR, got %T", c.w, c.h, layout)
+		assertAddressHasWidth(t, row.Children)
+	}
+}
+
+// A square panel has none: a QR sized to the full height is also the full
+// width, which leaves the address nothing to wrap into. Getting this wrong is
+// silent — the QR still draws and the address is simply squeezed off the
+// panel — so this asserts the layout, not just that something rendered.
+func TestSetupImageStacksTheAddressOnASquarePanel(t *testing.T) {
+	root, err := setupImageRoot(64, 64, "http://192.168.1.155:8000")
+	require.NoError(t, err)
+	layout := setupImageLayout(t, root)
+	column, ok := layout.(*render.Column)
+	require.Truef(t, ok, "expected the address stacked under the QR, got %T", layout)
+	assertAddressHasWidth(t, column.Children)
+}
+
 func TestSetupFontFitsThePanel(t *testing.T) {
 	if f := setupFont(64); !strings.Contains(f, "tom-thumb") {
 		t.Errorf("64px panel should use the narrowest face, got %q", f)
@@ -136,6 +158,29 @@ func TestSetupFontFitsThePanel(t *testing.T) {
 }
 
 // helpers
+
+// setupImageLayout unwraps the sizing Box every panel is drawn into, returning
+// the widget that arranges the QR and the address.
+func setupImageLayout(t *testing.T, root render.Root) render.Widget {
+	t.Helper()
+	box, ok := root.Child.(*render.Box)
+	require.Truef(t, ok, "expected the panel-sized Box, got %T", root.Child)
+	return box.Child
+}
+
+func assertAddressHasWidth(t *testing.T, children []render.Widget) {
+	t.Helper()
+	for _, child := range children {
+		if padding, ok := child.(*render.Padding); ok {
+			child = padding.Child
+		}
+		if text, ok := child.(*render.WrappedText); ok {
+			assert.Greaterf(t, text.Width, 0, "the address was left %d px to draw in", text.Width)
+			return
+		}
+	}
+	assert.Fail(t, "no address was drawn")
+}
 
 func scaleOf(side, modules int) int {
 	for quiet := 4; quiet >= 1; quiet-- {

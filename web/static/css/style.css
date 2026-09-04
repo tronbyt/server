@@ -301,6 +301,18 @@ nav ul li a:hover {
   mask-image: url('/dots?w=128&h=64&r=0.4');
 }
 
+/* Square (64x64) panels. Without this the image is squashed into the 2:1 box
+   the classic panels use. */
+.app-img.is-square {
+  aspect-ratio: 1 / 1;
+}
+
+.app-img.is-square img {
+  aspect-ratio: 1 / 1;
+  -webkit-mask-image: url('/dots?w=64&h=64');
+  mask-image: url('/dots?w=64&h=64');
+}
+
 .skeleton-loader {
   position: absolute;
   inset: 0;
