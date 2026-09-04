@@ -452,6 +452,11 @@ func (s *Server) handleGetInstallation(w http.ResponseWriter, r *http.Request) {
 
 	app := device.GetApp(iname)
 	if app == nil {
+		// Fall back to resolving pushed apps by their user-supplied
+		// installationID, matching handleDeleteInstallationAPI's behavior.
+		app = device.GetPushedApp(iname)
+	}
+	if app == nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return
 	}
@@ -800,6 +805,11 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 	device := GetDevice(r)
 
 	app := device.GetApp(iname)
+	if app == nil {
+		// Fall back to resolving pushed apps by their user-supplied
+		// installationID, matching handleDeleteInstallationAPI's behavior.
+		app = device.GetPushedApp(iname)
+	}
 	if app == nil {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return
