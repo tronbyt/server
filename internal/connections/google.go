@@ -23,7 +23,8 @@ import (
 //
 // No Identify: the userinfo endpoint needs an email/profile scope on the
 // token, and we request only what the app's schema declares. ExternalID
-// stays empty and the UI falls back to the provider display name.
+// stays empty; the connections page shows a plain "Connected" state and
+// the app config page falls back to the provider display name.
 //
 // Note for admins: a Cloud project whose OAuth consent screen is in
 // "Testing" status issues refresh tokens that EXPIRE AFTER 7 DAYS. Publish

@@ -27,7 +27,11 @@
                 {{ if .Connected }}
                 <div style="margin-top: 4px;">
                     <i class="fa-solid fa-circle-check" style="color:#2ecc71"></i>
-                    {{ t $.Localizer "Connected as" }} {{ .Label }}
+                    {{ if .Label }}
+                        {{ t $.Localizer "Connected as" }} {{ .Label }}
+                    {{ else }}
+                        {{ t $.Localizer "Connected" }}
+                    {{ end }}
                 </div>
                 {{ if .Scopes }}
                 <div style="font-size: 12px;

@@ -2168,6 +2168,9 @@
   "Not connected": {
     "other": "Not connected"
   },
+  "Connected": {
+    "other": "Connected"
+  },
   "Disconnect": {
     "other": "Disconnect"
   },
