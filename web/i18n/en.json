@@ -32,6 +32,12 @@
   "OIDC Client Secret": {
     "other": "Client Secret"
   },
+  "OIDC Additional Scopes": {
+    "other": "Additional scopes"
+  },
+  "OIDC Additional scopes description": {
+    "other": "Space-separated scopes to request in addition to openid, email, and profile."
+  },
   "OIDC Allow Auto Create": {
     "other": "Allow auto-create users"
   },

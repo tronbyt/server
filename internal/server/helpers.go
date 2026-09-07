@@ -115,14 +115,15 @@ type TemplateData struct {
 	SettingsSection           string
 
 	// OIDC Support
-	OIDCEnabled         bool
-	OIDCIssuerURL       string
-	OIDCClientID        string
-	OIDCClientSecret    string
-	OIDCAllowAutoCreate bool
-	OIDCUsernameClaim   string
-	OIDCAdminGroupClaim string
-	OIDCAdminGroupValue string
+	OIDCEnabled          bool
+	OIDCIssuerURL        string
+	OIDCClientID         string
+	OIDCClientSecret     string
+	OIDCAdditionalScopes string
+	OIDCAllowAutoCreate  bool
+	OIDCUsernameClaim    string
+	OIDCAdminGroupClaim  string
+	OIDCAdminGroupValue  string
 }
 
 // CreateDeviceFormData represents the form data for creating a device.

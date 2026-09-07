@@ -44,6 +44,16 @@
                value="{{ .OIDCClientSecret }}">
     </div>
     <div class="w3-section">
+        <label for="oidc_additional_scopes">{{ t .Localizer "OIDC Additional Scopes" }}</label>
+        <input type="text"
+               name="oidc_additional_scopes"
+               id="oidc_additional_scopes"
+               class="w3-input w3-border"
+               value="{{ .OIDCAdditionalScopes }}"
+               placeholder="groups">
+        <small>{{ t .Localizer "OIDC Additional scopes description" }}</small>
+    </div>
+    <div class="w3-section">
         <input type="checkbox"
                name="oidc_allow_auto_create"
                id="oidc_allow_auto_create"
