@@ -2,17 +2,16 @@ package config
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadSettings(t *testing.T) {
 	t.Setenv("DATA_DIR", "testdata")
+	t.Setenv("OIDC_ADDITIONAL_SCOPES", "groups roles")
 
 	cfg, err := LoadSettings()
-	if err != nil {
-		t.Fatalf("LoadSettings failed: %v", err)
-	}
-
-	if cfg.DataDir != "testdata" {
-		t.Errorf("Expected DATA_DIR 'testdata', got '%s'", cfg.DataDir)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "testdata", cfg.DataDir)
+	require.Equal(t, "groups roles", cfg.OIDCAdditionalScopes)
 }

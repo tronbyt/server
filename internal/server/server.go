@@ -146,6 +146,9 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	if val, err := s.getSetting("oidc_client_secret"); err == nil {
 		cfg.OIDCClientSecret = val
 	}
+	if val, err := s.getSetting("oidc_additional_scopes"); err == nil {
+		cfg.OIDCAdditionalScopes = val
+	}
 	if val, err := s.getSetting("oidc_allow_auto_create"); err == nil {
 		cfg.OIDCAllowAutoCreate = val == "true"
 	}

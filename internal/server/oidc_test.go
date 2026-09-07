@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/stretchr/testify/require"
 )
 
-func startOIDCAuthWithMetadata(t *testing.T, codeChallengeMethods []string) *httptest.ResponseRecorder {
+func startOIDCAuthWithMetadata(t *testing.T, codeChallengeMethods []string, additionalScopes ...string) *httptest.ResponseRecorder {
 	t.Helper()
 	s := newTestServer(t)
 
@@ -35,6 +36,9 @@ func startOIDCAuthWithMetadata(t *testing.T, codeChallengeMethods []string) *htt
 	s.Config.OIDCIssuerURL = srv.URL
 	s.Config.OIDCClientID = "client-id"
 	s.Config.OIDCClientSecret = "client-secret"
+	if len(additionalScopes) > 0 {
+		s.Config.OIDCAdditionalScopes = additionalScopes[0]
+	}
 
 	prov, err := s.setupOIDCProvider(context.Background())
 	require.NoError(t, err)
@@ -46,6 +50,21 @@ func startOIDCAuthWithMetadata(t *testing.T, codeChallengeMethods []string) *htt
 
 	require.Equal(t, http.StatusSeeOther, rr.Code)
 	return rr
+}
+
+func TestOIDCScopes(t *testing.T) {
+	require.Equal(t,
+		[]string{"openid", "email", "profile", "groups", "roles"},
+		oidcScopes(" groups  email roles groups "),
+	)
+}
+
+func TestStartOIDCAuthIncludesAdditionalScopes(t *testing.T) {
+	rr := startOIDCAuthWithMetadata(t, nil, "groups roles")
+
+	location, err := url.Parse(rr.Header().Get("Location"))
+	require.NoError(t, err)
+	require.Equal(t, "openid email profile groups roles", location.Query().Get("scope"))
 }
 
 func newDiscoveryServer(t *testing.T, metadata map[string]any) *httptest.Server {
