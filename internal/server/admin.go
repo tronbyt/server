@@ -27,6 +27,7 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 	oidcIssuerURL := r.FormValue("oidc_issuer_url")
 	oidcClientID := r.FormValue("oidc_client_id")
 	oidcClientSecret := r.FormValue("oidc_client_secret")
+	oidcAdditionalScopes := r.FormValue("oidc_additional_scopes")
 	oidcAllowAutoCreate := r.FormValue("oidc_allow_auto_create") == "on"
 	oidcUsernameClaim := r.FormValue("oidc_username_claim")
 	oidcAdminGroupClaim := r.FormValue("oidc_admin_group_claim")
@@ -37,6 +38,7 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 	s.Config.OIDCIssuerURL = oidcIssuerURL
 	s.Config.OIDCClientID = oidcClientID
 	s.Config.OIDCClientSecret = oidcClientSecret
+	s.Config.OIDCAdditionalScopes = oidcAdditionalScopes
 	s.Config.OIDCAllowAutoCreate = oidcAllowAutoCreate
 	s.Config.OIDCUsernameClaim = oidcUsernameClaim
 	s.Config.OIDCAdminGroupClaim = oidcAdminGroupClaim
@@ -48,6 +50,7 @@ func (s *Server) handleAdminSettingsPost(w http.ResponseWriter, r *http.Request)
 		"oidc_issuer_url":        oidcIssuerURL,
 		"oidc_client_id":         oidcClientID,
 		"oidc_client_secret":     oidcClientSecret,
+		"oidc_additional_scopes": oidcAdditionalScopes,
 		"oidc_allow_auto_create": boolToString(oidcAllowAutoCreate),
 		"oidc_username_claim":    oidcUsernameClaim,
 		"oidc_admin_group_claim": oidcAdminGroupClaim,

@@ -115,6 +115,20 @@
                     </div>
                     <div class="settings-field-row">
                         <div class="settings-field-label">
+                            <label for="oidc_additional_scopes">{{ t .Localizer "OIDC Additional Scopes" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="text"
+                                   name="oidc_additional_scopes"
+                                   id="oidc_additional_scopes"
+                                   class="settings-input settings-input-wide"
+                                   value="{{ .OIDCAdditionalScopes }}"
+                                   placeholder="groups">
+                            <p class="settings-help">{{ t .Localizer "OIDC Additional scopes description" }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
                             <label for="oidc_allow_auto_create">{{ t .Localizer "OIDC Allow Auto Create" }}</label>
                         </div>
                         <div class="settings-field-control">

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 
 	"tronbyt-server/internal/data"
 
@@ -26,6 +27,7 @@ type OIDCProvider struct {
 	clientID     string
 	clientSecret string
 	issuerURL    string
+	scopes       []string
 	supportsPKCE bool
 }
 
@@ -49,8 +51,19 @@ func (s *Server) setupOIDCProvider(ctx context.Context) (*OIDCProvider, error) {
 		clientID:     s.Config.OIDCClientID,
 		clientSecret: s.Config.OIDCClientSecret,
 		issuerURL:    s.Config.OIDCIssuerURL,
+		scopes:       oidcScopes(s.Config.OIDCAdditionalScopes),
 		supportsPKCE: providerSupportsPKCE(provider),
 	}, nil
+}
+
+func oidcScopes(additionalScopes string) []string {
+	scopes := []string{oidc.ScopeOpenID, "email", "profile"}
+	for scope := range strings.FieldsSeq(additionalScopes) {
+		if !slices.Contains(scopes, scope) {
+			scopes = append(scopes, scope)
+		}
+	}
+	return scopes
 }
 
 // providerSupportsPKCE reports whether the OIDC provider advertises S256 PKCE
@@ -74,7 +87,7 @@ func (p *OIDCProvider) oauth2Config(baseURL string) *oauth2.Config {
 		ClientSecret: p.clientSecret,
 		RedirectURL:  baseURL + "/auth/oidc/callback",
 		Endpoint:     p.provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "email", "profile"},
+		Scopes:       p.scopes,
 	}
 }
 
