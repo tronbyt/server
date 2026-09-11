@@ -1171,11 +1171,12 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 		payload["swap_colors"] = *update.SwapColors
 	}
 	if update.ColorOrder != nil {
-		if !isValidColorOrder(*update.ColorOrder) {
+		order, ok := normalizeColorOrder(*update.ColorOrder)
+		if !ok {
 			http.Error(w, "Invalid colorOrder", http.StatusBadRequest)
 			return
 		}
-		payload["color_order"] = *update.ColorOrder
+		payload["color_order"] = order
 	}
 	if update.DisableTouch != nil {
 		payload["disable_touch"] = *update.DisableTouch

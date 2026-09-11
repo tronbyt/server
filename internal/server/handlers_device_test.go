@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -363,4 +364,66 @@ func TestHandleSetDimModeOverride(t *testing.T) {
 	require.NotNil(t, updatedDevice.DimModeOverrideUntil)
 	assert.True(t, *updatedDevice.DimModeOverride)
 	assert.True(t, updatedDevice.DimModeOverrideUntil.After(time.Now().Add(-time.Minute)))
+}
+
+func TestHandleUpdateFirmwareSettings_ColorOrder(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{
+		ID:       "testdevice",
+		Username: "testuser",
+		Name:     "Test Device",
+	}
+	s.DB.Create(&device)
+
+	post := func(value string) *httptest.ResponseRecorder {
+		form := url.Values{}
+		form.Add("color_order", value)
+
+		req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/update_firmware_settings", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		ctx := context.WithValue(req.Context(), userContextKey, &user)
+		ctx = context.WithValue(ctx, deviceContextKey, &device)
+		req = req.WithContext(ctx)
+
+		rr := httptest.NewRecorder()
+		http.HandlerFunc(s.handleUpdateFirmwareSettings).ServeHTTP(rr, req)
+		return rr
+	}
+
+	// An unknown order is rejected here rather than sent to the device.
+	for _, tc := range []string{"xyz", "rgbb", "rg"} {
+		if rr := post(tc); rr.Code != http.StatusBadRequest {
+			t.Errorf("input %q: got status %v want %v", tc, rr.Code, http.StatusBadRequest)
+		}
+	}
+
+	// The firmware compares case-insensitively, so any case is accepted and the
+	// canonical lower-case form is what gets sent.
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	if rr := post("BGR"); rr.Code != http.StatusOK {
+		t.Fatalf("got status %v want %v: %s", rr.Code, http.StatusOK, rr.Body.String())
+	}
+
+	select {
+	case msg := <-ch:
+		cmdMsg, ok := msg.(DeviceCommandMessage)
+		if !ok {
+			t.Fatalf("unexpected message type from broadcaster: %T", msg)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(cmdMsg.Payload, &payload); err != nil {
+			t.Fatalf("failed to unmarshal payload from broadcaster: %v", err)
+		}
+		if val, ok := payload["color_order"].(string); !ok || val != "bgr" {
+			t.Errorf("expected color_order 'bgr', got %v", payload["color_order"])
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("timed out waiting for broadcaster notification")
+	}
 }

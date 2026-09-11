@@ -1244,6 +1244,7 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 		SkipBootAnimation:  new(true),
 		WifiPowerSave:      new(2),
 		ImageURL:           new("http://example.com/test.png"),
+		ColorOrder:         new("gbr"),
 	}
 	body, _ := json.Marshal(payload)
 
@@ -1277,8 +1278,8 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 			t.Fatalf("failed to unmarshal payload from broadcaster: %v", err)
 		}
 
-		if len(receivedPayload) != 4 {
-			t.Errorf("expected 4 fields in payload, got %d", len(receivedPayload))
+		if len(receivedPayload) != 5 {
+			t.Errorf("expected 5 fields in payload, got %d", len(receivedPayload))
 		}
 		if val, ok := receivedPayload["skip_display_version"].(bool); !ok || !val {
 			t.Errorf("expected skip_display_version to be true, got %v", receivedPayload["skip_display_version"])
@@ -1291,6 +1292,9 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 		}
 		if val, ok := receivedPayload["image_url"].(string); !ok || val != "http://example.com/test.png" {
 			t.Errorf("expected image_url to be 'http://example.com/test.png', got '%v'", receivedPayload["image_url"])
+		}
+		if val, ok := receivedPayload["color_order"].(string); !ok || val != "gbr" {
+			t.Errorf("expected color_order to be 'gbr', got '%v'", receivedPayload["color_order"])
 		}
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for broadcaster notification")

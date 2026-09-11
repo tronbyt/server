@@ -1141,14 +1141,17 @@ func (s *Server) handleRebootDevice(w http.ResponseWriter, r *http.Request) {
 	s.flashAndRedirect(w, r, msg, fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 }
 
-// isValidColorOrder reports whether v is a pixel channel order the firmware
-// accepts. Keep in sync with the <select> in web/templates/manager/update.html.
-func isValidColorOrder(v string) bool {
+// normalizeColorOrder lower-cases v and reports whether it is a pixel channel
+// order the firmware accepts. The firmware compares case-insensitively, so any
+// case is accepted here and the canonical lower-case form is what gets sent.
+// Keep in sync with the <select> in web/templates/manager/update.html.
+func normalizeColorOrder(v string) (string, bool) {
+	v = strings.ToLower(v)
 	switch v {
 	case "rgb", "rbg", "grb", "gbr", "brg", "bgr":
-		return true
+		return v, true
 	}
-	return false
+	return "", false
 }
 
 func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Request) {
@@ -1181,11 +1184,12 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 	// Validated so an unknown value is rejected here rather than being sent to
 	// the device, which would ignore it.
 	if val := r.FormValue("color_order"); val != "" {
-		if !isValidColorOrder(val) {
+		order, ok := normalizeColorOrder(val)
+		if !ok {
 			http.Error(w, "Invalid color_order", http.StatusBadRequest)
 			return
 		}
-		payload["color_order"] = val
+		payload["color_order"] = order
 	}
 
 	// String fields - Nullable (can be empty to clear)
