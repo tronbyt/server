@@ -184,6 +184,7 @@ func TestHandleGetDevice(t *testing.T) {
 	device.Info.APMode = new(true)
 	device.Info.PreferIPv6 = new(true)
 	device.Info.SwapColors = new(true)
+	device.Info.ColorOrder = new("bgr")
 	device.Info.ImageURL = new("http://example.com/image.png")
 	if err := s.DB.Save(device).Error; err != nil {
 		t.Fatalf("Failed to update device info: %v", err)
@@ -228,6 +229,9 @@ func TestHandleGetDevice(t *testing.T) {
 	}
 	if payload.Info.SwapColors == nil || !*payload.Info.SwapColors {
 		t.Errorf("Expected SwapColors to be true, got %v", payload.Info.SwapColors)
+	}
+	if payload.Info.ColorOrder == nil || *payload.Info.ColorOrder != "bgr" {
+		t.Errorf("Expected ColorOrder 'bgr', got %v", payload.Info.ColorOrder)
 	}
 	if payload.Info.ImageURL == nil || *payload.Info.ImageURL != "http://example.com/image.png" {
 		t.Errorf("Expected ImageURL 'http://example.com/image.png', got '%v'", payload.Info.ImageURL)

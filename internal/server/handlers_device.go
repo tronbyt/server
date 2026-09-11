@@ -1141,6 +1141,16 @@ func (s *Server) handleRebootDevice(w http.ResponseWriter, r *http.Request) {
 	s.flashAndRedirect(w, r, msg, fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 }
 
+// isValidColorOrder reports whether v is a pixel channel order the firmware
+// accepts. Keep in sync with the <select> in web/templates/manager/update.html.
+func isValidColorOrder(v string) bool {
+	switch v {
+	case "rgb", "rbg", "grb", "gbr", "brg", "bgr":
+		return true
+	}
+	return false
+}
+
 func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 	payload := make(map[string]any)
@@ -1166,6 +1176,16 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 		if val := r.FormValue(field); val != "" {
 			payload[field] = val
 		}
+	}
+
+	// Validated so an unknown value is rejected here rather than being sent to
+	// the device, which would ignore it.
+	if val := r.FormValue("color_order"); val != "" {
+		if !isValidColorOrder(val) {
+			http.Error(w, "Invalid color_order", http.StatusBadRequest)
+			return
+		}
+		payload["color_order"] = val
 	}
 
 	// String fields - Nullable (can be empty to clear)

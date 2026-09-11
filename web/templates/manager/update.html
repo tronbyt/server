@@ -699,6 +699,20 @@
                                    onchange="updateFirmwareSettings({swap_colors: this.checked})">
                         </div>
                     </div>
+                    {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">{{ t .Localizer "Color Order" }}</div>
+                        <div class="settings-field-control">
+                            <select onchange="updateFirmwareSettings({color_order: this.value})">
+                                <option value="rgb" {{ if eq $colorOrder "rgb" }}selected{{ end }}>RGB</option>
+                                <option value="rbg" {{ if eq $colorOrder "rbg" }}selected{{ end }}>RBG</option>
+                                <option value="grb" {{ if eq $colorOrder "grb" }}selected{{ end }}>GRB</option>
+                                <option value="gbr" {{ if eq $colorOrder "gbr" }}selected{{ end }}>GBR</option>
+                                <option value="brg" {{ if eq $colorOrder "brg" }}selected{{ end }}>BRG</option>
+                                <option value="bgr" {{ if eq $colorOrder "bgr" }}selected{{ end }}>BGR</option>
+                            </select>
+                        </div>
+                    </div>
                     {{ if eq .Device.Type.Slug "tidbyt_gen2" }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">

@@ -96,6 +96,7 @@ type DeviceInfo struct {
 	APMode             *bool   `json:"apMode,omitempty"`
 	PreferIPv6         *bool   `json:"preferIPv6,omitempty"`
 	SwapColors         *bool   `json:"swapColors,omitempty"`
+	ColorOrder         *string `json:"colorOrder,omitempty"`
 	DisableTouch       *bool   `json:"disableTouch,omitempty"`
 	ImageURL           *string `json:"imageUrl,omitempty"`
 	Hostname           *string `json:"hostname,omitempty"`
@@ -119,6 +120,7 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		APMode:             d.Info.APMode,
 		PreferIPv6:         d.Info.PreferIPv6,
 		SwapColors:         d.Info.SwapColors,
+		ColorOrder:         d.Info.ColorOrder,
 		DisableTouch:       d.Info.DisableTouch,
 		ImageURL:           d.Info.ImageURL,
 		Hostname:           d.Info.Hostname,
@@ -1133,6 +1135,7 @@ type FirmwareSettingsUpdate struct {
 	PreferIPv6         *bool   `json:"preferIPv6"`
 	APMode             *bool   `json:"apMode"`
 	SwapColors         *bool   `json:"swapColors"`
+	ColorOrder         *string `json:"colorOrder"`
 	DisableTouch       *bool   `json:"disableTouch"`
 	WifiPowerSave      *int    `json:"wifiPowerSave"`
 	ImageURL           *string `json:"imageUrl"`
@@ -1166,6 +1169,13 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	}
 	if update.SwapColors != nil {
 		payload["swap_colors"] = *update.SwapColors
+	}
+	if update.ColorOrder != nil {
+		if !isValidColorOrder(*update.ColorOrder) {
+			http.Error(w, "Invalid colorOrder", http.StatusBadRequest)
+			return
+		}
+		payload["color_order"] = *update.ColorOrder
 	}
 	if update.DisableTouch != nil {
 		payload["disable_touch"] = *update.DisableTouch
