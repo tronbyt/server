@@ -2,8 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -166,13 +168,15 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 		"tronbyt-s3_firmware.bin":                "tronbyt-S3.bin",
 		"tronbyt-s3-wide_firmware.bin":           "tronbyt-s3-wide.bin",
 		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
+		"matrixportal-s3-square_firmware.bin":    "matrixportal-s3-square.bin",
 		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
 		"waveshare-s3_firmware.bin":              "waveshare-s3.bin",
 		// Merged binaries (bootloader + partition + app, flashable at 0x0)
-		"tidbyt-gen1_merged.bin":     "tidbyt-gen1_merged.bin",
-		"tronbyt-s3_merged.bin":      "tronbyt-S3_merged.bin",
-		"matrixportal-s3_merged.bin": "matrixportal-s3_merged.bin",
-		"waveshare-s3_merged.bin":    "waveshare-s3_merged.bin",
+		"tidbyt-gen1_merged.bin":            "tidbyt-gen1_merged.bin",
+		"tronbyt-s3_merged.bin":             "tronbyt-S3_merged.bin",
+		"matrixportal-s3_merged.bin":        "matrixportal-s3_merged.bin",
+		"matrixportal-s3-square_merged.bin": "matrixportal-s3-square_merged.bin",
+		"waveshare-s3_merged.bin":           "waveshare-s3_merged.bin",
 	}
 
 	for i, release := range releases {
@@ -381,7 +385,20 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to generate firmware: %v", err), http.StatusInternalServerError)
+		// A release only carries binaries for the device types that existed
+		// when it was built, so a newer device type on an older cached release
+		// has nothing to flash. That is a missing asset, not a server fault.
+		if errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("No firmware binary for device type",
+				"device_type", device.Type.Slug(), "version", version, "error", err)
+			http.Error(w, fmt.Sprintf(
+				"No %s firmware in this release. Pick another version, or refresh the firmware binaries from the Admin page.",
+				device.Type.String()), http.StatusNotFound)
+			return
+		}
+		slog.Error("Failed to generate firmware",
+			"device_type", device.Type.Slug(), "version", version, "error", err)
+		http.Error(w, "Failed to generate firmware", http.StatusInternalServerError)
 		return
 	}
 

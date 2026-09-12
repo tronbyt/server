@@ -38,6 +38,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 	var deviceTimezone string
 	var locale *string
 	supports2x := false
+	width, height := data.DefaultCanvasWidth, data.DefaultCanvasHeight
 
 	if device != nil {
 		deviceTimezone = device.GetTimezone()
@@ -46,6 +47,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		config["$tz"] = deviceTimezone
 		locale = device.Locale
 		supports2x = device.Type.Supports2x()
+		width, height = device.Type.CanvasSize()
 	}
 
 	// Dwell Time
@@ -81,7 +83,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		ctx,
 		appPath,
 		config,
-		64, 32,
+		width, height,
 		time.Duration(appInterval)*time.Second,
 		30*time.Second,
 		true,

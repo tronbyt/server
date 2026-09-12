@@ -63,16 +63,21 @@
         .catch(error => console.error('Error saving theme preference:', error));
     }
 
-    function handle2xAppImages () {
+    function handleAppImageGeometry () {
         const APP_IMG_2X_WIDTH = 128;
 
         const processImage = (img) => {
             const applyClass = () => {
-                const is2x = img.naturalWidth === APP_IMG_2X_WIDTH;
                 const container = img.closest('.app-img');
-                if (container) {
-                    container.classList.toggle('is-2x', is2x);
+                if (!container) {
+                    return;
                 }
+                const is2x = img.naturalWidth === APP_IMG_2X_WIDTH;
+                // Square panels need their own dot mask and aspect ratio;
+                // everything else is the classic 2:1 panel.
+                const isSquare = img.naturalWidth > 0 && img.naturalWidth === img.naturalHeight;
+                container.classList.toggle('is-2x', is2x);
+                container.classList.toggle('is-square', isSquare);
             };
             if (img.complete && img.naturalWidth > 0) {
                 applyClass();
@@ -191,7 +196,7 @@
 
         setupThemeChangeHandler(themeSelect);
         setupThemeChangeHandler(mobileThemeSelect);
-        handle2xAppImages();
+        handleAppImageGeometry();
     }
 
     if (document.readyState === 'loading') {

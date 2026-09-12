@@ -74,10 +74,7 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		// Nothing installed yet: show where to install something rather than
 		// a placeholder that gives no way to act on it.
 		if baseURL != "" {
-			width, height := 64, 32
-			if device.Type.Supports2x() {
-				width, height = 128, 64
-			}
+			width, height := device.Type.DisplaySize()
 			if img, err := renderSetupImage(ctx, width, height, baseURL); err == nil {
 				return img, nil, nil
 			} else {

@@ -82,6 +82,9 @@
     {{ if .App.Supports2x }}
     <div class="supports-2x-badge">2x</div>
     {{ end }}
+    {{ if .App.Supports64x64 }}
+    <div class="supports-64x64-badge">64&times;64</div>
+    {{ end }}
     <!-- Skeleton loader for images -->
     <div class="app-img">
         <div class="skeleton-loader"></div>

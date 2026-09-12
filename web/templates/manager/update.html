@@ -128,10 +128,14 @@
                         <select name="device_type" id="device_type" class="settings-input">
                             {{ $deviceType := .Device.Type }}
                             {{ range .DeviceTypeChoices }}
-                            <option value="{{ .Value.Slug }}"
-                                    {{ if eq $deviceType.Slug .Value.Slug }}
-                                    selected
-                                    {{ end }}>{{ .Label }}</option>
+                            <optgroup label="{{ .Label }}">
+                                {{ range .Options }}
+                                <option value="{{ .Value.Slug }}"
+                                        {{ if eq $deviceType.Slug .Value.Slug }}
+                                        selected
+                                        {{ end }}>{{ .Label }}</option>
+                                {{ end }}
+                            </optgroup>
                             {{ end }}
                         </select>
                     </div>

@@ -1227,3 +1227,13 @@ button.action.w3-button {
 .custom-select option {
   color: black;
 }
+
+/* Square panels. The preview slots above are 256x128 by construction, which
+   letterboxes a square render into half the slot. Match the panel instead. */
+.app-preview .app-img.is-square,
+.app-preview .app-img.is-square img,
+.apps-grid-view .app-preview .app-img.is-square,
+.apps-grid-view .app-preview .app-img.is-square img {
+  width: 128px;
+  height: 128px;
+}

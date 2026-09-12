@@ -57,3 +57,48 @@ func TestListUserApps(t *testing.T) {
 		t.Errorf("Did not find both apps: foundApp1=%v, foundApp2=%v", foundApp1, foundApp2)
 	}
 }
+
+// supports64x64 is an assertion by the app author that the app lays out on a
+// square panel. Unlike supports2x it is deliberately NOT inferred from a
+// screenshot file: a committed image proves a preview exists, not that anyone
+// checked the app on a square panel.
+func TestSupports64x64ComesFromTheManifestNotAScreenshot(t *testing.T) {
+	dir := t.TempDir()
+	appsDir := filepath.Join(dir, "system-apps", "apps", "squareapp")
+	if err := os.MkdirAll(appsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "id: squareapp\nname: Square App\nfileName: squareapp.star\npackageName: squareapp\nsupports64x64: true\n"
+	write := func(name, body string) {
+		if err := os.WriteFile(filepath.Join(appsDir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("manifest.yaml", manifest)
+	write("squareapp.star", "")
+	write("screenshot.webp", "")
+	write("screenshot@64x64.webp", "")
+
+	found, err := ListSystemApps(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var app *AppMetadata
+	for i := range found {
+		if found[i].ID == "squareapp" {
+			app = &found[i]
+		}
+	}
+	if app == nil {
+		t.Fatal("squareapp was not scanned")
+	}
+	if !app.Supports64x64 {
+		t.Error("supports64x64 in the manifest was not read")
+	}
+	if app.PreviewSquare == "" {
+		t.Error("a @64x64 preview file beside the app was not picked up")
+	}
+	if app.Supports2x {
+		t.Error("supports2x must not be set: no @2x file and no manifest key")
+	}
+}
