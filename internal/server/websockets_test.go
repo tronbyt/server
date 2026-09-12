@@ -121,7 +121,7 @@ func TestWebsockets_Client(t *testing.T) {
 	clientInfo := ClientInfo{
 		FirmwareVersion: "1.0.0",
 		MACAddress:      "00:11:22:33:44:55",
-		ColorOrder:      new("gbr"),
+		ColorOrder:      new("GBR"), // stored normalized, see normalizeColorOrder
 	}
 	msg := WSMessage{
 		ClientInfo: &clientInfo,

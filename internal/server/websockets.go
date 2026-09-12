@@ -162,7 +162,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					device.Info.SwapColors = msg.ClientInfo.SwapColors
 				}
 				if msg.ClientInfo.ColorOrder != nil {
-					device.Info.ColorOrder = msg.ClientInfo.ColorOrder
+					// Store the canonical lower-case form so the settings page
+					// shows what the device is actually using. A value this
+					// server does not recognise is ignored rather than stored,
+					// since the page could not represent it anyway.
+					if order, ok := normalizeColorOrder(*msg.ClientInfo.ColorOrder); ok {
+						device.Info.ColorOrder = &order
+					}
 				}
 				if msg.ClientInfo.DisableTouch != nil {
 					device.Info.DisableTouch = msg.ClientInfo.DisableTouch

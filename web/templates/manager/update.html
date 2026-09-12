@@ -701,9 +701,13 @@
                     </div>
                     {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
                     <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Color Order" }}</div>
+                        <div class="settings-field-label">
+                            <label for="color_order">{{ t .Localizer "Color Order" }}</label>
+                        </div>
                         <div class="settings-field-control">
-                            <select class="settings-input" onchange="updateFirmwareSettings({color_order: this.value})">
+                            <select id="color_order"
+                                    class="settings-input"
+                                    onchange="updateFirmwareSettings({color_order: this.value})">
                                 <option value="rgb" {{ if eq $colorOrder "rgb" }}selected{{ end }}>RGB</option>
                                 <option value="rbg" {{ if eq $colorOrder "rbg" }}selected{{ end }}>RBG</option>
                                 <option value="grb" {{ if eq $colorOrder "grb" }}selected{{ end }}>GRB</option>

@@ -230,9 +230,8 @@ func TestHandleGetDevice(t *testing.T) {
 	if payload.Info.SwapColors == nil || !*payload.Info.SwapColors {
 		t.Errorf("Expected SwapColors to be true, got %v", payload.Info.SwapColors)
 	}
-	if payload.Info.ColorOrder == nil || *payload.Info.ColorOrder != "bgr" {
-		t.Errorf("Expected ColorOrder 'bgr', got %v", payload.Info.ColorOrder)
-	}
+	require.NotNil(t, payload.Info.ColorOrder, "Expected ColorOrder to be set")
+	assert.Equal(t, "bgr", *payload.Info.ColorOrder)
 	if payload.Info.ImageURL == nil || *payload.Info.ImageURL != "http://example.com/image.png" {
 		t.Errorf("Expected ImageURL 'http://example.com/image.png', got '%v'", payload.Info.ImageURL)
 	}
@@ -1278,9 +1277,7 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 			t.Fatalf("failed to unmarshal payload from broadcaster: %v", err)
 		}
 
-		if len(receivedPayload) != 5 {
-			t.Errorf("expected 5 fields in payload, got %d", len(receivedPayload))
-		}
+		assert.Len(t, receivedPayload, 5)
 		if val, ok := receivedPayload["skip_display_version"].(bool); !ok || !val {
 			t.Errorf("expected skip_display_version to be true, got %v", receivedPayload["skip_display_version"])
 		}
@@ -1293,9 +1290,7 @@ func TestHandleUpdateFirmwareSettingsAPI(t *testing.T) {
 		if val, ok := receivedPayload["image_url"].(string); !ok || val != "http://example.com/test.png" {
 			t.Errorf("expected image_url to be 'http://example.com/test.png', got '%v'", receivedPayload["image_url"])
 		}
-		if val, ok := receivedPayload["color_order"].(string); !ok || val != "gbr" {
-			t.Errorf("expected color_order to be 'gbr', got '%v'", receivedPayload["color_order"])
-		}
+		assert.Equal(t, "gbr", receivedPayload["color_order"])
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for broadcaster notification")
 	}
