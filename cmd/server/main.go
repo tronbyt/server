@@ -8,12 +8,22 @@ import (
 	"tronbyt-server/cmd/server/boot"
 	"tronbyt-server/cmd/server/migrate"
 	"tronbyt-server/cmd/server/serve"
+	"tronbyt-server/internal/renderer"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 func main() {
+	if os.Getenv(renderer.RenderWorkerEnv()) == "1" {
+		renderer.RunWorker()
+		return
+	}
+
+	if exe, err := os.Executable(); err == nil {
+		_ = os.Setenv(renderer.RenderWorkerBinEnv(), exe)
+	}
+
 	// Determine the root command
 	var root *cobra.Command
 	switch filepath.Base(os.Args[0]) {

@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
-	"github.com/tronbyt/pixlet/encode"
 	"github.com/tronbyt/pixlet/runtime"
 	"github.com/tronbyt/pixlet/runtime/modules/render_runtime/canvas"
-	"github.com/tronbyt/pixlet/server/loader"
-	"golang.org/x/text/language"
 )
 
 // Render executes the Starlark script and returns the WebP image bytes.
+// Rendering runs in a subprocess so panics inside pixlet's parallel frame
+// workers cannot take down the server process.
 func Render(
 	ctx context.Context,
 	path string,
@@ -29,48 +29,34 @@ func Render(
 	filters []string,
 	showFullAnimation *bool,
 ) ([]byte, []string, error) {
-	location := time.Local
-	if timezone != nil && *timezone != "" {
-		v, err := time.LoadLocation(*timezone)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid timezone: %v", err)
-		}
-		location = v
+	if shouldRenderInProcess() {
+		return renderInProcess(
+			ctx, path, config,
+			width, height,
+			maxDuration, timeout,
+			silenceOutput, output2x,
+			timezone, locale,
+			filters, showFullAnimation,
+		)
 	}
 
-	lang := language.English
-	if locale != nil && *locale != "" {
-		var err error
-		lang, err = language.Parse(*locale)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid locale: %v", err)
-		}
-	}
-
-	var renderFilters encode.RenderFilters
-	for _, f := range filters {
-		var cf encode.ColorFilter
-		if err := cf.UnmarshalText([]byte(f)); err == nil {
-			renderFilters.ColorFilter = cf
-		}
-	}
-
-	return loader.RenderApplet(
+	return renderIsolated(
 		ctx, path, config,
-		loader.WithMeta(canvas.Metadata{
-			Width:  width,
-			Height: height,
-			Is2x:   output2x,
-		}),
-		loader.WithMaxDuration(maxDuration),
-		loader.WithTimeout(timeout),
-		loader.WithImageFormat(loader.ImageWebP),
-		loader.WithSilenceOutput(silenceOutput),
-		loader.WithLocation(location),
-		loader.WithLanguage(lang),
-		loader.WithFilters(renderFilters),
-		loader.WithShowFullAnimation(showFullAnimation),
+		width, height,
+		maxDuration, timeout,
+		silenceOutput, output2x,
+		timezone, locale,
+		filters, showFullAnimation,
 	)
+}
+
+func shouldRenderInProcess() bool {
+	if os.Getenv("TRONBYT_RENDER_IN_PROCESS") == "1" {
+		return true
+	}
+	// Isolated rendering is opt-in: only the server binary sets this in main.
+	// go test binaries never do, so they always render in-process.
+	return os.Getenv(RenderWorkerBinEnv()) == ""
 }
 
 // GetSchema returns the schema JSON for the given script.
