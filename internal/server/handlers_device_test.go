@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -363,4 +364,58 @@ func TestHandleSetDimModeOverride(t *testing.T) {
 	require.NotNil(t, updatedDevice.DimModeOverrideUntil)
 	assert.True(t, *updatedDevice.DimModeOverride)
 	assert.True(t, updatedDevice.DimModeOverrideUntil.After(time.Now().Add(-time.Minute)))
+}
+
+func TestHandleUpdateFirmwareSettings_ColorOrder(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "testuser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+	device := data.Device{
+		ID:       "testdevice",
+		Username: "testuser",
+		Name:     "Test Device",
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	post := func(value string) *httptest.ResponseRecorder {
+		form := url.Values{}
+		form.Add("color_order", value)
+
+		req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/update_firmware_settings", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		reqCtx := context.WithValue(req.Context(), userContextKey, &user)
+		reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
+		req = req.WithContext(reqCtx)
+
+		rr := httptest.NewRecorder()
+		http.HandlerFunc(s.handleUpdateFirmwareSettings).ServeHTTP(rr, req)
+		return rr
+	}
+
+	// An unknown order is rejected here rather than sent to the device.
+	for _, tc := range []string{"xyz", "rgbb", "rg"} {
+		assert.Equal(t, http.StatusBadRequest, post(tc).Code, "input %q", tc)
+	}
+
+	// The firmware compares case-insensitively, so any case is accepted and the
+	// canonical lower-case form is what gets sent.
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	rr := post("BGR")
+	require.Equal(t, http.StatusOK, rr.Code, "body: %s", rr.Body.String())
+
+	select {
+	case msg := <-ch:
+		cmdMsg, ok := msg.(DeviceCommandMessage)
+		require.True(t, ok, "unexpected message type from broadcaster: %T", msg)
+		var payload map[string]any
+		require.NoError(t, json.Unmarshal(cmdMsg.Payload, &payload))
+		assert.Equal(t, "bgr", payload["color_order"])
+	case <-time.After(1 * time.Second):
+		require.Fail(t, "timed out waiting for broadcaster notification")
+	}
 }

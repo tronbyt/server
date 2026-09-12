@@ -106,6 +106,27 @@ func TestDeviceSupportsHTTPFirmwareCommands(t *testing.T) {
 	assert.False(t, otherDevice.SupportsHTTPFirmwareCommands())
 }
 
+func TestDeviceSupportsColorOrder(t *testing.T) {
+	cases := []struct {
+		name    string
+		version string
+		want    bool
+	}{
+		{"no version", "", false},
+		{"dev", "dev", true},
+		{"below minimum", "v1.6.9", false},
+		{"exactly minimum", "v1.7.0", true},
+		{"above minimum", "v1.7.3", true},
+		{"no v prefix", "1.8.0", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := Device{Info: DeviceInfo{FirmwareVersion: tc.version}}
+			assert.Equal(t, tc.want, d.SupportsColorOrder())
+		})
+	}
+}
 func TestDeviceTypeCanvasAndDisplaySize(t *testing.T) {
 	tests := []struct {
 		name                        string

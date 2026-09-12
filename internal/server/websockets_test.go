@@ -121,6 +121,7 @@ func TestWebsockets_Client(t *testing.T) {
 	clientInfo := ClientInfo{
 		FirmwareVersion: "1.0.0",
 		MACAddress:      "00:11:22:33:44:55",
+		ColorOrder:      new("GBR"), // stored normalized, see normalizeColorOrder
 	}
 	msg := WSMessage{
 		ClientInfo: &clientInfo,
@@ -131,7 +132,8 @@ func TestWebsockets_Client(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		var updatedDevice data.Device
 		s.DB.First(&updatedDevice, "id = ?", deviceID)
-		return updatedDevice.Info.FirmwareVersion == "1.0.0" && updatedDevice.Info.MACAddress == "00:11:22:33:44:55"
+		return updatedDevice.Info.FirmwareVersion == "1.0.0" && updatedDevice.Info.MACAddress == "00:11:22:33:44:55" &&
+			updatedDevice.Info.ColorOrder != nil && *updatedDevice.Info.ColorOrder == "gbr"
 	}, 2*time.Second, 100*time.Millisecond, "Device info was not updated in the database in time")
 
 	// Send ACK to simulate display start
