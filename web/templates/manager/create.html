@@ -42,10 +42,14 @@
                 <select name="device_type" id="device_type" class="device-settings-input">
                     {{ $deviceType := .Form.DeviceType }}
                     {{ range .DeviceTypeChoices }}
-                    <option value="{{ .Value.Slug }}"
-                            {{ if eq $deviceType .Value.Slug }}
-                            selected
-                            {{ end }}>{{ .Label }}</option>
+                    <optgroup label="{{ .Label }}">
+                        {{ range .Options }}
+                        <option value="{{ .Value.Slug }}"
+                                {{ if eq $deviceType .Value.Slug }}
+                                selected
+                                {{ end }}>{{ .Label }}</option>
+                        {{ end }}
+                    </optgroup>
                     {{ end }}
                 </select>
             </div>

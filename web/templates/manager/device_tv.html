@@ -88,7 +88,6 @@
         .app-card img {
             width: 100%;
             height: auto;
-            aspect-ratio: 64/32;
             object-fit: contain;
             image-rendering: pixelated;
             /* Ensures pixels stay sharp regardless of scaling */
@@ -122,7 +121,7 @@
                             padding: 10px">
                     <img src="/devices/{{ $.Device.ID }}/installations/{{ .Iname }}/preview"
                          style="width: 100%;
-                                aspect-ratio: 64/32;
+                                aspect-ratio: {{ panelAspect $.Device.Type }};
                                 image-rendering: pixelated;
                                 display: block">
                 </div>

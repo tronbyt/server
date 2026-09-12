@@ -119,3 +119,9 @@ func TestTmplContains(t *testing.T) {
 		})
 	}
 }
+
+func TestTmplPanelAspect(t *testing.T) {
+	assert.Equal(t, "64 / 32", string(tmplPanelAspect(data.DeviceRaspberryPi)))
+	assert.Equal(t, "128 / 64", string(tmplPanelAspect(data.DeviceRaspberryPiWide)))
+	assert.Equal(t, "64 / 64", string(tmplPanelAspect(data.DeviceRaspberryPiSquare)))
+}

@@ -178,6 +178,18 @@
   align-items: center;
 }
 
+/* Square panels. The CONTAINER carries the aspect too: sizing only the
+   image leaves it overflowing a 2:1 box with overflow:hidden, which is
+   what clipped square previews into a cut-off rectangle. */
+.app-img.is-square {
+  aspect-ratio: 1 / 1;
+}
+
+.app-img.is-square .lazy-image {
+  width: 128px;
+  height: 128px;
+}
+
 .app-img .lazy-image {
   position: relative;
   width: 128px;
@@ -195,6 +207,7 @@
 
 .installed-badge,
 .supports-2x-badge,
+.supports-64x64-badge,
 .broken-badge {
   position: absolute;
   top: 10px;
@@ -215,6 +228,14 @@
 .supports-2x-badge {
   left: 10px;
   background: color-mix(in srgb, var(--surface-bg) 84%, #4a78d8 16%);
+  color: var(--page-text);
+}
+
+/* Sits under the 2x badge: an app can legitimately declare both. */
+.supports-64x64-badge {
+  left: 10px;
+  top: 38px;
+  background: color-mix(in srgb, var(--surface-bg) 84%, #3f9d6b 16%);
   color: var(--page-text);
 }
 
