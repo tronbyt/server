@@ -37,6 +37,7 @@ func getFuncMap() template.FuncMap {
 		"contains":       tmplContains,
 		"webauthn_icon":  tmplWebAuthnIcon,
 		"installationID": tmplInstallationID,
+		"panelAspect":    tmplPanelAspect,
 	}
 }
 
@@ -254,6 +255,14 @@ func tmplInstallationID(app data.App) string {
 		return strings.TrimPrefix(*app.Path, "pushed:")
 	}
 	return app.Iname
+}
+
+// tmplPanelAspect renders a device type's panel proportions as a CSS
+// `aspect-ratio` value, so previews are shaped like the panel they mirror
+// instead of assuming every panel is 2:1.
+func tmplPanelAspect(dt data.DeviceType) template.CSS {
+	width, height := dt.DisplaySize()
+	return template.CSS(fmt.Sprintf("%d / %d", width, height))
 }
 
 func tmplWebAuthnIcon(authenticator string, dark bool) template.URL {

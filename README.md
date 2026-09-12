@@ -13,8 +13,8 @@ However, there are some drawbacks, including the lack of a mobile app, slightly 
 **Supported Devices:**
 *   Tidbyt Gen1 and Gen2
 *   Tronbyt S3 and S3 Wide
-*   MatrixPortal S3 and MatrixPortal S3 Waveshare
-*   Raspberry Pi (64x32) and Raspberry Pi Wide (128x64) connected to matrix LED panels
+*   MatrixPortal S3, MatrixPortal S3 Waveshare and MatrixPortal S3 Square (64x64)
+*   Raspberry Pi (64x32), Raspberry Pi Wide (128x64) and Raspberry Pi Square (64x64) connected to matrix LED panels
 *   Pixoticker (limited memory, not recommended)
 
 Developing additional clients for Tronbyt Server is straightforward: pull WebP images from the `/next` endpoint and loop the animation for the duration specified in the `Tronbyt-Dwell-Secs` response header. Display brightness can optionally be set using the `Tronbyt-Brightness` header (0-100).
