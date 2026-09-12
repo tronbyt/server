@@ -66,6 +66,8 @@ func RunWorker() {
 		defer cancel()
 	}
 
+	// Always capture applet print() output into messages. stdout is reserved
+	// for the JSON worker response; uncaptured prints would corrupt it.
 	img, messages, err := renderInProcess(
 		ctx,
 		req.Path,
@@ -74,7 +76,7 @@ func RunWorker() {
 		req.Height,
 		time.Duration(req.MaxDurationNS),
 		time.Duration(req.TimeoutNS),
-		req.SilenceOutput,
+		true,
 		req.Output2x,
 		req.Timezone,
 		req.Locale,
@@ -184,7 +186,7 @@ func renderIsolated(
 		Height:            height,
 		MaxDurationNS:     maxDuration.Nanoseconds(),
 		TimeoutNS:         timeout.Nanoseconds(),
-		SilenceOutput:     silenceOutput,
+		SilenceOutput:     true, // capture prints into response messages
 		Output2x:          output2x,
 		Timezone:          timezone,
 		Locale:            locale,

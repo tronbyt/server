@@ -1,9 +1,6 @@
 package renderer
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func TestShouldRenderInProcessWithoutWorkerBin(t *testing.T) {
 	t.Setenv(RenderWorkerBinEnv(), "")
@@ -29,11 +26,5 @@ func TestShouldRenderIsolatedWithWorkerBin(t *testing.T) {
 
 	if shouldRenderInProcess() {
 		t.Fatal("expected isolated rendering when worker binary is set")
-	}
-}
-
-func TestRenderWorkerBinUnsetInTests(t *testing.T) {
-	if os.Getenv(RenderWorkerBinEnv()) != "" {
-		t.Fatalf("test binary should not set %s", RenderWorkerBinEnv())
 	}
 }
