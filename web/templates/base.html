@@ -47,6 +47,11 @@
         <li>
             <a href="/settings/content">{{ t .Localizer "System Settings" }}</a>
         </li>
+        {{ if .HasConnections }}
+        <li>
+            <a href="/connections">{{ t .Localizer "Connections" }}</a>
+        </li>
+        {{ end }}
         {{ if not .IsAutoLoginActive }}
         <li>
             <a href="/auth/logout">{{ t .Localizer "Log Out" }}</a>
@@ -104,6 +109,11 @@
         <li>
             <a href="/settings/content" onclick="closeMobileMenu()">{{ t .Localizer "System Settings" }}</a>
         </li>
+        {{ if .HasConnections }}
+        <li>
+            <a href="/connections" onclick="closeMobileMenu()">{{ t .Localizer "Connections" }}</a>
+        </li>
+        {{ end }}
         {{ if not .IsAutoLoginActive }}
         <li>
             <a href="/auth/logout" onclick="closeMobileMenu()">{{ t .Localizer "Log Out" }}</a>

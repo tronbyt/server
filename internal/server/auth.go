@@ -522,4 +522,14 @@ func (s *Server) SetupAuthRoutes() {
 	s.Router.HandleFunc("GET /auth/oidc/link", s.RequireLogin(http.HandlerFunc(s.handleOIDCLink)).ServeHTTP)
 	s.Router.HandleFunc("POST /auth/oidc/unlink/{id}", s.RequireLogin(http.HandlerFunc(s.handleOIDCUnlink)).ServeHTTP)
 	s.Router.HandleFunc("GET /auth/oidc/callback", s.handleOIDCCallback)
+
+	// Third-party OAuth2 connections (Strava, etc.). All require an
+	// authenticated session — connections are owned by users.
+	s.Router.HandleFunc("GET /connections", s.RequireLogin(s.handleConnectionsPage))
+	s.Router.HandleFunc("GET /connections/start/{provider}", s.RequireLogin(s.handleConnectionStart))
+	// Device authorization grant — no redirect URI, code shown on the display.
+	s.Router.HandleFunc("GET /connections/device/{provider}", s.RequireLogin(s.handleDeviceFlowStart))
+	s.Router.HandleFunc("GET /connections/device/status/{id}", s.RequireLogin(s.handleDeviceFlowStatus))
+	s.Router.HandleFunc("GET /oauth-callback", s.RequireLogin(s.handleConnectionCallback))
+	s.Router.HandleFunc("POST /connections/{id}/disconnect", s.RequireLogin(s.handleConnectionDisconnect))
 }

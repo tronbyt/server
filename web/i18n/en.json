@@ -2146,5 +2146,53 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "You are accessing this server via localhost. For proper firmware generation you should use:"
+  },
+  "Connections": {
+    "other": "Connections"
+  },
+  "Connected Accounts": {
+    "other": "Connected Accounts"
+  },
+  "Connect an account once, and any app that uses it renders with a fresh token automatically \u2014 no API keys to paste.": {
+    "other": "Connect an account once, and any app that uses it renders with a fresh token automatically \u2014 no API keys to paste."
+  },
+  "No connection providers are configured on this server. To enable one, register an OAuth application with the provider and set its client ID and secret in the server environment (see .env.example).": {
+    "other": "No connection providers are configured on this server. To enable one, register an OAuth application with the provider and set its client ID and secret in the server environment (see .env.example)."
+  },
+  "Connected as": {
+    "other": "Connected as"
+  },
+  "Scopes:": {
+    "other": "Scopes:"
+  },
+  "Not connected": {
+    "other": "Not connected"
+  },
+  "Connected": {
+    "other": "Connected"
+  },
+  "Disconnect": {
+    "other": "Disconnect"
+  },
+  "Connect": {
+    "other": "Connect"
+  },
+  "Connect with a code": {
+    "other": "Connect with a code"
+  },
+  "Shows a short code here and on your display": {
+    "other": "Shows a short code here and on your display"
+  },
+  "Go to this address on your phone or computer and enter the code:": {
+    "other": "Go to this address on your phone or computer and enter the code:"
+  },
+  "This code is also showing on your display.": {
+    "other": "This code is also showing on your display."
+  },
+  "Waiting for you to approve\u2026": {
+    "other": "Waiting for you to approve\u2026"
+  },
+  "Continue": {
+    "other": "Continue"
   }
 }
