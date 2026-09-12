@@ -16,6 +16,7 @@ import (
 
 const minOTAFirmwareVersion = "v1.4.6"
 const minFirmwareFeaturesVersion = "v1.4.8"
+const minColorOrderVersion = "v1.7.0"
 
 type ThemePreference string
 
@@ -1049,6 +1050,21 @@ func (d *Device) SupportsFirmwareFeatures() bool {
 	}
 
 	return semver.Compare(v, minFirmwareFeaturesVersion) >= 0
+}
+
+func (d *Device) SupportsColorOrder() bool {
+	v := d.Info.FirmwareVersion
+	if v == "" {
+		return false
+	}
+	if v == "dev" {
+		return true
+	}
+	if !strings.HasPrefix(v, "v") {
+		v = "v" + v
+	}
+
+	return semver.Compare(v, minColorOrderVersion) >= 0
 }
 
 func (d *Device) SupportsHTTPFirmwareCommands() bool {

@@ -699,6 +699,7 @@
                                    onchange="updateFirmwareSettings({swap_colors: this.checked})">
                         </div>
                     </div>
+                    {{ if .Device.SupportsColorOrder }}
                     {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">
@@ -717,6 +718,7 @@
                             </select>
                         </div>
                     </div>
+                    {{ end }}
                     {{ if eq .Device.Type.Slug "tidbyt_gen2" }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">
