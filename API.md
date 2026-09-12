@@ -126,6 +126,7 @@ Update low-level firmware settings. All fields are optional.
   "preferIPv6": false,
   "apMode": false,
   "swapColors": false,
+  "colorOrder": "rgb",
   "disableTouch": false,
   "wifiPowerSave": 0,
   "imageUrl": "http://example.com/image.webp",
@@ -134,6 +135,8 @@ Update low-level firmware settings. All fields are optional.
   "syslogAddr": "192.168.1.100:514"
 }
 ```
+
+`colorOrder` is one of `rgb`, `rbg`, `grb`, `gbr`, `brg`, `bgr` (case-insensitive; stored and sent lower-case). It requires firmware with `COLOR_ORDER` support; older firmware ignores it.
 
 **Response:** `200 OK` — `"Firmware settings updated."`
 
