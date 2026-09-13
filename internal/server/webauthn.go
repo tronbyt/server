@@ -127,19 +127,16 @@ func (s *Server) handleWebAuthnRegisterBegin(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Exclude existing credentials
-	registerOptions := func(credCreationOpts *protocol.PublicKeyCredentialCreationOptions) {
-		excludeList := make([]protocol.CredentialDescriptor, len(webAuthnUser.Credentials))
-		for i, c := range webAuthnUser.Credentials {
-			excludeList[i] = protocol.CredentialDescriptor{
-				Type:         protocol.PublicKeyCredentialType,
-				CredentialID: c.ID,
-				Transport:    c.Transport,
-			}
+	excludeList := make([]protocol.CredentialDescriptor, len(webAuthnUser.Credentials))
+	for i, c := range webAuthnUser.Credentials {
+		excludeList[i] = protocol.CredentialDescriptor{
+			Type:         protocol.PublicKeyCredentialType,
+			CredentialID: c.ID,
+			Transport:    c.Transport,
 		}
-		credCreationOpts.CredentialExcludeList = excludeList
 	}
 
-	options, sessionData, err := wa.BeginRegistration(webAuthnUser, registerOptions)
+	options, sessionData, err := wa.BeginRegistration(webAuthnUser, webauthn.WithExclusions(excludeList))
 	if err != nil {
 		slog.Error("Failed to begin registration", "error", err)
 		http.Error(w, "WebAuthn registration failed", http.StatusInternalServerError)
