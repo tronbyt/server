@@ -10,9 +10,15 @@
 }
 .palette button {
   background-color: var(--color);
-  border-radius: 100%;
+  border-radius: 50%;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 0;
+  min-height: 0;
   margin: 2px;
-  padding: 10px;
+  padding: 0;
+  cursor: pointer;
 }
 .palette button:hover {
   background-color: var(--color) !important;
@@ -60,9 +66,10 @@
   white-space: pre-wrap;
 }
 
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 768px) {
   .palette button {
-    width: auto;
-    padding: 20px;
+    width: 40px;
+    height: 40px;
+    margin: 4px;
   }
 }

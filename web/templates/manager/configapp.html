@@ -1773,9 +1773,8 @@ function createImageUploadField(field, config) {
             btn.className = 'w3-button';
             btn.style.setProperty('--color', color);
             btn.style.backgroundColor = color; // Fallback
-            btn.style.width = '20px';
-            btn.style.height = '20px';
-            btn.style.margin = '2px';
+            btn.setAttribute('aria-label', color);
+            btn.title = color;
             btn.addEventListener('click', () => {
                 if (color.length === 4) {
                     color = '#' + [...color.slice(1)].map(c => c + c).join('');
