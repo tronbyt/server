@@ -129,7 +129,7 @@ func verifyScrypt(hashStr, password string) (bool, error) {
 	// Format: scrypt:N:r:p$salt$hash
 	parts := strings.Split(hashStr, "$")
 	if len(parts) != 3 {
-		slog.Error("verifyScrypt parts mismatch", "count", len(parts), "parts", parts)
+		slog.Error("verifyScrypt parts mismatch", "count", len(parts))
 		return false, errors.New("invalid scrypt format")
 	}
 
