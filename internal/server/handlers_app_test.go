@@ -34,11 +34,9 @@ func TestHandleAddAppPost(t *testing.T) {
 	// Mock SystemAppsCache
 	s.systemAppsCache = []apps.AppMetadata{
 		{
-			Manifest: apps.Manifest{
-				ID:                  "Clock",
-				RecommendedInterval: 5,
-			},
-			Path: "system-apps/apps/clock",
+			ID:                  "Clock",
+			RecommendedInterval: 5,
+			Path:                "system-apps/apps/clock",
 		},
 	}
 
@@ -591,47 +589,37 @@ func TestMarkInstalledApps(t *testing.T) {
 
 	systemApps := []apps.AppMetadata{
 		{
-			Manifest: apps.Manifest{
-				ID:       "weather",
-				Name:     "Weather",
-				FileName: "weather.star",
-			},
-			Path: "system-apps/apps/weather",
+			ID:       "weather",
+			Name:     "Weather",
+			FileName: "weather.star",
+			Path:     "system-apps/apps/weather",
 		},
 		{
-			Manifest: apps.Manifest{
-				ID:       "clock",
-				Name:     "Clock",
-				FileName: "clock.star",
-			},
-			Path: "system-apps/apps/clock",
+			ID:       "clock",
+			Name:     "Clock",
+			FileName: "clock.star",
+			Path:     "system-apps/apps/clock",
 		},
 		{
-			Manifest: apps.Manifest{
-				ID:       "oldapp",
-				Name:     "Old App",
-				FileName: "oldapp.star",
-			},
-			Path: "system-apps/apps/oldapp",
+			ID:       "oldapp",
+			Name:     "Old App",
+			FileName: "oldapp.star",
+			Path:     "system-apps/apps/oldapp",
 		},
 		{
-			Manifest: apps.Manifest{
-				ID:       "newapp",
-				Name:     "New App",
-				FileName: "newapp.star",
-			},
-			Path: "system-apps/apps/newapp",
+			ID:       "newapp",
+			Name:     "New App",
+			FileName: "newapp.star",
+			Path:     "system-apps/apps/newapp",
 		},
 	}
 
 	customApps := []apps.AppMetadata{
 		{
-			Manifest: apps.Manifest{
-				ID:       "mycustom",
-				Name:     "My Custom App",
-				FileName: "mycustom.star",
-			},
-			Path: "users/admin/apps/mycustom/mycustom.star",
+			ID:       "mycustom",
+			Name:     "My Custom App",
+			FileName: "mycustom.star",
+			Path:     "users/admin/apps/mycustom/mycustom.star",
 		},
 	}
 
@@ -679,12 +667,10 @@ func TestMarkInstalledApps_AbsolutePaths(t *testing.T) {
 
 	systemApps := []apps.AppMetadata{
 		{
-			Manifest: apps.Manifest{
-				ID:       "weather",
-				Name:     "Weather",
-				FileName: "weather.star",
-			},
-			Path: "system-apps/apps/weather",
+			ID:       "weather",
+			Name:     "Weather",
+			FileName: "weather.star",
+			Path:     "system-apps/apps/weather",
 		},
 	}
 

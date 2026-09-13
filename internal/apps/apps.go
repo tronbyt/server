@@ -159,9 +159,7 @@ func scanSystemApps(dataDir string) ([]AppMetadata, error) {
 			appID := entry.Name()
 			// Basic default metadata
 			app := AppMetadata{
-				Manifest: Manifest{
-					ID: appID,
-				},
+				ID: appID,
 			}
 			apps = append(apps, app)
 		}
@@ -212,13 +210,11 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 
 			// Default AppMetadata for user app
 			userApp := AppMetadata{
-				Manifest: Manifest{
-					ID:          appName,
-					Name:        appName,
-					PackageName: appName,
-					Author:      username,
-					Summary:     defaultSummary,
-				},
+				ID:          appName,
+				Name:        appName,
+				PackageName: appName,
+				Author:      username,
+				Summary:     defaultSummary,
 			}
 
 			// List contents of this app directory
