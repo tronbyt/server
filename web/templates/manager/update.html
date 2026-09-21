@@ -738,6 +738,22 @@
                             <p class="settings-help">{{ t .Localizer "Disables the physical touch button. Requires reboot to take effect." }}</p>
                         </div>
                     </div>
+                    {{ if .Device.Info.TouchBeep }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="touch_beep">{{ t .Localizer "Beep On Touch" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   id="touch_beep"
+                                   {{ if derefOr .Device.Info.TouchBeep false }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({touch_beep: this.checked})">
+                            <p class="settings-help">{{ t .Localizer "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                     {{ end }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">{{ t .Localizer "WiFi Power Save" }}</div>
