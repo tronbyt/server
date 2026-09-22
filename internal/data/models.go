@@ -462,6 +462,7 @@ type DeviceInfo struct {
 	SwapColors         *bool        `json:"swap_colors"`
 	ColorOrder         *string      `json:"color_order"`
 	DisableTouch       *bool        `json:"disable_touch"`
+	TouchBeep          *bool        `json:"touch_beep"`
 	ImageURL           *string      `json:"image_url"`
 	Hostname           *string      `json:"hostname"`
 	SNTPServer         *string      `json:"sntp_server"`

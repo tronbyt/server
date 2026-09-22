@@ -42,6 +42,7 @@ type ClientInfo struct {
 	SwapColors         *bool   `json:"swap_colors"`
 	ColorOrder         *string `json:"color_order"`
 	DisableTouch       *bool   `json:"disable_touch"`
+	TouchBeep          *bool   `json:"touch_beep"`
 	ImageURL           *string `json:"image_url"`
 	Hostname           *string `json:"hostname"`
 	SNTPServer         *string `json:"sntp_server"`
@@ -172,6 +173,9 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				if msg.ClientInfo.DisableTouch != nil {
 					device.Info.DisableTouch = msg.ClientInfo.DisableTouch
+				}
+				if msg.ClientInfo.TouchBeep != nil {
+					device.Info.TouchBeep = msg.ClientInfo.TouchBeep
 				}
 				if msg.ClientInfo.ImageURL != nil {
 					device.Info.ImageURL = msg.ClientInfo.ImageURL
