@@ -128,6 +128,7 @@ Update low-level firmware settings. All fields are optional.
   "swapColors": false,
   "colorOrder": "rgb",
   "disableTouch": false,
+  "touchBeep": false,
   "wifiPowerSave": 0,
   "imageUrl": "http://example.com/image.webp",
   "hostname": "tronbyt.local",
@@ -137,6 +138,8 @@ Update low-level firmware settings. All fields are optional.
 ```
 
 `colorOrder` is one of `rgb`, `rbg`, `grb`, `gbr`, `brg`, `bgr` (case-insensitive; stored and sent lower-case). It requires firmware with `COLOR_ORDER` support; older firmware ignores it.
+
+`disableTouch` and `touchBeep` only apply to the Tidbyt Gen2. `touchBeep` plays a short tone on the built-in speaker when the touch button is used and takes effect immediately; it requires firmware with touch beep support, older firmware ignores it.
 
 **Response:** `200 OK` — `"Firmware settings updated."`
 

@@ -2138,6 +2138,12 @@
   "Disables the physical touch button. Requires reboot to take effect.": {
     "other": "Disables the physical touch button. Requires reboot to take effect."
   },
+  "Beep On Touch": {
+    "other": "Beep On Touch"
+  },
+  "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately.": {
+    "other": "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately."
+  },
   "Leave blank to auto-generate": {
     "other": "Leave blank to auto-generate"
   },

@@ -419,3 +419,107 @@ func TestHandleUpdateFirmwareSettings_ColorOrder(t *testing.T) {
 		require.Fail(t, "timed out waiting for broadcaster notification")
 	}
 }
+
+func TestHandleUpdateFirmwareSettings_TouchBeep(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "testuser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+	device := data.Device{
+		ID:       "testdevice",
+		Username: "testuser",
+		Name:     "Test Device",
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	// The checkbox posts "true" or "false"; both must reach the device.
+	for _, value := range []bool{true, false} {
+		form := url.Values{}
+		form.Add("touch_beep", strconv.FormatBool(value))
+
+		req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/update_firmware_settings", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		reqCtx := context.WithValue(req.Context(), userContextKey, &user)
+		reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
+		req = req.WithContext(reqCtx)
+
+		rr := httptest.NewRecorder()
+		http.HandlerFunc(s.handleUpdateFirmwareSettings).ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, "body: %s", rr.Body.String())
+
+		select {
+		case msg := <-ch:
+			cmdMsg, ok := msg.(DeviceCommandMessage)
+			require.True(t, ok, "unexpected message type from broadcaster: %T", msg)
+			var payload map[string]any
+			require.NoError(t, json.Unmarshal(cmdMsg.Payload, &payload))
+			assert.Len(t, payload, 1)
+			assert.Equal(t, value, payload["touch_beep"])
+		case <-time.After(1 * time.Second):
+			require.Fail(t, "timed out waiting for broadcaster notification")
+		}
+	}
+}
+
+// The Beep On Touch checkbox is only offered for a Tidbyt Gen2 whose firmware
+// reported touch_beep in client_info; older firmware never reports it.
+func TestHandleUpdateDeviceGet_TouchBeepVisibility(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "testuser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	for _, tc := range []struct {
+		name        string
+		deviceType  data.DeviceType
+		touchBeep   *bool
+		wantShown   bool
+		wantChecked bool
+	}{
+		{"gen2 not reported", data.DeviceTidbytGen2, nil, false, false},
+		{"gen2 reported off", data.DeviceTidbytGen2, new(false), true, false},
+		{"gen2 reported on", data.DeviceTidbytGen2, new(true), true, true},
+		{"gen1 reported on", data.DeviceTidbytGen1, new(true), false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").Delete(ctx)
+			require.NoError(t, err)
+
+			device := data.Device{
+				ID:       "testdevice",
+				Username: "testuser",
+				Name:     "Test Device",
+				Type:     tc.deviceType,
+			}
+			device.Info.ProtocolType = data.ProtocolWS
+			device.Info.FirmwareType = "ESP32"
+			device.Info.FirmwareVersion = "dev"
+			device.Info.TouchBeep = tc.touchBeep
+			require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+			req, _ := http.NewRequest(http.MethodGet, "/devices/testdevice/update", nil)
+			reqCtx := context.WithValue(req.Context(), userContextKey, &user)
+			reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
+			req = req.WithContext(reqCtx)
+
+			rr := httptest.NewRecorder()
+			http.HandlerFunc(s.handleUpdateDeviceGet).ServeHTTP(rr, req)
+			require.Equal(t, http.StatusOK, rr.Code)
+
+			body := rr.Body.String()
+			_, after, shown := strings.Cut(body, `id="touch_beep"`)
+			assert.Equal(t, tc.wantShown, shown)
+			if shown {
+				// Stop before the onchange handler, which mentions this.checked.
+				attrs, _, _ := strings.Cut(after, "onchange=")
+				assert.Equal(t, tc.wantChecked, strings.Contains(attrs, "checked"))
+			}
+		})
+	}
+}
