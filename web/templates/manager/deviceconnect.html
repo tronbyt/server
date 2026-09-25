@@ -1,0 +1,107 @@
+{{ define "deviceconnect" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "Connect" }}{{ end }}
+{{ define "header" }}<h2>{{ t .Localizer "Connect" }} {{ .DeviceFlow.ProviderDisplayName }}</h2>{{ end }}
+{{ define "content" }}
+<div class="w3-container" style="max-width: 640px;">
+    <div id="deviceFlowPending">
+        <p>
+            {{ t .Localizer "Go to this address on your phone or computer and enter the code:" }}
+        </p>
+        <p style="margin: 16px 0;">
+            <a href="{{ if .DeviceFlow.VerificationURIComplete }}{{ .DeviceFlow.VerificationURIComplete }}{{ else }}{{ .DeviceFlow.VerificationURI }}{{ end }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               style="font-size: 18px;">{{ .DeviceFlow.VerificationURI }} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </p>
+        <div style="font-family: monospace;
+                    font-size: 40px;
+                    letter-spacing: 4px;
+                    padding: 16px;
+                    text-align: center;
+                    border: 2px dashed #888;
+                    border-radius: 8px;
+                    margin-bottom: 12px">{{ .DeviceFlow.UserCode }}</div>
+        {{ if .DeviceFlow.ShownOnDisplays }}
+        <p style="color: #888;">
+            <i class="fa-solid fa-tv"></i>
+            {{ t .Localizer "This code is also showing on your display." }}
+        </p>
+        {{ end }}
+        <p id="deviceFlowWaiting" style="color: #888;">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            {{ t .Localizer "Waiting for you to approve…" }}
+        </p>
+    </div>
+
+    <div id="deviceFlowDone" style="display: none;">
+        <p id="deviceFlowDoneMessage" style="font-size: 18px;"></p>
+        <p>
+            <a class="w3-button w3-round"
+               style="background-color: var(--primary-color);
+                      color: #fff"
+               href="{{ .DeviceFlow.ReturnTo }}">{{ t .Localizer "Continue" }}</a>
+        </p>
+    </div>
+</div>
+
+<script>
+  (function () {
+    const statusURL = "/connections/device/status/{{ .DeviceFlow.ID }}";
+    const returnTo = "{{ .DeviceFlow.ReturnTo }}";
+    const pending = document.getElementById("deviceFlowPending");
+    const done = document.getElementById("deviceFlowDone");
+    const doneMessage = document.getElementById("deviceFlowDoneMessage");
+
+    // Poll only as long as the code can still be approved.
+    const deadline = Date.now() + {{ .DeviceFlow.ExpiresInSeconds }} * 1000;
+
+    function finish(html) {
+      pending.style.display = "none";
+      doneMessage.innerHTML = html;
+      done.style.display = "block";
+    }
+
+    async function poll() {
+      try {
+        const response = await fetch(statusURL, { headers: { "Accept": "application/json" } });
+        if (!response.ok) throw new Error("status " + response.status);
+        const body = await response.json();
+
+        if (body.status === "connected") {
+          const label = body.label ? " " + body.label : "";
+          finish('<i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> Connected' +
+                 (label ? " as <strong></strong>" : "") + "!");
+          if (label) {
+            doneMessage.querySelector("strong").textContent = body.label;
+          }
+          // Head back where the user came from once they can see the result.
+          setTimeout(function () { window.location.href = returnTo; }, 1500);
+          return;
+        }
+        if (body.status !== "pending") {
+          const p = document.createElement("p");
+          p.textContent = body.error || "Could not complete the connection.";
+          finish("");
+          doneMessage.appendChild(p);
+          return;
+        }
+      } catch (err) {
+        console.warn("device flow status check failed", err);
+      }
+
+      if (Date.now() > deadline) {
+        finish("");
+        const p = document.createElement("p");
+        p.textContent = "The code expired. Start again to get a new one.";
+        doneMessage.appendChild(p);
+        return;
+      }
+      setTimeout(poll, 3000);
+    }
+
+    setTimeout(poll, 2000);
+  })();
+</script>
+{{ end }}

@@ -79,6 +79,13 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		return content, nil, nil
 	}
 
+	// 3. Inject fresh access tokens for any third-party connections this
+	// app's schema declares (Strava etc.). No-op if the device has no
+	// owner, the app has no OAuth2 fields, or the user hasn't connected.
+	if device != nil && device.Username != "" {
+		s.injectConnectionTokens(ctx, config, appPath, device.Username)
+	}
+
 	return renderer.Render(
 		ctx,
 		appPath,
