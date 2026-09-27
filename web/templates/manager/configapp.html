@@ -1716,6 +1716,9 @@ function createImageUploadField(field, config) {
         if (!response.ok) throw new Error("Failed to fetch typeahead options");
 
         const options = await response.json();
+        // Drop stale responses: the box was cleared or edited while this
+        // lookup was in flight.
+        if (typeaheadInput.value.trim() !== query) return;
         typeaheadResults.innerHTML = "";
 
         options.forEach(option => {
