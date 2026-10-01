@@ -52,6 +52,7 @@ func TestResolveSoundPayload(t *testing.T) {
 	assert.Equal(t, "600:40,850:60", s.ResolveSoundPayload(devPiezo, baseURL, "pop"))
 	assert.Equal(t, "784:100,0:50,784:150", s.ResolveSoundPayload(devPiezo, baseURL, "alert"))
 	assert.Equal(t, "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150", s.ResolveSoundPayload(devPiezo, baseURL, "tron"))
+	assert.Equal(t, "1500:200,0:60,1500:120", s.ResolveSoundPayload(devPiezo, baseURL, "sonar"))
 	// Raw tone format passes through
 	assert.Equal(t, "440:100,880:200", s.ResolveSoundPayload(devPiezo, baseURL, "440:100,880:200"))
 	// External URLs and custom files are not playable on piezo
@@ -90,7 +91,7 @@ func TestGetDefaultAndCustomSounds(t *testing.T) {
 
 	// Defaults
 	defaults := GetDefaultSounds()
-	assert.Len(t, defaults, 6)
+	assert.Len(t, defaults, 7)
 	names := make([]string, len(defaults))
 	for i, d := range defaults {
 		names[i] = d.Name
@@ -101,6 +102,7 @@ func TestGetDefaultAndCustomSounds(t *testing.T) {
 	assert.Contains(t, names, "Pop")
 	assert.Contains(t, names, "Alert")
 	assert.Contains(t, names, "Tron Bit")
+	assert.Contains(t, names, "Sonar")
 
 	// Custom sounds from directory
 	soundsDir := s.SoundsDir()
