@@ -702,7 +702,7 @@ type Device struct {
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
 	// Audio
-	AudioCapability *AudioCapability `gorm:"type:text" json:"audio_capability,omitempty"`
+	AudioCapability *AudioCapability `gorm:"type:text"     json:"audio_capability,omitempty"`
 	Muted           bool             `gorm:"default:false" json:"muted"`
 	NightModeMute   bool             `gorm:"default:false" json:"night_mode_mute"`
 
