@@ -72,6 +72,13 @@ var DefaultNotificationSounds = []SoundItem{
 		Tone:      "784:100,0:50,784:150",
 		IsDefault: true,
 	},
+	{
+		ID:        "default:tron",
+		Name:      "Tron Bit",
+		URL:       "/static/sounds/tron.wav",
+		Tone:      "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150",
+		IsDefault: true,
+	},
 }
 
 // GetDefaultSounds returns a copy of the default notification sounds.
@@ -156,6 +163,8 @@ func MapSoundToTone(soundName string) string {
 		return "600:40,850:60"
 	case strings.Contains(lower, "alert"):
 		return "784:100,0:50,784:150"
+	case strings.Contains(lower, "tron") || strings.Contains(lower, "bit"):
+		return "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150"
 	default:
 		return "659:120,880:180" // Option A pleasant 2-tone chime
 	}
