@@ -83,7 +83,7 @@ var DefaultNotificationSounds = []SoundItem{
 		ID:        "default:sonar",
 		Name:      "Sonar",
 		URL:       "/static/sounds/sonar.wav",
-		Tone:      "1500:200,0:60,1500:120",
+		Tone:      "1760:150,0:30,1760:70",
 		IsDefault: true,
 	},
 }
@@ -173,7 +173,7 @@ func MapSoundToTone(soundName string) string {
 	case strings.Contains(lower, "tron") || strings.Contains(lower, "bit"):
 		return "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150"
 	case strings.Contains(lower, "sonar") || strings.Contains(lower, "ping"):
-		return "1500:200,0:60,1500:120"
+		return "1760:150,0:30,1760:70"
 	default:
 		return "659:120,880:180" // Option A pleasant 2-tone chime
 	}

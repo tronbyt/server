@@ -52,7 +52,7 @@ func TestResolveSoundPayload(t *testing.T) {
 	assert.Equal(t, "600:40,850:60", s.ResolveSoundPayload(devPiezo, baseURL, "pop"))
 	assert.Equal(t, "784:100,0:50,784:150", s.ResolveSoundPayload(devPiezo, baseURL, "alert"))
 	assert.Equal(t, "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150", s.ResolveSoundPayload(devPiezo, baseURL, "tron"))
-	assert.Equal(t, "1500:200,0:60,1500:120", s.ResolveSoundPayload(devPiezo, baseURL, "sonar"))
+	assert.Equal(t, "1760:150,0:30,1760:70", s.ResolveSoundPayload(devPiezo, baseURL, "sonar"))
 	// Raw tone format passes through
 	assert.Equal(t, "440:100,880:200", s.ResolveSoundPayload(devPiezo, baseURL, "440:100,880:200"))
 	// External URLs and custom files are not playable on piezo
