@@ -420,6 +420,63 @@ func TestHandleUpdateFirmwareSettings_ColorOrder(t *testing.T) {
 	}
 }
 
+func assertFirmwareBoolBroadcast(t *testing.T, s *Server, user *data.User, device *data.Device, field string, value bool) {
+	t.Helper()
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	form := url.Values{}
+	form.Add(field, strconv.FormatBool(value))
+
+	req, _ := http.NewRequest(http.MethodPost, "/devices/"+device.ID+"/update_firmware_settings", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	reqCtx := context.WithValue(req.Context(), userContextKey, user)
+	reqCtx = context.WithValue(reqCtx, deviceContextKey, device)
+	req = req.WithContext(reqCtx)
+
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(s.handleUpdateFirmwareSettings).ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code, "body: %s", rr.Body.String())
+
+	select {
+	case msg := <-ch:
+		cmdMsg, ok := msg.(DeviceCommandMessage)
+		require.True(t, ok, "unexpected message type from broadcaster: %T", msg)
+		var payload map[string]any
+		require.NoError(t, json.Unmarshal(cmdMsg.Payload, &payload))
+		assert.Len(t, payload, 1)
+		assert.Equal(t, value, payload[field])
+	case <-time.After(1 * time.Second):
+		require.Fail(t, "timed out waiting for broadcaster notification")
+	}
+}
+
+func assertFirmwareCheckboxState(t *testing.T, s *Server, user *data.User, device data.Device, fieldID string, wantShown bool, wantChecked bool) {
+	t.Helper()
+	ctx := context.Background()
+	_, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Delete(ctx)
+	require.NoError(t, err)
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	req, _ := http.NewRequest(http.MethodGet, "/devices/"+device.ID+"/update", nil)
+	reqCtx := context.WithValue(req.Context(), userContextKey, user)
+	reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
+	req = req.WithContext(reqCtx)
+
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(s.handleUpdateDeviceGet).ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	body := rr.Body.String()
+	_, after, shown := strings.Cut(body, `id="`+fieldID+`"`)
+	assert.Equal(t, wantShown, shown)
+	if shown {
+		attrs, _, _ := strings.Cut(after, "onchange=")
+		assert.Equal(t, wantChecked, strings.Contains(attrs, "checked"))
+	}
+}
+
 func TestHandleUpdateFirmwareSettings_TouchBeep(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
@@ -433,36 +490,9 @@ func TestHandleUpdateFirmwareSettings_TouchBeep(t *testing.T) {
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	ch := s.Broadcaster.Subscribe(device.ID)
-	defer s.Broadcaster.Unsubscribe(device.ID, ch)
-
 	// The checkbox posts "true" or "false"; both must reach the device.
 	for _, value := range []bool{true, false} {
-		form := url.Values{}
-		form.Add("touch_beep", strconv.FormatBool(value))
-
-		req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/update_firmware_settings", strings.NewReader(form.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-		reqCtx := context.WithValue(req.Context(), userContextKey, &user)
-		reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
-		req = req.WithContext(reqCtx)
-
-		rr := httptest.NewRecorder()
-		http.HandlerFunc(s.handleUpdateFirmwareSettings).ServeHTTP(rr, req)
-		require.Equal(t, http.StatusOK, rr.Code, "body: %s", rr.Body.String())
-
-		select {
-		case msg := <-ch:
-			cmdMsg, ok := msg.(DeviceCommandMessage)
-			require.True(t, ok, "unexpected message type from broadcaster: %T", msg)
-			var payload map[string]any
-			require.NoError(t, json.Unmarshal(cmdMsg.Payload, &payload))
-			assert.Len(t, payload, 1)
-			assert.Equal(t, value, payload["touch_beep"])
-		case <-time.After(1 * time.Second):
-			require.Fail(t, "timed out waiting for broadcaster notification")
-		}
+		assertFirmwareBoolBroadcast(t, s, &user, &device, "touch_beep", value)
 	}
 }
 
@@ -488,9 +518,6 @@ func TestHandleUpdateDeviceGet_TouchBeepVisibility(t *testing.T) {
 		{"gen1 reported on", data.DeviceTidbytGen1, new(true), false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").Delete(ctx)
-			require.NoError(t, err)
-
 			device := data.Device{
 				ID:       "testdevice",
 				Username: "testuser",
@@ -501,25 +528,8 @@ func TestHandleUpdateDeviceGet_TouchBeepVisibility(t *testing.T) {
 			device.Info.FirmwareType = "ESP32"
 			device.Info.FirmwareVersion = "dev"
 			device.Info.TouchBeep = tc.touchBeep
-			require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-			req, _ := http.NewRequest(http.MethodGet, "/devices/testdevice/update", nil)
-			reqCtx := context.WithValue(req.Context(), userContextKey, &user)
-			reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
-			req = req.WithContext(reqCtx)
-
-			rr := httptest.NewRecorder()
-			http.HandlerFunc(s.handleUpdateDeviceGet).ServeHTTP(rr, req)
-			require.Equal(t, http.StatusOK, rr.Code)
-
-			body := rr.Body.String()
-			_, after, shown := strings.Cut(body, `id="touch_beep"`)
-			assert.Equal(t, tc.wantShown, shown)
-			if shown {
-				// Stop before the onchange handler, which mentions this.checked.
-				attrs, _, _ := strings.Cut(after, "onchange=")
-				assert.Equal(t, tc.wantChecked, strings.Contains(attrs, "checked"))
-			}
+			assertFirmwareCheckboxState(t, s, &user, device, "touch_beep", tc.wantShown, tc.wantChecked)
 		})
 	}
 }
@@ -537,35 +547,8 @@ func TestHandleUpdateFirmwareSettings_StartupSound(t *testing.T) {
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	ch := s.Broadcaster.Subscribe(device.ID)
-	defer s.Broadcaster.Unsubscribe(device.ID, ch)
-
 	for _, value := range []bool{true, false} {
-		form := url.Values{}
-		form.Add("startup_sound", strconv.FormatBool(value))
-
-		req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/update_firmware_settings", strings.NewReader(form.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-		reqCtx := context.WithValue(req.Context(), userContextKey, &user)
-		reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
-		req = req.WithContext(reqCtx)
-
-		rr := httptest.NewRecorder()
-		http.HandlerFunc(s.handleUpdateFirmwareSettings).ServeHTTP(rr, req)
-		require.Equal(t, http.StatusOK, rr.Code, "body: %s", rr.Body.String())
-
-		select {
-		case msg := <-ch:
-			cmdMsg, ok := msg.(DeviceCommandMessage)
-			require.True(t, ok, "unexpected message type from broadcaster: %T", msg)
-			var payload map[string]any
-			require.NoError(t, json.Unmarshal(cmdMsg.Payload, &payload))
-			assert.Len(t, payload, 1)
-			assert.Equal(t, value, payload["startup_sound"])
-		case <-time.After(1 * time.Second):
-			require.Fail(t, "timed out waiting for broadcaster notification")
-		}
+		assertFirmwareBoolBroadcast(t, s, &user, &device, "startup_sound", value)
 	}
 }
 
@@ -587,9 +570,6 @@ func TestHandleUpdateDeviceGet_StartupSoundVisibility(t *testing.T) {
 		{"reported on", new(true), true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").Delete(ctx)
-			require.NoError(t, err)
-
 			device := data.Device{
 				ID:       "testdevice",
 				Username: "testuser",
@@ -600,24 +580,8 @@ func TestHandleUpdateDeviceGet_StartupSoundVisibility(t *testing.T) {
 			device.Info.FirmwareType = "ESP32"
 			device.Info.FirmwareVersion = "dev"
 			device.Info.StartupSound = tc.startupSound
-			require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-			req, _ := http.NewRequest(http.MethodGet, "/devices/testdevice/update", nil)
-			reqCtx := context.WithValue(req.Context(), userContextKey, &user)
-			reqCtx = context.WithValue(reqCtx, deviceContextKey, &device)
-			req = req.WithContext(reqCtx)
-
-			rr := httptest.NewRecorder()
-			http.HandlerFunc(s.handleUpdateDeviceGet).ServeHTTP(rr, req)
-			require.Equal(t, http.StatusOK, rr.Code)
-
-			body := rr.Body.String()
-			_, after, shown := strings.Cut(body, `id="startup_sound"`)
-			assert.Equal(t, tc.wantShown, shown)
-			if shown {
-				attrs, _, _ := strings.Cut(after, "onchange=")
-				assert.Equal(t, tc.wantChecked, strings.Contains(attrs, "checked"))
-			}
+			assertFirmwareCheckboxState(t, s, &user, device, "startup_sound", tc.wantShown, tc.wantChecked)
 		})
 	}
 }
