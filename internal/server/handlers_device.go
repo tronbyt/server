@@ -1174,7 +1174,7 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 	payload := make(map[string]any)
 
 	// Boolean fields
-	boolFields := []string{"skip_display_version", "skip_boot_animation", "prefer_ipv6", "ap_mode", "swap_colors", "disable_touch", "touch_beep"}
+	boolFields := []string{"skip_display_version", "skip_boot_animation", "prefer_ipv6", "ap_mode", "swap_colors", "disable_touch", "touch_beep", "startup_sound"}
 	for _, field := range boolFields {
 		if val := r.FormValue(field); val != "" {
 			payload[field] = val == "true"

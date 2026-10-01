@@ -99,6 +99,7 @@ type DeviceInfo struct {
 	ColorOrder         *string `json:"colorOrder,omitempty"`
 	DisableTouch       *bool   `json:"disableTouch,omitempty"`
 	TouchBeep          *bool   `json:"touchBeep,omitempty"`
+	StartupSound       *bool   `json:"startupSound,omitempty"`
 	ImageURL           *string `json:"imageUrl,omitempty"`
 	Hostname           *string `json:"hostname,omitempty"`
 	SNTPServer         *string `json:"sntpServer,omitempty"`
@@ -124,6 +125,7 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		ColorOrder:         d.Info.ColorOrder,
 		DisableTouch:       d.Info.DisableTouch,
 		TouchBeep:          d.Info.TouchBeep,
+		StartupSound:       d.Info.StartupSound,
 		ImageURL:           d.Info.ImageURL,
 		Hostname:           d.Info.Hostname,
 		SNTPServer:         d.Info.SNTPServer,
@@ -1200,6 +1202,7 @@ type FirmwareSettingsUpdate struct {
 	ColorOrder         *string `json:"colorOrder"`
 	DisableTouch       *bool   `json:"disableTouch"`
 	TouchBeep          *bool   `json:"touchBeep"`
+	StartupSound       *bool   `json:"startupSound"`
 	WifiPowerSave      *int    `json:"wifiPowerSave"`
 	ImageURL           *string `json:"imageUrl"`
 	Hostname           *string `json:"hostname"`
@@ -1246,6 +1249,9 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	}
 	if update.TouchBeep != nil {
 		payload["touch_beep"] = *update.TouchBeep
+	}
+	if update.StartupSound != nil {
+		payload["startup_sound"] = *update.StartupSound
 	}
 	if update.WifiPowerSave != nil {
 		payload["wifi_power_save"] = *update.WifiPowerSave

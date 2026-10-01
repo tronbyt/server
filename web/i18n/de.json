@@ -2141,6 +2141,12 @@
   "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately.": {
     "other": "Spielt einen kurzen Ton über den eingebauten Lautsprecher ab, wenn die Touch-Taste verwendet wird. Wird sofort wirksam."
   },
+  "Startup Sound": {
+    "other": "Startton"
+  },
+  "Plays a short jingle on boot when the device starts up.": {
+    "other": "Spielt beim Starten des Geräts einen kurzen Jingle ab."
+  },
   "Leave blank to auto-generate": {
     "other": "Leer lassen zum automatischen Generieren"
   },
