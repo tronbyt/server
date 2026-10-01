@@ -729,6 +729,22 @@
                                    onchange="updateFirmwareSettings({swap_colors: this.checked})">
                         </div>
                     </div>
+                    {{ if or .Device.HasSpeaker (ne .Device.Info.StartupSound nil) }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="startup_sound">{{ t .Localizer "Startup Sound" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   id="startup_sound"
+                                   {{ if derefOr .Device.Info.StartupSound true }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({startup_sound: this.checked})">
+                            <p class="settings-help">{{ t .Localizer "Plays a short jingle on boot when the device starts up." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                     {{ if .Device.SupportsColorOrder }}
                     {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
                     <div class="settings-field-row">
@@ -780,22 +796,6 @@
                         </div>
                     </div>
                     {{ end }}
-                    {{ end }}
-                    {{ if ne .Device.Info.StartupSound nil }}
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">
-                            <label for="startup_sound">{{ t .Localizer "Startup Sound" }}</label>
-                        </div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   id="startup_sound"
-                                   {{ if derefOr .Device.Info.StartupSound false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({startup_sound: this.checked})">
-                            <p class="settings-help">{{ t .Localizer "Plays a short jingle on boot when the device starts up." }}</p>
-                        </div>
-                    </div>
                     {{ end }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">{{ t .Localizer "WiFi Power Save" }}</div>

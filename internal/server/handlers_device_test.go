@@ -549,6 +549,10 @@ func TestHandleUpdateFirmwareSettings_StartupSound(t *testing.T) {
 
 	for _, value := range []bool{true, false} {
 		assertFirmwareBoolBroadcast(t, s, &user, &device, "startup_sound", value)
+		updated, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).First(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, updated.Info.StartupSound)
+		assert.Equal(t, value, *updated.Info.StartupSound)
 	}
 }
 
@@ -559,22 +563,29 @@ func TestHandleUpdateDeviceGet_StartupSoundVisibility(t *testing.T) {
 	user := data.User{Username: "testuser"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
+	noneCap := data.AudioCapNone
 	for _, tc := range []struct {
-		name         string
-		startupSound *bool
-		wantShown    bool
-		wantChecked  bool
+		name            string
+		deviceType      data.DeviceType
+		audioCapability *data.AudioCapability
+		startupSound    *bool
+		wantShown       bool
+		wantChecked     bool
 	}{
-		{"not reported", nil, false, false},
-		{"reported off", new(false), true, false},
-		{"reported on", new(true), true, true},
+		{"gen2 not reported", data.DeviceTidbytGen2, nil, nil, true, true},
+		{"gen2 reported off", data.DeviceTidbytGen2, nil, new(false), true, false},
+		{"gen2 reported on", data.DeviceTidbytGen2, nil, new(true), true, true},
+		{"gen1 not reported", data.DeviceTidbytGen1, nil, nil, false, false},
+		{"gen1 reported on", data.DeviceTidbytGen1, nil, new(true), true, true},
+		{"gen2 audio disabled", data.DeviceTidbytGen2, &noneCap, nil, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			device := data.Device{
-				ID:       "testdevice",
-				Username: "testuser",
-				Name:     "Test Device",
-				Type:     data.DeviceTidbytGen2,
+				ID:              "testdevice",
+				Username:        "testuser",
+				Name:            "Test Device",
+				Type:            tc.deviceType,
+				AudioCapability: tc.audioCapability,
 			}
 			device.Info.ProtocolType = data.ProtocolWS
 			device.Info.FirmwareType = "ESP32"

@@ -159,9 +159,16 @@ func (dt DeviceType) DefaultAudioCapability() AudioCapability {
 	switch dt {
 	case DeviceTidbytGen2:
 		return AudioCapPiezo
+	case DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare:
+		return AudioCapFull
 	default:
 		return AudioCapNone
 	}
+}
+
+// HasSpeaker reports whether the device type has built-in audio hardware (e.g. Tidbyt Gen2 buzzer or Raspberry Pi audio).
+func (dt DeviceType) HasSpeaker() bool {
+	return dt.DefaultAudioCapability() != AudioCapNone
 }
 
 // Slug returns the URL-friendly slug for the DeviceType.
@@ -1198,4 +1205,12 @@ func (d *Device) GetAudioCapability() AudioCapability {
 		return d.Type.DefaultAudioCapability()
 	}
 	return AudioCapNone
+}
+
+// HasSpeaker reports whether the device has speaker or buzzer audio hardware.
+func (d *Device) HasSpeaker() bool {
+	if d == nil {
+		return false
+	}
+	return d.GetAudioCapability() != AudioCapNone
 }

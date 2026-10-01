@@ -1252,6 +1252,10 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	}
 	if update.StartupSound != nil {
 		payload["startup_sound"] = *update.StartupSound
+		device.Info.StartupSound = update.StartupSound
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+			slog.Error("Failed to update device info in DB", "error", err)
+		}
 	}
 	if update.WifiPowerSave != nil {
 		payload["wifi_power_save"] = *update.WifiPowerSave

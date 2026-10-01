@@ -1180,6 +1180,13 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 			payload[field] = val == "true"
 		}
 	}
+	if val := r.FormValue("startup_sound"); val != "" {
+		b := val == "true"
+		device.Info.StartupSound = &b
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+			slog.Error("Failed to update device info in DB", "error", err)
+		}
+	}
 
 	// Integer fields
 	if val := r.FormValue("wifi_power_save"); val != "" {
