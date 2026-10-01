@@ -4,10 +4,14 @@ Base URL: `http://<server>:8000`
 
 ## Authentication
 
-All API endpoints require authentication via Bearer token:
+All API endpoints require authentication via Bearer token or `key` query parameter:
 
 ```
 Authorization: Bearer <api-key>
+```
+or
+```
+?key=<api-key>
 ```
 
 API keys are generated per-device in the web UI. Each key is scoped to a single device.
@@ -143,6 +147,59 @@ Update low-level firmware settings. All fields are optional.
 
 **Response:** `200 OK` — `"Firmware settings updated."`
 
+### Trigger Sound
+
+```
+POST /v0/devices/{id}/sound
+Content-Type: application/json
+```
+
+Triggers a notification sound to play immediately on the device (via WebSocket if connected, or queued as pending for the next HTTP poll).
+
+**Request:**
+```json
+{
+  "sound": "chime"
+}
+```
+
+Or with an app sound:
+```json
+{
+  "app_id": "nfl_scores",
+  "sound": "touchdown.mp3"
+}
+```
+
+Or with an audio URL:
+```json
+{
+  "url": "https://example.com/sound.mp3"
+}
+```
+
+Or raw piezo tone string for piezo devices:
+```json
+{
+  "sound": "523:120,659:120,784:220"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `sound` | No* | Sound identifier: default sound name (`chime`, `ding`, `bell`, `pop`, `alert`), app sound (`app:<app_id>:<filename>` or just filename when `app_id` is supplied), custom uploaded sound filename, full audio URL, or piezo frequency:duration tone string. |
+| `app_id` | No | App identifier for resolving app-specific sounds. |
+| `url` | No* | Alias for `sound` when passing an audio URL. |
+
+*Either `sound` or `url` must be provided.
+
+Based on the device's audio capability (`piezo` or `full`):
+- `piezo` devices receive the frequency:duration tone string. Default sounds and app sounds with matching keywords (`ding`, `chime`, `bell`, `pop`, `alert`) map to tuned buzzer tones, with a pleasant 2-tone chime fallback for other app sounds.
+- `full` devices receive the full audio stream URL (resolved against `/sounds/{appId}/{filename}` or external URL).
+- `none` devices ignore sound playback.
+
+**Response:** `200 OK` — `{"status":"ok","device":"...","sound":"...","payload":"..."}`
+
 ---
 
 ## Installations (Apps)
@@ -183,7 +240,9 @@ Returns all app installations on a device.
 
       "autoPin": false,
       "colorFilter": null,
-      "showFullAnimation": null
+      "showFullAnimation": null,
+      "notificationSound": "chime",
+      "notificationSoundTrigger": "on_change"
     }
   ]
 }
@@ -227,6 +286,8 @@ alone.
   "autoPin": false,
   "colorFilter": "dimmed",
   "showFullAnimation": "true",
+  "notificationSound": "chime",
+  "notificationSoundTrigger": "on_change",
 
   "config": { "timezone": "America/New_York" }
 }
@@ -238,6 +299,8 @@ alone.
 | `days` | Lowercase day names. `[]` means every day. |
 | `colorFilter` | One of the filters the app config page offers. `""` or `"inherit"` falls back to the device setting. |
 | `showFullAnimation` | `"true"` / `"false"`, or `"auto"` to inherit. Lets an animation run past the app's display time. |
+| `notificationSound` | Sound name (`"chime"`, `"ding"`, `"bell"`, `"pop"`, `"alert"`), custom uploaded sound filename, full URL (`"http(s)://..."`), piezo tone string, or `""` / `null` to disable. |
+| `notificationSoundTrigger` | `"on_change"` (play only when rendered WebP image hash changes) or `"every_render"` (play every render cycle). Defaults to `"on_change"`. |
 | `config` | Replaces the app's whole config map — there is no per-key merge, so send the full object. **Write-only:** it is never returned by GET or in this response. |
 
 **Response:** Updated installation object, in the same shape `GET` returns.
@@ -283,17 +346,18 @@ Renders an app and pushes it to the device. If `background` is `false`, the devi
 | `installationID` | No | Installation name. If provided and valid, the app path is inferred from the existing installation, and its saved config is used if `config` is omitted. |
 | `config` | No | App configuration. If omitted and `installationID` is provided, uses saved config from that installation. |
 | `background` | No | If `true`, saves the image without interrupting the device (default: `false`) |
+| `sound` | No | Sound to trigger simultaneously with the push (e.g. `"touchdown.mp3"`, `"chime"`, or URL) |
 
 **Response:** `200 OK` — `"App pushed."`
 
 **Examples:**
 
-Push with explicit app_id (required when not using installationID):
+Push with explicit app_id and sound (e.g. sports score alert):
 ```bash
 curl -X POST \
   -H "Authorization: Bearer <key>" \
   -H "Content-Type: application/json" \
-  -d '{"app_id": "clock", "config": {"timezone": "America/New_York"}, "background": false}' \
+  -d '{"app_id": "nfl_scores", "sound": "touchdown.mp3", "background": false}' \
   http://localhost:8000/v0/devices/gen1/push_app
 ```
 
@@ -313,14 +377,15 @@ POST /v0/devices/{id}/push
 Content-Type: application/json
 ```
 
-Pushes a base64-encoded WebP image directly to the device.
+Pushes a base64-encoded WebP image directly to the device, optionally triggering a simultaneous sound alert.
 
 **Request:**
 ```json
 {
   "installationID": "my-image",
   "image": "<base64-encoded-webp>",
-  "background": false
+  "background": false,
+  "sound": "chime"
 }
 ```
 
@@ -329,6 +394,7 @@ Pushes a base64-encoded WebP image directly to the device.
 | `installationID` | No | Identifier for the pushed image |
 | `image` | Yes | Base64-encoded WebP image bytes |
 | `background` | No | If `true`, saves without interrupting (default: `false`) |
+| `sound` | No | Optional sound identifier to play immediately with the image |
 
 **Response:** `200 OK` — `"WebP received."`
 
@@ -388,6 +454,31 @@ curl -X PATCH \
   -H "Content-Type: application/json" \
   -d '{"brightness": 50}' \
   http://localhost:8000/v0/devices/gen1
+```
+
+### Trigger a notification sound programmatically
+
+Via curl / Home Assistant / Webhook:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <key>" \
+  -H "Content-Type: application/json" \
+  -d '{"sound": "alert"}' \
+  http://localhost:8000/v0/devices/gen1/sound
+```
+
+Via Pixlet Starlark app:
+```python
+load("http.star", "http")
+
+def main(config):
+    server = config.get("tronbyt_url", "http://tronbyt.local:8000")
+    device_id = config.get("device_id")
+    api_key = config.get("api_key")
+    http.post(
+        "%s/v0/devices/%s/sound?key=%s" % (server, device_id, api_key),
+        json_body = {"sound": "ding"},
+    )
 ```
 
 ---

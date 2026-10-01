@@ -142,6 +142,34 @@
                 </div>
                 <div class="settings-field-row">
                     <div class="settings-field-label">
+                        <label for="audio_capability">{{ t .Localizer "Audio Capability" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        {{ $currentAudioCap := "auto" }}
+                        {{ if .Device.AudioCapability }}
+                            {{ $currentAudioCap = printf "%s" (deref .Device.AudioCapability) }}
+                        {{ end }}
+                        <select name="audio_capability" id="audio_capability" class="settings-input">
+                            <option value="auto" {{ if eq $currentAudioCap "auto" }}selected{{ end }}>
+                                {{ t .Localizer "Default" }} ({{ .Device.Type.DefaultAudioCapability }})
+                            </option>
+                            <option value="none" {{ if eq $currentAudioCap "none" }}selected{{ end }}>
+                                {{ t .Localizer "Disabled / None" }}
+                            </option>
+                            <option value="piezo" {{ if eq $currentAudioCap "piezo" }}selected{{ end }}>
+                                {{ t .Localizer "Piezo Buzzer (Tones)" }}
+                            </option>
+                            <option value="full" {{ if eq $currentAudioCap "full" }}selected{{ end }}>
+                                {{ t .Localizer "Full Speaker (Audio / Streaming)" }}
+                            </option>
+                        </select>
+                        <p class="settings-help">
+                            {{ t .Localizer "Configure sound hardware for this device. Piezo buzzers (e.g. Tidbyt Gen 2) play tone melodies. Full speakers (e.g. Raspberry Pi / Tronberry or I2S DAC) support audio files and custom uploads." }}
+                        </p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
                         <label for="require_api_key">{{ t .Localizer "Require API Key" }}</label>
                     </div>
                     <div class="settings-field-control">

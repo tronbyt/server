@@ -146,6 +146,24 @@ func (dt DeviceType) String() string {
 	}
 }
 
+type AudioCapability string
+
+const (
+	AudioCapNone  AudioCapability = "none"
+	AudioCapPiezo AudioCapability = "piezo"
+	AudioCapFull  AudioCapability = "full"
+)
+
+// DefaultAudioCapability returns the default audio hardware capability for the device type.
+func (dt DeviceType) DefaultAudioCapability() AudioCapability {
+	switch dt {
+	case DeviceTidbytGen2:
+		return AudioCapPiezo
+	default:
+		return AudioCapNone
+	}
+}
+
 // Slug returns the URL-friendly slug for the DeviceType.
 func (dt DeviceType) Slug() string {
 	if s, ok := DeviceTypeToString[dt]; ok {
@@ -613,12 +631,15 @@ type App struct {
 	RecurrenceStartDate *string        `json:"recurrence_start_date"` // YYYY-MM-DD
 	RecurrenceEndDate   *string        `json:"recurrence_end_date"`   // YYYY-MM-DD
 
-	Config            JSONMap      `gorm:"type:text"           json:"config"`
-	EmptyLastRender   bool         `json:"empty_last_render"`
-	RenderMessages    StringSlice  `gorm:"type:text"           json:"render_messages"`
-	AutoPin           bool         `json:"auto_pin"`
-	ColorFilter       *ColorFilter `json:"color_filter"`
-	ShowFullAnimation *bool        `json:"show_full_animation"`
+	Config                   JSONMap      `gorm:"type:text"           json:"config"`
+	EmptyLastRender          bool         `json:"empty_last_render"`
+	RenderMessages           StringSlice  `gorm:"type:text"           json:"render_messages"`
+	AutoPin                  bool         `json:"auto_pin"`
+	ColorFilter              *ColorFilter `json:"color_filter"`
+	ShowFullAnimation        *bool        `json:"show_full_animation"`
+	NotificationSound        *string      `json:"notification_sound"`
+	NotificationSoundTrigger string       `json:"notification_sound_trigger"` // "every_render" or "on_change"
+	LastRenderHash           string       `json:"last_render_hash"`
 }
 
 type Device struct {
@@ -672,9 +693,13 @@ type Device struct {
 	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
+	// Audio
+	AudioCapability *AudioCapability `gorm:"type:text" json:"audio_capability,omitempty"`
+
 	// HTTP device commands (delivered via /next response headers)
 	PendingImageURL string `json:"pending_image_url,omitempty"`
 	PendingReboot   bool   `json:"pending_reboot,omitempty"`
+	PendingSound    string `json:"pending_sound,omitempty"`
 
 	Apps []*App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
@@ -1160,4 +1185,16 @@ func (d Device) BrightnessScaleMap() map[int]int {
 // BrightnessUIScale returns the current brightness level (0-5) for the UI.
 func (d Device) BrightnessUIScale() int {
 	return d.Brightness.UIScale(d.BrightnessScaleMap())
+}
+
+// GetAudioCapability returns the effective audio capability for the device:
+// explicitly configured setting if present, otherwise default for device type.
+func (d *Device) GetAudioCapability() AudioCapability {
+	if d != nil && d.AudioCapability != nil && *d.AudioCapability != "" {
+		return *d.AudioCapability
+	}
+	if d != nil {
+		return d.Type.DefaultAudioCapability()
+	}
+	return AudioCapNone
 }

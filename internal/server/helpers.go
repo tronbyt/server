@@ -132,6 +132,11 @@ type TemplateData struct {
 	OIDCUsernameClaim    string
 	OIDCAdminGroupClaim  string
 	OIDCAdminGroupValue  string
+
+	// Sound Management
+	DefaultSounds []SoundItem
+	CustomSounds  []SoundItem
+	AppSounds     []SoundItem
 }
 
 // CreateDeviceFormData represents the form data for creating a device.
@@ -695,6 +700,21 @@ func (s *Server) notifyDashboard(username string, event WSEvent) {
 }
 
 func (s *Server) GetBaseURL(r *http.Request) string {
+	if r == nil {
+		host := s.Config.Host
+		if host == "" {
+			host = "localhost"
+		}
+		if s.Config.Port != "" && s.Config.Port != "80" && s.Config.Port != "443" {
+			host = net.JoinHostPort(host, s.Config.Port)
+		}
+		scheme := "http"
+		if s.Config.SSLKeyFile != "" && s.Config.SSLCertFile != "" {
+			scheme = "https"
+		}
+		return fmt.Sprintf("%s://%s", scheme, host)
+	}
+
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
@@ -712,6 +732,15 @@ func (s *Server) GetBaseURL(r *http.Request) string {
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, host)
+}
+
+func (s *Server) GetDeviceBaseURL(device *data.Device) string {
+	if device != nil && device.ImgURL != "" {
+		if u, err := url.Parse(device.ImgURL); err == nil && u.Host != "" && u.Scheme != "" {
+			return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+		}
+	}
+	return s.GetBaseURL(nil)
 }
 
 func (s *Server) getImageURL(r *http.Request, deviceID string) string {
@@ -851,6 +880,17 @@ func (s *Server) sendPendingHTTPDeviceHeaders(w http.ResponseWriter, ctx context
 			slog.Error("Failed to clear pending reboot", "error", err)
 		} else {
 			device.PendingReboot = false
+		}
+	}
+
+	if device.PendingSound != "" {
+		slog.Info("Sending sound header", "device", device.ID, "sound", device.PendingSound)
+		w.Header().Set("Tronbyt-Sound", device.PendingSound)
+
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_sound", ""); err != nil {
+			slog.Error("Failed to clear pending sound", "error", err)
+		} else {
+			device.PendingSound = ""
 		}
 	}
 }

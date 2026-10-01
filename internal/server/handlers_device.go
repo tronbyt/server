@@ -394,6 +394,21 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 	device.Notes = r.FormValue("notes")
 
+	audioCap := r.FormValue("audio_capability")
+	switch audioCap {
+	case "none":
+		c := data.AudioCapNone
+		device.AudioCapability = &c
+	case "piezo":
+		c := data.AudioCapPiezo
+		device.AudioCapability = &c
+	case "full":
+		c := data.AudioCapFull
+		device.AudioCapability = &c
+	default: // "auto" or empty
+		device.AudioCapability = nil
+	}
+
 	if i, err := strconv.Atoi(r.FormValue("default_interval")); err == nil {
 		device.DefaultInterval = i
 	}

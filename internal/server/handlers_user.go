@@ -81,6 +81,8 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	customSounds, _ := s.GetCustomSounds()
+
 	// We need to inject the current admin user into TemplateData for the header/nav
 	s.renderTemplate(w, r, "settings_admin", TemplateData{
 		User:                 user,
@@ -95,6 +97,8 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		OIDCUsernameClaim:    s.Config.OIDCUsernameClaim,
 		OIDCAdminGroupClaim:  s.Config.OIDCAdminGroupClaim,
 		OIDCAdminGroupValue:  s.Config.OIDCAdminGroupValue,
+		DefaultSounds:        GetDefaultSounds(),
+		CustomSounds:         customSounds,
 	})
 }
 

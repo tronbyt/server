@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -182,9 +183,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		q := gorm.G[data.App](s.DB).Where("id = ?", app.ID)
+		var newHash string
 		if success {
+			newHash = fmt.Sprintf("%x", sha256.Sum256(imgBytes))
+			appUpdates.LastRenderHash = newHash
 			appUpdates.LastSuccessfulRender = &now
-			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender")
+			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender", "LastRenderHash")
 		} else {
 			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages")
 		}
@@ -205,12 +209,31 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
 				slog.Error("Failed to write webp", "path", webpPath, "error", err)
 			}
+
+			// Trigger notification sound if configured and opted in
+			if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && device != nil && device.GetAudioCapability() != data.AudioCapNone {
+				contentChanged := (app.LastRenderHash != newHash)
+				shouldPlay := false
+				if app.NotificationSoundTrigger == "every_render" {
+					shouldPlay = true
+				} else if app.NotificationSoundTrigger == "on_change" {
+					shouldPlay = contentChanged
+				}
+
+				if shouldPlay {
+					baseURL := s.GetDeviceBaseURL(device)
+					if err := s.TriggerDeviceSound(ctx, device, *app.NotificationSound, baseURL); err != nil {
+						slog.Error("Failed to trigger device sound on render", "device", device.ID, "app", appBasename, "error", err)
+					}
+				}
+			}
 		}
 
 		// Update in-memory object (passed pointer)
 		app.LastRender = now
 		if success {
 			app.LastSuccessfulRender = &now
+			app.LastRenderHash = newHash
 		}
 		app.LastRenderDur = renderDur
 		app.EmptyLastRender = !success

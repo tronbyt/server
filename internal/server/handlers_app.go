@@ -12,6 +12,7 @@ import (
 	"maps"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -377,6 +378,14 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		appMetadata = s.getAppMetadata(*app.Path)
 	}
 
+	appID := app.Name
+	if appMetadata != nil && appMetadata.ID != "" {
+		appID = appMetadata.ID
+	}
+	appSounds := extractAppSounds(schemaBytes, appID)
+
+	customSounds, _ := s.GetCustomSounds()
+
 	s.renderTemplate(w, r, "configapp", TemplateData{
 		User:                     user,
 		Device:                   device,
@@ -387,7 +396,84 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		ColorFilterOptions:       s.getColorFilterChoices(),
 		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
 		AppMetadata:              appMetadata,
+		DefaultSounds:            GetDefaultSounds(),
+		CustomSounds:             customSounds,
+		AppSounds:                appSounds,
 	})
+}
+
+func extractAppSounds(schemaBytes []byte, appID string) []SoundItem {
+	if len(schemaBytes) == 0 || string(schemaBytes) == "{}" {
+		return nil
+	}
+
+	var schemaData struct {
+		Schema []struct {
+			Type   string `json:"type"`
+			Sounds []struct {
+				ID    string `json:"id"`
+				Title string `json:"title"`
+				Path  string `json:"path"`
+			} `json:"sounds"`
+		} `json:"schema"`
+		Notifications []struct {
+			ID     string `json:"id"`
+			Name   string `json:"name"`
+			Sounds []struct {
+				ID    string `json:"id"`
+				Title string `json:"title"`
+				Path  string `json:"path"`
+			} `json:"sounds"`
+		} `json:"notifications"`
+	}
+
+	if err := json.Unmarshal(schemaBytes, &schemaData); err != nil {
+		return nil
+	}
+
+	var items []SoundItem
+	seen := make(map[string]bool)
+
+	addSound := func(title, path string) {
+		filename := filepath.Base(path)
+		if filename == "" || filename == "." || seen[filename] {
+			return
+		}
+		seen[filename] = true
+
+		name := title
+		if name == "" {
+			name = strings.TrimSuffix(filename, filepath.Ext(filename))
+			if len(name) > 0 {
+				name = strings.ToUpper(name[:1]) + name[1:]
+			}
+		}
+
+		fullID := fmt.Sprintf("app:%s:%s", appID, filename)
+		soundURL := fmt.Sprintf("/sounds/%s/%s", url.PathEscape(appID), url.PathEscape(filename))
+		items = append(items, SoundItem{
+			ID:        fullID,
+			Name:      name,
+			URL:       soundURL,
+			Tone:      MapSoundToTone(filename),
+			IsDefault: false,
+		})
+	}
+
+	for _, field := range schemaData.Schema {
+		if field.Type == "notification" {
+			for _, s := range field.Sounds {
+				addSound(s.Title, s.Path)
+			}
+		}
+	}
+	for _, notif := range schemaData.Notifications {
+		for _, s := range notif.Sounds {
+			addSound(s.Title, s.Path)
+		}
+	}
+
+	return items
 }
 
 // handleAppSchemaGet returns the app's schema JSON (same shape as the schema
@@ -455,15 +541,17 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 
 	// Parse JSON body
 	var payload struct {
-		Enabled             bool           `json:"enabled"`
-		AutoPin             bool           `json:"autopin"`
-		UInterval           int            `json:"uinterval"`
-		DisplayTime         int            `json:"display_time"`
-		Notes               string         `json:"notes"`
-		Config              map[string]any `json:"config"`
-		UseCustomRecurrence bool           `json:"use_custom_recurrence"`
-		ColorFilter         string         `json:"color_filter"`
-		ShowFullAnimation   string         `json:"show_full_animation"`
+		Enabled                  bool           `json:"enabled"`
+		AutoPin                  bool           `json:"autopin"`
+		UInterval                int            `json:"uinterval"`
+		DisplayTime              int            `json:"display_time"`
+		Notes                    string         `json:"notes"`
+		Config                   map[string]any `json:"config"`
+		UseCustomRecurrence      bool           `json:"use_custom_recurrence"`
+		ColorFilter              string         `json:"color_filter"`
+		ShowFullAnimation        string         `json:"show_full_animation"`
+		NotificationSound        string         `json:"notification_sound"`
+		NotificationSoundTrigger string         `json:"notification_sound_trigger"`
 
 		StartTime string   `json:"start_time"`
 		EndTime   string   `json:"end_time"`
@@ -547,6 +635,21 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		} else {
 			app.ShowFullAnimation = &val
 		}
+	}
+
+	cleanSound := strings.TrimSpace(payload.NotificationSound)
+	if cleanSound != "" && cleanSound != "none" {
+		app.NotificationSound = &cleanSound
+	} else {
+		app.NotificationSound = nil
+	}
+
+	if app.NotificationSound == nil {
+		app.NotificationSoundTrigger = ""
+	} else if payload.NotificationSoundTrigger == "every_render" {
+		app.NotificationSoundTrigger = "every_render"
+	} else {
+		app.NotificationSoundTrigger = "on_change"
 	}
 
 	// Save to DB

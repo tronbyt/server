@@ -216,9 +216,11 @@ type AppPayload struct {
 	// app's schema defines, which for many apps includes API keys and OAuth
 	// tokens, and a device API key is a lower bar than a session. It can be
 	// written via PATCH but is never read back.
-	AutoPin           bool              `json:"autoPin"`
-	ColorFilter       *data.ColorFilter `json:"colorFilter"`
-	ShowFullAnimation *bool             `json:"showFullAnimation"`
+	AutoPin                  bool              `json:"autoPin"`
+	ColorFilter              *data.ColorFilter `json:"colorFilter"`
+	ShowFullAnimation        *bool             `json:"showFullAnimation"`
+	NotificationSound        *string           `json:"notificationSound,omitempty"`
+	NotificationSoundTrigger string            `json:"notificationSoundTrigger,omitempty"`
 }
 
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
@@ -245,9 +247,11 @@ func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 		RecurrenceStartDate: app.RecurrenceStartDate,
 		RecurrenceEndDate:   app.RecurrenceEndDate,
 
-		AutoPin:           app.AutoPin,
-		ColorFilter:       app.ColorFilter,
-		ShowFullAnimation: app.ShowFullAnimation,
+		AutoPin:                  app.AutoPin,
+		ColorFilter:              app.ColorFilter,
+		ShowFullAnimation:        app.ShowFullAnimation,
+		NotificationSound:        app.NotificationSound,
+		NotificationSoundTrigger: app.NotificationSoundTrigger,
 	}
 }
 
@@ -264,6 +268,7 @@ type PushAppData struct {
 	InstallationIDAlt string         `json:"installationId"`
 	CoalesceID        string         `json:"coalesceID"`
 	Background        bool           `json:"background"`
+	Sound             string         `json:"sound,omitempty"`
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
@@ -340,6 +345,16 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 			if err := s.ensurePushedApp(r.Context(), device.ID, cachedID); err != nil {
 				slog.Error("Error adding pushed app", "error", err)
 			}
+			if dataReq.Sound != "" {
+				baseURL := s.GetDeviceBaseURL(device)
+				soundID := dataReq.Sound
+				if dataReq.AppID != "" && !strings.Contains(soundID, ":") && !strings.HasPrefix(soundID, "http://") && !strings.HasPrefix(soundID, "https://") {
+					soundID = fmt.Sprintf("app:%s:%s", dataReq.AppID, soundID)
+				}
+				if err := s.TriggerDeviceSound(r.Context(), device, soundID, baseURL); err != nil {
+					slog.Error("Failed to trigger device sound on push_app cached", "device", device.ID, "error", err)
+				}
+			}
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write([]byte("App pushed.")); err != nil {
 				slog.Error("Failed to write response", "error", err)
@@ -415,6 +430,17 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if dataReq.Sound != "" {
+		baseURL := s.GetDeviceBaseURL(device)
+		soundID := dataReq.Sound
+		if dataReq.AppID != "" && !strings.Contains(soundID, ":") && !strings.HasPrefix(soundID, "http://") && !strings.HasPrefix(soundID, "https://") {
+			soundID = fmt.Sprintf("app:%s:%s", dataReq.AppID, soundID)
+		}
+		if err := s.TriggerDeviceSound(r.Context(), device, soundID, baseURL); err != nil {
+			slog.Error("Failed to trigger device sound on push_app", "device", device.ID, "error", err)
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("App pushed.")); err != nil {
 		slog.Error("Failed to write response", "error", err)
@@ -479,6 +505,7 @@ type PushData struct {
 	CoalesceID        string `json:"coalesceID"`
 	Image             string `json:"image"`
 	Background        bool   `json:"background"`
+	Sound             string `json:"sound,omitempty"`
 }
 
 func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
@@ -517,6 +544,13 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 		if err := s.savePushedImage(device.ID, installID, dataReq.CoalesceID, imgBytes); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
 			return
+		}
+	}
+
+	if dataReq.Sound != "" {
+		baseURL := s.GetDeviceBaseURL(device)
+		if err := s.TriggerDeviceSound(r.Context(), device, dataReq.Sound, baseURL); err != nil {
+			slog.Error("Failed to trigger device sound on push image", "device", device.ID, "error", err)
 		}
 	}
 
@@ -792,9 +826,11 @@ type InstallationUpdate struct {
 	RecurrenceEndDate   *string              `json:"recurrenceEndDate"`
 
 	// Render behavior
-	AutoPin           *bool   `json:"autoPin"`
-	ColorFilter       *string `json:"colorFilter"`       // "" or "inherit" clears
-	ShowFullAnimation *string `json:"showFullAnimation"` // "auto" clears; else a bool
+	AutoPin                  *bool   `json:"autoPin"`
+	ColorFilter              *string `json:"colorFilter"`       // "" or "inherit" clears
+	ShowFullAnimation        *string `json:"showFullAnimation"` // "auto" clears; else a bool
+	NotificationSound        *string `json:"notificationSound"`
+	NotificationSoundTrigger *string `json:"notificationSoundTrigger"`
 
 	// App config, matching what the config page already stores. Write-only:
 	// GET never returns it, because it commonly holds API keys and OAuth
@@ -942,6 +978,30 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 			app.ShowFullAnimation = &val
 		}
 	}
+	if update.NotificationSound != nil {
+		clean := strings.TrimSpace(*update.NotificationSound)
+		if clean == "" || clean == "none" {
+			app.NotificationSound = nil
+			app.NotificationSoundTrigger = ""
+		} else {
+			app.NotificationSound = &clean
+			if app.NotificationSoundTrigger == "" {
+				app.NotificationSoundTrigger = "on_change"
+			}
+		}
+	}
+	if update.NotificationSoundTrigger != nil {
+		if app.NotificationSound == nil {
+			app.NotificationSoundTrigger = ""
+		} else if *update.NotificationSoundTrigger == "every_render" {
+			app.NotificationSoundTrigger = "every_render"
+		} else if *update.NotificationSoundTrigger == "on_change" {
+			app.NotificationSoundTrigger = "on_change"
+		} else {
+			app.NotificationSoundTrigger = ""
+		}
+	}
+
 	if update.Config != nil {
 		app.Config = *update.Config
 	}
@@ -1220,10 +1280,70 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	}
 }
 
+func (s *Server) handleTriggerSoundAPI(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	// Limit JSON request body size to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var payload struct {
+		Sound string `json:"sound"`
+		URL   string `json:"url"`
+		AppID string `json:"app_id"`
+		App   string `json:"app"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	target := payload.Sound
+	if payload.URL != "" {
+		target = payload.URL
+	}
+	appID := payload.AppID
+	if appID == "" {
+		appID = payload.App
+	}
+	if appID != "" && target != "" && !strings.Contains(target, ":") && !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		target = fmt.Sprintf("app:%s:%s", appID, target)
+	}
+
+	if target == "" {
+		http.Error(w, "sound or url is required", http.StatusBadRequest)
+		return
+	}
+
+	baseURL := s.GetDeviceBaseURL(device)
+	resolvedPayload := s.ResolveSoundPayload(device, baseURL, target)
+	if resolvedPayload == "" && device.GetAudioCapability() == data.AudioCapNone {
+		http.Error(w, "Device audio capability is disabled or none", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.TriggerDeviceSound(r.Context(), device, target, baseURL); err != nil {
+		slog.Error("Failed to trigger device sound via API", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"status":  "ok",
+		"device":  device.ID,
+		"sound":   target,
+		"payload": resolvedPayload,
+	}); err != nil {
+		slog.Error("Failed to encode trigger sound response", "error", err)
+	}
+}
+
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetDevice)))
+	s.Router.Handle("POST /v0/devices/{id}/sound", s.APIAuthMiddleware(s.RequireDevice(s.handleTriggerSoundAPI)))
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(s.RequireDevice(s.handlePushImage)))
 	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(s.RequireDevice(s.handlePushApp)))
 	s.Router.Handle("POST /v0/devices/{id}/update_firmware_settings", s.APIAuthMiddleware(s.RequireDevice(s.handleUpdateFirmwareSettingsAPI)))
