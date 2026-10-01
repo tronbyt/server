@@ -482,6 +482,22 @@
                             </select>
                         </div>
                     </div>
+                    {{ if .Device.HasSpeaker }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="night_mode_mute">{{ t .Localizer "Mute in Night Mode" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   name="night_mode_mute"
+                                   id="night_mode_mute"
+                                   {{ if .Device.NightModeMute }}
+                                   checked
+                                   {{ end }}>
+                            <p class="settings-help">{{ t .Localizer "Disable all sound notifications during night mode." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
             <div class="settings-card-subsection">

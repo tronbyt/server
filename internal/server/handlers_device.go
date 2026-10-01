@@ -467,6 +467,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	nightStartWas := device.NightStart
 	nightEndWas := device.NightEnd
 	device.NightModeEnabled = r.FormValue("night_mode_enabled") == "on"
+	device.NightModeMute = r.FormValue("night_mode_mute") == "on"
 
 	nightStart := r.FormValue("night_start")
 	if nightStart != "" {
@@ -911,6 +912,40 @@ func (s *Server) handleUpdateInterval(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleSetMute(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	muted, err := strconv.ParseBool(r.FormValue("muted"))
+	if err != nil {
+		http.Error(w, "Invalid muted state", http.StatusBadRequest)
+		return
+	}
+
+	device.Muted = muted
+
+	if err := s.DB.Model(&data.Device{ID: device.ID}).Update("muted", muted).Error; err != nil {
+		slog.Error("Failed to update device mute state", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{
+		Type:     "device_updated",
+		DeviceID: device.ID,
+		Payload: map[string]any{
+			"muted":   muted,
+			"isMuted": device.IsMuted(),
+		},
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"muted":   muted,
+		"isMuted": device.IsMuted(),
+	})
 }
 
 func (s *Server) handleSetNightModeOverride(w http.ResponseWriter, r *http.Request) {

@@ -424,6 +424,11 @@ func (s *Server) TriggerDeviceSound(ctx context.Context, device *data.Device, so
 		return nil
 	}
 
+	if device.IsMuted() {
+		slog.Debug("Skipping sound trigger: device is muted", "device", device.ID)
+		return nil
+	}
+
 	payload := s.ResolveSoundPayload(device, baseURL, soundID)
 	if payload == "" {
 		slog.Debug("No sound payload generated for device", "device", device.ID, "capability", device.GetAudioCapability(), "sound", soundID)

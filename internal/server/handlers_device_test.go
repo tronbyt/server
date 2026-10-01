@@ -596,3 +596,70 @@ func TestHandleUpdateDeviceGet_StartupSoundVisibility(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleSetMute(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "testuser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	device := data.Device{
+		ID:       "dev-mute-test",
+		Username: "testuser",
+		Name:     "Mute Test Device",
+		Muted:    false,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	// Test mute = true
+	form := strings.NewReader("muted=true")
+	req := httptest.NewRequest(http.MethodPost, "/devices/dev-mute-test/set_mute", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+	req = req.WithContext(context.WithValue(req.Context(), deviceContextKey, &device))
+	rr := httptest.NewRecorder()
+
+	s.handleSetMute(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, true, resp["muted"])
+	assert.Equal(t, true, resp["isMuted"])
+
+	updated, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).First(ctx)
+	require.NoError(t, err)
+	assert.True(t, updated.Muted)
+
+	// Test mute = false
+	form = strings.NewReader("muted=false")
+	req = httptest.NewRequest(http.MethodPost, "/devices/dev-mute-test/set_mute", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+	req = req.WithContext(context.WithValue(req.Context(), deviceContextKey, &device))
+	rr = httptest.NewRecorder()
+
+	s.handleSetMute(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	resp = nil
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, false, resp["muted"])
+	assert.Equal(t, false, resp["isMuted"])
+
+	updated, err = gorm.G[data.Device](s.DB).Where("id = ?", device.ID).First(ctx)
+	require.NoError(t, err)
+	assert.False(t, updated.Muted)
+
+	// Test invalid muted param
+	form = strings.NewReader("muted=invalid")
+	req = httptest.NewRequest(http.MethodPost, "/devices/dev-mute-test/set_mute", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+	req = req.WithContext(context.WithValue(req.Context(), deviceContextKey, &device))
+	rr = httptest.NewRecorder()
+
+	s.handleSetMute(rr, req)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}

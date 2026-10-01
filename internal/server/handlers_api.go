@@ -26,10 +26,12 @@ import (
 type DeviceUpdate struct {
 	Brightness          *int    `json:"brightness"`
 	IntervalSec         *int    `json:"intervalSec"`
+	Muted               *bool   `json:"muted"`
 	NightModeEnabled    *bool   `json:"nightModeEnabled"`
 	NightModeActive     *bool   `json:"nightModeActive"`
 	NightModeApp        *string `json:"nightModeApp"`
 	NightModeBrightness *int    `json:"nightModeBrightness"`
+	NightModeMute       *bool   `json:"nightModeMute"`
 	NightModeStartTime  *string `json:"nightModeStartTime"`
 	NightModeEndTime    *string `json:"nightModeEndTime"`
 	DimModeActive       *bool   `json:"dimModeActive"`
@@ -47,6 +49,8 @@ type DevicePayload struct {
 	Notes        string          `json:"notes"`
 	IntervalSec  int             `json:"intervalSec"`
 	Brightness   int             `json:"brightness"`
+	Muted        bool            `json:"muted"`
+	IsMuted      bool            `json:"isMuted"`
 	NightMode    NightMode       `json:"nightMode"`
 	DimMode      DimMode         `json:"dimMode"`
 	PinnedApp    *string         `json:"pinnedApp"`
@@ -64,6 +68,7 @@ type NightMode struct {
 	StartTime     string  `json:"startTime"`
 	EndTime       string  `json:"endTime"`
 	Brightness    int     `json:"brightness"`
+	Mute          bool    `json:"mute"`
 	OverrideUntil *string `json:"overrideUntil,omitempty"`
 }
 
@@ -162,6 +167,8 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		Notes:       d.Notes,
 		IntervalSec: d.DefaultInterval,
 		Brightness:  int(d.Brightness),
+		Muted:       d.Muted,
+		IsMuted:     d.IsMuted(),
 		NightMode: NightMode{
 			Enabled:       d.NightModeEnabled,
 			Active:        d.GetNightModeIsActive(),
@@ -169,6 +176,7 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 			StartTime:     d.NightStart,
 			EndTime:       d.NightEnd,
 			Brightness:    int(d.NightBrightness),
+			Mute:          d.NightModeMute,
 			OverrideUntil: nightModeOverrideUntil,
 		},
 		DimMode: DimMode{
@@ -713,6 +721,9 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	if update.IntervalSec != nil {
 		device.DefaultInterval = *update.IntervalSec
 	}
+	if update.Muted != nil {
+		device.Muted = *update.Muted
+	}
 	nightModeWasEnabled := device.NightModeEnabled
 	modeSnapshotBefore := snapshotDeviceMode(device)
 	nightStartWas := device.NightStart
@@ -724,6 +735,9 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if update.NightModeEnabled != nil {
 		device.NightModeEnabled = *update.NightModeEnabled
+	}
+	if update.NightModeMute != nil {
+		device.NightModeMute = *update.NightModeMute
 	}
 	if update.AutoDim != nil {
 		device.NightModeEnabled = *update.AutoDim

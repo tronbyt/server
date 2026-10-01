@@ -2167,5 +2167,23 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "You are accessing this server via localhost. For proper firmware generation you should use:"
+  },
+  "Mute Sounds": {
+    "other": "Mute Sounds"
+  },
+  "Muted": {
+    "other": "Muted"
+  },
+  "Sounds Muted": {
+    "other": "Sounds Muted"
+  },
+  "Mute all sounds": {
+    "other": "Mute all sounds"
+  },
+  "Mute in Night Mode": {
+    "other": "Mute in Night Mode"
+  },
+  "Disable all sound notifications during night mode.": {
+    "other": "Disable all sound notifications during night mode."
   }
 }

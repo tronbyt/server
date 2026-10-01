@@ -703,6 +703,8 @@ type Device struct {
 
 	// Audio
 	AudioCapability *AudioCapability `gorm:"type:text" json:"audio_capability,omitempty"`
+	Muted           bool             `gorm:"default:false" json:"muted"`
+	NightModeMute   bool             `gorm:"default:false" json:"night_mode_mute"`
 
 	// HTTP device commands (delivered via /next response headers)
 	PendingImageURL string `json:"pending_image_url,omitempty"`
@@ -1213,4 +1215,19 @@ func (d *Device) HasSpeaker() bool {
 		return false
 	}
 	return d.GetAudioCapability() != AudioCapNone
+}
+
+// IsMuted reports whether sound notifications are currently suppressed on the device
+// (either manually muted or muted during active night mode).
+func (d *Device) IsMuted() bool {
+	if d == nil {
+		return false
+	}
+	if d.Muted {
+		return true
+	}
+	if d.NightModeMute && d.GetNightModeIsActive() {
+		return true
+	}
+	return false
 }

@@ -595,3 +595,51 @@ func TestPushAppWithSound(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, dev.PendingSound, "/sounds/nfl/touchdown.mp3")
 }
+
+func TestDeviceIsMuted(t *testing.T) {
+	var nilDev *data.Device
+	assert.False(t, nilDev.IsMuted())
+
+	dev := &data.Device{
+		Muted: false,
+	}
+	assert.False(t, dev.IsMuted())
+
+	dev.Muted = true
+	assert.True(t, dev.IsMuted())
+
+	// Unmuted manual, test NightModeMute
+	dev.Muted = false
+	dev.NightModeMute = true
+	dev.NightModeEnabled = false
+	assert.False(t, dev.IsMuted())
+
+	// Night mode enabled and active (00:00 to 23:59 covers all day)
+	dev.NightModeEnabled = true
+	dev.NightStart = "00:00"
+	dev.NightEnd = "23:59"
+	assert.True(t, dev.IsMuted())
+}
+
+func TestTriggerDeviceSoundMuted(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice"
+
+	piezoCap := data.AudioCapPiezo
+	err := s.DB.Model(&data.Device{ID: deviceID}).Updates(map[string]any{
+		"audio_capability": piezoCap,
+		"muted":            true,
+	}).Error
+	require.NoError(t, err)
+
+	dev, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+
+	err = s.TriggerDeviceSound(context.Background(), &dev, "chime", "http://localhost:8000")
+	require.NoError(t, err)
+
+	// PendingSound should NOT be updated because device is muted
+	reloaded, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, reloaded.PendingSound)
+}

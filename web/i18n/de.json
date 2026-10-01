@@ -2164,5 +2164,23 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
+  },
+  "Mute Sounds": {
+    "other": "Töne stummschalten"
+  },
+  "Muted": {
+    "other": "Stummgeschaltet"
+  },
+  "Sounds Muted": {
+    "other": "Töne stummgeschaltet"
+  },
+  "Mute all sounds": {
+    "other": "Alle Töne stummschalten"
+  },
+  "Mute in Night Mode": {
+    "other": "Im Nachtmodus stummschalten"
+  },
+  "Disable all sound notifications during night mode.": {
+    "other": "Alle Ton-Benachrichtigungen im Nachtmodus deaktivieren."
   }
 }
