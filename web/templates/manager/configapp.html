@@ -257,7 +257,7 @@
                 </p>
             </td>
         </tr>
-        {{ else }}
+    {{ else }}
         <tr>
             <td>
                 <label for="notification_sound_select">{{ t .Localizer "Notification Sound" }}</label>
@@ -266,19 +266,21 @@
             <td>
                 {{ $currentSound := "" }}
                 {{ if .App.NotificationSound }}
-                    {{ $currentSound = deref .App.NotificationSound }}
+                {{ $currentSound = deref .App.NotificationSound }}
                 {{ end }}
                 {{ $isCustomURL := false }}
                 {{ if and (ne $currentSound "") (not (hasPrefix $currentSound "default:")) (not (hasPrefix $currentSound "custom:")) (not (hasPrefix $currentSound "app:")) }}
-                    {{ $isCustomURL = true }}
+                {{ $isCustomURL = true }}
                 {{ end }}
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
                     <select name="notification_sound_select"
                             id="notification_sound_select"
                             class="form-control"
-                            style="flex: 1; min-width: 180px;"
+                            style="flex: 1;
+                                   min-width: 180px"
                             onchange="handleNotificationSoundChange()">
-                        <option value="none" {{ if or (eq $currentSound "") (eq $currentSound "none") }}selected{{ end }}>
+                        <option value="none"
+                                {{ if or (eq $currentSound "") (eq $currentSound "none") }}selected{{ end }}>
                             {{ t .Localizer "None (Disabled)" }}
                         </option>
                         <optgroup label="{{ t .Localizer "Default Sounds" }}">
@@ -315,9 +317,7 @@
                             {{ end }}
                         </optgroup>
                         {{ end }}
-                        <option value="custom_url" {{ if $isCustomURL }}selected{{ end }}>
-                            {{ t .Localizer "Custom URL..." }}
-                        </option>
+                        <option value="custom_url" {{ if $isCustomURL }}selected{{ end }}>{{ t .Localizer "Custom URL..." }}</option>
                         {{ end }}
                     </select>
                     <button type="button"
@@ -325,11 +325,14 @@
                             id="testSoundBtn"
                             onclick="testNotificationSound()"
                             title="{{ t .Localizer "Preview sound" }}"
-                            style="white-space: nowrap;">
+                            style="white-space: nowrap">
                         <i class="fa-solid fa-volume-high" aria-hidden="true"></i> {{ t .Localizer "Test Sound" }}
                     </button>
                 </div>
-                <div id="notification_sound_url_container" style="margin-top: 8px; {{ if not $isCustomURL }}display: none;{{ end }}">
+                <div id="notification_sound_url_container"
+                     style="margin-top: 8px;
+                            {{ if not $isCustomURL }}display: none;
+                            {{ end }}">
                     <input type="url"
                            id="notification_sound_url"
                            name="notification_sound_url"
@@ -347,17 +350,23 @@
             </td>
         </tr>
         <!-- Notification Sound Trigger -->
-        <tr id="notification_sound_trigger_row" {{ if or (eq $currentSound "") (eq $currentSound "none") }}style="display: none;"{{ end }}>
+        <tr id="notification_sound_trigger_row"
+            {{ if or (eq $currentSound "") (eq $currentSound "none") }}style="display: none;"
+            {{ end }}>
             <td>
                 <label for="notification_sound_trigger">{{ t .Localizer "Sound Trigger" }}</label>
                 <small>{{ t .Localizer "When to play the notification sound" }}</small>
             </td>
             <td>
-                <select name="notification_sound_trigger" id="notification_sound_trigger" class="form-control">
-                    <option value="every_render" {{ if ne .App.NotificationSoundTrigger "on_change" }}selected{{ end }}>
+                <select name="notification_sound_trigger"
+                        id="notification_sound_trigger"
+                        class="form-control">
+                    <option value="every_render"
+                            {{ if ne .App.NotificationSoundTrigger "on_change" }}selected{{ end }}>
                         {{ t .Localizer "Every time app renders" }}
                     </option>
-                    <option value="on_change" {{ if eq .App.NotificationSoundTrigger "on_change" }}selected{{ end }}>
+                    <option value="on_change"
+                            {{ if eq .App.NotificationSoundTrigger "on_change" }}selected{{ end }}>
                         {{ t .Localizer "Only when display content changes" }}
                     </option>
                 </select>
