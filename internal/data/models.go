@@ -37,6 +37,7 @@ const (
 	DeviceMatrixPortal
 	DeviceMatrixPortalWS
 	DeviceMatrixPortalSquare
+	DeviceMatrixPortalWide
 	DeviceWaveshareS3
 	DevicePixoticker
 	DeviceRaspberryPi
@@ -54,6 +55,7 @@ var DeviceTypeToString = map[DeviceType]string{
 	DeviceMatrixPortal:       "matrixportal_s3",
 	DeviceMatrixPortalWS:     "matrixportal_s3_waveshare",
 	DeviceMatrixPortalSquare: "matrixportal_s3_square",
+	DeviceMatrixPortalWide:   "matrixportal_s3_wide",
 	DeviceWaveshareS3:        "waveshare_s3",
 	DevicePixoticker:         "pixoticker",
 	DeviceRaspberryPi:        "raspberrypi",
@@ -95,6 +97,7 @@ var DeviceTypeDefaultBrightnessScale = map[DeviceType]string{
 	DeviceMatrixPortal:       S3BrightnessScale,
 	DeviceMatrixPortalWS:     S3BrightnessScale,
 	DeviceMatrixPortalSquare: S3BrightnessScale,
+	DeviceMatrixPortalWide:   S3BrightnessScale,
 	DeviceWaveshareS3:        S3BrightnessScale,
 	DevicePixoticker:         S3BrightnessScale,
 	DeviceRaspberryPi:        S3BrightnessScale,
@@ -137,6 +140,8 @@ func (dt DeviceType) String() string {
 		return "MatrixPortal S3 Waveshare"
 	case DeviceMatrixPortalSquare:
 		return "MatrixPortal S3 Square"
+	case DeviceMatrixPortalWide:
+		return "MatrixPortal S3 Wide"
 	case DeviceWaveshareS3:
 		return "Waveshare S3"
 	case DeviceOther:
@@ -681,7 +686,7 @@ type Device struct {
 
 func (dt DeviceType) Supports2x() bool {
 	switch dt {
-	case DeviceRaspberryPiWide, DeviceTronbytS3Wide:
+	case DeviceRaspberryPiWide, DeviceTronbytS3Wide, DeviceMatrixPortalWide:
 		return true
 	default:
 		return false
@@ -721,7 +726,7 @@ func (dt DeviceType) DisplaySize() (width, height int) {
 
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
-	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceWaveshareS3:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceMatrixPortalWide, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -731,7 +736,7 @@ func (dt DeviceType) SupportsFirmware() bool {
 func (dt DeviceType) SupportsOTA() bool {
 	switch dt {
 	// DevicePixoticker is intentionally omitted (not enough flash memory)
-	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceWaveshareS3:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceMatrixPortalWide, DeviceWaveshareS3:
 		return true
 	default:
 		return false
@@ -759,6 +764,8 @@ func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 		return "matrixportal-s3-waveshare.bin"
 	case DeviceMatrixPortalSquare:
 		return "matrixportal-s3-square.bin"
+	case DeviceMatrixPortalWide:
+		return "matrixportal-s3-wide.bin"
 	case DeviceWaveshareS3:
 		return "waveshare-s3.bin"
 	default:
@@ -776,6 +783,8 @@ func (dt DeviceType) MergedFilename(swapColors bool) string {
 		return "matrixportal-s3_merged.bin"
 	case DeviceMatrixPortalSquare:
 		return "matrixportal-s3-square_merged.bin"
+	case DeviceMatrixPortalWide:
+		return "matrixportal-s3-wide_merged.bin"
 	case DeviceWaveshareS3:
 		return "waveshare-s3_merged.bin"
 	default:

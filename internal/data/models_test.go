@@ -139,6 +139,7 @@ func TestDeviceTypeCanvasAndDisplaySize(t *testing.T) {
 		{"wide renders 2x", DeviceRaspberryPiWide, 64, 32, 128, 64},
 		{"square", DeviceRaspberryPiSquare, 64, 64, 64, 64},
 		{"square s3", DeviceMatrixPortalSquare, 64, 64, 64, 64},
+		{"wide s3 renders 2x", DeviceMatrixPortalWide, 64, 32, 128, 64},
 		{"unknown falls back", DeviceOther, 64, 32, 64, 32},
 	}
 
@@ -183,6 +184,35 @@ func TestDeviceTypeSquareRoundTripsAsSlug(t *testing.T) {
 	assert.Equal(t, DeviceRaspberryPiSquare, scanned)
 	require.NoError(t, scanned.Scan("nonsense"))
 	assert.Equal(t, DeviceOther, scanned)
+}
+
+// The wide MatrixPortal drives the same 128x64 panel as the Tronbyt S3 Wide,
+// but the boards are not interchangeable: the Tronbyt S3 Wide image enables
+// octal PSRAM, which claims GPIO 35/36/37, and on a MatrixPortal S3 those are
+// the HUB75 D/B/B2 lines. It has to get its own binaries, never the Tronbyt S3
+// Wide ones or the 64x32 MatrixPortal ones.
+func TestDeviceTypeWideMatrixPortalHasItsOwnFirmware(t *testing.T) {
+	assert.True(t, DeviceMatrixPortalWide.SupportsFirmware())
+	assert.True(t, DeviceMatrixPortalWide.SupportsOTA())
+
+	firmware := DeviceMatrixPortalWide.FirmwareFilename(false)
+	merged := DeviceMatrixPortalWide.MergedFilename(false)
+	assert.Equal(t, "matrixportal-s3-wide.bin", firmware)
+	assert.Equal(t, "matrixportal-s3-wide_merged.bin", merged)
+	for _, other := range []DeviceType{DeviceTronbytS3Wide, DeviceMatrixPortal} {
+		assert.NotEqual(t, other.FirmwareFilename(false), firmware)
+		assert.NotEqual(t, other.MergedFilename(false), merged)
+	}
+}
+
+func TestDeviceTypeWideMatrixPortalRoundTripsAsSlug(t *testing.T) {
+	assert.Equal(t, "matrixportal_s3_wide", DeviceMatrixPortalWide.Slug())
+	assert.Equal(t, DeviceMatrixPortalWide, StringToDeviceType["matrixportal_s3_wide"])
+	assert.Equal(t, "MatrixPortal S3 Wide", DeviceMatrixPortalWide.String())
+
+	var scanned DeviceType
+	require.NoError(t, scanned.Scan("matrixportal_s3_wide"))
+	assert.Equal(t, DeviceMatrixPortalWide, scanned)
 }
 
 // A device type that offers firmware but names no binary would fail only at
