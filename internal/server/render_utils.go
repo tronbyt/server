@@ -214,9 +214,10 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && device != nil && device.GetAudioCapability() != data.AudioCapNone {
 				contentChanged := (app.LastRenderHash != newHash)
 				shouldPlay := false
-				if app.NotificationSoundTrigger == "every_render" {
+				switch app.NotificationSoundTrigger {
+				case "every_render":
 					shouldPlay = true
-				} else if app.NotificationSoundTrigger == "on_change" {
+				case "on_change":
 					shouldPlay = contentChanged
 				}
 

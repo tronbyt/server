@@ -377,9 +377,10 @@ func TestNotificationSoundOptInAndTriggerLogic(t *testing.T) {
 	newHash := "hash2"
 	contentChanged := (appUnsetTrigger.LastRenderHash != newHash)
 	shouldPlay := false
-	if appUnsetTrigger.NotificationSoundTrigger == "every_render" {
+	switch appUnsetTrigger.NotificationSoundTrigger {
+	case "every_render":
 		shouldPlay = true
-	} else if appUnsetTrigger.NotificationSoundTrigger == "on_change" {
+	case "on_change":
 		shouldPlay = contentChanged
 	}
 	assert.False(t, shouldPlay, "Unset trigger must be off by default")

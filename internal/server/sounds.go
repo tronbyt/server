@@ -325,8 +325,8 @@ func (s *Server) ResolveSoundPayload(device *data.Device, baseURL string, soundI
 		return ""
 	}
 
-	cap := device.GetAudioCapability()
-	if cap == data.AudioCapNone {
+	audioCap := device.GetAudioCapability()
+	if audioCap == data.AudioCapNone {
 		return ""
 	}
 
@@ -340,7 +340,7 @@ func (s *Server) ResolveSoundPayload(device *data.Device, baseURL string, soundI
 
 	// Check if soundID is an external URL
 	if strings.HasPrefix(cleanID, "http://") || strings.HasPrefix(cleanID, "https://") {
-		if cap == data.AudioCapFull {
+		if audioCap == data.AudioCapFull {
 			parsedURL, err := url.Parse(cleanID)
 			if err == nil && parsedURL.Host != "" && (parsedURL.Scheme == "http" || parsedURL.Scheme == "https") {
 				return parsedURL.String()
@@ -353,7 +353,7 @@ func (s *Server) ResolveSoundPayload(device *data.Device, baseURL string, soundI
 	// Match default sound by ID (e.g. "default:chime") or name (e.g. "chime")
 	for _, def := range DefaultNotificationSounds {
 		if cleanID == def.ID || strings.EqualFold(cleanID, def.Name) || cleanID == strings.TrimPrefix(def.ID, "default:") {
-			if cap == data.AudioCapPiezo {
+			if audioCap == data.AudioCapPiezo {
 				return def.Tone
 			}
 			return trimmedBase + def.URL
@@ -361,13 +361,12 @@ func (s *Server) ResolveSoundPayload(device *data.Device, baseURL string, soundI
 	}
 
 	// If device is piezo and soundID looks like raw frequency:duration tone string, pass through
-	if cap == data.AudioCapPiezo && strings.Contains(cleanID, ":") && !strings.Contains(cleanID, "/") && !strings.HasPrefix(cleanID, "app:") && !strings.HasPrefix(cleanID, "default:") && !strings.HasPrefix(cleanID, "custom:") {
+	if audioCap == data.AudioCapPiezo && strings.Contains(cleanID, ":") && !strings.Contains(cleanID, "/") && !strings.HasPrefix(cleanID, "app:") && !strings.HasPrefix(cleanID, "default:") && !strings.HasPrefix(cleanID, "custom:") {
 		return cleanID
 	}
 
 	// Handle App Sound: "app:<app_id>:<filename>" or "app:<filename>"
-	if strings.HasPrefix(cleanID, "app:") {
-		remainder := strings.TrimPrefix(cleanID, "app:")
+	if remainder, ok := strings.CutPrefix(cleanID, "app:"); ok {
 		var appID, filename string
 		if strings.Contains(remainder, ":") {
 			parts := strings.SplitN(remainder, ":", 2)
@@ -381,12 +380,12 @@ func (s *Server) ResolveSoundPayload(device *data.Device, baseURL string, soundI
 			filename = filepath.Base(remainder)
 		}
 
-		if cap == data.AudioCapPiezo {
+		if audioCap == data.AudioCapPiezo {
 			// Option A: Smart keyword tone mapping with pleasant 2-tone fallback
 			return MapSoundToTone(filename)
 		}
 
-		if cap == data.AudioCapFull {
+		if audioCap == data.AudioCapFull {
 			if appID != "" {
 				return fmt.Sprintf("%s/sounds/%s/%s", trimmedBase, url.PathEscape(appID), url.PathEscape(filename))
 			}
@@ -397,7 +396,7 @@ func (s *Server) ResolveSoundPayload(device *data.Device, baseURL string, soundI
 
 	// Match custom sound (e.g. "custom:doorbell.mp3" or "doorbell.mp3")
 	customFilename := strings.TrimPrefix(cleanID, "custom:")
-	if cap == data.AudioCapFull {
+	if audioCap == data.AudioCapFull {
 		customPath, err := securejoin.SecureJoin(s.SoundsDir(), customFilename)
 		if err == nil {
 			if _, err := os.Stat(customPath); err == nil {
