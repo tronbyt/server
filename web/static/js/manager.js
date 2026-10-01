@@ -583,6 +583,10 @@ function toggleBrokenApps(searchId) {
   applyFilters();
 }
 
+function toggleFitsDisplay(searchId) {
+  applyFilters();
+}
+
 function filterByCategory() {
   applyFilters();
 }
@@ -694,6 +698,12 @@ function applyFilters() {
         const categorySelect = document.getElementById('category_' + searchId);
         const currentCategory = categorySelect ? categorySelect.value : '';
 
+        // Only rendered for a device whose panel needs an app to declare
+        // something; on a classic 64x32 panel every app already fits.
+        const fitsDisplayCheckbox = document.getElementById('fits_display_' + searchId);
+        const currentFitsDisplay = fitsDisplayCheckbox ? fitsDisplayCheckbox.checked : false;
+        const requiredCapability = fitsDisplayCheckbox ? fitsDisplayCheckbox.getAttribute('data-capability') : '';
+
         // Get all app items from the grid
         const allItems = Array.from(grid.getElementsByClassName('app-item'));
 
@@ -728,6 +738,12 @@ function applyFilters() {
           // Apply hide filters
           if (currentHideInstalled && isInstalled) return false;
           if (!currentShowBroken && isBroken) return false;
+
+          // Apply display-compatibility filter
+          if (currentFitsDisplay && requiredCapability) {
+            const capabilityAttr = requiredCapability === '64x64' ? 'data-supports-64x64' : 'data-supports-2x';
+            if (item.getAttribute(capabilityAttr) !== 'true') return false;
+          }
 
           return true;
         });

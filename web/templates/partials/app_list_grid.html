@@ -35,6 +35,18 @@
                    class="control-checkbox">
             {{ t .Localizer "Hide installed apps" }}
         </label>
+        {{ if .RequiredCapability }}
+        <label class="control-label"
+               title="{{ if eq .RequiredCapability "64x64" }}{{ t .Localizer "FitsDisplayHintSquare" }}{{ else }}{{ t .Localizer "FitsDisplayHint2x" }}{{ end }}">
+            <input type="checkbox"
+                   id="fits_display_{{ .SearchID }}"
+                   data-capability="{{ .RequiredCapability }}"
+                   onchange="toggleFitsDisplay('{{ .SearchID }}')"
+                   class="control-checkbox">
+            {{ t .Localizer "Only apps built for this display" }}
+            <span class="control-capability">{{ if eq .RequiredCapability "64x64" }}64&times;64{{ else }}2x{{ end }}</span>
+        </label>
+        {{ end }}
         <label class="control-label">
             <input type="checkbox"
                    id="show_broken_{{ .SearchID }}"
@@ -73,6 +85,8 @@
      data-broken="{{ .App.Broken }}"
      data-author="{{ .App.Author }}"
      data-category="{{ .App.Category }}"
+     data-supports-2x="{{ .App.Supports2x }}"
+     data-supports-64x64="{{ .App.Supports64x64 }}"
      data-published="{{ .App.Published }}"
      data-updated="{{ .App.Updated }}"
      data-tags="{{ range $i, $tag := .App.Tags }}{{ if $i }},{{ end }}{{ $tag }}{{ end }}">
