@@ -55,7 +55,7 @@ func MigrateLegacyDB(oldDBPath, newDBLocation, dataDir string) error {
 	}
 
 	// AutoMigrate schema
-	err = newDB.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{})
+	err = newDB.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}, &data.Connection{})
 	if err != nil {
 		return fmt.Errorf("failed to migrate schema: %w", err)
 	}
