@@ -681,7 +681,7 @@ func TestHandleTestSoundDevice(t *testing.T) {
 	require.NoError(t, s.DB.Create(&device).Error)
 
 	// 1. Device is unmuted: test sound succeeds
-	form := strings.NewReader("sound=default:sonar")
+	form := strings.NewReader("sound=default:chime")
 	req := httptest.NewRequest(http.MethodPost, "/devices/dev-test-sound/test_sound", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
@@ -694,11 +694,11 @@ func TestHandleTestSoundDevice(t *testing.T) {
 	var resp map[string]any
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	assert.Equal(t, "ok", resp["status"])
-	assert.Equal(t, "default:sonar", resp["sound"])
+	assert.Equal(t, "default:chime", resp["sound"])
 
 	// 2. Device is muted: test sound is rejected with friendly 400
 	device.Muted = true
-	form = strings.NewReader("sound=default:sonar")
+	form = strings.NewReader("sound=default:chime")
 	req = httptest.NewRequest(http.MethodPost, "/devices/dev-test-sound/test_sound", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
