@@ -166,6 +166,38 @@ function setDimModeOverride(deviceId, active, input) {
     });
 }
 
+function setMute(deviceId, muted, input) {
+  const formData = new URLSearchParams();
+  formData.append('muted', muted);
+
+  if (input) {
+    input.disabled = true;
+  }
+
+  fetch(`/devices/${deviceId}/set_mute`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString()
+  })
+    .then(async response => {
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to update mute state');
+      }
+      window.location.reload();
+    })
+    .catch((error) => {
+      console.error('Unexpected error:', error);
+      if (input) {
+        input.checked = !muted;
+        input.disabled = false;
+      }
+      alert(error.message || 'Failed to update mute state');
+    });
+}
+
 // Function to toggle the visibility of the device details
 function toggleDetails(deviceId) {
   const details = document.getElementById(`details-${deviceId}`);

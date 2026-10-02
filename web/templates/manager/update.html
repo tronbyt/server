@@ -142,6 +142,85 @@
                 </div>
                 <div class="settings-field-row">
                     <div class="settings-field-label">
+                        <label for="audio_capability">{{ t .Localizer "Audio Capability" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        {{ $currentAudioCap := "auto" }}
+                        {{ if .Device.AudioCapability }}
+                        {{ $currentAudioCap = printf "%s" (deref .Device.AudioCapability) }}
+                        {{ end }}
+                        <select name="audio_capability" id="audio_capability" class="settings-input">
+                            <option value="auto" {{ if eq $currentAudioCap "auto" }}selected{{ end }}>
+                                {{ t .Localizer "Default" }} ({{ .Device.Type.DefaultAudioCapability }})
+                            </option>
+                            <option value="none" {{ if eq $currentAudioCap "none" }}selected{{ end }}>{{ t .Localizer "Disabled / None" }}</option>
+                            <option value="piezo" {{ if eq $currentAudioCap "piezo" }}selected{{ end }}>
+                                {{ t .Localizer "Piezo Buzzer (Tones)" }}
+                            </option>
+                            <option value="full" {{ if eq $currentAudioCap "full" }}selected{{ end }}>
+                                {{ t .Localizer "Full Speaker (Audio / Streaming)" }}
+                            </option>
+                        </select>
+                        <p class="settings-help">
+                            {{ t .Localizer "Configure sound hardware for this device. Piezo buzzers (e.g. Tidbyt Gen 2) play tone melodies. Full speakers (e.g. Raspberry Pi / Tronberry or I2S DAC) support audio files and custom uploads." }}
+                        </p>
+                    </div>
+                </div>
+                {{ if .Device.HasSpeaker }}
+                <div class="settings-field-row" id="volume_control_row">
+                    <div class="settings-field-label">
+                        <label for="volume">{{ t .Localizer "Speaker Volume" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="range-container">
+                            <input type="range"
+                                   name="volume"
+                                   id="volume"
+                                   min="0"
+                                   max="100"
+                                   step="5"
+                                   value="{{ .Device.GetVolume }}"
+                                   oninput="this.nextElementSibling.value = this.value">
+                            <output class="range-output">{{ .Device.GetVolume }}</output>
+                        </div>
+                        <p class="settings-help">{{ t .Localizer "Set playback volume for sound notifications and chimes (0–100%)." }}</p>
+                    </div>
+                </div>
+                <div class="settings-field-row" id="test_sound_row">
+                    <div class="settings-field-label">
+                        <label for="test_sound_select">{{ t .Localizer "Test Sound" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="test-sound-container"
+                             style="display: flex;
+                                    gap: 8px;
+                                    align-items: center;
+                                    flex-wrap: wrap">
+                            <select id="test_sound_select"
+                                    class="settings-input"
+                                    style="max-width: 200px">
+                                <option value="default:chime">{{ t .Localizer "Chime" }}</option>
+                                <option value="default:ding">{{ t .Localizer "Ding" }}</option>
+                                <option value="default:bell">{{ t .Localizer "Bell" }}</option>
+                                <option value="default:pop">{{ t .Localizer "Pop" }}</option>
+                                <option value="default:alert">{{ t .Localizer "Alert" }}</option>
+                                <option value="default:tron">{{ t .Localizer "Tron Bit" }}</option>
+                            </select>
+                            <button type="button"
+                                    class="w3-button w3-blue w3-round"
+                                    onclick="triggerDeviceTestSound('{{ .Device.ID }}')">
+                                <i class="fa-solid fa-volume-high"></i> {{ t .Localizer "Play on Device" }}
+                            </button>
+                            <span id="test-sound-status" style="font-size: 0.9em; margin-left: 4px;"></span>
+                        </div>
+                        <p class="settings-help">
+                            {{ t .Localizer "Send an instant test chime to verify speaker output and volume levels on this device." }}
+                        </p>
+                    </div>
+                </div>
+                {{ end }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
                         <label for="require_api_key">{{ t .Localizer "Require API Key" }}</label>
                     </div>
                     <div class="settings-field-control">
@@ -456,6 +535,22 @@
                             </select>
                         </div>
                     </div>
+                    {{ if .Device.HasSpeaker }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="night_mode_mute">{{ t .Localizer "Mute in Night Mode" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   name="night_mode_mute"
+                                   id="night_mode_mute"
+                                   {{ if .Device.NightModeMute }}
+                                   checked
+                                   {{ end }}>
+                            <p class="settings-help">{{ t .Localizer "Disable all sound notifications during night mode." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
             <div class="settings-card-subsection">
@@ -703,6 +798,22 @@
                                    onchange="updateFirmwareSettings({swap_colors: this.checked})">
                         </div>
                     </div>
+                    {{ if or .Device.HasSpeaker (ne .Device.Info.StartupSound nil) }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="startup_sound">{{ t .Localizer "Startup Sound" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   id="startup_sound"
+                                   {{ if derefOr .Device.Info.StartupSound true }}
+                                   checked
+                                   {{ end }}
+                                   onchange="updateFirmwareSettings({startup_sound: this.checked})">
+                            <p class="settings-help">{{ t .Localizer "Plays a short jingle on boot when the device starts up." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                     {{ if .Device.SupportsColorOrder }}
                     {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
                     <div class="settings-field-row">
@@ -1114,6 +1225,42 @@
         }
 
         document.getElementById('device-form').submit();
+    }
+
+    async function triggerDeviceTestSound(deviceId) {
+        const sel = document.getElementById('test_sound_select');
+        const sound = sel ? sel.value : 'default:chime';
+        const statusSpan = document.getElementById('test-sound-status');
+        if (statusSpan) {
+            statusSpan.innerText = "{{ t .Localizer "Playing..." }}";
+            statusSpan.style.color = "";
+        }
+        try {
+            const formData = new FormData();
+            formData.append('sound', sound);
+            const resp = await fetch(`/devices/${deviceId}/test_sound`, {
+                method: 'POST',
+                body: formData
+            });
+            if (resp.ok) {
+                if (statusSpan) {
+                    statusSpan.innerText = "✓ {{ t .Localizer "Sent to device" }}";
+                    statusSpan.style.color = "var(--color-success, #28a745)";
+                    setTimeout(() => { if (statusSpan.innerText.includes("Sent")) statusSpan.innerText = ""; }, 3000);
+                }
+            } else {
+                const errText = await resp.text();
+                if (statusSpan) {
+                    statusSpan.innerText = "✗ " + (errText || "Error");
+                    statusSpan.style.color = "var(--color-danger, #dc3545)";
+                }
+            }
+        } catch (err) {
+            if (statusSpan) {
+                statusSpan.innerText = "✗ Network error";
+                statusSpan.style.color = "var(--color-danger, #dc3545)";
+            }
+        }
     }
 </script>
 {{ end }}

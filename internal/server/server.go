@@ -267,12 +267,30 @@ func (s *Server) routes() {
 		s.Router.Handle("GET /static/js/", http.StripPrefix("/static/", fileServer))
 		s.Router.Handle("GET /static/webfonts/", http.StripPrefix("/static/", fileServer))
 		s.Router.Handle("GET /static/images/", http.StripPrefix("/static/", fileServer))
+		s.Router.Handle("GET /static/sounds/", http.StripPrefix("/static/", fileServer))
 		s.Router.Handle("GET /static/favicon.ico", http.StripPrefix("/static/", fileServer))
 	}
 
 	// Serve firmware binaries
 	firmwareDir := filepath.Join(s.DataDir, "firmware")
 	s.Router.Handle("GET /static/firmware/", http.StripPrefix("/static/firmware/", http.FileServer(http.Dir(firmwareDir))))
+
+	// Serve custom sound files (files only, no directory browsing)
+	soundsDir := filepath.Join(s.DataDir, "sounds")
+	soundFileServer := http.StripPrefix("/static/custom_sounds/", http.FileServer(http.Dir(soundsDir)))
+	s.Router.HandleFunc("GET /static/custom_sounds/", http.NotFound)
+	s.Router.HandleFunc("GET /static/custom_sounds/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		filename := filepath.Base(r.PathValue("filename"))
+		if filename == "" || filename == "." {
+			http.NotFound(w, r)
+			return
+		}
+		soundFileServer.ServeHTTP(w, r)
+	})
+
+	// Unified sound route for apps, custom uploads, and built-in sounds
+	s.Router.HandleFunc("GET /sounds/{appId}/{filename}", s.handleUnifiedSound)
+	s.Router.HandleFunc("GET /api/sounds/{filename}", s.handleUnifiedSound)
 
 	// App Preview (Specific path)
 	s.Router.HandleFunc("GET /preview/app/{id}", s.RequireLogin(s.handleAppThumbnail))
@@ -295,6 +313,8 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("DELETE /admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 	s.Router.HandleFunc("DELETE /settings/admin/users/{username}", s.RequireLogin(s.handleDeleteUser))
 	s.Router.HandleFunc("POST /settings/admin/users/{username}/email", s.RequireLogin(s.handleAdminUpdateUserEmail))
+	s.Router.HandleFunc("POST /settings/admin/sounds/upload", s.RequireLogin(s.handleAdminUploadSound))
+	s.Router.HandleFunc("POST /settings/admin/sounds/{filename}/delete", s.RequireLogin(s.handleAdminDeleteSound))
 
 	s.Router.HandleFunc("GET /devices/create", s.RequireLogin(s.handleCreateDeviceGet))
 	s.Router.HandleFunc("POST /devices/create", s.RequireLogin(s.handleCreateDevicePost))
@@ -304,6 +324,8 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/update_interval", s.RequireLogin(s.RequireDevice(s.handleUpdateInterval)))
 	s.Router.HandleFunc("POST /devices/{id}/set_night_mode_override", s.RequireLogin(s.RequireDevice(s.handleSetNightModeOverride)))
 	s.Router.HandleFunc("POST /devices/{id}/set_dim_mode_override", s.RequireLogin(s.RequireDevice(s.handleSetDimModeOverride)))
+	s.Router.HandleFunc("POST /devices/{id}/set_mute", s.RequireLogin(s.RequireDevice(s.handleSetMute)))
+	s.Router.HandleFunc("POST /devices/{id}/test_sound", s.RequireLogin(s.RequireDevice(s.handleTestSoundDevice)))
 
 	s.Router.HandleFunc("GET /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppGet)))
 	s.Router.HandleFunc("POST /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppPost)))

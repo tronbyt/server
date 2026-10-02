@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -182,9 +183,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		q := gorm.G[data.App](s.DB).Where("id = ?", app.ID)
+		var newHash string
 		if success {
+			newHash = fmt.Sprintf("%x", sha256.Sum256(imgBytes))
+			appUpdates.LastRenderHash = newHash
 			appUpdates.LastSuccessfulRender = &now
-			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender")
+			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender", "LastRenderHash")
 		} else {
 			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages")
 		}
@@ -205,12 +209,43 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
 				slog.Error("Failed to write webp", "path", webpPath, "error", err)
 			}
+
+			// Trigger notification sound if configured and opted in
+			if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && device != nil && device.GetAudioCapability() != data.AudioCapNone {
+				contentChanged := (app.LastRenderHash != newHash)
+				shouldPlay := false
+				switch app.NotificationSoundTrigger {
+				case "every_render":
+					shouldPlay = true
+				case "on_change":
+					shouldPlay = contentChanged
+				}
+
+				// Debounce: Enforce 30-second cooldown to prevent sound spam from animated apps
+				if shouldPlay && app.LastSoundAt != nil && now.Sub(*app.LastSoundAt) < 30*time.Second {
+					slog.Debug("Suppressing sound notification due to cooldown", "device", device.ID, "app", appBasename, "cooldown", 30*time.Second)
+					shouldPlay = false
+				}
+
+				if shouldPlay {
+					baseURL := s.GetDeviceBaseURL(device)
+					if err := s.TriggerDeviceSound(ctx, device, *app.NotificationSound, baseURL); err != nil {
+						slog.Error("Failed to trigger device sound on render", "device", device.ID, "app", appBasename, "error", err)
+					} else {
+						app.LastSoundAt = &now
+						if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_sound_at", now); err != nil {
+							slog.Debug("Failed to update last_sound_at in DB", "app", app.ID, "error", err)
+						}
+					}
+				}
+			}
 		}
 
 		// Update in-memory object (passed pointer)
 		app.LastRender = now
 		if success {
 			app.LastSuccessfulRender = &now
+			app.LastRenderHash = newHash
 		}
 		app.LastRenderDur = renderDur
 		app.EmptyLastRender = !success

@@ -242,6 +242,137 @@
                        data-default="{{ .App.Notes }}">
             </td>
         </tr>
+        <!-- Notification Sound -->
+        {{ $audioCap := .Device.GetAudioCapability }}
+        {{ if eq $audioCap "none" }}
+        <tr>
+            <td>
+                <label>{{ t .Localizer "Notification Sound" }}</label>
+            </td>
+            <td>
+                <p class="settings-help" style="margin: 0;">
+                    <i class="fa-solid fa-volume-xmark" aria-hidden="true"></i>
+                    {{ t .Localizer "Audio is disabled or not supported on this device. You can configure audio in" }}
+                    <a href="/devices/{{ .Device.ID }}/update#section-core-setup">{{ t .Localizer "Device Settings" }}</a>.
+                </p>
+            </td>
+        </tr>
+    {{ else }}
+        <tr>
+            <td>
+                <label for="notification_sound_select">{{ t .Localizer "Notification Sound" }}</label>
+                <small>{{ t .Localizer "Play a sound when this app renders" }}</small>
+            </td>
+            <td>
+                {{ $currentSound := "" }}
+                {{ if .App.NotificationSound }}
+                {{ $currentSound = deref .App.NotificationSound }}
+                {{ end }}
+                {{ $isCustomURL := false }}
+                {{ if and (ne $currentSound "") (not (hasPrefix $currentSound "default:")) (not (hasPrefix $currentSound "custom:")) (not (hasPrefix $currentSound "app:")) }}
+                {{ $isCustomURL = true }}
+                {{ end }}
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+                    <select name="notification_sound_select"
+                            id="notification_sound_select"
+                            class="form-control"
+                            style="flex: 1;
+                                   min-width: 180px"
+                            onchange="handleNotificationSoundChange()">
+                        <option value="none"
+                                {{ if or (eq $currentSound "") (eq $currentSound "none") }}selected{{ end }}>
+                            {{ t .Localizer "None (Disabled)" }}
+                        </option>
+                        <optgroup label="{{ t .Localizer "Default Sounds" }}">
+                            {{ range .DefaultSounds }}
+                            <option value="{{ .ID }}"
+                                    data-url="{{ .URL }}"
+                                    data-tone="{{ .Tone }}"
+                                    {{ if or (eq $currentSound .ID) (eq $currentSound .Name) (eq $currentSound (trimPrefix "default:" .ID)) }}selected{{ end }}>
+                                {{ .Name }}
+                            </option>
+                            {{ end }}
+                        </optgroup>
+                        {{ if .AppSounds }}
+                        <optgroup label="{{ t .Localizer "App Sounds" }}">
+                            {{ range .AppSounds }}
+                            <option value="{{ .ID }}"
+                                    data-url="{{ .URL }}"
+                                    data-tone="{{ .Tone }}"
+                                    {{ if or (eq $currentSound .ID) (eq $currentSound .Name) (eq $currentSound (print "app:" .Name)) (hasSuffix $currentSound (print ":" .Name)) }}selected{{ end }}>
+                                {{ .Name }}
+                            </option>
+                            {{ end }}
+                        </optgroup>
+                        {{ end }}
+                        {{ if eq $audioCap "full" }}
+                        {{ if .CustomSounds }}
+                        <optgroup label="{{ t .Localizer "Custom Sounds" }}">
+                            {{ range .CustomSounds }}
+                            <option value="{{ .ID }}"
+                                    data-url="{{ .URL }}"
+                                    {{ if or (eq $currentSound .ID) (eq $currentSound .Name) }}selected{{ end }}>
+                                {{ .Name }}
+                            </option>
+                            {{ end }}
+                        </optgroup>
+                        {{ end }}
+                        <option value="custom_url" {{ if $isCustomURL }}selected{{ end }}>{{ t .Localizer "Custom URL..." }}</option>
+                        {{ end }}
+                    </select>
+                    <button type="button"
+                            class="w3-button w3-light-gray w3-round"
+                            id="testSoundBtn"
+                            onclick="testNotificationSound()"
+                            title="{{ t .Localizer "Preview sound" }}"
+                            style="white-space: nowrap">
+                        <i class="fa-solid fa-volume-high" aria-hidden="true"></i> {{ t .Localizer "Test Sound" }}
+                    </button>
+                </div>
+                <div id="notification_sound_url_container"
+                     style="margin-top: 8px;
+                            {{ if not $isCustomURL }}display: none;
+                            {{ end }}">
+                    <input type="url"
+                           id="notification_sound_url"
+                           name="notification_sound_url"
+                           class="form-control"
+                           placeholder="https://example.com/sound.mp3"
+                           value="{{ if $isCustomURL }}{{ $currentSound }}{{ end }}" />
+                    <small class="settings-help">{{ t .Localizer "Direct URL to audio file (.mp3 or .wav)" }}</small>
+                </div>
+                {{ if eq $audioCap "piezo" }}
+                <p class="settings-help" style="margin-top: 6px;">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    {{ t .Localizer "Piezo buzzers play tone sequences for built-in and app sounds. Custom uploaded files and external URLs require a device with full speaker support." }}
+                </p>
+                {{ end }}
+            </td>
+        </tr>
+        <!-- Notification Sound Trigger -->
+        <tr id="notification_sound_trigger_row"
+            {{ if or (eq $currentSound "") (eq $currentSound "none") }}style="display: none;"
+            {{ end }}>
+            <td>
+                <label for="notification_sound_trigger">{{ t .Localizer "Sound Trigger" }}</label>
+                <small>{{ t .Localizer "When to play the notification sound" }}</small>
+            </td>
+            <td>
+                <select name="notification_sound_trigger"
+                        id="notification_sound_trigger"
+                        class="form-control">
+                    <option value="every_render"
+                            {{ if ne .App.NotificationSoundTrigger "on_change" }}selected{{ end }}>
+                        {{ t .Localizer "Every time app renders" }}
+                    </option>
+                    <option value="on_change"
+                            {{ if eq .App.NotificationSoundTrigger "on_change" }}selected{{ end }}>
+                        {{ t .Localizer "Only when display content changes" }}
+                    </option>
+                </select>
+            </td>
+        </tr>
+        {{ end }}
     </table>
     <hr>
     <!-- Schedule Section -->
@@ -1966,10 +2097,100 @@ function createImageUploadField(field, config) {
     }
   }
 
+  function handleNotificationSoundChange() {
+    const sel = document.getElementById('notification_sound_select');
+    if (!sel) return;
+    const urlContainer = document.getElementById('notification_sound_url_container');
+    const triggerRow = document.getElementById('notification_sound_trigger_row');
+    
+    if (urlContainer) {
+      urlContainer.style.display = (sel.value === 'custom_url') ? 'block' : 'none';
+    }
+    if (triggerRow) {
+      triggerRow.style.display = (sel.value === 'none') ? 'none' : '';
+    }
+  }
+
+  function getSelectedNotificationSound() {
+    const sel = document.getElementById('notification_sound_select');
+    if (!sel || sel.value === 'none') return '';
+    if (sel.value === 'custom_url') {
+      const urlInput = document.getElementById('notification_sound_url');
+      return urlInput ? urlInput.value.trim() : '';
+    }
+    return sel.value;
+  }
+
+  function testNotificationSound() {
+    const sel = document.getElementById('notification_sound_select');
+    if (!sel || sel.value === 'none') {
+      alert("{{ t .Localizer "Please select a sound to test." }}");
+      return;
+    }
+
+    if (sel.value === 'custom_url') {
+      const urlInput = document.getElementById('notification_sound_url');
+      const url = urlInput ? urlInput.value.trim() : '';
+      if (!url) {
+        alert("{{ t .Localizer "Please enter a valid sound URL." }}");
+        return;
+      }
+      playAudioURL(url);
+      return;
+    }
+
+    const selectedOption = sel.options[sel.selectedIndex];
+    const soundURL = selectedOption ? selectedOption.getAttribute('data-url') : '';
+    const tonePattern = selectedOption ? selectedOption.getAttribute('data-tone') : '';
+
+    if (soundURL) {
+      playAudioURL(soundURL);
+    } else if (tonePattern) {
+      playTonePattern(tonePattern);
+    }
+  }
+
+  function playAudioURL(url) {
+    const audio = new Audio(url);
+    audio.play().catch(e => {
+      console.warn("Audio playback failed:", e);
+      alert("{{ t .Localizer "Unable to play audio. Check URL and browser autoplay settings." }}");
+    });
+  }
+
+  function playTonePattern(pattern) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const parts = pattern.split(',');
+      let now = ctx.currentTime;
+      parts.forEach(part => {
+        const [freqStr, durStr] = part.split(':');
+        const freq = parseFloat(freqStr);
+        const dur = parseFloat(durStr) / 1000.0;
+        if (freq > 0) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + dur);
+        }
+        now += dur;
+      });
+    } catch (e) {
+      console.warn("Tone synthesis failed:", e);
+    }
+  }
+
   function collectSettings() {
       const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
       const weekdays = Array.from(document.querySelectorAll('input[name="weekdays"]:checked')).map(cb => cb.value);
 
+      const selectedSound = getSelectedNotificationSound();
       // Collect settings
       const settings = {
           enabled: document.getElementById('enabled').checked,
@@ -1981,6 +2202,8 @@ function createImageUploadField(field, config) {
           end_time: document.getElementById('end_time').value,
           color_filter: document.getElementById('color_filter').value,
           show_full_animation: document.getElementById('show_full_animation').value,
+          notification_sound: selectedSound,
+          notification_sound_trigger: (selectedSound && selectedSound !== 'none') ? (document.getElementById('notification_sound_trigger') ? document.getElementById('notification_sound_trigger').value : 'on_change') : '',
           days: days,
 
           use_custom_recurrence: document.getElementById('use_custom_recurrence').checked,

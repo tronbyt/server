@@ -2147,6 +2147,12 @@
   "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately.": {
     "other": "Spielt einen kurzen Ton über den eingebauten Lautsprecher ab, wenn die Touch-Taste verwendet wird. Wird sofort wirksam."
   },
+  "Startup Sound": {
+    "other": "Startton"
+  },
+  "Plays a short jingle on boot when the device starts up.": {
+    "other": "Spielt beim Starten des Geräts einen kurzen Jingle ab."
+  },
   "Leave blank to auto-generate": {
     "other": "Leer lassen zum automatischen Generieren"
   },
@@ -2164,5 +2170,44 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
+  },
+  "Mute Sounds": {
+    "other": "Töne stummschalten"
+  },
+  "Muted": {
+    "other": "Stummgeschaltet"
+  },
+  "Sounds Muted": {
+    "other": "Töne stummgeschaltet"
+  },
+  "Mute all sounds": {
+    "other": "Alle Töne stummschalten"
+  },
+  "Mute in Night Mode": {
+    "other": "Im Nachtmodus stummschalten"
+  },
+  "Disable all sound notifications during night mode.": {
+    "other": "Alle Ton-Benachrichtigungen im Nachtmodus deaktivieren."
+  },
+  "Speaker Volume": {
+    "other": "Lautsprecher-Lautstärke"
+  },
+  "Set playback volume for sound notifications and chimes (0–100%).": {
+    "other": "Wiedergabelautstärke für Ton-Benachrichtigungen und Signaltöne festlegen (0–100%)."
+  },
+  "Test Sound": {
+    "other": "Ton testen"
+  },
+  "Play on Device": {
+    "other": "Auf Gerät abspielen"
+  },
+  "Send an instant test chime to verify speaker output and volume levels on this device.": {
+    "other": "Einen Testton senden, um die Lautsprecherausgabe und Lautstärke auf diesem Gerät zu prüfen."
+  },
+  "Sent to device": {
+    "other": "An Gerät gesendet"
+  },
+  "Playing...": {
+    "other": "Wiedergabe..."
   }
 }

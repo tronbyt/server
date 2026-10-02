@@ -204,6 +204,133 @@
             </div>
         </form>
     </section>
+    <section class="settings-card" id="section-sounds">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Notification Sounds" }}</h2>
+            <p>{{ t .Localizer "Manage built-in and custom notification sounds for devices." }}</p>
+        </div>
+        <div class="settings-field-list">
+            <div class="settings-field-row"
+                 style="background-color: var(--card-bg, #f8f9fa);
+                        padding: 12px;
+                        border-radius: 6px;
+                        border-left: 4px solid var(--primary-color, #0284c7)">
+                <p class="settings-help" style="margin: 0;">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <strong>{{ t .Localizer "Audio Capability Note:" }}</strong>
+                    {{ t .Localizer "Custom uploaded audio files and external URLs require devices configured with Full Speaker capability (such as a Raspberry Pi / Tronberry or ESP32 with DAC). Devices with Piezo Buzzers (such as Tidbyt Gen 2) play frequency tones and support the 5 default sounds below." }}
+                </p>
+            </div>
+            <!-- Default Sounds -->
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label>{{ t .Localizer "Default Sounds" }}</label>
+                    <p class="settings-help">{{ t .Localizer "Built-in sounds available on all audio-capable devices." }}</p>
+                </div>
+                <div class="settings-field-control">
+                    <table class="form-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left;
+                                       border-bottom: 1px solid var(--border-color, #e5e7eb)">
+                                <th style="padding: 6px 8px;">{{ t .Localizer "Name" }}</th>
+                                <th style="padding: 6px 8px;">{{ t .Localizer "Piezo Tone" }}</th>
+                                <th style="padding: 6px 8px;">{{ t .Localizer "Audio Preview" }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .DefaultSounds }}
+                            <tr style="border-bottom: 1px solid var(--border-color, #e5e7eb);">
+                                <td style="padding: 8px;"><strong>{{ .Name }}</strong></td>
+                                <td style="padding: 8px;"><code style="font-size: 0.85em;">{{ .Tone }}</code></td>
+                                <td style="padding: 8px;">
+                                    <audio controls
+                                           preload="none"
+                                           style="height: 32px;
+                                                  max-width: 220px"
+                                           src="{{ .URL }}"></audio>
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Custom Uploaded Sounds -->
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label>{{ t .Localizer "Custom Sounds" }}</label>
+                    <p class="settings-help">{{ t .Localizer "Custom audio files stored in data/sounds directory." }}</p>
+                </div>
+                <div class="settings-field-control">
+                    {{ if .CustomSounds }}
+                    <table class="form-table"
+                           style="width: 100%;
+                                  border-collapse: collapse;
+                                  margin-bottom: 15px">
+                        <thead>
+                            <tr style="text-align: left;
+                                       border-bottom: 1px solid var(--border-color, #e5e7eb)">
+                                <th style="padding: 6px 8px;">{{ t .Localizer "Filename" }}</th>
+                                <th style="padding: 6px 8px;">{{ t .Localizer "Size" }}</th>
+                                <th style="padding: 6px 8px;">{{ t .Localizer "Audio Preview" }}</th>
+                                <th style="padding: 6px 8px; text-align: right;">{{ t .Localizer "Action" }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .CustomSounds }}
+                            <tr style="border-bottom: 1px solid var(--border-color, #e5e7eb);">
+                                <td style="padding: 8px;"><strong>{{ .Name }}</strong></td>
+                                <td style="padding: 8px;"><span class="settings-help">{{ .Size }} bytes</span></td>
+                                <td style="padding: 8px;">
+                                    <audio controls
+                                           preload="none"
+                                           style="height: 32px;
+                                                  max-width: 220px"
+                                           src="{{ .URL }}"></audio>
+                                </td>
+                                <td style="padding: 8px; text-align: right;">
+                                    <form method="post"
+                                          action="/settings/admin/sounds/{{ .Name }}/delete"
+                                          style="display: inline"
+                                          onsubmit="return confirm('{{ t $.Localizer "Are you sure you want to delete this sound?" }}');">
+                                        <button class="w3-button w3-red w3-small" type="submit">
+                                            <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t $.Localizer "Delete" }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                {{ else }}
+                    <p class="settings-help" style="margin-bottom: 15px;">{{ t .Localizer "No custom sounds uploaded yet. Files placed in the data/sounds directory or uploaded below will appear here." }}</p>
+                    {{ end }}
+                    <!-- Upload Form -->
+                    <form method="post"
+                          action="/settings/admin/sounds/upload"
+                          enctype="multipart/form-data"
+                          class="settings-form">
+                        <div class="settings-control-stack"
+                             style="display: flex;
+                                    gap: 8px;
+                                    align-items: center;
+                                    flex-wrap: wrap">
+                            <input type="file"
+                                   name="sound_file"
+                                   id="sound_file"
+                                   accept=".wav,.mp3,.ogg,.m4a"
+                                   required
+                                   class="settings-input settings-file-input">
+                            <button type="submit" class="w3-button w3-blue">
+                                <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Upload Sound" }}
+                            </button>
+                        </div>
+                        <small class="settings-help">{{ t .Localizer "Supported formats: .wav, .mp3, .ogg, .m4a (max 10MB)" }}</small>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
     <section class="settings-card">
         <div class="settings-card-header">
             <h2>{{ t .Localizer "User Management" }}</h2>

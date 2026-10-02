@@ -232,6 +232,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		CustomBrightnessScale: "",
 		NightBrightness:       0,
 		DefaultInterval:       15,
+		Volume:                100,
 		Location:              location,
 		LastAppIndex:          0,
 		InterstitialEnabled:   false,
@@ -394,8 +395,34 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	}
 	device.Notes = r.FormValue("notes")
 
+	audioCap := r.FormValue("audio_capability")
+	switch audioCap {
+	case "none":
+		c := data.AudioCapNone
+		device.AudioCapability = &c
+	case "piezo":
+		c := data.AudioCapPiezo
+		device.AudioCapability = &c
+	case "full":
+		c := data.AudioCapFull
+		device.AudioCapability = &c
+	default: // "auto" or empty
+		device.AudioCapability = nil
+	}
+
 	if i, err := strconv.Atoi(r.FormValue("default_interval")); err == nil {
 		device.DefaultInterval = i
+	}
+
+	if volStr := r.FormValue("volume"); volStr != "" {
+		if vol, err := strconv.Atoi(volStr); err == nil {
+			if vol < 0 {
+				vol = 0
+			} else if vol > 100 {
+				vol = 100
+			}
+			device.Volume = vol
+		}
 	}
 
 	// 2. Color Filter
@@ -452,6 +479,7 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	nightStartWas := device.NightStart
 	nightEndWas := device.NightEnd
 	device.NightModeEnabled = r.FormValue("night_mode_enabled") == "on"
+	device.NightModeMute = r.FormValue("night_mode_mute") == "on"
 
 	nightStart := r.FormValue("night_start")
 	if nightStart != "" {
@@ -898,6 +926,69 @@ func (s *Server) handleUpdateInterval(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (s *Server) handleSetMute(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	muted, err := strconv.ParseBool(r.FormValue("muted"))
+	if err != nil {
+		http.Error(w, "Invalid muted state", http.StatusBadRequest)
+		return
+	}
+
+	device.Muted = muted
+
+	if err := s.DB.Model(&data.Device{ID: device.ID}).Update("muted", muted).Error; err != nil {
+		slog.Error("Failed to update device mute state", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	user := GetUser(r)
+	s.notifyDashboard(user.Username, WSEvent{
+		Type:     "device_updated",
+		DeviceID: device.ID,
+		Payload: map[string]any{
+			"muted":   muted,
+			"isMuted": device.IsMuted(),
+		},
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"muted":   muted,
+		"isMuted": device.IsMuted(),
+	})
+}
+
+func (s *Server) handleTestSoundDevice(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	if device.IsMuted() {
+		http.Error(w, "Device is currently muted. Unmute device to test sound.", http.StatusBadRequest)
+		return
+	}
+
+	soundID := r.FormValue("sound")
+	if soundID == "" {
+		soundID = "default:chime"
+	}
+
+	baseURL := s.GetDeviceBaseURL(device)
+	if err := s.TriggerDeviceSound(r.Context(), device, soundID, baseURL); err != nil {
+		slog.Error("Failed to trigger test sound on device", "device", device.ID, "sound", soundID, "error", err)
+		http.Error(w, "Failed to trigger sound on device", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":  "ok",
+		"device":  device.ID,
+		"sound":   soundID,
+		"message": "Sound played",
+	})
+}
+
 func (s *Server) handleSetNightModeOverride(w http.ResponseWriter, r *http.Request) {
 	s.setModeOverride(w, r, "night")
 }
@@ -1159,10 +1250,17 @@ func (s *Server) handleUpdateFirmwareSettings(w http.ResponseWriter, r *http.Req
 	payload := make(map[string]any)
 
 	// Boolean fields
-	boolFields := []string{"skip_display_version", "skip_boot_animation", "prefer_ipv6", "ap_mode", "swap_colors", "disable_touch", "touch_beep"}
+	boolFields := []string{"skip_display_version", "skip_boot_animation", "prefer_ipv6", "ap_mode", "swap_colors", "disable_touch", "touch_beep", "startup_sound"}
 	for _, field := range boolFields {
 		if val := r.FormValue(field); val != "" {
 			payload[field] = val == "true"
+		}
+	}
+	if val := r.FormValue("startup_sound"); val != "" {
+		b := val == "true"
+		device.Info.StartupSound = &b
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+			slog.Error("Failed to update device info in DB", "error", err)
 		}
 	}
 

@@ -859,6 +859,36 @@ func TestHandlePatchDeviceDimModeActive(t *testing.T) {
 	assert.True(t, *updatedDevice.DimModeOverride)
 }
 
+func TestPatchDevice_Mute(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey := "test_api_key"
+	deviceID := "testdevice"
+
+	muted := true
+	nightModeMute := true
+	update := DeviceUpdate{
+		Muted:         &muted,
+		NightModeMute: &nightModeMute,
+	}
+	body, _ := json.Marshal(update)
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var payload DevicePayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	assert.True(t, payload.Muted)
+	assert.True(t, payload.IsMuted)
+	assert.True(t, payload.NightMode.Mute)
+
+	updatedDevice, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	assert.True(t, updatedDevice.Muted)
+	assert.True(t, updatedDevice.NightModeMute)
+}
+
 func TestHandlePatchInstallation(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"

@@ -2,9 +2,16 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
@@ -94,4 +101,95 @@ func boolToString(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func (s *Server) handleAdminUploadSound(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil || !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Limit upload size to 10MB and cap body stream to prevent unbounded disk spooling
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		s.flashAndRedirect(w, r, "File too large (max 10MB)", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	file, header, err := r.FormFile("sound_file")
+	if err != nil {
+		s.flashAndRedirect(w, r, "No file provided", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if !slices.Contains(allowedAudioExtensions, ext) {
+		s.flashAndRedirect(w, r, fmt.Sprintf("Invalid audio format %s. Allowed: %s", ext, strings.Join(allowedAudioExtensions, ", ")), "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	cleanFilename := filepath.Base(strings.TrimSpace(header.Filename))
+	if cleanFilename == "" || cleanFilename == "." {
+		s.flashAndRedirect(w, r, "Invalid filename", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	if err := s.EnsureSoundsDir(); err != nil {
+		slog.Error("Failed to ensure sounds directory", "error", err)
+		s.flashAndRedirect(w, r, "Failed to create sounds directory", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	targetPath, err := securejoin.SecureJoin(s.SoundsDir(), cleanFilename)
+	if err != nil {
+		slog.Warn("Path traversal attempt in sound upload", "filename", header.Filename, "error", err)
+		s.flashAndRedirect(w, r, "Invalid filename", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	dst, err := os.Create(targetPath)
+	if err != nil {
+		slog.Error("Failed to create sound file", "path", targetPath, "error", err)
+		s.flashAndRedirect(w, r, "Failed to save file", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+	defer func() { _ = dst.Close() }()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		slog.Error("Failed to write sound file", "path", targetPath, "error", err)
+		s.flashAndRedirect(w, r, "Failed to save file content", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	s.flashAndRedirect(w, r, fmt.Sprintf("Sound '%s' uploaded successfully.", cleanFilename), "/settings/admin#section-sounds", http.StatusSeeOther)
+}
+
+func (s *Server) handleAdminDeleteSound(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil || !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	filename := filepath.Base(strings.TrimSpace(r.PathValue("filename")))
+	if filename == "" || filename == "." {
+		s.flashAndRedirect(w, r, "Invalid filename", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+	targetPath, err := securejoin.SecureJoin(s.SoundsDir(), filename)
+	if err != nil {
+		slog.Warn("Path traversal attempt in sound delete", "filename", filename, "error", err)
+		s.flashAndRedirect(w, r, "Invalid filename", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+		slog.Error("Failed to delete sound file", "path", targetPath, "error", err)
+		s.flashAndRedirect(w, r, "Failed to delete file", "/settings/admin#section-sounds", http.StatusSeeOther)
+		return
+	}
+
+	s.flashAndRedirect(w, r, fmt.Sprintf("Sound '%s' deleted successfully.", filename), "/settings/admin#section-sounds", http.StatusSeeOther)
 }

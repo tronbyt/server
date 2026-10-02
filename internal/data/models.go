@@ -151,6 +151,31 @@ func (dt DeviceType) String() string {
 	}
 }
 
+type AudioCapability string
+
+const (
+	AudioCapNone  AudioCapability = "none"
+	AudioCapPiezo AudioCapability = "piezo"
+	AudioCapFull  AudioCapability = "full"
+)
+
+// DefaultAudioCapability returns the default audio hardware capability for the device type.
+func (dt DeviceType) DefaultAudioCapability() AudioCapability {
+	switch dt {
+	case DeviceTidbytGen2:
+		return AudioCapPiezo
+	case DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare:
+		return AudioCapFull
+	default:
+		return AudioCapNone
+	}
+}
+
+// HasSpeaker reports whether the device type has built-in audio hardware (e.g. Tidbyt Gen2 buzzer or Raspberry Pi audio).
+func (dt DeviceType) HasSpeaker() bool {
+	return dt.DefaultAudioCapability() != AudioCapNone
+}
+
 // Slug returns the URL-friendly slug for the DeviceType.
 func (dt DeviceType) Slug() string {
 	if s, ok := DeviceTypeToString[dt]; ok {
@@ -468,6 +493,7 @@ type DeviceInfo struct {
 	ColorOrder         *string      `json:"color_order"`
 	DisableTouch       *bool        `json:"disable_touch"`
 	TouchBeep          *bool        `json:"touch_beep"`
+	StartupSound       *bool        `json:"startup_sound"`
 	ImageURL           *string      `json:"image_url"`
 	Hostname           *string      `json:"hostname"`
 	SNTPServer         *string      `json:"sntp_server"`
@@ -618,12 +644,16 @@ type App struct {
 	RecurrenceStartDate *string        `json:"recurrence_start_date"` // YYYY-MM-DD
 	RecurrenceEndDate   *string        `json:"recurrence_end_date"`   // YYYY-MM-DD
 
-	Config            JSONMap      `gorm:"type:text"           json:"config"`
-	EmptyLastRender   bool         `json:"empty_last_render"`
-	RenderMessages    StringSlice  `gorm:"type:text"           json:"render_messages"`
-	AutoPin           bool         `json:"auto_pin"`
-	ColorFilter       *ColorFilter `json:"color_filter"`
-	ShowFullAnimation *bool        `json:"show_full_animation"`
+	Config                   JSONMap      `gorm:"type:text"                  json:"config"`
+	EmptyLastRender          bool         `json:"empty_last_render"`
+	RenderMessages           StringSlice  `gorm:"type:text"                  json:"render_messages"`
+	AutoPin                  bool         `json:"auto_pin"`
+	ColorFilter              *ColorFilter `json:"color_filter"`
+	ShowFullAnimation        *bool        `json:"show_full_animation"`
+	NotificationSound        *string      `json:"notification_sound"`
+	NotificationSoundTrigger string       `json:"notification_sound_trigger"` // "every_render" or "on_change"
+	LastRenderHash           string       `json:"last_render_hash"`
+	LastSoundAt              *time.Time   `json:"last_sound_at,omitempty"`
 }
 
 type Device struct {
@@ -677,9 +707,16 @@ type Device struct {
 	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
+	// Audio
+	AudioCapability *AudioCapability `gorm:"type:text"     json:"audio_capability,omitempty"`
+	Volume          int              `gorm:"default:100"   json:"volume"`
+	Muted           bool             `gorm:"default:false" json:"muted"`
+	NightModeMute   bool             `gorm:"default:false" json:"night_mode_mute"`
+
 	// HTTP device commands (delivered via /next response headers)
 	PendingImageURL string `json:"pending_image_url,omitempty"`
 	PendingReboot   bool   `json:"pending_reboot,omitempty"`
+	PendingSound    string `json:"pending_sound,omitempty"`
 
 	Apps []*App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
@@ -1169,4 +1206,56 @@ func (d Device) BrightnessScaleMap() map[int]int {
 // BrightnessUIScale returns the current brightness level (0-5) for the UI.
 func (d Device) BrightnessUIScale() int {
 	return d.Brightness.UIScale(d.BrightnessScaleMap())
+}
+
+// GetAudioCapability returns the effective audio capability for the device:
+// explicitly configured setting if present, otherwise default for device type.
+func (d *Device) GetAudioCapability() AudioCapability {
+	if d != nil && d.AudioCapability != nil && *d.AudioCapability != "" {
+		return *d.AudioCapability
+	}
+	if d != nil {
+		return d.Type.DefaultAudioCapability()
+	}
+	return AudioCapNone
+}
+
+// HasSpeaker reports whether the device has speaker or buzzer audio hardware.
+func (d *Device) HasSpeaker() bool {
+	if d == nil {
+		return false
+	}
+	return d.GetAudioCapability() != AudioCapNone
+}
+
+// IsMuted reports whether sound notifications are currently suppressed on the device
+// (either manually muted or muted during active night mode).
+func (d *Device) IsMuted() bool {
+	if d == nil {
+		return false
+	}
+	if d.Muted {
+		return true
+	}
+	if d.NightModeMute && d.GetNightModeIsActive() {
+		return true
+	}
+	return false
+}
+
+// GetVolume returns the device sound volume (0-100), defaulting to 100 if unset (0).
+func (d *Device) GetVolume() int {
+	if d == nil {
+		return 100
+	}
+	if d.Volume < 0 {
+		return 0
+	}
+	if d.Volume > 100 {
+		return 100
+	}
+	if d.Volume == 0 {
+		return 100
+	}
+	return d.Volume
 }
