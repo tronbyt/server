@@ -280,6 +280,7 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeGro
 		data.DeviceMatrixPortal,
 		data.DeviceMatrixPortalWS,
 		data.DeviceMatrixPortalSquare,
+		data.DeviceMatrixPortalWide,
 		data.DeviceWaveshareS3,
 		data.DevicePixoticker,
 		data.DeviceRaspberryPi,
