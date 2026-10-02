@@ -166,6 +166,60 @@
                         </p>
                     </div>
                 </div>
+                {{ if .Device.HasSpeaker }}
+                <div class="settings-field-row" id="volume_control_row">
+                    <div class="settings-field-label">
+                        <label for="volume">{{ t .Localizer "Speaker Volume" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="range-container">
+                            <input type="range"
+                                   name="volume"
+                                   id="volume"
+                                   min="0"
+                                   max="100"
+                                   step="5"
+                                   value="{{ .Device.GetVolume }}"
+                                   oninput="this.nextElementSibling.value = this.value">
+                            <output class="range-output">{{ .Device.GetVolume }}</output>
+                        </div>
+                        <p class="settings-help">{{ t .Localizer "Set playback volume for sound notifications and chimes (0–100%)." }}</p>
+                    </div>
+                </div>
+                <div class="settings-field-row" id="test_sound_row">
+                    <div class="settings-field-label">
+                        <label for="test_sound_select">{{ t .Localizer "Test Sound" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="test-sound-container"
+                             style="display: flex;
+                                    gap: 8px;
+                                    align-items: center;
+                                    flex-wrap: wrap">
+                            <select id="test_sound_select"
+                                    class="settings-input"
+                                    style="max-width: 200px">
+                                <option value="default:chime">{{ t .Localizer "Chime" }}</option>
+                                <option value="default:ding">{{ t .Localizer "Ding" }}</option>
+                                <option value="default:bell">{{ t .Localizer "Bell" }}</option>
+                                <option value="default:pop">{{ t .Localizer "Pop" }}</option>
+                                <option value="default:alert">{{ t .Localizer "Alert" }}</option>
+                                <option value="default:tron">{{ t .Localizer "Tron Bit" }}</option>
+                                <option value="default:sonar">{{ t .Localizer "Sonar" }}</option>
+                            </select>
+                            <button type="button"
+                                    class="w3-button w3-blue w3-round"
+                                    onclick="triggerDeviceTestSound('{{ .Device.ID }}')">
+                                <i class="fa-solid fa-volume-high"></i> {{ t .Localizer "Play on Device" }}
+                            </button>
+                            <span id="test-sound-status" style="font-size: 0.9em; margin-left: 4px;"></span>
+                        </div>
+                        <p class="settings-help">
+                            {{ t .Localizer "Send an instant test chime to verify speaker output and volume levels on this device." }}
+                        </p>
+                    </div>
+                </div>
+                {{ end }}
                 <div class="settings-field-row">
                     <div class="settings-field-label">
                         <label for="require_api_key">{{ t .Localizer "Require API Key" }}</label>
@@ -1172,6 +1226,42 @@
         }
 
         document.getElementById('device-form').submit();
+    }
+
+    async function triggerDeviceTestSound(deviceId) {
+        const sel = document.getElementById('test_sound_select');
+        const sound = sel ? sel.value : 'default:chime';
+        const statusSpan = document.getElementById('test-sound-status');
+        if (statusSpan) {
+            statusSpan.innerText = "{{ t .Localizer "Playing..." }}";
+            statusSpan.style.color = "";
+        }
+        try {
+            const formData = new FormData();
+            formData.append('sound', sound);
+            const resp = await fetch(`/devices/${deviceId}/test_sound`, {
+                method: 'POST',
+                body: formData
+            });
+            if (resp.ok) {
+                if (statusSpan) {
+                    statusSpan.innerText = "✓ {{ t .Localizer "Sent to device" }}";
+                    statusSpan.style.color = "var(--color-success, #28a745)";
+                    setTimeout(() => { if (statusSpan.innerText.includes("Sent")) statusSpan.innerText = ""; }, 3000);
+                }
+            } else {
+                const errText = await resp.text();
+                if (statusSpan) {
+                    statusSpan.innerText = "✗ " + (errText || "Error");
+                    statusSpan.style.color = "var(--color-danger, #dc3545)";
+                }
+            }
+        } catch (err) {
+            if (statusSpan) {
+                statusSpan.innerText = "✗ Network error";
+                statusSpan.style.color = "var(--color-danger, #dc3545)";
+            }
+        }
     }
 </script>
 {{ end }}

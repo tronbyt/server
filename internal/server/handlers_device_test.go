@@ -663,3 +663,49 @@ func TestHandleSetMute(t *testing.T) {
 	s.handleSetMute(rr, req)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }
+
+func TestHandleTestSoundDevice(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser-sound"}
+	require.NoError(t, s.DB.Create(&user).Error)
+
+	piezoCap := data.AudioCapPiezo
+	device := data.Device{
+		ID:              "dev-test-sound",
+		Username:        user.Username,
+		Name:            "Test Sound Device",
+		AudioCapability: &piezoCap,
+		Volume:          80,
+	}
+	require.NoError(t, s.DB.Create(&device).Error)
+
+	// 1. Device is unmuted: test sound succeeds
+	form := strings.NewReader("sound=default:sonar")
+	req := httptest.NewRequest(http.MethodPost, "/devices/dev-test-sound/test_sound", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+	req = req.WithContext(context.WithValue(req.Context(), deviceContextKey, &device))
+	rr := httptest.NewRecorder()
+
+	s.handleTestSoundDevice(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, "ok", resp["status"])
+	assert.Equal(t, "default:sonar", resp["sound"])
+
+	// 2. Device is muted: test sound is rejected with friendly 400
+	device.Muted = true
+	form = strings.NewReader("sound=default:sonar")
+	req = httptest.NewRequest(http.MethodPost, "/devices/dev-test-sound/test_sound", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+	req = req.WithContext(context.WithValue(req.Context(), deviceContextKey, &device))
+	rr = httptest.NewRecorder()
+
+	s.handleTestSoundDevice(rr, req)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	assert.Contains(t, rr.Body.String(), "Device is currently muted")
+}

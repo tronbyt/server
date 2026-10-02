@@ -232,6 +232,7 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		CustomBrightnessScale: "",
 		NightBrightness:       0,
 		DefaultInterval:       15,
+		Volume:                100,
 		Location:              location,
 		LastAppIndex:          0,
 		InterstitialEnabled:   false,
@@ -411,6 +412,17 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 
 	if i, err := strconv.Atoi(r.FormValue("default_interval")); err == nil {
 		device.DefaultInterval = i
+	}
+
+	if volStr := r.FormValue("volume"); volStr != "" {
+		if vol, err := strconv.Atoi(volStr); err == nil {
+			if vol < 0 {
+				vol = 0
+			} else if vol > 100 {
+				vol = 100
+			}
+			device.Volume = vol
+		}
 	}
 
 	// 2. Color Filter
@@ -945,6 +957,35 @@ func (s *Server) handleSetMute(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"muted":   muted,
 		"isMuted": device.IsMuted(),
+	})
+}
+
+func (s *Server) handleTestSoundDevice(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	if device.IsMuted() {
+		http.Error(w, "Device is currently muted. Unmute device to test sound.", http.StatusBadRequest)
+		return
+	}
+
+	soundID := r.FormValue("sound")
+	if soundID == "" {
+		soundID = "default:chime"
+	}
+
+	baseURL := s.GetDeviceBaseURL(device)
+	if err := s.TriggerDeviceSound(r.Context(), device, soundID, baseURL); err != nil {
+		slog.Error("Failed to trigger test sound on device", "device", device.ID, "sound", soundID, "error", err)
+		http.Error(w, "Failed to trigger sound on device", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":  "ok",
+		"device":  device.ID,
+		"sound":   soundID,
+		"message": "Sound played",
 	})
 }
 

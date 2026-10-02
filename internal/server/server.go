@@ -325,6 +325,7 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/set_night_mode_override", s.RequireLogin(s.RequireDevice(s.handleSetNightModeOverride)))
 	s.Router.HandleFunc("POST /devices/{id}/set_dim_mode_override", s.RequireLogin(s.RequireDevice(s.handleSetDimModeOverride)))
 	s.Router.HandleFunc("POST /devices/{id}/set_mute", s.RequireLogin(s.RequireDevice(s.handleSetMute)))
+	s.Router.HandleFunc("POST /devices/{id}/test_sound", s.RequireLogin(s.RequireDevice(s.handleTestSoundDevice)))
 
 	s.Router.HandleFunc("GET /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppGet)))
 	s.Router.HandleFunc("POST /devices/{id}/addapp", s.RequireLogin(s.RequireDevice(s.handleAddAppPost)))

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"tronbyt-server/internal/data"
 
@@ -52,7 +53,7 @@ func TestResolveSoundPayload(t *testing.T) {
 	assert.Equal(t, "600:40,850:60", s.ResolveSoundPayload(devPiezo, baseURL, "pop"))
 	assert.Equal(t, "784:100,0:50,784:150", s.ResolveSoundPayload(devPiezo, baseURL, "alert"))
 	assert.Equal(t, "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150", s.ResolveSoundPayload(devPiezo, baseURL, "tron"))
-	assert.Equal(t, "1760:150,0:30,1760:70", s.ResolveSoundPayload(devPiezo, baseURL, "sonar"))
+	assert.Equal(t, "1520:200,0:60,1500:120", s.ResolveSoundPayload(devPiezo, baseURL, "sonar"))
 	// Raw tone format passes through
 	assert.Equal(t, "440:100,880:200", s.ResolveSoundPayload(devPiezo, baseURL, "440:100,880:200"))
 	// External URLs and custom files are not playable on piezo
@@ -644,4 +645,48 @@ func TestTriggerDeviceSoundMuted(t *testing.T) {
 	reloaded, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, reloaded.PendingSound)
+}
+
+func TestDeviceVolume(t *testing.T) {
+	var devNil *data.Device
+	assert.Equal(t, 100, devNil.GetVolume())
+
+	devZero := &data.Device{Volume: 0}
+	assert.Equal(t, 100, devZero.GetVolume())
+
+	devCustom := &data.Device{Volume: 65}
+	assert.Equal(t, 65, devCustom.GetVolume())
+
+	devNegative := &data.Device{Volume: -10}
+	assert.Equal(t, 0, devNegative.GetVolume())
+
+	devHigh := &data.Device{Volume: 150}
+	assert.Equal(t, 100, devHigh.GetVolume())
+}
+
+func TestSoundDebounceCooldown(t *testing.T) {
+	sound := "default:chime"
+	app := &data.App{
+		ID:                       1001,
+		Name:                     "clock",
+		NotificationSound:        &sound,
+		NotificationSoundTrigger: "on_change",
+		LastRenderHash:           "hash-1",
+	}
+
+	now := time.Now()
+	// Case 1: First sound trigger - LastSoundAt is nil
+	assert.Nil(t, app.LastSoundAt)
+	// Suppose sound triggers
+	app.LastSoundAt = &now
+
+	// Case 2: Render 5 seconds later with content change (newHash != lastHash)
+	renderTime1 := now.Add(5 * time.Second)
+	shouldPlay := (renderTime1.Sub(*app.LastSoundAt) >= 30*time.Second)
+	assert.False(t, shouldPlay, "Sound should be suppressed within 30s cooldown")
+
+	// Case 3: Render 35 seconds later with content change
+	renderTime2 := now.Add(35 * time.Second)
+	shouldPlay = (renderTime2.Sub(*app.LastSoundAt) >= 30*time.Second)
+	assert.True(t, shouldPlay, "Sound should play after 30s cooldown has elapsed")
 }

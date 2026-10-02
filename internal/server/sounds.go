@@ -83,7 +83,7 @@ var DefaultNotificationSounds = []SoundItem{
 		ID:        "default:sonar",
 		Name:      "Sonar",
 		URL:       "/static/sounds/sonar.wav",
-		Tone:      "1760:150,0:30,1760:70",
+		Tone:      "1520:200,0:60,1500:120",
 		IsDefault: true,
 	},
 }
@@ -173,7 +173,7 @@ func MapSoundToTone(soundName string) string {
 	case strings.Contains(lower, "tron") || strings.Contains(lower, "bit"):
 		return "1047:40,0:15,1319:40,0:15,1568:40,0:15,2093:60,0:20,1568:50,0:15,2093:150"
 	case strings.Contains(lower, "sonar") || strings.Contains(lower, "ping"):
-		return "1760:150,0:30,1760:70"
+		return "1520:200,0:60,1500:120"
 	default:
 		return "659:120,880:180" // Option A pleasant 2-tone chime
 	}
@@ -454,8 +454,9 @@ func (s *Server) TriggerDeviceSound(ctx context.Context, device *data.Device, so
 
 	// 3. Broadcast to connected WebSocket devices
 	wsMsg, err := json.Marshal(map[string]any{
-		"type":  "sound",
-		"sound": payload,
+		"type":   "sound",
+		"sound":  payload,
+		"volume": device.GetVolume(),
 	})
 	if err != nil {
 		return fmt.Errorf("marshal sound ws message: %w", err)

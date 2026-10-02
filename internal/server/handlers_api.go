@@ -25,6 +25,7 @@ import (
 // DeviceUpdate represents the updatable fields for a device via API.
 type DeviceUpdate struct {
 	Brightness          *int    `json:"brightness"`
+	Volume              *int    `json:"volume"`
 	IntervalSec         *int    `json:"intervalSec"`
 	Muted               *bool   `json:"muted"`
 	NightModeEnabled    *bool   `json:"nightModeEnabled"`
@@ -49,6 +50,7 @@ type DevicePayload struct {
 	Notes        string          `json:"notes"`
 	IntervalSec  int             `json:"intervalSec"`
 	Brightness   int             `json:"brightness"`
+	Volume       int             `json:"volume"`
 	Muted        bool            `json:"muted"`
 	IsMuted      bool            `json:"isMuted"`
 	NightMode    NightMode       `json:"nightMode"`
@@ -167,6 +169,7 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		Notes:       d.Notes,
 		IntervalSec: d.DefaultInterval,
 		Brightness:  int(d.Brightness),
+		Volume:      d.GetVolume(),
 		Muted:       d.Muted,
 		IsMuted:     d.IsMuted(),
 		NightMode: NightMode{
@@ -717,6 +720,15 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 
 	if update.Brightness != nil {
 		device.Brightness = data.Brightness(*update.Brightness)
+	}
+	if update.Volume != nil {
+		vol := *update.Volume
+		if vol < 0 {
+			vol = 0
+		} else if vol > 100 {
+			vol = 100
+		}
+		device.Volume = vol
 	}
 	if update.IntervalSec != nil {
 		device.DefaultInterval = *update.IntervalSec

@@ -648,6 +648,7 @@ type App struct {
 	NotificationSound        *string      `json:"notification_sound"`
 	NotificationSoundTrigger string       `json:"notification_sound_trigger"` // "every_render" or "on_change"
 	LastRenderHash           string       `json:"last_render_hash"`
+	LastSoundAt              *time.Time   `json:"last_sound_at,omitempty"`
 }
 
 type Device struct {
@@ -703,6 +704,7 @@ type Device struct {
 
 	// Audio
 	AudioCapability *AudioCapability `gorm:"type:text"     json:"audio_capability,omitempty"`
+	Volume          int              `gorm:"default:100"   json:"volume"`
 	Muted           bool             `gorm:"default:false" json:"muted"`
 	NightModeMute   bool             `gorm:"default:false" json:"night_mode_mute"`
 
@@ -1230,4 +1232,21 @@ func (d *Device) IsMuted() bool {
 		return true
 	}
 	return false
+}
+
+// GetVolume returns the device sound volume (0-100), defaulting to 100 if unset (0).
+func (d *Device) GetVolume() int {
+	if d == nil {
+		return 100
+	}
+	if d.Volume < 0 {
+		return 0
+	}
+	if d.Volume > 100 {
+		return 100
+	}
+	if d.Volume == 0 {
+		return 100
+	}
+	return d.Volume
 }
