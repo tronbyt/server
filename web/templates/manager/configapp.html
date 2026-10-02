@@ -956,8 +956,19 @@
       }
 
       if (inputElement) {
-          inputElement.id = inputId;
-          inputElement.dataset.configId = field.id;
+          // location, locationbased, png and typeahead return a wrapper <div>
+          // whose inner control already carries this field's id and
+          // data-config-id. Setting them on the wrapper as well leaves two
+          // elements answering to the same identity, and both
+          // getElementById() and querySelector() return the first in document
+          // order, which is the wrapper. Its .value is undefined.
+          const inner = inputElement.querySelector
+            ? inputElement.querySelector('[data-config-id="' + field.id + '"]')
+            : null;
+          if (!inner) {
+              inputElement.id = inputId;
+              inputElement.dataset.configId = field.id;
+          }
           const eventType = (inputElement.type === 'checkbox' || inputElement.tagName === 'SELECT') ? 'change' : 'input';
 
           if (!inputElement.hasAttribute("data-ignore-config")) {
