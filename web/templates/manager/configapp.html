@@ -962,9 +962,18 @@
           // elements answering to the same identity, and both
           // getElementById() and querySelector() return the first in document
           // order, which is the wrapper. Its .value is undefined.
-          const inner = inputElement.querySelector
-            ? inputElement.querySelector('[data-config-id="' + field.id + '"]')
-            : null;
+          // Walked rather than matched with an interpolated selector: a field
+          // id may legally contain a quote, which would make the selector
+          // invalid and throw, aborting form creation for the whole app.
+          let inner = null;
+          if (inputElement.querySelectorAll) {
+              for (const candidate of inputElement.querySelectorAll("[data-config-id]")) {
+                  if (candidate.dataset.configId === field.id) {
+                      inner = candidate;
+                      break;
+                  }
+              }
+          }
           if (!inner) {
               inputElement.id = inputId;
               inputElement.dataset.configId = field.id;
