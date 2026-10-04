@@ -596,17 +596,25 @@ func (s *Server) ListSystemApps() []apps.AppMetadata {
 }
 
 func (s *Server) RefreshSystemAppsCache() {
-	s.systemAppsCacheMutex.Lock()
-	defer s.systemAppsCacheMutex.Unlock()
-
-	slog.Info("Refreshing system apps cache")
-	apps, err := apps.ListSystemApps(s.DataDir)
-	if err == nil {
-		s.systemAppsCache = apps
-		slog.Info("System apps cache refreshed", "count", len(s.systemAppsCache))
-	} else {
+	if err := s.replaceSystemAppsCache(); err != nil {
 		slog.Error("Failed to refresh system apps cache", "error", err)
 	}
+}
+
+func (s *Server) replaceSystemAppsCache() error {
+	slog.Info("Refreshing system apps cache")
+	refreshedApps, err := apps.ListSystemApps(s.DataDir)
+	if err != nil {
+		return err
+	}
+
+	s.systemAppsCacheMutex.Lock()
+	s.systemAppsCache = refreshedApps
+	count := len(s.systemAppsCache)
+	s.systemAppsCacheMutex.Unlock()
+
+	slog.Info("System apps cache refreshed", "count", count)
+	return nil
 }
 
 // getAppMetadata retrieves metadata for an app path, checking the system cache first,

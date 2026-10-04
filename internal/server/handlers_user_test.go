@@ -43,6 +43,22 @@ func TestHandleSetThemePreference(t *testing.T) {
 	}
 }
 
+func TestHandleRefreshSystemRepoReturnsJSONError(t *testing.T) {
+	s := newTestServer(t)
+	s.Config.SystemAppsRepo = "file:///path/that/does/not/exist"
+	admin := data.User{Username: "admin", IsAdmin: true}
+
+	req := httptest.NewRequest(http.MethodPost, "/refresh_system_repo", nil)
+	req.Header.Set("Accept", "application/json")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &admin))
+	rr := httptest.NewRecorder()
+
+	s.handleRefreshSystemRepo(rr, req)
+
+	require.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.Contains(t, rr.Body.String(), "Failed to refresh system repository")
+}
+
 func TestHandleEditUserPostUpdatesEmail(t *testing.T) {
 	s := newTestServer(t)
 
