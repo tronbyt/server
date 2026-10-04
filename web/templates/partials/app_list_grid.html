@@ -49,7 +49,7 @@
             <span class="select-wrap">
                 <select id="sort_{{ .SearchID }}" onchange="sortApps('{{ .SearchID }}')">
                     <option value="system" selected>{{ t .Localizer "Default" }}</option>
-                    <option value="installs">{{ t .Localizer "Most installs" }}</option>
+                    <option value="installs">{{ t .Localizer "Popularity" }}</option>
                     <option value="newest">{{ t .Localizer "Newest" }}</option>
                     <option value="last-updated">{{ t .Localizer "Last Updated" }}</option>
                     <option value="alphabetical">{{ t .Localizer "Alphabetical (A-Z)" }}</option>

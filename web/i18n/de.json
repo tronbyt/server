@@ -2168,7 +2168,7 @@
   "Number of installs": {
     "other": "Anzahl der Installationen"
   },
-  "Most installs": {
-    "other": "Meiste Installationen"
+  "Popularity": {
+    "other": "Beliebtheit"
   }
 }
