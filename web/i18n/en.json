@@ -2167,5 +2167,11 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "You are accessing this server via localhost. For proper firmware generation you should use:"
+  },
+  "Number of installs": {
+    "other": "Number of installs"
+  },
+  "Most installs": {
+    "other": "Most installs"
   }
 }

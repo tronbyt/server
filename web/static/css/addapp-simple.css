@@ -101,6 +101,32 @@
   font-weight: 500;
 }
 
+/* Padded, theme-aware chevron for filter selects. Icon: Heroicons chevron-down (MIT). */
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.content .select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 0.85rem;
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+  background-color: var(--muted-text);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
 .control-checkbox,
 .filter-checkbox {
   margin: 0 !important;
@@ -162,6 +188,25 @@
   font-size: 0.86rem;
   line-height: 1.45;
   color: var(--muted-text);
+}
+
+/* Install count with download icon. */
+.app-item-installs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-text);
+}
+
+.app-item-installs svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .app-item-muted {
