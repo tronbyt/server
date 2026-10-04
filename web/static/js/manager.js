@@ -630,6 +630,12 @@ function sortItems(items, sortTypeParam = null) {
     const updatedB = b.getAttribute('data-updated') || '';
 
     switch (currentSortType) {
+      case 'installs': {
+        // Apps without a count sort after every counted app.
+        const installsA = Number(a.getAttribute('data-installs') || -1);
+        const installsB = Number(b.getAttribute('data-installs') || -1);
+        return installsB - installsA || nameA.localeCompare(nameB);
+      }
       case 'alphabetical':
         return nameA.localeCompare(nameB);
       case 'rev-alphabetical':

@@ -10,6 +10,7 @@ import (
 )
 
 type Settings struct {
+	NibletCloudURL         string `env:"NIBLET_CLOUD_URL"         envDefault:"https://cloud.heyniblet.com"`
 	DBDSN                  string `env:"DB_DSN"                   envDefault:"data/tronbyt.db"`
 	DataDir                string `env:"DATA_DIR"                 envDefault:"data"`
 	Production             bool   `env:"PRODUCTION"               envDefault:"true"`
@@ -77,5 +78,9 @@ func LoadSettings() (*Settings, error) {
 		return nil, err
 	}
 
+	// An explicitly empty URL disables Niblet network activity.
+	if value, set := os.LookupEnv("NIBLET_CLOUD_URL"); set {
+		cfg.NibletCloudURL = value
+	}
 	return &cfg, nil
 }

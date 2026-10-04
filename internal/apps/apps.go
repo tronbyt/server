@@ -35,6 +35,7 @@ type AppMetadata struct {
 	Manifest
 
 	// Fields populated by logic
+	InstallCount  *int64 // nil when no count is known
 	Path          string
 	IsInstalled   bool
 	Date          string

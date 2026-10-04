@@ -61,6 +61,14 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
 	systemApps := s.ListSystemApps()
+	// Use cached install counts; browsing never calls Niblet Cloud.
+	s.systemAppsCacheMutex.RLock()
+	for i := range systemApps {
+		if count, ok := s.installCounts[systemApps[i].ID]; ok {
+			systemApps[i].InstallCount = &count
+		}
+	}
+	s.systemAppsCacheMutex.RUnlock()
 	customApps := apps.ListUserApps(s.DataDir, user.Username)
 
 	s.markInstalledApps(device, systemApps, customApps)

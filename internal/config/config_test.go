@@ -15,3 +15,11 @@ func TestLoadSettings(t *testing.T) {
 	require.Equal(t, "testdata", cfg.DataDir)
 	require.Equal(t, "groups roles", cfg.OIDCAdditionalScopes)
 }
+
+// envDefault must not defeat an explicit network opt-out.
+func TestNibletURLCanBeDisabled(t *testing.T) {
+	t.Setenv("NIBLET_CLOUD_URL", "")
+	cfg, err := LoadSettings()
+	require.NoError(t, err)
+	require.Empty(t, cfg.NibletCloudURL)
+}
