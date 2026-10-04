@@ -38,6 +38,8 @@ func getFuncMap() template.FuncMap {
 		"webauthn_icon":  tmplWebAuthnIcon,
 		"installationID": tmplInstallationID,
 		"panelAspect":    tmplPanelAspect,
+		"thousands":      tmplThousands,
+		"installCount":   tmplInstallCount,
 	}
 }
 
@@ -291,4 +293,39 @@ func tmplWebAuthnIcon(authenticator string, dark bool) template.URL {
 		return template.URL(metadata.IconDark)
 	}
 	return template.URL(metadata.IconLight)
+}
+
+// tmplThousands formats a count with comma separators, e.g. 12345 -> "12,345".
+func tmplThousands(value any) string {
+	var n int64
+	switch v := value.(type) {
+	case int64:
+		n = v
+	case *int64:
+		if v == nil {
+			return ""
+		}
+		n = *v
+	case int:
+		n = int64(v)
+	default:
+		return fmt.Sprint(value)
+	}
+	sign := ""
+	if n < 0 {
+		sign, n = "-", -n
+	}
+	digits := fmt.Sprint(n)
+	for i := len(digits) - 3; i > 0; i -= 3 {
+		digits = digits[:i] + "," + digits[i:]
+	}
+	return sign + digits
+}
+
+// tmplInstallCount formats an install count for display, showing a dash for zero.
+func tmplInstallCount(value any) string {
+	if label := tmplThousands(value); label != "0" {
+		return label
+	}
+	return "–"
 }
