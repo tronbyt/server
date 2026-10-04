@@ -85,14 +85,22 @@ func (s *Server) autoRefreshSystemRepo() {
 }
 
 func (s *Server) refreshSystemRepo() error {
-	repoURL := s.Config.SystemAppsRepo
-	appsPath := filepath.Join(s.DataDir, "system-apps")
-	if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
-		return err
-	}
+	return s.withSystemAppsRefresh(func() error {
+		repoURL := s.Config.SystemAppsRepo
+		appsPath := filepath.Join(s.DataDir, "system-apps")
+		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
+			return err
+		}
 
-	s.RefreshSystemAppsCache()
-	return nil
+		return s.replaceSystemAppsCache()
+	})
+}
+
+func (s *Server) withSystemAppsRefresh(refresh func() error) error {
+	s.systemAppsRefreshMutex.Lock()
+	defer s.systemAppsRefreshMutex.Unlock()
+
+	return refresh()
 }
 
 func (s *Server) doUpdateCheck() {

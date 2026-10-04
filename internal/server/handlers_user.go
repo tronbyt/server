@@ -495,6 +495,12 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 
 	if err := s.refreshSystemRepo(); err != nil {
 		slog.Error("Failed to refresh system repo", "error", err)
+		if r.Header.Get("Accept") == "application/json" {
+			http.Error(w, "Failed to refresh system repository", http.StatusInternalServerError)
+			return
+		}
+		s.flashAndRedirect(w, r, "Failed to refresh system repository. Check server logs.", "/settings/content", http.StatusSeeOther)
+		return
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
