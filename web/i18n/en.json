@@ -2167,5 +2167,14 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "You are accessing this server via localhost. For proper firmware generation you should use:"
+  },
+  "Only apps built for this display": {
+    "other": "Only apps built for this display"
+  },
+  "FitsDisplayHintSquare": {
+    "other": "Apps that do not adapt to a square panel still install, but lay themselves out for 32 rows and leave the lower half black."
+  },
+  "FitsDisplayHint2x": {
+    "other": "Apps without 2x support still fill a wide panel, but render at half resolution."
   }
 }

@@ -724,6 +724,26 @@ func (dt DeviceType) DisplaySize() (width, height int) {
 	return width, height
 }
 
+// RequiredAppCapability returns the manifest capability an app must declare
+// before it uses the whole of this device's panel, or "" when every app
+// already does.
+//
+// The two cases differ in how badly they fail, which is why the hint shown
+// beside the filter is worded per capability rather than once: an app that
+// does not adapt to a square panel lays itself out for 32 rows and leaves the
+// other 32 black, while an app without 2x support still fills a wide panel,
+// just at half resolution.
+func (dt DeviceType) RequiredAppCapability() string {
+	width, height := dt.CanvasSize()
+	if width == height {
+		return "64x64"
+	}
+	if dt.Supports2x() {
+		return "2x"
+	}
+	return ""
+}
+
 func (dt DeviceType) SupportsFirmware() bool {
 	switch dt {
 	case DeviceTidbytGen1, DeviceTidbytGen2, DevicePixoticker, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceMatrixPortalWide, DeviceWaveshareS3:

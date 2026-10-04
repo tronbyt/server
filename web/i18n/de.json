@@ -2164,5 +2164,14 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
+  },
+  "Only apps built for this display": {
+    "other": "Nur Apps für dieses Display"
+  },
+  "FitsDisplayHintSquare": {
+    "other": "Apps, die sich nicht an ein quadratisches Panel anpassen, lassen sich zwar installieren, sind aber für 32 Zeilen ausgelegt und lassen die untere Hälfte schwarz."
+  },
+  "FitsDisplayHint2x": {
+    "other": "Apps ohne 2x-Unterstützung füllen ein breites Panel zwar aus, werden aber mit halber Auflösung dargestellt."
   }
 }

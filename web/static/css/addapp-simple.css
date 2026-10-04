@@ -101,6 +101,18 @@
   font-weight: 500;
 }
 
+/* Echoes the badge on the cards the filter keeps, so it is obvious which
+   mark on a card the checkbox is matching against. */
+.control-capability {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-bg) 84%, #3f9d6b 16%);
+  color: var(--page-text);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
 .control-checkbox,
 .filter-checkbox {
   margin: 0 !important;

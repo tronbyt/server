@@ -156,6 +156,41 @@ func TestDeviceTypeCanvasAndDisplaySize(t *testing.T) {
 	}
 }
 
+func TestDeviceTypeRequiredAppCapability(t *testing.T) {
+	tests := []struct {
+		name       string
+		deviceType DeviceType
+		want       string
+	}{
+		// Every app fills a classic panel, so there is nothing to filter for
+		// and the control is not shown at all.
+		{"classic needs nothing", DeviceRaspberryPi, ""},
+		{"tidbyt needs nothing", DeviceTidbytGen1, ""},
+		{"unknown needs nothing", DeviceOther, ""},
+		{"wide wants 2x", DeviceRaspberryPiWide, "2x"},
+		{"wide s3 wants 2x", DeviceTronbytS3Wide, "2x"},
+		{"square wants 64x64", DeviceRaspberryPiSquare, "64x64"},
+		{"square s3 wants 64x64", DeviceMatrixPortalSquare, "64x64"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.deviceType.RequiredAppCapability())
+		})
+	}
+}
+
+// Shape decides the square case, not size: the wide panel is also 64 tall, so
+// a height test would claim it needs square apps.
+func TestRequiredAppCapabilityDistinguishesWideFromSquare(t *testing.T) {
+	_, wideHeight := DeviceRaspberryPiWide.DisplaySize()
+	_, squareHeight := DeviceRaspberryPiSquare.DisplaySize()
+	require.Equal(t, wideHeight, squareHeight, "both panels are 64 tall")
+
+	assert.Equal(t, "2x", DeviceRaspberryPiWide.RequiredAppCapability())
+	assert.Equal(t, "64x64", DeviceRaspberryPiSquare.RequiredAppCapability())
+}
+
 // The square MatrixPortal is a firmware device, so it needs its own binaries
 // rather than silently inheriting the 64x32 ones: flashing those would light
 // the panel at the wrong geometry.
