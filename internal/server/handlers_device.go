@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -28,6 +29,31 @@ func slugifyDeviceName(name string) string {
 	s = nonAlphanumRe.ReplaceAllString(s, "-")
 	s = leadTrailHyphenRe.ReplaceAllString(s, "")
 	return s
+}
+
+// uniqueDeviceIDFromName builds a device ID from the device name. Device IDs
+// are global, so if the slug is taken (possibly by another user's device) a
+// numeric suffix is added. A name with no letters or digits slugifies to "",
+// which would point at the shared webp directory, so it falls back to a
+// random ID.
+func (s *Server) uniqueDeviceIDFromName(ctx context.Context, name string) (string, error) {
+	base := slugifyDeviceName(name)
+	if base == "" {
+		return generateSecureToken(8)
+	}
+
+	candidate := base
+	for i := 2; i <= 100; i++ {
+		count, err := gorm.G[data.Device](s.DB).Where("id = ?", candidate).Count(ctx, "*")
+		if err != nil {
+			return "", err
+		}
+		if count == 0 {
+			return candidate, nil
+		}
+		candidate = fmt.Sprintf("%s-%d", base, i)
+	}
+	return generateSecureToken(8)
 }
 
 func (s *Server) handleCreateDeviceGet(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +174,13 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 	} else {
 		switch formData.DeviceIDMode {
 		case "from_name":
-			deviceID = slugifyDeviceName(formData.Name)
+			var err error
+			deviceID, err = s.uniqueDeviceIDFromName(r.Context(), formData.Name)
+			if err != nil {
+				slog.Error("Failed to generate device ID", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 		case "hex16":
 			var err error
 			deviceID, err = generateSecureToken(16)

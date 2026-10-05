@@ -274,6 +274,12 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isValidUsername(username) {
+		slog.Warn("Registration rejected: invalid username", "username", username)
+		s.renderTemplate(w, r, "register", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username."})}})
+		return
+	}
+
 	if _, err := gorm.G[data.User](s.DB).Where("username = ?", username).First(r.Context()); err == nil {
 		s.renderTemplate(w, r, "register", TemplateData{Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Username already exists"})}})
 		return
