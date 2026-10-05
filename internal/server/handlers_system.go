@@ -63,25 +63,41 @@ func (s *Server) checkForUpdates(ctx context.Context) {
 	}
 }
 
-func (s *Server) autoRefreshSystemRepo() {
-	if !s.Config.SystemAppsAutoRefresh {
+const (
+	systemAppsAutoRefreshInterval   = 12 * time.Hour
+	systemAppsAutoRefreshSettingKey = "system_apps_auto_refresh"
+)
+
+func (s *Server) autoRefreshSystemRepo(ctx context.Context) {
+	ticker := time.NewTicker(systemAppsAutoRefreshInterval)
+	defer ticker.Stop()
+	s.runSystemAppsAutoRefresh(ctx, ticker.C, s.refreshSystemRepo)
+}
+
+func (s *Server) runSystemAppsAutoRefresh(ctx context.Context, ticks <-chan time.Time, refresh func() error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticks:
+			s.refreshSystemAppsIfEnabled(refresh)
+		}
+	}
+}
+
+func (s *Server) refreshSystemAppsIfEnabled(refresh func() error) {
+	if !s.systemAppsAutoRefresh.Load() {
 		return
 	}
 
-	slog.Info("Scheduled system apps auto-refresh enabled (every 12h)")
-
-	ticker := time.NewTicker(12 * time.Hour)
-	defer ticker.Stop()
-	for range ticker.C {
-		if !s.Config.SystemAppsAutoRefresh {
-			slog.Info("System apps auto-refresh disabled, stopping ticker")
-			return
-		}
-		slog.Info("Performing scheduled system apps refresh")
-		if err := s.refreshSystemRepo(); err != nil {
-			slog.Error("Scheduled refresh of system repo failed", "error", err)
-		}
+	slog.Info("Performing scheduled system apps refresh")
+	if err := refresh(); err != nil {
+		slog.Error("Scheduled refresh of system repo failed", "error", err)
 	}
+}
+
+func (s *Server) isSystemAppsAutoRefreshEnabled() bool {
+	return s.systemAppsAutoRefresh.Load()
 }
 
 func (s *Server) refreshSystemRepo() error {

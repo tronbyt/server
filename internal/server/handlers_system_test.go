@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -84,4 +85,56 @@ func TestWithSystemAppsRefreshReturnsRefreshError(t *testing.T) {
 	err := s.withSystemAppsRefresh(func() error { return want })
 
 	require.ErrorIs(t, err, want)
+}
+
+func TestRefreshSystemAppsIfEnabledFollowsRuntimePreference(t *testing.T) {
+	s := newTestServer(t)
+	var refreshes atomic.Int32
+	refresh := func() error {
+		refreshes.Add(1)
+		return nil
+	}
+
+	s.refreshSystemAppsIfEnabled(refresh)
+	require.Equal(t, int32(0), refreshes.Load())
+
+	s.systemAppsAutoRefresh.Store(true)
+	s.refreshSystemAppsIfEnabled(refresh)
+	require.Equal(t, int32(1), refreshes.Load())
+
+	s.systemAppsAutoRefresh.Store(false)
+	s.refreshSystemAppsIfEnabled(refresh)
+	require.Equal(t, int32(1), refreshes.Load())
+}
+
+func TestRunSystemAppsAutoRefreshRefreshesOnTick(t *testing.T) {
+	s := newTestServer(t, withSystemAppsAutoRefresh(true))
+	ctx, cancel := context.WithCancel(context.Background())
+	ticks := make(chan time.Time)
+	refreshed := make(chan struct{}, 1)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		s.runSystemAppsAutoRefresh(ctx, ticks, func() error {
+			refreshed <- struct{}{}
+			return nil
+		})
+	}()
+
+	require.Equal(t, 12*time.Hour, systemAppsAutoRefreshInterval)
+	ticks <- time.Now()
+
+	select {
+	case <-refreshed:
+	case <-time.After(time.Second):
+		t.Fatal("scheduled system apps refresh did not run after a tick")
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("scheduled system apps refresh did not stop after cancellation")
+	}
 }
