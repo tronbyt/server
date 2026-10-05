@@ -58,6 +58,45 @@
             </form>
         </div>
         <div class="settings-card-subsection">
+            <h3>{{ t .Localizer "Automatic Updates" }}</h3>
+            <form method="post"
+                  action="/settings/system-apps-auto-refresh"
+                  class="settings-form"
+                  onsubmit="event.preventDefault();">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="system_apps_auto_refresh">{{ t .Localizer "Update Schedule" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <label class="settings-inline-option">
+                            <input type="checkbox"
+                                   name="system_apps_auto_refresh"
+                                   id="system_apps_auto_refresh"
+                                   value="1"
+                                   aria-describedby="system-apps-auto-refresh-warning system-apps-auto-refresh-status"
+                                   onchange="saveSystemAppsAutoRefresh(this)"
+                                   {{ if .SystemAppsAutoRefresh }}
+                                   checked
+                                   {{ end }}>
+                            <span>{{ t .Localizer "Automatically update system apps every 12 hours" }}</span>
+                        </label>
+                        <p class="settings-help settings-note-danger"
+                           id="system-apps-auto-refresh-warning">
+                            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                            {{ t .Localizer "Automatic updates may change or break apps already installed on your devices." }}
+                        </p>
+                        <p class="settings-help settings-save-status"
+                           id="system-apps-auto-refresh-status"
+                           role="status"
+                           aria-live="polite"
+                           data-saving="{{ t .Localizer "Saving..." }}"
+                           data-saved="{{ t .Localizer "Automatic update preference saved." }}"
+                           data-error="{{ t .Localizer "Failed to save automatic update preference." }}"></p>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="settings-card-subsection">
             <h3>{{ t .Localizer "Change Repository" }}</h3>
             <form method="post" action="/set_system_repo" class="settings-form">
                 <div class="settings-field-row">
@@ -226,6 +265,52 @@
     </section>
 </div>
 <script>
+    function saveSystemAppsAutoRefresh(checkbox) {
+        const form = checkbox.form;
+        const status = document.getElementById('system-apps-auto-refresh-status');
+        const previousValue = !checkbox.checked;
+        const formData = new FormData();
+
+        if (checkbox.checked) {
+            formData.set(checkbox.name, checkbox.value);
+        }
+
+        checkbox.disabled = true;
+        status.classList.remove('settings-note-danger');
+        status.textContent = status.dataset.saving;
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to save automatic update preference');
+            }
+            return response.json();
+        })
+        .then(data => {
+            checkbox.checked = data.enabled;
+            status.textContent = status.dataset.saved;
+            setTimeout(() => {
+                if (status.textContent === status.dataset.saved) {
+                    status.textContent = '';
+                }
+            }, 2000);
+        })
+        .catch(() => {
+            checkbox.checked = previousValue;
+            status.classList.add('settings-note-danger');
+            status.textContent = status.dataset.error;
+        })
+        .finally(() => {
+            checkbox.disabled = false;
+        });
+    }
+
     function refreshSystemRepo(form) {
         const btn = form.querySelector('button');
         const originalContent = btn.innerHTML;

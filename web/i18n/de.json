@@ -2170,5 +2170,26 @@
   },
   "Popularity": {
     "other": "Beliebtheit"
+  },
+  "Automatic Updates": {
+    "other": "Automatische Updates"
+  },
+  "Update Schedule": {
+    "other": "Aktualisierungszeitplan"
+  },
+  "Automatically update system apps every 12 hours": {
+    "other": "System-Apps automatisch alle 12 Stunden aktualisieren"
+  },
+  "Automatic updates may change or break apps already installed on your devices.": {
+    "other": "Automatische Updates können bereits auf Ihren Geräten installierte Apps verändern oder funktionsunfähig machen."
+  },
+  "Failed to save automatic update preference.": {
+    "other": "Die Einstellung für automatische Updates konnte nicht gespeichert werden."
+  },
+  "Automatic update preference saved.": {
+    "other": "Die Einstellung für automatische Updates wurde gespeichert."
+  },
+  "Saving...": {
+    "other": "Wird gespeichert..."
   }
 }

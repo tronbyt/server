@@ -84,9 +84,10 @@ type TemplateData struct {
 	Form              CreateDeviceFormData
 
 	// Repo Info for Admin/User Settings
-	SystemRepoInfo      *gitutils.RepoInfo
-	UserRepoInfo        *gitutils.RepoInfo
-	GlobalSystemRepoURL string
+	SystemRepoInfo        *gitutils.RepoInfo
+	UserRepoInfo          *gitutils.RepoInfo
+	GlobalSystemRepoURL   string
+	SystemAppsAutoRefresh bool
 
 	// App Config
 	App         *data.App
@@ -155,7 +156,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 		tmplData.Config = &config.TemplateConfig{
 			EnableUserRegistration: s.Config.EnableUserRegistration,
 			SingleUserAutoLogin:    s.Config.SingleUserAutoLogin,
-			SystemAppsAutoRefresh:  s.Config.SystemAppsAutoRefresh,
+			SystemAppsAutoRefresh:  s.isSystemAppsAutoRefreshEnabled(),
 			Production:             s.Config.Production,
 		}
 	}

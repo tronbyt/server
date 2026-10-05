@@ -62,12 +62,13 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 	}
 
 	return TemplateData{
-		User:                user,
-		FirmwareVersion:     firmwareVersion,
-		SystemRepoInfo:      systemRepoInfo,
-		UserRepoInfo:        userRepoInfo,
-		GlobalSystemRepoURL: s.Config.SystemAppsRepo,
-		SettingsSection:     "content",
+		User:                  user,
+		FirmwareVersion:       firmwareVersion,
+		SystemRepoInfo:        systemRepoInfo,
+		UserRepoInfo:          userRepoInfo,
+		GlobalSystemRepoURL:   s.Config.SystemAppsRepo,
+		SystemAppsAutoRefresh: s.isSystemAppsAutoRefreshEnabled(),
+		SettingsSection:       "content",
 	}
 }
 

@@ -24,6 +24,12 @@ func withPprof(value bool) option {
 	}
 }
 
+func withSystemAppsAutoRefresh(value bool) option {
+	return func(s *config.Settings) {
+		s.SystemAppsAutoRefresh = value
+	}
+}
+
 func newTestServer(t *testing.T, opts ...option) *Server {
 	dbName := fmt.Sprintf("file:%s?mode=memory&cache=private&_busy_timeout=5000", t.Name())
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
@@ -31,7 +37,7 @@ func newTestServer(t *testing.T, opts ...option) *Server {
 		t.Fatalf("Failed to open DB: %v", err)
 	}
 
-	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
+	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.OIDCIdentity{}, &data.Setting{}); err != nil {
 		t.Fatalf("Failed to migrate DB: %v", err)
 	}
 
@@ -51,6 +57,27 @@ func newTestServer(t *testing.T, opts ...option) *Server {
 
 	s := NewServer(db, cfg)
 	return s
+}
+
+func TestSystemAppsAutoRefreshUsesEnvironmentDefault(t *testing.T) {
+	s := newTestServer(t, withSystemAppsAutoRefresh(true))
+
+	require.True(t, s.isSystemAppsAutoRefreshEnabled())
+}
+
+func TestSavedSystemAppsAutoRefreshOverridesEnvironmentDefault(t *testing.T) {
+	s := newTestServer(t)
+	require.NoError(t, s.setSetting(systemAppsAutoRefreshSettingKey, "false"))
+
+	cfg := &config.Settings{
+		DataDir:               t.TempDir(),
+		Production:            false,
+		EnableUpdateChecks:    false,
+		SystemAppsAutoRefresh: true,
+	}
+	restarted := NewServer(s.DB, cfg)
+
+	require.False(t, restarted.isSystemAppsAutoRefreshEnabled())
 }
 
 func TestLoginRedirectToRegisterIfNoUsers(t *testing.T) {

@@ -211,6 +211,10 @@
   color: var(--danger-text);
 }
 
+.settings-save-status:empty {
+  display: none;
+}
+
 .settings-grid-compact {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -339,4 +343,3 @@
     align-self: stretch;
   }
 }
-

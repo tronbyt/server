@@ -106,7 +106,7 @@ The server can be configured via environment variables or `.env` file:
 *   `MAX_USERS`: Maximum number of user accounts (default: `0` / unlimited).
 *   `SINGLE_USER_AUTO_LOGIN`: Skip login when only one user exists (default: `false`).
 *   `SYSTEM_APPS_REPO`: Git repository URL for system apps (default: `https://github.com/tronbyt/apps.git`).
-*   `SYSTEM_APPS_AUTO_REFRESH`: Automatically refresh the system apps repository (default: `false`).
+*   `SYSTEM_APPS_AUTO_REFRESH`: Initial default for refreshing the system apps repository every 12 hours (default: `false`). Administrators can change this under **Settings → Content and Firmware**; a saved web preference takes precedence on later starts.
 *   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
 *   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily (default: `https://cloud.heyniblet.com`). Set to an empty string to disable.
 *   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
