@@ -499,7 +499,7 @@ func (s *Server) handleOIDCCreateUser(w http.ResponseWriter, r *http.Request, us
 	if !isValidUsername(username) {
 		slog.Warn("OIDC login: refusing to auto-create user with invalid username", "username", username, "subject", claims["sub"])
 		s.renderTemplate(w, r, "login", TemplateData{
-			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "OIDCErrorNoAccount"})},
+			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username."})},
 		})
 		return
 	}
