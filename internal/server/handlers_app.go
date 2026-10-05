@@ -1244,9 +1244,8 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 }
 
 // userAppDir returns the directory for one uploaded app inside userAppsDir.
-// A file named ".zip" or "..zip" gives an app name of "" or ".", which would
-// resolve to userAppsDir itself; the zip handler deletes appDir before
-// extracting, so that would wipe every custom app the user has.
+// The app name must be non-empty, must not start with a dot, and must
+// resolve to a subdirectory of userAppsDir.
 func userAppDir(userAppsDir, appName string) (string, error) {
 	if strings.TrimSpace(appName) == "" || strings.HasPrefix(appName, ".") {
 		return "", fmt.Errorf("invalid app name %q", appName)

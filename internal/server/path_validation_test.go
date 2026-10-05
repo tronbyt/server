@@ -50,9 +50,9 @@ func TestHandleRegisterPost_RejectsInvalidUsername(t *testing.T) {
 	}
 }
 
-// A user stored before username validation existed must not be able to turn
-// "delete user" into a delete of the whole data directory.
-func TestHandleDeleteUser_UnsafeUsernameKeepsDataDir(t *testing.T) {
+// Deleting a user whose stored name predates validation only removes that
+// user's own files.
+func TestHandleDeleteUser_LegacyUsername(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
@@ -61,7 +61,7 @@ func TestHandleDeleteUser_UnsafeUsernameKeepsDataDir(t *testing.T) {
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &admin))
 	bad := data.User{Username: "..", APIKey: "bad-key"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &bad))
-	// An empty device ID maps to the shared webp directory.
+	// Older versions could create a device with an empty ID.
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &data.Device{ID: "", Username: ".."}))
 
 	sentinel := filepath.Join(s.DataDir, "keep-me")
@@ -77,8 +77,8 @@ func TestHandleDeleteUser_UnsafeUsernameKeepsDataDir(t *testing.T) {
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(s.handleDeleteUser).ServeHTTP(rr, req)
 
-	assert.FileExists(t, sentinel, "data directory must not be wiped")
-	assert.FileExists(t, otherImage, "other devices' images must not be wiped")
+	assert.FileExists(t, sentinel, "files outside the user's directory are kept")
+	assert.FileExists(t, otherImage, "other devices' images are kept")
 	count, err := gorm.G[data.User](s.DB).Where("username = ?", "..").Count(ctx, "*")
 	require.NoError(t, err)
 	assert.Zero(t, count, "user should still be deleted from the database")
@@ -141,9 +141,8 @@ func TestHandleCreateDevicePost_FromNameWithoutAlphanumerics(t *testing.T) {
 	assert.NotEmpty(t, device.ID)
 }
 
-// Uploading a file called ".zip" or "..zip" used to resolve to the user's
-// whole apps directory, which the zip handler deletes before extracting.
-func TestHandleUploadAppPost_DotNamesDoNotWipeApps(t *testing.T) {
+// Uploads whose app name is empty or starts with a dot are rejected.
+func TestHandleUploadAppPost_RejectsDotNames(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
@@ -175,7 +174,7 @@ func TestHandleUploadAppPost_DotNamesDoNotWipeApps(t *testing.T) {
 		http.HandlerFunc(s.handleUploadAppPost).ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code, "filename %q", filename)
-		assert.FileExists(t, existing, "existing app must survive upload of %q", filename)
+		assert.FileExists(t, existing, "existing app is kept after upload of %q", filename)
 	}
 }
 

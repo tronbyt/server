@@ -33,9 +33,7 @@ func slugifyDeviceName(name string) string {
 
 // uniqueDeviceIDFromName builds a device ID from the device name. Device IDs
 // are global, so if the slug is taken (possibly by another user's device) a
-// numeric suffix is added. A name with no letters or digits slugifies to "",
-// which would point at the shared webp directory, so it falls back to a
-// random ID.
+// numeric suffix is added. A name with no letters or digits gets a random ID.
 func (s *Server) uniqueDeviceIDFromName(ctx context.Context, name string) (string, error) {
 	base := slugifyDeviceName(name)
 	if base == "" {

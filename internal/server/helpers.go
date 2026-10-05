@@ -377,16 +377,15 @@ func generateSecureToken(length int) (string, error) {
 // letter or digit, which rules out "." and "..".
 var validUsernameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$`)
 
-// isValidUsername reports whether a username is safe to create. Usernames are
-// used as directory names under DataDir/users, so they must not be able to
-// escape that directory.
+// isValidUsername reports whether a username can be created. Usernames are
+// used as directory names under DataDir/users.
 func isValidUsername(username string) bool {
 	return validUsernameRe.MatchString(username)
 }
 
-// isSinglePathComponent reports whether name can be joined onto a directory
-// without leaving it. It is used as a last line of defense for usernames that
-// were stored before isValidUsername existed.
+// isSinglePathComponent reports whether name is a single, non-empty path
+// component other than "." or "..". It covers usernames stored before
+// isValidUsername existed.
 func isSinglePathComponent(name string) bool {
 	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`)
 }
@@ -594,8 +593,7 @@ func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *se
 
 // ensureDeviceImageDir is a helper to get and ensure the device webp directory exists.
 func (s *Server) ensureDeviceImageDir(deviceID string) (string, error) {
-	// An empty ID or ".." would resolve to the shared webp directory itself,
-	// and callers RemoveAll this path when a device is deleted.
+	// Each device gets its own subdirectory of webp.
 	if !isSinglePathComponent(deviceID) {
 		return "", fmt.Errorf("invalid device ID for webp directory: %q", deviceID)
 	}

@@ -120,8 +120,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	// Clean up files
 	for _, d := range targetUser.Devices {
 		if !isSinglePathComponent(d.ID) {
-			// Older versions could create a device with an empty ID; its
-			// image dir would be the shared webp root, so leave files alone.
+			// Devices created by older versions may have an empty ID.
 			slog.Warn("Skipping webp cleanup for device with unsafe ID", "device_id", d.ID)
 			continue
 		}
@@ -135,7 +134,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			slog.Error("Failed to remove device webp directory", "device_id", d.ID, "error", err)
 		}
 	}
-	// Never let a username like ".." turn this into a delete of the whole data dir.
+	// Only remove the directory when the stored username is a single path component.
 	if isSinglePathComponent(targetUsername) {
 		userAppsDir := filepath.Join(s.DataDir, "users", targetUsername)
 		if err := os.RemoveAll(userAppsDir); err != nil {
