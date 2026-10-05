@@ -532,7 +532,7 @@ func (s *Server) handleSetSystemAppsAutoRefresh(w http.ResponseWriter, r *http.R
 
 	wantsJSON := r.Header.Get("Accept") == "application/json"
 	enabled := r.FormValue("system_apps_auto_refresh") == "1"
-	if err := s.setSetting(systemAppsAutoRefreshSettingKey, strconv.FormatBool(enabled)); err != nil {
+	if err := s.setSystemAppsAutoRefresh(enabled); err != nil {
 		slog.Error("Failed to save system apps auto-refresh setting", "error", err)
 		if wantsJSON {
 			http.Error(w, "Failed to save automatic update preference", http.StatusInternalServerError)
@@ -542,7 +542,6 @@ func (s *Server) handleSetSystemAppsAutoRefresh(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	s.systemAppsAutoRefresh.Store(enabled)
 	if wantsJSON {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]bool{"enabled": enabled}); err != nil {
@@ -551,4 +550,15 @@ func (s *Server) handleSetSystemAppsAutoRefresh(w http.ResponseWriter, r *http.R
 		return
 	}
 	s.flashAndRedirect(w, r, "Automatic update preference saved.", "/settings/content", http.StatusSeeOther)
+}
+
+func (s *Server) setSystemAppsAutoRefresh(enabled bool) error {
+	s.systemAppsAutoRefreshPreferenceMutex.Lock()
+	defer s.systemAppsAutoRefreshPreferenceMutex.Unlock()
+
+	if err := s.setSetting(systemAppsAutoRefreshSettingKey, strconv.FormatBool(enabled)); err != nil {
+		return err
+	}
+	s.systemAppsAutoRefresh.Store(enabled)
+	return nil
 }

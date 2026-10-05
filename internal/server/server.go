@@ -52,10 +52,11 @@ type Server struct {
 	metrics       *appMetrics
 	OIDCProvider  *OIDCProvider
 
-	systemAppsCache        []apps.AppMetadata
-	systemAppsCacheMutex   sync.RWMutex
-	systemAppsRefreshMutex sync.Mutex
-	systemAppsAutoRefresh  atomic.Bool
+	systemAppsCache                      []apps.AppMetadata
+	systemAppsCacheMutex                 sync.RWMutex
+	systemAppsRefreshMutex               sync.Mutex
+	systemAppsAutoRefreshPreferenceMutex sync.Mutex
+	systemAppsAutoRefresh                atomic.Bool
 
 	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
 	// cached HTTP responses so dynamic schema data (e.g. dropdown options

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"tronbyt-server/internal/data"
 
@@ -89,6 +90,34 @@ func TestHandleSetSystemAppsAutoRefresh(t *testing.T) {
 	stored, err = s.getSetting(systemAppsAutoRefreshSettingKey)
 	require.NoError(t, err)
 	require.Equal(t, "false", stored)
+}
+
+func TestSetSystemAppsAutoRefreshSerializesPreferenceTransitions(t *testing.T) {
+	s := newTestServer(t)
+	s.systemAppsAutoRefreshPreferenceMutex.Lock()
+	started := make(chan struct{})
+	result := make(chan error, 1)
+
+	go func() {
+		close(started)
+		result <- s.setSystemAppsAutoRefresh(true)
+	}()
+
+	<-started
+	select {
+	case err := <-result:
+		s.systemAppsAutoRefreshPreferenceMutex.Unlock()
+		require.NoError(t, err)
+		t.Fatal("preference transition completed while its serialization mutex was held")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	s.systemAppsAutoRefreshPreferenceMutex.Unlock()
+	require.NoError(t, <-result)
+	require.True(t, s.isSystemAppsAutoRefreshEnabled())
+	stored, err := s.getSetting(systemAppsAutoRefreshSettingKey)
+	require.NoError(t, err)
+	require.Equal(t, "true", stored)
 }
 
 func TestHandleSetSystemAppsAutoRefreshRequiresAdmin(t *testing.T) {
