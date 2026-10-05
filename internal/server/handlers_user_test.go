@@ -59,6 +59,95 @@ func TestHandleRefreshSystemRepoReturnsJSONError(t *testing.T) {
 	require.Contains(t, rr.Body.String(), "Failed to refresh system repository")
 }
 
+func TestHandleSetSystemAppsAutoRefresh(t *testing.T) {
+	s := newTestServer(t)
+	admin := data.User{Username: "admin", IsAdmin: true}
+
+	form := url.Values{"system_apps_auto_refresh": {"1"}}
+	req := httptest.NewRequest(http.MethodPost, "/settings/system-apps-auto-refresh", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &admin))
+	rr := httptest.NewRecorder()
+
+	s.handleSetSystemAppsAutoRefresh(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.JSONEq(t, `{"enabled":true}`, rr.Body.String())
+	require.True(t, s.isSystemAppsAutoRefreshEnabled())
+	stored, err := s.getSetting(systemAppsAutoRefreshSettingKey)
+	require.NoError(t, err)
+	require.Equal(t, "true", stored)
+
+	req = httptest.NewRequest(http.MethodPost, "/settings/system-apps-auto-refresh", nil)
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &admin))
+	rr = httptest.NewRecorder()
+	s.handleSetSystemAppsAutoRefresh(rr, req)
+
+	require.Equal(t, http.StatusSeeOther, rr.Code)
+	require.False(t, s.isSystemAppsAutoRefreshEnabled())
+	stored, err = s.getSetting(systemAppsAutoRefreshSettingKey)
+	require.NoError(t, err)
+	require.Equal(t, "false", stored)
+}
+
+func TestHandleSetSystemAppsAutoRefreshRequiresAdmin(t *testing.T) {
+	s := newTestServer(t)
+	user := data.User{Username: "user"}
+
+	form := url.Values{"system_apps_auto_refresh": {"1"}}
+	req := httptest.NewRequest(http.MethodPost, "/settings/system-apps-auto-refresh", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), userContextKey, &user))
+	rr := httptest.NewRecorder()
+
+	s.handleSetSystemAppsAutoRefresh(rr, req)
+
+	require.Equal(t, http.StatusForbidden, rr.Code)
+	require.False(t, s.isSystemAppsAutoRefreshEnabled())
+	stored, err := s.getSetting(systemAppsAutoRefreshSettingKey)
+	require.NoError(t, err)
+	require.Empty(t, stored)
+}
+
+func TestSettingsContentDataIncludesSystemAppsAutoRefresh(t *testing.T) {
+	s := newTestServer(t, withSystemAppsAutoRefresh(true))
+	admin := data.User{Username: "admin", IsAdmin: true}
+
+	pageData := s.getSettingsContentData(&admin)
+
+	require.True(t, pageData.SystemAppsAutoRefresh)
+}
+
+func TestSettingsContentRendersSystemAppsAutoRefreshControl(t *testing.T) {
+	s := newTestServer(t, withSystemAppsAutoRefresh(true))
+	admin := data.User{Username: "admin", IsAdmin: true, APIKey: "admin-api-key"}
+	require.NoError(t, s.DB.Create(&admin).Error)
+
+	seedReq := httptest.NewRequest(http.MethodGet, "/settings/content", nil)
+	seedRR := httptest.NewRecorder()
+	session, _ := s.Store.Get(seedReq, "session-name")
+	session.Values["username"] = admin.Username
+	require.NoError(t, s.saveSession(seedRR, seedReq, session))
+
+	req := httptest.NewRequest(http.MethodGet, "/settings/content", nil)
+	for _, cookie := range seedRR.Result().Cookies() {
+		req.AddCookie(cookie)
+	}
+	rr := httptest.NewRecorder()
+
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Contains(t, rr.Body.String(), `id="system_apps_auto_refresh"`)
+	require.Contains(t, rr.Body.String(), "Automatically update system apps every 12 hours")
+	require.Contains(t, rr.Body.String(), "Automatic updates may change or break apps already installed on your devices.")
+	require.Contains(t, rr.Body.String(), "checked")
+	require.Contains(t, rr.Body.String(), `onchange="saveSystemAppsAutoRefresh(this)"`)
+	require.Contains(t, rr.Body.String(), `id="system-apps-auto-refresh-status"`)
+	require.Contains(t, rr.Body.String(), `action="/refresh_system_repo"`)
+}
+
 func TestHandleEditUserPostUpdatesEmail(t *testing.T) {
 	s := newTestServer(t)
 

@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"tronbyt-server/internal/apps"
@@ -54,6 +55,7 @@ type Server struct {
 	systemAppsCache        []apps.AppMetadata
 	systemAppsCacheMutex   sync.RWMutex
 	systemAppsRefreshMutex sync.Mutex
+	systemAppsAutoRefresh  atomic.Bool
 
 	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
 	// cached HTTP responses so dynamic schema data (e.g. dropdown options
@@ -134,6 +136,12 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	if err == nil && repo != "" {
 		cfg.SystemAppsRepo = repo
 	}
+	if val, err := s.getSetting(systemAppsAutoRefreshSettingKey); err != nil {
+		slog.Warn("Failed to load system apps auto-refresh setting", "error", err)
+	} else if val != "" {
+		cfg.SystemAppsAutoRefresh = val == "true"
+	}
+	s.systemAppsAutoRefresh.Store(cfg.SystemAppsAutoRefresh)
 
 	// Load OIDC settings from DB
 	if val, err := s.getSetting("oidc_enabled"); err == nil {
@@ -245,7 +253,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	}
 
 	go s.checkForUpdates(context.Background())
-	go s.autoRefreshSystemRepo()
+	go s.autoRefreshSystemRepo(context.Background())
 	go s.autoRefreshCustomAppsRepos()
 	if cfg.NibletCloudURL != "" {
 		go s.runNibletSync()
@@ -340,6 +348,7 @@ func (s *Server) routes() {
 
 	s.Router.HandleFunc("POST /set_system_repo", s.RequireLogin(s.handleSetSystemRepo))
 	s.Router.HandleFunc("POST /refresh_system_repo", s.RequireLogin(s.handleRefreshSystemRepo))
+	s.Router.HandleFunc("POST /settings/system-apps-auto-refresh", s.RequireLogin(s.handleSetSystemAppsAutoRefresh))
 	s.Router.HandleFunc("POST /update_firmware", s.RequireLogin(s.handleUpdateFirmware))
 
 	// App broken status (development only)

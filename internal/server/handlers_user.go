@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -520,4 +521,34 @@ func (s *Server) handleRefreshSystemRepo(w http.ResponseWriter, r *http.Request)
 	}
 
 	http.Redirect(w, r, "/settings/content", http.StatusSeeOther)
+}
+
+func (s *Server) handleSetSystemAppsAutoRefresh(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	wantsJSON := r.Header.Get("Accept") == "application/json"
+	enabled := r.FormValue("system_apps_auto_refresh") == "1"
+	if err := s.setSetting(systemAppsAutoRefreshSettingKey, strconv.FormatBool(enabled)); err != nil {
+		slog.Error("Failed to save system apps auto-refresh setting", "error", err)
+		if wantsJSON {
+			http.Error(w, "Failed to save automatic update preference", http.StatusInternalServerError)
+			return
+		}
+		s.flashAndRedirect(w, r, "Failed to save automatic update preference.", "/settings/content", http.StatusSeeOther)
+		return
+	}
+
+	s.systemAppsAutoRefresh.Store(enabled)
+	if wantsJSON {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]bool{"enabled": enabled}); err != nil {
+			slog.Error("Failed to encode system apps auto-refresh response", "error", err)
+		}
+		return
+	}
+	s.flashAndRedirect(w, r, "Automatic update preference saved.", "/settings/content", http.StatusSeeOther)
 }
