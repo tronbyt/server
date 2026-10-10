@@ -149,6 +149,17 @@ func TestEnsureRepoReturnsToDefaultBranchWhenSuffixRemoved(t *testing.T) {
 	assert.Equal(t, src.defaultBranch, headBranch(t, dst))
 }
 
+func TestEnsureRepoKeepsCloneWhenSwitchFails(t *testing.T) {
+	src := newSourceRepo(t)
+	dst := filepath.Join(t.TempDir(), "clone")
+	require.NoError(t, EnsureRepo(dst, src.path, "", true, 0))
+
+	require.Error(t, EnsureRepo(dst, src.path+"#does-not-exist", "", true, 0))
+
+	assert.Equal(t, src.defaultBranch, headBranch(t, dst))
+	assert.FileExists(t, filepath.Join(dst, "default.txt"))
+}
+
 func TestEnsureRepoSizeRecloneKeepsSuffixBranch(t *testing.T) {
 	src := newSourceRepo(t)
 	dst := filepath.Join(t.TempDir(), "clone")
@@ -175,4 +186,37 @@ func TestGetRepoInfoStripsBranchSuffixFromURL(t *testing.T) {
 
 	assert.Equal(t, "https://github.com/example/apps.git", info.URL)
 	assert.Equal(t, "https://github.com/example/apps/commit/"+head.Hash().String(), info.CommitURL)
+}
+
+func TestReplaceRepoDirReplacesDestination(t *testing.T) {
+	parent := t.TempDir()
+	src := filepath.Join(parent, "src")
+	dst := filepath.Join(parent, "dst")
+	require.NoError(t, os.MkdirAll(src, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(src, "new.txt"), nil, 0o644))
+	require.NoError(t, os.MkdirAll(dst, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dst, "old.txt"), nil, 0o644))
+
+	require.NoError(t, replaceRepoDir(src, dst))
+
+	assert.FileExists(t, filepath.Join(dst, "new.txt"))
+	assert.NoFileExists(t, filepath.Join(dst, "old.txt"))
+	entries, err := os.ReadDir(parent)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "src and any backup should be gone")
+	assert.Equal(t, "dst", entries[0].Name())
+}
+
+func TestReplaceRepoDirKeepsDestinationWhenMoveFails(t *testing.T) {
+	parent := t.TempDir()
+	dst := filepath.Join(parent, "dst")
+	require.NoError(t, os.MkdirAll(dst, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dst, "old.txt"), nil, 0o644))
+
+	require.Error(t, replaceRepoDir(filepath.Join(parent, "missing"), dst))
+
+	assert.FileExists(t, filepath.Join(dst, "old.txt"))
+	entries, err := os.ReadDir(parent)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "no backup should be left behind")
 }

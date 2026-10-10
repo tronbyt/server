@@ -29,6 +29,7 @@ type repoSource struct {
 	branch string // empty means the remote's default branch
 }
 
+// parseRepoSource splits a configured repo URL into its URL and optional branch suffix.
 func parseRepoSource(raw string) repoSource {
 	repoURL, branch, _ := strings.Cut(raw, "#")
 	return repoSource{url: repoURL, branch: branch}
@@ -172,13 +173,8 @@ func EnsureRepo(path string, repoURL string, token string, update bool, maxSize 
 	}
 	if reason != "" {
 		slog.Warn("Repo validation failed, re-cloning", "reason", reason, "new", repoURL)
-		// Remove and re-clone
 		_ = r.Close()
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("failed to remove old repo: %w", err)
-		}
-
-		return EnsureRepo(path, repoURL, token, update, maxSize)
+		return recloneRepo(path, repoSrc, clientOpts)
 	}
 
 	if !update {
@@ -305,6 +301,7 @@ func recordedBranch(r *git.Repository) string {
 	return cfg.Raw.Section(recordedBranchSection).Option(recordedBranchKey)
 }
 
+// recordBranch stores branch in r's config for recordedBranch to read back.
 func recordBranch(r *git.Repository, branch string) error {
 	cfg, err := r.Config()
 	if err != nil {
@@ -358,11 +355,33 @@ func recloneRepo(path string, src repoSource, clientOpts []client.Option) error 
 	if err := cloneRepo(tmp, src, clientOpts); err != nil {
 		return fmt.Errorf("failed to re-clone repo: %w", err)
 	}
-	if err := os.RemoveAll(path); err != nil {
-		return fmt.Errorf("failed to remove oversized repo: %w", err)
+	return replaceRepoDir(tmp, path)
+}
+
+// replaceRepoDir replaces dst with src. dst is moved aside first and restored
+// if the move fails, so a failed replacement leaves dst in place.
+func replaceRepoDir(src, dst string) error {
+	// MkdirTemp only reserves a unique name next to dst
+	backup, err := os.MkdirTemp(filepath.Dir(dst), "."+filepath.Base(dst)+".old-")
+	if err != nil {
+		return fmt.Errorf("failed to create backup dir: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		return fmt.Errorf("failed to move re-cloned repo into place: %w", err)
+	if err := os.Remove(backup); err != nil {
+		return fmt.Errorf("failed to prepare backup dir: %w", err)
+	}
+	if err := os.Rename(dst, backup); err != nil {
+		return fmt.Errorf("failed to move old repo aside: %w", err)
+	}
+	if err := os.Rename(src, dst); err != nil {
+		moveErr := fmt.Errorf("failed to move re-cloned repo into place: %w", err)
+		if restoreErr := os.Rename(backup, dst); restoreErr != nil {
+			// Keep backup: it is now the only copy of the old repo
+			return errors.Join(moveErr, fmt.Errorf("failed to restore old repo from %s: %w", backup, restoreErr))
+		}
+		return moveErr
+	}
+	if err := os.RemoveAll(backup); err != nil {
+		slog.Warn("Failed to remove old repo backup", "path", backup, "error", err)
 	}
 	return nil
 }
