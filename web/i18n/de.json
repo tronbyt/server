@@ -566,6 +566,9 @@
   "Remove": {
     "other": "Löschen"
   },
+  "To use a branch other than the default, end the URL with #branch-name.": {
+    "other": "Um einen anderen als den Standard-Branch zu verwenden, hängen Sie #branch-name an das Ende der URL an."
+  },
   "Replacing an existing custom repo will delete the previous repo and break any apps using that repo.": {
     "other": "Das Ersetzen eines vorhandenen benutzerdefinierten Repos löscht das vorherige Repo und alle Apps, die dieses Repo verwenden."
   },
