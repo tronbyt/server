@@ -16,6 +16,24 @@ import (
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
 )
 
+// .git/config section and key where cloneRepo records the branch suffix, so
+// EnsureRepo detects a changed or removed suffix without contacting the remote.
+const (
+	recordedBranchSection = "tronbyt"
+	recordedBranchKey     = "branch"
+)
+
+// repoSource is a repo URL with its optional "#branch" suffix split off.
+type repoSource struct {
+	url    string
+	branch string // empty means the remote's default branch
+}
+
+func parseRepoSource(raw string) repoSource {
+	repoURL, branch, _ := strings.Cut(raw, "#")
+	return repoSource{url: repoURL, branch: branch}
+}
+
 // logWriter implements io.Writer to redirect git progress to slog.
 type logWriter struct{}
 
@@ -43,6 +61,8 @@ type RepoInfo struct {
 
 // GetRepoInfo retrieves detailed information about a local Git repository.
 func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
+	remoteURL = parseRepoSource(remoteURL).url
+
 	r, err := git.PlainOpen(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open repo at %s: %w", path, err)
@@ -114,9 +134,11 @@ func EnsureRepo(path string, repoURL string, token string, update bool, maxSize 
 		slog.Warn("Failed to parse repo URL", "url", repoURL, "error", err)
 	}
 
+	repoSrc := parseRepoSource(repoURL)
+
 	// Check if path exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return cloneRepo(path, repoURL, clientOpts)
+		return cloneRepo(path, repoSrc, clientOpts)
 	}
 
 	// Repo exists, open it
@@ -135,16 +157,20 @@ func EnsureRepo(path string, repoURL string, token string, update bool, maxSize 
 	}
 	defer func() { _ = r.Close() }()
 
-	// Check remote URL
+	// Check remote URL and branch
+	reason := ""
 	rem, err := r.Remote("origin")
-	if err != nil || len(rem.Config().URLs) == 0 || rem.Config().URLs[0] != repoURL {
-		reason := "remote URL mismatch"
-		if err != nil {
-			reason = fmt.Sprintf("error getting remote: %v", err)
-		} else if len(rem.Config().URLs) == 0 {
-			reason = "no remote URLs"
-		}
-
+	switch {
+	case err != nil:
+		reason = fmt.Sprintf("error getting remote: %v", err)
+	case len(rem.Config().URLs) == 0:
+		reason = "no remote URLs"
+	case rem.Config().URLs[0] != repoSrc.url:
+		reason = "remote URL mismatch"
+	case recordedBranch(r) != repoSrc.branch:
+		reason = "branch mismatch"
+	}
+	if reason != "" {
 		slog.Warn("Repo validation failed, re-cloning", "reason", reason, "new", repoURL)
 		// Remove and re-clone
 		_ = r.Close()
@@ -172,7 +198,7 @@ func EnsureRepo(path string, repoURL string, token string, update bool, maxSize 
 		} else if size > maxSize {
 			slog.Info("Repo too large, re-cloning", "size", size, "limit", maxSize)
 			_ = r.Close()
-			return recloneRepo(path, repoURL, clientOpts)
+			return recloneRepo(path, repoSrc, clientOpts)
 		}
 	}
 
@@ -268,27 +294,58 @@ func dirSize(path string) (int64, error) {
 	return size, err
 }
 
-// cloneRepo performs a shallow, single-branch, tag-less clone of repoURL into path.
-func cloneRepo(path string, repoURL string, clientOpts []client.Option) error {
-	slog.Info("Cloning repo", "url", repoURL)
-	r, err := git.PlainClone(path, &git.CloneOptions{
-		URL:           repoURL,
+// recordedBranch returns the branch suffix recorded by cloneRepo; "" for a
+// default-branch clone or an unreadable config.
+func recordedBranch(r *git.Repository) string {
+	cfg, err := r.Config()
+	if err != nil {
+		slog.Warn("Failed to read repo config", "error", err)
+		return ""
+	}
+	return cfg.Raw.Section(recordedBranchSection).Option(recordedBranchKey)
+}
+
+func recordBranch(r *git.Repository, branch string) error {
+	cfg, err := r.Config()
+	if err != nil {
+		return fmt.Errorf("failed to read cloned repo config: %w", err)
+	}
+	cfg.Raw.Section(recordedBranchSection).SetOption(recordedBranchKey, branch)
+	if err := r.SetConfig(cfg); err != nil {
+		return fmt.Errorf("failed to record cloned branch: %w", err)
+	}
+	return nil
+}
+
+// cloneRepo performs a shallow, single-branch, tag-less clone of src into path.
+func cloneRepo(path string, src repoSource, clientOpts []client.Option) error {
+	slog.Info("Cloning repo", "url", src.url, "branch", src.branch)
+	opts := &git.CloneOptions{
+		URL:           src.url,
 		Progress:      &logWriter{},
 		Depth:         1,
 		SingleBranch:  true,
 		Tags:          git.NoTags,
 		ClientOptions: clientOpts,
-	})
-	if err == nil {
-		_ = r.Close()
 	}
-	return err
+	if src.branch != "" {
+		opts.ReferenceName = plumbing.NewBranchReferenceName(src.branch)
+	}
+	r, err := git.PlainClone(path, opts)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = r.Close() }()
+	if src.branch == "" {
+		return nil
+	}
+	return recordBranch(r, src.branch)
 }
 
-// recloneRepo re-clones repoURL into path atomically: the new clone is written
+// recloneRepo re-clones src into path atomically: the new clone is written
 // to a temporary directory in the same parent and moved into place only after
 // it succeeds, so a failed re-clone leaves the existing repository intact.
-func recloneRepo(path string, repoURL string, clientOpts []client.Option) error {
+func recloneRepo(path string, src repoSource, clientOpts []client.Option) error {
 	tmp, err := os.MkdirTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir for re-clone: %w", err)
@@ -298,7 +355,7 @@ func recloneRepo(path string, repoURL string, clientOpts []client.Option) error 
 	if err := os.RemoveAll(tmp); err != nil {
 		return fmt.Errorf("failed to prepare temp dir for re-clone: %w", err)
 	}
-	if err := cloneRepo(tmp, repoURL, clientOpts); err != nil {
+	if err := cloneRepo(tmp, src, clientOpts); err != nil {
 		return fmt.Errorf("failed to re-clone repo: %w", err)
 	}
 	if err := os.RemoveAll(path); err != nil {
