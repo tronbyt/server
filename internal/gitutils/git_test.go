@@ -149,6 +149,17 @@ func TestEnsureRepoReturnsToDefaultBranchWhenSuffixRemoved(t *testing.T) {
 	assert.Equal(t, src.defaultBranch, headBranch(t, dst))
 }
 
+func TestEnsureRepoKeepsCloneWhenSwitchFails(t *testing.T) {
+	src := newSourceRepo(t)
+	dst := filepath.Join(t.TempDir(), "clone")
+	require.NoError(t, EnsureRepo(dst, src.path, "", true, 0))
+
+	require.Error(t, EnsureRepo(dst, src.path+"#does-not-exist", "", true, 0))
+
+	assert.Equal(t, src.defaultBranch, headBranch(t, dst))
+	assert.FileExists(t, filepath.Join(dst, "default.txt"))
+}
+
 func TestEnsureRepoSizeRecloneKeepsSuffixBranch(t *testing.T) {
 	src := newSourceRepo(t)
 	dst := filepath.Join(t.TempDir(), "clone")

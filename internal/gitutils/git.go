@@ -29,6 +29,7 @@ type repoSource struct {
 	branch string // empty means the remote's default branch
 }
 
+// parseRepoSource splits a configured repo URL into its URL and optional branch suffix.
 func parseRepoSource(raw string) repoSource {
 	repoURL, branch, _ := strings.Cut(raw, "#")
 	return repoSource{url: repoURL, branch: branch}
@@ -172,13 +173,8 @@ func EnsureRepo(path string, repoURL string, token string, update bool, maxSize 
 	}
 	if reason != "" {
 		slog.Warn("Repo validation failed, re-cloning", "reason", reason, "new", repoURL)
-		// Remove and re-clone
 		_ = r.Close()
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("failed to remove old repo: %w", err)
-		}
-
-		return EnsureRepo(path, repoURL, token, update, maxSize)
+		return recloneRepo(path, repoSrc, clientOpts)
 	}
 
 	if !update {
@@ -305,6 +301,7 @@ func recordedBranch(r *git.Repository) string {
 	return cfg.Raw.Section(recordedBranchSection).Option(recordedBranchKey)
 }
 
+// recordBranch stores branch in r's config for recordedBranch to read back.
 func recordBranch(r *git.Repository, branch string) error {
 	cfg, err := r.Config()
 	if err != nil {
@@ -359,7 +356,7 @@ func recloneRepo(path string, src repoSource, clientOpts []client.Option) error 
 		return fmt.Errorf("failed to re-clone repo: %w", err)
 	}
 	if err := os.RemoveAll(path); err != nil {
-		return fmt.Errorf("failed to remove oversized repo: %w", err)
+		return fmt.Errorf("failed to remove old repo: %w", err)
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("failed to move re-cloned repo into place: %w", err)
