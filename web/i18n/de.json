@@ -1790,6 +1790,9 @@
   "Username already exists": {
     "other": "Benutzername existiert bereits."
   },
+  "Invalid username.": {
+    "other": "Ungültiger Benutzername. Nur Buchstaben, Ziffern und . _ @ + - sind erlaubt; das erste Zeichen muss ein Buchstabe oder eine Ziffer sein."
+  },
   "Invalid username or password": {
     "other": "Ungültiger Benutzername oder Passwort."
   },

@@ -496,6 +496,14 @@ func (s *Server) handleOIDCNewIdentity(w http.ResponseWriter, r *http.Request, u
 // handleOIDCCreateUser creates a new user from OIDC and logs them in.
 func (s *Server) handleOIDCCreateUser(w http.ResponseWriter, r *http.Request, username, email string, claims map[string]any, prov *OIDCProvider, localizer *i18n.Localizer) {
 	ctx := r.Context()
+	if !isValidUsername(username) {
+		slog.Warn("OIDC login: refusing to auto-create user with invalid username", "username", username, "subject", claims["sub"])
+		s.renderTemplate(w, r, "login", TemplateData{
+			Flashes: []string{localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Invalid username."})},
+		})
+		return
+	}
+
 	apiKey, err := generateSecureToken(32)
 	if err != nil {
 		slog.Error("Failed to generate API key for new user", "error", err)
