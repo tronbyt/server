@@ -120,6 +120,11 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	// Clean up files
 	for _, d := range targetUser.Devices {
+		if !isSinglePathComponent(d.ID) {
+			// Devices created by older versions may have an empty ID.
+			slog.Warn("Skipping webp cleanup for device with unsafe ID", "device_id", d.ID)
+			continue
+		}
 		deviceWebpDir, err := s.ensureDeviceImageDir(d.ID)
 		if err != nil {
 			slog.Error("Failed to get device webp directory for deletion", "device_id", d.ID, "error", err)
@@ -130,9 +135,14 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			slog.Error("Failed to remove device webp directory", "device_id", d.ID, "error", err)
 		}
 	}
-	userAppsDir := filepath.Join(s.DataDir, "users", targetUsername)
-	if err := os.RemoveAll(userAppsDir); err != nil {
-		slog.Error("Failed to remove user apps directory", "username", targetUsername, "error", err)
+	// Only remove the directory when the stored username is a single path component.
+	if isSinglePathComponent(targetUsername) {
+		userAppsDir := filepath.Join(s.DataDir, "users", targetUsername)
+		if err := os.RemoveAll(userAppsDir); err != nil {
+			slog.Error("Failed to remove user apps directory", "username", targetUsername, "error", err)
+		}
+	} else {
+		slog.Warn("Skipping removal of user directory for unsafe username", "username", targetUsername)
 	}
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {

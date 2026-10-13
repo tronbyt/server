@@ -373,6 +373,24 @@ func generateSecureToken(length int) (string, error) {
 	return hex.EncodeToString(b)[:length], nil // Take only requested length
 }
 
+// validUsernameRe allows letters, digits and the punctuation found in email
+// addresses (OIDC usernames are often emails). The first character must be a
+// letter or digit, which rules out "." and "..".
+var validUsernameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$`)
+
+// isValidUsername reports whether a username can be created. Usernames are
+// used as directory names under DataDir/users.
+func isValidUsername(username string) bool {
+	return validUsernameRe.MatchString(username)
+}
+
+// isSinglePathComponent reports whether name is a single, non-empty path
+// component other than "." or "..". It covers usernames stored before
+// isValidUsername existed.
+func isSinglePathComponent(name string) bool {
+	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`)
+}
+
 // flashAndRedirect adds a flash message and redirects to the specified URL.
 func (s *Server) flashAndRedirect(w http.ResponseWriter, r *http.Request, messageID string, redirectURL string, status int) {
 	localizer := s.getLocalizer(r)
@@ -576,6 +594,10 @@ func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *se
 
 // ensureDeviceImageDir is a helper to get and ensure the device webp directory exists.
 func (s *Server) ensureDeviceImageDir(deviceID string) (string, error) {
+	// Each device gets its own subdirectory of webp.
+	if !isSinglePathComponent(deviceID) {
+		return "", fmt.Errorf("invalid device ID for webp directory: %q", deviceID)
+	}
 	path, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp"), deviceID)
 	if err != nil {
 		return "", fmt.Errorf("failed to securejoin path for device webp directory %s: %w", deviceID, err)

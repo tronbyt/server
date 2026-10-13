@@ -1793,6 +1793,9 @@
   "Username already exists": {
     "other": "Username already exists"
   },
+  "Invalid username.": {
+    "other": "Invalid username. Use letters, numbers and . _ @ + - only, starting with a letter or number."
+  },
   "Invalid username or password": {
     "other": "Invalid username or password"
   },
