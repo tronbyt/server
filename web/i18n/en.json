@@ -2200,5 +2200,56 @@
   },
   "Saving...": {
     "other": "Saving..."
+  },
+  "Off": {
+    "other": "Off"
+  },
+  "Paused · NIBLET_CLOUD_URL is empty": {
+    "other": "Paused · NIBLET_CLOUD_URL is empty"
+  },
+  "verified": {
+    "other": "verified"
+  },
+  "You can change this anytime in System Settings.": {
+    "other": "You can change this anytime in System Settings."
+  },
+  "Not now": {
+    "other": "Not now"
+  },
+  "Contribute to community app stats": {
+    "other": "Contribute to community app stats"
+  },
+  "Help other Tidbyt owners discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included.": {
+    "other": "Help other Tidbyt owners discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included."
+  },
+  "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in.": {
+    "other": "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in."
+  },
+  "Community app stats": {
+    "other": "Community app stats"
+  },
+  "Contribute": {
+    "other": "Contribute"
+  },
+  "Turn this off before clearing NIBLET_CLOUD_URL, or your stats will only be removed after 30 days.": {
+    "other": "Turn this off before clearing NIBLET_CLOUD_URL, or your stats will only be removed after 30 days."
+  },
+  "Off · removing your stats": {
+    "other": "Off · removing your stats"
+  },
+  "Couldn't reach Niblet yet · will retry automatically": {
+    "other": "Couldn't reach Niblet yet · will retry automatically"
+  },
+  "Connecting to Niblet…": {
+    "other": "Connecting to Niblet…"
+  },
+  "Contributing · last shared": {
+    "other": "Contributing · last shared"
+  },
+  "Contributing · first update pending": {
+    "other": "Contributing · first update pending"
+  },
+  "Contributing · starts when you add a device": {
+    "other": "Contributing · starts when you add a device"
   }
 }

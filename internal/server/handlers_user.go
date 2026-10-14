@@ -87,6 +87,7 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		User:                 user,
 		Users:                users,
 		SettingsSection:      "admin",
+		UsageSharing:         s.usageSharingStatus(),
 		OIDCEnabled:          s.Config.OIDCEnabled,
 		OIDCIssuerURL:        s.Config.OIDCIssuerURL,
 		OIDCClientID:         s.Config.OIDCClientID,

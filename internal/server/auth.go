@@ -334,6 +334,13 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The first admin answers the app usage sharing question during setup.
+	if count == 0 && s.Config.NibletCloudURL != "" {
+		if err := s.saveUsageConsent(r, r.FormValue("usage_sharing") == "true"); err != nil {
+			slog.Error("Failed to save app usage sharing choice", "error", err)
+		}
+	}
+
 	// Auto-login the first created user
 	if count == 0 {
 		session, _ := s.Store.Get(r, "session-name")

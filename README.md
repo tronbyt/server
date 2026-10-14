@@ -108,7 +108,7 @@ The server can be configured via environment variables or `.env` file:
 *   `SYSTEM_APPS_REPO`: Git repository URL for system apps (default: `https://github.com/tronbyt/apps.git`). End the URL with `#branch-name` to use a branch other than the default.
 *   `SYSTEM_APPS_AUTO_REFRESH`: Initial default for refreshing the system apps repository every 12 hours (default: `false`). Administrators can change this under **Settings → Content and Firmware**; a saved web preference takes precedence on later starts.
 *   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
-*   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily (default: `https://cloud.heyniblet.com`). Set to an empty string to disable.
+*   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily, and destination of the opt-in community app stats in System Settings, which are off by default (default: `https://cloud.heyniblet.com`). Set to an empty string to disable both.
 *   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).

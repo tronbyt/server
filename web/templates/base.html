@@ -165,6 +165,37 @@
     </div>
     {{- end -}}
     {{ block "content" . }}{{ end }}
+    {{ if .ShowUsagePrompt }}
+    <dialog id="usage-sharing-prompt"
+            class="settings-dialog"
+            aria-labelledby="usage-sharing-prompt-title">
+        <form method="post"
+              action="/settings/admin/usage-sharing"
+              class="settings-form">
+            <input type="hidden" name="return_to" value="/">
+            <div class="settings-card-header">
+                <h3 id="usage-sharing-prompt-title">{{ t .Localizer "Contribute to community app stats" }}</h3>
+            </div>
+            <p class="settings-help">
+                {{ t .Localizer "Help other Tidbyt owners discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included." }}
+            </p>
+            <p class="settings-help">{{ t .Localizer "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in." }}</p>
+            <p class="settings-help">{{ t .Localizer "You can change this anytime in System Settings." }}</p>
+            <div class="settings-dialog-actions">
+                <button class="w3-button" type="submit" name="consent" value="false">{{ t .Localizer "Not now" }}</button>
+                <button class="w3-button w3-blue" type="submit" name="consent" value="true">{{ t .Localizer "Contribute" }}</button>
+            </div>
+        </form>
+    </dialog>
+    <script>
+      (function () {
+        const prompt = document.getElementById('usage-sharing-prompt');
+        if (!prompt || typeof prompt.showModal !== 'function') return;
+        prompt.querySelector('input[name="return_to"]').value = location.pathname + location.search;
+        prompt.showModal();
+      })();
+    </script>
+    {{ end }}
 </section>
 <hr style="margin-top: 20px; border: none; border-top: 1px solid #333;">
 {{ if .UpdateAvailable }}

@@ -343,3 +343,24 @@
     align-self: stretch;
   }
 }
+
+/* App usage sharing choice on the first-admin setup form. */
+.usage-sharing-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 42rem;
+}
+
+.usage-sharing-option .w3-check {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.usage-sharing-help {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.9em;
+  font-weight: 400;
+  color: var(--muted-text, #666);
+}

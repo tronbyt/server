@@ -7,50 +7,23 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 )
 
+// nibletCountResponse is the app-install-counts.v1 payload.
 type nibletCountResponse struct {
 	ProtocolVersion string           `json:"protocol_version"`
 	Niblet          map[string]int64 `json:"niblet"`
 }
 
+// fetchNibletCounts downloads the public install counts.
 func (s *Server) fetchNibletCounts(ctx context.Context) ([]byte, error) {
-	base, err := url.Parse(s.Config.NibletCloudURL)
-	if err != nil || base == nil || base.Host == "" || base.User != nil || base.RawQuery != "" || base.Fragment != "" ||
-		(base.Scheme != "https" && (base.Scheme != "http" || (base.Hostname() != "127.0.0.1" && base.Hostname() != "localhost" && base.Hostname() != "::1"))) {
-		return nil, errors.New("niblet cloud requires HTTPS (HTTP is allowed only on loopback)")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(base.String(), "/")+"/v1/catalog/install-counts", nil)
-	if err != nil {
-		return nil, err
-	}
-	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, errors.New("niblet cloud request failed")
-	}
-	defer func() {
-		if err := res.Body.Close(); err != nil {
-			slog.Debug("Failed to close Niblet Cloud response", "error", err)
-		}
-	}()
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("niblet cloud returned HTTP %d", res.StatusCode)
-	}
-	payload, err := io.ReadAll(io.LimitReader(res.Body, 1024*1024+1))
-	if len(payload) > 1024*1024 {
-		return nil, errors.New("niblet response too large")
-	}
-	return payload, err
+	return s.nibletCall(ctx, http.MethodGet, "/v1/catalog/install-counts", "", nil, http.StatusOK)
 }
 
+// runNibletSync checks hourly whether install counts need refreshing.
 func (s *Server) runNibletSync() {
 	// Existing server background jobs live for the process lifetime.
 	ticker := time.NewTicker(time.Hour)
@@ -63,6 +36,7 @@ func (s *Server) runNibletSync() {
 	}
 }
 
+// parseNibletCounts validates an install counts payload.
 func parseNibletCounts(payload []byte) (map[string]int64, error) {
 	var counts nibletCountResponse
 	if err := json.Unmarshal(payload, &counts); err != nil {
@@ -79,6 +53,7 @@ func parseNibletCounts(payload []byte) (map[string]int64, error) {
 	return counts.Niblet, nil
 }
 
+// setNibletCounts replaces the counts shown on system app cards.
 func (s *Server) setNibletCounts(counts map[string]int64) {
 	s.systemAppsCacheMutex.Lock()
 	s.installCounts = counts

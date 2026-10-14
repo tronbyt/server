@@ -2197,5 +2197,56 @@
   },
   "Saving...": {
     "other": "Wird gespeichert..."
+  },
+  "Off": {
+    "other": "Aus"
+  },
+  "Paused · NIBLET_CLOUD_URL is empty": {
+    "other": "Pausiert · NIBLET_CLOUD_URL ist leer"
+  },
+  "verified": {
+    "other": "verifiziert"
+  },
+  "You can change this anytime in System Settings.": {
+    "other": "Sie können dies jederzeit in den Systemeinstellungen ändern."
+  },
+  "Not now": {
+    "other": "Nicht jetzt"
+  },
+  "Contribute to community app stats": {
+    "other": "Zu Community-App-Statistiken beitragen"
+  },
+  "Help other Tidbyt owners discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included.": {
+    "other": "Helfen Sie anderen Tidbyt-Besitzern, großartige Apps zu entdecken. Ihr Tronbyt teilt nur bei Änderungen mit, welche Bibliotheks-Apps Sie verwenden, und eine ungefähre Geräteanzahl, dazu ein kurzes wöchentliches Lebenszeichen. Ihr Name, Ihre Geräte, Einstellungen und eigenen Apps sind nie enthalten."
+  },
+  "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in.": {
+    "other": "Niblet verwaltet die Community-Statistiken. Ihre IP-Adresse wird nur zur Spam-Abwehr verwendet und nicht mit Ihren Statistiken gespeichert, die 30 Tage nach dem letzten Lebenszeichen Ihres Tronbyt entfernt werden."
+  },
+  "Community app stats": {
+    "other": "Community-App-Statistiken"
+  },
+  "Contribute": {
+    "other": "Beitragen"
+  },
+  "Turn this off before clearing NIBLET_CLOUD_URL, or your stats will only be removed after 30 days.": {
+    "other": "Deaktivieren Sie dies, bevor Sie NIBLET_CLOUD_URL leeren, sonst werden Ihre Statistiken erst nach 30 Tagen entfernt."
+  },
+  "Off · removing your stats": {
+    "other": "Aus · Ihre Statistiken werden entfernt"
+  },
+  "Couldn't reach Niblet yet · will retry automatically": {
+    "other": "Niblet noch nicht erreichbar · wird automatisch erneut versucht"
+  },
+  "Connecting to Niblet…": {
+    "other": "Verbindung zu Niblet wird hergestellt…"
+  },
+  "Contributing · last shared": {
+    "other": "Beitrag aktiv · zuletzt geteilt"
+  },
+  "Contributing · first update pending": {
+    "other": "Beitrag aktiv · erste Aktualisierung ausstehend"
+  },
+  "Contributing · starts when you add a device": {
+    "other": "Beitrag aktiv · startet, sobald Sie ein Gerät hinzufügen"
   }
 }

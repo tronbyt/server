@@ -64,14 +64,17 @@ type DeviceSummary struct {
 
 // TemplateData is a struct to pass data to HTML templates.
 type TemplateData struct {
-	User       *data.User
-	Users      []data.User // For admin view
-	Config     *config.TemplateConfig
-	Flashes    []string
-	Devices    []data.Device   // Filtered devices for rendering
-	AllDevices []DeviceSummary // Lightweight list for "Copy to" dropdown
-	Item       *data.Device    // For single item partials
-	Localizer  *i18n.Localizer
+	ShowUsagePrompt       bool // first-run app usage sharing prompt for admins
+	UsageSharingAvailable bool
+	UsageSharing          UsageSharingStatus
+	User                  *data.User
+	Users                 []data.User // For admin view
+	Config                *config.TemplateConfig
+	Flashes               []string
+	Devices               []data.Device   // Filtered devices for rendering
+	AllDevices            []DeviceSummary // Lightweight list for "Copy to" dropdown
+	Item                  *data.Device    // For single item partials
+	Localizer             *i18n.Localizer
 
 	UpdateAvailable  bool
 	LatestReleaseURL string
@@ -193,6 +196,9 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 			}
 		}
 	}
+
+	tmplData.UsageSharingAvailable = s.Config.NibletCloudURL != ""
+	tmplData.ShowUsagePrompt = s.shouldPromptUsage(tmplData.User)
 
 	// Calculate IsAutoLoginActive
 	userCount, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
@@ -710,6 +716,40 @@ func (s *Server) getSetting(key string) (string, error) {
 func (s *Server) setSetting(key, value string) error {
 	setting := data.Setting{Key: key, Value: value}
 	return gorm.G[data.Setting](s.DB, clause.OnConflict{UpdateAll: true}).Create(context.Background(), &setting)
+}
+
+// setSettings saves several settings in one transaction, so they change together.
+func (s *Server) setSettings(values map[string]string) error {
+	settings := make([]data.Setting, 0, len(values))
+	for key, value := range values {
+		settings = append(settings, data.Setting{Key: key, Value: value})
+	}
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		return gorm.G[data.Setting](tx, clause.OnConflict{UpdateAll: true}).CreateInBatches(context.Background(), &settings, len(settings))
+	})
+}
+
+// publicBaseURL returns the admin's https:// URL when it is a public hostname,
+// which hosted servers use to prove their identity.
+func publicBaseURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || (parsed.Port() != "" && parsed.Port() != "443") {
+		return ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if net.ParseIP(host) != nil || !strings.Contains(host, ".") || host == "localhost" ||
+		strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".localhost") {
+		return ""
+	}
+	return "https://" + host
+}
+
+// localReturnPath accepts only same-site paths, so the form cannot redirect elsewhere.
+func localReturnPath(raw string) string {
+	if !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") || strings.HasPrefix(raw, "/\\") || strings.ContainsAny(raw, "\r\n") {
+		return "/settings/admin"
+	}
+	return raw
 }
 
 func (s *Server) notifyDashboard(username string, event WSEvent) {
