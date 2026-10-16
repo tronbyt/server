@@ -26,7 +26,7 @@ require (
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
 	github.com/tronbyt/pixlet v0.54.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/mod v0.41.0
+	golang.org/x/mod v0.42.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/text v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
