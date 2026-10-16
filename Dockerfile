@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.10.0 AS xx
 
 # hadolint global ignore=DL3018
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
