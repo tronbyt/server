@@ -891,12 +891,20 @@
           inputElement.type = field.secret ? "password" : "text";
           inputElement.value = config[field.id] || field.default || "";
           inputElement.className = "form-control";
+          // Save the default shown in the box, as dropdown and datetime do; otherwise
+          // it's only saved once edited, and the app receives an empty value.
+          if (!config[field.id] && field.default) {
+            config[field.id] = field.default;
+          }
           break;
         case "color":
           inputElement = document.createElement("input");
           inputElement.type = "color";
           inputElement.value = config[field.id] || field.default || "#000000";
           inputElement.className = "form-control form-control-color";
+          if (!config[field.id] && field.default) {
+            config[field.id] = field.default;
+          }
           if (field.palette) {
               const div = createColorPaletteButtons(field, inputElement);
               inputCell.appendChild(div);
