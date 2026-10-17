@@ -60,13 +60,7 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 		appDir := filepath.Join(dataDir, "system-apps", "apps", dirName)
 		manifestPath := filepath.Join(appDir, "manifest.yaml")
 
-		if manifestData, err := os.ReadFile(manifestPath); err == nil {
-			if err := yaml.Unmarshal(manifestData, &apps[i].Manifest); err != nil {
-				slog.Warn("Failed to parse manifest.yaml", "appID", apps[i].ID, "error", err)
-			}
-		} else {
-			slog.Debug("manifest.yaml not found for app", "appID", apps[i].ID, "error", err)
-		}
+		loadManifest(manifestPath, &apps[i].Manifest)
 
 		// Finalize paths and defaults
 		if apps[i].ID == "" {
@@ -141,6 +135,26 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 	}
 
 	return apps, nil
+}
+
+// loadManifest reads manifest.yaml at path into m. Keys present in the file
+// override m's fields; absent keys leave them untouched, so callers can set
+// defaults first. A missing or invalid manifest leaves m unchanged.
+func loadManifest(path string, m *Manifest) {
+	manifestData, err := os.ReadFile(path)
+	if err != nil {
+		slog.Debug("manifest.yaml not found for app", "path", path, "error", err)
+		return
+	}
+	// Validate into a scratch value first so a bad file can't half-apply to m.
+	var parsed Manifest
+	if err := yaml.Unmarshal(manifestData, &parsed); err != nil {
+		slog.Warn("Failed to parse manifest.yaml", "path", path, "error", err)
+		return
+	}
+	if err := yaml.Unmarshal(manifestData, m); err != nil {
+		slog.Warn("Failed to parse manifest.yaml", "path", path, "error", err)
+	}
 }
 
 func scanSystemApps(dataDir string) ([]AppMetadata, error) {
@@ -224,6 +238,16 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 				slog.Warn("Failed to read user app directory", "path", appDir, "error", err)
 				continue // Skip to next app directory
 			}
+			// Pick up category, tags, broken flag, etc. from an optional
+			// manifest. The identity fields stay tied to the directory: the
+			// add/delete/preview routes address user apps by directory name.
+			loadManifest(filepath.Join(appDir, "manifest.yaml"), &userApp.Manifest)
+			userApp.ID = appName
+			userApp.PackageName = appName
+			if userApp.Name == "" {
+				userApp.Name = appName
+			}
+
 			var starFile string
 			var webpFile string
 			for _, f := range files {
@@ -252,25 +276,22 @@ func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMet
 				if _, err := os.Stat(filepath.Join(appDir, preview2xWebP)); err == nil {
 					userApp.Preview2x = preview2xWebP
 				}
-
-				// Use file mod time as date
-				if info, err := os.Stat(filepath.Join(appDir, starFile)); err == nil {
-					userApp.Date = info.ModTime().Format("2006-01-02 15:04")
-				}
-
-				apps = append(apps, userApp)
 			} else if webpFile != "" {
 				// No .star file, but we have a .webp file matching the app name
 				userApp.FileName = webpFile
 				userApp.Path = filepath.Join("users", username, subDir, appName, webpFile)
 				userApp.Preview = webpFile
-
-				// Use file mod time as date
-				if info, err := os.Stat(filepath.Join(appDir, webpFile)); err == nil {
-					userApp.Date = info.ModTime().Format("2006-01-02 15:04")
-				}
-				apps = append(apps, userApp)
+			} else {
+				continue
 			}
+
+			// Prefer the manifest's updated date, falling back to file mod time
+			if userApp.Updated != "" {
+				userApp.Date = userApp.Updated
+			} else if info, err := os.Stat(filepath.Join(appDir, userApp.FileName)); err == nil {
+				userApp.Date = info.ModTime().Format("2006-01-02 15:04")
+			}
+			apps = append(apps, userApp)
 		}
 	}
 

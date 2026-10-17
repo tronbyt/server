@@ -22,7 +22,7 @@
                onkeyup="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
                oninput="searchApps('{{ .SearchID }}', '{{ .GridID }}')"
                onkeydown="preventSubmitOnEnter(event)" />
-        <label for="category_{{ .SearchID }}" class="control-label">
+        <label for="category_{{ .SearchID }}" class="control-label category-control">
             {{ t .Localizer "Category:" }}
             <span class="select-wrap">
                 <select id="category_{{ .SearchID }}" onchange="filterByCategory()">
@@ -49,7 +49,9 @@
             <span class="select-wrap">
                 <select id="sort_{{ .SearchID }}" onchange="sortApps('{{ .SearchID }}')">
                     <option value="system" selected>{{ t .Localizer "Default" }}</option>
+                    {{ if .ShowInstallSort }}
                     <option value="installs">{{ t .Localizer "Popularity" }}</option>
+                    {{ end }}
                     <option value="newest">{{ t .Localizer "Newest" }}</option>
                     <option value="last-updated">{{ t .Localizer "Last Updated" }}</option>
                     <option value="alphabetical">{{ t .Localizer "Alphabetical (A-Z)" }}</option>

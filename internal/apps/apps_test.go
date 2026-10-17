@@ -102,3 +102,77 @@ func TestSupports64x64ComesFromTheManifestNotAScreenshot(t *testing.T) {
 		t.Error("supports2x must not be set: no @2x file and no manifest key")
 	}
 }
+
+// A custom app's manifest.yaml feeds the add-app filters (category, tags,
+// broken), but must not change the ID/PackageName the routes address it by.
+func TestListUserAppsReadsManifest(t *testing.T) {
+	tmpDir := t.TempDir()
+	appDir := filepath.Join(tmpDir, "users", "testuser", "repo", "apps", "myclock")
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "id: something-else\nname: My Clock\npackageName: other\nfileName: other.star\n" +
+		"category: time\ntags: [clock, retro]\nbroken: true\nbrokenReason: API gone\nupdated: 2026-01-02 03:04\n"
+	for name, body := range map[string]string{"manifest.yaml": manifest, "myclock.star": "load()"} {
+		if err := os.WriteFile(filepath.Join(appDir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	apps := ListUserApps(tmpDir, "testuser")
+	if len(apps) != 1 {
+		t.Fatalf("Expected 1 app, got %d", len(apps))
+	}
+	app := apps[0]
+	if app.ID != "myclock" || app.PackageName != "myclock" || app.FileName != "myclock.star" {
+		t.Errorf("identity fields changed by manifest: ID=%q PackageName=%q FileName=%q", app.ID, app.PackageName, app.FileName)
+	}
+	if app.Name != "My Clock" || app.Category != "time" || len(app.Tags) != 2 || !app.Broken || app.BrokenReason != "API gone" {
+		t.Errorf("manifest fields not applied: %+v", app.Manifest)
+	}
+	if app.Date != "2026-01-02 03:04" {
+		t.Errorf("Date = %q, want manifest updated date", app.Date)
+	}
+	if app.Author != "testuser" || app.Summary != "Git Repository app" {
+		t.Errorf("defaults lost for keys absent from manifest: Author=%q Summary=%q", app.Author, app.Summary)
+	}
+}
+
+// Image-only custom apps (a .webp with no .star) follow the same date rule as
+// .star apps: the manifest's updated date wins over the file mod time.
+func TestListUserAppsImageOnlyUsesManifestUpdated(t *testing.T) {
+	tmpDir := t.TempDir()
+	appDir := filepath.Join(tmpDir, "users", "testuser", "apps", "pic")
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"manifest.yaml": "updated: 2026-01-02 03:04\n", "pic.webp": ""} {
+		if err := os.WriteFile(filepath.Join(appDir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apps := ListUserApps(tmpDir, "testuser")
+	if len(apps) != 1 || apps[0].FileName != "pic.webp" {
+		t.Fatalf("expected one image-only app, got %+v", apps)
+	}
+	if apps[0].Date != "2026-01-02 03:04" {
+		t.Errorf("Date = %q, want manifest updated date", apps[0].Date)
+	}
+}
+
+func TestListUserAppsIgnoresInvalidManifest(t *testing.T) {
+	tmpDir := t.TempDir()
+	appDir := filepath.Join(tmpDir, "users", "testuser", "apps", "app1")
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"manifest.yaml": "name: [unclosed", "app1.star": "load()"} {
+		if err := os.WriteFile(filepath.Join(appDir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apps := ListUserApps(tmpDir, "testuser")
+	if len(apps) != 1 || apps[0].Name != "app1" || apps[0].Summary != "User uploaded app" {
+		t.Fatalf("invalid manifest should leave defaults: %+v", apps)
+	}
+}

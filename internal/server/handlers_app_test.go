@@ -73,6 +73,42 @@ func TestHandleAddAppPost(t *testing.T) {
 	}
 }
 
+func TestHandleAddAppGet_CustomAppFilters(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser"}
+	s.DB.Create(&device)
+
+	s.systemAppsCache = []apps.AppMetadata{{ID: "Clock", Name: "Clock"}}
+
+	appDir := filepath.Join(s.DataDir, "users", "testuser", "repo", "apps", "myclock")
+	require.NoError(t, os.MkdirAll(appDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "myclock.star"), []byte("load()"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "manifest.yaml"), []byte("category: time\ntags: [retro]\n"), 0o644))
+
+	req, _ := http.NewRequest(http.MethodGet, "/devices/testdevice/addapp", nil)
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(s.handleAddAppGet).ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+	body := rr.Body.String()
+
+	// The custom section gets the same filter controls as the system section...
+	for _, id := range []string{`id="custom_search"`, `id="category_custom_search"`, `id="hide_installed_custom_search"`, `id="show_broken_custom_search"`, `id="sort_custom_search"`} {
+		assert.Contains(t, body, id)
+	}
+	// ...and its manifest metadata reaches the card for filtering.
+	assert.Contains(t, body, `data-category="time"`)
+	assert.Contains(t, body, `data-tags="retro"`)
+	// Custom apps have no install counts, so only the system sort offers Popularity.
+	assert.Equal(t, 1, strings.Count(body, `value="installs"`))
+}
+
 func TestHandleConfigAppPost(t *testing.T) {
 	s := newTestServer(t)
 

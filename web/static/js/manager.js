@@ -7,6 +7,11 @@ try {
 } catch (e) {
   console.error('Failed to read sort preference from localStorage:', e);
 }
+// Each app group remembers its own sort. System apps keep the original key so
+// existing saved preferences carry over.
+function sortStorageKey(searchId) {
+  return searchId === 'system_search' ? SORT_TYPE_STORAGE_KEY : `${SORT_TYPE_STORAGE_KEY}_${searchId}`;
+}
 let hideInstalled = false;
 let showBroken = false;
 let isProcessing = false;
@@ -590,7 +595,7 @@ function filterByCategory() {
 function sortApps(searchId) {
   sortType = document.getElementById('sort_' + searchId).value;
   try {
-    localStorage.setItem(SORT_TYPE_STORAGE_KEY, sortType);
+    localStorage.setItem(sortStorageKey(searchId), sortType);
   } catch (e) {
     console.error('Failed to save sort preference to localStorage:', e);
   }
@@ -872,8 +877,11 @@ function setupVirtualScrolling() {
     // Initially hide items beyond the first page only for system sort and large lists
     if (items && items.length > ITEMS_PER_PAGE) {
       // Check if we should apply virtual scrolling initially
-      const shouldApplyVirtualScrolling = sortType === 'system' ||
-        (document.getElementById('system_search') && !document.getElementById('system_search').value.trim());
+      const searchId = grid.id.replace('_app_grid', '_search');
+      const sortSelect = document.getElementById('sort_' + searchId);
+      const searchInput = document.getElementById(searchId);
+      const shouldApplyVirtualScrolling = (sortSelect ? sortSelect.value : 'system') === 'system' ||
+        (searchInput && !searchInput.value.trim());
 
       if (shouldApplyVirtualScrolling) {
         items.forEach((item, index) => {
@@ -1731,26 +1739,30 @@ function switchToCollapsedView(deviceId) {
   saveDevicePreferences(deviceId, prefs);
 }
 
-// Populate category dropdowns with unique categories from all app items
+// Populate each category dropdown with the categories of the apps in its own group
 function populateCategoryDropdowns() {
   const categorySelects = document.querySelectorAll('select[id^="category_"]');
   if (categorySelects.length === 0) return;
 
-  // Collect all unique categories from app items
-  const categories = new Set();
-  const appItems = document.querySelectorAll('.app-item');
-  appItems.forEach(item => {
-    const category = item.getAttribute('data-category');
-    if (category) {
-      categories.add(category);
-    }
-  });
-
-  // Sort categories alphabetically
-  const sortedCategories = Array.from(categories).sort();
-
-  // Populate each category dropdown (skip the first "All Categories" option)
   categorySelects.forEach(select => {
+    // Collect unique categories from this group's app items only
+    const group = select.closest('.app-group') || document;
+    const categories = new Set();
+    group.querySelectorAll('.app-item').forEach(item => {
+      const category = item.getAttribute('data-category');
+      if (category) {
+        categories.add(category);
+      }
+    });
+    const sortedCategories = Array.from(categories).sort();
+
+    // A group with no categorized apps (e.g. custom apps without manifests)
+    // gets no category control at all.
+    const control = select.closest('.category-control');
+    if (control) {
+      control.style.display = sortedCategories.length ? '' : 'none';
+    }
+
     // Remove existing options except the first one
     while (select.options.length > 1) {
       select.remove(1);
@@ -1768,15 +1780,15 @@ function populateCategoryDropdowns() {
 
 // Initialize drag and drop for all app cards when page loads
 document.addEventListener('DOMContentLoaded', function () {
-  // Initialize sorting dropdowns from localStorage
+  // Initialize each sorting dropdown from its own saved preference
   try {
-    const savedSortType = localStorage.getItem(SORT_TYPE_STORAGE_KEY);
-    if (savedSortType) {
-      const sortSelects = document.querySelectorAll('select[id^="sort_"]');
-      sortSelects.forEach(select => {
+    document.querySelectorAll('select[id^="sort_"]').forEach(select => {
+      const savedSortType = localStorage.getItem(sortStorageKey(select.id.replace('sort_', '')));
+      // Skip values this dropdown doesn't offer (e.g. Popularity on custom apps)
+      if (savedSortType && Array.from(select.options).some(o => o.value === savedSortType)) {
         select.value = savedSortType;
-      });
-    }
+      }
+    });
   } catch (e) {
     console.error('Failed to read sort preference from localStorage:', e);
   }
