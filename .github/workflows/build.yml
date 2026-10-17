@@ -150,10 +150,12 @@ jobs:
         run: |
           VERSION=${GITHUB_REF_NAME}
           COMMIT=${GITHUB_SHA}
+          BRANCH=${GITHUB_REF_NAME}
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           # Base flags
-          LDFLAGS="-w -s -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${DATE}'"
+          LDFLAGS="-w -s -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.Branch=${BRANCH}' -X 'tronbyt-server/internal/version.RepoURL=${REPO_URL}' -X 'tronbyt-server/internal/version.BuildDate=${DATE}'"
 
           # Add static flags ONLY for Windows to avoid DLL dependency
           if [ "${{ matrix.goos }}" == "windows" ]; then

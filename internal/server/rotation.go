@@ -130,6 +130,17 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 	}
 
+	// Trigger every_display notification sound for HTTP polling devices
+	if device.Info.ProtocolType != data.ProtocolWS && app != nil && app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && app.NotificationSoundTrigger == "every_display" {
+		if device.HasSpeaker() && !device.IsMuted() {
+			baseURLToUse := s.GetDeviceBaseURL(device)
+			if baseURLToUse == "" || (!strings.Contains(baseURLToUse, ":") && strings.Contains(baseURL, ":")) {
+				baseURLToUse = baseURL
+			}
+			_ = s.TriggerDeviceSound(ctx, device, *app.NotificationSound, baseURLToUse)
+		}
+	}
+
 	// 6. Return Image
 	var webpPath string
 

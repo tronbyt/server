@@ -27,10 +27,14 @@ const (
 	espImageHeaderMinSize = 24
 )
 
-// LooksLikeFirmware reports whether data appears to be an ESP32 firmware image:
-// an OTA app binary (magic 0xE9 at offset 0) or a merged image with the
+// LooksLikeFirmware reports whether data appears to be a valid firmware image:
+// an ELF executable (Linux/Tronberry binaries with magic \x7fELF),
+// an ESP32 OTA app binary (magic 0xE9 at offset 0), or a merged image with the
 // bootloader at 0x0 or 0x1000.
 func LooksLikeFirmware(data []byte) bool {
+	if isELF(data) {
+		return true
+	}
 	if hasESPImageHeader(data) {
 		return true
 	}
@@ -38,6 +42,10 @@ func LooksLikeFirmware(data []byte) bool {
 		return true
 	}
 	return false
+}
+
+func isELF(data []byte) bool {
+	return len(data) >= 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F'
 }
 
 func hasESPImageHeader(data []byte) bool {

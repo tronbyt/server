@@ -23,6 +23,7 @@ func TestLooksLikeFirmware(t *testing.T) {
 	}{
 		{name: "ota image", data: ota, want: true},
 		{name: "merged image with bootloader at 0x1000", data: merged, want: true},
+		{name: "elf binary", data: []byte{0x7f, 'E', 'L', 'F', 0x02, 0x01}, want: true},
 		{name: "html login page", data: htmlLogin, want: false},
 		{name: "empty", data: nil, want: false},
 		{name: "too short", data: []byte{espImageMagic, 0x01}, want: false},

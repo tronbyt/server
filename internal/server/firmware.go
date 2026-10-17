@@ -26,6 +26,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// FirmwareReleaseInfo holds release metadata and notes.
+type FirmwareReleaseInfo struct {
+	TagName string `json:"tag_name"`
+	Name    string `json:"name"`
+	Body    string `json:"body"`
+	HTMLURL string `json:"html_url"`
+}
+
 // FirmwareReleasesToList is the number of releases fetched from the GitHub API.
 const FirmwareReleasesToList = 5
 
@@ -44,30 +52,28 @@ func (s *Server) githubAPIBaseURL() string {
 // maxReleases releases. Asset downloads use the public browser download URL,
 // which does not count against the GitHub API rate limit; the API asset URL is
 // only used as a fallback for private repositories.
-func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
-	firmwareRepo := os.Getenv("FIRMWARE_REPO")
-	if firmwareRepo == "" {
-		firmwareRepo = "https://github.com/tronbyt/firmware-esp32"
+func parseOwnerRepo(repoURL string, defaultOwner, defaultRepo string) (string, string) {
+	if repoURL == "" {
+		return defaultOwner, defaultRepo
 	}
-
-	owner := "tronbyt"
-	repo := "firmware-esp32"
-
-	if strings.Contains(firmwareRepo, "github.com/") {
-		parts := strings.Split(strings.Split(firmwareRepo, "github.com/")[1], "/")
+	if strings.Contains(repoURL, "github.com/") {
+		parts := strings.Split(strings.Split(repoURL, "github.com/")[1], "/")
 		if len(parts) >= 2 {
-			owner = parts[0]
-			repo = strings.TrimSuffix(parts[1], ".git")
+			return parts[0], strings.TrimSuffix(parts[1], ".git")
 		}
 	}
+	return defaultOwner, defaultRepo
+}
+
+func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultRepo string, etagKey string, mapping map[string]string, maxReleases int) error {
+	owner, repo := parseOwnerRepo(repoURL, defaultOwner, defaultRepo)
 
 	// Read stored ETag
 	var storedETag string
-	if val, err := s.getSetting("firmware_releases_etag"); err == nil {
+	if val, err := s.getSetting(etagKey); err == nil {
 		storedETag = val
 	}
 
-	// Fetch last 5 releases
 	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=5", s.githubAPIBaseURL(), owner, repo)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -96,33 +102,34 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 	}()
 
 	if resp.StatusCode == http.StatusNotModified {
-		slog.Info("Firmware releases not modified (ETag match)")
+		slog.Info("Firmware releases not modified (ETag match)", "repo", repo)
 		return nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		// If we hit a rate limit (403) or other error, check if we have any cached firmware.
-		// If so, we can proceed without failing completely.
 		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
 			releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
 			if entries, err := os.ReadDir(releasesDir); err == nil && len(entries) > 0 {
-				slog.Warn("GitHub API rate limit exceeded. Using cached firmware releases.", "count", len(entries))
+				slog.Warn("GitHub API rate limit exceeded. Using cached firmware releases.", "repo", repo, "count", len(entries))
 				return nil
 			}
 		}
-		return fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+		return fmt.Errorf("GitHub API returned %d for %s/%s", resp.StatusCode, owner, repo)
 	}
 
 	// Save new ETag
 	newETag := resp.Header.Get("ETag")
 	if newETag != "" {
-		if err := s.setSetting("firmware_releases_etag", newETag); err != nil {
-			slog.Error("Failed to save firmware ETag setting", "error", err)
+		if err := s.setSetting(etagKey, newETag); err != nil {
+			slog.Error("Failed to save firmware ETag setting", "key", etagKey, "error", err)
 		}
 	}
 
 	var releases []struct {
 		TagName string `json:"tag_name"`
+		Name    string `json:"name"`
+		Body    string `json:"body"`
+		HTMLURL string `json:"html_url"`
 		Assets  []struct {
 			Name               string `json:"name"`
 			URL                string `json:"url"`                  // API URL
@@ -139,48 +146,6 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 		return err
 	}
 
-	// Cleanup old custom firmware uploads
-	if files, err := os.ReadDir(baseFirmwareDir); err == nil {
-		for _, f := range files {
-			if strings.HasPrefix(f.Name(), "custom_") {
-				info, err := f.Info()
-				if err != nil {
-					slog.Warn("Failed to get file info for custom firmware", "file", f.Name(), "error", err)
-					continue
-				}
-				// Cleanup files older than 24 hours
-				if time.Since(info.ModTime()) > 24*time.Hour {
-					if err := os.Remove(filepath.Join(baseFirmwareDir, f.Name())); err != nil {
-						slog.Warn("Failed to delete old custom firmware", "file", f.Name(), "error", err)
-					}
-				}
-			}
-		}
-	}
-
-	// Mapping of asset names to local names
-	mapping := map[string]string{
-		// OTA firmware binaries (app only, flashable at 0x10000)
-		"tidbyt-gen1_firmware.bin":               "tidbyt-gen1.bin",
-		"tidbyt-gen1_swap_firmware.bin":          "tidbyt-gen1_swap.bin",
-		"tidbyt-gen2_firmware.bin":               "tidbyt-gen2.bin",
-		"pixoticker_firmware.bin":                "pixoticker.bin",
-		"tronbyt-s3_firmware.bin":                "tronbyt-S3.bin",
-		"tronbyt-s3-wide_firmware.bin":           "tronbyt-s3-wide.bin",
-		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
-		"matrixportal-s3-square_firmware.bin":    "matrixportal-s3-square.bin",
-		"matrixportal-s3-wide_firmware.bin":      "matrixportal-s3-wide.bin",
-		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
-		"waveshare-s3_firmware.bin":              "waveshare-s3.bin",
-		// Merged binaries (bootloader + partition + app, flashable at 0x0)
-		"tidbyt-gen1_merged.bin":            "tidbyt-gen1_merged.bin",
-		"tronbyt-s3_merged.bin":             "tronbyt-S3_merged.bin",
-		"matrixportal-s3_merged.bin":        "matrixportal-s3_merged.bin",
-		"matrixportal-s3-square_merged.bin": "matrixportal-s3-square_merged.bin",
-		"matrixportal-s3-wide_merged.bin":   "matrixportal-s3-wide_merged.bin",
-		"waveshare-s3_merged.bin":           "waveshare-s3_merged.bin",
-	}
-
 	for i, release := range releases {
 		if i >= maxReleases {
 			break
@@ -192,7 +157,15 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 			continue
 		}
 
-		// Iterate over assets and download them if they are missing or empty.
+		info := FirmwareReleaseInfo{
+			TagName: release.TagName,
+			Name:    release.Name,
+			Body:    release.Body,
+			HTMLURL: release.HTMLURL,
+		}
+		if metaBytes, err := json.Marshal(info); err == nil {
+			_ = os.WriteFile(filepath.Join(versionDir, "release.json"), metaBytes, 0644)
+		}
 
 		for _, asset := range release.Assets {
 			localName, ok := mapping[asset.Name]
@@ -284,8 +257,91 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 			}
 		}
 	}
+	return nil
+}
 
-	// Update version file to point to the latest tag
+// UpdateFirmwareBinaries downloads firmware binaries for the most recent
+// maxReleases releases. Asset downloads use the public browser download URL,
+// which does not count against the GitHub API rate limit; the API asset URL is
+// only used as a fallback for private repositories.
+func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
+	baseFirmwareDir := filepath.Join(s.DataDir, "firmware")
+
+	// Cleanup old custom firmware uploads
+	if files, err := os.ReadDir(baseFirmwareDir); err == nil {
+		for _, f := range files {
+			if strings.HasPrefix(f.Name(), "custom_") {
+				info, err := f.Info()
+				if err != nil {
+					slog.Warn("Failed to get file info for custom firmware", "file", f.Name(), "error", err)
+					continue
+				}
+				// Cleanup files older than 24 hours
+				if time.Since(info.ModTime()) > 24*time.Hour {
+					if err := os.Remove(filepath.Join(baseFirmwareDir, f.Name())); err != nil {
+						slog.Warn("Failed to delete old custom firmware", "file", f.Name(), "error", err)
+					}
+				}
+			}
+		}
+	}
+
+	// Mapping of asset names to local names for ESP32
+	espMapping := map[string]string{
+		// OTA firmware binaries (app only, flashable at 0x10000)
+		"tidbyt-gen1_firmware.bin":               "tidbyt-gen1.bin",
+		"tidbyt-gen1_swap_firmware.bin":          "tidbyt-gen1_swap.bin",
+		"tidbyt-gen2_firmware.bin":               "tidbyt-gen2.bin",
+		"pixoticker_firmware.bin":                "pixoticker.bin",
+		"tronbyt-s3_firmware.bin":                "tronbyt-S3.bin",
+		"tronbyt-s3-wide_firmware.bin":           "tronbyt-s3-wide.bin",
+		"matrixportal-s3_firmware.bin":           "matrixportal-s3.bin",
+		"matrixportal-s3-square_firmware.bin":    "matrixportal-s3-square.bin",
+		"matrixportal-s3-wide_firmware.bin":      "matrixportal-s3-wide.bin",
+		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
+		"waveshare-s3_firmware.bin":              "waveshare-s3.bin",
+		// Merged binaries (bootloader + partition + app, flashable at 0x0)
+		"tidbyt-gen1_merged.bin":            "tidbyt-gen1_merged.bin",
+		"tronbyt-s3_merged.bin":             "tronbyt-S3_merged.bin",
+		"matrixportal-s3_merged.bin":        "matrixportal-s3_merged.bin",
+		"matrixportal-s3-square_merged.bin": "matrixportal-s3-square_merged.bin",
+		"matrixportal-s3-wide_merged.bin":   "matrixportal-s3-wide_merged.bin",
+		"waveshare-s3_merged.bin":           "waveshare-s3_merged.bin",
+	}
+
+	firmwareRepo := os.Getenv("FIRMWARE_REPO")
+	var espErr error
+	if firmwareRepo != "none" {
+		espErr = s.downloadReleasesFromRepo(firmwareRepo, "tronbyt", "firmware-esp32", "firmware_releases_etag", espMapping, maxReleases)
+		if espErr != nil {
+			slog.Error("Failed to update ESP32 firmware binaries", "error", espErr)
+		}
+	}
+
+	// Mapping of asset names to local names for Tronberry (Raspberry Pi)
+	tronberryMapping := map[string]string{
+		"tronberry": "tronberry",
+	}
+
+	tronberryRepo := os.Getenv("TRONBERRY_REPO")
+	var tbErr error
+	if tronberryRepo != "none" {
+		tbErr = s.downloadReleasesFromRepo(tronberryRepo, "tronbyt", "tronberry", "tronberry_releases_etag", tronberryMapping, maxReleases)
+		if tbErr != nil {
+			slog.Error("Failed to update Tronberry firmware binaries", "error", tbErr)
+		}
+	}
+
+	if espErr != nil && tbErr != nil {
+		return fmt.Errorf("failed to update firmware binaries: esp32: %v; tronberry: %v", espErr, tbErr)
+	}
+	if espErr != nil && tronberryRepo == "none" {
+		return espErr
+	}
+	if tbErr != nil && firmwareRepo == "none" {
+		return tbErr
+	}
+
 	return nil
 }
 
@@ -310,13 +366,159 @@ func (s *Server) GetAvailableFirmwareVersions() []string {
 	return versions
 }
 
+// GetAvailableFirmwareVersionsForDevice returns all available firmware versions
+// that include a binary suitable for the given device.
+func (s *Server) GetAvailableFirmwareVersionsForDevice(device *data.Device) []string {
+	if device == nil {
+		return s.GetAvailableFirmwareVersions()
+	}
+
+	binName := device.Type.FirmwareFilename(device.SwapColors)
+	if binName == "" {
+		return nil
+	}
+
+	releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
+	entries, err := os.ReadDir(releasesDir)
+	if err != nil {
+		return nil
+	}
+
+	var versions []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			binPath := filepath.Join(releasesDir, entry.Name(), binName)
+			if info, err := os.Stat(binPath); err == nil && info.Size() > 0 {
+				versions = append(versions, entry.Name())
+			}
+		}
+	}
+
+	slices.SortFunc(versions, func(a, b string) int {
+		return semver.Compare(b, a) // Descending order
+	})
+
+	return versions
+}
+
+// GetLatestFirmwareVersionForDevice returns the latest available firmware version
+// for the given device.
+func (s *Server) GetLatestFirmwareVersionForDevice(device *data.Device) string {
+	versions := s.GetAvailableFirmwareVersionsForDevice(device)
+	if len(versions) > 0 {
+		return versions[0]
+	}
+	return ""
+}
+
+// GetFirmwareReleaseInfo returns metadata and release notes for a firmware release version.
+// It checks local cache (release.json) first, then queries the GitHub API if needed.
+func (s *Server) GetFirmwareReleaseInfo(version string) (*FirmwareReleaseInfo, error) {
+	if version == "" {
+		return nil, errors.New("empty version")
+	}
+
+	versionDir := filepath.Join(s.DataDir, "firmware", "releases", version)
+	releasePath := filepath.Join(versionDir, "release.json")
+
+	// 1. Check local release.json
+	if data, err := os.ReadFile(releasePath); err == nil {
+		var info FirmwareReleaseInfo
+		if err := json.Unmarshal(data, &info); err == nil && (info.Body != "" || info.TagName != "") {
+			return &info, nil
+		}
+	}
+
+	// 2. Fetch from GitHub API (try ESP32 repo, then Tronberry repo)
+	firmwareRepo := os.Getenv("FIRMWARE_REPO")
+	owner, repo := parseOwnerRepo(firmwareRepo, "tronbyt", "firmware-esp32")
+
+	fetchRelease := func(o, r string) *FirmwareReleaseInfo {
+		apiURL := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", s.githubAPIBaseURL(), o, r, version)
+		req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+		if err != nil {
+			return nil
+		}
+		if s.Config.GitHubToken != "" {
+			req.Header.Set("Authorization", "Bearer "+s.Config.GitHubToken)
+		}
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil
+		}
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				slog.Error("Failed to close response body", "error", err)
+			}
+		}()
+
+		if resp.StatusCode == http.StatusOK {
+			var info FirmwareReleaseInfo
+			if err := json.NewDecoder(resp.Body).Decode(&info); err == nil {
+				if err := os.MkdirAll(versionDir, 0755); err == nil {
+					if metaBytes, err := json.Marshal(info); err == nil {
+						_ = os.WriteFile(releasePath, metaBytes, 0644)
+					}
+				}
+				return &info
+			}
+		}
+		return nil
+	}
+
+	if info := fetchRelease(owner, repo); info != nil {
+		return info, nil
+	}
+
+	tronberryRepo := os.Getenv("TRONBERRY_REPO")
+	tbOwner, tbRepo := parseOwnerRepo(tronberryRepo, "tronbyt", "tronberry")
+	if info := fetchRelease(tbOwner, tbRepo); info != nil {
+		return info, nil
+	}
+
+	return &FirmwareReleaseInfo{
+		TagName: version,
+		HTMLURL: fmt.Sprintf("https://github.com/%s/%s/releases/tag/%s", owner, repo, version),
+	}, nil
+}
+
+// GetAllAvailableFirmwareReleaseNotes retrieves release notes for all currently available firmware versions.
+func (s *Server) GetAllAvailableFirmwareReleaseNotes() map[string]FirmwareReleaseInfo {
+	versions := s.GetAvailableFirmwareVersions()
+	notes := make(map[string]FirmwareReleaseInfo)
+	for _, v := range versions {
+		if info, err := s.GetFirmwareReleaseInfo(v); err == nil && info != nil {
+			notes[v] = *info
+		}
+	}
+	return notes
+}
+
+func (s *Server) handleFirmwareReleaseNotes(w http.ResponseWriter, r *http.Request) {
+	version := r.URL.Query().Get("version")
+	if version == "" {
+		http.Error(w, "version parameter required", http.StatusBadRequest)
+		return
+	}
+
+	info, err := s.GetFirmwareReleaseInfo(version)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(info)
+}
+
 func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
 
 	// Check firmware availability
 	// Default to latest
-	version := s.GetLatestFirmwareVersion()
+	version := s.GetLatestFirmwareVersionForDevice(device)
 	binsAvailable := false
 
 	if version != "" {
@@ -338,7 +540,8 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 		Device:                    device,
 		FirmwareBinsAvailable:     binsAvailable,
 		FirmwareVersion:           version,
-		AvailableFirmwareVersions: s.GetAvailableFirmwareVersions(),
+		AvailableFirmwareVersions: s.GetAvailableFirmwareVersionsForDevice(device),
+		FirmwareReleases:          s.GetAllAvailableFirmwareReleaseNotes(),
 		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
 		Localizer:                 localizer,
 		URLWarning:                urlWarning,
@@ -361,7 +564,7 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	}
 
 	if version == "" {
-		version = s.GetLatestFirmwareVersion() // Default to latest
+		version = s.GetLatestFirmwareVersionForDevice(device) // Default to latest
 	}
 
 	if version == "" {
@@ -471,7 +674,7 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	if updateURL == "" {
 		version := r.FormValue("version")
 		if version == "" {
-			version = s.GetLatestFirmwareVersion() // Default to latest
+			version = s.GetLatestFirmwareVersionForDevice(device) // Default to latest for this device
 		}
 
 		if version == "" {

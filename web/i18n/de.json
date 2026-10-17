@@ -2153,6 +2153,12 @@
   "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately.": {
     "other": "Spielt einen kurzen Ton über den eingebauten Lautsprecher ab, wenn die Touch-Taste verwendet wird. Wird sofort wirksam."
   },
+  "Startup Sound": {
+    "other": "Startton"
+  },
+  "Plays a short jingle on boot when the device starts up.": {
+    "other": "Spielt beim Starten des Geräts einen kurzen Jingle ab."
+  },
   "Leave blank to auto-generate": {
     "other": "Leer lassen zum automatischen Generieren"
   },
@@ -2170,6 +2176,45 @@
   },
   "You are accessing this server via localhost. For proper firmware generation you should use:": {
     "other": "Sie greifen über localhost auf diesen Server zu. Für eine korrekte Firmware-Generierung sollten Sie Folgendes verwenden:"
+  },
+  "Mute Sounds": {
+    "other": "Töne stummschalten"
+  },
+  "Muted": {
+    "other": "Stummgeschaltet"
+  },
+  "Sounds Muted": {
+    "other": "Töne stummgeschaltet"
+  },
+  "Mute all sounds": {
+    "other": "Alle Töne stummschalten"
+  },
+  "Mute in Night Mode": {
+    "other": "Im Nachtmodus stummschalten"
+  },
+  "Disable all sound notifications during night mode.": {
+    "other": "Alle Ton-Benachrichtigungen im Nachtmodus deaktivieren."
+  },
+  "Speaker Volume": {
+    "other": "Lautsprecher-Lautstärke"
+  },
+  "Set playback volume for sound notifications and chimes (0–100%).": {
+    "other": "Wiedergabelautstärke für Ton-Benachrichtigungen und Signaltöne festlegen (0–100%)."
+  },
+  "Test Sound": {
+    "other": "Ton testen"
+  },
+  "Play on Device": {
+    "other": "Auf Gerät abspielen"
+  },
+  "Send an instant test chime to verify speaker output and volume levels on this device.": {
+    "other": "Einen Testton senden, um die Lautsprecherausgabe und Lautstärke auf diesem Gerät zu prüfen."
+  },
+  "Sent to device": {
+    "other": "An Gerät gesendet"
+  },
+  "Playing...": {
+    "other": "Wiedergabe..."
   },
   "Number of installs": {
     "other": "Anzahl der Installationen"
@@ -2219,7 +2264,7 @@
   "Help other Tidbyt owners discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included.": {
     "other": "Helfen Sie anderen Tidbyt-Besitzern, großartige Apps zu entdecken. Ihr Tronbyt teilt nur bei Änderungen mit, welche Bibliotheks-Apps Sie verwenden, und eine ungefähre Geräteanzahl, dazu ein kurzes wöchentliches Lebenszeichen. Ihr Name, Ihre Geräte, Einstellungen und eigenen Apps sind nie enthalten."
   },
-  "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in.": {
+  "Niblet manages the community stats. Your IP address is used only to block spam und isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in.": {
     "other": "Niblet verwaltet die Community-Statistiken. Ihre IP-Adresse wird nur zur Spam-Abwehr verwendet und nicht mit Ihren Statistiken gespeichert, die 30 Tage nach dem letzten Lebenszeichen Ihres Tronbyt entfernt werden."
   },
   "Community app stats": {
@@ -2248,5 +2293,20 @@
   },
   "Contributing · starts when you add a device": {
     "other": "Beitrag aktiv · startet, sobald Sie ein Gerät hinzufügen"
+  },
+  "What's Changed": {
+    "other": "Änderungen"
+  },
+  "New Contributors": {
+    "other": "Neue Mitwirkende"
+  },
+  "Full Changelog": {
+    "other": "Vollständiges Änderungsprotokoll"
+  },
+  "Release Details": {
+    "other": "Versionsdetails"
+  },
+  "No Changes Provided": {
+    "other": "Keine Änderungen angegeben"
   }
 }

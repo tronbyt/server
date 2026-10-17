@@ -227,3 +227,37 @@ func TestEveryFirmwareDeviceTypeNamesABinary(t *testing.T) {
 			"%s claims firmware support but names no binary", slug)
 	}
 }
+
+func TestRaspberryPiSupportsOTAAndNamesTronberry(t *testing.T) {
+	piTypes := []DeviceType{DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare}
+	for _, dt := range piTypes {
+		assert.True(t, dt.SupportsOTA(), "%s should support OTA", dt.Slug())
+		assert.True(t, dt.IsRaspberryPi(), "%s should be recognized as Raspberry Pi", dt.Slug())
+		assert.Equal(t, "tronberry", dt.FirmwareFilename(false))
+		assert.Equal(t, "tronberry", dt.FirmwareFilename(true))
+
+		d := &Device{
+			Type: dt,
+			Info: DeviceInfo{
+				FirmwareVersion: "v0.1.0",
+			},
+		}
+		assert.True(t, d.OTACapable(), "%s with version v0.1.0 should be OTA capable", dt.Slug())
+
+		dDev := &Device{
+			Type: dt,
+			Info: DeviceInfo{
+				FirmwareVersion: "dev",
+			},
+		}
+		assert.True(t, dDev.OTACapable(), "%s with version dev should be OTA capable", dt.Slug())
+
+		dNoVer := &Device{
+			Type: dt,
+			Info: DeviceInfo{
+				FirmwareVersion: "",
+			},
+		}
+		assert.False(t, dNoVer.OTACapable(), "%s with empty version should not be OTA capable", dt.Slug())
+	}
+}

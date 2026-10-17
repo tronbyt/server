@@ -16,7 +16,7 @@ func NewBroadcaster() *Broadcaster {
 }
 
 func (b *Broadcaster) Subscribe(topic string) chan any {
-	ch := make(chan any, 1)
+	ch := make(chan any, 16)
 	b.lock.Lock()
 	defer b.lock.Unlock()
 

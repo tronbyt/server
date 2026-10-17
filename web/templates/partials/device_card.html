@@ -27,6 +27,11 @@
                         <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i> {{ t .Localizer "Dim Mode" }}
                     </span>
                     {{ end }}
+                    {{ if and .Item.HasSpeaker .Item.IsMuted }}
+                    <span class="muted-badge" title="{{ t .Localizer "Sounds Muted" }}">
+                        <i class="fa-solid fa-volume-xmark" aria-hidden="true"></i> {{ t .Localizer "Muted" }}
+                    </span>
+                    {{ end }}
                 </h1>
                 <p class="settings-page-copy">
                 {{ len .Item.Apps }} {{ if eq (len .Item.Apps) 1 }}{{ t .Localizer "app" }}{{ else }}{{ t .Localizer "apps" }}{{ end }}
@@ -148,6 +153,29 @@
                             <p class="settings-caption settings-toggle-hint">
                                 {{ t .Localizer "Persists until the next scheduled dim mode change." }}
                             </p>
+                        </div>
+                    </div>
+                    {{ end }}
+                    {{ if .Item.HasSpeaker }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="mute-toggle-{{ .Item.ID }}">{{ t .Localizer "Mute Sounds" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <label class="settings-inline-option settings-toggle-row"
+                                   for="mute-toggle-{{ .Item.ID }}">
+                                <input type="checkbox"
+                                       id="mute-toggle-{{ .Item.ID }}"
+                                       {{ if .Item.Muted }}
+                                       checked
+                                       {{ end }}
+                                       {{ if .ReadOnly }}
+                                       disabled
+                                       {{ else }}
+                                       onchange="setMute('{{ .Item.ID }}', this.checked, this)"
+                                       {{ end }}>
+                                <span>{{ t .Localizer "Mute all sounds" }}</span>
+                            </label>
                         </div>
                     </div>
                     {{ end }}

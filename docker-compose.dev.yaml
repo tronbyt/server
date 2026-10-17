@@ -22,6 +22,9 @@ services:
       - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
       - GITHUB_TOKEN
+      - TRONBYT_BRANCH
+      - TRONBYT_REPO_URL
+      - TRONBYT_COMMIT
 
 volumes:
   go_modules:

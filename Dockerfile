@@ -35,14 +35,35 @@ COPY . .
 # Version Info - Keep these ARGs for build-time injection
 ARG VERSION=dev
 ARG COMMIT=unknown
+ARG BRANCH=""
+ARG REPO_URL=""
 ARG BUILD_DATE=unknown
 
 # Build all Go binaries in a single layer
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     set -x \
+    && if [ -d .git ]; then \
+        git config --global --add safe.directory '*' || true; \
+        if [ -z "$COMMIT" ] || [ "$COMMIT" = "unknown" ]; then \
+            COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown"); \
+        fi; \
+        if [ -z "$BRANCH" ]; then \
+            BRANCH=$(git symbolic-ref -q --short HEAD 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ""); \
+            if [ "$BRANCH" = "HEAD" ]; then BRANCH=""; fi; \
+        fi; \
+        if [ -z "$REPO_URL" ]; then \
+            REPO_URL=$(git config --get remote.origin.url 2>/dev/null || echo ""); \
+        fi; \
+    fi \
+    && if [ -z "$COMMIT" ] || [ "$COMMIT" = "unknown" ]; then \
+        if [ -n "$REPO_URL" ] && [ -n "$BRANCH" ]; then \
+            REMOTE_OUT=$(git ls-remote "$REPO_URL" "refs/heads/$BRANCH" 2>/dev/null || true); \
+            for word in $REMOTE_OUT; do COMMIT="$word"; break; done; \
+        fi; \
+    fi \
     && CGO_ENABLED=1 xx-go build \
-    -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" \
+    -ldflags="-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=${VERSION}' -X 'tronbyt-server/internal/version.Commit=${COMMIT:-unknown}' -X 'tronbyt-server/internal/version.Branch=${BRANCH}' -X 'tronbyt-server/internal/version.RepoURL=${REPO_URL}' -X 'tronbyt-server/internal/version.BuildDate=${BUILD_DATE}'" \
     -tags gzip_fonts \
     -o build/app/tronbyt-server \
     ./cmd/server

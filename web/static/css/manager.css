@@ -449,7 +449,8 @@ button.action.w3-button.w3-red {
 }
 
 .night-mode-badge,
-.dim-mode-badge {
+.dim-mode-badge,
+.muted-badge {
   font-size: 0.5em;
   vertical-align: middle;
   color: var(--page-text);
@@ -465,6 +466,10 @@ button.action.w3-button.w3-red {
 
 .dim-mode-badge {
   background-color: color-mix(in srgb, var(--surface-bg) 86%, #728896 14%);
+}
+
+.muted-badge {
+  background-color: color-mix(in srgb, var(--surface-bg) 86%, #c93b3b 14%);
 }
 
 .status-badge.autopin {

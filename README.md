@@ -109,9 +109,14 @@ The server can be configured via environment variables or `.env` file:
 *   `SYSTEM_APPS_AUTO_REFRESH`: Initial default for refreshing the system apps repository every 12 hours (default: `false`). Administrators can change this under **Settings → Content and Firmware**; a saved web preference takes precedence on later starts.
 *   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
 *   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily, and destination of the opt-in community app stats in System Settings, which are off by default (default: `https://cloud.heyniblet.com`). Set to an empty string to disable both.
+*   `FIRMWARE_REPO`: GitHub repository URL for ESP32 firmware binaries (default: `https://github.com/tronbyt/firmware-esp32`). Set to `"none"` to disable ESP32 firmware fetching.
+*   `TRONBERRY_REPO`: GitHub repository URL for Tronberry (Raspberry Pi) binaries (default: `https://github.com/tronbyt/tronberry`). Set to `"none"` to disable Tronberry binary fetching.
 *   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).
+*   `TRONBYT_BRANCH`: Branch name override for footer links (e.g. `feat/custom-branch`, optional).
+*   `TRONBYT_REPO_URL`: Repository URL override for footer links and commit resolution (optional).
+*   `TRONBYT_COMMIT`: Commit hash override for footer display (optional).
 
 **HTTPS (TLS):**
 *   Can be achieved by configuring `TRONBYT_SSL_KEYFILE` and `TRONBYT_SSL_CERTFILE`.
