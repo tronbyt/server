@@ -125,6 +125,11 @@ type TemplateData struct {
 	ExternalAppURL       string
 	ExternalProviderName string
 	IsExternalApp        bool
+	OAuthFields          template.JS // per OAuth2 field: clients and connection state
+
+	// OAuth Clients settings
+	OAuthClients    []oauthClientRow
+	OAuthClientForm oauthClientForm
 
 	// Device Update Extras
 	ColorFilterOptions       []ColorFilterOption
