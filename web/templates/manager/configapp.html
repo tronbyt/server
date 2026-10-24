@@ -1006,6 +1006,29 @@
     updateConfigAndPreview();
   }
 
+  // Font Awesome keeps brand icons (github, spotify, ...) in their own font,
+  // so they need fa-brands; the rest come from the solid font. The brand
+  // names are read from brands.min.css, the only stylesheet defining them.
+  let faBrandIcons = null;
+  function fontAwesomeIconClass(name) {
+    const icon = name.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`);
+    if (faBrandIcons === null) {
+      faBrandIcons = new Set();
+      for (const sheet of document.styleSheets) {
+        if (!sheet.href || !sheet.href.endsWith("/brands.min.css")) continue;
+        try {
+          for (const rule of sheet.cssRules) {
+            const m = /^\.fa-([a-z0-9-]+)$/.exec(rule.selectorText || "");
+            if (m) faBrandIcons.add(m[1]);
+          }
+        } catch (e) {
+          // The stylesheet is not readable; fall back to the solid font.
+        }
+      }
+    }
+    return `${faBrandIcons.has(icon) ? "fa-brands" : "fa"} fa-${icon}`;
+  }
+
   function createFormFields(schema, config) {
     const rows = [];
     if (!schema || !schema.schema) return rows;
@@ -1023,7 +1046,7 @@
       // Icon handling if available in schema
       if (field.icon) {
           const icon = document.createElement("i");
-          icon.className = `fa fa-${field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
+          icon.className = fontAwesomeIconClass(field.icon);
           label.appendChild(icon);
           label.appendChild(document.createTextNode(" "));
       }
