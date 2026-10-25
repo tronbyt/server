@@ -437,6 +437,15 @@ func (s *Server) shouldPromptUsage(user *data.User) bool {
 	return err == nil && sharing == ""
 }
 
+// usageConsentFromForm reads an admin's sharing choice from the first-run
+// prompt (checkbox + Continue) or System Settings (consent checkbox / Not now).
+func usageConsentFromForm(form url.Values) bool {
+	if form.Get("usage_prompt") == "1" {
+		return form.Get("contribute") == "true"
+	}
+	return form.Get("consent") == "true"
+}
+
 // handleUsageSharingConsent saves an admin's choice from the prompt or System
 // Settings and returns to a same-site page.
 func (s *Server) handleUsageSharingConsent(w http.ResponseWriter, r *http.Request) {
@@ -462,7 +471,7 @@ func (s *Server) handleUsageSharingConsent(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	if nibletEnabled {
-		if err := s.saveUsageConsent(r, r.PostForm.Get("consent") == "true"); err != nil {
+		if err := s.saveUsageConsent(r, usageConsentFromForm(r.PostForm)); err != nil {
 			http.Error(w, "Could not save app usage sharing", http.StatusInternalServerError)
 			return
 		}

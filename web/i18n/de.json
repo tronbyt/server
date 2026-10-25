@@ -2294,6 +2294,15 @@
   "Contribute to community app stats": {
     "other": "Zu Community-App-Statistiken beitragen"
   },
+  "Show stats from Niblet community": {
+    "other": "Statistiken an die Niblet-Community senden"
+  },
+  "Community app stats description": {
+    "other": "Teilen Sie, welche Bibliotheks-Apps Sie nutzen und eine ungefähre Geräteanzahl, damit andere beliebte Apps finden. Keine Namen, Einstellungen oder eigenen Apps—verwaltet von Niblet. Jederzeit unter Systemeinstellungen änderbar."
+  },
+  "Continue": {
+    "other": "Weiter"
+  },
   "Help other Tronbyt/Niblet users discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included.": {
     "other": "Helfen Sie anderen Tronbyt-/Niblet-Nutzern, großartige Apps zu entdecken. Ihr Tronbyt teilt nur bei Änderungen mit, welche Bibliotheks-Apps Sie verwenden, und eine ungefähre Geräteanzahl, dazu ein kurzes wöchentliches Lebenszeichen. Ihr Name, Ihre Geräte, Einstellungen und eigenen Apps sind nie enthalten."
   },
