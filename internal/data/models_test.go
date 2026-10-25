@@ -87,6 +87,47 @@ func TestDeviceHasTimezone(t *testing.T) {
 	assert.False(t, device.HasTimezone())
 }
 
+func TestDeviceGetLocation(t *testing.T) {
+	ny, chicago, empty, invalid := "America/New_York", "America/Chicago", "", "Not/AZone"
+	tests := []struct {
+		name   string
+		device Device
+		want   string // "" means the server's local timezone
+	}{
+		{"no timezone", Device{}, ""},
+		{"location timezone", Device{Location: DeviceLocation{Timezone: ny}}, ny},
+		{"explicit timezone wins over location", Device{Timezone: &ny, Location: DeviceLocation{Timezone: chicago}}, ny},
+		{"empty override falls back to location", Device{Timezone: &empty, Location: DeviceLocation{Timezone: ny}}, ny},
+		{"empty override without location uses server timezone", Device{Timezone: &empty}, ""},
+		{"invalid override uses server timezone", Device{Timezone: &invalid}, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.device.GetLocation()
+			if tc.want == "" {
+				assert.Same(t, time.Local, got) // its name depends on $TZ
+				return
+			}
+			assert.Equal(t, tc.want, got.String())
+		})
+	}
+}
+
+// An empty timezone override used to evaluate night mode in UTC (#966).
+func TestDeviceNightModeEmptyTimezoneOverrideUsesLocation(t *testing.T) {
+	empty := ""
+	device := Device{
+		NightModeEnabled: true,
+		NightStart:       "22:00",
+		NightEnd:         "06:00",
+		Timezone:         &empty,
+		Location:         DeviceLocation{Timezone: "America/New_York"},
+	}
+	// 23:30 UTC is 19:30 in New York: inside the night window in UTC, outside it locally.
+	at := time.Date(2026, time.April, 24, 23, 30, 0, 0, time.UTC)
+	assert.False(t, device.GetNightModeIsActiveAt(at))
+}
+
 func TestDeviceSupportsHTTPFirmwareCommands(t *testing.T) {
 	httpDevice := Device{
 		Type: DeviceTidbytGen1,

@@ -894,18 +894,13 @@ func (d *Device) GetTimezone() string {
 	return "Local"
 }
 
+// GetLocation returns the *time.Location for GetTimezone, falling back to the
+// server's local timezone if that name cannot be loaded.
 func (d Device) GetLocation() *time.Location {
-	loc := time.Local
-	if d.Timezone != nil {
-		if l, err := time.LoadLocation(*d.Timezone); err == nil {
-			loc = l
-		}
-	} else if d.Location.Timezone != "" {
-		if l, err := time.LoadLocation(d.Location.Timezone); err == nil {
-			loc = l
-		}
+	if loc, err := time.LoadLocation(d.GetTimezone()); err == nil {
+		return loc
 	}
-	return loc
+	return time.Local
 }
 
 func (d Device) getNightScheduleBounds() (string, string) {
