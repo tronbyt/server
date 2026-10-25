@@ -475,10 +475,10 @@
                     </div>
                     <div class="settings-field-row">
                         <div class="settings-field-label">
-                            <label for="night_start">{{ t .Localizer "Night Start Time" }}</label>
+                            <label for="night_start_kind">{{ t .Localizer "Night Start Time" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            {{ template "schedule_trigger" dict "Prefix" "night_start" "TimeField" "night_start" "TimeValue" (or .Device.NightStart "22:00") "Trigger" .Device.NightSchedule.Start "Kinds" "time,sunset,sunrise" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ template "schedule_trigger" dict "Prefix" "night_start" "Label" (t .Localizer "Night Start Time") "TimeField" "night_start" "TimeValue" (or .Device.NightStart "22:00") "Trigger" .Device.NightSchedule.Start "Kinds" "time,sunset,sunrise" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                             {{ if not .Device.HasCoordinates }}
                             <p class="settings-help">{{ t .Localizer "Set this device's location to use sunrise and sunset." }}</p>
                             {{ end }}
@@ -486,16 +486,18 @@
                     </div>
                     <div class="settings-field-row">
                         <div class="settings-field-label">
-                            <label for="night_end">{{ t .Localizer "Night End Time" }}</label>
+                            <label for="night_end_kind">{{ t .Localizer "Night End Time" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            {{ template "schedule_trigger" dict "Prefix" "night_end" "TimeField" "night_end" "TimeValue" (or .Device.NightEnd "06:00") "Trigger" .Device.NightSchedule.End "Kinds" "time,sunrise,sunset" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ template "schedule_trigger" dict "Prefix" "night_end" "Label" (t .Localizer "Night End Time") "TimeField" "night_end" "TimeValue" (or .Device.NightEnd "06:00") "Trigger" .Device.NightSchedule.End "Kinds" "time,sunrise,sunset" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                         </div>
                     </div>
                     <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Night End on Weekends" }}</div>
+                        <div class="settings-field-label">
+                            <label for="night_weekend_end_kind">{{ t .Localizer "Night End on Weekends" }}</label>
+                        </div>
                         <div class="settings-field-control">
-                            {{ template "schedule_trigger" dict "Prefix" "night_weekend_end" "TimeField" "night_weekend_end_time" "TimeValue" (or (and .Device.NightSchedule.WeekendEnd .Device.NightSchedule.WeekendEnd.Time) "08:00") "Trigger" .Device.NightSchedule.WeekendEnd "Kinds" ",time,sunrise,sunset" "DefaultKind" "" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ template "schedule_trigger" dict "Prefix" "night_weekend_end" "Label" (t .Localizer "Night End on Weekends") "TimeField" "night_weekend_end_time" "TimeValue" (or (and .Device.NightSchedule.WeekendEnd .Device.NightSchedule.WeekendEnd.Time) "08:00") "Trigger" .Device.NightSchedule.WeekendEnd "Kinds" ",time,sunrise,sunset" "DefaultKind" "" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                             <p class="settings-help">{{ t .Localizer "Weekend ends apply on Saturday and Sunday mornings." }}</p>
                         </div>
                     </div>
@@ -610,23 +612,27 @@
                     </div>
                     <div class="settings-field-row">
                         <div class="settings-field-label">
-                            <label for="dim_time">{{ t .Localizer "Dim Start Time" }}</label>
+                            <label for="dim_start_kind">{{ t .Localizer "Dim Start Time" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            {{ template "schedule_trigger" dict "Prefix" "dim_start" "TimeField" "dim_time" "TimeValue" (or (derefOr .Device.DimTime "") "18:00") "Trigger" .Device.DimSchedule.Start "Kinds" "time,sunset,sunrise" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ template "schedule_trigger" dict "Prefix" "dim_start" "Label" (t .Localizer "Dim Start Time") "TimeField" "dim_time" "TimeValue" (or (derefOr .Device.DimTime "") "18:00") "Trigger" .Device.DimSchedule.Start "Kinds" "time,sunset,sunrise" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                         </div>
                     </div>
                     <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Dim End Time" }}</div>
+                        <div class="settings-field-label">
+                            <label for="dim_end_kind">{{ t .Localizer "Dim End Time" }}</label>
+                        </div>
                         <div class="settings-field-control">
-                            {{ template "schedule_trigger" dict "Prefix" "dim_end" "TimeField" "dim_end_time" "TimeValue" (or (and .Device.DimSchedule.End .Device.DimSchedule.End.Time) "23:00") "Trigger" .Device.DimSchedule.End "Kinds" "night_end,time,sunrise,sunset" "DefaultKind" "night_end" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ template "schedule_trigger" dict "Prefix" "dim_end" "Label" (t .Localizer "Dim End Time") "TimeField" "dim_end_time" "TimeValue" (or (and .Device.DimSchedule.End .Device.DimSchedule.End.Time) "23:00") "Trigger" .Device.DimSchedule.End "Kinds" "night_end,time,sunrise,sunset" "DefaultKind" "night_end" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                             <p class="settings-help">{{ t .Localizer "By default dim mode ends when night mode ends." }}</p>
                         </div>
                     </div>
                     <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Dim End on Weekends" }}</div>
+                        <div class="settings-field-label">
+                            <label for="dim_weekend_end_kind">{{ t .Localizer "Dim End on Weekends" }}</label>
+                        </div>
                         <div class="settings-field-control">
-                            {{ template "schedule_trigger" dict "Prefix" "dim_weekend_end" "TimeField" "dim_weekend_end_time" "TimeValue" (or (and .Device.DimSchedule.WeekendEnd .Device.DimSchedule.WeekendEnd.Time) "08:00") "Trigger" .Device.DimSchedule.WeekendEnd "Kinds" ",night_end,time,sunrise,sunset" "DefaultKind" "" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ template "schedule_trigger" dict "Prefix" "dim_weekend_end" "Label" (t .Localizer "Dim End on Weekends") "TimeField" "dim_weekend_end_time" "TimeValue" (or (and .Device.DimSchedule.WeekendEnd .Device.DimSchedule.WeekendEnd.Time) "08:00") "Trigger" .Device.DimSchedule.WeekendEnd "Kinds" ",night_end,time,sunrise,sunset" "DefaultKind" "" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                         </div>
                     </div>
                     <div class="settings-field-row">

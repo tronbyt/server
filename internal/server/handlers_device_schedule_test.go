@@ -67,7 +67,18 @@ func TestDeviceFormSunSchedules(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 	body := rr.Body.String()
 	assert.Contains(t, body, `name="night_start_offset"`)
+	assert.Contains(t, body, `<label for="night_weekend_end_kind">`)
+	assert.Contains(t, body, `id="dim_time"`)
 	assert.Regexp(t, `name="night_start_kind"[^>]*>\s*<option value="time"\s*>[^<]*</option>\s*<option value="sunset"\s*selected`, body)
+
+	// Clearing the dim start time turns dim mode's schedule off, as before.
+	form.Set("dim_start_kind", "time")
+	form.Set("dim_time", "")
+	require.Equal(t, http.StatusSeeOther, postDeviceForm(t, s, &user, &saved, form).Code)
+	var cleared data.Device
+	require.NoError(t, s.DB.First(&cleared, "id = ?", device.ID).Error)
+	assert.Nil(t, cleared.DimTime)
+	assert.Nil(t, cleared.DimSchedule.Start)
 
 	// Without a location, sunrise and sunset can't be chosen.
 	nowhere := data.Device{ID: "nowhere1", Username: "testuser", Name: "Nowhere", APIKey: "nowherekey"}

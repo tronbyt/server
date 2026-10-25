@@ -1,11 +1,14 @@
 {{ define "schedule_trigger" }}
-{{- /* One night or dim mode boundary. Arguments (dict): Prefix, TimeField, TimeValue, Trigger (*data.ScheduleTrigger, may be nil), Kinds (comma-separated), DefaultKind, HasCoordinates, Localizer. */ -}}
+{{- /* One night or dim mode boundary. Arguments (dict): Prefix, Label, TimeField, TimeValue, Trigger (*data.ScheduleTrigger, may be nil), Kinds (comma-separated), DefaultKind, HasCoordinates, Localizer. */ -}}
 {{ $kind := .DefaultKind }}
 {{ if .Trigger }}
 {{ $kind = string .Trigger.Kind }}
 {{ end }}
 <div class="schedule-trigger" data-schedule-trigger>
-    <select name="{{ .Prefix }}_kind" class="settings-input" data-trigger-kind>
+    <select name="{{ .Prefix }}_kind"
+            id="{{ .Prefix }}_kind"
+            class="settings-input"
+            data-trigger-kind>
         {{ range split .Kinds "," }}
         <option value="{{ . }}"
                 {{ if eq $kind . }}selected{{ end }}
@@ -26,6 +29,8 @@
     </select>
     <input type="time"
            name="{{ .TimeField }}"
+           id="{{ .TimeField }}"
+           aria-label="{{ .Label }}"
            value="{{ .TimeValue }}"
            class="settings-input"
            data-trigger-time

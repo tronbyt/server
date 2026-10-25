@@ -12,8 +12,9 @@ import (
 // device settings form: <prefix>_kind selects a fixed time (read from
 // timeField), sunrise or sunset (with <prefix>_offset in minutes and the
 // optional <prefix>_not_before and <prefix>_not_after clamps), or night_end.
-// It returns nil when the kind is empty, which means "not set" (the legacy
-// field or the default applies), so forms that predate it keep working.
+// It returns nil when the kind or the fixed time is empty, which means "not
+// set" (the legacy field or the default applies), so forms that predate it
+// keep working and a time can still be cleared.
 func scheduleTriggerFromForm(r *http.Request, prefix, timeField string) (*data.ScheduleTrigger, error) {
 	kind := data.TriggerKind(r.FormValue(prefix + "_kind"))
 	switch kind {
@@ -22,7 +23,11 @@ func scheduleTriggerFromForm(r *http.Request, prefix, timeField string) (*data.S
 	case data.TriggerNightEnd:
 		return &data.ScheduleTrigger{Kind: kind}, nil
 	case data.TriggerTime:
-		value, err := parseTimeInput(r.FormValue(timeField))
+		raw := r.FormValue(timeField)
+		if raw == "" {
+			return nil, nil // a cleared time: the legacy field or default decides
+		}
+		value, err := parseTimeInput(raw)
 		if err != nil {
 			return nil, err
 		}
