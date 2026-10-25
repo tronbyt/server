@@ -49,14 +49,16 @@ Returns all devices accessible to the authenticated API key.
         "endTime": "",
         "brightness": 0,
         "mute": false,
-        "volume": 20
+        "volume": 20,
+        "schedule": {}
       },
       "dimMode": {
         "enabled": false,
         "startTime": null,
         "brightness": null,
         "mute": false,
-        "volume": null
+        "volume": null,
+        "schedule": {}
       },
       "pinnedApp": null,
       "interstitial": {
@@ -111,11 +113,29 @@ Update device settings. All fields are optional.
   "dimModeBrightness": 30,
   "dimModeMute": false,
   "dimModeVolume": 50,
-  "pinnedApp": "weather"
+  "pinnedApp": "weather",
+  "dimModeSchedule": {
+    "start": { "kind": "sunset", "offset": 30, "notBefore": "17:00" },
+    "end": { "kind": "night_end" },
+    "weekendEnd": { "kind": "time", "time": "08:00" }
+  }
 }
 ```
 
 **Response:** Updated device payload (same shape as GET).
+
+#### Night and dim mode schedules
+
+`nightModeSchedule` and `dimModeSchedule` set a mode's start, end and weekend end to sunrise or sunset as well as a fixed time. Each boundary is optional; an unset start or end uses `nightModeStartTime`/`nightModeEndTime` (or `dimModeStartTime`), and dim mode's end defaults to `night_end`, ending when night mode ends. The schedule replaces the mode's previous one. Setting `nightModeStartTime`, `nightModeEndTime` or `dimModeStartTime` replaces a sunrise or sunset boundary with that time.
+
+| Field | Meaning |
+|---|---|
+| `kind` | `time`, `sunrise`, `sunset`, or `night_end` (dim mode's end or weekend end only) |
+| `time` | `"HH:MM"` for `time` |
+| `offset` | Minutes after (positive) or before (negative) sunrise or sunset, up to ±240 |
+| `notBefore` / `notAfter` | Optional `"HH:MM"` limits for sunrise or sunset, e.g. never dim before 17:00 in winter |
+
+`weekendEnd` applies on Saturday and Sunday mornings. Sunrise and sunset use the device's location, which must be set. The device payload returns each mode's `schedule` in the same shape, and `nextChangeAt`, the next time the mode turns on or off, when it is enabled.
 
 ### Reboot Device
 

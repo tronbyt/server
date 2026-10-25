@@ -6,6 +6,19 @@
 <link rel="stylesheet" href="/static/css/update-simple.css">
 <script src="/static/js/location.js"></script>
 <script>
+    // Show the time, or the offset and limits, that a schedule boundary uses.
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-schedule-trigger]').forEach((trigger) => {
+            const kind = trigger.querySelector('[data-trigger-kind]');
+            const sync = () => {
+                trigger.querySelector('[data-trigger-time]').hidden = kind.value !== 'time';
+                trigger.querySelector('[data-trigger-sun]').hidden = kind.value !== 'sunrise' && kind.value !== 'sunset';
+            };
+            kind.addEventListener('change', sync);
+            sync();
+        });
+    });
+
     const defaultBrightnessScale = '{{ .DefaultBrightnessScale }}';
 
     function getBrightnessScaleValues() {
@@ -465,11 +478,10 @@
                             <label for="night_start">{{ t .Localizer "Night Start Time" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <input type="time"
-                                   name="night_start"
-                                   id="night_start"
-                                   value="{{ if .Device.NightStart }}{{ .Device.NightStart }}{{ else }}22:00{{ end }}"
-                                   class="settings-input">
+                            {{ template "schedule_trigger" dict "Prefix" "night_start" "TimeField" "night_start" "TimeValue" (or .Device.NightStart "22:00") "Trigger" .Device.NightSchedule.Start "Kinds" "time,sunset,sunrise" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            {{ if not .Device.HasCoordinates }}
+                            <p class="settings-help">{{ t .Localizer "Set this device's location to use sunrise and sunset." }}</p>
+                            {{ end }}
                         </div>
                     </div>
                     <div class="settings-field-row">
@@ -477,11 +489,14 @@
                             <label for="night_end">{{ t .Localizer "Night End Time" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <input type="time"
-                                   name="night_end"
-                                   id="night_end"
-                                   value="{{ if .Device.NightEnd }}{{ .Device.NightEnd }}{{ else }}06:00{{ end }}"
-                                   class="settings-input">
+                            {{ template "schedule_trigger" dict "Prefix" "night_end" "TimeField" "night_end" "TimeValue" (or .Device.NightEnd "06:00") "Trigger" .Device.NightSchedule.End "Kinds" "time,sunrise,sunset" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">{{ t .Localizer "Night End on Weekends" }}</div>
+                        <div class="settings-field-control">
+                            {{ template "schedule_trigger" dict "Prefix" "night_weekend_end" "TimeField" "night_weekend_end_time" "TimeValue" (or (and .Device.NightSchedule.WeekendEnd .Device.NightSchedule.WeekendEnd.Time) "08:00") "Trigger" .Device.NightSchedule.WeekendEnd "Kinds" ",time,sunrise,sunset" "DefaultKind" "" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            <p class="settings-help">{{ t .Localizer "Weekend ends apply on Saturday and Sunday mornings." }}</p>
                         </div>
                     </div>
                     <div class="settings-field-row">
@@ -598,12 +613,20 @@
                             <label for="dim_time">{{ t .Localizer "Dim Start Time" }}</label>
                         </div>
                         <div class="settings-field-control">
-                            <input type="time"
-                                   name="dim_time"
-                                   id="dim_time"
-                                   value="{{ if .Device.DimTime }}{{ .Device.DimTime }}{{ else }}18:00{{ end }}"
-                                   class="settings-input">
-                            <p class="settings-help">{{ t .Localizer "Dim mode ends at Night End Time (if set) or 6:00 AM by default." }}</p>
+                            {{ template "schedule_trigger" dict "Prefix" "dim_start" "TimeField" "dim_time" "TimeValue" (or (derefOr .Device.DimTime "") "18:00") "Trigger" .Device.DimSchedule.Start "Kinds" "time,sunset,sunrise" "DefaultKind" "time" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">{{ t .Localizer "Dim End Time" }}</div>
+                        <div class="settings-field-control">
+                            {{ template "schedule_trigger" dict "Prefix" "dim_end" "TimeField" "dim_end_time" "TimeValue" (or (and .Device.DimSchedule.End .Device.DimSchedule.End.Time) "23:00") "Trigger" .Device.DimSchedule.End "Kinds" "night_end,time,sunrise,sunset" "DefaultKind" "night_end" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
+                            <p class="settings-help">{{ t .Localizer "By default dim mode ends when night mode ends." }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">{{ t .Localizer "Dim End on Weekends" }}</div>
+                        <div class="settings-field-control">
+                            {{ template "schedule_trigger" dict "Prefix" "dim_weekend_end" "TimeField" "dim_weekend_end_time" "TimeValue" (or (and .Device.DimSchedule.WeekendEnd .Device.DimSchedule.WeekendEnd.Time) "08:00") "Trigger" .Device.DimSchedule.WeekendEnd "Kinds" ",night_end,time,sunrise,sunset" "DefaultKind" "" "HasCoordinates" .Device.HasCoordinates "Localizer" .Localizer }}
                         </div>
                     </div>
                     <div class="settings-field-row">
