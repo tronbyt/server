@@ -355,6 +355,96 @@
                 </div>
             </form>
         </div>
+        <div class="settings-card-subsection"
+             style="margin-top: 1.5rem;
+                    border-top: 1px solid var(--border-color);
+                    padding-top: 1.5rem">
+            <div style="display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 1rem">
+                <h3 style="margin: 0;">AWTRIX NG</h3>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    {{ if .AwtrixConnected }}
+                    <span class="w3-tag w3-green w3-round"
+                          style="font-size: 0.85rem;
+                                 padding: 4px 10px">
+                        <i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ .AwtrixStatus }}
+                    </span>
+                    {{ else if .AwtrixURL }}
+                    <span class="w3-tag w3-amber w3-round"
+                          style="font-size: 0.85rem;
+                                 padding: 4px 10px">
+                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ .AwtrixStatus }}
+                    </span>
+                {{ else }}
+                    <span class="w3-tag w3-gray w3-round"
+                          style="font-size: 0.85rem;
+                                 padding: 4px 10px">{{ t .Localizer "Not Configured" }}</span>
+                    {{ end }}
+                </div>
+            </div>
+            <form method="post" action="/settings/awtrix" class="settings-form">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="awtrix_url">AWTRIX Hub / Server URL</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="url"
+                               class="w3-input w3-border"
+                               name="awtrix_url"
+                               id="awtrix_url"
+                               placeholder="http://192.168.1.15:7080"
+                               value="{{ .AwtrixURL }}">
+                        <p class="settings-help">
+                            Base URL of a running <code>AWTRIX NG</code> instance or virtual hub container (e.g. <code>http://192.168.1.15:7080</code>). Discovered apps will appear in the Add App catalog badged with <code>[Awtrix]</code>.
+                        </p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="awtrix_scale_filter">128x64 Scaling Filter</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <select class="w3-select w3-border"
+                                name="awtrix_scale_filter"
+                                id="awtrix_scale_filter">
+                            <option value="bicubic"
+                                    {{ if eq .AwtrixScaleFilter "bicubic" }}selected{{ end }}>Bicubic (Smooth Subpixel Gradients for 128x64 LEDs)</option>
+                            <option value="scale2x"
+                                    {{ if eq .AwtrixScaleFilter "scale2x" }}selected{{ end }}>Scale2x / EPX (Sharp 128x64 Pixel Art & Clocks)</option>
+                            <option value="bilinear"
+                                    {{ if eq .AwtrixScaleFilter "bilinear" }}selected{{ end }}>Bilinear (Color Interpolation)</option>
+                            <option value="nearest"
+                                    {{ if eq .AwtrixScaleFilter "nearest" }}selected{{ end }}>Nearest Neighbor (Classic 2x2 Blocks)</option>
+                        </select>
+                        <p class="settings-help">Default upscaling algorithm when rendering AWTRIX NG for 128x64 displays like Tronberry.</p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="awtrix_layout">App Layout & Centering</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <select class="w3-select w3-border" name="awtrix_layout" id="awtrix_layout">
+                            <option value="center"
+                                    {{ if or (eq .AwtrixLayout "center") (eq .AwtrixLayout "") }}selected{{ end }}>Auto-Center & Pad (Centers 16-row apps, 2x scales 8-row apps)</option>
+                            <option value="fill"
+                                    {{ if or (eq .AwtrixLayout "fill") (eq .AwtrixLayout "stretch") }}selected{{ end }}>Stretch & Fill (Scales widgets vertically & horizontally to fill entire display)</option>
+                            <option value="native" {{ if eq .AwtrixLayout "native" }}selected{{ end }}>Native Top-Left (Raw output from AWTRIX)</option>
+                        </select>
+                        <p class="settings-help">
+                            How shorter AWTRIX widgets (like 16-row weather or 8-row arcade apps) are positioned on 32-row displays.
+                        </p>
+                    </div>
+                </div>
+                <div class="settings-actions" style="margin-top: 1rem;">
+                    <button type="submit" class="w3-button w3-blue">
+                        <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save & Connect" }}
+                    </button>
+                </div>
+            </form>
+        </div>
     </section>
 </div>
 <script>

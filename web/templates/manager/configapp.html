@@ -83,13 +83,24 @@
                 flex-wrap:wrap;
                 gap:10px">
         <h2>{{ t .Localizer "App Configuration" }}</h2>
-        <button type="button"
-                class="w3-button w3-blue w3-round"
-                id="refreshSchemaButton"
-                title="{{ t .Localizer "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them." }}">
-            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
-            <span class="button-label">{{ t .Localizer "Refresh options" }}</span>
-        </button>
+        <div style="display:flex; align-items:center; gap:8px;">
+            {{ if .ExternalAppURL }}
+            <a href="{{ .ExternalAppURL }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="w3-button w3-round w3-light-gray"
+               title="Open native settings in provider hub">
+                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> {{ .ExternalProviderName }} Hub
+            </a>
+            {{ end }}
+            <button type="button"
+                    class="w3-button w3-blue w3-round"
+                    id="refreshSchemaButton"
+                    title="{{ t .Localizer "Reload dropdown options from their source. Use this if an app's options are fetched online and you've updated them." }}">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+                <span class="button-label">{{ t .Localizer "Refresh options" }}</span>
+            </button>
+        </div>
     </div>
     <table id="schemaConfigContainer"
            class="form-table"
@@ -2411,6 +2422,9 @@ function createImageUploadField(field, config) {
     const previewImage = document.getElementById('previewImage');
     if (previewImage) {
         previewImage.addEventListener('load', () => {
+            previewImage.classList.add('loaded');
+        });
+        previewImage.addEventListener('error', () => {
             previewImage.classList.add('loaded');
         });
         // Handle cached images

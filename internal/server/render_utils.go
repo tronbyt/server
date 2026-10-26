@@ -114,7 +114,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 
-	// External Provider App (e.g. Screeny)
+	// External Provider App (e.g. Screeny, Awtrix)
 	if _, _, ok := s.parseExternalAppPath(*app.Path); ok {
 		return s.renderExternalApp(ctx, app, device, user, false)
 	}
@@ -479,7 +479,7 @@ func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *d
 		AppID:              appID,
 		Width:              width,
 		Height:             height,
-		FPS:                s.Config.ScreenyFPS,
+		FPS:                s.getExternalProviderFPS(provider),
 		DurationMs:         renderDurationMs,
 		MaxChunkSize:       maxChunkSize,
 		MaxChunkDurationMs: maxChunkDurationMs,

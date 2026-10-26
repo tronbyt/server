@@ -92,6 +92,38 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 		screenyStatus = "Not Configured"
 	}
 
+	awtrixURL := s.Config.AwtrixURL
+	awtrixFilter := s.Config.AwtrixScaleFilter
+	if awtrixFilter == "" {
+		awtrixFilter = "bicubic"
+	}
+	awtrixLayout := s.Config.AwtrixLayout
+	if awtrixLayout == "" {
+		awtrixLayout = "center"
+	}
+	var awtrixConnected bool
+	var awtrixAppCount int
+	var awtrixStatus string
+
+	if awtrixURL != "" {
+		if provider := s.GetExternalProvider("awtrix"); provider != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			extApps, err := provider.ListApps(ctx)
+			cancel()
+			if err == nil {
+				awtrixConnected = true
+				awtrixAppCount = len(extApps)
+				awtrixStatus = fmt.Sprintf("Connected (%d apps available)", len(extApps))
+			} else {
+				awtrixStatus = fmt.Sprintf("Error connecting: %v", err)
+			}
+		} else {
+			awtrixStatus = "Configured but not initialized"
+		}
+	} else {
+		awtrixStatus = "Not Configured"
+	}
+
 	return TemplateData{
 		User:                  user,
 		FirmwareVersion:       firmwareVersion,
@@ -104,42 +136,64 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 		ScreenyConnected:      screenyConnected,
 		ScreenyPatchCount:     screenyPatchCount,
 		ScreenyStatus:         screenyStatus,
+		AwtrixURL:             awtrixURL,
+		AwtrixScaleFilter:     awtrixFilter,
+		AwtrixLayout:          awtrixLayout,
+		AwtrixConnected:       awtrixConnected,
+		AwtrixAppCount:        awtrixAppCount,
+		AwtrixStatus:          awtrixStatus,
 		SettingsSection:       "content",
 	}
 }
 
-func (s *Server) handleSetScreenyConfig(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleExternalProviderConfig(
+	w http.ResponseWriter,
+	r *http.Request,
+	displayName, providerKey, urlParam, filterParam, itemNoun string,
+	updateFn func(url, filter string) error,
+) {
 	user := GetUser(r)
 	if !user.IsAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	studioURL := strings.TrimSpace(r.FormValue("screeny_studio_url"))
-	scaleFilter := strings.TrimSpace(r.FormValue("screeny_scale_filter"))
+	targetURL := strings.TrimSpace(r.FormValue(urlParam))
+	scaleFilter := strings.TrimSpace(r.FormValue(filterParam))
 
-	if err := s.updateScreenyConfig(studioURL, scaleFilter); err != nil {
-		slog.Error("Failed to update Screeny settings", "error", err)
-		s.flashAndRedirect(w, r, "Failed to save Screeny settings.", "/settings/content", http.StatusSeeOther)
+	if err := updateFn(targetURL, scaleFilter); err != nil {
+		slog.Error("Failed to update "+displayName+" settings", "error", err)
+		s.flashAndRedirect(w, r, fmt.Sprintf("Failed to save %s settings.", displayName), "/settings/content", http.StatusSeeOther)
 		return
 	}
 
-	if studioURL != "" {
-		if provider := s.GetExternalProvider("screeny"); provider != nil {
+	if targetURL != "" {
+		if provider := s.GetExternalProvider(providerKey); provider != nil {
 			ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 			extApps, err := provider.ListApps(ctx)
 			cancel()
 			if err != nil {
-				slog.Warn("Screeny connection test failed", "error", err)
-				s.flashAndRedirect(w, r, "Saved Screeny settings, but connection test failed. Please verify the URL.", "/settings/content", http.StatusSeeOther)
+				slog.Warn("External provider connection test failed", "provider", displayName, "error", err)
+				s.flashAndRedirect(w, r, fmt.Sprintf("Saved %s settings, but connection test failed. Please verify the URL.", displayName), "/settings/content", http.StatusSeeOther)
 				return
 			}
-			s.flashAndRedirect(w, r, fmt.Sprintf("Connected to Screeny Studio successfully (%d patches discovered).", len(extApps)), "/settings/content", http.StatusSeeOther)
+			s.flashAndRedirect(w, r, fmt.Sprintf("Connected to %s successfully (%d %s discovered).", displayName, len(extApps), itemNoun), "/settings/content", http.StatusSeeOther)
 			return
 		}
 	}
 
-	s.flashAndRedirect(w, r, "Screeny settings updated.", "/settings/content", http.StatusSeeOther)
+	s.flashAndRedirect(w, r, fmt.Sprintf("%s settings updated.", displayName), "/settings/content", http.StatusSeeOther)
+}
+
+func (s *Server) handleSetScreenyConfig(w http.ResponseWriter, r *http.Request) {
+	s.handleExternalProviderConfig(w, r, "Screeny", "screeny", "screeny_studio_url", "screeny_scale_filter", "patches", s.updateScreenyConfig)
+}
+
+func (s *Server) handleSetAwtrixConfig(w http.ResponseWriter, r *http.Request) {
+	layout := strings.TrimSpace(r.FormValue("awtrix_layout"))
+	s.handleExternalProviderConfig(w, r, "Awtrix NG", "awtrix", "awtrix_url", "awtrix_scale_filter", "apps", func(u, f string) error {
+		return s.updateAwtrixConfig(u, f, layout)
+	})
 }
 
 func (s *Server) loginTemplateData(r *http.Request, flashes []string) TemplateData {

@@ -153,7 +153,10 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 	installedNames := make(map[string]bool)
 	installedPaths := make(map[string]bool)
 	for _, da := range device.Apps {
-		installedNames[da.Name] = true
+		isExt := da.Path != nil && s.isExternalAppPath(*da.Path)
+		if !isExt {
+			installedNames[da.Name] = true
+		}
 		if da.Path != nil && *da.Path != "" {
 			p := *da.Path
 			installedPaths[p] = true
@@ -169,6 +172,13 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 	}
 
 	for i := range systemApps {
+		isExt := systemApps[i].Provider != "" || s.isExternalAppPath(systemApps[i].Path)
+		if isExt {
+			if installedPaths[systemApps[i].Path] {
+				systemApps[i].IsInstalled = true
+			}
+			continue
+		}
 		fullPath := filepath.Join(systemApps[i].Path, systemApps[i].FileName)
 		if installedNames[systemApps[i].ID] || installedNames[systemApps[i].Name] ||
 			installedPaths[systemApps[i].Path] || installedPaths[fullPath] {
@@ -176,6 +186,13 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 		}
 	}
 	for i := range customApps {
+		isExt := customApps[i].Provider != "" || s.isExternalAppPath(customApps[i].Path)
+		if isExt {
+			if installedPaths[customApps[i].Path] {
+				customApps[i].IsInstalled = true
+			}
+			continue
+		}
 		if installedNames[customApps[i].ID] || installedNames[customApps[i].Name] ||
 			installedPaths[customApps[i].Path] || installedPaths[filepath.ToSlash(filepath.Dir(customApps[i].Path))] {
 			customApps[i].IsInstalled = true
@@ -652,6 +669,17 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	deleteOnCancel := r.URL.Query().Get("delete_on_cancel") == "true"
 
+	var externalAppURL string
+	var externalProviderName string
+	if app.Path != nil && s.isExternalAppPath(*app.Path) {
+		if provider, _, ok := s.parseExternalAppPath(*app.Path); ok {
+			if provider.Name() == "screeny" && s.Config.ScreenyStudioURL != "" {
+				externalAppURL = s.Config.ScreenyStudioURL
+				externalProviderName = "Screeny"
+			}
+		}
+	}
+
 	var appMetadata *apps.AppMetadata
 	if app.Path != nil {
 		appMetadata = s.getAppMetadata(r.Context(), *app.Path)
@@ -675,6 +703,8 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		ColorFilterOptions:       s.getColorFilterChoices(),
 		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
 		AppMetadata:              appMetadata,
+		ExternalAppURL:           externalAppURL,
+		ExternalProviderName:     externalProviderName,
 		DefaultSounds:            GetDefaultSounds(),
 		CustomSounds:             customSounds,
 		AppSounds:                appSounds,
@@ -1155,10 +1185,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				width *= 2
 				height *= 2
 			}
-			fps := s.Config.ScreenyFPS
-			if fps <= 0 {
-				fps = 30
-			}
+			fps := s.getExternalProviderFPS(provider)
 			dwellSecs := 10
 			if device != nil {
 				dwellSecs = device.GetEffectiveDwellTime(app)
@@ -1251,10 +1278,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				width *= 2
 				height *= 2
 			}
-			fps := s.Config.ScreenyFPS
-			if fps <= 0 {
-				fps = 30
-			}
+			fps := s.getExternalProviderFPS(provider)
 			dwellSecs := 10
 			if device != nil {
 				dwellSecs = device.GetEffectiveDwellTime(app)
@@ -1386,10 +1410,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 
 	if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
 		width, height := device.Type.CanvasSize()
-		fps := s.Config.ScreenyFPS
-		if fps <= 0 {
-			fps = 30
-		}
+		fps := s.getExternalProviderFPS(provider)
 		maxChunkSize := s.GetMaxChunkSizeForDevice(device)
 		previewConfig := app.Config
 		if configBody != nil {
