@@ -136,14 +136,35 @@ Browsers are not constrained by microcontroller memory limits:
 ### Device Push Previews (`POST /devices/{id}/{iname}/preview`)
 When a user clicks **"Preview on Device"**:
 1. The server renders chunks according to the target device's hardware budget.
-2. `saveAppChunks` is called to update disk cache and write `<appBasename>_full.webp`.
+2. Chunk 0 is safely saved to the device's ephemeral push image storage (`pushed/<iname>.webp`) ensuring HTTP fallbacks never overflow device buffers.
 3. The server broadcasts a `DevicePreviewMessage` containing all rendered chunks.
-4. Active WebSocket connections immediately interrupt the current rotation and stream Chunk 0 &rarr; Chunk 1 &rarr; Chunk 2 in sequence, allowing the user to inspect the full animation live on their hardware.
-5. HTTP polling devices have their chunk indices primed to Chunk 0 for immediate sequential retrieval.
+4. Active WebSocket connections immediately interrupt current rotation and stream Chunk 0 &rarr; Chunk 1 &rarr; Chunk 2 in sequence, allowing the user to inspect the full animation live on their hardware without overwriting persistent app state.
 
 ---
 
-## 7. Device Tier Specifications
+## 7. Pushed Apps & API Image Pushes (`internal/server/handlers_api.go`)
+
+The chunking engine automatically validates and partitions images and animations delivered via the REST API endpoints:
+* `POST /v0/devices/{id}/push` (pre-rendered WebP animations)
+* `POST /v0/devices/{id}/push_app` (rendered Starlark applets)
+
+### Persistent Pushed Apps (with `installationID`)
+1. If the animation exceeds the device's `maxChunkSize`, `processPushedImage` partitions it into sequential chunks via `chunker.SplitWebPBytesIntoChunks`.
+2. `saveAppChunks` writes:
+   - Chunk 0 to `webp/<device>/pushed/<installationID>.webp` (guaranteed safe primary image).
+   - All individual chunk files (`pushed-<iname>_chunk_*.webp`), full preview (`pushed-<iname>_full.webp`), and metadata (`pushed-<iname>_chunks.json`).
+3. **WebSocket:** Broadcasts `DevicePreviewMessage` so active devices stream all chunks in real-time.
+4. **HTTP Polling:** When rotation reaches the pushed app, the server steps through Chunk 0 &rarr; 1 &rarr; 2 across consecutive `/next` requests.
+5. **Deletion:** `DELETE /v0/devices/{id}/installations/{iname}` automatically removes all chunk files, metadata, and evicts in-memory cache entries.
+
+### Ephemeral Image Pushes (without `installationID`)
+1. For animations without an `installationID`, oversized payloads are partitioned into temporary chunks.
+2. **WebSocket:** Broadcasts `DevicePreviewMessage` to immediately interrupt and stream the complete multi-chunk animation.
+3. **HTTP Polling:** Chunk 0 is written to `webp/<device>/pushed/__<timestamp>.webp` so an HTTP client fetching `/next` receives a safe image within its buffer limits rather than a memory crash.
+
+---
+
+## 8. Device Tier Specifications
 
 | Device Type | Identifiers | Max Chunk Size | Max Chunk Duration | Target Firmware Buffer |
 | :--- | :--- | :--- | :--- | :--- |
@@ -154,7 +175,7 @@ When a user clicks **"Preview on Device"**:
 
 ---
 
-## 8. Configuration Options
+## 9. Configuration Options
 
 | Environment Variable | Default | Description |
 | :--- | :--- | :--- |

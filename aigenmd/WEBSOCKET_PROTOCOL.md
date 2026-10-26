@@ -124,5 +124,5 @@ For long or high-framerate animations that produce multi-chunk sequences to resp
    - v1+ devices (`protocol_version >= 1`): wait for the `displaying` ACK of chunk `i`, then pre-stream chunk `i+1`. The safety timeout is 10 minutes for chunk 0 and `chunk[i-1].DurationMs + 10s` for later chunks.
    - Legacy devices: wait `chunk[i].DurationMs` milliseconds before transmitting the next chunk.
 3. The device rotation cursor only advances after all chunks of the multi-chunk app have completed playback.
-4. A pushed ephemeral image or a new preview immediately interrupts the multi-chunk sequence.
+4. A pushed ephemeral image, pushed app, or new preview immediately interrupts the current sequence (and if the pushed payload is itself oversized, it streams as a multi-chunk sequence).
 

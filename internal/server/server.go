@@ -704,6 +704,9 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []chunker.
 	// It must always be safe for device hardware and stay within maxChunkSize, so we
 	// write chunk 0 (the first chunk) to primaryPath.
 	primaryPath := s.getAppWebpPath(deviceWebpDir, app)
+	if err := os.MkdirAll(filepath.Dir(primaryPath), 0755); err != nil {
+		return err
+	}
 	primaryBytes := chunks[0].WebPBytes
 	if err := os.WriteFile(primaryPath, primaryBytes, 0644); err != nil {
 		return err

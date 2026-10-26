@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"image"
 	"image/color"
 	"net/http"
@@ -825,7 +827,7 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	s.handlePushPreview(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code, "Response: %s", rr.Body.String())
 
 	// 1. Broadcaster must receive DevicePreviewMessage with chunks
 	select {
@@ -850,4 +852,206 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 	// 3. Draft preview must NOT overwrite installed app's persistent chunks on disk
 	appChunksPath := filepath.Join(webpDir, "Preview Chunk App-preview_chunk_iname_chunks.json")
 	assert.NoFileExists(t, appChunksPath, "Preview render must not overwrite persistent app chunks")
+}
+
+func TestPushImage_AutoChunking_Persistent(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "push_chunk_user"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	// Cap device chunk budget at 2000 bytes
+	s.Config.MaxChunkSizeESP = 2000
+
+	device := data.Device{
+		ID:              "push_chunk_dev",
+		Username:        user.Username,
+		Name:            "Push Chunk Device",
+		Type:            data.DeviceTidbytGen1,
+		APIKey:          "push_chunk_api_key",
+		DefaultInterval: 10,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	// Create 40 frames of high-entropy noise animation (> 3,000 bytes WebP)
+	frames := make([]*image.RGBA, 40)
+	for i := range 40 {
+		img := image.NewRGBA(image.Rect(0, 0, 64, 32))
+		for y := range 32 {
+			for x := range 64 {
+				img.SetRGBA(x, y, color.RGBA{
+					R: uint8((x*3 + i*11) % 256),
+					G: uint8((y*5 + i*13) % 256),
+					B: uint8((x + y + i*17) % 256),
+					A: 255,
+				})
+			}
+		}
+		frames[i] = img
+	}
+
+	rawWebP, err := chunker.EncodeFramesToWebP(frames, 50*time.Millisecond)
+	require.NoError(t, err)
+	require.Greater(t, len(rawWebP), 2000, "Raw animation must exceed 2000 bytes")
+
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	installID := "pushed_noise_app"
+	pushPayload := PushData{
+		InstallationID: installID,
+		Image:          base64.StdEncoding.EncodeToString(rawWebP),
+	}
+	body, err := json.Marshal(pushPayload)
+	require.NoError(t, err)
+
+	req := newAPIRequest(http.MethodPost, "/v0/devices/"+device.ID+"/push", device.APIKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code, "Response: %s", rr.Body.String())
+
+	// 1. Broadcaster must receive DevicePreviewMessage with partitioned chunks
+	select {
+	case msg := <-ch:
+		previewMsg, ok := msg.(DevicePreviewMessage)
+		require.True(t, ok, "Broadcaster must receive DevicePreviewMessage for oversized push")
+		assert.NotNil(t, previewMsg.App)
+		require.GreaterOrEqual(t, len(previewMsg.Chunks), 2, "Must be partitioned into at least 2 chunks")
+		maxLimit := s.GetMaxChunkSizeForDevice(&device)
+		for idx, chunk := range previewMsg.Chunks {
+			assert.LessOrEqual(t, len(chunk.WebPBytes), maxLimit, "Chunk %d exceeds limit", idx)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for preview message on Broadcaster")
+	}
+
+	// 2. Persistent app record created in DB
+	app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", device.ID, "pushed:"+installID).First(ctx)
+	require.NoError(t, err)
+	assert.True(t, app.Pushed)
+
+	// 3. Chunks on disk and in getAppChunks
+	chunks := s.getAppChunks(device.ID, &app)
+	require.GreaterOrEqual(t, len(chunks), 2)
+
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	require.NoError(t, err)
+	primaryPath := filepath.Join(webpDir, "pushed", installID+".webp")
+	assert.FileExists(t, primaryPath)
+	primaryBytes, err := os.ReadFile(primaryPath)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(primaryBytes), 2000, "Primary WebP must be safe Chunk 0 size")
+
+	// 4. HTTP sequential chunk serving
+	reloadedDevice, err := s.reloadDevice(device.ID)
+	require.NoError(t, err)
+	device = *reloadedDevice
+
+	// First poll returns chunk 0
+	c0Bytes, servedApp, dwell0, err := s.GetNextAppImageHTTP(ctx, &device, &user, "")
+	require.NoError(t, err)
+	require.NotNil(t, servedApp)
+	assert.Equal(t, app.Iname, servedApp.Iname)
+	assert.Equal(t, chunks[0].WebPBytes, c0Bytes)
+	assert.Greater(t, dwell0, 0)
+
+	// Second poll returns chunk 1
+	c1Bytes, servedApp1, dwell1, err := s.GetNextAppImageHTTP(ctx, &device, &user, "")
+	require.NoError(t, err)
+	require.NotNil(t, servedApp1)
+	assert.Equal(t, app.Iname, servedApp1.Iname)
+	assert.Equal(t, chunks[1].WebPBytes, c1Bytes)
+	assert.Greater(t, dwell1, 0)
+
+	// 5. Delete installation via API cleans up chunk files and invalidates cache
+	delReq := newAPIRequest(http.MethodDelete, "/v0/devices/"+device.ID+"/installations/"+installID, device.APIKey, nil)
+	delRr := httptest.NewRecorder()
+	s.ServeHTTP(delRr, delReq)
+	assert.Equal(t, http.StatusOK, delRr.Code)
+
+	// Chunks should be cleaned up
+	assert.Empty(t, s.getAppChunks(device.ID, &app))
+}
+
+func TestPushImage_AutoChunking_Ephemeral(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "push_ephem_user"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	s.Config.MaxChunkSizeESP = 2000
+
+	device := data.Device{
+		ID:              "push_ephem_dev",
+		Username:        user.Username,
+		Name:            "Push Ephem Device",
+		Type:            data.DeviceTidbytGen1,
+		APIKey:          "ephem_api_key",
+		DefaultInterval: 10,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	// Create 40 frames of high-entropy noise animation (> 3,000 bytes WebP)
+	frames := make([]*image.RGBA, 40)
+	for i := range 40 {
+		img := image.NewRGBA(image.Rect(0, 0, 64, 32))
+		for y := range 32 {
+			for x := range 64 {
+				img.SetRGBA(x, y, color.RGBA{
+					R: uint8((x*3 + i*11) % 256),
+					G: uint8((y*5 + i*13) % 256),
+					B: uint8((x + y + i*17) % 256),
+					A: 255,
+				})
+			}
+		}
+		frames[i] = img
+	}
+
+	rawWebP, err := chunker.EncodeFramesToWebP(frames, 50*time.Millisecond)
+	require.NoError(t, err)
+	require.Greater(t, len(rawWebP), 2000)
+
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	// Ephemeral push without installationID
+	pushPayload := PushData{
+		Image: base64.StdEncoding.EncodeToString(rawWebP),
+	}
+	body, err := json.Marshal(pushPayload)
+	require.NoError(t, err)
+
+	req := newAPIRequest(http.MethodPost, "/v0/devices/"+device.ID+"/push", device.APIKey, body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code, "Response: %s", rr.Body.String())
+
+	// 1. Broadcaster must receive DevicePreviewMessage for streaming
+	select {
+	case msg := <-ch:
+		previewMsg, ok := msg.(DevicePreviewMessage)
+		require.True(t, ok, "Broadcaster must receive DevicePreviewMessage for ephemeral push")
+		assert.Nil(t, previewMsg.App)
+		require.GreaterOrEqual(t, len(previewMsg.Chunks), 2)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for preview message on Broadcaster")
+	}
+
+	// 2. Fallback image in pushed/ directory is safely sized Chunk 0
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	require.NoError(t, err)
+	pushedDir := filepath.Join(webpDir, "pushed")
+	entries, err := os.ReadDir(pushedDir)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "__") && strings.HasSuffix(entry.Name(), ".webp") {
+			info, err := entry.Info()
+			require.NoError(t, err)
+			assert.LessOrEqual(t, info.Size(), int64(2000), "Ephemeral image must not exceed chunk limit")
+		}
+	}
 }
