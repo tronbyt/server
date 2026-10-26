@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/color"
 	"net/http"
@@ -71,6 +72,18 @@ func TestDeviceMaxChunkSize_ESP_vs_RPi(t *testing.T) {
 		Type: data.DeviceMatrixPortalWide,
 	}
 	assert.Equal(t, 450000, s.GetMaxChunkSizeForDevice(matrixWideDevice))
+
+	matrixWSDevice := &data.Device{
+		ID:   "matrixws1",
+		Type: data.DeviceMatrixPortalWS,
+	}
+	assert.Equal(t, 450000, s.GetMaxChunkSizeForDevice(matrixWSDevice))
+
+	// Config override for S3 devices
+	s.Config.MaxChunkSizeS3 = 200000
+	assert.Equal(t, 200000, s.GetMaxChunkSizeForDevice(wideDevice))
+	assert.Equal(t, 200000, s.GetMaxChunkSizeForDevice(matrixWideDevice))
+	s.Config.MaxChunkSizeS3 = 0 // reset
 
 	// Pixoticker has 50,000-byte buffer in firmware
 	pixoDevice := &data.Device{
@@ -850,7 +863,7 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 	assert.LessOrEqual(t, len(pushedBytes), 2000, "Ephemeral push preview must fit within device chunk size limit")
 
 	// 3. Draft preview must NOT overwrite installed app's persistent chunks on disk
-	appChunksPath := filepath.Join(webpDir, "Preview Chunk App-preview_chunk_iname_chunks.json")
+	appChunksPath := filepath.Join(webpDir, fmt.Sprintf("%s-%s_chunks.json", app.Name, app.Iname))
 	assert.NoFileExists(t, appChunksPath, "Preview render must not overwrite persistent app chunks")
 }
 
@@ -1015,7 +1028,6 @@ func TestPushImage_AutoChunking_Ephemeral(t *testing.T) {
 	require.Greater(t, len(rawWebP), 2000)
 
 	ch := s.Broadcaster.Subscribe(device.ID)
-	defer s.Broadcaster.Unsubscribe(device.ID, ch)
 
 	// Ephemeral push without installationID
 	pushPayload := PushData{
@@ -1040,7 +1052,15 @@ func TestPushImage_AutoChunking_Ephemeral(t *testing.T) {
 		t.Fatal("Timeout waiting for preview message on Broadcaster")
 	}
 
-	// 2. Fallback image in pushed/ directory is safely sized Chunk 0
+	// Active subscriber consumed it, so no disk fallback needed
+	s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	// 2. Now push again when no WebSocket subscriber is listening: fallback image in pushed/ is safely sized Chunk 0
+	rr2 := httptest.NewRecorder()
+	req2 := newAPIRequest(http.MethodPost, "/v0/devices/"+device.ID+"/push", device.APIKey, body)
+	s.ServeHTTP(rr2, req2)
+	assert.Equal(t, http.StatusOK, rr2.Code)
+
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
 	pushedDir := filepath.Join(webpDir, "pushed")

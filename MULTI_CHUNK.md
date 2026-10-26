@@ -69,12 +69,11 @@ The chunking process proceeds as follows:
    If `maxChunkSize <= 0` (used for web previews), the engine encodes all captured frames into a single continuous WebP animation and returns immediately.
 2. **Single-Chunk Validation:**
    If all frames fit within both `maxChunkSize` and `maxFramesPerChunk` (e.g. on a Raspberry Pi or for a very short dwell time), the entire animation is preserved as a single chunk.
-3. **Binary-Search Frame Partitioning:**
-   When the animation exceeds device bounds, the engine partitions frames using binary search:
-   - For each chunk, it tests the midpoint between `start` and `maxEnd` (`start + maxFramesPerChunk`).
-   - It identifies the exact maximum number of frames that compresses under `maxChunkSize` bytes.
-   - It records the chunk's exact playback duration (`chunkFrames * frameDurationMs`).
-4. **Full Animation Attachment (`FullWebPBytes`):**
+3. **Timing & Frame Rate Preservation:**
+   The chunker extracts each frame's exact timestamp from the rendered WebP metadata. Individual frame durations are never compressed or squashed into dwell time windows, preserving natural playback speed and respecting `show_full_animation: true` while preventing microcontroller RTOS task watchdog timeouts caused by sub-tick frame delays.
+4. **Balanced Multi-Chunk Partitioning:**
+   When the animation exceeds device bounds, the engine finds the minimum $K \ge 2$ balanced chunks that fit under `maxChunkSize` and `maxChunkDurationMs`, avoiding awkward runt stragglers and intermediate freezing seams.
+5. **Full Animation Attachment (`FullWebPBytes`):**
    The chunker attaches the complete, unchunked animation binary (`FullWebPBytes`) to Chunk 0. This ensures downstream callers have access to both the partitioned hardware chunks and the full browser-ready animation from a single render pass.
 
 ---
@@ -169,8 +168,8 @@ The chunking engine automatically validates and partitions images and animations
 | Device Type | Identifiers | Max Chunk Size | Max Chunk Duration | Target Firmware Buffer |
 | :--- | :--- | :--- | :--- | :--- |
 | **Raspberry Pi / Tronberry** | `DeviceRaspberryPi*`, `DeviceTronberry*` | **5,242,880 B** (5 MB) | No duration limit (`0`) | Unlimited |
-| **ESP32-S3 & Matrix Wide** | `DeviceTronbytS3Wide`, `DeviceMatrixPortalWide`, `DeviceMatrixPortalSquare`, `DeviceTronbytS3`, `DeviceMatrixPortal`, `DeviceWaveshareS3`, `DeviceTidbytGen2` | **450,000 B** (450 KB) | Governed by byte budget (`0`) | 460,000 B |
-| **Tidbyt Gen 1 & Standard ESP32** | `DeviceTidbytGen1`, `DeviceMatrixPortalWS` | **160,000 B** (160 KB) | Governed by byte budget (`0`) | 220,000 B |
+| **ESP32-S3 & Matrix Wide** | `DeviceTronbytS3Wide`, `DeviceMatrixPortalWide`, `DeviceMatrixPortalSquare`, `DeviceTronbytS3`, `DeviceMatrixPortal`, `DeviceMatrixPortalWS`, `DeviceWaveshareS3`, `DeviceTidbytGen2` | **450,000 B** (450 KB) | Governed by byte budget (`0`) | 460,000 B |
+| **Tidbyt Gen 1 & Standard ESP32** | `DeviceTidbytGen1` | **160,000 B** (160 KB) | Governed by byte budget (`0`) | 220,000 B |
 | **Pixoticker** | `DevicePixoticker` | **50,000 B** (50 KB) | Governed by byte budget (`0`) | 60,000 B |
 
 ---
@@ -180,4 +179,5 @@ The chunking engine automatically validates and partitions images and animations
 | Environment Variable | Default | Description |
 | :--- | :--- | :--- |
 | `TRONBYT_MAX_CHUNK_SIZE_ESP` | `160000` (160 KB) | Maximum chunk size budget for ESP32 and Tidbyt Gen 1 hardware. |
+| `TRONBYT_MAX_CHUNK_SIZE_S3` | `450000` (450 KB) | Maximum chunk size budget for ESP32-S3, Matrix Wide, and Tidbyt Gen 2 hardware. |
 | `TRONBYT_MAX_CHUNK_SIZE_RPI` | `5242880` (5 MB) | Maximum chunk size budget for Raspberry Pi and Tronberry hardware. |

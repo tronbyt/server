@@ -570,6 +570,20 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						lastSentBrightness = effectiveBrightness
 					}
 
+					appName := "preview"
+					if app != nil {
+						appName = app.Iname
+					}
+					slog.Info("Streaming chunk to WebSocket",
+						"app", appName,
+						"device", device.ID,
+						"chunk", chunkIdx,
+						"total_chunks", len(chunks),
+						"bytes", len(chunk.WebPBytes),
+						"dwell_secs", chunkDwell,
+						"duration_ms", chunk.DurationMs,
+					)
+
 					if err := conn.WriteMessage(websocket.BinaryMessage, chunk.WebPBytes); err != nil {
 						slog.Error("Failed to write chunk binary message to WS", "chunk", chunkIdx, "error", err)
 						return
@@ -625,6 +639,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 									if user != nil {
 										s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 									}
+								} else if app != nil {
+									slog.Debug("Received ACK for chunk", "app", app.Iname, "device", device.ID, "chunk", chunkIdx)
 								}
 								if device.Info.ProtocolVersion != nil {
 									waitingChunk = false

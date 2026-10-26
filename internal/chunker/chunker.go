@@ -103,6 +103,235 @@ func EncodeFramesToWebPWithDuration(frames []*image.RGBA, targetDurationMs int, 
 	return assembled, nil
 }
 
+// EncodeFramesToWebPWithFrameDurations encodes a sequence of RGBA images into an animated WebP binary
+// using exact per-frame durations, preserving natural animation speed and preventing hardware watchdog
+// timeouts caused by hyper-speed frame pacing.
+func EncodeFramesToWebPWithFrameDurations(frames []*image.RGBA, durations []time.Duration, holdLastFrameMs int) ([]byte, error) {
+	if len(frames) == 0 {
+		return nil, errors.New("cannot encode empty frame slice")
+	}
+
+	bounds := frames[0].Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	encoder, err := webp.NewAnimationEncoder(width, height, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("initializing webp animation encoder: %w", err)
+	}
+	defer encoder.Close()
+
+	config, err := webp.ConfigLosslessPreset(6)
+	if err != nil {
+		return nil, fmt.Errorf("creating lossless config: %w", err)
+	}
+
+	n := len(frames)
+	for i, frame := range frames {
+		dur := time.Duration(1000/DefaultFPS) * time.Millisecond
+		if i < len(durations) && durations[i] > 0 {
+			dur = durations[i]
+		}
+		if i == n-1 && n > 1 && holdLastFrameMs > 0 {
+			dur += time.Duration(holdLastFrameMs) * time.Millisecond
+		}
+		if err := encoder.AddFrame(frame, dur, config); err != nil {
+			return nil, fmt.Errorf("adding frame to webp animation: %w", err)
+		}
+	}
+
+	assembled, err := encoder.Assemble()
+	if err != nil {
+		return nil, fmt.Errorf("assembling webp animation: %w", err)
+	}
+
+	return assembled, nil
+}
+
+// SplitFramesWithTiming partitions sequential frames into animated WebP chunks, preserving
+// the exact per-frame durations of the source animation so playback never speeds up or slows down.
+func SplitFramesWithTiming(frames []*image.RGBA, durations []time.Duration, maxChunkSize int, maxChunkDurationMs int) ([]RenderChunk, error) {
+	if len(frames) == 0 {
+		return nil, errors.New("no frames to split")
+	}
+
+	n := len(frames)
+	if len(durations) != n {
+		defDur := time.Duration(1000/DefaultFPS) * time.Millisecond
+		durations = make([]time.Duration, n)
+		for i := range n {
+			durations[i] = defDur
+		}
+	}
+
+	fullDurationMs := 0
+	for _, d := range durations {
+		fullDurationMs += int(d.Milliseconds())
+	}
+	if fullDurationMs <= 0 {
+		fullDurationMs = n * (1000 / DefaultFPS)
+	}
+
+	// 1. If maxChunkSize <= 0, don't chunk: encode everything into a single chunk.
+	if maxChunkSize <= 0 {
+		b, err := EncodeFramesToWebPWithFrameDurations(frames, durations, 0)
+		if err != nil {
+			return nil, err
+		}
+		return []RenderChunk{
+			{
+				WebPBytes:     b,
+				DurationMs:    fullDurationMs,
+				FullWebPBytes: b,
+			},
+		}, nil
+	}
+
+	// 2. Try encoding the entire animation in one chunk first if it fits within bounds.
+	allBytes, err := EncodeFramesToWebPWithFrameDurations(frames, durations, 0)
+	if err == nil && len(allBytes) <= maxChunkSize && (maxChunkDurationMs <= 0 || fullDurationMs <= maxChunkDurationMs) {
+		return []RenderChunk{
+			{
+				WebPBytes:     allBytes,
+				DurationMs:    fullDurationMs,
+				FullWebPBytes: allBytes,
+			},
+		}, nil
+	}
+
+	// 3. Balanced Multi-Chunk Partitioning:
+	// Find the minimum number of chunks K (>= 2) such that all chunks fit under maxChunkSize
+	// and maxChunkDurationMs, with balanced frame counts across chunks.
+	minFramesPerChunk := 15
+	if n < minFramesPerChunk*2 {
+		minFramesPerChunk = max(1, n/2)
+	}
+
+	maxPossibleK := max(2, n/minFramesPerChunk)
+
+	startK := 2
+	if maxChunkDurationMs > 0 {
+		startK = max(startK, (fullDurationMs+maxChunkDurationMs-1)/maxChunkDurationMs)
+	}
+	if len(allBytes) > maxChunkSize {
+		startK = max(startK, (len(allBytes)+maxChunkSize-1)/maxChunkSize)
+	}
+
+	// Try balanced K-way partitioning
+	for k := startK; k <= maxPossibleK; k++ {
+		valid := true
+		candidateChunks := make([]RenderChunk, k)
+
+		for i := range k {
+			cStart := (i * n) / k
+			cEnd := ((i + 1) * n) / k
+			cSlice := frames[cStart:cEnd]
+			cDurations := durations[cStart:cEnd]
+
+			cDurMs := 0
+			for _, d := range cDurations {
+				cDurMs += int(d.Milliseconds())
+			}
+
+			b, err := EncodeFramesToWebPWithFrameDurations(cSlice, cDurations, 0)
+			if err != nil || len(b) > maxChunkSize || (maxChunkDurationMs > 0 && cDurMs > maxChunkDurationMs) {
+				valid = false
+				break
+			}
+
+			candidateChunks[i] = RenderChunk{
+				WebPBytes:  b,
+				DurationMs: cDurMs,
+			}
+		}
+
+		if valid {
+			candidateChunks[0].FullWebPBytes = allBytes
+			return candidateChunks, nil
+		}
+	}
+
+	// Fallback: adaptive sequential partitioning
+	var chunks []RenderChunk
+	start := 0
+
+	for start < n {
+		maxEnd := n
+		remaining := n - start
+		if remaining > minFramesPerChunk && remaining < minFramesPerChunk*2 {
+			maxEnd = start + remaining/2
+		}
+
+		candidateSlice := frames[start:maxEnd]
+		candidateDurations := durations[start:maxEnd]
+		candDurMs := 0
+		for _, d := range candidateDurations {
+			candDurMs += int(d.Milliseconds())
+		}
+
+		encodedAll, err := EncodeFramesToWebPWithFrameDurations(candidateSlice, candidateDurations, 0)
+		if err == nil && len(encodedAll) <= maxChunkSize && (maxChunkDurationMs <= 0 || candDurMs <= maxChunkDurationMs) {
+			chunks = append(chunks, RenderChunk{
+				WebPBytes:  encodedAll,
+				DurationMs: candDurMs,
+			})
+			start = maxEnd
+			continue
+		}
+
+		// Binary search to find max frames fitting in budget
+		low := start + 1
+		high := maxEnd
+		bestEnd := low
+		var bestBytes []byte
+		bestDurMs := int(durations[start].Milliseconds())
+
+		for low <= high {
+			mid := low + (high-low)/2
+			subSlice := frames[start:mid]
+			subDurations := durations[start:mid]
+			subDurMs := 0
+			for _, d := range subDurations {
+				subDurMs += int(d.Milliseconds())
+			}
+
+			b, err := EncodeFramesToWebPWithFrameDurations(subSlice, subDurations, 0)
+			if err == nil && len(b) <= maxChunkSize && (maxChunkDurationMs <= 0 || subDurMs <= maxChunkDurationMs) {
+				bestEnd = mid
+				bestBytes = b
+				bestDurMs = subDurMs
+				low = mid + 1
+			} else {
+				high = mid - 1
+			}
+		}
+
+		if bestBytes == nil {
+			bestEnd = start + 1
+			bestDurMs = int(durations[start].Milliseconds())
+			var err error
+			bestBytes, err = EncodeFramesToWebPWithFrameDurations(frames[start:bestEnd], durations[start:bestEnd], 0)
+			if err != nil {
+				return nil, fmt.Errorf("encoding single-frame fallback at frame %d: %w", start, err)
+			}
+			if len(bestBytes) > maxChunkSize {
+				return nil, fmt.Errorf("single frame %d is %d bytes, exceeding maximum chunk budget of %d bytes", start, len(bestBytes), maxChunkSize)
+			}
+		}
+
+		chunks = append(chunks, RenderChunk{
+			WebPBytes:  bestBytes,
+			DurationMs: bestDurMs,
+		})
+		start = bestEnd
+	}
+
+	if len(chunks) > 0 {
+		chunks[0].FullWebPBytes = allBytes
+	}
+	return chunks, nil
+}
+
 // SplitFramesIntoChunks partitions sequential frames into animated WebP chunks,
 // each fitting under maxChunkSize bytes and maxChunkDurationMs with exact playback DurationMs.
 func SplitFramesIntoChunks(frames []*image.RGBA, fps int, maxChunkSize int, maxChunkDurationMs int) ([]RenderChunk, error) {
@@ -110,8 +339,9 @@ func SplitFramesIntoChunks(frames []*image.RGBA, fps int, maxChunkSize int, maxC
 }
 
 // SplitFramesIntoChunksWithDuration partitions sequential frames into animated WebP chunks.
-// When targetDurationMs > 0, frame timestamps are paced across exact integer-second dwell windows
-// with a final-frame hold cushion so hardware decoders never loop back to frame 0 mid-dwell.
+// When targetDurationMs is greater than the frames' natural duration, frames are padded or paced
+// to fill targetDurationMs. It never squashes frames below their natural duration, preventing hyper-speed
+// playback and FreeRTOS task watchdog timeouts.
 func SplitFramesIntoChunksWithDuration(frames []*image.RGBA, fps int, maxChunkSize int, maxChunkDurationMs int, targetDurationMs int) ([]RenderChunk, error) {
 	if len(frames) == 0 {
 		return nil, errors.New("no frames to split")
@@ -127,326 +357,149 @@ func SplitFramesIntoChunksWithDuration(frames []*image.RGBA, fps int, maxChunkSi
 	}
 	frameDuration := time.Duration(frameDurationMs) * time.Millisecond
 
-	totalFrames := len(frames)
-	totalSecs := 0
-	holdMs := 0
-	if targetDurationMs > 0 {
-		totalSecs = max(1, (targetDurationMs+500)/1000)
-		if targetDurationMs >= 5000 {
-			holdMs = 250
+	n := len(frames)
+	durations := make([]time.Duration, n)
+	for i := range n {
+		durations[i] = frameDuration
+	}
+
+	naturalDurMs := n * frameDurationMs
+	if targetDurationMs > naturalDurMs {
+		for i := range n {
+			tStart := (i * targetDurationMs) / n
+			tEnd := ((i + 1) * targetDurationMs) / n
+			durMs := max(1, tEnd-tStart)
+			durations[i] = time.Duration(durMs) * time.Millisecond
 		}
 	}
 
-	encodeRange := func(slice []*image.RGBA, durMs int, hold int) ([]byte, error) {
-		if targetDurationMs > 0 {
-			return EncodeFramesToWebPWithDuration(slice, durMs, hold)
-		}
-		return EncodeFramesToWebP(slice, frameDuration)
-	}
-
-	fullDurationMs := totalFrames * frameDurationMs
-	if totalSecs > 0 {
-		fullDurationMs = totalSecs * 1000
-	}
-
-	// 1. If maxChunkSize <= 0, don't chunk: encode everything into a single chunk.
-	if maxChunkSize <= 0 {
-		b, err := encodeRange(frames, fullDurationMs, holdMs)
-		if err != nil {
-			return nil, err
-		}
-		return []RenderChunk{
-			{
-				WebPBytes:     b,
-				DurationMs:    fullDurationMs,
-				FullWebPBytes: b,
-			},
-		}, nil
-	}
-
-	maxFramesPerChunk := 0
-	if maxChunkDurationMs > 0 {
-		maxFramesPerChunk = (maxChunkDurationMs * fps) / 1000
-	}
-
-	// 2. Try encoding the entire animation in one chunk first if it fits within bounds.
-	allBytes, err := encodeRange(frames, fullDurationMs, holdMs)
-	if err == nil && len(allBytes) <= maxChunkSize && (maxFramesPerChunk <= 0 || totalFrames <= maxFramesPerChunk) {
-		return []RenderChunk{
-			{
-				WebPBytes:     allBytes,
-				DurationMs:    fullDurationMs,
-				FullWebPBytes: allBytes,
-			},
-		}, nil
-	}
-
-	// 3. Balanced Multi-Chunk Partitioning:
-	// Find the minimum number of chunks K (>= 2) such that all chunks fit under maxChunkSize
-	// and maxFramesPerChunk, with balanced frame counts and durations across all chunks.
-	// This prevents "straggler / runt" last chunks that loop prematurely on hardware,
-	// and eliminates holdLastFrameMs on intermediate chunks to avoid visible freezing seams.
-	minFramesPerChunk := max(15, fps) // At least ~1-1.5s per chunk
-	if totalFrames < minFramesPerChunk*2 {
-		minFramesPerChunk = max(1, totalFrames/2)
-	}
-
-	maxPossibleK := max(2, totalFrames/minFramesPerChunk)
-	if totalSecs > 0 {
-		maxPossibleK = min(maxPossibleK, totalSecs)
-	}
-
-	startK := 2
-	if maxFramesPerChunk > 0 {
-		startK = max(startK, (totalFrames+maxFramesPerChunk-1)/maxFramesPerChunk)
-	}
-	if len(allBytes) > maxChunkSize {
-		startK = max(startK, (len(allBytes)+maxChunkSize-1)/maxChunkSize)
-	}
-
-	// Try balanced K-way partitioning
-	for k := startK; k <= maxPossibleK; k++ {
-		valid := true
-		candidateChunks := make([]RenderChunk, k)
-
-		for i := range k {
-			cStart := (i * totalFrames) / k
-			cEnd := ((i + 1) * totalFrames) / k
-			cSlice := frames[cStart:cEnd]
-
-			var cDurMs int
-			if totalSecs > 0 {
-				tStart := (i * totalSecs) / k
-				tEnd := ((i + 1) * totalSecs) / k
-				cDurMs = max(1, tEnd-tStart) * 1000
-			} else {
-				cDurMs = (cEnd - cStart) * frameDurationMs
-			}
-
-			// ONLY the final chunk of the full dwell window receives the holdMs cushion!
-			// Intermediate chunks must have hold = 0 so transitions are 100% seamless without pause.
-			cHold := 0
-			if i == k-1 {
-				cHold = holdMs
-			}
-
-			b, err := encodeRange(cSlice, cDurMs, cHold)
-			if err != nil || len(b) > maxChunkSize || (maxFramesPerChunk > 0 && len(cSlice) > maxFramesPerChunk) {
-				valid = false
-				break
-			}
-
-			candidateChunks[i] = RenderChunk{
-				WebPBytes:  b,
-				DurationMs: cDurMs,
-			}
-		}
-
-		if valid {
-			// Ensure sum of chunk durations equals target fullDurationMs
-			if totalSecs > 0 && len(candidateChunks) > 0 {
-				durSum := 0
-				for _, ch := range candidateChunks {
-					durSum += ch.DurationMs
-				}
-				diff := (totalSecs * 1000) - durSum
-				if diff != 0 {
-					candidateChunks[len(candidateChunks)-1].DurationMs += diff
-				}
-			}
-			candidateChunks[0].FullWebPBytes = allBytes
-			return candidateChunks, nil
-		}
-	}
-
-	// Fallback: adaptive partitioning with runt defense if uniform K-way partitioning failed
-	var chunks []RenderChunk
-	start := 0
-	remainingSecs := totalSecs
-
-	chunkDurationFor := func(chunkStart, chunkEnd int) int {
-		chunkFrames := chunkEnd - chunkStart
-		if totalSecs <= 0 {
-			return chunkFrames * frameDurationMs
-		}
-		remFrames := totalFrames - chunkStart
-		if chunkEnd >= totalFrames || remainingSecs <= 1 || remFrames <= 0 {
-			return max(1, remainingSecs) * 1000
-		}
-		secs := max(1, (chunkFrames*remainingSecs+remFrames/2)/remFrames)
-		if secs >= remainingSecs {
-			secs = max(1, remainingSecs-1)
-		}
-		return secs * 1000
-	}
-
-	for start < totalFrames {
-		maxEnd := totalFrames
-		if maxFramesPerChunk > 0 && start+maxFramesPerChunk < totalFrames {
-			maxEnd = start + maxFramesPerChunk
-		}
-
-		// Runt defense: if remaining frames would leave an awkward straggler, split evenly
-		remaining := totalFrames - start
-		if remaining > minFramesPerChunk && remaining < minFramesPerChunk*2 {
-			maxEnd = start + remaining/2
-		}
-
-		candDurMs := chunkDurationFor(start, maxEnd)
-		cHold := 0
-		if maxEnd >= totalFrames {
-			cHold = holdMs
-		}
-
-		candidateAll := frames[start:maxEnd]
-		encodedAll, err := encodeRange(candidateAll, candDurMs, cHold)
-		if err == nil && len(encodedAll) <= maxChunkSize {
-			chunks = append(chunks, RenderChunk{
-				WebPBytes:  encodedAll,
-				DurationMs: candDurMs,
-			})
-			if totalSecs > 0 {
-				remainingSecs = max(1, remainingSecs-candDurMs/1000)
-			}
-			start = maxEnd
-			continue
-		}
-
-		low := start + 1
-		high := maxEnd
-		bestEnd := low
-		var bestBytes []byte
-		bestDurMs := chunkDurationFor(start, bestEnd)
-
-		for low <= high {
-			mid := (low + high) / 2
-			chunkCandidate := frames[start:mid]
-			midDurMs := chunkDurationFor(start, mid)
-			midHold := 0
-			if mid >= totalFrames {
-				midHold = holdMs
-			}
-			encoded, err := encodeRange(chunkCandidate, midDurMs, midHold)
-			if err == nil && len(encoded) <= maxChunkSize {
-				bestEnd = mid
-				bestBytes = encoded
-				bestDurMs = midDurMs
-				low = mid + 1 // try to fit more frames
-			} else {
-				high = mid - 1 // too big or encode failed; try fewer frames
-			}
-		}
-
-		if bestBytes == nil {
-			// Even a single frame exceeded maxChunkSize!
-			bestEnd = start + 1
-			bestDurMs = chunkDurationFor(start, bestEnd)
-			fallbackHold := 0
-			if bestEnd >= totalFrames {
-				fallbackHold = holdMs
-			}
-			bestBytes, err = encodeRange(frames[start:bestEnd], bestDurMs, fallbackHold)
-			if err != nil {
-				return nil, fmt.Errorf("encoding single-frame fallback at frame %d: %w", start, err)
-			}
-			if len(bestBytes) > maxChunkSize {
-				return nil, fmt.Errorf("single frame %d is %d bytes, exceeding maximum chunk budget of %d bytes", start, len(bestBytes), maxChunkSize)
-			}
-		}
-
-		chunks = append(chunks, RenderChunk{
-			WebPBytes:  bestBytes,
-			DurationMs: bestDurMs,
-		})
-		if totalSecs > 0 {
-			remainingSecs = max(1, remainingSecs-bestDurMs/1000)
-		}
-		start = bestEnd
-	}
-
-	if len(chunks) > 0 {
-		chunks[0].FullWebPBytes = allBytes
-	}
-
-	return chunks, nil
+	return SplitFramesWithTiming(frames, durations, maxChunkSize, maxChunkDurationMs)
 }
 
-// DecodeWebPAnimation decodes an animated (or static) WebP binary into a slice of RGBA frames and calculates FPS.
-func DecodeWebPAnimation(data []byte) ([]*image.RGBA, int, error) {
+// DecodeWebPAnimationWithDurations decodes an animated (or static) WebP binary into a slice of RGBA frames,
+// extracting each frame's exact duration and the overall FPS from the animation metadata.
+func DecodeWebPAnimationWithDurations(data []byte) ([]*image.RGBA, []time.Duration, int, error) {
 	if len(data) == 0 {
-		return nil, 0, errors.New("cannot decode empty webp data")
+		return nil, nil, 0, errors.New("cannot decode empty webp data")
 	}
 
 	decoder, err := webp.NewAnimationDecoder(data)
 	if err != nil {
-		return nil, 0, fmt.Errorf("initializing webp animation decoder: %w", err)
+		return nil, nil, 0, fmt.Errorf("initializing webp animation decoder: %w", err)
 	}
 	defer decoder.Close()
 
 	anim, err := decoder.Decode()
 	if err != nil {
-		return nil, 0, fmt.Errorf("decoding webp animation: %w", err)
+		return nil, nil, 0, fmt.Errorf("decoding webp animation: %w", err)
 	}
 	if len(anim.Image) == 0 {
-		return nil, 0, errors.New("decoded zero frames from webp animation")
+		return nil, nil, 0, errors.New("decoded zero frames from webp animation")
 	}
 
-	fps := DefaultFPS
 	n := len(anim.Image)
+	fps := DefaultFPS
+	durations := make([]time.Duration, n)
+
 	if n > 1 && len(anim.Timestamp) == n {
 		totalMs := anim.Timestamp[n-1]
 		if totalMs > 0 {
 			fps = max(1, (n*1000)/totalMs)
 		}
+		for i := range n {
+			var durMs int
+			if i == 0 {
+				durMs = anim.Timestamp[0]
+			} else {
+				durMs = anim.Timestamp[i] - anim.Timestamp[i-1]
+			}
+			if durMs <= 0 {
+				durMs = max(1, 1000/fps)
+			}
+			durations[i] = time.Duration(durMs) * time.Millisecond
+		}
+	} else {
+		defDur := time.Duration(max(1, 1000/fps)) * time.Millisecond
+		for i := range n {
+			durations[i] = defDur
+		}
 	}
 
-	return anim.Image, fps, nil
+	return anim.Image, durations, fps, nil
+}
+
+// DecodeWebPAnimation decodes an animated (or static) WebP binary into a slice of RGBA frames and calculates FPS.
+func DecodeWebPAnimation(data []byte) ([]*image.RGBA, int, error) {
+	frames, _, fps, err := DecodeWebPAnimationWithDurations(data)
+	return frames, fps, err
 }
 
 // SplitWebPBytesIntoChunks inspects an encoded WebP binary (such as from Pixlet / Starlark).
 // If the binary already fits within maxChunkSize and maxChunkDurationMs, it returns a single chunk.
 // Otherwise, it decodes the animation into frames and partitions them into sequential chunks
-// adhering to maxChunkSize and maxChunkDurationMs, preserving the original data in FullWebPBytes.
+// adhering to maxChunkSize and maxChunkDurationMs, preserving the original frame timing so animations
+// do not speed up or trigger hardware task watchdog timeouts.
 func SplitWebPBytesIntoChunks(data []byte, maxChunkSize int, maxChunkDurationMs int, targetDurationMs int) ([]RenderChunk, error) {
 	if len(data) == 0 {
 		return nil, errors.New("cannot chunk empty webp data")
 	}
 
-	durMs := targetDurationMs
-	if durMs <= 0 {
-		durMs = 15000
-	}
-
-	// If no chunk budget or the data already fits within budget and duration
-	if (maxChunkSize <= 0 || len(data) <= maxChunkSize) && maxChunkDurationMs <= 0 {
-		return []RenderChunk{
-			{
-				WebPBytes:     data,
-				DurationMs:    durMs,
-				FullWebPBytes: data,
-			},
-		}, nil
-	}
-
-	// Decode WebP to RGBA frames
-	frames, fps, err := DecodeWebPAnimation(data)
+	frames, durations, _, err := DecodeWebPAnimationWithDurations(data)
 	if err != nil {
 		return nil, fmt.Errorf("decoding webp for chunking: %w", err)
 	}
 
-	// Single frame cannot be split across time
-	if len(frames) <= 1 {
+	totalDurMs := 0
+	for _, d := range durations {
+		totalDurMs += int(d.Milliseconds())
+	}
+	if targetDurationMs > totalDurMs {
+		totalDurMs = targetDurationMs
+	}
+	if totalDurMs <= 0 {
+		totalDurMs = 15000
+	}
+
+	// If no chunk budget or the data already fits within budget and duration
+	if (maxChunkSize <= 0 || len(data) <= maxChunkSize) && (maxChunkDurationMs <= 0 || totalDurMs <= maxChunkDurationMs) {
 		return []RenderChunk{
 			{
 				WebPBytes:     data,
-				DurationMs:    durMs,
+				DurationMs:    totalDurMs,
 				FullWebPBytes: data,
 			},
 		}, nil
 	}
 
-	// Partition frames into sequential chunks
-	chunks, err := SplitFramesIntoChunksWithDuration(frames, fps, maxChunkSize, maxChunkDurationMs, targetDurationMs)
+	// Single frame cannot be split across time
+	if len(frames) <= 1 {
+		dur := targetDurationMs
+		if dur <= 0 {
+			dur = totalDurMs
+		}
+		return []RenderChunk{
+			{
+				WebPBytes:     data,
+				DurationMs:    dur,
+				FullWebPBytes: data,
+			},
+		}, nil
+	}
+
+	// If targetDurationMs is specified and LONGER than the animation's natural duration,
+	// stretch frames to fill targetDurationMs. Never squash below natural duration!
+	if targetDurationMs > totalDurMs && len(frames) > 0 {
+		n := len(frames)
+		durations = make([]time.Duration, n)
+		for i := range n {
+			tStart := (i * targetDurationMs) / n
+			tEnd := ((i + 1) * targetDurationMs) / n
+			durations[i] = time.Duration(max(1, tEnd-tStart)) * time.Millisecond
+		}
+	}
+
+	// Partition frames into sequential chunks preserving exact frame durations
+	chunks, err := SplitFramesWithTiming(frames, durations, maxChunkSize, maxChunkDurationMs)
 	if err != nil {
 		return nil, err
 	}

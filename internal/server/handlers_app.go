@@ -839,7 +839,13 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	// Standard app preview
+	// Standard app preview - prefer full unchunked animation for browser preview if available
+	fullPath := filepath.Join(webpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
+	if _, err := os.Stat(fullPath); err == nil {
+		http.ServeFile(w, r, fullPath)
+		return
+	}
+
 	filename := fmt.Sprintf("%s-%s.webp", app.Name, app.Iname)
 	path := filepath.Join(webpDir, filename)
 

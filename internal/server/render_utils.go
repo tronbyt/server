@@ -231,6 +231,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 				maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
 				dwellSecs := device.GetEffectiveDwellTime(app)
 				targetDurationMs := dwellSecs * 1000
+				if app != nil && app.ShowFullAnimation != nil && *app.ShowFullAnimation {
+					targetDurationMs = 0
+				}
 
 				chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, targetDurationMs)
 				if chunkErr == nil && len(chunks) > 1 {

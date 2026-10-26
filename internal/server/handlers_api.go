@@ -612,15 +612,19 @@ func (s *Server) processPushedImage(ctx context.Context, device *data.Device, in
 		}
 
 		// Ephemeral pushed image with multiple chunks (no persistent app)
-		// Save chunk 0 as fallback for HTTP polling so device buffer doesn't overflow
-		if err := s.savePushedImage(device.ID, "", coalesceID, chunks[0].WebPBytes); err != nil {
-			return err
-		}
+		// Broadcast to active WebSocket streaming subscribers first; save chunk 0 as fallback
+		// for HTTP polling only when no subscriber is actively connected.
+		sent := false
 		if !background {
-			s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+			sent = s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
 				App:    nil,
 				Chunks: chunks,
 			})
+		}
+		if !sent {
+			if err := s.savePushedImage(device.ID, "", coalesceID, chunks[0].WebPBytes); err != nil {
+				return err
+			}
 		}
 		return nil
 	}

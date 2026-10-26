@@ -546,8 +546,12 @@ func (s *Server) GetMaxChunkSizeForDevice(device *data.Device) int {
 		device.Type == data.DeviceMatrixPortalSquare ||
 		device.Type == data.DeviceTronbytS3 ||
 		device.Type == data.DeviceMatrixPortal ||
+		device.Type == data.DeviceMatrixPortalWS ||
 		device.Type == data.DeviceWaveshareS3 ||
 		device.Type == data.DeviceTidbytGen2 {
+		if s.Config.MaxChunkSizeS3 > 0 {
+			return s.Config.MaxChunkSizeS3
+		}
 		return 450000
 	}
 

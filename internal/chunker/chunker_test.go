@@ -133,3 +133,36 @@ func TestChunker_NoIntermediateFreezesOrStragglers(t *testing.T) {
 		assert.InDelta(t, firstFrameDur, lastFrameDur, 10, "Intermediate chunk must not have hold cushion freeze on last frame")
 	}
 }
+
+func TestChunker_PreservesNaturalAnimationSpeed_NeverSquashes(t *testing.T) {
+	// 60 frames at 100ms each = 6.0 seconds natural duration
+	frames := makeTestFrames(60, 64, 32)
+	encoded, err := EncodeFramesToWebP(frames, 100*time.Millisecond)
+	require.NoError(t, err)
+
+	fullSize := len(encoded)
+	maxChunk := fullSize / 2 // Force split into 2 chunks
+
+	// Target duration passed as 2000ms (smaller than 6000ms natural duration, e.g. device default dwell)
+	// Chunker must NOT squash 6000ms into 2000ms (which would speed up playback by 3x)
+	chunks, err := SplitWebPBytesIntoChunks(encoded, maxChunk, 0, 2000)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(chunks), 2)
+
+	totalDur := 0
+	for _, ch := range chunks {
+		totalDur += ch.DurationMs
+	}
+	assert.GreaterOrEqual(t, totalDur, 5900, "Must preserve natural duration ~6000ms, not squashed to 2000ms")
+
+	// Decode chunk 0 and check frame duration is still ~100ms, not 33ms
+	chunk0Anim, err := webp.NewAnimationDecoder(chunks[0].WebPBytes)
+	require.NoError(t, err)
+	defer chunk0Anim.Close()
+	anim, err := chunk0Anim.Decode()
+	require.NoError(t, err)
+
+	require.Greater(t, len(anim.Timestamp), 1)
+	frameDur := anim.Timestamp[1] - anim.Timestamp[0]
+	assert.InDelta(t, 100, frameDur, 10, "Frame duration must remain ~100ms, not squashed")
+}
