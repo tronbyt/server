@@ -293,7 +293,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				}
 			drainedPreview:
 
-				chunkDwell := max(1, (chunk.DurationMs+500)/1000)
+				chunkDwell := max(1, chunk.DurationMs/1000)
 				if err := conn.WriteJSON(map[string]any{"dwell_secs": chunkDwell}); err != nil {
 					slog.Error("Failed to write metadata WS message for preview chunk", "chunk", chunkIdx, "error", err)
 					return
@@ -555,7 +555,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 				drained:
 
-					chunkDwell := max(1, (chunk.DurationMs+500)/1000)
+					chunkDwell := max(1, chunk.DurationMs/1000)
 					if err := conn.WriteJSON(map[string]any{"dwell_secs": chunkDwell}); err != nil {
 						slog.Error("Failed to write metadata WS message for chunk", "chunk", chunkIdx, "error", err)
 						return
