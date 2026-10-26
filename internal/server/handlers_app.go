@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"tronbyt-server/internal/apps"
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
@@ -917,6 +918,33 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		slog.Debug("Preview render message", "message", msg)
 	}
 
+	// If animation exceeds hardware chunk size budget, partition into chunks for preview
+	maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+	if maxChunkSize > 0 && len(imgBytes) > maxChunkSize {
+		maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+		dwellSecs := 5
+		if device != nil {
+			dwellSecs = device.GetEffectiveDwellTime(app)
+		}
+		chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, dwellSecs*1000)
+		if chunkErr == nil && len(chunks) > 1 {
+			if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+				slog.Error("Failed to save Starlark chunks on push preview", "device", device.ID, "app", app.Iname, "error", err)
+			}
+			s.deviceChunkMu.Lock()
+			s.deviceCurrentChunkApp[device.ID] = app.Iname
+			s.deviceChunkIndices[device.ID] = 0
+			s.deviceChunkMu.Unlock()
+
+			s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+				App:    app,
+				Chunks: chunks,
+			})
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+	}
+
 	// Push preview image to device (ephemeral)
 	if err := s.savePushedImage(device.ID, app.Iname, "", imgBytes); err != nil {
 		http.Error(w, "Failed to push preview", http.StatusInternalServerError)
@@ -967,13 +995,26 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
 		// Don't error out the request if file cleanup fails, but log it
 	} else {
-		matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
+		matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s*.webp", app.Iname)))
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
 				slog.Error("Failed to remove app webp file", "path", match, "error", err)
 			}
 		}
+		chunkMetaMatches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s_chunks.json", app.Iname)))
+		for _, match := range chunkMetaMatches {
+			_ = os.Remove(match)
+		}
 	}
+
+	// Invalidate chunk cache and current device chunk playback for this app
+	s.invalidateAppChunks(device.ID, app.Iname)
+	s.deviceChunkMu.Lock()
+	if s.deviceCurrentChunkApp[device.ID] == app.Iname {
+		delete(s.deviceCurrentChunkApp, device.ID)
+		delete(s.deviceChunkIndices, device.ID)
+	}
+	s.deviceChunkMu.Unlock()
 
 	// Notify Dashboard
 	// We need the user to notify. GetUser(r) gets it from context.

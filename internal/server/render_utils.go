@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/renderer"
 	"tronbyt-server/web"
@@ -130,10 +131,22 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	// 2. Static WebP App
 	if strings.HasSuffix(strings.ToLower(*app.Path), ".webp") {
 		if _, err := os.Stat(webpPath); os.IsNotExist(err) {
-			// Copy from source
-			if _, err := os.Stat(appPath); err == nil {
-				if err := copyFile(appPath, webpPath); err != nil {
-					slog.Error("Failed to copy static webp file", "src", appPath, "dst", webpPath, "error", err)
+			// Copy or chunk from source
+			if b, err := os.ReadFile(appPath); err == nil {
+				maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+				if device != nil && maxChunkSize > 0 && len(b) > maxChunkSize {
+					maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+					dwellSecs := device.GetEffectiveDwellTime(app)
+					chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(b, maxChunkSize, maxChunkDurationMs, dwellSecs*1000)
+					if chunkErr == nil && len(chunks) > 1 {
+						if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+							slog.Error("Failed to save static webp chunks", "app", appBasename, "error", err)
+						}
+						return true
+					}
+				}
+				if err := os.WriteFile(webpPath, b, 0644); err != nil {
+					slog.Error("Failed to write static webp file", "src", appPath, "dst", webpPath, "error", err)
 					return false
 				}
 			} else {
@@ -210,9 +223,43 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		if success {
-			// Save WebP
-			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
-				slog.Error("Failed to write webp", "path", webpPath, "error", err)
+			// Save WebP / Chunks:
+			// If device has a hardware chunk size budget and the animation exceeds it,
+			// automatically partition the WebP animation into sequential chunks.
+			maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+			if device != nil && maxChunkSize > 0 && len(imgBytes) > maxChunkSize {
+				maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+				dwellSecs := device.GetEffectiveDwellTime(app)
+				targetDurationMs := dwellSecs * 1000
+
+				chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, targetDurationMs)
+				if chunkErr == nil && len(chunks) > 1 {
+					slog.Info("Partitioned oversized Starlark animation into chunks",
+						"app", appBasename,
+						"device", device.ID,
+						"original_bytes", len(imgBytes),
+						"chunks", len(chunks),
+						"max_chunk_size", maxChunkSize,
+					)
+					if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+						slog.Error("Failed to save Starlark app chunks", "app", appBasename, "error", err)
+					}
+				} else {
+					if chunkErr != nil {
+						slog.Warn("Failed to split oversized Starlark animation into chunks", "app", appBasename, "error", chunkErr)
+					}
+					s.cleanupAppChunks(device.ID, app)
+					if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
+						slog.Error("Failed to write webp", "path", webpPath, "error", err)
+					}
+				}
+			} else {
+				if device != nil {
+					s.cleanupAppChunks(device.ID, app)
+				}
+				if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
+					slog.Error("Failed to write webp", "path", webpPath, "error", err)
+				}
 			}
 
 			// Trigger notification sound if configured and opted in

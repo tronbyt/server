@@ -22,7 +22,9 @@ import (
 	"time"
 
 	"tronbyt-server/internal/apps"
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/config"
+	"tronbyt-server/internal/data"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/internal/version"
 	"tronbyt-server/web"
@@ -66,6 +68,12 @@ type Server struct {
 	systemAppsAutoRefresh                atomic.Bool
 	nibletCloudPreferenceMutex           sync.Mutex
 	nibletCloudEnabled                   atomic.Bool
+
+	appChunksCache        map[string][]chunker.RenderChunk
+	appChunksMu           sync.RWMutex
+	deviceChunkIndices    map[string]int
+	deviceCurrentChunkApp map[string]string
+	deviceChunkMu         sync.Mutex
 
 	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
 	// cached HTTP responses so dynamic schema data (e.g. dropdown options
@@ -124,8 +132,11 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 				return true
 			},
 		},
-		PromRegistry: prometheus.DefaultRegisterer,
-		PromGatherer: prometheus.DefaultGatherer,
+		PromRegistry:          prometheus.DefaultRegisterer,
+		PromGatherer:          prometheus.DefaultGatherer,
+		appChunksCache:        make(map[string][]chunker.RenderChunk),
+		deviceChunkIndices:    make(map[string]int),
+		deviceCurrentChunkApp: make(map[string]string),
 	}
 
 	// Load Settings from DB
@@ -501,4 +512,243 @@ func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte(svg)); err != nil {
 		slog.Error("Failed to write dots SVG", "error", err)
 	}
+}
+
+// GetMaxChunkSizeForDevice returns the chunk size budget based on device type.
+func (s *Server) GetMaxChunkSizeForDevice(device *data.Device) int {
+	if device == nil {
+		if s.Config.MaxChunkSizeESP > 0 {
+			return s.Config.MaxChunkSizeESP
+		}
+		return 160000
+	}
+
+	// 1. Raspberry Pi / Tronberry clients have expanded Linux memory capabilities (default: 5 MB).
+	if device.Type == data.DeviceRaspberryPi ||
+		device.Type == data.DeviceRaspberryPiWide ||
+		device.Type == data.DeviceRaspberryPiSquare ||
+		strings.EqualFold(device.Info.FirmwareType, "Tronberry") {
+		if s.Config.MaxChunkSizeRPi > 0 {
+			return s.Config.MaxChunkSizeRPi
+		}
+		return 5242880
+	}
+
+	// 2. Pixoticker has an ultra-compact memory buffer (60,000 bytes in firmware).
+	if device.Type == data.DevicePixoticker {
+		return 50000
+	}
+
+	// 3. ESP32-S3 and Wide devices (Matrix Wide, Tronbyt S3 Wide, MatrixPortal S3, Tidbyt Gen 2)
+	// have larger 460,000-byte firmware buffers and expanded PSRAM/SRAM.
+	if device.Type == data.DeviceTronbytS3Wide ||
+		device.Type == data.DeviceMatrixPortalWide ||
+		device.Type == data.DeviceMatrixPortalSquare ||
+		device.Type == data.DeviceTronbytS3 ||
+		device.Type == data.DeviceMatrixPortal ||
+		device.Type == data.DeviceWaveshareS3 ||
+		device.Type == data.DeviceTidbytGen2 {
+		return 450000
+	}
+
+	if s.Config.MaxChunkSizeESP > 0 {
+		return s.Config.MaxChunkSizeESP
+	}
+	return 160000
+}
+
+// GetMaxChunkDurationForDevice returns the maximum duration in ms for a chunk.
+// Returns 0 if unconstrained (split based on size only).
+func (s *Server) GetMaxChunkDurationForDevice(device *data.Device) int {
+	return 0
+}
+
+func (s *Server) invalidateAppChunks(deviceID string, iname string) {
+	key := s.getAppChunksCacheKey(deviceID, iname)
+	s.appChunksMu.Lock()
+	delete(s.appChunksCache, key)
+	s.appChunksMu.Unlock()
+}
+
+func (s *Server) cleanupAppChunks(deviceID string, app *data.App) {
+	if app == nil {
+		return
+	}
+	s.invalidateAppChunks(deviceID, app.Iname)
+	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		return
+	}
+	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	chunkPrefix := fmt.Sprintf("%s_chunk_", appBasename)
+	if entries, err := os.ReadDir(deviceWebpDir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasPrefix(entry.Name(), chunkPrefix) && strings.HasSuffix(entry.Name(), ".webp") {
+				_ = os.Remove(filepath.Join(deviceWebpDir, entry.Name()))
+			}
+		}
+	}
+	if p, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename)); err == nil {
+		_ = os.Remove(p)
+	}
+	if p, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
+		_ = os.Remove(p)
+	}
+}
+
+type chunkMeta struct {
+	DurationMs int    `json:"duration_ms"`
+	File       string `json:"file"`
+}
+
+func (s *Server) getAppChunksCacheKey(deviceID, iname string) string {
+	return deviceID + ":" + iname
+}
+
+func (s *Server) getAppChunks(deviceID string, app *data.App) []chunker.RenderChunk {
+	if app == nil {
+		return nil
+	}
+	key := s.getAppChunksCacheKey(deviceID, app.Iname)
+	s.appChunksMu.RLock()
+	if cached, ok := s.appChunksCache[key]; ok && len(cached) > 0 {
+		s.appChunksMu.RUnlock()
+		return cached
+	}
+	s.appChunksMu.RUnlock()
+
+	// Try loading from disk
+	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		return nil
+	}
+	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	metaFile, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
+	if err != nil {
+		return nil
+	}
+	metaBytes, err := os.ReadFile(metaFile)
+	if err == nil {
+		var metas []chunkMeta
+		if err := json.Unmarshal(metaBytes, &metas); err == nil && len(metas) > 0 {
+			var chunks []chunker.RenderChunk
+			for _, m := range metas {
+				chunkFile := filepath.Base(m.File)
+				chunkPath, err := securejoin.SecureJoin(deviceWebpDir, chunkFile)
+				if err != nil {
+					chunks = nil
+					break
+				}
+				b, err := os.ReadFile(chunkPath)
+				if err != nil {
+					chunks = nil
+					break
+				}
+				chunks = append(chunks, chunker.RenderChunk{
+					WebPBytes:  b,
+					DurationMs: m.DurationMs,
+				})
+			}
+			if len(chunks) > 0 {
+				s.appChunksMu.Lock()
+				s.appChunksCache[key] = chunks
+				s.appChunksMu.Unlock()
+				return chunks
+			}
+		}
+	}
+
+	// Fallback: check if single .webp exists
+	singlePath := s.getAppWebpPath(deviceWebpDir, app)
+	if b, err := os.ReadFile(singlePath); err == nil && len(b) > 0 {
+		durationMs := app.DisplayTime * 1000
+		if durationMs <= 0 {
+			durationMs = 15000
+		}
+		chunks := []chunker.RenderChunk{
+			{
+				WebPBytes:  b,
+				DurationMs: durationMs,
+			},
+		}
+		s.appChunksMu.Lock()
+		s.appChunksCache[key] = chunks
+		s.appChunksMu.Unlock()
+		return chunks
+	}
+
+	return nil
+}
+
+func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []chunker.RenderChunk) error {
+	if app == nil || len(chunks) == 0 {
+		return nil
+	}
+	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	if err != nil {
+		return err
+	}
+	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+
+	// Remove old chunk files for this app to prevent orphaned chunks if chunk count changed
+	chunkPrefix := fmt.Sprintf("%s_chunk_", appBasename)
+	if entries, err := os.ReadDir(deviceWebpDir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasPrefix(entry.Name(), chunkPrefix) && strings.HasSuffix(entry.Name(), ".webp") {
+				_ = os.Remove(filepath.Join(deviceWebpDir, entry.Name()))
+			}
+		}
+	}
+
+	// The primary image (<appBasename>.webp) is what devices fetch on rotation or fallback.
+	// It must always be safe for device hardware and stay within maxChunkSize, so we
+	// write chunk 0 (the first chunk) to primaryPath.
+	primaryPath := s.getAppWebpPath(deviceWebpDir, app)
+	primaryBytes := chunks[0].WebPBytes
+	if err := os.WriteFile(primaryPath, primaryBytes, 0644); err != nil {
+		return err
+	}
+
+	// Save the complete unchunked animation (if available) to <appBasename>_full.webp
+	// for rich web previews and dashboard display.
+	if len(chunks[0].FullWebPBytes) > 0 {
+		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
+			if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
+				slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
+			}
+		}
+	}
+
+	// If multiple chunks, write individual chunk files and chunk metadata JSON
+	var metas []chunkMeta
+	for i, chunk := range chunks {
+		fileName := fmt.Sprintf("%s_chunk_%d.webp", appBasename, i)
+		chunkPath, err := securejoin.SecureJoin(deviceWebpDir, fileName)
+		if err != nil {
+			slog.Error("Invalid chunk path", "file", fileName, "error", err)
+			continue
+		}
+		if err := os.WriteFile(chunkPath, chunk.WebPBytes, 0644); err != nil {
+			slog.Error("Failed to write chunk file", "path", chunkPath, "error", err)
+		}
+		metas = append(metas, chunkMeta{
+			DurationMs: chunk.DurationMs,
+			File:       fileName,
+		})
+	}
+
+	metaFile, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
+	if err == nil {
+		if metaBytes, err := json.Marshal(metas); err == nil {
+			_ = os.WriteFile(metaFile, metaBytes, 0644)
+		}
+	}
+
+	// Store in memory cache
+	key := s.getAppChunksCacheKey(deviceID, app.Iname)
+	s.appChunksMu.Lock()
+	s.appChunksCache[key] = chunks
+	s.appChunksMu.Unlock()
+
+	return nil
 }
