@@ -744,10 +744,17 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []chunker.
 		}
 	}
 
-	// Store in memory cache
+	// Store in memory cache (strip FullWebPBytes so large web preview payloads don't stay pinned in RAM)
+	cachedChunks := make([]chunker.RenderChunk, len(chunks))
+	for i, ch := range chunks {
+		cachedChunks[i] = chunker.RenderChunk{
+			WebPBytes:  ch.WebPBytes,
+			DurationMs: ch.DurationMs,
+		}
+	}
 	key := s.getAppChunksCacheKey(deviceID, app.Iname)
 	s.appChunksMu.Lock()
-	s.appChunksCache[key] = chunks
+	s.appChunksCache[key] = cachedChunks
 	s.appChunksMu.Unlock()
 
 	return nil

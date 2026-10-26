@@ -512,6 +512,25 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 					if oversized {
 						slog.Error("WS chunk exceeds device max buffer size, skipping multi-chunk app", "device", device.ID, "app", app.Iname, "max", maxChunkSize)
+						skipTimer := time.NewTimer(5 * time.Second)
+						select {
+						case <-broadcastCh:
+							reloadedDevice, err := s.reloadDevice(initialDevice.ID)
+							if err != nil {
+								slog.Error("Device gone", "id", initialDevice.ID, "error", err)
+								skipTimer.Stop()
+								return
+							}
+							device = *reloadedDevice
+						case <-skipTimer.C:
+						case <-stopCh:
+							skipTimer.Stop()
+							return
+						case <-ctx.Done():
+							skipTimer.Stop()
+							return
+						}
+						skipTimer.Stop()
 						continue
 					}
 				}
@@ -722,8 +741,6 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					continue
 				}
 				continue
-			} else if len(chunks) == 1 && len(chunks[0].WebPBytes) > 0 {
-				imgData = chunks[0].WebPBytes
 			}
 		}
 

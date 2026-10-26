@@ -192,6 +192,9 @@ func SplitFramesIntoChunksWithDuration(frames []*image.RGBA, fps int, maxChunkSi
 	}
 
 	maxPossibleK := max(2, totalFrames/minFramesPerChunk)
+	if totalSecs > 0 {
+		maxPossibleK = min(maxPossibleK, totalSecs)
+	}
 
 	startK := 2
 	if maxFramesPerChunk > 0 {

@@ -928,13 +928,11 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		}
 		chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, dwellSecs*1000)
 		if chunkErr == nil && len(chunks) > 1 {
-			if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
-				slog.Error("Failed to save Starlark chunks on push preview", "device", device.ID, "app", app.Iname, "error", err)
+			// Save chunk 0 as the ephemeral push image (safely fits within device buffer limit)
+			if err := s.savePushedImage(device.ID, app.Iname, "", chunks[0].WebPBytes); err != nil {
+				http.Error(w, "Failed to push preview", http.StatusInternalServerError)
+				return
 			}
-			s.deviceChunkMu.Lock()
-			s.deviceCurrentChunkApp[device.ID] = app.Iname
-			s.deviceChunkIndices[device.ID] = 0
-			s.deviceChunkMu.Unlock()
 
 			s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
 				App:    app,
@@ -995,16 +993,13 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
 		// Don't error out the request if file cleanup fails, but log it
 	} else {
-		matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s*.webp", app.Iname)))
+		matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
 				slog.Error("Failed to remove app webp file", "path", match, "error", err)
 			}
 		}
-		chunkMetaMatches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s_chunks.json", app.Iname)))
-		for _, match := range chunkMetaMatches {
-			_ = os.Remove(match)
-		}
+		s.cleanupAppChunks(device.ID, app)
 	}
 
 	// Invalidate chunk cache and current device chunk playback for this app

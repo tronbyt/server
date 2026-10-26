@@ -120,8 +120,9 @@ For long or high-framerate animations that produce multi-chunk sequences to resp
    - Send `{"dwell_secs": chunk_dwell}` JSON message.
    - Send updated brightness if changed.
    - Send `chunk.WebPBytes` as a binary message.
-   - If `i == 0` and immediate display was requested, send `{"immediate": true}`.
-   - Wait for exactly `chunk[i].DurationMs` milliseconds before transmitting the next chunk.
+   - If `i == 0` and immediate display was requested, send `{"immediate": true}`. Legacy devices (no `protocol_version`) also receive `{"immediate": true}` for every chunk with `i > 0`.
+   - v1+ devices (`protocol_version >= 1`): wait for the `displaying` ACK of chunk `i`, then pre-stream chunk `i+1`. The safety timeout is 10 minutes for chunk 0 and `chunk[i-1].DurationMs + 10s` for later chunks.
+   - Legacy devices: wait `chunk[i].DurationMs` milliseconds before transmitting the next chunk.
 3. The device rotation cursor only advances after all chunks of the multi-chunk app have completed playback.
-4. Any pushed high-priority ephemeral image immediately interrupts the multi-chunk sequence.
+4. A pushed ephemeral image or a new preview immediately interrupts the multi-chunk sequence.
 

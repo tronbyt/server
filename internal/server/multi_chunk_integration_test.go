@@ -734,6 +734,10 @@ func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 	// Verify that chunks were created because the animation exceeded maxChunkSize
 	chunks := s.getAppChunks(device.ID, &app)
 	require.NotEmpty(t, chunks)
+	maxLimit := s.GetMaxChunkSizeForDevice(&device)
+	for idx, chunk := range chunks {
+		assert.LessOrEqual(t, len(chunk.WebPBytes), maxLimit, "Chunk %d size (%d) must not exceed maxLimit (%d)", idx, len(chunk.WebPBytes), maxLimit)
+	}
 
 	// Check that chunk files exist on disk
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
@@ -834,9 +838,16 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 		t.Fatal("Timeout waiting for preview message on Broadcaster")
 	}
 
-	// 2. deviceCurrentChunkApp must be tracked for HTTP /next playback
-	s.deviceChunkMu.Lock()
-	assert.Equal(t, app.Iname, s.deviceCurrentChunkApp[device.ID])
-	assert.Equal(t, 0, s.deviceChunkIndices[device.ID])
-	s.deviceChunkMu.Unlock()
+	// 2. Ephemeral push image was saved for the device and fits within buffer budget
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	require.NoError(t, err)
+	pushedPath := filepath.Join(webpDir, "pushed", app.Iname+".webp")
+	assert.FileExists(t, pushedPath)
+	pushedBytes, err := os.ReadFile(pushedPath)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(pushedBytes), 2000, "Ephemeral push preview must fit within device chunk size limit")
+
+	// 3. Draft preview must NOT overwrite installed app's persistent chunks on disk
+	appChunksPath := filepath.Join(webpDir, "Preview Chunk App-preview_chunk_iname_chunks.json")
+	assert.NoFileExists(t, appChunksPath, "Preview render must not overwrite persistent app chunks")
 }

@@ -580,7 +580,7 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []byte) error {
+func (s *Server) savePushedImage(deviceID, installID, coalesceID string, imgData []byte) error {
 	dir, err := s.ensureDeviceImageDir(deviceID)
 	if err != nil {
 		return fmt.Errorf("failed to get device webp directory: %w", err)
@@ -637,8 +637,17 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []
 		return err
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, imgData, 0644); err != nil {
 		return err
+	}
+
+	// Invalidate any cached chunks for this pushed app
+	if installID != "" {
+		pushedPath := "pushed:" + installID
+		if app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", deviceID, pushedPath).First(context.Background()); err == nil {
+			s.cleanupAppChunks(deviceID, &app)
+			s.invalidateAppChunks(deviceID, app.Iname)
+		}
 	}
 
 	// Clean up anonymous ephemeral files older than 24 hours.

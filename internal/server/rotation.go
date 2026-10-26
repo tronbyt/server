@@ -114,13 +114,11 @@ func (s *Server) GetNextAppImageHTTP(ctx context.Context, device *data.Device, u
 	}
 
 	chunks := s.getAppChunks(device.ID, app)
-	if len(chunks) > 0 {
-		if len(chunks) > 1 {
-			s.deviceChunkMu.Lock()
-			s.deviceCurrentChunkApp[device.ID] = app.Iname
-			s.deviceChunkIndices[device.ID] = 1 // chunk 0 is returned now; chunk 1 is next
-			s.deviceChunkMu.Unlock()
-		}
+	if len(chunks) > 1 {
+		s.deviceChunkMu.Lock()
+		s.deviceCurrentChunkApp[device.ID] = app.Iname
+		s.deviceChunkIndices[device.ID] = 1 // chunk 0 is returned now; chunk 1 is next
+		s.deviceChunkMu.Unlock()
 		chunk0 := chunks[0]
 		dwell := max(1, (chunk0.DurationMs+500)/1000)
 		return chunk0.WebPBytes, app, dwell, nil
