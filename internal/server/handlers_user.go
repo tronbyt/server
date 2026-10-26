@@ -62,6 +62,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderTemplate(w, r, "index", tmplData)
 }
 
+// handleAdminIndex renders the primary server administration dashboard.
 func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	if !user.IsAdmin {
@@ -82,6 +83,8 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	customSounds, _ := s.GetCustomSounds()
+
 	// We need to inject the current admin user into TemplateData for the header/nav
 	s.renderTemplate(w, r, "settings_admin", TemplateData{
 		User:                 user,
@@ -97,6 +100,8 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		OIDCUsernameClaim:    s.Config.OIDCUsernameClaim,
 		OIDCAdminGroupClaim:  s.Config.OIDCAdminGroupClaim,
 		OIDCAdminGroupValue:  s.Config.OIDCAdminGroupValue,
+		DefaultSounds:        GetDefaultSounds(),
+		CustomSounds:         customSounds,
 	})
 }
 

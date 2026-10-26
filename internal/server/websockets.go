@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
 
 	"github.com/gorilla/websocket"
@@ -43,6 +46,7 @@ type ClientInfo struct {
 	ColorOrder         *string `json:"color_order"`
 	DisableTouch       *bool   `json:"disable_touch"`
 	TouchBeep          *bool   `json:"touch_beep"`
+	StartupSound       *bool   `json:"startup_sound"`
 	ImageURL           *string `json:"image_url"`
 	Hostname           *string `json:"hostname"`
 	SNTPServer         *string `json:"sntp_server"`
@@ -60,6 +64,12 @@ type DeviceCommandMessage struct {
 	Payload []byte
 }
 
+type DevicePreviewMessage struct {
+	App    *data.App
+	Chunks []chunker.RenderChunk
+}
+
+// handleWS upgrades HTTP connections to WebSockets for live image streaming, notifications, and device commands.
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	deviceID := r.PathValue("id")
 
@@ -177,6 +187,9 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 				if msg.ClientInfo.TouchBeep != nil {
 					device.Info.TouchBeep = msg.ClientInfo.TouchBeep
 				}
+				if msg.ClientInfo.StartupSound != nil {
+					device.Info.StartupSound = msg.ClientInfo.StartupSound
+				}
 				if msg.ClientInfo.ImageURL != nil {
 					device.Info.ImageURL = msg.ClientInfo.ImageURL
 				}
@@ -224,8 +237,25 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 // when the socket opened — the write loop outlives the request that made it.
 func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialDevice *data.Device, user *data.User, ackCh <-chan WSMessage, broadcastCh <-chan any, stopCh <-chan struct{}, baseURL string) {
 	var pendingImage []byte
+	var pendingPreview *DevicePreviewMessage
 	device := *initialDevice
 	lastSentBrightness := -1
+	lastSentVolume := -1
+	// Send any pending OTA update on connection
+	if device.PendingUpdateURL != "" {
+		updateURL := device.PendingUpdateURL
+		slog.Info("Sending pending OTA update on WS connect", "device", device.ID, "url", updateURL)
+		payload := map[string]string{"ota_url": updateURL}
+		if jsonPayload, err := json.Marshal(payload); err == nil {
+			if err := conn.WriteMessage(websocket.TextMessage, jsonPayload); err == nil {
+				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_update_url", ""); err != nil {
+					slog.Error("Failed to clear pending update", "error", err)
+				} else {
+					device.PendingUpdateURL = ""
+				}
+			}
+		}
+	}
 	sendImmediate := false
 
 	for {
@@ -237,6 +267,194 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 		// Calculate effective brightness
 		effectiveBrightness := device.GetEffectiveBrightness()
+
+		// If a preview was pushed (single or multi-chunk), stream its chunks sequentially
+		if pendingPreview != nil {
+			previewMsg := pendingPreview
+			pendingPreview = nil
+
+			previewInterrupted := false
+			for chunkIdx, chunk := range previewMsg.Chunks {
+				select {
+				case <-stopCh:
+					return
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				// Drain any stale unread ACKs before sending next chunk
+				for {
+					select {
+					case <-ackCh:
+					default:
+						goto drainedPreview
+					}
+				}
+			drainedPreview:
+
+				chunkDwell := max(1, chunk.DurationMs/1000)
+				if err := conn.WriteJSON(map[string]any{"dwell_secs": chunkDwell}); err != nil {
+					slog.Error("Failed to write metadata WS message for preview chunk", "chunk", chunkIdx, "error", err)
+					return
+				}
+
+				effectiveBrightness = device.GetEffectiveBrightness()
+				if effectiveBrightness != lastSentBrightness {
+					if err := conn.WriteJSON(map[string]int{"brightness": effectiveBrightness}); err != nil {
+						slog.Error("Failed to write brightness WS message", "error", err)
+						return
+					}
+					lastSentBrightness = effectiveBrightness
+				}
+
+				if err := conn.WriteMessage(websocket.BinaryMessage, chunk.WebPBytes); err != nil {
+					slog.Error("Failed to write preview chunk binary message to WS", "chunk", chunkIdx, "error", err)
+					return
+				}
+
+				if chunkIdx == 0 && sendImmediate {
+					if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
+						slog.Error("Failed to write immediate WS message for preview chunk", "chunk", chunkIdx, "error", err)
+						return
+					}
+					sendImmediate = false
+				} else if chunkIdx > 0 && device.Info.ProtocolVersion == nil {
+					if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
+						slog.Error("Failed to write immediate WS message for legacy preview chunk", "chunk", chunkIdx, "error", err)
+						return
+					}
+				}
+
+				chunkDuration := time.Duration(chunk.DurationMs) * time.Millisecond
+				if chunkDuration <= 0 {
+					chunkDuration = time.Duration(chunkDwell) * time.Second
+				}
+
+				var timer *time.Timer
+				var timerC <-chan time.Time
+				if device.Info.ProtocolVersion != nil {
+					if chunkIdx == 0 {
+						timer = time.NewTimer(time.Duration(maxDisplayingAckTimeoutSeconds) * time.Second)
+					} else {
+						prevDuration := time.Duration(previewMsg.Chunks[chunkIdx-1].DurationMs) * time.Millisecond
+						if prevDuration <= 0 {
+							prevDuration = time.Duration(max(1, previewMsg.Chunks[chunkIdx-1].DurationMs/1000)) * time.Second
+						}
+						timer = time.NewTimer(prevDuration + 10*time.Second)
+					}
+					timerC = timer.C
+				} else {
+					timer = time.NewTimer(chunkDuration)
+					timerC = timer.C
+				}
+
+				waitingPreview := true
+				for waitingPreview {
+					select {
+					case msg := <-ackCh:
+						if msg.Displaying != nil || msg.Counter != nil {
+							if device.Info.ProtocolVersion != nil {
+								waitingPreview = false
+							}
+						}
+					case val := <-broadcastCh:
+						reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
+						if err != nil {
+							slog.Error("Device gone", "id", initialDevice.ID)
+							if timer != nil {
+								timer.Stop()
+							}
+							return
+						}
+						device = reloaded
+
+						var isCommand bool
+						var isImage bool
+						var isPreview bool
+						var cmdPayload []byte
+						var pImgData []byte
+						var pPreviewMsg *DevicePreviewMessage
+
+						switch v := val.(type) {
+						case DeviceCommandMessage:
+							isCommand = true
+							cmdPayload = v.Payload
+						case DevicePreviewMessage:
+							isPreview = true
+							pPreviewMsg = &v
+						case *DevicePreviewMessage:
+							isPreview = true
+							pPreviewMsg = v
+						case []byte:
+							if len(v) > 0 {
+								isImage = true
+								pImgData = v
+							}
+						}
+
+						if isCommand {
+							if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+								slog.Error("Failed to write command to WS", "error", err)
+								if timer != nil {
+									timer.Stop()
+								}
+								return
+							}
+							continue
+						}
+
+						if isPreview {
+							pendingPreview = pPreviewMsg
+							previewInterrupted = true
+							waitingPreview = false
+							sendImmediate = true
+							if timer != nil {
+								timer.Stop()
+							}
+						} else if isImage {
+							pendingImage = pImgData
+							previewInterrupted = true
+							waitingPreview = false
+							sendImmediate = true
+							if timer != nil {
+								timer.Stop()
+							}
+						}
+					case <-timerC:
+						waitingPreview = false
+					case <-stopCh:
+						if timer != nil {
+							timer.Stop()
+						}
+						return
+					case <-ctx.Done():
+						if timer != nil {
+							timer.Stop()
+						}
+						return
+					}
+				}
+
+				if timer != nil {
+					if !timer.Stop() {
+						select {
+						case <-timer.C:
+						default:
+						}
+					}
+				}
+
+				if previewInterrupted {
+					break
+				}
+			}
+
+			if previewInterrupted {
+				continue
+			}
+			continue
+		}
 
 		// 1. Get Next Image
 		var imgData []byte
@@ -279,7 +497,277 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			}
 		}
 
+		if pendingImage == nil && app != nil {
+			chunks := s.getAppChunks(device.ID, app)
+			if len(chunks) > 1 {
+				// Defensive guard: if any chunk exceeds the device's maxChunkSize, skip streaming
+				maxChunkSize := s.GetMaxChunkSizeForDevice(&device)
+				if maxChunkSize > 0 {
+					oversized := false
+					for _, ch := range chunks {
+						if len(ch.WebPBytes) > maxChunkSize {
+							oversized = true
+							break
+						}
+					}
+					if oversized {
+						slog.Error("WS chunk exceeds device max buffer size, skipping multi-chunk app", "device", device.ID, "app", app.Iname, "max", maxChunkSize)
+						skipTimer := time.NewTimer(5 * time.Second)
+						select {
+						case <-broadcastCh:
+							reloadedDevice, err := s.reloadDevice(initialDevice.ID)
+							if err != nil {
+								slog.Error("Device gone", "id", initialDevice.ID, "error", err)
+								skipTimer.Stop()
+								return
+							}
+							device = *reloadedDevice
+						case <-skipTimer.C:
+						case <-stopCh:
+							skipTimer.Stop()
+							return
+						case <-ctx.Done():
+							skipTimer.Stop()
+							return
+						}
+						skipTimer.Stop()
+						continue
+					}
+				}
+
+				interrupted := false
+				for chunkIdx, chunk := range chunks {
+					select {
+					case <-stopCh:
+						return
+					case <-ctx.Done():
+						return
+					default:
+					}
+
+					// Drain any stale unread ACKs before sending next chunk
+					for {
+						select {
+						case <-ackCh:
+						default:
+							goto drained
+						}
+					}
+				drained:
+
+					chunkDwell := max(1, chunk.DurationMs/1000)
+					if err := conn.WriteJSON(map[string]any{"dwell_secs": chunkDwell}); err != nil {
+						slog.Error("Failed to write metadata WS message for chunk", "chunk", chunkIdx, "error", err)
+						return
+					}
+
+					effectiveBrightness = device.GetEffectiveBrightness()
+					if effectiveBrightness != lastSentBrightness {
+						if err := conn.WriteJSON(map[string]int{"brightness": effectiveBrightness}); err != nil {
+							slog.Error("Failed to write brightness WS message", "error", err)
+							return
+						}
+						lastSentBrightness = effectiveBrightness
+					}
+
+					appName := "preview"
+					if app != nil {
+						appName = app.Iname
+					}
+					slog.Info("Streaming chunk to WebSocket",
+						"app", appName,
+						"device", device.ID,
+						"chunk", chunkIdx,
+						"total_chunks", len(chunks),
+						"bytes", len(chunk.WebPBytes),
+						"dwell_secs", chunkDwell,
+						"duration_ms", chunk.DurationMs,
+					)
+
+					if err := conn.WriteMessage(websocket.BinaryMessage, chunk.WebPBytes); err != nil {
+						slog.Error("Failed to write chunk binary message to WS", "chunk", chunkIdx, "error", err)
+						return
+					}
+
+					if chunkIdx == 0 && sendImmediate {
+						if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
+							slog.Error("Failed to write immediate WS message", "chunk", chunkIdx, "error", err)
+							return
+						}
+						sendImmediate = false
+					} else if chunkIdx > 0 && device.Info.ProtocolVersion == nil {
+						// For legacy devices without double buffering, force immediate display
+						if err := conn.WriteJSON(map[string]bool{"immediate": true}); err != nil {
+							slog.Error("Failed to write immediate WS message for legacy chunk", "chunk", chunkIdx, "error", err)
+							return
+						}
+					}
+
+					chunkDuration := time.Duration(chunk.DurationMs) * time.Millisecond
+					if chunkDuration <= 0 {
+						chunkDuration = time.Duration(chunkDwell) * time.Second
+					}
+
+					var timer *time.Timer
+					var timerC <-chan time.Time
+					if device.Info.ProtocolVersion != nil {
+						if chunkIdx == 0 {
+							timer = time.NewTimer(time.Duration(maxDisplayingAckTimeoutSeconds) * time.Second)
+						} else {
+							prevDuration := time.Duration(chunks[chunkIdx-1].DurationMs) * time.Millisecond
+							if prevDuration <= 0 {
+								prevDuration = time.Duration(max(1, chunks[chunkIdx-1].DurationMs/1000)) * time.Second
+							}
+							timer = time.NewTimer(prevDuration + 10*time.Second)
+						}
+						timerC = timer.C
+					} else {
+						timer = time.NewTimer(chunkDuration)
+						timerC = timer.C
+					}
+
+					waitingChunk := true
+					for waitingChunk {
+						select {
+						case msg := <-ackCh:
+							if msg.Displaying != nil || msg.Counter != nil {
+								if chunkIdx == 0 && app != nil {
+									slog.Debug("Received ACK for chunk 0, updating DisplayingApp", "app", app.Iname, "device", device.ID)
+									if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "displaying_app", app.Iname); err != nil {
+										slog.Error("Failed to update displaying_app", "device", device.ID, "error", err)
+									}
+									if user != nil {
+										s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
+									}
+								} else if app != nil {
+									slog.Debug("Received ACK for chunk", "app", app.Iname, "device", device.ID, "chunk", chunkIdx)
+								}
+								if device.Info.ProtocolVersion != nil {
+									waitingChunk = false
+								}
+							}
+						case val := <-broadcastCh:
+							reloaded, err := gorm.G[data.Device](s.DB).Preload("Apps", nil).Where("id = ?", initialDevice.ID).First(ctx)
+							if err != nil {
+								slog.Error("Device gone", "id", initialDevice.ID)
+								if timer != nil {
+									timer.Stop()
+								}
+								return
+							}
+							device = reloaded
+
+							var isCommand bool
+							var isImage bool
+							var isPreview bool
+							var cmdPayload []byte
+							var pImgData []byte
+							var pPreviewMsg *DevicePreviewMessage
+
+							switch v := val.(type) {
+							case DeviceCommandMessage:
+								isCommand = true
+								cmdPayload = v.Payload
+							case DevicePreviewMessage:
+								isPreview = true
+								pPreviewMsg = &v
+							case *DevicePreviewMessage:
+								isPreview = true
+								pPreviewMsg = v
+							case []byte:
+								if len(v) > 0 {
+									isImage = true
+									pImgData = v
+								}
+							}
+
+							if isCommand {
+								if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+									slog.Error("Failed to write command to WS", "error", err)
+									if timer != nil {
+										timer.Stop()
+									}
+									return
+								}
+								continue
+							}
+
+							if isPreview {
+								pendingPreview = pPreviewMsg
+								interrupted = true
+								waitingChunk = false
+								sendImmediate = true
+								if timer != nil {
+									timer.Stop()
+								}
+							} else if isImage {
+								pendingImage = pImgData
+								interrupted = true
+								waitingChunk = false
+								sendImmediate = true
+								if timer != nil {
+									timer.Stop()
+								}
+							} else {
+								newBrightness := device.GetEffectiveBrightness()
+								if newBrightness != lastSentBrightness {
+									if err := conn.WriteJSON(map[string]int{"brightness": newBrightness}); err != nil {
+										slog.Error("Failed to write brightness WS message", "error", err)
+										if timer != nil {
+											timer.Stop()
+										}
+										return
+									}
+									lastSentBrightness = newBrightness
+								}
+							}
+						case <-timerC:
+							if device.Info.ProtocolVersion != nil {
+								slog.Warn("Timed out waiting for displaying ACK on chunk", "chunk", chunkIdx, "device", device.ID)
+							}
+							waitingChunk = false
+						case <-stopCh:
+							if timer != nil {
+								timer.Stop()
+							}
+							return
+						case <-ctx.Done():
+							if timer != nil {
+								timer.Stop()
+							}
+							return
+						}
+					}
+
+					if timer != nil {
+						if !timer.Stop() {
+							select {
+							case <-timer.C:
+							default:
+							}
+						}
+					}
+
+					if interrupted {
+						break
+					}
+				}
+
+				if interrupted {
+					continue
+				}
+				continue
+			}
+		}
+
 		dwell := device.GetEffectiveDwellTime(app)
+
+		// Guard against oversized images for the device
+		maxChunkSize := s.GetMaxChunkSizeForDevice(&device)
+		if maxChunkSize > 0 && len(imgData) > maxChunkSize {
+			slog.Error("WS image exceeds device max buffer size, skipping", "device", device.ID, "size", len(imgData), "max", maxChunkSize)
+			continue
+		}
 
 		if err := conn.WriteJSON(map[string]any{"dwell_secs": dwell}); err != nil {
 			slog.Error("Failed to write metadata WS message", "error", err)
@@ -293,6 +781,18 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				return
 			}
 			lastSentBrightness = effectiveBrightness
+		}
+
+		// Only send volume if device has speaker capability and volume changed
+		if device.HasSpeaker() {
+			effectiveVolume := device.GetEffectiveVolume()
+			if effectiveVolume != lastSentVolume {
+				if err := conn.WriteJSON(map[string]int{"volume": effectiveVolume}); err != nil {
+					slog.Error("Failed to write volume WS message", "error", err)
+					return
+				}
+				lastSentVolume = effectiveVolume
+			}
 		}
 
 		if err := conn.WriteMessage(websocket.BinaryMessage, imgData); err != nil {
@@ -335,6 +835,13 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 					// Update DisplayingApp confirmation in DB
 					if app != nil {
+						// Ensure app metadata reflects the latest configuration from device.Apps
+						for i := range device.Apps {
+							if device.Apps[i].ID == app.ID {
+								app = device.Apps[i]
+								break
+							}
+						}
 						slog.Debug("Received ACK, updating DisplayingApp", "app", app.Iname, "device", device.ID)
 						// Only now do we update the database that the device is truly displaying this app.
 						if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "displaying_app", app.Iname); err != nil {
@@ -342,6 +849,26 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						}
 						// Notify Dashboard
 						s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
+
+						// Play notification sound on every display if configured
+						if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && app.NotificationSoundTrigger == "every_display" {
+							if device.HasSpeaker() && !device.IsMuted() {
+								baseURLToUse := s.GetDeviceBaseURL(&device)
+								if baseURLToUse == "" || (!strings.Contains(baseURLToUse, ":") && strings.Contains(baseURL, ":")) {
+									baseURLToUse = baseURL
+								}
+								payload := s.ResolveSoundPayload(&device, baseURLToUse, *app.NotificationSound)
+								if payload != "" {
+									if err := conn.WriteJSON(map[string]any{
+										"type":   "sound",
+										"sound":  payload,
+										"volume": device.GetEffectiveVolume(),
+									}); err != nil {
+										slog.Error("Failed to write sound WS message on display", "error", err)
+									}
+								}
+							}
+						}
 					} else {
 						slog.Debug("Received ACK for default or pushed image (no app context)", "device", device.ID)
 					}
@@ -354,16 +881,32 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					return
 				}
 				device = reloaded
+				if app != nil {
+					for i := range device.Apps {
+						if device.Apps[i].ID == app.ID {
+							app = device.Apps[i]
+							break
+						}
+					}
+				}
 
 				var isCommand bool
 				var isImage bool
+				var isPreview bool
 				var cmdPayload []byte
 				var imgData []byte
+				var pPreviewMsg *DevicePreviewMessage
 
 				switch v := val.(type) {
 				case DeviceCommandMessage:
 					isCommand = true
 					cmdPayload = v.Payload
+				case DevicePreviewMessage:
+					isPreview = true
+					pPreviewMsg = &v
+				case *DevicePreviewMessage:
+					isPreview = true
+					pPreviewMsg = v
 				case []byte:
 					if len(v) > 0 {
 						isImage = true
@@ -381,14 +924,20 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					continue
 				}
 
-				if isImage {
+				if isPreview {
+					// Preview: Interrupt and stream preview chunks
+					pendingPreview = pPreviewMsg
+					interrupted = true
+					waiting = false
+					sendImmediate = true
+				} else if isImage {
 					// Pushed Image: Interrupt and send
 					pendingImage = imgData
 					interrupted = true
 					waiting = false
 					sendImmediate = true
 				} else {
-					// State Change: Update Brightness immediately, but don't interrupt current app
+					// State Change: Update Brightness and Volume immediately, but don't interrupt current app
 					newBrightness := device.GetEffectiveBrightness()
 
 					if newBrightness != lastSentBrightness {
@@ -397,6 +946,17 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 							return
 						}
 						lastSentBrightness = newBrightness
+					}
+
+					if device.HasSpeaker() {
+						newVolume := device.GetEffectiveVolume()
+						if newVolume != lastSentVolume {
+							if err := conn.WriteJSON(map[string]int{"volume": newVolume}); err != nil {
+								slog.Error("Failed to write volume WS message", "error", err)
+								return
+							}
+							lastSentVolume = newVolume
+						}
 					}
 				}
 			case <-timerC:

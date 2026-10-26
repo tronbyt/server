@@ -77,6 +77,7 @@ func newUsageTest(t *testing.T) (*Server, *fakeUsageCloud) {
 	server := httptest.NewServer(cloud)
 	t.Cleanup(server.Close)
 	s.Config.NibletCloudURL = server.URL
+	s.nibletCloudEnabled.Store(true)
 	require.NoError(t, s.DB.Create(&data.Device{ID: "dev1", Username: "admin", APIKey: "key-dev1"}).Error)
 	return s, cloud
 }
@@ -148,6 +149,33 @@ func TestUsageSharingWaitsForADevice(t *testing.T) {
 	require.NoError(t, s.DB.Create(&data.Device{ID: "dev1", Username: "admin", APIKey: "key-dev1"}).Error)
 	require.NoError(t, s.syncUsage(context.Background()))
 	assert.Equal(t, []string{"POST /v1/tronbyt/reporters", "POST /v1/tronbyt/reports"}, cloud.requests)
+}
+
+func TestDisableNibletCloudWaitsForRunningSyncToWithdraw(t *testing.T) {
+	s, cloud := newUsageTest(t)
+	require.NoError(t, s.setSetting(settingUsageSharing, "true"))
+	reporting := make(chan struct{})
+	release := make(chan struct{})
+	cloud.onReport = func() {
+		close(reporting)
+		<-release
+	}
+	go func() {
+		_ = s.syncUsage(context.Background())
+	}()
+	<-reporting
+	disableDone := make(chan error, 1)
+	go func() { disableDone <- s.setNibletCloudEnabled(false) }()
+	select {
+	case err := <-disableDone:
+		t.Fatalf("expected disable to wait for sync, got err=%v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(release)
+	require.NoError(t, <-disableDone)
+	assert.Contains(t, cloud.requests, "DELETE /v1/tronbyt/reporters/self")
+	assert.Empty(t, setting(t, s, settingUsageToken))
+	assert.False(t, s.isNibletCloudEnabled())
 }
 
 func TestUsageConsentDuringSyncDoesNotWaitAndIsApplied(t *testing.T) {
@@ -231,6 +259,7 @@ func TestUsageSharingRegistrationFailureIsShown(t *testing.T) {
 	}))
 	defer cloud.Close()
 	s.Config.NibletCloudURL = cloud.URL
+	s.nibletCloudEnabled.Store(true)
 	require.NoError(t, s.DB.Create(&data.Device{ID: "dev1", Username: "admin", APIKey: "key-dev1"}).Error)
 	require.NoError(t, s.setSetting(settingUsageSharing, "true"))
 	require.Error(t, s.syncUsage(context.Background()))

@@ -29,6 +29,9 @@ var errNibletUnauthorized = errors.New("niblet cloud rejected the token")
 // nibletRequest calls Niblet Cloud. It allows HTTPS, or HTTP only on loopback
 // for development, follows no redirects, and reads at most 1 MiB.
 func (s *Server) nibletRequest(ctx context.Context, method, path, token string, body any) (int, []byte, error) {
+	if !s.isNibletCloudEnabled() {
+		return 0, nil, errors.New("niblet cloud is disabled")
+	}
 	base, err := url.Parse(s.Config.NibletCloudURL)
 	if err != nil || base == nil || base.Host == "" || base.User != nil || base.RawQuery != "" || base.Fragment != "" ||
 		(base.Scheme != "https" && (base.Scheme != "http" || (base.Hostname() != "127.0.0.1" && base.Hostname() != "localhost" && base.Hostname() != "::1"))) {

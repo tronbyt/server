@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"tronbyt-server/internal/apps"
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
@@ -25,16 +26,22 @@ import (
 // DeviceUpdate represents the updatable fields for a device via API.
 type DeviceUpdate struct {
 	Brightness          *int    `json:"brightness"`
+	Volume              *int    `json:"volume"`
 	IntervalSec         *int    `json:"intervalSec"`
+	Muted               *bool   `json:"muted"`
 	NightModeEnabled    *bool   `json:"nightModeEnabled"`
 	NightModeActive     *bool   `json:"nightModeActive"`
 	NightModeApp        *string `json:"nightModeApp"`
 	NightModeBrightness *int    `json:"nightModeBrightness"`
+	NightModeMute       *bool   `json:"nightModeMute"`
+	NightModeVolume     *int    `json:"nightModeVolume"`
 	NightModeStartTime  *string `json:"nightModeStartTime"`
 	NightModeEndTime    *string `json:"nightModeEndTime"`
 	DimModeActive       *bool   `json:"dimModeActive"`
 	DimModeStartTime    *string `json:"dimModeStartTime"`
 	DimModeBrightness   *int    `json:"dimModeBrightness"`
+	DimModeMute         *bool   `json:"dimModeMute"`
+	DimModeVolume       *int    `json:"dimModeVolume"`
 	PinnedApp           *string `json:"pinnedApp"`
 	AutoDim             *bool   `json:"autoDim"` // Legacy
 }
@@ -47,6 +54,9 @@ type DevicePayload struct {
 	Notes        string          `json:"notes"`
 	IntervalSec  int             `json:"intervalSec"`
 	Brightness   int             `json:"brightness"`
+	Volume       int             `json:"volume"`
+	Muted        bool            `json:"muted"`
+	IsMuted      bool            `json:"isMuted"`
 	NightMode    NightMode       `json:"nightMode"`
 	DimMode      DimMode         `json:"dimMode"`
 	PinnedApp    *string         `json:"pinnedApp"`
@@ -64,6 +74,8 @@ type NightMode struct {
 	StartTime     string  `json:"startTime"`
 	EndTime       string  `json:"endTime"`
 	Brightness    int     `json:"brightness"`
+	Mute          bool    `json:"mute"`
+	Volume        *int    `json:"volume,omitempty"`
 	OverrideUntil *string `json:"overrideUntil,omitempty"`
 }
 
@@ -73,6 +85,8 @@ type DimMode struct {
 	Active        bool    `json:"active"`
 	StartTime     *string `json:"startTime"`
 	Brightness    *int    `json:"brightness"`
+	Mute          bool    `json:"mute"`
+	Volume        *int    `json:"volume,omitempty"`
 	OverrideUntil *string `json:"overrideUntil,omitempty"`
 }
 
@@ -99,6 +113,7 @@ type DeviceInfo struct {
 	ColorOrder         *string `json:"colorOrder,omitempty"`
 	DisableTouch       *bool   `json:"disableTouch,omitempty"`
 	TouchBeep          *bool   `json:"touchBeep,omitempty"`
+	StartupSound       *bool   `json:"startupSound,omitempty"`
 	ImageURL           *string `json:"imageUrl,omitempty"`
 	Hostname           *string `json:"hostname,omitempty"`
 	SNTPServer         *string `json:"sntpServer,omitempty"`
@@ -124,6 +139,7 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		ColorOrder:         d.Info.ColorOrder,
 		DisableTouch:       d.Info.DisableTouch,
 		TouchBeep:          d.Info.TouchBeep,
+		StartupSound:       d.Info.StartupSound,
 		ImageURL:           d.Info.ImageURL,
 		Hostname:           d.Info.Hostname,
 		SNTPServer:         d.Info.SNTPServer,
@@ -160,6 +176,9 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 		Notes:       d.Notes,
 		IntervalSec: d.DefaultInterval,
 		Brightness:  int(d.Brightness),
+		Volume:      d.GetVolume(),
+		Muted:       d.Muted,
+		IsMuted:     d.IsMuted(),
 		NightMode: NightMode{
 			Enabled:       d.NightModeEnabled,
 			Active:        d.GetNightModeIsActive(),
@@ -167,6 +186,8 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 			StartTime:     d.NightStart,
 			EndTime:       d.NightEnd,
 			Brightness:    int(d.NightBrightness),
+			Mute:          d.NightModeMute,
+			Volume:        d.NightModeVolume,
 			OverrideUntil: nightModeOverrideUntil,
 		},
 		DimMode: DimMode{
@@ -174,6 +195,8 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 			Active:        d.GetDimModeIsActive(),
 			StartTime:     d.DimTime,
 			Brightness:    dimBrightnessPtr,
+			Mute:          d.DimModeMute,
+			Volume:        d.DimModeVolume,
 			OverrideUntil: dimModeOverrideUntil,
 		},
 		PinnedApp: d.PinnedApp,
@@ -216,11 +239,14 @@ type AppPayload struct {
 	// app's schema defines, which for many apps includes API keys and OAuth
 	// tokens, and a device API key is a lower bar than a session. It can be
 	// written via PATCH but is never read back.
-	AutoPin           bool              `json:"autoPin"`
-	ColorFilter       *data.ColorFilter `json:"colorFilter"`
-	ShowFullAnimation *bool             `json:"showFullAnimation"`
+	AutoPin                  bool              `json:"autoPin"`
+	ColorFilter              *data.ColorFilter `json:"colorFilter"`
+	ShowFullAnimation        *bool             `json:"showFullAnimation"`
+	NotificationSound        *string           `json:"notificationSound,omitempty"`
+	NotificationSoundTrigger string            `json:"notificationSoundTrigger,omitempty"`
 }
 
+// toAppPayload transforms a device's App model into the public API AppPayload representation.
 func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 	pinned := device.PinnedApp != nil && *device.PinnedApp == app.Iname
 	return AppPayload{
@@ -245,9 +271,11 @@ func (s *Server) toAppPayload(device *data.Device, app *data.App) AppPayload {
 		RecurrenceStartDate: app.RecurrenceStartDate,
 		RecurrenceEndDate:   app.RecurrenceEndDate,
 
-		AutoPin:           app.AutoPin,
-		ColorFilter:       app.ColorFilter,
-		ShowFullAnimation: app.ShowFullAnimation,
+		AutoPin:                  app.AutoPin,
+		ColorFilter:              app.ColorFilter,
+		ShowFullAnimation:        app.ShowFullAnimation,
+		NotificationSound:        app.NotificationSound,
+		NotificationSoundTrigger: app.NotificationSoundTrigger,
 	}
 }
 
@@ -264,6 +292,7 @@ type PushAppData struct {
 	InstallationIDAlt string         `json:"installationId"`
 	CoalesceID        string         `json:"coalesceID"`
 	Background        bool           `json:"background"`
+	Sound             string         `json:"sound,omitempty"`
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +314,7 @@ func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handlePushApp renders and pushes a Pixlet Starlark app to a device via the API.
 func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
@@ -339,6 +369,13 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 			}
 			if err := s.ensurePushedApp(r.Context(), device.ID, cachedID); err != nil {
 				slog.Error("Error adding pushed app", "error", err)
+			}
+			if dataReq.Sound != "" && !dataReq.Background {
+				baseURL := s.GetDeviceBaseURL(device)
+				soundID := s.qualifyAppSound(dataReq.AppID, dataReq.Sound)
+				if err := s.TriggerDeviceSound(r.Context(), device, soundID, baseURL); err != nil {
+					slog.Error("Failed to trigger device sound on push_app cached", "device", device.ID, "error", err)
+				}
 			}
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write([]byte("App pushed.")); err != nil {
@@ -402,16 +439,16 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Notify device via Websocket only if this is a foreground push
-	sent := false
-	if !dataReq.Background {
-		sent = s.Broadcaster.Notify(device.ID, imgBytes)
+	if err := s.processPushedImage(r.Context(), device, installationID, dataReq.CoalesceID, dataReq.Background, imgBytes); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to process pushed app: %v", err), http.StatusInternalServerError)
+		return
 	}
 
-	if !sent || installationID != "" {
-		if err := s.savePushedImage(device.ID, installationID, dataReq.CoalesceID, imgBytes); err != nil {
-			http.Error(w, "Failed to save image", http.StatusInternalServerError)
-			return
+	if dataReq.Sound != "" && !dataReq.Background {
+		baseURL := s.GetDeviceBaseURL(device)
+		soundID := s.qualifyAppSound(dataReq.AppID, dataReq.Sound)
+		if err := s.TriggerDeviceSound(r.Context(), device, soundID, baseURL); err != nil {
+			slog.Error("Failed to trigger device sound on push_app", "device", device.ID, "error", err)
 		}
 	}
 
@@ -479,8 +516,10 @@ type PushData struct {
 	CoalesceID        string `json:"coalesceID"`
 	Image             string `json:"image"`
 	Background        bool   `json:"background"`
+	Sound             string `json:"sound,omitempty"`
 }
 
+// handlePushImage pushes a pre-rendered image binary or animation to a device via the API.
 func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
@@ -507,16 +546,15 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Notify device via Websocket only if this is a foreground push
-	sent := false
-	if !dataReq.Background {
-		sent = s.Broadcaster.Notify(device.ID, imgBytes)
+	if err := s.processPushedImage(r.Context(), device, installID, dataReq.CoalesceID, dataReq.Background, imgBytes); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to process pushed image: %v", err), http.StatusInternalServerError)
+		return
 	}
 
-	if !sent || installID != "" {
-		if err := s.savePushedImage(device.ID, installID, dataReq.CoalesceID, imgBytes); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
-			return
+	if dataReq.Sound != "" && !dataReq.Background {
+		baseURL := s.GetDeviceBaseURL(device)
+		if err := s.TriggerDeviceSound(r.Context(), device, dataReq.Sound, baseURL); err != nil {
+			slog.Error("Failed to trigger device sound on push image", "device", device.ID, "error", err)
 		}
 	}
 
@@ -527,7 +565,85 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []byte) error {
+// processPushedImage handles chunking, storage, and device notifications for pushed images/apps.
+func (s *Server) processPushedImage(ctx context.Context, device *data.Device, installID, coalesceID string, background bool, imgBytes []byte) error {
+	maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+	var chunks []chunker.RenderChunk
+
+	var app *data.App
+	if installID != "" {
+		if a, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", device.ID, "pushed:"+installID).First(ctx); err == nil {
+			app = &a
+		}
+	}
+
+	if maxChunkSize > 0 && len(imgBytes) > maxChunkSize {
+		maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+		dwellSecs := 0
+		if app != nil {
+			dwellSecs = device.GetEffectiveDwellTime(app)
+		}
+		if dwellSecs <= 0 {
+			dwellSecs = device.GetEffectiveDwellTime(nil)
+		}
+		if dwellSecs <= 0 {
+			dwellSecs = 10
+		}
+
+		splitChunks, err := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, dwellSecs*1000)
+		if err == nil && len(splitChunks) > 1 {
+			chunks = splitChunks
+		}
+	}
+
+	if len(chunks) > 1 {
+		if app != nil {
+			// Persistent pushed app with multiple chunks
+			if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+				return err
+			}
+			if !background {
+				s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+					App:    app,
+					Chunks: chunks,
+				})
+			}
+			return nil
+		}
+
+		// Ephemeral pushed image with multiple chunks (no persistent app)
+		// Broadcast to active WebSocket streaming subscribers first; save chunk 0 as fallback
+		// for HTTP polling only when no subscriber is actively connected.
+		sent := false
+		if !background {
+			sent = s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+				App:    nil,
+				Chunks: chunks,
+			})
+		}
+		if !sent {
+			if err := s.savePushedImage(device.ID, "", coalesceID, chunks[0].WebPBytes); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Single chunk / non-chunked flow
+	sent := false
+	if !background {
+		sent = s.Broadcaster.Notify(device.ID, imgBytes)
+	}
+
+	if !sent || installID != "" {
+		if err := s.savePushedImage(device.ID, installID, coalesceID, imgBytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Server) savePushedImage(deviceID, installID, coalesceID string, imgData []byte) error {
 	dir, err := s.ensureDeviceImageDir(deviceID)
 	if err != nil {
 		return fmt.Errorf("failed to get device webp directory: %w", err)
@@ -584,8 +700,17 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []
 		return err
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, imgData, 0644); err != nil {
 		return err
+	}
+
+	// Invalidate any cached chunks for this pushed app
+	if installID != "" {
+		pushedPath := "pushed:" + installID
+		if app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", deviceID, pushedPath).First(context.Background()); err == nil {
+			s.cleanupAppChunks(deviceID, &app)
+			s.invalidateAppChunks(deviceID, app.Iname)
+		}
 	}
 
 	// Clean up anonymous ephemeral files older than 24 hours.
@@ -661,6 +786,7 @@ func (s *Server) ensurePushedApp(ctx context.Context, deviceID, installID string
 	return gorm.G[data.App](s.DB).Create(ctx, &newApp)
 }
 
+// handlePatchDevice updates device settings (brightness, volume, night/dim mode, pinned app) via the API.
 func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	// Auth handled by middleware, get device
 	device := GetDevice(r)
@@ -674,8 +800,20 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	if update.Brightness != nil {
 		device.Brightness = data.Brightness(*update.Brightness)
 	}
+	if update.Volume != nil {
+		vol := *update.Volume
+		if vol < 0 {
+			vol = 0
+		} else if vol > 100 {
+			vol = 100
+		}
+		device.Volume = vol
+	}
 	if update.IntervalSec != nil {
 		device.DefaultInterval = *update.IntervalSec
+	}
+	if update.Muted != nil {
+		device.Muted = *update.Muted
 	}
 	nightModeWasEnabled := device.NightModeEnabled
 	modeSnapshotBefore := snapshotDeviceMode(device)
@@ -688,6 +826,9 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if update.NightModeEnabled != nil {
 		device.NightModeEnabled = *update.NightModeEnabled
+	}
+	if update.NightModeMute != nil {
+		device.NightModeMute = *update.NightModeMute
 	}
 	if update.AutoDim != nil {
 		device.NightModeEnabled = *update.AutoDim
@@ -703,6 +844,14 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	if update.NightModeBrightness != nil {
 		device.NightBrightness = data.Brightness(*update.NightModeBrightness)
+	}
+	if update.NightModeVolume != nil {
+		if *update.NightModeVolume >= 0 && *update.NightModeVolume <= 100 {
+			device.NightModeVolume = update.NightModeVolume
+		} else {
+			http.Error(w, "Night mode volume must be between 0 and 100", http.StatusBadRequest)
+			return
+		}
 	}
 	if update.PinnedApp != nil {
 		if *update.PinnedApp != "" {
@@ -730,6 +879,17 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	if update.DimModeBrightness != nil {
 		val := data.Brightness(*update.DimModeBrightness)
 		device.DimBrightness = &val
+	}
+	if update.DimModeMute != nil {
+		device.DimModeMute = *update.DimModeMute
+	}
+	if update.DimModeVolume != nil {
+		if *update.DimModeVolume >= 0 && *update.DimModeVolume <= 100 {
+			device.DimModeVolume = update.DimModeVolume
+		} else {
+			http.Error(w, "Dim mode volume must be between 0 and 100", http.StatusBadRequest)
+			return
+		}
 	}
 
 	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd {
@@ -759,6 +919,9 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update device", http.StatusInternalServerError)
 		return
 	}
+
+	// Notify Device (Websocket)
+	s.Broadcaster.Notify(device.ID, nil)
 
 	// Notify Dashboard
 	user := GetUser(r)
@@ -792,9 +955,11 @@ type InstallationUpdate struct {
 	RecurrenceEndDate   *string              `json:"recurrenceEndDate"`
 
 	// Render behavior
-	AutoPin           *bool   `json:"autoPin"`
-	ColorFilter       *string `json:"colorFilter"`       // "" or "inherit" clears
-	ShowFullAnimation *string `json:"showFullAnimation"` // "auto" clears; else a bool
+	AutoPin                  *bool   `json:"autoPin"`
+	ColorFilter              *string `json:"colorFilter"`       // "" or "inherit" clears
+	ShowFullAnimation        *string `json:"showFullAnimation"` // "auto" clears; else a bool
+	NotificationSound        *string `json:"notificationSound"`
+	NotificationSoundTrigger *string `json:"notificationSoundTrigger"`
 
 	// App config, matching what the config page already stores. Write-only:
 	// GET never returns it, because it commonly holds API keys and OAuth
@@ -803,6 +968,7 @@ type InstallationUpdate struct {
 	Config *map[string]any `json:"config"`
 }
 
+// handlePatchInstallation updates app installation settings (enabled, sound, timing) via the API.
 func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request) {
 	iname := r.PathValue("iname")
 
@@ -942,6 +1108,30 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 			app.ShowFullAnimation = &val
 		}
 	}
+	if update.NotificationSound != nil {
+		clean := strings.TrimSpace(*update.NotificationSound)
+		if clean == "" || clean == "none" {
+			app.NotificationSound = nil
+			app.NotificationSoundTrigger = ""
+		} else {
+			app.NotificationSound = &clean
+			if app.NotificationSoundTrigger == "" {
+				app.NotificationSoundTrigger = "every_display"
+			}
+		}
+	}
+	if update.NotificationSoundTrigger != nil {
+		if app.NotificationSound == nil {
+			app.NotificationSoundTrigger = ""
+		} else if *update.NotificationSoundTrigger == "every_display" || *update.NotificationSoundTrigger == "every_render" {
+			app.NotificationSoundTrigger = "every_display"
+		} else if *update.NotificationSoundTrigger == "on_change" {
+			app.NotificationSoundTrigger = "on_change"
+		} else {
+			app.NotificationSoundTrigger = ""
+		}
+	}
+
 	if update.Config != nil {
 		app.Config = *update.Config
 	}
@@ -1104,6 +1294,8 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 			slog.Error("Failed to remove webp file", "path", match, "error", err)
 		}
 	}
+	s.cleanupAppChunks(device.ID, &app)
+	s.invalidateAppChunks(device.ID, app.Iname)
 
 	// Notify Dashboard
 	user := GetUser(r)
@@ -1140,6 +1332,7 @@ type FirmwareSettingsUpdate struct {
 	ColorOrder         *string `json:"colorOrder"`
 	DisableTouch       *bool   `json:"disableTouch"`
 	TouchBeep          *bool   `json:"touchBeep"`
+	StartupSound       *bool   `json:"startupSound"`
 	WifiPowerSave      *int    `json:"wifiPowerSave"`
 	ImageURL           *string `json:"imageUrl"`
 	Hostname           *string `json:"hostname"`
@@ -1147,6 +1340,7 @@ type FirmwareSettingsUpdate struct {
 	SyslogAddr         *string `json:"syslogAddr"`
 }
 
+// handleUpdateFirmwareSettingsAPI updates network and logging firmware settings via the API.
 func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
 
@@ -1187,6 +1381,15 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	if update.TouchBeep != nil {
 		payload["touch_beep"] = *update.TouchBeep
 	}
+	if update.StartupSound != nil {
+		payload["startup_sound"] = *update.StartupSound
+		device.Info.StartupSound = update.StartupSound
+		if err := s.DB.Model(&data.Device{ID: device.ID}).Update("info", device.Info).Error; err != nil {
+			slog.Error("Failed to update device info in DB", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
 	if update.WifiPowerSave != nil {
 		payload["wifi_power_save"] = *update.WifiPowerSave
 	}
@@ -1220,10 +1423,99 @@ func (s *Server) handleUpdateFirmwareSettingsAPI(w http.ResponseWriter, r *http.
 	}
 }
 
+// qualifyAppSound resolves sound identifiers, adding app prefixes only for non-default, non-custom, non-URL sounds.
+func (s *Server) qualifyAppSound(appID, soundID string) string {
+	if appID == "" || soundID == "" || strings.Contains(soundID, ":") ||
+		strings.HasPrefix(soundID, "http://") || strings.HasPrefix(soundID, "https://") {
+		return soundID
+	}
+	for _, def := range DefaultNotificationSounds {
+		if strings.EqualFold(soundID, def.Name) || soundID == strings.TrimPrefix(def.ID, "default:") {
+			return soundID
+		}
+	}
+	if s != nil {
+		if customPath, err := securejoin.SecureJoin(s.SoundsDir(), soundID); err == nil {
+			if fi, err := os.Stat(customPath); err == nil && !fi.IsDir() {
+				return soundID
+			}
+		}
+	}
+	return fmt.Sprintf("app:%s:%s", appID, soundID)
+}
+
+// handleTriggerSoundAPI handles programmatic sound playback requests via the /v0/devices/{id}/sound API.
+func (s *Server) handleTriggerSoundAPI(w http.ResponseWriter, r *http.Request) {
+	device := GetDevice(r)
+
+	// Limit JSON request body size to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var payload struct {
+		Sound string `json:"sound"`
+		URL   string `json:"url"`
+		AppID string `json:"app_id"`
+		App   string `json:"app"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	target := payload.Sound
+	if payload.URL != "" {
+		target = payload.URL
+	}
+	appID := payload.AppID
+	if appID == "" {
+		appID = payload.App
+	}
+	target = s.qualifyAppSound(appID, target)
+
+	if target == "" {
+		http.Error(w, "sound or url is required", http.StatusBadRequest)
+		return
+	}
+
+	baseURL := s.GetDeviceBaseURL(device)
+	if device.IsMuted() {
+		http.Error(w, "Device is muted", http.StatusConflict)
+		return
+	}
+	resolvedPayload := s.ResolveSoundPayload(device, baseURL, target)
+	if resolvedPayload == "" {
+		if device.GetAudioCapability() == data.AudioCapNone {
+			http.Error(w, "Device audio capability is disabled or none", http.StatusBadRequest)
+		} else {
+			http.Error(w, "Sound not found or not playable on this device", http.StatusBadRequest)
+		}
+		return
+	}
+
+	if err := s.TriggerDeviceSound(r.Context(), device, target, baseURL); err != nil {
+		slog.Error("Failed to trigger device sound via API", "device", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"status":  "ok",
+		"device":  device.ID,
+		"sound":   target,
+		"payload": resolvedPayload,
+	}); err != nil {
+		slog.Error("Failed to encode trigger sound response", "error", err)
+	}
+}
+
+// SetupAPIRoutes registers all v0 REST API endpoints on the server router.
 func (s *Server) SetupAPIRoutes() {
 	// API v0 Group - authenticated with Middleware
 	s.Router.Handle("GET /v0/devices", s.APIAuthMiddleware(http.HandlerFunc(s.handleListDevices)))
 	s.Router.Handle("GET /v0/devices/{id}", s.APIAuthMiddleware(s.RequireDevice(s.handleGetDevice)))
+	s.Router.Handle("POST /v0/devices/{id}/sound", s.APIAuthMiddleware(s.RequireDevice(s.handleTriggerSoundAPI)))
 	s.Router.Handle("POST /v0/devices/{id}/push", s.APIAuthMiddleware(s.RequireDevice(s.handlePushImage)))
 	s.Router.Handle("POST /v0/devices/{id}/push_app", s.APIAuthMiddleware(s.RequireDevice(s.handlePushApp)))
 	s.Router.Handle("POST /v0/devices/{id}/update_firmware_settings", s.APIAuthMiddleware(s.RequireDevice(s.handleUpdateFirmwareSettingsAPI)))

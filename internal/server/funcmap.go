@@ -17,6 +17,7 @@ import (
 	"github.com/sumup/aaguids-go"
 )
 
+// getFuncMap returns the template helper functions used in HTML views.
 func getFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"seq":            tmplSeq,
@@ -35,6 +36,9 @@ func getFuncMap() template.FuncMap {
 		"trim":           strings.TrimSpace,
 		"slice":          tmplSlice,
 		"contains":       tmplContains,
+		"hasPrefix":      strings.HasPrefix,
+		"hasSuffix":      strings.HasSuffix,
+		"trimPrefix":     strings.TrimPrefix,
 		"webauthn_icon":  tmplWebAuthnIcon,
 		"installationID": tmplInstallationID,
 		"panelAspect":    tmplPanelAspect,

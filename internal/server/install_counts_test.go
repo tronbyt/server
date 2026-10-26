@@ -26,6 +26,7 @@ func TestNibletSyncCachesForADay(t *testing.T) {
 	}))
 	defer cloud.Close()
 	s.Config.NibletCloudURL = cloud.URL
+	s.nibletCloudEnabled.Store(true)
 	require.NoError(t, s.syncNiblet(context.Background()))
 	require.NoError(t, s.syncNiblet(context.Background()))
 	assert.Equal(t, 1, calls, "cached counts must not trigger another request")
@@ -55,6 +56,7 @@ func TestNibletRetryBackoffAndCacheReplacement(t *testing.T) {
 	}))
 	defer cloud.Close()
 	s.Config.NibletCloudURL = cloud.URL
+	s.nibletCloudEnabled.Store(true)
 	require.NoError(t, s.syncNiblet(context.Background()))
 	payload = `{"protocol_version":"app-install-counts.v1","niblet":{"weather":0}}`
 	require.NoError(t, s.setSetting("niblet_next_sync", ""))
@@ -72,6 +74,7 @@ func TestNibletRetryBackoffAndCacheReplacement(t *testing.T) {
 func TestNibletRejectsRemotePlainHTTP(t *testing.T) {
 	s := newTestServer(t)
 	s.Config.NibletCloudURL = "http://cloud.example.com"
+	s.nibletCloudEnabled.Store(true)
 	_, err := s.fetchNibletCounts(context.Background())
 	require.Error(t, err)
 }

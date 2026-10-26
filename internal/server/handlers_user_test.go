@@ -304,3 +304,43 @@ func TestHandleAdminUpdateUserEmail(t *testing.T) {
 	require.NotNil(t, updatedUser.Email)
 	require.Equal(t, "updated@example.com", *updatedUser.Email)
 }
+
+// TestHandleIndexRendersDeviceCard verifies the expected behavior under test.
+func TestHandleIndexRendersDeviceCard(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{
+		Username: "carduser",
+		APIKey:   "user-key-1",
+		Devices: []data.Device{
+			{
+				ID:     "dev-pi",
+				Name:   "Raspberry Pi Wide",
+				Type:   data.DeviceRaspberryPiWide,
+				APIKey: "dev-key-1",
+				Muted:  false,
+			},
+			{
+				ID:     "dev-gen1",
+				Name:   "Tidbyt Gen 1",
+				Type:   data.DeviceTidbytGen1,
+				APIKey: "dev-key-2",
+				Muted:  true,
+			},
+		},
+	}
+	require.NoError(t, s.DB.Create(&user).Error)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleIndex)
+	handler.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	body := rr.Body.String()
+	require.Contains(t, body, "device-card-dev-pi")
+	require.Contains(t, body, "device-card-dev-gen1")
+}

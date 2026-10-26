@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/renderer"
 	"tronbyt-server/web"
@@ -95,6 +97,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 	)
 }
 
+// possiblyRender executes background rendering for an app if its interval has elapsed or content has changed.
 func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data.Device, user *data.User) bool {
 	// 1. Pushed App (Pre-rendered)
 	if app.Pushed {
@@ -128,10 +131,22 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	// 2. Static WebP App
 	if strings.HasSuffix(strings.ToLower(*app.Path), ".webp") {
 		if _, err := os.Stat(webpPath); os.IsNotExist(err) {
-			// Copy from source
-			if _, err := os.Stat(appPath); err == nil {
-				if err := copyFile(appPath, webpPath); err != nil {
-					slog.Error("Failed to copy static webp file", "src", appPath, "dst", webpPath, "error", err)
+			// Copy or chunk from source
+			if b, err := os.ReadFile(appPath); err == nil {
+				maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+				if device != nil && maxChunkSize > 0 && len(b) > maxChunkSize {
+					maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+					dwellSecs := device.GetEffectiveDwellTime(app)
+					chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(b, maxChunkSize, maxChunkDurationMs, dwellSecs*1000)
+					if chunkErr == nil && len(chunks) > 1 {
+						if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+							slog.Error("Failed to save static webp chunks", "app", appBasename, "error", err)
+						}
+						return true
+					}
+				}
+				if err := os.WriteFile(webpPath, b, 0644); err != nil {
+					slog.Error("Failed to write static webp file", "src", appPath, "dst", webpPath, "error", err)
 					return false
 				}
 			} else {
@@ -145,8 +160,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	// 3. Starlark App - Check Interval
 	now := time.Now()
 	forceRender := s.filtersChangedSinceLastRender(device, app)
-	// uinterval is minutes
-	if forceRender || time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute {
+	// uinterval is minutes. Allow a 5-second grace window to absorb rotation timer jitter for 1-minute apps.
+	uintervalDuration := time.Duration(app.UInterval) * time.Minute
+	if uintervalDuration >= 10*time.Second {
+		uintervalDuration -= 5 * time.Second
+	}
+	if forceRender || time.Since(app.LastRender) >= uintervalDuration {
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
@@ -182,9 +201,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		q := gorm.G[data.App](s.DB).Where("id = ?", app.ID)
+		var newHash string
 		if success {
+			newHash = fmt.Sprintf("%x", sha256.Sum256(imgBytes))
+			appUpdates.LastRenderHash = newHash
 			appUpdates.LastSuccessfulRender = &now
-			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender")
+			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages", "LastSuccessfulRender", "LastRenderHash")
 		} else {
 			q = q.Select("LastRender", "LastRenderDur", "EmptyLastRender", "RenderMessages")
 		}
@@ -201,9 +223,73 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		}
 
 		if success {
-			// Save WebP
-			if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
-				slog.Error("Failed to write webp", "path", webpPath, "error", err)
+			// Save WebP / Chunks:
+			// If device has a hardware chunk size budget and the animation exceeds it,
+			// automatically partition the WebP animation into sequential chunks.
+			maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+			if device != nil && maxChunkSize > 0 && len(imgBytes) > maxChunkSize {
+				maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+				dwellSecs := device.GetEffectiveDwellTime(app)
+				targetDurationMs := dwellSecs * 1000
+				if app != nil && app.ShowFullAnimation != nil && *app.ShowFullAnimation {
+					targetDurationMs = 0
+				}
+
+				chunks, chunkErr := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, targetDurationMs)
+				if chunkErr == nil && len(chunks) > 1 {
+					slog.Info("Partitioned oversized Starlark animation into chunks",
+						"app", appBasename,
+						"device", device.ID,
+						"original_bytes", len(imgBytes),
+						"chunks", len(chunks),
+						"max_chunk_size", maxChunkSize,
+					)
+					if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+						slog.Error("Failed to save Starlark app chunks", "app", appBasename, "error", err)
+					}
+				} else {
+					if chunkErr != nil {
+						slog.Warn("Failed to split oversized Starlark animation into chunks", "app", appBasename, "error", chunkErr)
+					}
+					s.cleanupAppChunks(device.ID, app)
+					if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
+						slog.Error("Failed to write webp", "path", webpPath, "error", err)
+					}
+				}
+			} else {
+				if device != nil {
+					s.cleanupAppChunks(device.ID, app)
+				}
+				if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
+					slog.Error("Failed to write webp", "path", webpPath, "error", err)
+				}
+			}
+
+			// Trigger notification sound if configured and opted in
+			if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && device != nil && device.GetAudioCapability() != data.AudioCapNone {
+				contentChanged := (app.LastRenderHash != newHash)
+				shouldPlay := false
+				if app.NotificationSoundTrigger == "on_change" {
+					shouldPlay = contentChanged
+				}
+
+				// Debounce: Enforce 30-second cooldown to prevent sound spam from animated apps
+				if shouldPlay && app.LastSoundAt != nil && now.Sub(*app.LastSoundAt) < 30*time.Second {
+					slog.Debug("Suppressing sound notification due to cooldown", "device", device.ID, "app", appBasename, "cooldown", 30*time.Second)
+					shouldPlay = false
+				}
+
+				if shouldPlay {
+					baseURL := s.GetDeviceBaseURL(device)
+					if err := s.TriggerDeviceSound(ctx, device, *app.NotificationSound, baseURL); err != nil {
+						slog.Error("Failed to trigger device sound on render", "device", device.ID, "app", appBasename, "error", err)
+					} else {
+						app.LastSoundAt = &now
+						if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_sound_at", now); err != nil {
+							slog.Debug("Failed to update last_sound_at in DB", "app", app.ID, "error", err)
+						}
+					}
+				}
 			}
 		}
 
@@ -211,6 +297,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		app.LastRender = now
 		if success {
 			app.LastSuccessfulRender = &now
+			app.LastRenderHash = newHash
 		}
 		app.LastRenderDur = renderDur
 		app.EmptyLastRender = !success

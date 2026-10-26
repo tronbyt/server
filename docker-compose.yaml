@@ -13,9 +13,17 @@ services:
       - PGID=${GID:-${UID:-1000}}
       - SYSTEM_APPS_REPO
       - PRODUCTION
+      - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
+      - TRONBYT_BRANCH
+      - TRONBYT_REPO_URL
+      - TRONBYT_COMMIT
+      - NIBLET_CLOUD_URL
+      - MAX_REPO_SIZE_MB
+      - ENABLE_PPROF
+
 
     healthcheck:
       test: ["CMD", "/app/tronbyt-server", "health"]

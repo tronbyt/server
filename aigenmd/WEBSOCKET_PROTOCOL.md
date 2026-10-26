@@ -111,3 +111,18 @@ The server uses a sophisticated acknowledgment system to manage the flow of imag
     In these cases, the server immediately renders and sends the new, high-priority image.
 
 This ensures that the device is always showing the most up-to-date content while accommodating different firmware versions and allowing for real-time updates.
+
+## Multi-Chunk Animation Streaming
+
+For long or high-framerate animations that produce multi-chunk sequences to respect client RAM limits (such as 160 KB on Tidbyt Gen 1 / ESP32, 450 KB on ESP32-S3, or 5 MB on Raspberry Pi):
+1. The server pushes each chunk sequentially: `chunk[0] -> chunk[1] -> ... -> chunk[K-1]`.
+2. For each chunk `i`:
+   - Send `{"dwell_secs": chunk_dwell}` JSON message.
+   - Send updated brightness if changed.
+   - Send `chunk.WebPBytes` as a binary message.
+   - If `i == 0` and immediate display was requested, send `{"immediate": true}`. Legacy devices (no `protocol_version`) also receive `{"immediate": true}` for every chunk with `i > 0`.
+   - v1+ devices (`protocol_version >= 1`): wait for the `displaying` ACK of chunk `i`, then pre-stream chunk `i+1`. The safety timeout is 10 minutes for chunk 0 and `chunk[i-1].DurationMs + 10s` for later chunks.
+   - Legacy devices: wait `chunk[i].DurationMs` milliseconds before transmitting the next chunk.
+3. The device rotation cursor only advances after all chunks of the multi-chunk app have completed playback.
+4. A pushed ephemeral image, pushed app, or new preview immediately interrupts the current sequence (and if the pushed payload is itself oversized, it streams as a multi-chunk sequence).
+

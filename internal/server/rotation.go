@@ -18,6 +18,116 @@ import (
 	"gorm.io/gorm"
 )
 
+func (s *Server) hasEphemeralPushed(deviceID string) bool {
+	pushedDir := filepath.Join(s.DataDir, "webp", deviceID, "pushed")
+	entries, err := os.ReadDir(pushedDir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "__") && strings.HasSuffix(entry.Name(), ".webp") && !entry.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// GetNextAppImageHTTP picks what a device should display next, with support for
+// multi-chunk animations (serving sequential chunks across repeated /next calls
+// with custom dwell times).
+// Returns (imgData, app, dwellSecs, error).
+func (s *Server) GetNextAppImageHTTP(ctx context.Context, device *data.Device, user *data.User, baseURL string) ([]byte, *data.App, int, error) {
+	// If an ephemeral pushed image is waiting, reset any chunk tracking and serve it immediately.
+	if s.hasEphemeralPushed(device.ID) {
+		s.deviceChunkMu.Lock()
+		delete(s.deviceCurrentChunkApp, device.ID)
+		delete(s.deviceChunkIndices, device.ID)
+		s.deviceChunkMu.Unlock()
+
+		imgData, app, err := s.GetNextAppImage(ctx, device, user, baseURL)
+		dwell := device.GetEffectiveDwellTime(app)
+		return imgData, app, dwell, err
+	}
+
+	// Check if this device is currently traversing chunks of an active multi-chunk app.
+	s.deviceChunkMu.Lock()
+	currIname, hasActive := s.deviceCurrentChunkApp[device.ID]
+	currIdx := s.deviceChunkIndices[device.ID]
+	s.deviceChunkMu.Unlock()
+
+	if hasActive {
+		// Find the active app in device.Apps
+		var activeApp *data.App
+		for _, a := range device.Apps {
+			if a.Iname == currIname {
+				activeApp = a
+				break
+			}
+		}
+
+		if activeApp != nil && activeApp.Enabled && IsAppScheduleActive(activeApp, device) {
+			chunks := s.getAppChunks(device.ID, activeApp)
+			maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+			if len(chunks) > 1 && currIdx < len(chunks) {
+				chunk := chunks[currIdx]
+				if maxChunkSize > 0 && len(chunk.WebPBytes) > maxChunkSize {
+					slog.Warn("HTTP chunk exceeds device max buffer size, aborting multi-chunk sequence", "device", device.ID, "app", activeApp.Iname, "chunk_size", len(chunk.WebPBytes), "max", maxChunkSize)
+					s.deviceChunkMu.Lock()
+					delete(s.deviceCurrentChunkApp, device.ID)
+					delete(s.deviceChunkIndices, device.ID)
+					s.deviceChunkMu.Unlock()
+				} else {
+					dwell := max(1, chunk.DurationMs/1000)
+
+					s.deviceChunkMu.Lock()
+					nextIdx := currIdx + 1
+					if nextIdx >= len(chunks) {
+						// Last chunk reached; clear tracking so the next /next request rotates to the next app
+						delete(s.deviceCurrentChunkApp, device.ID)
+						delete(s.deviceChunkIndices, device.ID)
+					} else {
+						s.deviceChunkIndices[device.ID] = nextIdx
+					}
+					s.deviceChunkMu.Unlock()
+
+					now := time.Now()
+					_, _ = gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Select("LastSeen").Updates(ctx, data.Device{LastSeen: &now})
+					device.LastSeen = &now
+
+					return chunk.WebPBytes, activeApp, dwell, nil
+				}
+			}
+		}
+
+		// App missing, disabled, schedule inactive, or chunks invalid: reset tracking
+		s.deviceChunkMu.Lock()
+		delete(s.deviceCurrentChunkApp, device.ID)
+		delete(s.deviceChunkIndices, device.ID)
+		s.deviceChunkMu.Unlock()
+	}
+
+	// Normal rotation to next app
+	imgData, app, err := s.GetNextAppImage(ctx, device, user, baseURL)
+	if err != nil || app == nil {
+		dwell := device.GetEffectiveDwellTime(app)
+		return imgData, app, dwell, err
+	}
+
+	chunks := s.getAppChunks(device.ID, app)
+	if len(chunks) > 1 {
+		s.deviceChunkMu.Lock()
+		s.deviceCurrentChunkApp[device.ID] = app.Iname
+		s.deviceChunkIndices[device.ID] = 1 // chunk 0 is returned now; chunk 1 is next
+		s.deviceChunkMu.Unlock()
+		chunk0 := chunks[0]
+		dwell := max(1, chunk0.DurationMs/1000)
+		return chunk0.WebPBytes, app, dwell, nil
+	}
+
+	dwell := device.GetEffectiveDwellTime(app)
+	return imgData, app, dwell, nil
+}
+
 // GetNextAppImage picks what a device should display next.
 //
 // baseURL is this server's address as seen by the requesting device; it is
@@ -130,6 +240,17 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
 	}
 
+	// Trigger every_display notification sound for HTTP polling devices
+	if device.Info.ProtocolType != data.ProtocolWS && app != nil && app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && app.NotificationSoundTrigger == "every_display" {
+		if device.HasSpeaker() && !device.IsMuted() {
+			baseURLToUse := s.GetDeviceBaseURL(device)
+			if baseURLToUse == "" || (!strings.Contains(baseURLToUse, ":") && strings.Contains(baseURL, ":")) {
+				baseURLToUse = baseURL
+			}
+			_ = s.TriggerDeviceSound(ctx, device, *app.NotificationSound, baseURLToUse)
+		}
+	}
+
 	// 6. Return Image
 	var webpPath string
 
@@ -147,6 +268,21 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		slog.Error("Failed to read app image", "path", webpPath, "error", err)
 		return getDefaultImage()
 	}
+
+	// Guard against oversized images for the device (e.g. cached files from before multi-chunk capping)
+	maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+	if maxChunkSize > 0 && len(data) > maxChunkSize {
+		// Attempt fallback to chunk 0 if multi-chunk exists and fits
+		if chunks := s.getAppChunks(device.ID, app); len(chunks) > 0 && len(chunks[0].WebPBytes) <= maxChunkSize {
+			slog.Warn("Primary webp exceeds device max chunk size; serving chunk 0 instead",
+				"device", device.ID, "app", app.Iname, "primary_size", len(data), "chunk0_size", len(chunks[0].WebPBytes), "max", maxChunkSize)
+			return chunks[0].WebPBytes, app, nil
+		}
+		slog.Error("App image exceeds device max buffer size and no valid chunk found",
+			"device", device.ID, "app", app.Iname, "size", len(data), "max", maxChunkSize)
+		return getDefaultImage()
+	}
+
 	return data, app, err
 }
 

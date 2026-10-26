@@ -9,14 +9,16 @@ type Broadcaster struct {
 	lock        sync.RWMutex
 }
 
+// NewBroadcaster creates and initializes a new in-memory topic broadcaster.
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
 		subscribers: make(map[string]map[chan any]bool),
 	}
 }
 
+// Subscribe registers a subscriber channel to receive events for a given topic.
 func (b *Broadcaster) Subscribe(topic string) chan any {
-	ch := make(chan any, 1)
+	ch := make(chan any, 16)
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -27,6 +29,7 @@ func (b *Broadcaster) Subscribe(topic string) chan any {
 	return ch
 }
 
+// Unsubscribe removes a subscriber channel from a given topic.
 func (b *Broadcaster) Unsubscribe(topic string, ch chan any) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -40,6 +43,8 @@ func (b *Broadcaster) Unsubscribe(topic string, ch chan any) {
 	close(ch)
 }
 
+// Notify attempts to deliver an event payload to each subscriber registered to
+// the topic without blocking. Events are dropped for full subscriber buffers.
 func (b *Broadcaster) Notify(topic string, data any) bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()

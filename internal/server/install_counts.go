@@ -63,6 +63,9 @@ func (s *Server) setNibletCounts(counts map[string]int64) {
 // syncNiblet refreshes counts at most every 24 hours, keeps the last good
 // counts across restarts, and backs off for an hour after failures.
 func (s *Server) syncNiblet(ctx context.Context) error {
+	if !s.isNibletCloudEnabled() {
+		return nil
+	}
 	cached, err := s.getSetting("niblet_counts")
 	if err != nil {
 		return err

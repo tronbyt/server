@@ -106,6 +106,7 @@ func TestHandleFirmwareGeneratePost(t *testing.T) {
 	}
 }
 
+// TestUpdateFirmwareBinariesRejectsHTMLAndRetriesAPI verifies the expected behavior under test.
 func TestUpdateFirmwareBinariesRejectsHTMLAndRetriesAPI(t *testing.T) {
 	s := newTestServerAPI(t)
 	s.Config.GitHubToken = "test-token"
@@ -156,4 +157,215 @@ func TestUpdateFirmwareBinariesRejectsHTMLAndRetriesAPI(t *testing.T) {
 
 	_, err = os.Stat(localPath + ".tmp")
 	assert.True(t, os.IsNotExist(err), "temporary file should be cleaned up")
+
+	// release.json should be saved
+	releaseJSONPath := filepath.Join(s.DataDir, "firmware", "releases", "v9.9.9", "release.json")
+	assert.FileExists(t, releaseJSONPath)
+}
+
+// TestGetFirmwareReleaseInfo_Cached verifies the expected behavior under test.
+func TestGetFirmwareReleaseInfo_Cached(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	verDir := filepath.Join(s.DataDir, "firmware", "releases", "v1.2.3")
+	require.NoError(t, os.MkdirAll(verDir, 0755))
+
+	releaseJSON := `{"tag_name":"v1.2.3","name":"Release 1.2.3","body":"## What's Changed\n* Added test feature by @tester in https://github.com/tronbyt/firmware-esp32/pull/1","html_url":"https://github.com/tronbyt/firmware-esp32/releases/tag/v1.2.3"}`
+	require.NoError(t, os.WriteFile(filepath.Join(verDir, "release.json"), []byte(releaseJSON), 0644))
+
+	info, err := s.GetFirmwareReleaseInfo("v1.2.3")
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	assert.Equal(t, "v1.2.3", info.TagName)
+	assert.Equal(t, "Release 1.2.3", info.Name)
+	assert.Contains(t, info.Body, "Added test feature")
+	assert.Equal(t, "https://github.com/tronbyt/firmware-esp32/releases/tag/v1.2.3", info.HTMLURL)
+}
+
+// TestGetFirmwareReleaseInfo_FetchAndCache verifies the expected behavior under test.
+func TestGetFirmwareReleaseInfo_FetchAndCache(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/releases/tags/v2.0.0") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tag_name":"v2.0.0","name":"v2.0.0","body":"## What's Changed\n* Major update","html_url":"https://github.com/tronbyt/firmware-esp32/releases/tag/v2.0.0"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer ts.Close()
+	s.githubAPIBase = ts.URL
+
+	info, err := s.GetFirmwareReleaseInfo("v2.0.0")
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	assert.Equal(t, "v2.0.0", info.TagName)
+	assert.Contains(t, info.Body, "Major update")
+
+	// Verify it was cached to disk
+	cachedPath := filepath.Join(s.DataDir, "firmware", "releases", "v2.0.0", "release.json")
+	assert.FileExists(t, cachedPath)
+}
+
+// TestHandleFirmwareReleaseNotesEndpoint verifies the expected behavior under test.
+func TestHandleFirmwareReleaseNotesEndpoint(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	var user data.User
+	s.DB.First(&user, "username = ?", "testuser")
+	var device data.Device
+	s.DB.First(&device, "id = ?", "testdevice")
+
+	verDir := filepath.Join(s.DataDir, "firmware", "releases", "v1.5.0")
+	require.NoError(t, os.MkdirAll(verDir, 0755))
+	releaseJSON := `{"tag_name":"v1.5.0","name":"v1.5.0","body":"## What's Changed\n* Sound fixes","html_url":"https://github.com/tronbyt/firmware-esp32/releases/tag/v1.5.0"}`
+	require.NoError(t, os.WriteFile(filepath.Join(verDir, "release.json"), []byte(releaseJSON), 0644))
+
+	// 1. Missing version parameter
+	req := httptest.NewRequest(http.MethodGet, "/devices/testdevice/firmware/release_notes", nil)
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	rr := httptest.NewRecorder()
+	s.handleFirmwareReleaseNotes(rr, req.WithContext(ctx))
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+	// 2. Valid request
+	req = httptest.NewRequest(http.MethodGet, "/devices/testdevice/firmware/release_notes?version=v1.5.0", nil)
+	rr = httptest.NewRecorder()
+	s.handleFirmwareReleaseNotes(rr, req.WithContext(ctx))
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `"tag_name":"v1.5.0"`)
+	assert.Contains(t, rr.Body.String(), "Sound fixes")
+}
+
+// TestGetAvailableFirmwareVersionsForDevice verifies the expected behavior under test.
+func TestGetAvailableFirmwareVersionsForDevice(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	// Create v1.0.0 with tidbyt-gen1 binary
+	v1Dir := filepath.Join(s.DataDir, "firmware", "releases", "v1.0.0")
+	require.NoError(t, os.MkdirAll(v1Dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(v1Dir, "tidbyt-gen1.bin"), []byte("bin-data"), 0644))
+
+	// Create v2.0.0 with tronberry binary
+	v2Dir := filepath.Join(s.DataDir, "firmware", "releases", "v2.0.0")
+	require.NoError(t, os.MkdirAll(v2Dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(v2Dir, "tronberry"), []byte("elf-data"), 0644))
+
+	gen1Dev := &data.Device{Type: data.DeviceTidbytGen1}
+	piDev := &data.Device{Type: data.DeviceRaspberryPi}
+
+	gen1Vers := s.GetAvailableFirmwareVersionsForDevice(gen1Dev)
+	assert.Equal(t, []string{"v1.0.0"}, gen1Vers)
+	assert.Equal(t, "v1.0.0", s.GetLatestFirmwareVersionForDevice(gen1Dev))
+
+	piVers := s.GetAvailableFirmwareVersionsForDevice(piDev)
+	assert.Equal(t, []string{"v2.0.0"}, piVers)
+	assert.Equal(t, "v2.0.0", s.GetLatestFirmwareVersionForDevice(piDev))
+
+	allVers := s.GetAvailableFirmwareVersionsForDevice(nil)
+	assert.Len(t, allVers, 2)
+}
+
+// TestUpdateFirmwareBinariesDownloadsTronberry verifies the expected behavior under test.
+func TestUpdateFirmwareBinariesDownloadsTronberry(t *testing.T) {
+	s := newTestServerAPI(t)
+	t.Setenv("FIRMWARE_REPO", "none") // Skip ESP32
+	t.Setenv("TRONBERRY_REPO", "")
+
+	tronberryELF := []byte{0x7f, 'E', 'L', 'F', 0x02, 0x01, 0x01, 0x00}
+	tronberryELF = append(tronberryELF, make([]byte, 1024)...)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/tronberry/releases"):
+			base := "http://" + r.Host
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `[{"tag_name":"v0.2.0","name":"Tronberry v0.2.0","body":"Release notes","assets":[{"name":"tronberry","url":"%s/api-asset","browser_download_url":"%s/browser"}]}]`, base, base)
+		case r.URL.Path == "/browser":
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(tronberryELF)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	require.NoError(t, s.UpdateFirmwareBinaries(1))
+
+	localPath := filepath.Join(s.DataDir, "firmware", "releases", "v0.2.0", "tronberry")
+	got, err := os.ReadFile(localPath)
+	require.NoError(t, err)
+	assert.Equal(t, tronberryELF, got)
+
+	// Device query should find v0.2.0
+	piDev := &data.Device{Type: data.DeviceRaspberryPi}
+	assert.Equal(t, []string{"v0.2.0"}, s.GetAvailableFirmwareVersionsForDevice(piDev))
+}
+
+// TestGetFirmwareReleaseInfo_DeviceSpecificIsolation verifies the expected behavior under test.
+func TestGetFirmwareReleaseInfo_DeviceSpecificIsolation(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	verDir := filepath.Join(s.DataDir, "firmware", "releases", "v3.0.0")
+	require.NoError(t, os.MkdirAll(verDir, 0755))
+
+	espJSON := `{"tag_name":"v3.0.0","name":"ESP32 v3.0.0","body":"ESP32 notes","html_url":"https://github.com/tronbyt/firmware-esp32/releases/tag/v3.0.0"}`
+	tbJSON := `{"tag_name":"v3.0.0","name":"Tronberry v3.0.0","body":"Tronberry notes","html_url":"https://github.com/tronbyt/tronberry/releases/tag/v3.0.0"}`
+
+	require.NoError(t, os.WriteFile(filepath.Join(verDir, "release-firmware-esp32.json"), []byte(espJSON), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(verDir, "release-tronberry.json"), []byte(tbJSON), 0644))
+
+	espDev := &data.Device{Type: data.DeviceTidbytGen1}
+	tbDev := &data.Device{Type: data.DeviceRaspberryPi}
+
+	// 1. ESP32 device gets ESP32 release notes
+	espInfo, err := s.GetFirmwareReleaseInfoForDevice(espDev, "v3.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, "ESP32 v3.0.0", espInfo.Name)
+	assert.Equal(t, "ESP32 notes", espInfo.Body)
+	assert.Contains(t, espInfo.HTMLURL, "firmware-esp32")
+
+	// 2. Tronberry device gets Tronberry release notes
+	tbInfo, err := s.GetFirmwareReleaseInfoForDevice(tbDev, "v3.0.0")
+	require.NoError(t, err)
+	assert.Equal(t, "Tronberry v3.0.0", tbInfo.Name)
+	assert.Equal(t, "Tronberry notes", tbInfo.Body)
+	assert.Contains(t, tbInfo.HTMLURL, "tronberry")
+
+	// 3. GetAllAvailableFirmwareReleaseNotesForDevice isolates by device
+	espAll := s.GetAllAvailableFirmwareReleaseNotesForDevice(espDev)
+	assert.Equal(t, "ESP32 notes", espAll["v3.0.0"].Body)
+
+	tbAll := s.GetAllAvailableFirmwareReleaseNotesForDevice(tbDev)
+	assert.Equal(t, "Tronberry notes", tbAll["v3.0.0"].Body)
+}
+
+// TestFallbackOwnerRepoDetection verifies the expected behavior under test.
+func TestFallbackOwnerRepoDetection(t *testing.T) {
+	s := newTestServerAPI(t)
+	ts := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	// Case A: Only Tronberry binary exists -> selects Tronberry repo for fallback HTMLURL
+	tbVerDir := filepath.Join(s.DataDir, "firmware", "releases", "v4.0.0")
+	require.NoError(t, os.MkdirAll(tbVerDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tbVerDir, "tronberry"), []byte("bin"), 0644))
+
+	infoA, err := s.GetFirmwareReleaseInfo("v4.0.0")
+	require.NoError(t, err)
+	assert.Contains(t, infoA.HTMLURL, "tronberry")
+
+	// Case B: Both Tronberry and ESP32 exist -> preserves ESP32 repo fallback
+	bothVerDir := filepath.Join(s.DataDir, "firmware", "releases", "v5.0.0")
+	require.NoError(t, os.MkdirAll(bothVerDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(bothVerDir, "tronberry"), []byte("bin"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bothVerDir, "tidbyt-gen1.bin"), []byte("bin"), 0644))
+
+	infoB, err := s.GetFirmwareReleaseInfo("v5.0.0")
+	require.NoError(t, err)
+	assert.Contains(t, infoB.HTMLURL, "firmware-esp32")
 }

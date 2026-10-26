@@ -227,3 +227,70 @@ func TestEveryFirmwareDeviceTypeNamesABinary(t *testing.T) {
 			"%s claims firmware support but names no binary", slug)
 	}
 }
+
+// TestRaspberryPiSupportsOTAAndNamesTronberry verifies the expected behavior under test.
+func TestRaspberryPiSupportsOTAAndNamesTronberry(t *testing.T) {
+	piTypes := []DeviceType{DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare}
+	for _, dt := range piTypes {
+		assert.True(t, dt.SupportsOTA(), "%s should support OTA", dt.Slug())
+		assert.True(t, dt.IsRaspberryPi(), "%s should be recognized as Raspberry Pi", dt.Slug())
+		assert.Equal(t, "tronberry", dt.FirmwareFilename(false))
+		assert.Equal(t, "tronberry", dt.FirmwareFilename(true))
+
+		d := &Device{
+			Type: dt,
+			Info: DeviceInfo{
+				FirmwareVersion: "v0.1.0",
+			},
+		}
+		assert.True(t, d.OTACapable(), "%s with version v0.1.0 should be OTA capable", dt.Slug())
+
+		dDev := &Device{
+			Type: dt,
+			Info: DeviceInfo{
+				FirmwareVersion: "dev",
+			},
+		}
+		assert.True(t, dDev.OTACapable(), "%s with version dev should be OTA capable", dt.Slug())
+
+		dNoVer := &Device{
+			Type: dt,
+			Info: DeviceInfo{
+				FirmwareVersion: "",
+			},
+		}
+		assert.False(t, dNoVer.OTACapable(), "%s with empty version should not be OTA capable", dt.Slug())
+	}
+}
+
+// TestDeviceType_SupportsAudio verifies the expected behavior under test.
+func TestDeviceType_SupportsAudio(t *testing.T) {
+	assert.False(t, DeviceTidbytGen1.SupportsAudio())
+	assert.False(t, DevicePixoticker.SupportsAudio())
+	assert.True(t, DeviceTidbytGen2.SupportsAudio())
+	assert.True(t, DeviceRaspberryPi.SupportsAudio())
+	assert.True(t, DeviceRaspberryPiWide.SupportsAudio())
+	assert.True(t, DeviceRaspberryPiSquare.SupportsAudio())
+	assert.True(t, DeviceTronbytS3.SupportsAudio())
+	assert.True(t, DeviceTronbytS3Wide.SupportsAudio())
+	assert.True(t, DeviceMatrixPortal.SupportsAudio())
+	assert.True(t, DeviceMatrixPortalWS.SupportsAudio())
+	assert.True(t, DeviceMatrixPortalSquare.SupportsAudio())
+	assert.True(t, DeviceMatrixPortalWide.SupportsAudio())
+	assert.True(t, DeviceWaveshareS3.SupportsAudio())
+	assert.True(t, DeviceOther.SupportsAudio())
+
+	gen1Dev := &Device{
+		Type: DeviceTidbytGen1,
+	}
+	assert.False(t, gen1Dev.SupportsAudio())
+	assert.Equal(t, AudioCapNone, gen1Dev.GetAudioCapability())
+	assert.False(t, gen1Dev.HasSpeaker())
+
+	gen2Dev := &Device{
+		Type: DeviceTidbytGen2,
+	}
+	assert.True(t, gen2Dev.SupportsAudio())
+	assert.Equal(t, AudioCapPiezo, gen2Dev.GetAudioCapability())
+	assert.True(t, gen2Dev.HasSpeaker())
+}

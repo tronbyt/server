@@ -140,6 +140,87 @@
                         </select>
                     </div>
                 </div>
+                {{ if .Device.SupportsAudio }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="audio_capability">{{ t .Localizer "Audio Capability" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        {{ $currentAudioCap := "auto" }}
+                        {{ if .Device.AudioCapability }}
+                        {{ $currentAudioCap = printf "%s" (deref .Device.AudioCapability) }}
+                        {{ end }}
+                        <select name="audio_capability" id="audio_capability" class="settings-input">
+                            <option value="auto" {{ if eq $currentAudioCap "auto" }}selected{{ end }}>
+                                {{ t .Localizer "Default" }} ({{ .Device.Type.DefaultAudioCapability }})
+                            </option>
+                            <option value="none" {{ if eq $currentAudioCap "none" }}selected{{ end }}>{{ t .Localizer "Disabled / None" }}</option>
+                            <option value="piezo" {{ if eq $currentAudioCap "piezo" }}selected{{ end }}>
+                                {{ t .Localizer "Piezo Buzzer (Tones)" }}
+                            </option>
+                            <option value="full" {{ if eq $currentAudioCap "full" }}selected{{ end }}>
+                                {{ t .Localizer "Full Speaker (Audio / Streaming)" }}
+                            </option>
+                        </select>
+                        <p class="settings-help">
+                            {{ t .Localizer "Configure sound hardware for this device. Piezo buzzers (e.g. Tidbyt Gen 2) play tone melodies. Full speakers (e.g. Raspberry Pi / Tronberry or I2S DAC) support audio files and custom uploads." }}
+                        </p>
+                    </div>
+                </div>
+                {{ end }}
+                {{ if .Device.HasSpeaker }}
+                <div class="settings-field-row" id="volume_control_row">
+                    <div class="settings-field-label">
+                        <label for="volume">{{ t .Localizer "Speaker Volume" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="range-container">
+                            <input type="range"
+                                   name="volume"
+                                   id="volume"
+                                   min="0"
+                                   max="100"
+                                   step="5"
+                                   value="{{ .Device.GetVolume }}"
+                                   oninput="this.nextElementSibling.value = this.value; sendVolumeToDevice(this.value)">
+                            <output class="range-output">{{ .Device.GetVolume }}</output>
+                        </div>
+                        <p class="settings-help">{{ t .Localizer "Set playback volume for sound notifications and chimes (0–100%)." }}</p>
+                    </div>
+                </div>
+                <div class="settings-field-row" id="test_sound_row">
+                    <div class="settings-field-label">
+                        <label for="test_sound_select">{{ t .Localizer "Test Sound" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div class="test-sound-container"
+                             style="display: flex;
+                                    gap: 8px;
+                                    align-items: center;
+                                    flex-wrap: wrap">
+                            <select id="test_sound_select"
+                                    class="settings-input"
+                                    style="max-width: 200px">
+                                <option value="default:chime">{{ t .Localizer "Chime" }}</option>
+                                <option value="default:ding">{{ t .Localizer "Ding" }}</option>
+                                <option value="default:bell">{{ t .Localizer "Bell" }}</option>
+                                <option value="default:pop">{{ t .Localizer "Pop" }}</option>
+                                <option value="default:alert">{{ t .Localizer "Alert" }}</option>
+                                <option value="default:tron">{{ t .Localizer "Tron Bit" }}</option>
+                            </select>
+                            <button type="button"
+                                    class="w3-button w3-blue w3-round"
+                                    onclick="triggerDeviceTestSound('{{ .Device.ID }}')">
+                                <i class="fa-solid fa-volume-high"></i> {{ t .Localizer "Play on Device" }}
+                            </button>
+                            <span id="test-sound-status" style="font-size: 0.9em; margin-left: 4px;"></span>
+                        </div>
+                        <p class="settings-help">
+                            {{ t .Localizer "Send an instant test chime to verify speaker output and volume levels on this device." }}
+                        </p>
+                    </div>
+                </div>
+                {{ end }}
                 <div class="settings-field-row">
                     <div class="settings-field-label">
                         <label for="require_api_key">{{ t .Localizer "Require API Key" }}</label>
@@ -456,6 +537,41 @@
                             </select>
                         </div>
                     </div>
+                    {{ if .Device.HasSpeaker }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="night_mode_volume">{{ t .Localizer "Night Mode Volume" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <div class="range-container">
+                                <input type="range"
+                                       name="night_mode_volume"
+                                       id="night_mode_volume"
+                                       min="0"
+                                       max="100"
+                                       step="5"
+                                       value="{{ .Device.GetNightModeVolume }}"
+                                       oninput="this.nextElementSibling.value = this.value">
+                                <output class="range-output">{{ .Device.GetNightModeVolume }}</output>
+                            </div>
+                            <p class="settings-help">{{ t .Localizer "Set playback volume during night mode (0–100%)." }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="night_mode_mute">{{ t .Localizer "Mute in Night Mode" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   name="night_mode_mute"
+                                   id="night_mode_mute"
+                                   {{ if .Device.NightModeMute }}
+                                   checked
+                                   {{ end }}>
+                            <p class="settings-help">{{ t .Localizer "Disable all sound notifications during night mode." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
             <div class="settings-card-subsection">
@@ -522,6 +638,41 @@
                             </select>
                         </div>
                     </div>
+                    {{ if .Device.HasSpeaker }}
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="dim_mode_volume">{{ t .Localizer "Dim Mode Volume" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <div class="range-container">
+                                <input type="range"
+                                       name="dim_mode_volume"
+                                       id="dim_mode_volume"
+                                       min="0"
+                                       max="100"
+                                       step="5"
+                                       value="{{ .Device.GetDimModeVolume }}"
+                                       oninput="this.nextElementSibling.value = this.value">
+                                <output class="range-output">{{ .Device.GetDimModeVolume }}</output>
+                            </div>
+                            <p class="settings-help">{{ t .Localizer "Set playback volume during dim mode (0–100%)." }}</p>
+                        </div>
+                    </div>
+                    <div class="settings-field-row">
+                        <div class="settings-field-label">
+                            <label for="dim_mode_mute">{{ t .Localizer "Mute in Dim Mode" }}</label>
+                        </div>
+                        <div class="settings-field-control">
+                            <input type="checkbox"
+                                   name="dim_mode_mute"
+                                   id="dim_mode_mute"
+                                   {{ if .Device.DimModeMute }}
+                                   checked
+                                   {{ end }}>
+                            <p class="settings-help">{{ t .Localizer "Disable all sound notifications during dim mode." }}</p>
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
         </section>
@@ -593,348 +744,386 @@
                     {{ if .AvailableFirmwareVersions }}
                     <div class="settings-field-row">
                         <div class="settings-field-label">
-                            <label for="firmware_version_select">{{ t .Localizer "Select Version" }}</label>
-                        </div>
-                        <div class="settings-field-control">
-                            <select id="firmware_version_select" class="settings-input">
-                                {{ range .AvailableFirmwareVersions }}
-                                <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
-                                {{ end }}
-                            </select>
-                        </div>
+                            <label for="firmware_version_select">
+                            <a href="{{ if .Device.Type.IsRaspberryPi }}https://github.com/tronbyt/tronberry/releases{{ else }}https://github.com/tronbyt/firmware-esp32/releases{{ end }}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               style="color: inherit;
+                                      text-decoration: underline">
+                                {{ t .Localizer "Select Version" }} <i class="fa-solid fa-arrow-up-right-from-square"
+    style="font-size: 0.8em"
+    aria-hidden="true"></i>
+                            </a>
+                        </label>
                     </div>
-                    {{ end }}
+                    <div class="settings-field-control">
+                        <select id="firmware_version_select"
+                                class="settings-input"
+                                onchange="renderFirmwareReleaseNotes(this.value)">
+                            {{ range .AvailableFirmwareVersions }}
+                            <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
                 </div>
-                <div class="settings-actions">
-                    {{ if .AvailableFirmwareVersions }}
-                    <button type="button"
-                            class="w3-button w3-blue"
-                            onclick="triggerOTAWithVersion('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Selected Firmware" }}
-                    </button>
-                    {{ end }}
-                    <button type="button"
-                            class="w3-button w3-orange"
-                            onclick="document.getElementById('custom_firmware_file').click();">
-                        <i class="fa-solid fa-file-arrow-up"></i> {{ t .Localizer "Install Custom Firmware" }}
-                    </button>
+                <div class="settings-field-row"
+                     id="firmware_release_notes_row"
+                     style="display: none">
+                    <div class="settings-field-label">
+                        <label>{{ t .Localizer "Release Details" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <div id="firmware_release_notes" class="firmware-release-notes"></div>
+                    </div>
                 </div>
+                {{ end }}
             </div>
-            {{ end }}
-            {{ if .Device.SupportsFirmwareFeatures }}
-            <div class="settings-card-subsection">
-                <h3>{{ t .Localizer "Live Firmware Settings" }}</h3>
-                <div class="settings-field-list">
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Image URL" }}</div>
-                        <div class="settings-field-control">
-                            <div class="settings-inline-group">
-                                <input type="text"
-                                       id="reported_img_url"
-                                       value="{{ .FirmwareImgURL }}"
-                                       class="settings-input settings-input-wide">
-                                <button type="button"
-                                        class="w3-button w3-deep-orange"
-                                        onclick="confirmImageURLAndReboot()">
-                                    <i class="fa-solid fa-circle-check"></i> {{ t .Localizer "Confirm and Reboot" }}
-                                </button>
-                            </div>
-                            <p class="settings-help settings-note-danger">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                                {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
-                            </p>
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Hostname" }}</div>
-                        <div class="settings-field-control">
-                            <div class="settings-inline-group">
-                                <input type="text"
-                                       id="reported_hostname"
-                                       value="{{ derefOr .Device.Info.Hostname "" }}"
-                                       class="settings-input">
-                                <button type="button"
-                                        class="w3-button w3-green"
-                                        onclick="updateFirmwareSettings({hostname: document.getElementById('reported_hostname').value})">
-                                    <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "SNTP Server" }}</div>
-                        <div class="settings-field-control">
-                            <div class="settings-inline-group">
-                                <input type="text"
-                                       id="reported_sntp_server"
-                                       value="{{ derefOr .Device.Info.SNTPServer "" }}"
-                                       class="settings-input">
-                                <button type="button"
-                                        class="w3-button w3-green"
-                                        onclick="updateFirmwareSettings({sntp_server: document.getElementById('reported_sntp_server').value})">
-                                    <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Syslog Address" }}</div>
-                        <div class="settings-field-control">
-                            <div class="settings-inline-group">
-                                <input type="text"
-                                       id="reported_syslog_addr"
-                                       value="{{ derefOr .Device.Info.SyslogAddr "" }}"
-                                       class="settings-input">
-                                <button type="button"
-                                        class="w3-button w3-green"
-                                        onclick="updateFirmwareSettings({syslog_addr: document.getElementById('reported_syslog_addr').value})">
-                                    <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Swap Colors" }}</div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.SwapColors false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({swap_colors: this.checked})">
-                        </div>
-                    </div>
-                    {{ if .Device.SupportsColorOrder }}
-                    {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">
-                            <label for="color_order">{{ t .Localizer "Color Order" }}</label>
-                        </div>
-                        <div class="settings-field-control">
-                            <select id="color_order"
-                                    class="settings-input"
-                                    onchange="updateFirmwareSettings({color_order: this.value})">
-                                <option value="rgb" {{ if eq $colorOrder "rgb" }}selected{{ end }}>RGB</option>
-                                <option value="rbg" {{ if eq $colorOrder "rbg" }}selected{{ end }}>RBG</option>
-                                <option value="grb" {{ if eq $colorOrder "grb" }}selected{{ end }}>GRB</option>
-                                <option value="gbr" {{ if eq $colorOrder "gbr" }}selected{{ end }}>GBR</option>
-                                <option value="brg" {{ if eq $colorOrder "brg" }}selected{{ end }}>BRG</option>
-                                <option value="bgr" {{ if eq $colorOrder "bgr" }}selected{{ end }}>BGR</option>
-                            </select>
-                        </div>
-                    </div>
-                    {{ end }}
-                    {{ if eq .Device.Type.Slug "tidbyt_gen2" }}
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">
-                            <label for="disable_touch">{{ t .Localizer "Disable Touch Button" }}</label>
-                        </div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   id="disable_touch"
-                                   {{ if derefOr .Device.Info.DisableTouch false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({disable_touch: this.checked})">
-                            <p class="settings-help">{{ t .Localizer "Disables the physical touch button. Requires reboot to take effect." }}</p>
-                        </div>
-                    </div>
-                    {{ if .Device.Info.TouchBeep }}
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">
-                            <label for="touch_beep">{{ t .Localizer "Beep On Touch" }}</label>
-                        </div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   id="touch_beep"
-                                   {{ if derefOr .Device.Info.TouchBeep false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({touch_beep: this.checked})">
-                            <p class="settings-help">{{ t .Localizer "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately." }}</p>
-                        </div>
-                    </div>
-                    {{ end }}
-                    {{ end }}
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "WiFi Power Save" }}</div>
-                        <div class="settings-field-control">
-                            <select class="settings-input"
-                                    onchange="updateFirmwareSettings({wifi_power_save: this.value})">
-                                <option value="0"
-                                        {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}
-                                        selected
-                                        {{ end }}>{{ t .Localizer "None" }}</option>
-                                <option value="1"
-                                        {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}
-                                        selected
-                                        {{ end }}>{{ t .Localizer "Minimum" }}</option>
-                                <option value="2"
-                                        {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}
-                                        selected
-                                        {{ end }}>{{ t .Localizer "Maximum" }}</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Skip Display Version" }}</div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.SkipDisplayVersion false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({skip_display_version: this.checked})">
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Skip Boot Animation" }}</div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.SkipBootAnimation false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({skip_boot_animation: this.checked})">
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Prefer IPv6" }}</div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.PreferIPv6 false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
-                        </div>
-                    </div>
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "AP Mode (Hotspot)" }}</div>
-                        <div class="settings-field-control">
-                            <input type="checkbox"
-                                   {{ if derefOr .Device.Info.APMode false }}
-                                   checked
-                                   {{ end }}
-                                   onchange="updateFirmwareSettings({ap_mode: this.checked})">
-                            <p class="settings-help settings-note-danger">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                                {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="settings-actions">
-                    <button type="button"
-                            class="w3-button w3-deep-orange"
-                            onclick="rebootDevice()">
-                        <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
-                    </button>
-                </div>
+            <div class="settings-actions">
+                {{ if .AvailableFirmwareVersions }}
+                <button type="button"
+                        class="w3-button w3-blue"
+                        onclick="triggerOTAWithVersion('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Selected Firmware" }}
+                </button>
+                {{ end }}
+                <button type="button"
+                        class="w3-button w3-orange"
+                        onclick="document.getElementById('custom_firmware_file').click();">
+                    <i class="fa-solid fa-file-arrow-up"></i> {{ t .Localizer "Install Custom Firmware" }}
+                </button>
             </div>
-            {{ else if .Device.SupportsHTTPFirmwareCommands }}
-            <div class="settings-card-subsection">
-                <h3>{{ t .Localizer "Live Firmware Settings" }}</h3>
-                <p class="settings-help">
-                    {{ t .Localizer "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll." }}
-                </p>
-                <div class="settings-field-list">
-                    <div class="settings-field-row">
-                        <div class="settings-field-label">{{ t .Localizer "Image URL" }}</div>
-                        <div class="settings-field-control">
-                            <div class="settings-inline-group">
-                                <input type="text"
-                                       id="reported_img_url"
-                                       value="{{ .FirmwareImgURL }}"
-                                       class="settings-input settings-input-wide">
-                                <button type="button"
-                                        class="w3-button w3-deep-orange"
-                                        onclick="confirmImageURLAndReboot()">
-                                    <i class="fa-solid fa-circle-check"></i> {{ t .Localizer "Confirm and Reboot" }}
-                                </button>
-                            </div>
-                            <p class="settings-help settings-note-danger">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                                {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="settings-actions">
-                    <button type="button"
-                            class="w3-button w3-deep-orange"
-                            onclick="rebootDevice()">
-                        <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
-                    </button>
-                </div>
-            </div>
-            {{ end }}
-            <div class="settings-card-subsection">
-                <h3>{{ t .Localizer "Configuration Management" }}</h3>
-                <div class="settings-actions">
-                    <button type="button"
-                            class="w3-button w3-blue"
-                            onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
-                        <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export Configuration" }}
-                    </button>
-                    <button type="button"
-                            class="w3-button w3-orange"
-                            onclick="document.getElementById('import_config_file').click();">
-                        <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
-                    </button>
-                </div>
-            </div>
-        </section>
-        <section class="settings-card" id="section-api">
-            <div class="settings-card-header">
-                <h2>{{ t .Localizer "Advanced Device API" }}</h2>
-            </div>
+        </div>
+        {{ end }}
+        {{ if .Device.SupportsFirmwareFeatures }}
+        <div class="settings-card-subsection">
+            <h3>{{ t .Localizer "Live Firmware Settings" }}</h3>
             <div class="settings-field-list">
                 <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="device_id">{{ t .Localizer "Device ID" }}</label>
-                    </div>
+                    <div class="settings-field-label">{{ t .Localizer "Image URL" }}</div>
                     <div class="settings-field-control">
-                        <input id="device_id"
-                               value="{{ .Device.ID }}"
-                               readonly
-                               class="settings-input">
+                        <div class="settings-inline-group">
+                            <input type="text"
+                                   id="reported_img_url"
+                                   value="{{ .FirmwareImgURL }}"
+                                   class="settings-input settings-input-wide">
+                            <button type="button"
+                                    class="w3-button w3-deep-orange"
+                                    onclick="confirmImageURLAndReboot()">
+                                <i class="fa-solid fa-circle-check"></i> {{ t .Localizer "Confirm and Reboot" }}
+                            </button>
+                        </div>
+                        <p class="settings-help settings-note-danger">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
+                        </p>
                     </div>
                 </div>
                 <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="api_key">{{ t .Localizer "Device API Key" }}</label>
-                    </div>
+                    <div class="settings-field-label">{{ t .Localizer "Hostname" }}</div>
                     <div class="settings-field-control">
-                        <input name="api_key"
-                               id="api_key"
-                               value="{{ .Device.APIKey }}"
-                               oninput="updateExampleCommands()"
-                               class="settings-input settings-input-wide">
+                        <div class="settings-inline-group">
+                            <input type="text"
+                                   id="reported_hostname"
+                                   value="{{ derefOr .Device.Info.Hostname "" }}"
+                                   class="settings-input">
+                            <button type="button"
+                                    class="w3-button w3-green"
+                                    onclick="updateFirmwareSettings({hostname: document.getElementById('reported_hostname').value})">
+                                <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="curl_example">{{ t .Localizer "Example curl Command" }}</label>
-                    </div>
+                    <div class="settings-field-label">{{ t .Localizer "SNTP Server" }}</div>
                     <div class="settings-field-control">
-                        <textarea id="curl_example"
-                                  rows="3"
-                                  readonly
-                                  class="device-example-command-input"></textarea>
+                        <div class="settings-inline-group">
+                            <input type="text"
+                                   id="reported_sntp_server"
+                                   value="{{ derefOr .Device.Info.SNTPServer "" }}"
+                                   class="settings-input">
+                            <button type="button"
+                                    class="w3-button w3-green"
+                                    onclick="updateFirmwareSettings({sntp_server: document.getElementById('reported_sntp_server').value})">
+                                <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Syslog Address" }}</div>
+                    <div class="settings-field-control">
+                        <div class="settings-inline-group">
+                            <input type="text"
+                                   id="reported_syslog_addr"
+                                   value="{{ derefOr .Device.Info.SyslogAddr "" }}"
+                                   class="settings-input">
+                            <button type="button"
+                                    class="w3-button w3-green"
+                                    onclick="updateFirmwareSettings({syslog_addr: document.getElementById('reported_syslog_addr').value})">
+                                <i class="fa-solid fa-check"></i> {{ t .Localizer "Update" }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Swap Colors" }}</div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               {{ if derefOr .Device.Info.SwapColors false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({swap_colors: this.checked})">
+                    </div>
+                </div>
+                {{ if or .Device.HasSpeaker (ne .Device.Info.StartupSound nil) }}
+                <div class="settings-field-row">
                     <div class="settings-field-label">
-                        <label for="pixlet_example">{{ t .Localizer "Example pixlet Command" }}</label>
+                        <label for="startup_sound">{{ t .Localizer "Startup Sound" }}</label>
                     </div>
                     <div class="settings-field-control">
-                        <textarea id="pixlet_example"
-                                  rows="3"
-                                  readonly
-                                  class="device-example-command-input"></textarea>
+                        <input type="checkbox"
+                               id="startup_sound"
+                               {{ if derefOr .Device.Info.StartupSound true }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({startup_sound: this.checked})">
+                        <p class="settings-help">{{ t .Localizer "Plays a short jingle on boot when the device starts up." }}</p>
+                    </div>
+                </div>
+                {{ end }}
+                {{ if .Device.SupportsColorOrder }}
+                {{ $colorOrder := printf "%v" (derefOr .Device.Info.ColorOrder "rgb") }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="color_order">{{ t .Localizer "Color Order" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <select id="color_order"
+                                class="settings-input"
+                                onchange="updateFirmwareSettings({color_order: this.value})">
+                            <option value="rgb" {{ if eq $colorOrder "rgb" }}selected{{ end }}>RGB</option>
+                            <option value="rbg" {{ if eq $colorOrder "rbg" }}selected{{ end }}>RBG</option>
+                            <option value="grb" {{ if eq $colorOrder "grb" }}selected{{ end }}>GRB</option>
+                            <option value="gbr" {{ if eq $colorOrder "gbr" }}selected{{ end }}>GBR</option>
+                            <option value="brg" {{ if eq $colorOrder "brg" }}selected{{ end }}>BRG</option>
+                            <option value="bgr" {{ if eq $colorOrder "bgr" }}selected{{ end }}>BGR</option>
+                        </select>
+                    </div>
+                </div>
+                {{ end }}
+                {{ if eq .Device.Type.Slug "tidbyt_gen2" }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="disable_touch">{{ t .Localizer "Disable Touch Button" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               id="disable_touch"
+                               {{ if derefOr .Device.Info.DisableTouch false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({disable_touch: this.checked})">
+                        <p class="settings-help">{{ t .Localizer "Disables the physical touch button. Requires reboot to take effect." }}</p>
+                    </div>
+                </div>
+                {{ if .Device.Info.TouchBeep }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="touch_beep">{{ t .Localizer "Beep On Touch" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               id="touch_beep"
+                               {{ if derefOr .Device.Info.TouchBeep false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({touch_beep: this.checked})">
+                        <p class="settings-help">{{ t .Localizer "Plays a short tone on the built-in speaker when the touch button is used. Takes effect immediately." }}</p>
+                    </div>
+                </div>
+                {{ end }}
+                {{ end }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "WiFi Power Save" }}</div>
+                    <div class="settings-field-control">
+                        <select class="settings-input"
+                                onchange="updateFirmwareSettings({wifi_power_save: this.value})">
+                            <option value="0"
+                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 0 }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "None" }}</option>
+                            <option value="1"
+                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 1 }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Minimum" }}</option>
+                            <option value="2"
+                                    {{ if eq (derefOr .Device.Info.WifiPowerSave 0) 2 }}
+                                    selected
+                                    {{ end }}>{{ t .Localizer "Maximum" }}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Skip Display Version" }}</div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               {{ if derefOr .Device.Info.SkipDisplayVersion false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({skip_display_version: this.checked})">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Skip Boot Animation" }}</div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               {{ if derefOr .Device.Info.SkipBootAnimation false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({skip_boot_animation: this.checked})">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Prefer IPv6" }}</div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               {{ if derefOr .Device.Info.PreferIPv6 false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({prefer_ipv6: this.checked})">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "AP Mode (Hotspot)" }}</div>
+                    <div class="settings-field-control">
+                        <input type="checkbox"
+                               {{ if derefOr .Device.Info.APMode false }}
+                               checked
+                               {{ end }}
+                               onchange="updateFirmwareSettings({ap_mode: this.checked})">
+                        <p class="settings-help settings-note-danger">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ t .Localizer "Warning: When AP Mode is turned off, the WiFi network cannot be changed without re-flashing the device." }}
+                        </p>
                     </div>
                 </div>
             </div>
-        </section>
-        <input type="hidden" name="notes" value="{{ .Device.Notes }}">
-    </div>
+            <div class="settings-actions">
+                <button type="button"
+                        class="w3-button w3-deep-orange"
+                        onclick="rebootDevice()">
+                    <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
+                </button>
+            </div>
+        </div>
+        {{ else if .Device.SupportsHTTPFirmwareCommands }}
+        <div class="settings-card-subsection">
+            <h3>{{ t .Localizer "Live Firmware Settings" }}</h3>
+            <p class="settings-help">
+                {{ t .Localizer "HTTP firmware commands require firmware version 1.6.5 or later. Commands are delivered on the device's next image poll." }}
+            </p>
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Image URL" }}</div>
+                    <div class="settings-field-control">
+                        <div class="settings-inline-group">
+                            <input type="text"
+                                   id="reported_img_url"
+                                   value="{{ .FirmwareImgURL }}"
+                                   class="settings-input settings-input-wide">
+                            <button type="button"
+                                    class="w3-button w3-deep-orange"
+                                    onclick="confirmImageURLAndReboot()">
+                                <i class="fa-solid fa-circle-check"></i> {{ t .Localizer "Confirm and Reboot" }}
+                            </button>
+                        </div>
+                        <p class="settings-help settings-note-danger">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ t .Localizer "Warning: Entering an incorrect URL can break the device's connection to this server. Fixing this requires re-flashing the device." }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button type="button"
+                        class="w3-button w3-deep-orange"
+                        onclick="rebootDevice()">
+                    <i class="fa-solid fa-power-off"></i> {{ t .Localizer "Reboot Device" }}
+                </button>
+            </div>
+        </div>
+        {{ end }}
+        <div class="settings-card-subsection">
+            <h3>{{ t .Localizer "Configuration Management" }}</h3>
+            <div class="settings-actions">
+                <button type="button"
+                        class="w3-button w3-blue"
+                        onclick="window.location.href='/devices/{{ .Device.ID }}/export_config'">
+                    <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Export Configuration" }}
+                </button>
+                <button type="button"
+                        class="w3-button w3-orange"
+                        onclick="document.getElementById('import_config_file').click();">
+                    <i class="fa-solid fa-upload" aria-hidden="true"></i> {{ t .Localizer "Import Configuration" }}
+                </button>
+            </div>
+        </div>
+    </section>
+    <section class="settings-card" id="section-api">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Advanced Device API" }}</h2>
+        </div>
+        <div class="settings-field-list">
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="device_id">{{ t .Localizer "Device ID" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <input id="device_id"
+                           value="{{ .Device.ID }}"
+                           readonly
+                           class="settings-input">
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="api_key">{{ t .Localizer "Device API Key" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <input name="api_key"
+                           id="api_key"
+                           value="{{ .Device.APIKey }}"
+                           oninput="updateExampleCommands()"
+                           class="settings-input settings-input-wide">
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="curl_example">{{ t .Localizer "Example curl Command" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <textarea id="curl_example"
+                              rows="3"
+                              readonly
+                              class="device-example-command-input"></textarea>
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="pixlet_example">{{ t .Localizer "Example pixlet Command" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <textarea id="pixlet_example"
+                              rows="3"
+                              readonly
+                              class="device-example-command-input"></textarea>
+                </div>
+            </div>
+        </div>
+    </section>
+    <input type="hidden" name="notes" value="{{ .Device.Notes }}">
+</div>
 </form>
 <form action="/devices/{{ .Device.ID }}/import_config"
       method="post"
@@ -1115,5 +1304,247 @@
 
         document.getElementById('device-form').submit();
     }
+
+    let volumeDebounceTimer = null;
+    function sendVolumeToDevice(volume) {
+        if (volumeDebounceTimer) {
+            clearTimeout(volumeDebounceTimer);
+        }
+        volumeDebounceTimer = setTimeout(() => {
+            const formData = new URLSearchParams();
+            formData.append('volume', volume);
+
+            fetch('/devices/{{ .Device.ID }}/update_volume', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData.toString()
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('Failed to update volume');
+                } else {
+                    console.log('Volume updated successfully to', volume);
+                }
+            }).catch(error => {
+                console.error('Unexpected error updating volume:', error);
+            });
+        }, 300);
+    }
+
+    async function triggerDeviceTestSound(deviceId) {
+        const sel = document.getElementById('test_sound_select');
+        const sound = sel ? sel.value : 'default:chime';
+        const volInput = document.getElementById('volume');
+        const vol = volInput ? volInput.value : '';
+        const statusSpan = document.getElementById('test-sound-status');
+        if (statusSpan) {
+            statusSpan.innerText = "{{ t .Localizer "Playing..." }}";
+            statusSpan.style.color = "";
+        }
+        try {
+            const formData = new FormData();
+            formData.append('sound', sound);
+            if (vol !== '') {
+                formData.append('volume', vol);
+            }
+            const resp = await fetch(`/devices/${deviceId}/test_sound`, {
+                method: 'POST',
+                body: formData
+            });
+            if (resp.ok) {
+                if (statusSpan) {
+                    statusSpan.innerText = "✓ {{ t .Localizer "Sent to device" }}";
+                    statusSpan.style.color = "var(--color-success, #28a745)";
+                    setTimeout(() => { if (statusSpan.innerText.includes("Sent")) statusSpan.innerText = ""; }, 3000);
+                }
+            } else {
+                const errText = await resp.text();
+                if (statusSpan) {
+                    statusSpan.innerText = "✗ " + (errText || "Error");
+                    statusSpan.style.color = "var(--color-danger, #dc3545)";
+                }
+            }
+        } catch (err) {
+            if (statusSpan) {
+                statusSpan.innerText = "✗ Network error";
+                statusSpan.style.color = "var(--color-danger, #dc3545)";
+            }
+        }
+    }
+
+    const releaseDataEl = document.getElementById('firmware_releases_data');
+    let releasesMap = {};
+    if (releaseDataEl && releaseDataEl.textContent.trim()) {
+        try {
+            releasesMap = JSON.parse(releaseDataEl.textContent.trim()) || {};
+        } catch (e) {
+            console.error('Failed to parse releases data:', e);
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/\x3c/g, '&lt;')
+            .replace(/\x3e/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function formatMarkdownLine(text) {
+        let escaped = escapeHtml(text);
+        escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+        escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        escaped = escaped.replace(/@([a-zA-Z0-9_-]+)/g, '<a href="https://github.com/$1" target="_blank" rel="noopener noreferrer">@$1</a>');
+        escaped = escaped.replace(/https?:\/\/[^\s<]+/g, function(url) {
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+        });
+        return escaped;
+    }
+
+    function parseReleaseNotes(body, tag, fallbackUrl) {
+        const whatsChanged = [];
+        const newContributors = [];
+        let changelogUrl = '';
+
+        if (body) {
+            const changelogMatch = body.match(/Full Changelog\*?\*?:\s*(https?:\/\/[^\s\)]+)/i);
+            if (changelogMatch) {
+                changelogUrl = changelogMatch[1];
+            }
+
+            const lines = body.split('\n');
+            let currentSection = '';
+            for (let rawLine of lines) {
+                const line = rawLine.trim();
+                if (/^#{1,3}\s*what/i.test(line)) {
+                    currentSection = 'whatsChanged';
+                    continue;
+                } else if (/^#{1,3}\s*new contributors/i.test(line)) {
+                    currentSection = 'newContributors';
+                    continue;
+                } else if (/^#{1,3}\s*/.test(line) || /^\*\*full changelog/i.test(line)) {
+                    currentSection = '';
+                    continue;
+                }
+
+                if (line.startsWith('* ') || line.startsWith('- ')) {
+                    const item = line.substring(2).trim();
+                    if (currentSection === 'newContributors') {
+                        newContributors.push(item);
+                    } else {
+                        whatsChanged.push(item);
+                    }
+                } else if (currentSection === 'whatsChanged' && line.length > 0) {
+                    whatsChanged.push(line);
+                }
+            }
+
+            if (whatsChanged.length === 0 && newContributors.length === 0) {
+                for (let rawLine of lines) {
+                    const line = rawLine.trim();
+                    if (line && !line.startsWith('#') && !/^\*\*full changelog/i.test(line)) {
+                        whatsChanged.push(line.replace(/^[\*\-]\s*/, ''));
+                    }
+                }
+            }
+        }
+
+        if (!changelogUrl) {
+            const defaultRepo = {{ if .Device.Type.IsRaspberryPi }}"tronbyt/tronberry"{{ else }}"tronbyt/firmware-esp32"{{ end }};
+            changelogUrl = fallbackUrl || `https://github.com/${defaultRepo}/releases/tag/${encodeURIComponent(tag)}`;
+        }
+
+        return { whatsChanged, newContributors, changelogUrl };
+    }
+
+    function renderReleaseContent(container, row, release, version) {
+        if (!release || (!release.body && !release.html_url)) {
+            row.style.display = 'none';
+            return;
+        }
+
+        const { whatsChanged, newContributors, changelogUrl } = parseReleaseNotes(
+            release.body || '',
+            version,
+            release.html_url
+        );
+
+        let html = '';
+
+        if (whatsChanged.length > 0) {
+            html += '<h4>{{ t .Localizer "What's Changed" }}</h4><ul>';
+            for (const item of whatsChanged) {
+                html += `<li>${formatMarkdownLine(item)}</li>`;
+            }
+            html += '</ul>';
+        }
+
+        if (newContributors.length > 0) {
+            html += '<h4>{{ t .Localizer "New Contributors" }}</h4><ul>';
+            for (const item of newContributors) {
+                html += `<li>${formatMarkdownLine(item)}</li>`;
+            }
+            html += '</ul>';
+        }
+
+        if (whatsChanged.length === 0 && newContributors.length === 0) {
+            html += '<p class="firmware-no-changes">{{ t .Localizer "No Changes Provided" }}</p>';
+        }
+
+        if (changelogUrl) {
+            html += `<div class="changelog-link-container">
+                <a href="${escapeHtml(changelogUrl)}" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-solid fa-code-compare" aria-hidden="true"></i> {{ t .Localizer "Full Changelog" }}
+                </a>
+            </div>`;
+        }
+
+        if (html.trim() !== '') {
+            container.innerHTML = html;
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+
+    async function renderFirmwareReleaseNotes(version) {
+        const row = document.getElementById('firmware_release_notes_row');
+        const container = document.getElementById('firmware_release_notes');
+        if (!row || !container || !version) return;
+
+        if (releasesMap[version]) {
+            renderReleaseContent(container, row, releasesMap[version], version);
+            return;
+        }
+
+        const defaultRepo = {{ if .Device.Type.IsRaspberryPi }}"tronbyt/tronberry"{{ else }}"tronbyt/firmware-esp32"{{ end }};
+        const defaultFallbackUrl = `https://github.com/${defaultRepo}/releases/tag/${encodeURIComponent(version)}`;
+
+        try {
+            const resp = await fetch(`/devices/{{ .Device.ID }}/firmware/release_notes?version=${encodeURIComponent(version)}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                releasesMap[version] = data;
+                renderReleaseContent(container, row, data, version);
+            } else {
+                renderReleaseContent(container, row, { html_url: defaultFallbackUrl }, version);
+            }
+        } catch (e) {
+            console.error('Failed to fetch release notes:', e);
+            renderReleaseContent(container, row, { html_url: defaultFallbackUrl }, version);
+        }
+    }
+
+    (function() {
+        const verSelect = document.getElementById('firmware_version_select');
+        if (verSelect && verSelect.value) {
+            renderFirmwareReleaseNotes(verSelect.value);
+        }
+    })();
 </script>
+<script id="firmware_releases_data" type="application/json">{{ json .FirmwareReleases }}</script>
 {{ end }}

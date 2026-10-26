@@ -167,16 +167,13 @@ func (s *Server) doUpdateCheck() {
 		}
 	}()
 
-	var latestVersion, releaseURL string
+	var latestVersion string
 
 	switch resp.StatusCode {
 	case http.StatusNotModified:
-		// Load persisted version info only if both are present
 		tag, errTag := s.getSetting("system_update_latest_tag")
-		url, errURL := s.getSetting("system_update_latest_url")
-		if errTag == nil && errURL == nil && tag != "" && url != "" {
+		if errTag == nil && tag != "" {
 			latestVersion = tag
-			releaseURL = url
 		}
 	case http.StatusOK:
 		// Save new ETag
@@ -189,20 +186,14 @@ func (s *Server) doUpdateCheck() {
 
 		var release struct {
 			TagName string `json:"tag_name"`
-			HTMLURL string `json:"html_url"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 			return
 		}
 		latestVersion = release.TagName
-		releaseURL = release.HTMLURL
 
-		// Persist version info
 		if err := s.setSetting("system_update_latest_tag", latestVersion); err != nil {
 			slog.Error("Failed to save system update latest tag", "error", err)
-		}
-		if err := s.setSetting("system_update_latest_url", releaseURL); err != nil {
-			slog.Error("Failed to save system update latest URL", "error", err)
 		}
 	default:
 		return
@@ -224,7 +215,7 @@ func (s *Server) doUpdateCheck() {
 		if semver.Compare(latestVersion, currentVersion) > 0 {
 			slog.Info("Update available", "current", version.Version, "latest", latestVersion)
 			s.UpdateAvailable = true
-			s.LatestReleaseURL = releaseURL
+			s.LatestReleaseURL = version.UpdateInstructionsURL()
 		}
 	}
 }

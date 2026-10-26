@@ -151,6 +151,53 @@ func (dt DeviceType) String() string {
 	}
 }
 
+type AudioCapability string
+
+const (
+	AudioCapNone  AudioCapability = "none"
+	AudioCapPiezo AudioCapability = "piezo"
+	AudioCapFull  AudioCapability = "full"
+)
+
+// DefaultAudioCapability returns the default audio hardware capability for the device type.
+func (dt DeviceType) DefaultAudioCapability() AudioCapability {
+	switch dt {
+	case DeviceTidbytGen2:
+		return AudioCapPiezo
+	case DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare:
+		return AudioCapFull
+	default:
+		return AudioCapNone
+	}
+}
+
+// HasSpeaker reports whether the device type has built-in audio hardware (e.g. Tidbyt Gen2 buzzer or Raspberry Pi audio).
+func (dt DeviceType) HasSpeaker() bool {
+	return dt.DefaultAudioCapability() != AudioCapNone
+}
+
+// SupportsAudio reports whether the device type can support audio capabilities
+// (either built-in hardware or user-configured hardware on DIY boards).
+// Closed commercial hardware lacking audio components (such as Tidbyt Gen 1 and Pixoticker) returns false.
+func (dt DeviceType) SupportsAudio() bool {
+	switch dt {
+	case DeviceTidbytGen1, DevicePixoticker:
+		return false
+	default:
+		return true
+	}
+}
+
+// IsRaspberryPi reports whether the device type is a Raspberry Pi variant running Tronberry.
+func (dt DeviceType) IsRaspberryPi() bool {
+	switch dt {
+	case DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare:
+		return true
+	default:
+		return false
+	}
+}
+
 // Slug returns the URL-friendly slug for the DeviceType.
 func (dt DeviceType) Slug() string {
 	if s, ok := DeviceTypeToString[dt]; ok {
@@ -468,6 +515,7 @@ type DeviceInfo struct {
 	ColorOrder         *string      `json:"color_order"`
 	DisableTouch       *bool        `json:"disable_touch"`
 	TouchBeep          *bool        `json:"touch_beep"`
+	StartupSound       *bool        `json:"startup_sound"`
 	ImageURL           *string      `json:"image_url"`
 	Hostname           *string      `json:"hostname"`
 	SNTPServer         *string      `json:"sntp_server"`
@@ -618,12 +666,16 @@ type App struct {
 	RecurrenceStartDate *string        `json:"recurrence_start_date"` // YYYY-MM-DD
 	RecurrenceEndDate   *string        `json:"recurrence_end_date"`   // YYYY-MM-DD
 
-	Config            JSONMap      `gorm:"type:text"           json:"config"`
-	EmptyLastRender   bool         `json:"empty_last_render"`
-	RenderMessages    StringSlice  `gorm:"type:text"           json:"render_messages"`
-	AutoPin           bool         `json:"auto_pin"`
-	ColorFilter       *ColorFilter `json:"color_filter"`
-	ShowFullAnimation *bool        `json:"show_full_animation"`
+	Config                   JSONMap      `gorm:"type:text"                  json:"config"`
+	EmptyLastRender          bool         `json:"empty_last_render"`
+	RenderMessages           StringSlice  `gorm:"type:text"                  json:"render_messages"`
+	AutoPin                  bool         `json:"auto_pin"`
+	ColorFilter              *ColorFilter `json:"color_filter"`
+	ShowFullAnimation        *bool        `json:"show_full_animation"`
+	NotificationSound        *string      `json:"notification_sound"`
+	NotificationSoundTrigger string       `json:"notification_sound_trigger"` // "every_display" or "on_change"
+	LastRenderHash           string       `json:"last_render_hash"`
+	LastSoundAt              *time.Time   `json:"last_sound_at,omitempty"`
 }
 
 type Device struct {
@@ -677,9 +729,19 @@ type Device struct {
 	RequireAPIKey    bool   `json:"require_api_key"`
 	PendingUpdateURL string `json:"pending_update_url,omitempty"`
 
+	// Audio
+	AudioCapability *AudioCapability `gorm:"type:text"                   json:"audio_capability,omitempty"`
+	Volume          int              `gorm:"default:100"                 json:"volume"`
+	Muted           bool             `gorm:"default:false"               json:"muted"`
+	NightModeMute   bool             `gorm:"default:false"               json:"night_mode_mute"`
+	NightModeVolume *int             `json:"night_mode_volume,omitempty"`
+	DimModeMute     bool             `gorm:"default:false"               json:"dim_mode_mute"`
+	DimModeVolume   *int             `json:"dim_mode_volume,omitempty"`
+
 	// HTTP device commands (delivered via /next response headers)
 	PendingImageURL string `json:"pending_image_url,omitempty"`
 	PendingReboot   bool   `json:"pending_reboot,omitempty"`
+	PendingSound    string `json:"pending_sound,omitempty"`
 
 	Apps []*App `gorm:"foreignKey:DeviceID;references:ID" json:"apps"`
 }
@@ -733,16 +795,18 @@ func (dt DeviceType) SupportsFirmware() bool {
 	}
 }
 
+// SupportsOTA reports whether the device type supports over-the-air firmware updates.
 func (dt DeviceType) SupportsOTA() bool {
 	switch dt {
 	// DevicePixoticker is intentionally omitted (not enough flash memory)
-	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceMatrixPortalWide, DeviceWaveshareS3:
+	case DeviceTidbytGen1, DeviceTidbytGen2, DeviceTronbytS3, DeviceTronbytS3Wide, DeviceMatrixPortal, DeviceMatrixPortalWS, DeviceMatrixPortalSquare, DeviceMatrixPortalWide, DeviceWaveshareS3, DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare:
 		return true
 	default:
 		return false
 	}
 }
 
+// FirmwareFilename returns the standard binary filename for the device type.
 func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 	switch dt {
 	case DeviceTidbytGen1:
@@ -768,6 +832,8 @@ func (dt DeviceType) FirmwareFilename(swapColors bool) string {
 		return "matrixportal-s3-wide.bin"
 	case DeviceWaveshareS3:
 		return "waveshare-s3.bin"
+	case DeviceRaspberryPi, DeviceRaspberryPiWide, DeviceRaspberryPiSquare:
+		return "tronberry"
 	default:
 		return ""
 	}
@@ -1068,6 +1134,7 @@ func (d *Device) GetEffectiveBrightness() int {
 	return brightness
 }
 
+// OTACapable reports whether the device instance supports over-the-air firmware updates.
 func (d *Device) OTACapable() bool {
 	if !d.Type.SupportsOTA() {
 		return false
@@ -1077,6 +1144,9 @@ func (d *Device) OTACapable() bool {
 		return false
 	}
 	if v == "dev" {
+		return true
+	}
+	if d.Type.IsRaspberryPi() {
 		return true
 	}
 	if !strings.HasPrefix(v, "v") {
@@ -1169,4 +1239,81 @@ func (d Device) BrightnessScaleMap() map[int]int {
 // BrightnessUIScale returns the current brightness level (0-5) for the UI.
 func (d Device) BrightnessUIScale() int {
 	return d.Brightness.UIScale(d.BrightnessScaleMap())
+}
+
+// SupportsAudio reports whether the device type can support audio capabilities.
+func (d Device) SupportsAudio() bool {
+	return d.Type.SupportsAudio()
+}
+
+// GetAudioCapability returns the effective audio capability for the device:
+// explicitly configured setting if present, otherwise default for device type.
+func (d Device) GetAudioCapability() AudioCapability {
+	if d.AudioCapability != nil && *d.AudioCapability != "" {
+		return *d.AudioCapability
+	}
+	return d.Type.DefaultAudioCapability()
+}
+
+// HasSpeaker reports whether the device has speaker or buzzer audio hardware.
+func (d Device) HasSpeaker() bool {
+	return d.GetAudioCapability() != AudioCapNone
+}
+
+// IsMuted reports whether sound notifications are currently suppressed on the device
+// (either manually muted or muted during active night mode or dim mode).
+func (d Device) IsMuted() bool {
+	if d.Muted {
+		return true
+	}
+	if d.NightModeMute && d.GetNightModeIsActive() {
+		return true
+	}
+	if d.DimModeMute && d.GetDimModeIsActive() {
+		return true
+	}
+	return false
+}
+
+// clampVolume clamps a volume level to the valid range [0, 100].
+func clampVolume(v int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > 100 {
+		return 100
+	}
+	return v
+}
+
+// GetVolume returns the device sound volume (0-100).
+func (d Device) GetVolume() int {
+	return clampVolume(d.Volume)
+}
+
+// GetEffectiveVolume returns the device sound volume (0-100), taking active Night Mode or Dim Mode into account.
+func (d Device) GetEffectiveVolume() int {
+	if d.GetNightModeIsActive() && d.NightModeVolume != nil {
+		return clampVolume(*d.NightModeVolume)
+	}
+	if d.GetDimModeIsActive() && d.DimModeVolume != nil {
+		return clampVolume(*d.DimModeVolume)
+	}
+	return d.GetVolume()
+}
+
+// GetNightModeVolume returns the configured Night Mode volume (0-100), or falls back to GetVolume() if unset.
+func (d Device) GetNightModeVolume() int {
+	if d.NightModeVolume != nil {
+		return clampVolume(*d.NightModeVolume)
+	}
+	return d.GetVolume()
+}
+
+// GetDimModeVolume returns the configured Dim Mode volume (0-100), or falls back to GetVolume() if unset.
+func (d Device) GetDimModeVolume() int {
+	if d.DimModeVolume != nil {
+		return clampVolume(*d.DimModeVolume)
+	}
+	return d.GetVolume()
 }

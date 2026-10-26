@@ -335,7 +335,7 @@ func (s *Server) handleRegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The first admin answers the app usage sharing question during setup.
-	if count == 0 && s.Config.NibletCloudURL != "" {
+	if count == 0 && s.isNibletCloudEnabled() {
 		if err := s.saveUsageConsent(r, r.FormValue("usage_sharing") == "true"); err != nil {
 			slog.Error("Failed to save app usage sharing choice", "error", err)
 		}

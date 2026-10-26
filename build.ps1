@@ -12,6 +12,8 @@ $env:CGO_ENABLED = "1" # Required for libwebp and sqlite
 # 2. Get Version Info
 $VERSION = "dev"
 $COMMIT = "unknown"
+$BRANCH = ""
+$REPO_URL = ""
 $DATE = Get-Date -Format "yyyy-MM-dd"
 
 if (Test-Path .git) {
@@ -19,10 +21,18 @@ if (Test-Path .git) {
         Write-Error "git not found, but .git directory exists. Cannot determine version information."
         exit 1
     }
-    $COMMIT = $(git rev-parse --short HEAD)
+    $COMMIT = $(git rev-parse HEAD)
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Failed to get git commit hash. Using default 'unknown'."
         $COMMIT = "unknown"
+    }
+    $BRANCH = $(git rev-parse --abbrev-ref HEAD)
+    if ($LASTEXITCODE -ne 0 -or $BRANCH -eq "HEAD") {
+        $BRANCH = ""
+    }
+    $REPO_URL = $(git config --get remote.origin.url)
+    if ($LASTEXITCODE -ne 0) {
+        $REPO_URL = ""
     }
     $VERSION = $(git describe --tags --always --dirty)
     if ($LASTEXITCODE -ne 0) {
@@ -37,7 +47,7 @@ Write-Host "Building Tronbyt Server ($VERSION)..." -ForegroundColor Green
 go mod download
 
 # 4. Build 'tronbyt-server'
-$LDFLAGS = "-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=$VERSION' -X 'tronbyt-server/internal/version.Commit=$COMMIT' -X 'tronbyt-server/internal/version.BuildDate=$DATE'"
+$LDFLAGS = "-w -s -extldflags '-static' -X 'tronbyt-server/internal/version.Version=$VERSION' -X 'tronbyt-server/internal/version.Commit=$COMMIT' -X 'tronbyt-server/internal/version.Branch=$BRANCH' -X 'tronbyt-server/internal/version.RepoURL=$REPO_URL' -X 'tronbyt-server/internal/version.BuildDate=$DATE'"
 
 go build -ldflags="$LDFLAGS" -tags gzip_fonts -o tronbyt-server.exe ./cmd/server
 

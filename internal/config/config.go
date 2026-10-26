@@ -35,6 +35,11 @@ type Settings struct {
 	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
 	AltSvcMode             string `env:"ALT_SVC_MODE"             envDefault:"external"` // "internal" or "external"
 
+	// Multi-Chunk Buffer Limits (bytes)
+	MaxChunkSizeESP int `env:"TRONBYT_MAX_CHUNK_SIZE_ESP" envDefault:"160000"`
+	MaxChunkSizeS3  int `env:"TRONBYT_MAX_CHUNK_SIZE_S3"  envDefault:"450000"`
+	MaxChunkSizeRPi int `env:"TRONBYT_MAX_CHUNK_SIZE_RPI" envDefault:"5242880"`
+
 	// OIDC Configuration
 	OIDCEnabled          bool   `env:"OIDC_ENABLED"`
 	OIDCIssuerURL        string `env:"OIDC_ISSUER_URL"`
