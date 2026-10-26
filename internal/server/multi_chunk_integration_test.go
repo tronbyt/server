@@ -689,10 +689,10 @@ func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 
 	// Create 40 frames of high-entropy noise animation (> 3,000 bytes WebP)
 	frames := make([]*image.RGBA, 40)
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		img := image.NewRGBA(image.Rect(0, 0, 64, 32))
-		for y := 0; y < 32; y++ {
-			for x := 0; x < 64; x++ {
+		for y := range 32 {
+			for x := range 64 {
 				img.SetRGBA(x, y, color.RGBA{
 					R: uint8((x*3 + i*11) % 256),
 					G: uint8((y*5 + i*13) % 256),
@@ -773,10 +773,10 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 
 	// Create a test animated webp file for a static webp/starlark app
 	frames := make([]*image.RGBA, 40)
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		img := image.NewRGBA(image.Rect(0, 0, 64, 32))
-		for y := 0; y < 32; y++ {
-			for x := 0; x < 64; x++ {
+		for y := range 32 {
+			for x := range 64 {
 				img.SetRGBA(x, y, color.RGBA{
 					R: uint8((x*5 + i*13) % 256),
 					G: uint8((y*7 + i*17) % 256),

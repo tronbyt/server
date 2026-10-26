@@ -206,7 +206,7 @@ func SplitFramesIntoChunksWithDuration(frames []*image.RGBA, fps int, maxChunkSi
 		valid := true
 		candidateChunks := make([]RenderChunk, k)
 
-		for i := 0; i < k; i++ {
+		for i := range k {
 			cStart := (i * totalFrames) / k
 			cEnd := ((i + 1) * totalFrames) / k
 			cSlice := frames[cStart:cEnd]
