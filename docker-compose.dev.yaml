@@ -16,19 +16,21 @@ services:
     environment:
       - PUID=${UID:-1000}
       - PGID=${GID:-${UID:-1000}}
+      - ENABLE_PPROF=true
       - SYSTEM_APPS_REPO
       - PRODUCTION
       - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
-      - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
+      - SCREENY_STUDIO_URL
+      - SCREENY_FPS
+      - SCREENY_MAX_WEBP_BYTES
+      - SCREENY_MAX_WEBP_BYTES_ESP
+      - SCREENY_MAX_WEBP_BYTES_RPI
+      - SCREENY_SCALE_FILTER
       - TRONBYT_BRANCH
       - TRONBYT_REPO_URL
       - TRONBYT_COMMIT
-      - NIBLET_CLOUD_URL
-      - MAX_REPO_SIZE_MB
-      - ENABLE_PPROF=${ENABLE_PPROF:-true}
-
 
 volumes:
   go_modules:

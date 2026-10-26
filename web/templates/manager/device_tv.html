@@ -119,7 +119,7 @@
                      style="background: none;
                             border: none;
                             padding: 10px">
-                    <img src="/devices/{{ $.Device.ID }}/installations/{{ .Iname }}/preview"
+                    <img src="/devices/{{ $.Device.ID }}/installations/{{ .Iname }}/preview?t={{ if .LastRender.IsZero }}0{{ else }}{{ .LastRender.UnixNano }}{{ end }}"
                          style="width: 100%;
                                 aspect-ratio: {{ panelAspect $.Device.Type }};
                                 image-rendering: pixelated;

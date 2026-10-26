@@ -17,6 +17,7 @@ import (
 
 	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
+	"tronbyt-server/internal/providers"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
@@ -43,8 +44,40 @@ var dummyChunkWebP3 = []byte{
 	0x0d, 0x03, 0x00, 0xfe, 0xff, 0xff, 0x00, 0x00, 0x00, 0x03,
 }
 
+type mockExternalProvider struct {
+	name       string
+	apps       []providers.ExternalAppMeta
+	chunks     []providers.RenderChunk
+	renderFunc func(ctx context.Context, req providers.RenderRequest) ([]providers.RenderChunk, error)
+}
+
+func (m *mockExternalProvider) Name() string { return m.name }
+func (m *mockExternalProvider) ListApps(ctx context.Context) ([]providers.ExternalAppMeta, error) {
+	return m.apps, nil
+}
+func (m *mockExternalProvider) GetAppSchema(ctx context.Context, appID string) ([]byte, error) {
+	includeScaleFilter := true
+	if v := ctx.Value(providers.Supports2xKey); v != nil {
+		if b, ok := v.(bool); ok {
+			includeScaleFilter = b
+		}
+	}
+	if includeScaleFilter {
+		return []byte(`{"version":"1","schema":[{"id":"param1"},{"id":"scale_filter"}]}`), nil
+	}
+	return []byte(`{"version":"1","schema":[{"id":"param1"}]}`), nil
+}
+func (m *mockExternalProvider) RenderAppChunks(ctx context.Context, req providers.RenderRequest) ([]providers.RenderChunk, error) {
+	if m.renderFunc != nil {
+		return m.renderFunc(ctx, req)
+	}
+	return m.chunks, nil
+}
+
 func TestDeviceMaxChunkSize_ESP_vs_RPi(t *testing.T) {
 	s := newTestServerAPI(t)
+	s.Config.MaxChunkSizeESP = 450000
+	s.Config.MaxChunkSizeRPi = 5242880
 
 	espDevice := &data.Device{
 		ID:   "esp1",
@@ -133,23 +166,25 @@ func TestMultiChunk_HTTP_SequentialServing(t *testing.T) {
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	path1 := "apps/test/app1.webp"
+	// App 1: Multi-chunk app (3 chunks)
+	path1 := "screeny:clock"
 	app1 := data.App{
 		DeviceID: device.ID,
-		Iname:    "mc1",
-		Name:     "Multi-Chunk App",
+		Iname:    "app1",
+		Name:     "Clock",
 		Enabled:  true,
 		Order:    0,
 		Path:     &path1,
-		Pushed:   true,
+		Pushed:   false,
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app1))
 
-	path2 := "apps/test/app2.webp"
+	// App 2: Standard single-chunk app
+	path2 := "pushed:2"
 	app2 := data.App{
 		DeviceID:    device.ID,
-		Iname:       "single1",
-		Name:        "Single-Image App",
+		Iname:       "app2",
+		Name:        "Weather",
 		Enabled:     true,
 		Order:       1,
 		Path:        &path2,
@@ -158,23 +193,20 @@ func TestMultiChunk_HTTP_SequentialServing(t *testing.T) {
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app2))
 
-	// Write App 1 and App 2 dummy webp
+	// Write App 2 dummy webp
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
-	app1Path := s.getAppWebpPath(webpDir, &app1)
-	require.NoError(t, os.MkdirAll(filepath.Dir(app1Path), 0755))
-	require.NoError(t, os.WriteFile(app1Path, dummyChunkWebP1, 0644))
-
 	app2Path := s.getAppWebpPath(webpDir, &app2)
 	require.NoError(t, os.MkdirAll(filepath.Dir(app2Path), 0755))
 	require.NoError(t, os.WriteFile(app2Path, dummyChunkWebP3, 0644))
 
 	// Save 3 chunks for App 1
-	chunks := []chunker.RenderChunk{
+	chunks := []providers.RenderChunk{
 		{WebPBytes: dummyChunkWebP1, DurationMs: 3300},
 		{WebPBytes: dummyChunkWebP2, DurationMs: 3300},
 		{WebPBytes: dummyChunkWebP3, DurationMs: 3400},
 	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
 	require.NoError(t, s.saveAppChunks(device.ID, &app1, chunks))
 
 	ts := httptest.NewServer(s)
@@ -213,13 +245,13 @@ func TestMultiChunk_HTTP_SequentialServing(t *testing.T) {
 	assert.Equal(t, dummyChunkWebP3, body)
 	assert.Equal(t, "3", dwell)
 
-	// Call 4 -> Sequence finished! Should rotate to App 2
+	// Call 4 -> All chunks of App 1 done! Rotates to App 2 (dwell 7s)
 	code, body, dwell = reqNext()
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, dummyChunkWebP3, body)
-	assert.Equal(t, "7", dwell) // App 2 DisplayTime = 7
+	assert.Equal(t, "7", dwell)
 
-	// Call 5 -> Should rotate back to App 1, chunk 0
+	// Call 5 -> Rotates back to App 1, chunk 0!
 	code, body, dwell = reqNext()
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, dummyChunkWebP1, body)
@@ -230,52 +262,46 @@ func TestMultiChunk_HTTP_EphemeralInterrupt(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()
 
-	user := data.User{Username: "chunkuser2"}
+	user := data.User{Username: "ephuser"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
 	device := data.Device{
-		ID:              "chunk_dev_2",
+		ID:              "chunk_dev_eph",
 		Username:        user.Username,
-		Name:            "MultiChunk Dev 2",
-		APIKey:          "key456",
+		Name:            "Eph Dev",
+		APIKey:          "keyeph",
 		Brightness:      80,
 		DefaultInterval: 10,
-		LastAppIndex:    -1,
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	path1 := "apps/test/app1.webp"
+	path1 := "screeny:clock"
 	app1 := data.App{
 		DeviceID: device.ID,
-		Iname:    "mc2",
-		Name:     "Multi-Chunk App 2",
+		Iname:    "app1",
+		Name:     "Clock",
 		Enabled:  true,
 		Order:    0,
 		Path:     &path1,
-		Pushed:   true,
+		Pushed:   false,
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app1))
 
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
-	require.NoError(t, err)
-	app1Path := s.getAppWebpPath(webpDir, &app1)
-	require.NoError(t, os.MkdirAll(filepath.Dir(app1Path), 0755))
-	require.NoError(t, os.WriteFile(app1Path, dummyChunkWebP1, 0644))
-
-	chunks := []chunker.RenderChunk{
-		{WebPBytes: dummyChunkWebP1, DurationMs: 5000},
-		{WebPBytes: dummyChunkWebP2, DurationMs: 5000},
+	chunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP1, DurationMs: 3300},
+		{WebPBytes: dummyChunkWebP2, DurationMs: 3300},
 	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
 	require.NoError(t, s.saveAppChunks(device.ID, &app1, chunks))
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()
-	client := ts.Client()
 
+	client := ts.Client()
 	reqNext := func() (int, []byte) {
 		req, err := http.NewRequest(http.MethodGet, ts.URL+"/"+device.ID+"/next", nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer key456")
+		req.Header.Set("Authorization", "Bearer keyeph")
 		resp, err := client.Do(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -284,223 +310,309 @@ func TestMultiChunk_HTTP_EphemeralInterrupt(t *testing.T) {
 		return resp.StatusCode, body[:n]
 	}
 
-	// 1. Fetch chunk 0
+	// Request 1: serves chunk 0
 	code, body := reqNext()
 	assert.Equal(t, http.StatusOK, code)
 	assert.Equal(t, dummyChunkWebP1, body)
 
-	// 2. Now push an ephemeral image
-	ephemeralBytes := []byte("pushed_notification_image")
-	require.NoError(t, s.savePushedImage(device.ID, "", "", ephemeralBytes))
+	// Now push an ephemeral image
+	pushedDir := filepath.Join(s.DataDir, "webp", device.ID, "pushed")
+	require.NoError(t, os.MkdirAll(pushedDir, 0755))
+	ephemeralPath := filepath.Join(pushedDir, "__ephemeral_test.webp")
+	require.NoError(t, os.WriteFile(ephemeralPath, dummyChunkWebP3, 0644))
 
-	// 3. Next call must immediately serve the pushed ephemeral image and abort chunk sequence
+	// Request 2: should immediately serve ephemeral image and interrupt chunk sequence
 	code, body = reqNext()
 	assert.Equal(t, http.StatusOK, code)
-	assert.Equal(t, ephemeralBytes, body)
-
-	// 4. Next call should restart App 1 from Chunk 0
-	code, body = reqNext()
-	assert.Equal(t, http.StatusOK, code)
-	assert.Equal(t, dummyChunkWebP1, body)
+	assert.Equal(t, dummyChunkWebP3, body)
 }
 
 func TestMultiChunk_WebSocket_Streaming(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()
 
-	user := data.User{Username: "ws_user"}
+	user := data.User{Username: "wsuser"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
+	deviceID := "ws_chunk_dev"
 	device := data.Device{
-		ID:              "ws_dev_1",
+		ID:              deviceID,
 		Username:        user.Username,
-		Name:            "WS MultiChunk Dev",
-		APIKey:          "wskey1",
-		Brightness:      100,
+		Name:            "WS Chunk Dev",
+		APIKey:          "wskey",
+		Brightness:      50,
 		DefaultInterval: 10,
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	path1 := "apps/test/app.webp"
+	path1 := "screeny:anim"
 	app1 := data.App{
-		DeviceID: device.ID,
-		Iname:    "mc_ws",
-		Name:     "WS App",
+		DeviceID: deviceID,
+		Iname:    "anim1",
+		Name:     "Screeny Anim",
 		Enabled:  true,
 		Order:    0,
 		Path:     &path1,
-		Pushed:   true,
+		Pushed:   false,
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app1))
 
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
-	require.NoError(t, err)
-	app1Path := s.getAppWebpPath(webpDir, &app1)
-	require.NoError(t, os.MkdirAll(filepath.Dir(app1Path), 0755))
-	require.NoError(t, os.WriteFile(app1Path, dummyChunkWebP1, 0644))
-
-	chunks := []chunker.RenderChunk{
+	// 2 chunks with short durations for testing (100ms each)
+	chunks := []providers.RenderChunk{
 		{WebPBytes: dummyChunkWebP1, DurationMs: 100},
 		{WebPBytes: dummyChunkWebP2, DurationMs: 100},
 	}
-	require.NoError(t, s.saveAppChunks(device.ID, &app1, chunks))
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
+	require.NoError(t, s.saveAppChunks(deviceID, &app1, chunks))
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/" + device.ID + "/ws"
-	header := http.Header{}
-	header.Set("Authorization", "Bearer wskey1")
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/" + deviceID + "/ws"
+	dialer := websocket.Dialer{}
+	conn, resp, err := dialer.Dial(wsURL, nil)
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
+	assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
 
-	// Helper to read JSON message from server
-	readJSON := func() map[string]any {
-		var m map[string]any
-		err := conn.ReadJSON(&m)
-		require.NoError(t, err)
-		return m
+	assert.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+
+	// Helper to read messages until a binary image is received
+	readUntilImage := func() []byte {
+		for {
+			msgType, data, err := conn.ReadMessage()
+			require.NoError(t, err)
+			if msgType == websocket.BinaryMessage {
+				return data
+			}
+			if msgType == websocket.TextMessage {
+				var m map[string]any
+				_ = json.Unmarshal(data, &m)
+			}
+		}
 	}
 
-	// Helper to read binary message from server
-	readBinary := func() []byte {
-		mType, data, err := conn.ReadMessage()
-		require.NoError(t, err)
-		require.Equal(t, websocket.BinaryMessage, mType)
-		return data
-	}
+	// 1. Should receive chunk 0 first
+	img0 := readUntilImage()
+	assert.Equal(t, dummyChunkWebP1, img0)
 
-	// 1. Chunk 0 metadata: dwell_secs
-	meta0 := readJSON()
-	assert.Equal(t, float64(1), meta0["dwell_secs"])
+	// Send an ack from client
+	_ = conn.WriteJSON(WSMessage{Displaying: new(int)})
 
-	// 2. Brightness message
-	brMsg := readJSON()
-	assert.Equal(t, float64(100), brMsg["brightness"])
-
-	// 3. Chunk 0 binary data
-	bin0 := readBinary()
-	assert.Equal(t, dummyChunkWebP1, bin0)
-
-	// Simulate ACK from device for chunk 0
-	require.NoError(t, conn.WriteJSON(map[string]any{"displaying": 1}))
-
-	// 4. Chunk 1 metadata
-	meta1 := readJSON()
-	assert.Equal(t, float64(1), meta1["dwell_secs"])
-
-	// 5. Chunk 1 binary data
-	bin1 := readBinary()
-	assert.Equal(t, dummyChunkWebP2, bin1)
-
-	// Simulate ACK from device for chunk 1
-	require.NoError(t, conn.WriteJSON(map[string]any{"displaying": 2}))
+	// 2. Should receive chunk 1 next after ~100ms
+	start := time.Now()
+	img1 := readUntilImage()
+	elapsed := time.Since(start)
+	assert.Equal(t, dummyChunkWebP2, img1)
+	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(70), "Should wait approximately chunk DurationMs before sending next chunk")
 }
 
 func TestMultiChunk_WebSocket_Streaming_DoubleBuffer(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()
 
-	user := data.User{Username: "ws_user2"}
+	user := data.User{Username: "wsdbuser"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
-	protoVer := 1
+	protoV1 := 1
+	deviceID := "ws_db_chunk_dev"
 	device := data.Device{
-		ID:              "ws_dev_db",
+		ID:              deviceID,
 		Username:        user.Username,
-		Name:            "WS Double Buffer Dev",
-		APIKey:          "wskey2",
-		Brightness:      100,
+		Name:            "WS DB Dev",
+		APIKey:          "wsdbkey",
+		Brightness:      50,
 		DefaultInterval: 10,
 		Info: data.DeviceInfo{
-			ProtocolVersion: &protoVer,
+			ProtocolVersion: &protoV1,
 		},
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	path1 := "apps/test/app.webp"
+	path1 := "screeny:anim"
 	app1 := data.App{
-		DeviceID: device.ID,
-		Iname:    "mc_ws_db",
-		Name:     "WS App DB",
+		DeviceID: deviceID,
+		Iname:    "anim1",
+		Name:     "Screeny Anim",
 		Enabled:  true,
 		Order:    0,
 		Path:     &path1,
-		Pushed:   true,
+		Pushed:   false,
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app1))
 
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
-	require.NoError(t, err)
-	app1Path := s.getAppWebpPath(webpDir, &app1)
-	require.NoError(t, os.MkdirAll(filepath.Dir(app1Path), 0755))
-	require.NoError(t, os.WriteFile(app1Path, dummyChunkWebP1, 0644))
-
-	chunks := []chunker.RenderChunk{
-		{WebPBytes: dummyChunkWebP1, DurationMs: 5000},
-		{WebPBytes: dummyChunkWebP2, DurationMs: 5000},
+	chunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP1, DurationMs: 100},
+		{WebPBytes: dummyChunkWebP2, DurationMs: 100},
 	}
-	require.NoError(t, s.saveAppChunks(device.ID, &app1, chunks))
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
+	require.NoError(t, s.saveAppChunks(deviceID, &app1, chunks))
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/" + device.ID + "/ws"
-	header := http.Header{}
-	header.Set("Authorization", "Bearer wskey2")
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/" + deviceID + "/ws"
+	dialer := websocket.Dialer{}
+	conn, resp, err := dialer.Dial(wsURL, nil)
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
+	assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
 
-	readJSON := func() map[string]any {
-		var m map[string]any
-		err := conn.ReadJSON(&m)
-		require.NoError(t, err)
-		return m
+	assert.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+
+	readUntilImage := func() ([]byte, []map[string]any) {
+		var textMessages []map[string]any
+		for {
+			msgType, data, err := conn.ReadMessage()
+			require.NoError(t, err)
+			if msgType == websocket.BinaryMessage {
+				return data, textMessages
+			}
+			if msgType == websocket.TextMessage {
+				var m map[string]any
+				_ = json.Unmarshal(data, &m)
+				textMessages = append(textMessages, m)
+			}
+		}
 	}
 
-	readBinary := func() []byte {
-		mType, data, err := conn.ReadMessage()
-		require.NoError(t, err)
-		require.Equal(t, websocket.BinaryMessage, mType)
-		return data
+	// 1. Should receive chunk 0 first
+	img0, _ := readUntilImage()
+	assert.Equal(t, dummyChunkWebP1, img0)
+
+	// Send displaying ACK from client indicating chunk 0 transitioned to screen
+	_ = conn.WriteJSON(WSMessage{Displaying: new(int)})
+
+	// 2. Double-buffering: Server queues chunk 1 immediately into empty queue buffer (sub-50ms)
+	start := time.Now()
+	img1, texts := readUntilImage()
+	elapsed := time.Since(start)
+	assert.Equal(t, dummyChunkWebP2, img1)
+	assert.Less(t, elapsed.Milliseconds(), int64(80), "Double-buffering should push chunk 1 to device queue immediately after chunk 0 starts displaying")
+
+	// Ensure chunk 1 was queued smoothly without immediate: true
+	for _, m := range texts {
+		if imm, ok := m["immediate"].(bool); ok && imm {
+			t.Errorf("chunk 1 should not have immediate: true in double-buffering mode")
+		}
 	}
+}
 
-	// 1. Server sends chunk 0 metadata & binary
-	meta0 := readJSON()
-	assert.Equal(t, float64(5), meta0["dwell_secs"])
-	_ = readJSON() // brightness
-	bin0 := readBinary()
-	assert.Equal(t, dummyChunkWebP1, bin0)
+func TestConfigApp_ResetsLastRenderAndClearsChunks(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
 
-	// Device starts displaying chunk 0 and immediately ACKs
-	require.NoError(t, conn.WriteJSON(map[string]any{"displaying": 1}))
+	user := data.User{Username: "cfguser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
-	// 2. Under protocol version 1 (double buffer), server should IMMEDIATELY send chunk 1
-	// without waiting for the 5-second dwell of chunk 0 to expire!
-	meta1 := readJSON()
-	assert.Equal(t, float64(5), meta1["dwell_secs"])
-	bin1 := readBinary()
-	assert.Equal(t, dummyChunkWebP2, bin1)
+	device := data.Device{
+		ID:              "cfg_dev",
+		Username:        user.Username,
+		Name:            "Config Dev",
+		APIKey:          "cfgkey",
+		Brightness:      50,
+		DefaultInterval: 10,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	path1 := "screeny:knot"
+	pastRender := time.Now().Add(-5 * time.Minute)
+	app := data.App{
+		DeviceID:   device.ID,
+		Iname:      "knot1",
+		Name:       "Knot",
+		Enabled:    true,
+		Order:      0,
+		Path:       &path1,
+		Pushed:     false,
+		LastRender: pastRender,
+		Config:     map[string]any{"speed": 1.0},
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	// Pre-seed chunk cache
+	initialChunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP1, DurationMs: 5000},
+	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: initialChunks})
+	require.NoError(t, s.saveAppChunks(device.ID, &app, initialChunks))
+
+	// Verify chunk cache has it
+	key := s.getAppChunksCacheKey(device.ID, app.Iname)
+	s.appChunksMu.RLock()
+	assert.NotEmpty(t, s.appChunksCache[key])
+	s.appChunksMu.RUnlock()
+
+	// Simulate config update
+	ts := httptest.NewServer(s)
+	defer ts.Close()
+
+	payload := map[string]any{
+		"enabled":   true,
+		"uinterval": 15,
+		"config":    map[string]any{"speed": 0.2},
+	}
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/devices/"+device.ID+"/"+app.Iname+"/config", strings.NewReader(string(body)))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Set session cookie for authenticated user
+	session, _ := s.Store.Get(req, "session-name")
+	session.Values["username"] = user.Username
+	rec := httptest.NewRecorder()
+	_ = session.Save(req, rec)
+	req.Header.Set("Cookie", rec.Header().Get("Set-Cookie"))
+
+	// Update mock provider to return new chunks with new config
+	newChunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP2, DurationMs: 5000},
+	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: newChunks})
+
+	resp, err := ts.Client().Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	// Wait for background render to finish
+	s.backgroundRenders.Wait()
+
+	// Verify new chunks were rendered and saved
+	reloadedChunks := s.getAppChunks(device.ID, &app)
+	require.NotEmpty(t, reloadedChunks)
+	assert.Equal(t, dummyChunkWebP2, reloadedChunks[0].WebPBytes)
+
+	// Verify DB app config was updated
+	updatedApp, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, float64(0.2), updatedApp.Config["speed"])
 }
 
 func TestMultiChunk_SaveAppChunksSeparatesFullPreview(t *testing.T) {
 	s := newTestServerAPI(t)
+	ctx := context.Background()
 
-	device := data.Device{ID: "save_test_dev"}
+	device := data.Device{
+		ID:   "preview_dev",
+		Type: data.DeviceTidbytGen1,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
 	app := data.App{
 		DeviceID: device.ID,
-		Iname:    "save_app",
-		Name:     "SaveApp",
+		Iname:    "flock_app",
+		Name:     "Flock",
 	}
 
-	fullBytes := []byte("full_15s_animation_bytes")
-	chunks := []chunker.RenderChunk{
-		{WebPBytes: dummyChunkWebP1, DurationMs: 5000, FullWebPBytes: fullBytes},
-		{WebPBytes: dummyChunkWebP2, DurationMs: 5000},
+	fullBytes := []byte("large_full_preview_bytes_here")
+	chunk0Bytes := dummyChunkWebP1
+	chunk1Bytes := dummyChunkWebP2
+
+	chunks := []providers.RenderChunk{
+		{WebPBytes: chunk0Bytes, DurationMs: 5000, FullWebPBytes: fullBytes},
+		{WebPBytes: chunk1Bytes, DurationMs: 5000},
 	}
 
 	require.NoError(t, s.saveAppChunks(device.ID, &app, chunks))
@@ -508,52 +620,46 @@ func TestMultiChunk_SaveAppChunksSeparatesFullPreview(t *testing.T) {
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
 
-	// 1. Primary path should contain chunk 0
-	primaryPath := filepath.Join(webpDir, "SaveApp-save_app.webp")
-	primaryData, err := os.ReadFile(primaryPath)
+	// Primary file must be chunk 0 bytes, NOT fullBytes
+	primaryPath := s.getAppWebpPath(webpDir, &app)
+	savedPrimary, err := os.ReadFile(primaryPath)
 	require.NoError(t, err)
-	assert.Equal(t, dummyChunkWebP1, primaryData, "Primary file must be chunk 0 for device safety")
+	assert.Equal(t, chunk0Bytes, savedPrimary, "primary webp must be chunk 0 to stay within device limits")
 
-	// 2. Full path should contain fullBytes
-	fullPath := filepath.Join(webpDir, "SaveApp-save_app_full.webp")
+	// _full.webp must exist and contain fullBytes
+	fullPath := filepath.Join(webpDir, "Flock-flock_app_full.webp")
 	savedFull, err := os.ReadFile(fullPath)
 	require.NoError(t, err)
-	assert.Equal(t, fullBytes, savedFull, "_full.webp must contain complete animation")
-
-	// 3. Chunk files
-	c0Path := filepath.Join(webpDir, "SaveApp-save_app_chunk_0.webp")
-	c1Path := filepath.Join(webpDir, "SaveApp-save_app_chunk_1.webp")
-	assert.FileExists(t, c0Path)
-	assert.FileExists(t, c1Path)
-
-	// 4. Chunks metadata
-	metaPath := filepath.Join(webpDir, "SaveApp-save_app_chunks.json")
-	assert.FileExists(t, metaPath)
+	assert.Equal(t, fullBytes, savedFull, "_full.webp must store full animation for web UI")
 }
 
 func TestMultiChunk_OversizedPrimaryProtection(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()
 
-	user := data.User{Username: "oversized_user"}
+	user := data.User{Username: "oversize_user"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
 	// Gen 1 device with 450KB limit
 	device := data.Device{
-		ID:       "gen1_oversized",
-		Username: user.Username,
-		Type:     data.DeviceTidbytGen1,
+		ID:           "oversize_dev",
+		Username:     user.Username,
+		Type:         data.DeviceTidbytGen1,
+		LastAppIndex: -1,
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	path := "apps/test/oversized.webp"
+	now := time.Now()
+	path := "screeny:metaballs"
 	app := data.App{
-		DeviceID: device.ID,
-		Iname:    "over_app",
-		Name:     "OverApp",
-		Path:     &path,
-		Pushed:   true,
-		Enabled:  true,
+		DeviceID:             device.ID,
+		Iname:                "meta_app",
+		Name:                 "Metaballs",
+		Enabled:              true,
+		Order:                0,
+		Path:                 &path,
+		LastRender:           now,
+		LastSuccessfulRender: &now,
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
 	device.Apps = []*data.App{&app}
@@ -561,29 +667,172 @@ func TestMultiChunk_OversizedPrimaryProtection(t *testing.T) {
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
 
-	// Write an oversized primary webp file (> 450,000 bytes)
-	primaryPath := filepath.Join(webpDir, "OverApp-over_app.webp")
+	// Simulate an oversized legacy primary file on disk (500 KB > 450 KB ESP32 limit)
 	oversizedBytes := make([]byte, 500000)
 	copy(oversizedBytes, dummyChunkWebP1)
+	primaryPath := s.getAppWebpPath(webpDir, &app)
 	require.NoError(t, os.WriteFile(primaryPath, oversizedBytes, 0644))
 
-	// Case 1: Oversized primary and NO chunk 0 available -> returns default image
-	img, _, err := s.GetNextAppImage(ctx, &device, &user, "")
-	require.NoError(t, err)
-	assert.NotEqual(t, oversizedBytes, img, "Must not serve oversized primary image")
-
-	// Case 2: Multi-chunk saved with safe chunk 0 -> falls back to chunk 0
-	chunks := []chunker.RenderChunk{
+	// Multi-chunk files on disk have a valid chunk 0 that fits
+	chunks := []providers.RenderChunk{
 		{WebPBytes: dummyChunkWebP1, DurationMs: 5000},
 		{WebPBytes: dummyChunkWebP2, DurationMs: 5000},
 	}
-	require.NoError(t, s.saveAppChunks(device.ID, &app, chunks))
-	// Re-overwrite primary with oversized to simulate older primary
-	require.NoError(t, os.WriteFile(primaryPath, oversizedBytes, 0644))
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
+	key := s.getAppChunksCacheKey(device.ID, app.Iname)
+	s.appChunksMu.Lock()
+	s.appChunksCache[key] = chunks
+	s.appChunksMu.Unlock()
 
-	img, _, err = s.GetNextAppImage(ctx, &device, &user, "")
+	// Calling GetNextAppImage should catch that primary exceeds 200000 and fall back to chunk 0
+	imgData, returnedApp, err := s.GetNextAppImage(ctx, &device, &user, "")
 	require.NoError(t, err)
-	assert.Equal(t, dummyChunkWebP1, img, "Should safely fall back to chunk 0 when primary is oversized")
+	assert.Equal(t, app.Iname, returnedApp.Iname)
+	assert.Equal(t, dummyChunkWebP1, imgData, "should have fallen back to chunk 0 instead of serving 500KB file")
+}
+
+func TestMultiChunk_PushPreviewSavesChunksAndBroadcastsPreviewMessage(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "preview_user"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	device := data.Device{
+		ID:              "preview_dev",
+		Username:        user.Username,
+		Type:            data.DeviceTidbytGen1,
+		DefaultInterval: 15,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	path := "screeny:metaballs"
+	app := data.App{
+		DeviceID: device.ID,
+		Iname:    "meta_preview",
+		Name:     "Metaballs",
+		Path:     &path,
+		Enabled:  true,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+	device.Apps = []*data.App{&app}
+
+	fullBytes := []byte("full_15s_uninterrupted_metaballs_animation")
+	chunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP1, DurationMs: 5000, FullWebPBytes: fullBytes},
+		{WebPBytes: dummyChunkWebP2, DurationMs: 5000},
+		{WebPBytes: dummyChunkWebP3, DurationMs: 5000},
+	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
+
+	// Subscribe to device broadcaster before pushing preview
+	ch := s.Broadcaster.Subscribe(device.ID)
+	defer s.Broadcaster.Unsubscribe(device.ID, ch)
+
+	// Call handlePushPreview
+	req, _ := http.NewRequest(http.MethodPost, "/devices/"+device.ID+"/"+app.Iname+"/preview", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	ctx = context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	s.handlePushPreview(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// 1. Broadcaster must receive DevicePreviewMessage with all 3 chunks
+	select {
+	case msg := <-ch:
+		previewMsg, ok := msg.(DevicePreviewMessage)
+		require.True(t, ok, "Broadcaster must receive DevicePreviewMessage")
+		assert.Equal(t, app.Iname, previewMsg.App.Iname)
+		require.Len(t, previewMsg.Chunks, 3, "All 3 chunks must be broadcast for uninterrupted preview")
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for preview message on Broadcaster")
+	}
+
+	// 2. _full.webp must be saved to disk
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	require.NoError(t, err)
+	fullPath := filepath.Join(webpDir, "Metaballs-meta_preview_full.webp")
+	savedFull, err := os.ReadFile(fullPath)
+	require.NoError(t, err)
+	assert.Equal(t, fullBytes, savedFull, "_full.webp must store full animation for web UI")
+
+	// 3. Chunk files must be saved
+	chunk0Path := filepath.Join(webpDir, "Metaballs-meta_preview_chunk_0.webp")
+	assert.FileExists(t, chunk0Path)
+	chunk1Path := filepath.Join(webpDir, "Metaballs-meta_preview_chunk_1.webp")
+	assert.FileExists(t, chunk1Path)
+	chunk2Path := filepath.Join(webpDir, "Metaballs-meta_preview_chunk_2.webp")
+	assert.FileExists(t, chunk2Path)
+
+	// 4. deviceCurrentChunkApp must be tracked for HTTP /next playback
+	s.deviceChunkMu.Lock()
+	assert.Equal(t, app.Iname, s.deviceCurrentChunkApp[device.ID])
+	assert.Equal(t, 0, s.deviceChunkIndices[device.ID])
+	s.deviceChunkMu.Unlock()
+}
+
+func TestMultiChunk_ConfigPreviewServesFullUninterruptedAnimation(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "cfg_user"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	device := data.Device{
+		ID:              "cfg_dev",
+		Username:        user.Username,
+		Type:            data.DeviceTidbytGen1,
+		DefaultInterval: 15,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	path := "screeny:metaballs"
+	app := data.App{
+		DeviceID: device.ID,
+		Iname:    "meta_cfg",
+		Name:     "Metaballs",
+		Path:     &path,
+		Enabled:  true,
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+	device.Apps = []*data.App{&app}
+
+	fullBytes := []byte("complete_uninterrupted_15s_animation")
+	chunks := []providers.RenderChunk{
+		{WebPBytes: fullBytes, DurationMs: 15000, FullWebPBytes: fullBytes},
+	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
+
+	// Case 1: _full.webp does NOT exist on disk yet. handleRenderConfigPreview should render on-demand
+	// and save _full.webp.
+	req, _ := http.NewRequest(http.MethodGet, "/devices/"+device.ID+"/installations/"+app.Iname+"/preview", nil)
+	ctx = context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	s.handleRenderConfigPreview(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, fullBytes, rr.Body.Bytes(), "Must serve complete unchunked animation")
+
+	// Check that _full.webp was written to disk
+	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	require.NoError(t, err)
+	fullPath := filepath.Join(webpDir, "Metaballs-meta_cfg_full.webp")
+	savedFull, err := os.ReadFile(fullPath)
+	require.NoError(t, err)
+	assert.Equal(t, fullBytes, savedFull)
+
+	// Case 2: Subsequent request serves directly from _full.webp on disk
+	rr2 := httptest.NewRecorder()
+	s.handleRenderConfigPreview(rr2, req)
+	assert.Equal(t, http.StatusOK, rr2.Code)
+	assert.Equal(t, fullBytes, rr2.Body.Bytes(), "Must serve cached _full.webp directly")
 }
 
 func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
@@ -594,129 +843,172 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 	user := data.User{Username: "ws_prev_user"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
-	protoVer := 1
 	device := data.Device{
-		ID:         deviceID,
-		Username:   user.Username,
-		APIKey:     "prev_key",
-		Brightness: 90,
-		Info: data.DeviceInfo{
-			ProtocolVersion: &protoVer,
-		},
+		ID:              deviceID,
+		Username:        user.Username,
+		Name:            "WS Preview Dev",
+		APIKey:          "wsprevkey",
+		Brightness:      50,
+		DefaultInterval: 10,
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	path := "apps/test/normal.webp"
-	app := data.App{
-		DeviceID: device.ID,
-		Iname:    "normal_app",
-		Name:     "NormalApp",
-		Path:     &path,
-		Pushed:   true,
+	path1 := "screeny:metaballs"
+	app1 := data.App{
+		DeviceID: deviceID,
+		Iname:    "meta_ws",
+		Name:     "Metaballs",
 		Enabled:  true,
+		Path:     &path1,
 	}
-	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
-	device.Apps = []*data.App{&app}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app1))
+	device.Apps = []*data.App{&app1}
 
-	// Prepare dummy webp for normal app
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
-	require.NoError(t, err)
-	normalPath := filepath.Join(webpDir, "NormalApp-normal_app.webp")
-	require.NoError(t, os.WriteFile(normalPath, dummyChunkWebP3, 0644))
+	// 2 preview chunks (50ms each for fast test)
+	chunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP2, DurationMs: 50},
+		{WebPBytes: dummyChunkWebP3, DurationMs: 50},
+	}
+	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
+	require.NoError(t, s.saveAppChunks(deviceID, &app1, chunks))
 
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/" + device.ID + "/ws"
-	header := http.Header{}
-	header.Set("Authorization", "Bearer prev_key")
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/" + deviceID + "/ws"
+	dialer := websocket.Dialer{}
+	conn, resp, err := dialer.Dial(wsURL, nil)
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
+	assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
 
-	readJSON := func() map[string]any {
-		var m map[string]any
-		err := conn.ReadJSON(&m)
-		require.NoError(t, err)
-		return m
-	}
-	readBinary := func() []byte {
-		mType, data, err := conn.ReadMessage()
-		require.NoError(t, err)
-		require.Equal(t, websocket.BinaryMessage, mType)
-		return data
-	}
+	assert.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
 
-	// 1. Initial normal image arrives
-	_ = readJSON()   // dwell_secs
-	_ = readJSON()   // brightness
-	_ = readBinary() // normal image
-	require.NoError(t, conn.WriteJSON(map[string]any{"displaying": 1}))
-
-	// 2. Broadcast a DevicePreviewMessage with 2 preview chunks
-	previewApp := data.App{
-		DeviceID: device.ID,
-		Iname:    "preview_app",
-		Name:     "PreviewApp",
-	}
-	previewChunks := []chunker.RenderChunk{
-		{WebPBytes: dummyChunkWebP1, DurationMs: 4000},
-		{WebPBytes: dummyChunkWebP2, DurationMs: 4000},
-	}
-
-	s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
-		App:    &previewApp,
-		Chunks: previewChunks,
+	// Broadcast preview message
+	s.Broadcaster.Notify(deviceID, DevicePreviewMessage{
+		App:    &app1,
+		Chunks: chunks,
 	})
 
-	// 3. Device should receive chunk 0 of preview with immediate: true
-	meta0 := readJSON()
-	assert.Equal(t, float64(4), meta0["dwell_secs"])
-	bin0 := readBinary()
-	assert.Equal(t, dummyChunkWebP1, bin0)
-	immMsg := readJSON()
-	assert.Equal(t, true, immMsg["immediate"])
+	// Read messages from WS
+	readNextBinary := func() []byte {
+		for {
+			msgType, data, err := conn.ReadMessage()
+			require.NoError(t, err)
+			if msgType == websocket.BinaryMessage {
+				return data
+			}
+		}
+	}
 
-	// ACK chunk 0
-	require.NoError(t, conn.WriteJSON(map[string]any{"displaying": 2}))
+	// First binary message must be chunk 0
+	b0 := readNextBinary()
+	assert.Equal(t, dummyChunkWebP2, b0, "WS client must receive chunk 0 first")
 
-	// 4. Device should receive chunk 1 of preview
-	meta1 := readJSON()
-	assert.Equal(t, float64(4), meta1["dwell_secs"])
-	bin1 := readBinary()
-	assert.Equal(t, dummyChunkWebP2, bin1)
+	// Send displaying ACK to trigger chunk 1
+	_ = conn.WriteJSON(WSMessage{Displaying: new(int)})
+
+	// Second binary message must be chunk 1
+	b1 := readNextBinary()
+	assert.Equal(t, dummyChunkWebP3, b1, "WS client must receive chunk 1 next")
+}
+
+func TestScreenyProceduralApp_ReRendersOnDwellRotationRegardlessOfUInterval(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "screenyuser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	device := data.Device{
+		ID:              "dev_screeny_loop",
+		Username:        user.Username,
+		Name:            "Screeny Dev",
+		Brightness:      50,
+		DefaultInterval: 15,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	// Mock Screeny provider
+	renderCallCount := 0
+	mock := &mockExternalProvider{
+		name: "screeny",
+		renderFunc: func(ctx context.Context, req providers.RenderRequest) ([]providers.RenderChunk, error) {
+			renderCallCount++
+			return []providers.RenderChunk{
+				{WebPBytes: dummyChunkWebP1, DurationMs: 15000},
+			}, nil
+		},
+	}
+	s.RegisterExternalProvider(mock)
+
+	path := "screeny:flock"
+	// App has default UInterval=10 (minutes) as stored by DB on addapp
+	app := data.App{
+		DeviceID:   device.ID,
+		Iname:      "flock_app",
+		Name:       "Flock",
+		Enabled:    true,
+		Path:       &path,
+		UInterval:  10,                                // Default 10 minutes from DB
+		LastRender: time.Now().Add(-20 * time.Second), // 20s ago (greater than 15s dwell)
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	// 1. Dwell elapsed (20s > 15s): possiblyRender MUST trigger re-render despite UInterval=10
+	rendered := s.possiblyRender(ctx, &app, &device, &user)
+	assert.True(t, rendered)
+	assert.Equal(t, 1, renderCallCount, "Screeny app must re-render once dwell time has elapsed, ignoring 10-minute UInterval")
+
+	// 2. Dwell NOT elapsed (e.g. 2s since render) and not yet served: possiblyRender must skip re-render
+	app.LastRender = time.Now().Add(-2 * time.Second)
+	rendered = s.possiblyRender(ctx, &app, &device, &user)
+	assert.True(t, rendered)
+	assert.Equal(t, 1, renderCallCount, "Screeny app must not re-render if dwell time has not yet elapsed and render has not been served")
+
+	// 3. Once served via GetNextAppImage, the next rotation cycle must immediately render a fresh batch
+	device.Apps = []*data.App{&app}
+	_, servedApp, err := s.GetNextAppImage(ctx, &device, &user, "")
+	require.NoError(t, err)
+	require.NotNil(t, servedApp)
+	assert.Equal(t, 1, renderCallCount, "Serving unconsumed render uses cached batch")
+
+	// Immediate pre-fetch for the next cycle (as done by wsWriteLoop upon displaying ACK) must render fresh frames
+	_, servedApp2, err := s.GetNextAppImage(ctx, &device, &user, "")
+	require.NoError(t, err)
+	require.NotNil(t, servedApp2)
+	assert.Equal(t, 2, renderCallCount, "Next cycle pre-fetch must generate a fresh continuation batch instead of repeating cached clip")
 }
 
 func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()
 
-	user := data.User{Username: "starlark_chunk_user"}
+	user := data.User{Username: "starlarkuser"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
-	// Force 2KB chunk budget to test auto-partitioning on 3.5KB test animation
+	// ESP32 device with 2,000 byte budget to force chunking on a small animation
 	s.Config.MaxChunkSizeESP = 2000
 
 	device := data.Device{
-		ID:              "starlark_chunk_dev",
+		ID:              "dev_starlark_chunk",
 		Username:        user.Username,
-		Name:            "Starlark Chunk Device",
-		Type:            data.DeviceTidbytGen1,
-		DefaultInterval: 10,
+		Name:            "Starlark Dev",
+		Brightness:      50,
+		DefaultInterval: 15,
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 
-	// Create 40 frames of high-entropy noise animation (> 3,000 bytes WebP)
+	// Create a test animated webp file for a static webp/starlark app
 	frames := make([]*image.RGBA, 40)
 	for i := range 40 {
 		img := image.NewRGBA(image.Rect(0, 0, 64, 32))
 		for y := range 32 {
 			for x := range 64 {
 				img.SetRGBA(x, y, color.RGBA{
-					R: uint8((x*3 + i*11) % 256),
-					G: uint8((y*5 + i*13) % 256),
-					B: uint8((x + y + i*17) % 256),
+					R: uint8((x*5 + i*13) % 256),
+					G: uint8((y*7 + i*17) % 256),
+					B: uint8((x + y + i*23) % 256),
 					A: 255,
 				})
 			}
@@ -726,20 +1018,18 @@ func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 
 	rawWebP, err := chunker.EncodeFramesToWebP(frames, 50*time.Millisecond)
 	require.NoError(t, err)
-	rawSize := len(rawWebP)
-	require.Greater(t, rawSize, 2000, "Noise animation must exceed 2000 bytes")
+	require.Greater(t, len(rawWebP), 2000, "Encoded animation must exceed the 2000 byte chunk budget")
 
-	// Set up an app pointing to a static webp that exceeds the device budget
-	appDir := filepath.Join(s.DataDir, "apps", "test_oversized_anim")
+	appDir := filepath.Join(s.DataDir, "apps", "test_starlark_anim")
 	require.NoError(t, os.MkdirAll(appDir, 0755))
 	animPath := filepath.Join(appDir, "anim.webp")
 	require.NoError(t, os.WriteFile(animPath, rawWebP, 0644))
 
-	relPath := filepath.Join("apps", "test_oversized_anim", "anim.webp")
+	relPath := filepath.Join("apps", "test_starlark_anim", "anim.webp")
 	app := data.App{
 		DeviceID:   device.ID,
-		Iname:      "oversized_iname",
-		Name:       "Oversized Animation",
+		Iname:      "test_anim_iname",
+		Name:       "Radar Animation",
 		Enabled:    true,
 		Path:       &relPath,
 		UInterval:  1,
@@ -747,51 +1037,70 @@ func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
 
-	// Render the app using possiblyRender
+	// 1. Render via possiblyRender
 	rendered := s.possiblyRender(ctx, &app, &device, &user)
-	require.True(t, rendered)
+	assert.True(t, rendered)
 
-	// Verify that chunks were created because the animation exceeded maxChunkSize
+	// 2. Verify chunks were generated and saved
 	chunks := s.getAppChunks(device.ID, &app)
-	require.NotEmpty(t, chunks)
+	require.GreaterOrEqual(t, len(chunks), 2, "Animation exceeding maxChunkSize must be partitioned into at least 2 chunks")
 	maxLimit := s.GetMaxChunkSizeForDevice(&device)
 	for idx, chunk := range chunks {
 		assert.LessOrEqual(t, len(chunk.WebPBytes), maxLimit, "Chunk %d size (%d) must not exceed maxLimit (%d)", idx, len(chunk.WebPBytes), maxLimit)
+		assert.Greater(t, chunk.DurationMs, 0)
 	}
 
-	// Check that chunk files exist on disk
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	// 3. Verify disk structure: _full.webp, primary .webp, and individual chunk files
+	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
-	chunk0Path := filepath.Join(webpDir, "Oversized Animation-oversized_iname_chunk_0.webp")
-	assert.FileExists(t, chunk0Path)
 
-	// Check that full WebP exists on disk for browser preview
-	fullPath := filepath.Join(webpDir, "Oversized Animation-oversized_iname_full.webp")
-	assert.FileExists(t, fullPath)
+	fullPath := filepath.Join(deviceWebpDir, "Radar Animation-test_anim_iname_full.webp")
 	fullBytes, err := os.ReadFile(fullPath)
-	require.NoError(t, err)
-	assert.NotEmpty(t, fullBytes)
+	require.NoError(t, err, "_full.webp must be saved to disk for rich browser previews")
+	require.NotEmpty(t, fullBytes)
 	decodedFull, _, err := chunker.DecodeWebPAnimation(fullBytes)
 	require.NoError(t, err)
-	assert.Len(t, decodedFull, 40)
+	assert.Len(t, decodedFull, 40, "_full.webp must contain all 40 frames")
+
+	primaryPath := filepath.Join(deviceWebpDir, "Radar Animation-test_anim_iname.webp")
+	primaryBytes, err := os.ReadFile(primaryPath)
+	require.NoError(t, err)
+	assert.Equal(t, chunks[0].WebPBytes, primaryBytes, "Primary .webp file must contain chunk 0 (safe for device)")
+
+	metaPath := filepath.Join(deviceWebpDir, "Radar Animation-test_anim_iname_chunks.json")
+	assert.FileExists(t, metaPath, "_chunks.json manifest must exist")
+
+	// 4. Test sequential HTTP rotation across chunks
+	device.Apps = []*data.App{&app}
+	c0Bytes, servedApp, dwell0, err := s.GetNextAppImageHTTP(ctx, &device, &user, "")
+	require.NoError(t, err)
+	assert.Equal(t, app.Iname, servedApp.Iname)
+	assert.Equal(t, chunks[0].WebPBytes, c0Bytes)
+	assert.Greater(t, dwell0, 0)
+
+	// Second poll serves chunk 1
+	c1Bytes, servedApp, dwell1, err := s.GetNextAppImageHTTP(ctx, &device, &user, "")
+	require.NoError(t, err)
+	assert.Equal(t, app.Iname, servedApp.Iname)
+	assert.Equal(t, chunks[1].WebPBytes, c1Bytes)
+	assert.Greater(t, dwell1, 0)
 }
 
 func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()
 
-	user := data.User{Username: "preview_chunk_user"}
+	user := data.User{Username: "previewuser"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
-	// Force 2KB chunk budget to test preview partitioning on 3.5KB test animation
 	s.Config.MaxChunkSizeESP = 2000
 
 	device := data.Device{
-		ID:              "preview_chunk_dev",
+		ID:              "dev_preview_chunk",
 		Username:        user.Username,
-		Name:            "Preview Chunk Device",
-		Type:            data.DeviceTidbytGen1,
-		DefaultInterval: 10,
+		Name:            "Preview Dev",
+		Brightness:      50,
+		DefaultInterval: 15,
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 

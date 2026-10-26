@@ -13,16 +13,9 @@ services:
       - PGID=${GID:-${UID:-1000}}
       - SYSTEM_APPS_REPO
       - PRODUCTION
-      - LOG_LEVEL
       - ENABLE_USER_REGISTRATION
       - SINGLE_USER_AUTO_LOGIN
       - GITHUB_TOKEN
-      - TRONBYT_BRANCH
-      - TRONBYT_REPO_URL
-      - TRONBYT_COMMIT
-      - NIBLET_CLOUD_URL
-      - MAX_REPO_SIZE_MB
-      - ENABLE_PPROF
       - DB_DSN=host=db user=tronbyt password=tronbyt dbname=tronbyt port=5432 sslmode=disable TimeZone=UTC
     depends_on:
       - db

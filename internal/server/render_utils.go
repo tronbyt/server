@@ -15,6 +15,7 @@ import (
 
 	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
+	"tronbyt-server/internal/providers"
 	"tronbyt-server/internal/renderer"
 	"tronbyt-server/web"
 
@@ -111,12 +112,207 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 
+	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+
+	// External Provider App (e.g. Screeny)
+	if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
+		appKey := fmt.Sprintf("%s:%s", device.ID, app.Iname)
+		s.inFlightRendersMu.Lock()
+		if s.inFlightRenders == nil {
+			s.inFlightRenders = make(map[string]chan struct{})
+		}
+		if s.renderPending == nil {
+			s.renderPending = make(map[string]bool)
+		}
+		if s.appRenderServed == nil {
+			s.appRenderServed = make(map[string]bool)
+		}
+
+		if waitCh, inFlight := s.inFlightRenders[appKey]; inFlight {
+			s.inFlightRendersMu.Unlock()
+			slog.Debug("Render already in flight for external app, waiting for completion", "app", appBasename)
+			select {
+			case <-waitCh:
+			case <-ctx.Done():
+			}
+			return len(s.getAppChunks(device.ID, app)) > 0
+		}
+		doneCh := make(chan struct{})
+		s.inFlightRenders[appKey] = doneCh
+		alreadyServed := s.appRenderServed[appKey]
+		s.inFlightRendersMu.Unlock()
+		defer func() {
+			s.inFlightRendersMu.Lock()
+			delete(s.inFlightRenders, appKey)
+			close(doneCh)
+			isPending := s.renderPending[appKey]
+			delete(s.renderPending, appKey)
+			s.inFlightRendersMu.Unlock()
+
+			if isPending {
+				s.backgroundRenders.Go(func() {
+					bgCtx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+					defer cancel()
+					if latestApp, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(bgCtx); err == nil {
+						s.possiblyRender(bgCtx, &latestApp, device, user)
+					}
+				})
+			}
+		}()
+
+		forceRender := s.filtersChangedSinceLastRender(device, app) || app.LastRender.IsZero()
+		dwellSecs := 15
+		if device != nil {
+			dwellSecs = device.GetEffectiveDwellTime(app)
+		}
+		if dwellSecs <= 0 {
+			dwellSecs = 15
+		}
+
+		// Refresh cadence:
+		// Screeny procedural simulations (e.g. Flock, Overland, Knot) generate continuous frames
+		// on each rotation cycle based on dwell time, regardless of database UInterval (which defaults to 10m).
+		// Once a rendered batch has been served to a device (alreadyServed), the next rotation cycle must
+		// render a fresh continuation batch so the animation never loops the same clip twice.
+		hasCachedChunks := len(s.getAppChunks(device.ID, app)) > 0
+		renderExpired := false
+		if provider.Name() == "screeny" {
+			renderExpired = !hasCachedChunks || alreadyServed || time.Since(app.LastRender) >= time.Duration(max(1, dwellSecs-1))*time.Second
+		} else if app.UInterval > 0 {
+			renderExpired = !hasCachedChunks || time.Since(app.LastRender) > time.Duration(app.UInterval)*time.Minute
+		} else {
+			renderExpired = !hasCachedChunks || alreadyServed || time.Since(app.LastRender) >= time.Duration(max(1, dwellSecs-1))*time.Second
+		}
+
+		maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+		needsRechunk := false
+		if maxChunkSize > 0 && device != nil {
+			deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+			if err == nil {
+				primaryPath := s.getAppWebpPath(deviceWebpDir, app)
+				if fi, err := os.Stat(primaryPath); err == nil && fi.Size() > int64(maxChunkSize) {
+					needsRechunk = true
+					slog.Info("Cached external app primary image exceeds device max chunk size; forcing re-render",
+						"app", appBasename, "size", fi.Size(), "max", maxChunkSize)
+				}
+			}
+			if !needsRechunk {
+				for _, ch := range s.getAppChunks(device.ID, app) {
+					if len(ch.WebPBytes) > maxChunkSize {
+						needsRechunk = true
+						slog.Info("Cached external app chunk exceeds device max chunk size; forcing re-render",
+							"app", appBasename, "chunk_size", len(ch.WebPBytes), "max", maxChunkSize)
+						break
+					}
+				}
+			}
+		}
+
+		if forceRender || needsRechunk || renderExpired {
+			slog.Info("Rendering external app", "provider", provider.Name(), "app", appBasename)
+			startTime := time.Now()
+
+			width, height := data.DefaultCanvasWidth, data.DefaultCanvasHeight
+			if device != nil {
+				width, height = device.Type.CanvasSize()
+				if device.Type.Supports2x() {
+					width *= 2
+					height *= 2
+				}
+			}
+
+			maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+			renderDurationMs := min(max(dwellSecs*1000, 5000), 60000)
+
+			req := providers.RenderRequest{
+				AppID:              appID,
+				Width:              width,
+				Height:             height,
+				FPS:                s.Config.ScreenyFPS,
+				DurationMs:         renderDurationMs,
+				MaxChunkSize:       maxChunkSize,
+				MaxChunkDurationMs: maxChunkDurationMs,
+				Timezone:           device.GetTimezone(),
+				Config:             app.Config,
+			}
+
+			chunks, err := provider.RenderAppChunks(ctx, req)
+			renderDur := time.Since(startTime)
+			completedAt := time.Now()
+			s.metrics.renderDuration.Observe(renderDur.Seconds())
+
+			if err != nil || len(chunks) == 0 {
+				s.metrics.renderTotal.WithLabelValues("error").Inc()
+				slog.Error("Error rendering external app", "provider", provider.Name(), "app", appBasename, "error", err)
+
+				// Update in-memory timestamps so erroring apps don't hammer the provider in a tight loop
+				app.LastRender = completedAt
+				app.LastRenderDur = renderDur
+				app.EmptyLastRender = true
+
+				// Graceful fallback: check if we have previously cached chunks that fit within maxChunkSize
+				if existing := s.getAppChunks(device.ID, app); len(existing) > 0 && (maxChunkSize <= 0 || len(existing[0].WebPBytes) <= maxChunkSize) {
+					slog.Warn("Reusing previously cached chunk(s) for unreachable external app", "app", appBasename)
+					return true
+				}
+
+				// Record failed render in DB
+				appUpdates := data.App{
+					LastRender:      completedAt,
+					LastRenderDur:   renderDur,
+					EmptyLastRender: true,
+				}
+				_, _ = gorm.G[data.App](s.DB).Where("id = ?", app.ID).
+					Select("LastRender", "LastRenderDur", "EmptyLastRender").
+					Updates(ctx, appUpdates)
+				return false
+			}
+
+			s.metrics.renderTotal.WithLabelValues("success").Inc()
+
+			// Save chunks to disk and cache
+			if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+				slog.Error("Failed to save external app chunks", "app", appBasename, "error", err)
+			}
+			s.inFlightRendersMu.Lock()
+			s.appRenderServed[appKey] = false
+			s.inFlightRendersMu.Unlock()
+
+			// Atomic DB update
+			appUpdates := data.App{
+				LastRender:           completedAt,
+				LastSuccessfulRender: &completedAt,
+				LastRenderDur:        renderDur,
+				EmptyLastRender:      false,
+			}
+			rowsAffected, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).
+				Select("LastRender", "LastSuccessfulRender", "LastRenderDur", "EmptyLastRender").
+				Updates(ctx, appUpdates)
+			if err != nil {
+				slog.Error("Failed to update app state in DB", "app", appBasename, "error", err)
+			} else if rowsAffected == 0 {
+				slog.Info("App no longer exists in DB, aborting", "app", appBasename)
+				return false
+			}
+
+			app.LastRender = completedAt
+			app.LastSuccessfulRender = &completedAt
+			app.LastRenderDur = renderDur
+			app.EmptyLastRender = false
+
+			if app.AutoPin {
+				s.handleAutoPin(ctx, app, device, user, true)
+			}
+			return true
+		}
+		return true // Not time to render yet
+	}
+
 	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 	if err != nil {
 		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
 		return false
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	if err != nil {
 		slog.Error("Failed to get device webp directory for rendering", "device_id", device.ID, "error", err)
@@ -160,8 +356,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	// 3. Starlark App - Check Interval
 	now := time.Now()
 	forceRender := s.filtersChangedSinceLastRender(device, app)
+	uinterval := app.UInterval
+	if uinterval <= 0 {
+		uinterval = 10
+	}
 	// uinterval is minutes. Allow a 5-second grace window to absorb rotation timer jitter for 1-minute apps.
-	uintervalDuration := time.Duration(app.UInterval) * time.Minute
+	uintervalDuration := time.Duration(uinterval) * time.Minute
 	if uintervalDuration >= 10*time.Second {
 		uintervalDuration -= 5 * time.Second
 	}

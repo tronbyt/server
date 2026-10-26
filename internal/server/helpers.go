@@ -85,6 +85,7 @@ type TemplateData struct {
 	Device            *data.Device
 	SystemApps        []apps.AppMetadata
 	CustomApps        []apps.AppMetadata
+	Providers         []string
 	DeviceTypeChoices []DeviceTypeGroup
 	Form              CreateDeviceFormData
 
@@ -93,6 +94,13 @@ type TemplateData struct {
 	UserRepoInfo          *gitutils.RepoInfo
 	GlobalSystemRepoURL   string
 	SystemAppsAutoRefresh bool
+
+	// Screeny Provider Settings
+	ScreenyStudioURL   string
+	ScreenyScaleFilter string
+	ScreenyConnected   bool
+	ScreenyPatchCount  int
+	ScreenyStatus      string
 
 	// App Config
 	App         *data.App
@@ -674,6 +682,38 @@ func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
 		return nil
 	}
 
+	if provider, appID, ok := s.parseExternalAppPath(appPath); ok {
+		extApps, err := provider.ListApps(context.Background())
+		if err == nil {
+			for _, ext := range extApps {
+				if ext.ID == appID {
+					category := "Visuals"
+					if strings.HasPrefix(ext.ID, "clocks") {
+						category = "Clocks"
+					}
+					manifest := apps.Manifest{
+						ID:                  fmt.Sprintf("%s:%s", provider.Name(), ext.ID),
+						Name:                ext.Name,
+						Summary:             ext.Summary,
+						Desc:                ext.Desc,
+						Author:              ext.Author,
+						FileName:            ext.ID,
+						PackageName:         ext.ID,
+						Supports2x:          ext.Supports2x,
+						Category:            category,
+						Tags:                ext.Tags,
+						Provider:            provider.Name(),
+						RecommendedInterval: 10,
+					}
+					return &apps.AppMetadata{
+						Manifest: manifest,
+						Path:     appPath,
+					}
+				}
+			}
+		}
+	}
+
 	var appMetadata *apps.AppMetadata
 	appDir := filepath.ToSlash(filepath.Dir(appPath))
 
@@ -1000,5 +1040,80 @@ func (s *Server) sendPendingHTTPDeviceHeaders(w http.ResponseWriter, ctx context
 // orderedAppsPreload defines a GORM preload function to sort associated apps by their 'order' field.
 var orderedAppsPreload = func(db gorm.PreloadBuilder) error {
 	db.Order(clause.OrderByColumn{Column: clause.Column{Name: "order"}, Desc: false})
+	return nil
+}
+
+var validAppIDRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+
+// sanitizeAppID ensures an external app ID contains only safe alphanumeric, underscore, or hyphen characters.
+func sanitizeAppID(appID string) (string, error) {
+	if !validAppIDRegex.MatchString(appID) {
+		return "", fmt.Errorf("invalid app ID %q: must contain only alphanumeric characters, underscores, and hyphens", appID)
+	}
+	return appID, nil
+}
+
+// isBlockedMetadataIP returns true if the IP belongs to link-local, AWS IPv6 IMDS, or cloud metadata ranges.
+func isBlockedMetadataIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		if ip4.IsLinkLocalUnicast() || ip4.IsLinkLocalMulticast() {
+			return true
+		}
+		if ip4.Equal(net.ParseIP("169.254.169.254")) || ip4.Equal(net.ParseIP("100.100.100.200")) {
+			return true
+		}
+	}
+	if ip.Equal(net.ParseIP("fd00:ec2::254")) {
+		return true
+	}
+	return false
+}
+
+// validateExternalProviderURL ensures provider URLs use HTTP/HTTPS, do not include embedded credentials,
+// and do not point to cloud metadata or link-local addresses.
+func validateExternalProviderURL(rawURL string) error {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return nil
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return errors.New("URL scheme must be http or https")
+	}
+	if parsed.User != nil {
+		return errors.New("URL credentials are not permitted")
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return errors.New("URL host cannot be empty")
+	}
+
+	// Block AWS / GCP / Azure / Alibaba link-local and cloud metadata IPs
+	if ip := net.ParseIP(host); ip != nil {
+		if isBlockedMetadataIP(ip) {
+			return errors.New("link-local and cloud metadata IP addresses are not permitted")
+		}
+	} else if strings.EqualFold(host, "instance-data") ||
+		strings.EqualFold(host, "metadata.google.internal") ||
+		strings.EqualFold(host, "metadata.azure.internal") ||
+		strings.EqualFold(host, "metadata.turing.com") {
+		return errors.New("cloud metadata endpoints are not permitted")
+	} else if ips, err := net.LookupIP(host); err == nil {
+		for _, rip := range ips {
+			if isBlockedMetadataIP(rip) {
+				return errors.New("URL host resolves to a prohibited cloud metadata or link-local address")
+			}
+		}
+	}
+
 	return nil
 }

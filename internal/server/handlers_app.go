@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"sort"
@@ -27,9 +29,12 @@ import (
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
+	"tronbyt-server/internal/providers"
 	"tronbyt-server/internal/renderer"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -73,6 +78,52 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	s.systemAppsCacheMutex.RUnlock()
 	customApps := apps.ListUserApps(s.DataDir, user.Username)
 
+	// External Provider Apps (e.g. Screeny)
+	titleCaser := cases.Title(language.English)
+	providerNames := []string{"Tronbyt"}
+
+	for _, provider := range s.ListExternalProviders() {
+		extApps, err := provider.ListApps(r.Context())
+		if err != nil {
+			slog.Warn("Failed to list external apps", "provider", provider.Name(), "error", err)
+			continue
+		}
+		if len(extApps) > 0 {
+			providerNames = append(providerNames, titleCaser.String(provider.Name()))
+			s.warmExternalAppThumbnails(provider, extApps)
+		}
+		for _, ext := range extApps {
+			category := "Visuals"
+			if strings.HasPrefix(ext.ID, "clocks") {
+				category = "Clocks"
+			}
+			manifest := apps.Manifest{
+				ID:                  fmt.Sprintf("%s:%s", provider.Name(), ext.ID),
+				Name:                ext.Name,
+				Summary:             ext.Summary,
+				Desc:                ext.Desc,
+				Author:              ext.Author,
+				FileName:            ext.ID,
+				PackageName:         ext.ID,
+				Supports2x:          ext.Supports2x,
+				Category:            category,
+				Tags:                ext.Tags,
+				Provider:            provider.Name(),
+				RecommendedInterval: 10,
+			}
+			appMeta := apps.AppMetadata{
+				Manifest: manifest,
+				Path:     fmt.Sprintf("%s:%s", provider.Name(), ext.ID),
+			}
+			systemApps = append(systemApps, appMeta)
+		}
+	}
+
+	var availableProviders []string
+	if len(providerNames) > 1 {
+		availableProviders = providerNames
+	}
+
 	s.markInstalledApps(device, systemApps, customApps)
 
 	var systemRepoInfo *gitutils.RepoInfo
@@ -91,6 +142,7 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 		Device:         device,
 		SystemApps:     systemApps,
 		CustomApps:     customApps,
+		Providers:      availableProviders,
 		SystemRepoInfo: systemRepoInfo,
 		Config:         &config.TemplateConfig{Production: s.Config.Production},
 	})
@@ -153,23 +205,23 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			uinterval = val
 		}
 	}
-	// If not set (was -1), default to 10
-	if uinterval == -1 {
-		uinterval = 10
-	}
-	// Ensure uinterval is not negative
-	if uinterval < 0 {
+	// If not set or <= 0, default to 10
+	if uinterval <= 0 {
 		uinterval = 10
 	}
 
 	displayTime, _ := strconv.Atoi(displayTimeStr)
 
 	// Construct source path
-	realPath, err := securejoin.SecureJoin(s.DataDir, appPath)
-	if err != nil {
-		slog.Warn("Potential path traversal", "path", appPath, "error", err)
-		http.Error(w, "Invalid path", http.StatusBadRequest)
-		return
+	var realPath string
+	if !s.isExternalAppPath(appPath) {
+		var err error
+		realPath, err = securejoin.SecureJoin(s.DataDir, appPath)
+		if err != nil {
+			slog.Warn("Potential path traversal", "path", appPath, "error", err)
+			http.Error(w, "Invalid path", http.StatusBadRequest)
+			return
+		}
 	}
 
 	iname, err := generateUniqueIname(s.DB, device.ID)
@@ -177,6 +229,21 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to generate unique iname", "error", err)
 		http.Error(w, "Could not generate unique iname", http.StatusInternalServerError)
 		return
+	}
+
+	if s.isExternalAppPath(appPath) {
+		_, extAppID, ok := s.parseExternalAppPath(appPath)
+		if !ok {
+			http.Error(w, "Invalid app path", http.StatusBadRequest)
+			return
+		}
+		if _, err := sanitizeAppID(extAppID); err != nil {
+			http.Error(w, "Invalid external app ID", http.StatusBadRequest)
+			return
+		}
+		if meta := s.getAppMetadata(appPath); meta != nil && meta.Name != "" {
+			appName = meta.Name
+		}
 	}
 
 	newApp := data.App{
@@ -219,7 +286,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If WebP, copy file and redirect to index
-	isWebP := strings.EqualFold(filepath.Ext(appPath), ".webp")
+	isWebP := !s.isExternalAppPath(appPath) && strings.EqualFold(filepath.Ext(appPath), ".webp")
 	if isWebP {
 		destDir, err := s.ensureDeviceImageDir(device.ID)
 		if err != nil {
@@ -265,7 +332,9 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger initial render
-	s.possiblyRender(r.Context(), &newApp, device, user)
+	if !s.isExternalAppPath(appPath) {
+		s.possiblyRender(r.Context(), &newApp, device, user)
+	}
 
 	// Notify Dashboard & Device
 	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
@@ -277,6 +346,12 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "App ID required", http.StatusBadRequest)
+		return
+	}
+
+	// External Provider Thumbnail (e.g. "screeny:clocks-numerals")
+	if provider, appID, ok := s.parseExternalAppPath(id); ok {
+		s.serveExternalAppThumbnail(w, r, provider, appID)
 		return
 	}
 
@@ -347,6 +422,186 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path)
 }
 
+const externalAppThumbnailDurationMs = 3000
+
+func (s *Server) ensureCleanPreviewCache(providerName string) string {
+	cacheDir := filepath.Join(s.DataDir, "cache", "previews", providerName)
+	markerFile := filepath.Join(cacheDir, ".previews_v9")
+	if _, err := os.Stat(markerFile); os.IsNotExist(err) {
+		_ = os.RemoveAll(cacheDir)
+		_ = os.MkdirAll(cacheDir, 0755)
+		_ = os.WriteFile(markerFile, []byte("v9"), 0644)
+
+		s.appChunksMu.Lock()
+		s.appChunksCache = make(map[string][]providers.RenderChunk)
+		s.appChunksMu.Unlock()
+
+		// Clean up any stale _full.webp or chunk files on disk so full-dwell renders regenerate cleanly
+		if fullFiles, err := filepath.Glob(filepath.Join(s.DataDir, "webp", "*", "*_full.webp")); err == nil {
+			for _, f := range fullFiles {
+				_ = os.Remove(f)
+			}
+		}
+		if chunkFiles, err := filepath.Glob(filepath.Join(s.DataDir, "webp", "*", "*_chunk*")); err == nil {
+			for _, f := range chunkFiles {
+				_ = os.Remove(f)
+			}
+		}
+
+		if s.DB != nil {
+			_, _ = gorm.G[data.App](s.DB).Where("path LIKE ?", providerName+":%").
+				Update(context.Background(), "LastRender", time.Time{})
+		}
+	}
+	return cacheDir
+}
+
+func (s *Server) serveExternalAppThumbnail(w http.ResponseWriter, r *http.Request, provider providers.ExternalAppProvider, appID string) {
+	safeAppID, err := sanitizeAppID(appID)
+	if err != nil {
+		http.Error(w, "Invalid app ID", http.StatusBadRequest)
+		return
+	}
+	cacheDir := s.ensureCleanPreviewCache(provider.Name())
+	cacheFile, err := securejoin.SecureJoin(cacheDir, safeAppID+".webp")
+	if err != nil {
+		http.Error(w, "Invalid cache file path", http.StatusBadRequest)
+		return
+	}
+
+	forceRefresh := r.URL.Query().Get("refresh") == "true"
+
+	// 1. Serve from disk cache if available and not explicitly refreshing
+	if !forceRefresh {
+		if b, err := os.ReadFile(cacheFile); err == nil && len(b) > 0 {
+			s.serveThumbnailBytes(w, r, b)
+			return
+		}
+	}
+
+	// 2. Render preview chunk on demand using singleflight to deduplicate concurrent requests
+	key := fmt.Sprintf("%s:%s", provider.Name(), safeAppID)
+	val, err, _ := s.thumbnailSingleFlight.Do(key, func() (any, error) {
+		// Re-check disk cache inside singleflight
+		if !forceRefresh {
+			if b, err := os.ReadFile(cacheFile); err == nil && len(b) > 0 {
+				return b, nil
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+
+		req := providers.RenderRequest{
+			AppID:        safeAppID,
+			Width:        64,
+			Height:       32,
+			FPS:          15,
+			DurationMs:   externalAppThumbnailDurationMs, // 3000ms = smooth 3.0s animation
+			MaxChunkSize: 524288,
+		}
+
+		chunks, err := provider.RenderAppChunks(ctx, req)
+		if err != nil || len(chunks) == 0 || len(chunks[0].WebPBytes) == 0 {
+			return nil, fmt.Errorf("rendering external app thumbnail: %w", err)
+		}
+
+		_ = os.MkdirAll(cacheDir, 0755)
+		_ = os.WriteFile(cacheFile, chunks[0].WebPBytes, 0644)
+		return chunks[0].WebPBytes, nil
+	})
+
+	if err != nil {
+		slog.Warn("Failed to render external app thumbnail", "provider", provider.Name(), "app", safeAppID, "error", err)
+		http.NotFound(w, r)
+		return
+	}
+
+	if b, ok := val.([]byte); ok && len(b) > 0 {
+		s.serveThumbnailBytes(w, r, b)
+		return
+	}
+
+	http.NotFound(w, r)
+}
+
+func (s *Server) serveThumbnailBytes(w http.ResponseWriter, r *http.Request, b []byte) {
+	h := sha256.Sum256(b)
+	etag := fmt.Sprintf("\"%x\"", h[:16])
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "public, max-age=3600, must-revalidate")
+
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/webp")
+	_, _ = w.Write(b)
+}
+
+func (s *Server) warmExternalAppThumbnails(provider providers.ExternalAppProvider, apps []providers.ExternalAppMeta) {
+	cacheDir := s.ensureCleanPreviewCache(provider.Name())
+	go func() {
+		for _, app := range apps {
+			safeAppID, err := sanitizeAppID(app.ID)
+			if err != nil {
+				continue
+			}
+			cacheFile, err := securejoin.SecureJoin(cacheDir, safeAppID+".webp")
+			if err != nil {
+				continue
+			}
+			if _, err := os.Stat(cacheFile); err == nil {
+				continue // already cached
+			}
+			key := fmt.Sprintf("%s:%s", provider.Name(), safeAppID)
+			_, _, _ = s.thumbnailSingleFlight.Do(key, func() (any, error) {
+				if b, err := os.ReadFile(cacheFile); err == nil && len(b) > 0 {
+					return b, nil
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				defer cancel()
+				req := providers.RenderRequest{
+					AppID:        safeAppID,
+					Width:        64,
+					Height:       32,
+					FPS:          15,
+					DurationMs:   externalAppThumbnailDurationMs,
+					MaxChunkSize: 524288,
+				}
+				chunks, err := provider.RenderAppChunks(ctx, req)
+				if err != nil || len(chunks) == 0 || len(chunks[0].WebPBytes) == 0 {
+					return nil, err
+				}
+				_ = os.MkdirAll(cacheDir, 0755)
+				_ = os.WriteFile(cacheFile, chunks[0].WebPBytes, 0644)
+				return chunks[0].WebPBytes, nil
+			})
+		}
+	}()
+}
+
+func (s *Server) preheatExternalAppThumbnails() {
+	s.externalProvidersMu.RLock()
+	providersList := make([]providers.ExternalAppProvider, 0, len(s.externalProviders))
+	for _, p := range s.externalProviders {
+		providersList = append(providersList, p)
+	}
+	s.externalProvidersMu.RUnlock()
+
+	for _, provider := range providersList {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		apps, err := provider.ListApps(ctx)
+		cancel()
+		if err != nil {
+			slog.Warn("Failed to list external apps for preview preheating", "provider", provider.Name(), "error", err)
+			continue
+		}
+		s.warmExternalAppThumbnails(provider, apps)
+	}
+}
+
 // handleConfigAppGet renders the app configuration page, injecting the schema and available sounds.
 func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
@@ -361,18 +616,27 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	// Get Schema
 	var schemaBytes []byte
 	if app.Path != nil && *app.Path != "" {
-		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
-		if err != nil {
-			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
-			http.Error(w, "Invalid app path", http.StatusBadRequest)
-			return
+		if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
+			var err error
+			ctx := context.WithValue(r.Context(), providers.Supports2xKey, device.Type.Supports2x())
+			schemaBytes, err = provider.GetAppSchema(ctx, appID)
+			if err != nil {
+				slog.Error("Failed to get external app schema", "provider", provider.Name(), "appID", appID, "error", err)
+			}
 		} else {
-			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-				schemaWidth, schemaHeight := device.Type.CanvasSize()
-				schemaBytes, err = renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
-				if err != nil {
-					slog.Error("Failed to get app schema", "error", err)
-					// Fall through with empty schema
+			appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+			if err != nil {
+				slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+				http.Error(w, "Invalid app path", http.StatusBadRequest)
+				return
+			} else {
+				if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+					schemaWidth, schemaHeight := device.Type.CanvasSize()
+					schemaBytes, err = renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
+					if err != nil {
+						slog.Error("Failed to get app schema", "error", err)
+						// Fall through with empty schema
+					}
 				}
 			}
 		}
@@ -500,42 +764,55 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 
 	schemaBytes := []byte("{}")
 	if app.Path != nil && *app.Path != "" {
-		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
-		if err != nil {
-			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
-			http.Error(w, "Invalid app path", http.StatusBadRequest)
-			return
-		}
-
-		if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-			schemaWidth, schemaHeight := device.Type.CanvasSize()
-			getSchema := func() error {
-				b, err := renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
-				if err != nil {
-					return err
-				}
-				if len(b) > 0 {
-					schemaBytes = b
-				}
-				return nil
-			}
-
-			// On refresh, bypass the cached http.get responses for this app so
-			// get_schema refetches dropdown data from origin. The cache key
-			// prefix mirrors pixlet's: "httpcache:<app id>:" where the app id is
-			// the base name of the applet path (see runtime/httpcache.go).
-			if r.URL.Query().Get("refresh") == "true" && s.SchemaCache != nil {
-				prefix := fmt.Sprintf("httpcache:%s:", filepath.Base(appPath))
-				err = s.SchemaCache.WithBypass(prefix, getSchema)
-			} else {
-				err = getSchema()
-			}
+		if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
+			ctx := context.WithValue(r.Context(), providers.Supports2xKey, device.Type.Supports2x())
+			b, err := provider.GetAppSchema(ctx, appID)
 			if err != nil {
-				// Return an error so the client keeps the currently-rendered
-				// options instead of replacing them with an empty form.
-				slog.Error("Failed to get app schema", "error", err)
+				slog.Error("Failed to get external app schema", "provider", provider.Name(), "appID", appID, "error", err)
 				http.Error(w, "Failed to load schema", http.StatusBadGateway)
 				return
+			}
+			if len(b) > 0 {
+				schemaBytes = b
+			}
+		} else {
+			appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+			if err != nil {
+				slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+				http.Error(w, "Invalid app path", http.StatusBadRequest)
+				return
+			}
+
+			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+				schemaWidth, schemaHeight := device.Type.CanvasSize()
+				getSchema := func() error {
+					b, err := renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
+					if err != nil {
+						return err
+					}
+					if len(b) > 0 {
+						schemaBytes = b
+					}
+					return nil
+				}
+
+				// On refresh, bypass the cached http.get responses for this app so
+				// get_schema refetches dropdown data from origin. The cache key
+				// prefix mirrors pixlet's: "httpcache:<app id>:" where the app id is
+				// the base name of the applet path (see runtime/httpcache.go).
+				if r.URL.Query().Get("refresh") == "true" && s.SchemaCache != nil {
+					prefix := fmt.Sprintf("httpcache:%s:", filepath.Base(appPath))
+					err = s.SchemaCache.WithBypass(prefix, getSchema)
+				} else {
+					err = getSchema()
+				}
+				if err != nil {
+					// Return an error so the client keeps the currently-rendered
+					// options instead of replacing them with an empty form.
+					slog.Error("Failed to get app schema", "error", err)
+					http.Error(w, "Failed to load schema", http.StatusBadGateway)
+					return
+				}
 			}
 		}
 	}
@@ -584,6 +861,9 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	// Update App
 	app.Enabled = payload.Enabled
 	app.AutoPin = payload.AutoPin
+	if payload.UInterval <= 0 {
+		payload.UInterval = 10
+	}
 	app.UInterval = payload.UInterval
 	app.DisplayTime = payload.DisplayTime
 	app.Notes = payload.Notes
@@ -664,6 +944,18 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		app.NotificationSoundTrigger = "every_display"
 	}
 
+	// Invalidate chunk cache and current device chunk playback for this app
+	s.invalidateAppChunks(device.ID, app.Iname)
+	s.deviceChunkMu.Lock()
+	if s.deviceCurrentChunkApp[device.ID] == app.Iname {
+		delete(s.deviceCurrentChunkApp, device.ID)
+		delete(s.deviceChunkIndices, device.ID)
+	}
+	s.deviceChunkMu.Unlock()
+
+	// Force render by resetting LastRender before saving to DB
+	app.LastRender = time.Time{}
+
 	// Save to DB
 	if err := s.DB.Save(app).Error; err != nil {
 		slog.Error("Failed to save app config", "error", err)
@@ -672,12 +964,32 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger Render
-	// Force render by resetting LastRender
-	app.LastRender = time.Time{}
-	s.possiblyRender(r.Context(), app, device, user)
+	if app.Path != nil && s.isExternalAppPath(*app.Path) {
+		appKey := fmt.Sprintf("%s:%s", device.ID, app.Iname)
+		s.inFlightRendersMu.Lock()
+		if s.renderPending == nil {
+			s.renderPending = make(map[string]bool)
+		}
+		if _, inFlight := s.inFlightRenders[appKey]; inFlight {
+			s.renderPending[appKey] = true
+		}
+		s.inFlightRendersMu.Unlock()
 
-	// Notify Dashboard & Device
-	s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+		appCopy := *app
+		devCopy := *device
+		userCopy := *user
+		s.backgroundRenders.Go(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			defer cancel()
+			s.possiblyRender(ctx, &appCopy, &devCopy, &userCopy)
+			s.notifyDashboard(userCopy.Username, WSEvent{Type: "apps_changed", DeviceID: devCopy.ID})
+			s.notifyDashboard(userCopy.Username, WSEvent{Type: "image_updated", DeviceID: devCopy.ID})
+		})
+	} else {
+		s.possiblyRender(r.Context(), app, device, user)
+		s.notifyDashboard(user.Username, WSEvent{Type: "apps_changed", DeviceID: device.ID})
+		s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
+	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -736,14 +1048,33 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 	// The device and user are already in context due to RequireLogin and RequireDevice
 	device := GetDevice(r)
 
-	imgData, _, err := s.GetCurrentAppImage(r.Context(), device)
+	imgData, app, err := s.GetCurrentAppImage(r.Context(), device)
 	if err != nil {
 		s.sendDefaultImage(w, r, device)
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/webp")
+	// For apps with multi-chunk animations, serve the full animation to the browser if available
+	if app != nil {
+		deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+		if err == nil {
+			fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
+			if fullBytes, err := os.ReadFile(fullPath); err == nil && len(fullBytes) > 0 {
+				imgData = fullBytes
+			}
+		}
+	}
+
+	h := sha256.Sum256(imgData)
+	etag := fmt.Sprintf("\"%x\"", h[:16])
+	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "no-cache")
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/webp")
 	if _, err := w.Write(imgData); err != nil {
 		slog.Error("Failed to write current app image", "error", err)
 	}
@@ -794,6 +1125,75 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			http.Error(w, "App path not set", http.StatusBadRequest)
 			return
 		}
+
+		if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
+			safeAppID, err := sanitizeAppID(appID)
+			if err != nil {
+				http.Error(w, "Invalid external app ID", http.StatusBadRequest)
+				return
+			}
+			// If the app has already been rendered with this exact saved config, serve existing full-dwell preview
+			if !app.LastRender.IsZero() && reflect.DeepEqual(configData, app.Config) {
+				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+				if err == nil {
+					fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
+					if b, err := os.ReadFile(fullPath); err == nil && len(b) > 0 {
+						w.Header().Set("Content-Type", "image/webp")
+						w.Header().Set("Cache-Control", "no-cache")
+						_, _ = w.Write(b)
+						return
+					}
+				}
+			}
+			width, height := device.Type.CanvasSize()
+			if device.Type.Supports2x() {
+				width *= 2
+				height *= 2
+			}
+			fps := s.Config.ScreenyFPS
+			if fps <= 0 {
+				fps = 30
+			}
+			dwellSecs := 10
+			if device != nil {
+				dwellSecs = device.GetEffectiveDwellTime(app)
+			}
+			if dwellSecs <= 0 {
+				dwellSecs = 10
+			}
+			previewDurationMs := min(max(dwellSecs*1000, 5000), 60000)
+			req := providers.RenderRequest{
+				AppID:        safeAppID,
+				Width:        width,
+				Height:       height,
+				FPS:          fps,
+				DurationMs:   previewDurationMs,
+				MaxChunkSize: 0, // Unchunked for full browser preview
+				Timezone:     device.GetTimezone(),
+				Config:       configData,
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			defer cancel()
+
+			chunks, err := provider.RenderAppChunks(ctx, req)
+			if err != nil || len(chunks) == 0 {
+				slog.Error("Preview render failed for external app", "provider", provider.Name(), "app", safeAppID, "error", err)
+				http.Error(w, "Render failed", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "image/webp")
+			w.Header().Set("Cache-Control", "no-cache")
+			previewBytes := chunks[0].WebPBytes
+			if len(chunks[0].FullWebPBytes) > 0 {
+				previewBytes = chunks[0].FullWebPBytes
+			}
+			if _, err := w.Write(previewBytes); err != nil {
+				slog.Error("Failed to write image bytes for render config preview", "error", err)
+			}
+			return
+		}
+
 		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
 		if err != nil {
 			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
@@ -813,6 +1213,77 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		if _, err := w.Write(imgBytes); err != nil {
 			slog.Error("Failed to write image bytes for render config preview", "error", err)
 		}
+		return
+	}
+
+	if app.Path != nil && s.isExternalAppPath(*app.Path) {
+		provider, appID, ok := s.parseExternalAppPath(*app.Path)
+		if ok {
+			safeAppID, err := sanitizeAppID(appID)
+			if err != nil {
+				http.Error(w, "Invalid external app ID", http.StatusBadRequest)
+				return
+			}
+			deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
+			var fullPath string
+			if err == nil {
+				fullPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
+				if b, err := os.ReadFile(fullPath); err == nil && len(b) > 0 {
+					s.serveThumbnailBytes(w, r, b)
+					return
+				}
+			}
+
+			// If existing in-memory chunks have FullWebPBytes, serve it directly
+			if existing := s.getAppChunks(device.ID, app); len(existing) > 0 && len(existing[0].FullWebPBytes) > 0 {
+				s.serveThumbnailBytes(w, r, existing[0].FullWebPBytes)
+				return
+			}
+
+			// Render on-demand with saved app.Config for the full dwell time window
+			width, height := device.Type.CanvasSize()
+			if device.Type.Supports2x() {
+				width *= 2
+				height *= 2
+			}
+			fps := s.Config.ScreenyFPS
+			if fps <= 0 {
+				fps = 30
+			}
+			dwellSecs := 10
+			if device != nil {
+				dwellSecs = device.GetEffectiveDwellTime(app)
+			}
+			if dwellSecs <= 0 {
+				dwellSecs = 10
+			}
+			previewDurationMs := min(max(dwellSecs*1000, 5000), 60000)
+			req := providers.RenderRequest{
+				AppID:        safeAppID,
+				Width:        width,
+				Height:       height,
+				FPS:          fps,
+				DurationMs:   previewDurationMs,
+				MaxChunkSize: 0, // Unchunked for full browser preview
+				Timezone:     device.GetTimezone(),
+				Config:       app.Config,
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			defer cancel()
+			chunks, err := provider.RenderAppChunks(ctx, req)
+			if err == nil && len(chunks) > 0 {
+				previewBytes := chunks[0].WebPBytes
+				if len(chunks[0].FullWebPBytes) > 0 {
+					previewBytes = chunks[0].FullWebPBytes
+				}
+				if fullPath != "" {
+					_ = os.WriteFile(fullPath, previewBytes, 0644)
+				}
+				s.serveThumbnailBytes(w, r, previewBytes)
+				return
+			}
+		}
+		s.sendDefaultImage(w, r, device)
 		return
 	}
 
@@ -905,6 +1376,76 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 	// Render
 	if app.Path == nil || *app.Path == "" {
 		http.Error(w, "App path not set", http.StatusBadRequest)
+		return
+	}
+
+	if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
+		width, height := device.Type.CanvasSize()
+		fps := s.Config.ScreenyFPS
+		if fps <= 0 {
+			fps = 30
+		}
+		maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+		previewConfig := app.Config
+		if configBody != nil {
+			previewConfig = configBody
+		}
+		dwellSecs := 5
+		if device != nil {
+			dwellSecs = device.GetEffectiveDwellTime(app)
+		}
+		if dwellSecs <= 0 {
+			dwellSecs = 5
+		}
+		previewDurationMs := min(max(dwellSecs*1000, 5000), 60000)
+		maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+		req := providers.RenderRequest{
+			AppID:              appID,
+			Width:              width,
+			Height:             height,
+			FPS:                fps,
+			DurationMs:         previewDurationMs,
+			MaxChunkSize:       maxChunkSize,
+			MaxChunkDurationMs: maxChunkDurationMs,
+			Timezone:           device.GetTimezone(),
+			Config:             previewConfig,
+		}
+		chunks, err := provider.RenderAppChunks(r.Context(), req)
+		if err != nil || len(chunks) == 0 {
+			slog.Error("Preview render failed for external app", "provider", provider.Name(), "app", appID, "error", err)
+			http.Error(w, "Render failed", http.StatusInternalServerError)
+			return
+		}
+
+		// Save app chunks to disk and cache so _full.webp exists for browser preview,
+		// and chunk_*.webp exist for hardware playback.
+		if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+			slog.Error("Failed to save app chunks on push preview", "device", device.ID, "app", app.Iname, "error", err)
+		}
+
+		// If multi-chunk and device is polling HTTP /next, set active chunk sequence
+		if len(chunks) > 1 {
+			s.deviceChunkMu.Lock()
+			s.deviceCurrentChunkApp[device.ID] = app.Iname
+			s.deviceChunkIndices[device.ID] = 0
+			s.deviceChunkMu.Unlock()
+		} else {
+			// Single-chunk fallback for HTTP device polling
+			primaryBytes := chunks[0].WebPBytes
+			if len(chunks[0].FullWebPBytes) > 0 && len(chunks[0].FullWebPBytes) <= maxChunkSize {
+				primaryBytes = chunks[0].FullWebPBytes
+			}
+			if err := s.savePushedImage(device.ID, app.Iname, "", primaryBytes); err != nil {
+				slog.Warn("Failed to save pushed fallback image", "error", err)
+			}
+		}
+
+		// Stream preview to WebSocket device
+		s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+			App:    app,
+			Chunks: chunks,
+		})
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)

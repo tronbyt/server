@@ -32,6 +32,7 @@ func getFuncMap() template.FuncMap {
 		"json":           tmplJSON,
 		"string":         tmplString,
 		"substr":         tmplSubstr,
+		"lower":          strings.ToLower,
 		"split":          strings.Split,
 		"trim":           strings.TrimSpace,
 		"slice":          tmplSlice,
