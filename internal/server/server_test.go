@@ -56,6 +56,9 @@ func newTestServer(t *testing.T, opts ...option) *Server {
 	}
 
 	s := NewServer(db, cfg)
+	t.Cleanup(func() {
+		s.backgroundRenders.Wait()
+	})
 	return s
 }
 

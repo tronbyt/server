@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
+	"tronbyt-server/internal/providers"
 
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
@@ -66,7 +66,7 @@ type DeviceCommandMessage struct {
 
 type DevicePreviewMessage struct {
 	App    *data.App
-	Chunks []chunker.RenderChunk
+	Chunks []providers.RenderChunk
 }
 
 // handleWS upgrades HTTP connections to WebSockets for live image streaming, notifications, and device commands.
@@ -114,7 +114,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	if device.Info.ProtocolType != data.ProtocolWS {
 		slog.Info("Updating protocol_type to WS on connect", "device", deviceID)
 		device.Info.ProtocolType = data.ProtocolWS
-		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "info", data.JSONMap{"protocol_type": data.ProtocolWS}); err != nil {
+		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "info", device.Info); err != nil {
 			slog.Error("Failed to update protocol_type", "error", err)
 		}
 	}
@@ -205,6 +205,8 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 
 				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 					slog.Error("Failed to update device info", "error", err)
+				} else {
+					s.Broadcaster.Notify(device.ID, nil)
 				}
 			}
 
@@ -217,6 +219,8 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 					device.Info.ProtocolVersion = &newVersion
 					if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(context.Background(), "info", device.Info); err != nil {
 						slog.Error("Failed to update device info (protocol version)", "error", err)
+					} else {
+						s.Broadcaster.Notify(device.ID, nil)
 					}
 				}
 			}
@@ -349,13 +353,35 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					timerC = timer.C
 				}
 
-				waitingPreview := true
-				for waitingPreview {
+				waitingChunk := true
+				for waitingChunk {
 					select {
+					case <-stopCh:
+						if timer != nil {
+							timer.Stop()
+						}
+						return
+					case <-ctx.Done():
+						if timer != nil {
+							timer.Stop()
+						}
+						return
 					case msg := <-ackCh:
 						if msg.Displaying != nil || msg.Counter != nil {
+							if timer != nil {
+								timer.Stop()
+							}
+							if chunkIdx == 0 && previewMsg.App != nil {
+								slog.Debug("Received ACK for preview chunk 0, updating DisplayingApp", "app", previewMsg.App.Iname, "device", device.ID)
+								if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "displaying_app", previewMsg.App.Iname); err != nil {
+									slog.Error("Failed to update displaying_app on preview", "device", device.ID, "error", err)
+								}
+								if user != nil {
+									s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
+								}
+							}
 							if device.Info.ProtocolVersion != nil {
-								waitingPreview = false
+								waitingChunk = false
 							}
 						}
 					case val := <-broadcastCh:
@@ -369,87 +395,61 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						}
 						device = reloaded
 
-						var isCommand bool
-						var isImage bool
-						var isPreview bool
-						var cmdPayload []byte
-						var pImgData []byte
-						var pPreviewMsg *DevicePreviewMessage
-
 						switch v := val.(type) {
 						case DeviceCommandMessage:
-							isCommand = true
-							cmdPayload = v.Payload
-						case DevicePreviewMessage:
-							isPreview = true
-							pPreviewMsg = &v
-						case *DevicePreviewMessage:
-							isPreview = true
-							pPreviewMsg = v
-						case []byte:
-							if len(v) > 0 {
-								isImage = true
-								pImgData = v
-							}
-						}
-
-						if isCommand {
-							if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+							if err := conn.WriteMessage(websocket.TextMessage, v.Payload); err != nil {
 								slog.Error("Failed to write command to WS", "error", err)
 								if timer != nil {
 									timer.Stop()
 								}
 								return
 							}
-							continue
-						}
-
-						if isPreview {
-							pendingPreview = pPreviewMsg
+						case DevicePreviewMessage:
+							pendingPreview = &v
 							previewInterrupted = true
-							waitingPreview = false
+							waitingChunk = false
 							sendImmediate = true
 							if timer != nil {
 								timer.Stop()
 							}
-						} else if isImage {
-							pendingImage = pImgData
+						case *DevicePreviewMessage:
+							pendingPreview = v
 							previewInterrupted = true
-							waitingPreview = false
+							waitingChunk = false
 							sendImmediate = true
 							if timer != nil {
 								timer.Stop()
+							}
+						case []byte:
+							if len(v) > 0 {
+								pendingImage = v
+								previewInterrupted = true
+								waitingChunk = false
+								sendImmediate = true
+								if timer != nil {
+									timer.Stop()
+								}
+							}
+						default:
+							newBrightness := device.GetEffectiveBrightness()
+							if newBrightness != lastSentBrightness {
+								if err := conn.WriteJSON(map[string]int{"brightness": newBrightness}); err != nil {
+									slog.Error("Failed to write brightness WS message", "error", err)
+								}
+								lastSentBrightness = newBrightness
 							}
 						}
 					case <-timerC:
-						waitingPreview = false
-					case <-stopCh:
-						if timer != nil {
-							timer.Stop()
-						}
-						return
-					case <-ctx.Done():
-						if timer != nil {
-							timer.Stop()
-						}
-						return
+						waitingChunk = false
 					}
 				}
-
 				if timer != nil {
-					if !timer.Stop() {
-						select {
-						case <-timer.C:
-						default:
-						}
-					}
+					timer.Stop()
 				}
-
 				if previewInterrupted {
 					break
 				}
 			}
-
 			if previewInterrupted {
 				continue
 			}
@@ -500,7 +500,8 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 		if pendingImage == nil && app != nil {
 			chunks := s.getAppChunks(device.ID, app)
 			if len(chunks) > 1 {
-				// Defensive guard: if any chunk exceeds the device's maxChunkSize, skip streaming
+				// Defensive guard: if any chunk exceeds the device's maxChunkSize (e.g. from
+				// an older cache or previous configuration), skip streaming multi-chunk to avoid crashing device
 				maxChunkSize := s.GetMaxChunkSizeForDevice(&device)
 				if maxChunkSize > 0 {
 					oversized := false
@@ -638,6 +639,16 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 									}
 									if user != nil {
 										s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
+									}
+									// Pre-render the next cycle in the background while the remaining chunks of this cycle play
+									if app.Path != nil && s.isExternalAppPath(*app.Path) {
+										appCopy := *app
+										devCopy := device
+										s.backgroundRenders.Go(func() {
+											bgCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+											defer cancel()
+											s.possiblyRender(bgCtx, &appCopy, &devCopy, user)
+										})
 									}
 								} else if app != nil {
 									slog.Debug("Received ACK for chunk", "app", app.Iname, "device", device.ID, "chunk", chunkIdx)
