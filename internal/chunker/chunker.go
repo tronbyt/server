@@ -449,13 +449,11 @@ func SplitWebPBytesIntoChunks(data []byte, maxChunkSize int, maxChunkDurationMs 
 		return nil, fmt.Errorf("decoding webp for chunking: %w", err)
 	}
 
-	totalDurMs := 0
+	naturalDurMs := 0
 	for _, d := range durations {
-		totalDurMs += int(d.Milliseconds())
+		naturalDurMs += int(d.Milliseconds())
 	}
-	if targetDurationMs > totalDurMs {
-		totalDurMs = targetDurationMs
-	}
+	totalDurMs := max(naturalDurMs, targetDurationMs)
 	if totalDurMs <= 0 {
 		totalDurMs = 15000
 	}
@@ -488,7 +486,7 @@ func SplitWebPBytesIntoChunks(data []byte, maxChunkSize int, maxChunkDurationMs 
 
 	// If targetDurationMs is specified and LONGER than the animation's natural duration,
 	// stretch frames to fill targetDurationMs. Never squash below natural duration!
-	if targetDurationMs > totalDurMs && len(frames) > 0 {
+	if targetDurationMs > naturalDurMs && len(frames) > 0 {
 		n := len(frames)
 		durations = make([]time.Duration, n)
 		for i := range n {

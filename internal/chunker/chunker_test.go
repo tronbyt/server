@@ -166,3 +166,25 @@ func TestChunker_PreservesNaturalAnimationSpeed_NeverSquashes(t *testing.T) {
 	frameDur := anim.Timestamp[1] - anim.Timestamp[0]
 	assert.InDelta(t, 100, frameDur, 10, "Frame duration must remain ~100ms, not squashed")
 }
+
+func TestChunker_StretchesShorterAnimationToTargetDuration(t *testing.T) {
+	// 30 frames at 100ms each = 3.0 seconds natural duration
+	frames := makeTestFrames(30, 64, 32)
+	encoded, err := EncodeFramesToWebP(frames, 100*time.Millisecond)
+	require.NoError(t, err)
+
+	fullSize := len(encoded)
+	maxChunk := fullSize / 2 // Force split into 2 chunks
+
+	// Target duration passed as 10,000ms (longer than 3000ms natural duration, e.g. dwell stretching)
+	// Chunker should stretch the chunks so their total duration reaches the target duration
+	chunks, err := SplitWebPBytesIntoChunks(encoded, maxChunk, 0, 10000)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(chunks), 2)
+
+	totalDur := 0
+	for _, ch := range chunks {
+		totalDur += ch.DurationMs
+	}
+	assert.InDelta(t, 10000, totalDur, 100, "Chunks must stretch to target duration of 10000ms")
+}
