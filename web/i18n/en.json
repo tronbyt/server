@@ -2297,6 +2297,15 @@
   "Contribute to community app stats": {
     "other": "Contribute to community app stats"
   },
+  "Show stats from Niblet community": {
+    "other": "Share my library apps and device count with the Niblet community"
+  },
+  "Community app stats description": {
+    "other": "Share which library apps you use and a rough device count so others can spot popular apps. No names, settings, or custom apps—managed by Niblet. Change anytime in System Settings."
+  },
+  "Continue": {
+    "other": "Continue"
+  },
   "Help other Tronbyt/Niblet users discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included.": {
     "other": "Help other Tronbyt/Niblet users discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included."
   },

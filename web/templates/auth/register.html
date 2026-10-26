@@ -45,12 +45,14 @@
     {{ end }}
     {{ if and (eq .UserCount 0) .UsageSharingAvailable }}
     <label class="usage-sharing-option">
-        <input class="w3-check" type="checkbox" name="usage_sharing" value="true">
+        <input class="w3-check"
+               type="checkbox"
+               name="usage_sharing"
+               value="true"
+               checked>
         <span>
-            <strong>{{ t .Localizer "Contribute to community app stats" }}</strong>
-            <span class="usage-sharing-help">{{ t .Localizer "Help other Tronbyt/Niblet users discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included." }}</span>
-            <span class="usage-sharing-help">{{ t .Localizer "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in." }}</span>
-            <span class="usage-sharing-help">{{ t .Localizer "You can change this anytime in System Settings." }}</span>
+            <strong>{{ t .Localizer "Show stats from Niblet community" }}</strong>
+            <span class="usage-sharing-help">{{ t .Localizer "Community app stats description" }}</span>
         </span>
     </label>
     <br>

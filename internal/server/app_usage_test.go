@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -394,6 +395,13 @@ func TestShouldPromptUsageOncePerServer(t *testing.T) {
 	assert.False(t, s.shouldPromptUsage(admin), "no prompt when Niblet is disabled")
 }
 
+func TestUsageConsentFromForm(t *testing.T) {
+	assert.True(t, usageConsentFromForm(url.Values{"usage_prompt": {"1"}, "contribute": {"true"}}))
+	assert.False(t, usageConsentFromForm(url.Values{"usage_prompt": {"1"}}))
+	assert.True(t, usageConsentFromForm(url.Values{"consent": {"true"}}))
+	assert.False(t, usageConsentFromForm(url.Values{"consent": {"false"}}))
+}
+
 func TestUsagePromptRendersUntilAnswered(t *testing.T) {
 	s, _ := newUsageTest(t)
 	admin := &data.User{Username: "admin", IsAdmin: true}
@@ -414,6 +422,14 @@ func TestUsagePromptRendersUntilAnswered(t *testing.T) {
 	assert.Equal(t, "false", setting(t, s, settingUsageSharing))
 	assert.Equal(t, "true", setting(t, s, settingUsagePrompted))
 	assert.NotContains(t, render(), `id="usage-sharing-prompt"`, "Not now is remembered")
+
+	request = httptest.NewRequest(http.MethodPost, "/settings/admin/usage-sharing", strings.NewReader("usage_prompt=1&contribute=true&return_to=%2F"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(context.WithValue(request.Context(), userContextKey, admin))
+	response = httptest.NewRecorder()
+	s.handleUsageSharingConsent(response, request)
+	s.usageSyncs.Wait()
+	assert.Equal(t, "true", setting(t, s, settingUsageSharing), "Continue with checked box opts in")
 }
 
 func TestLocalReturnPath(t *testing.T) {
