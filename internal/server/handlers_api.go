@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -43,6 +44,11 @@ type DeviceUpdate struct {
 	DimModeVolume       *int    `json:"dimModeVolume"`
 	PinnedApp           *string `json:"pinnedApp"`
 	AutoDim             *bool   `json:"autoDim"` // Legacy
+
+	// NightModeSchedule and DimModeSchedule replace a mode's sun-aware and
+	// weekend boundaries; unset boundaries use the start and end times.
+	NightModeSchedule *ModeSchedulePayload `json:"nightModeSchedule"`
+	DimModeSchedule   *ModeSchedulePayload `json:"dimModeSchedule"`
 }
 
 // DevicePayload represents the full device data returned via API.
@@ -76,6 +82,9 @@ type NightMode struct {
 	Mute          bool    `json:"mute"`
 	Volume        *int    `json:"volume,omitempty"`
 	OverrideUntil *string `json:"overrideUntil,omitempty"`
+
+	Schedule     ModeSchedulePayload `json:"schedule"`
+	NextChangeAt *string             `json:"nextChangeAt,omitempty"`
 }
 
 // DimMode represents dim mode settings in the API payload.
@@ -87,6 +96,57 @@ type DimMode struct {
 	Mute          bool    `json:"mute"`
 	Volume        *int    `json:"volume,omitempty"`
 	OverrideUntil *string `json:"overrideUntil,omitempty"`
+
+	Schedule     ModeSchedulePayload `json:"schedule"`
+	NextChangeAt *string             `json:"nextChangeAt,omitempty"`
+}
+
+// ScheduleTriggerPayload is one night or dim mode boundary: a fixed time,
+// sunrise or sunset with an offset in minutes and optional clamps, or (for a
+// dim end) night_end.
+type ScheduleTriggerPayload struct {
+	Kind      data.TriggerKind `json:"kind"`
+	Time      string           `json:"time,omitempty"`
+	Offset    int              `json:"offset,omitempty"`
+	NotBefore string           `json:"notBefore,omitempty"`
+	NotAfter  string           `json:"notAfter,omitempty"`
+}
+
+// ModeSchedulePayload holds a mode's sun-aware and weekend boundaries.
+type ModeSchedulePayload struct {
+	Start      *ScheduleTriggerPayload `json:"start,omitempty"`
+	End        *ScheduleTriggerPayload `json:"end,omitempty"`
+	WeekendEnd *ScheduleTriggerPayload `json:"weekendEnd,omitempty"`
+}
+
+func triggerPayload(t *data.ScheduleTrigger) *ScheduleTriggerPayload {
+	if t == nil {
+		return nil
+	}
+	return &ScheduleTriggerPayload{Kind: t.Kind, Time: t.Time, Offset: t.Offset, NotBefore: t.NotBefore, NotAfter: t.NotAfter}
+}
+
+func (p *ScheduleTriggerPayload) toData() *data.ScheduleTrigger {
+	if p == nil {
+		return nil
+	}
+	return &data.ScheduleTrigger{Kind: p.Kind, Time: p.Time, Offset: p.Offset, NotBefore: p.NotBefore, NotAfter: p.NotAfter}
+}
+
+func schedulePayload(s data.ModeSchedule) ModeSchedulePayload {
+	return ModeSchedulePayload{Start: triggerPayload(s.Start), End: triggerPayload(s.End), WeekendEnd: triggerPayload(s.WeekendEnd)}
+}
+
+func (p ModeSchedulePayload) toData() data.ModeSchedule {
+	return data.ModeSchedule{Start: p.Start.toData(), End: p.End.toData(), WeekendEnd: p.WeekendEnd.toData()}
+}
+
+func formatNextChange(next *time.Time) *string {
+	if next == nil {
+		return nil
+	}
+	formatted := next.Format(time.RFC3339)
+	return &formatted
 }
 
 // Interstitial represents interstitial app settings in the API payload.
@@ -188,6 +248,8 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 			Mute:          d.NightModeMute,
 			Volume:        d.NightModeVolume,
 			OverrideUntil: nightModeOverrideUntil,
+			Schedule:      schedulePayload(d.NightSchedule),
+			NextChangeAt:  formatNextChange(d.GetNightModeNextChangeAt(now)),
 		},
 		DimMode: DimMode{
 			Enabled:       d.DimModeEnabled,
@@ -197,6 +259,8 @@ func (s *Server) toDevicePayload(d *data.Device) DevicePayload {
 			Mute:          d.DimModeMute,
 			Volume:        d.DimModeVolume,
 			OverrideUntil: dimModeOverrideUntil,
+			Schedule:      schedulePayload(d.DimSchedule),
+			NextChangeAt:  formatNextChange(d.GetDimModeNextChangeAt(now)),
 		},
 		PinnedApp: d.PinnedApp,
 		Interstitial: Interstitial{
@@ -795,14 +859,34 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// A start or end time replaces a sunrise or sunset boundary, so it takes
+	// effect; a schedule in the same request is applied after it.
+	nightScheduleWas, dimScheduleWas := device.NightSchedule, device.DimSchedule
 	if update.NightModeStartTime != nil {
 		device.NightStart = *update.NightModeStartTime
+		device.NightSchedule.Start = nil
 	}
 	if update.NightModeEndTime != nil {
 		device.NightEnd = *update.NightModeEndTime
+		device.NightSchedule.End = nil
 	}
 	if update.DimModeStartTime != nil {
 		device.DimTime = update.DimModeStartTime
+		device.DimSchedule.Start = nil
+	}
+	if update.NightModeSchedule != nil {
+		device.NightSchedule = update.NightModeSchedule.toData()
+	}
+	if update.DimModeSchedule != nil {
+		device.DimSchedule = update.DimModeSchedule.toData()
+	}
+	if err := device.ValidateSchedules(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if (device.NightSchedule.UsesSun() || device.DimSchedule.UsesSun()) && !device.HasCoordinates() {
+		http.Error(w, "Set the device location to use sunrise and sunset", http.StatusBadRequest)
+		return
 	}
 	if update.DimModeBrightness != nil {
 		val := data.Brightness(*update.DimModeBrightness)
@@ -820,7 +904,8 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd {
+	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd ||
+		!reflect.DeepEqual(nightScheduleWas, device.NightSchedule) {
 		clearNightModeOverride(device)
 	}
 	if update.NightModeActive != nil {
@@ -833,7 +918,8 @@ func (s *Server) handlePatchDevice(w http.ResponseWriter, r *http.Request) {
 	if device.DimTime != nil {
 		currentDimTime = *device.DimTime
 	}
-	if !device.DimModeEnabled || dimModeWasEnabled != device.DimModeEnabled || dimTimeWas != currentDimTime {
+	if !device.DimModeEnabled || dimModeWasEnabled != device.DimModeEnabled || dimTimeWas != currentDimTime ||
+		!reflect.DeepEqual(dimScheduleWas, device.DimSchedule) {
 		clearDimModeOverride(device)
 	}
 	if update.DimModeActive != nil {

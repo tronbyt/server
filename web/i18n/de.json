@@ -1595,6 +1595,51 @@
   "Dim Start Time": {
     "other": "Dimm-Startzeit"
   },
+  "At a fixed time": {
+    "other": "Zu einer festen Uhrzeit"
+  },
+  "At sunrise": {
+    "other": "Bei Sonnenaufgang"
+  },
+  "At sunset": {
+    "other": "Bei Sonnenuntergang"
+  },
+  "When night mode ends": {
+    "other": "Wenn der Nachtmodus endet"
+  },
+  "Same as weekdays": {
+    "other": "Wie an Wochentagen"
+  },
+  "minutes after (negative: before)": {
+    "other": "Minuten danach (negativ: davor)"
+  },
+  "Limits": {
+    "other": "Grenzen"
+  },
+  "Not before": {
+    "other": "Nicht vor"
+  },
+  "Not after": {
+    "other": "Nicht nach"
+  },
+  "Night End on Weekends": {
+    "other": "Nachtmodus Endzeit am Wochenende"
+  },
+  "Dim End Time": {
+    "other": "Dimm-Endzeit"
+  },
+  "Dim End on Weekends": {
+    "other": "Dimm-Endzeit am Wochenende"
+  },
+  "By default dim mode ends when night mode ends.": {
+    "other": "Standardmäßig endet der Dimm-Modus, wenn der Nachtmodus endet."
+  },
+  "Weekend ends apply on Saturday and Sunday mornings.": {
+    "other": "Die Wochenend-Endzeit gilt am Samstag- und Sonntagmorgen."
+  },
+  "Set this device's location to use sunrise and sunset.": {
+    "other": "Lege den Standort dieses Geräts fest, um Sonnenaufgang und Sonnenuntergang zu verwenden."
+  },
   "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
     "other": "Leer lassen, um den Dimm-Modus zu deaktivieren. Der Dimm-Modus endet standardmäßig zur Nacht-Endzeit (falls festgelegt) oder um 6:00 Uhr."
   },
@@ -1861,6 +1906,9 @@
   },
   "Invalid JSON file": {
     "other": "Ungültige JSON-Datei"
+  },
+  "Invalid night or dim mode schedule in file": {
+    "other": "Ungültiger Nacht- oder Dimm-Modus-Zeitplan in der Datei"
   },
   "Import failed. See server logs for details.": {
     "other": "Import fehlgeschlagen. Details in den Server-Logs."
@@ -2143,9 +2191,6 @@
   },
   "Enable dim Mode": {
     "other": "Dimm-Modus aktivieren"
-  },
-  "Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
-    "other": "Der Dimm-Modus endet zur Nacht-Endzeit (falls gesetzt) oder standardmäßig um 6:00 Uhr."
   },
   "Apply custom filters to the image during dim mode.": {
     "other": "Benutzerdefinierte Filter auf das Bild im Dimm-Modus anwenden."

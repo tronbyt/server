@@ -1598,6 +1598,51 @@
   "Dim Start Time": {
     "other": "Dim Start Time"
   },
+  "At a fixed time": {
+    "other": "At a fixed time"
+  },
+  "At sunrise": {
+    "other": "At sunrise"
+  },
+  "At sunset": {
+    "other": "At sunset"
+  },
+  "When night mode ends": {
+    "other": "When night mode ends"
+  },
+  "Same as weekdays": {
+    "other": "Same as weekdays"
+  },
+  "minutes after (negative: before)": {
+    "other": "minutes after (negative: before)"
+  },
+  "Limits": {
+    "other": "Limits"
+  },
+  "Not before": {
+    "other": "Not before"
+  },
+  "Not after": {
+    "other": "Not after"
+  },
+  "Night End on Weekends": {
+    "other": "Night End on Weekends"
+  },
+  "Dim End Time": {
+    "other": "Dim End Time"
+  },
+  "Dim End on Weekends": {
+    "other": "Dim End on Weekends"
+  },
+  "By default dim mode ends when night mode ends.": {
+    "other": "By default dim mode ends when night mode ends."
+  },
+  "Weekend ends apply on Saturday and Sunday mornings.": {
+    "other": "Weekend ends apply on Saturday and Sunday mornings."
+  },
+  "Set this device's location to use sunrise and sunset.": {
+    "other": "Set this device's location to use sunrise and sunset."
+  },
   "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
     "other": "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default."
   },
@@ -1867,6 +1912,9 @@
   },
   "Invalid JSON file": {
     "other": "Invalid JSON file"
+  },
+  "Invalid night or dim mode schedule in file": {
+    "other": "Invalid night or dim mode schedule in file"
   },
   "Import failed. See server logs for details.": {
     "other": "Import failed. See server logs for details."
@@ -2146,9 +2194,6 @@
   },
   "Enable dim Mode": {
     "other": "Enable dim Mode"
-  },
-  "Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
-    "other": "Dim mode ends at Night End Time (if set) or 6:00 AM by default."
   },
   "Apply custom filters to the image during dim mode.": {
     "other": "Apply custom filters to the image during dim mode."

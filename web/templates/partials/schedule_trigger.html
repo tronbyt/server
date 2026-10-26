@@ -1,0 +1,70 @@
+{{ define "schedule_trigger" }}
+{{- /* One night or dim mode boundary. Arguments (dict): Prefix, Label, TimeField, TimeValue, Trigger (*data.ScheduleTrigger, may be nil), Kinds (comma-separated), DefaultKind, HasCoordinates, Localizer. */ -}}
+{{ $kind := .DefaultKind }}
+{{ if .Trigger }}
+{{ $kind = string .Trigger.Kind }}
+{{ end }}
+<div class="schedule-trigger" data-schedule-trigger>
+    <select name="{{ .Prefix }}_kind"
+            id="{{ .Prefix }}_kind"
+            class="settings-input"
+            data-trigger-kind>
+        {{ range split .Kinds "," }}
+        <option value="{{ . }}"
+                {{ if eq $kind . }}selected{{ end }}
+                {{ if and (not $.HasCoordinates) (or (eq . "sunrise") (eq . "sunset")) }}disabled{{ end }}>
+            {{ if eq . "" }}
+            {{ t $.Localizer "Same as weekdays" }}
+            {{ else if eq . "time" }}
+            {{ t $.Localizer "At a fixed time" }}
+            {{ else if eq . "sunrise" }}
+            {{ t $.Localizer "At sunrise" }}
+            {{ else if eq . "sunset" }}
+            {{ t $.Localizer "At sunset" }}
+            {{ else if eq . "night_end" }}
+            {{ t $.Localizer "When night mode ends" }}
+            {{ end }}
+        </option>
+        {{ end }}
+    </select>
+    <input type="time"
+           name="{{ .TimeField }}"
+           id="{{ .TimeField }}"
+           aria-label="{{ .Label }}"
+           value="{{ .TimeValue }}"
+           class="settings-input"
+           data-trigger-time
+           {{ if ne $kind "time" }}hidden{{ end }}>
+    <div class="schedule-trigger-sun"
+         data-trigger-sun
+         {{ if and (ne $kind "sunrise") (ne $kind "sunset") }}hidden{{ end }}>
+        <label>
+            <input type="number"
+                   name="{{ .Prefix }}_offset"
+                   value="{{ if .Trigger }}{{ .Trigger.Offset }}{{ else }}0{{ end }}"
+                   min="-240"
+                   max="240"
+                   step="5"
+                   class="settings-input">
+            {{ t .Localizer "minutes after (negative: before)" }}
+        </label>
+        <details>
+            <summary>{{ t .Localizer "Limits" }}</summary>
+            <label>
+                {{ t .Localizer "Not before" }}
+                <input type="time"
+                       name="{{ .Prefix }}_not_before"
+                       value="{{ if .Trigger }}{{ .Trigger.NotBefore }}{{ end }}"
+                       class="settings-input">
+            </label>
+            <label>
+                {{ t .Localizer "Not after" }}
+                <input type="time"
+                       name="{{ .Prefix }}_not_after"
+                       value="{{ if .Trigger }}{{ .Trigger.NotAfter }}{{ end }}"
+                       class="settings-input">
+            </label>
+        </details>
+    </div>
+</div>
+{{ end }}

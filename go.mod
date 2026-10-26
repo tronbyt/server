@@ -16,6 +16,7 @@ require (
 	github.com/lmittmann/tint v1.2.1
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mattn/go-sqlite3 v1.14.52
+	github.com/nathan-osman/go-sunrise v1.1.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/prometheus/client_golang v1.25.0
 	github.com/quic-go/quic-go v0.64.1
@@ -92,7 +93,6 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nathan-osman/go-sunrise v1.1.0 // indirect
 	github.com/newm4n/go-dfe v0.0.0-20210113055126-9d5f01722db9 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect

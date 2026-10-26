@@ -703,6 +703,12 @@ type Device struct {
 	DimBrightness          *Brightness `json:"dim_brightness"`
 	DefaultInterval        int         `gorm:"default:15"                          json:"default_interval"`
 
+	// Sun-aware and independent night/dim boundaries. Unset parts fall back
+	// to the HH:MM fields above as described on ModeSchedule; with both empty
+	// the device behaves exactly as before.
+	NightSchedule ModeSchedule `gorm:"type:text" json:"night_schedule"`
+	DimSchedule   ModeSchedule `gorm:"type:text" json:"dim_schedule"`
+
 	Timezone *string `json:"timezone"`
 	Locale   *string `json:"locale"`
 
@@ -916,15 +922,15 @@ func (d Device) getNightScheduleBounds() (string, string) {
 }
 
 func clockToMinutes(value string) (int, bool) {
-	parts := strings.Split(value, ":")
-	if len(parts) != 2 {
+	hourPart, minutePart, found := strings.Cut(value, ":")
+	if !found || strings.Contains(minutePart, ":") {
 		return 0, false
 	}
-	hours, err := strconv.Atoi(parts[0])
+	hours, err := strconv.Atoi(hourPart)
 	if err != nil || hours < 0 || hours > 23 {
 		return 0, false
 	}
-	minutes, err := strconv.Atoi(parts[1])
+	minutes, err := strconv.Atoi(minutePart)
 	if err != nil || minutes < 0 || minutes > 59 {
 		return 0, false
 	}
@@ -935,54 +941,14 @@ func (d Device) GetScheduledNightModeIsActiveAt(now time.Time) bool {
 	if !d.NightModeEnabled {
 		return false
 	}
-
-	start, end := d.getNightScheduleBounds()
-	currentMinutes := now.Hour()*60 + now.Minute()
-	startMinutes, startOK := clockToMinutes(start)
-	endMinutes, endOK := clockToMinutes(end)
-	if !startOK || !endOK {
-		return false
-	}
-
-	if startMinutes > endMinutes {
-		return currentMinutes >= startMinutes || currentMinutes <= endMinutes
-	}
-	return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+	return d.scheduleActiveAt(nightSchedule, now)
 }
 
 func (d Device) GetNightModeNextChangeAt(now time.Time) *time.Time {
 	if !d.NightModeEnabled {
 		return nil
 	}
-
-	start, end := d.getNightScheduleBounds()
-	startParsed, err := time.Parse("15:04", start)
-	if err != nil {
-		return nil
-	}
-	endParsed, err := time.Parse("15:04", end)
-	if err != nil {
-		return nil
-	}
-
-	var next *time.Time
-	for dayOffset := 0; dayOffset <= 2; dayOffset++ {
-		day := now.AddDate(0, 0, dayOffset)
-		candidates := []time.Time{
-			time.Date(day.Year(), day.Month(), day.Day(), startParsed.Hour(), startParsed.Minute(), 0, 0, now.Location()),
-			time.Date(day.Year(), day.Month(), day.Day(), endParsed.Hour(), endParsed.Minute(), 0, 0, now.Location()),
-		}
-		for _, candidate := range candidates {
-			if !candidate.After(now) {
-				continue
-			}
-			if next == nil || candidate.Before(*next) {
-				candidateCopy := candidate
-				next = &candidateCopy
-			}
-		}
-	}
-	return next
+	return d.scheduleNextChangeAt(nightSchedule, now)
 }
 
 func (d Device) GetNightModeOverrideActiveAt(now time.Time) bool {
@@ -992,76 +958,18 @@ func (d Device) GetNightModeOverrideActiveAt(now time.Time) bool {
 	return now.Before(d.NightModeOverrideUntil.In(now.Location()))
 }
 
-func (d Device) getDimScheduleBounds() (string, string, bool) {
-	if d.DimTime == nil || *d.DimTime == "" {
-		return "", "", false
-	}
-	start := *d.DimTime
-	end := "06:00"
-	if d.NightEnd != "" {
-		end = d.NightEnd
-	}
-	return start, end, true
-}
-
 func (d Device) GetScheduledDimModeIsActiveAt(now time.Time) bool {
 	if !d.DimModeEnabled {
 		return false
 	}
-	start, end, ok := d.getDimScheduleBounds()
-	if !ok {
-		return false
-	}
-
-	currentMinutes := now.Hour()*60 + now.Minute()
-	startMinutes, startOK := clockToMinutes(start)
-	endMinutes, endOK := clockToMinutes(end)
-	if !startOK || !endOK {
-		return false
-	}
-
-	if startMinutes > endMinutes {
-		return currentMinutes >= startMinutes || currentMinutes <= endMinutes
-	}
-	return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+	return d.scheduleActiveAt(dimSchedule, now)
 }
 
 func (d Device) GetDimModeNextChangeAt(now time.Time) *time.Time {
 	if !d.DimModeEnabled {
 		return nil
 	}
-	start, end, ok := d.getDimScheduleBounds()
-	if !ok {
-		return nil
-	}
-
-	startParsed, err := time.Parse("15:04", start)
-	if err != nil {
-		return nil
-	}
-	endParsed, err := time.Parse("15:04", end)
-	if err != nil {
-		return nil
-	}
-
-	var next *time.Time
-	for dayOffset := 0; dayOffset <= 2; dayOffset++ {
-		day := now.AddDate(0, 0, dayOffset)
-		candidates := []time.Time{
-			time.Date(day.Year(), day.Month(), day.Day(), startParsed.Hour(), startParsed.Minute(), 0, 0, now.Location()),
-			time.Date(day.Year(), day.Month(), day.Day(), endParsed.Hour(), endParsed.Minute(), 0, 0, now.Location()),
-		}
-		for _, candidate := range candidates {
-			if !candidate.After(now) {
-				continue
-			}
-			if next == nil || candidate.Before(*next) {
-				candidateCopy := candidate
-				next = &candidateCopy
-			}
-		}
-	}
-	return next
+	return d.scheduleNextChangeAt(dimSchedule, now)
 }
 
 func (d Device) GetDimModeOverrideActiveAt(now time.Time) bool {
