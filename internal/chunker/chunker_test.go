@@ -13,11 +13,11 @@ import (
 
 func makeTestFrames(n int, width, height int) []*image.RGBA {
 	frames := make([]*image.RGBA, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		img := image.NewRGBA(image.Rect(0, 0, width, height))
 		// Gradient so frames don't compress away to nothing
-		for y := 0; y < height; y++ {
-			for x := 0; x < width; x++ {
+		for y := range height {
+			for x := range width {
 				img.SetRGBA(x, y, color.RGBA{
 					R: uint8((x*4 + i*7) % 256),
 					G: uint8((y*8 + i*3) % 256),

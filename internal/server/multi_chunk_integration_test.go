@@ -334,7 +334,7 @@ func TestMultiChunk_WebSocket_Streaming(t *testing.T) {
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Helper to read JSON message from server
 	readJSON := func() map[string]any {
@@ -433,7 +433,7 @@ func TestMultiChunk_WebSocket_Streaming_DoubleBuffer(t *testing.T) {
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	readJSON := func() map[string]any {
 		var m map[string]any
@@ -613,7 +613,7 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, header)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	readJSON := func() map[string]any {
 		var m map[string]any
