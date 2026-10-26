@@ -8,13 +8,7 @@ import (
 )
 
 func deviceTimeNow(device *data.Device) time.Time {
-	loc := time.Local
-	if tz := device.GetTimezone(); tz != "" {
-		if loaded, err := time.LoadLocation(tz); err == nil {
-			loc = loaded
-		}
-	}
-	return time.Now().In(loc)
+	return time.Now().In(device.GetLocation())
 }
 
 func clearNightModeOverride(device *data.Device) {
