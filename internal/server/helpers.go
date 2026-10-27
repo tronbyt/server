@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -1106,10 +1107,8 @@ func validateExternalProviderURL(rawURL string) error {
 		strings.EqualFold(host, "metadata.turing.com") {
 		return errors.New("cloud metadata endpoints are not permitted")
 	} else if ips, err := net.LookupIP(host); err == nil {
-		for _, rip := range ips {
-			if isBlockedMetadataIP(rip) {
-				return errors.New("URL host resolves to a prohibited cloud metadata or link-local address")
-			}
+		if slices.ContainsFunc(ips, isBlockedMetadataIP) {
+			return errors.New("URL host resolves to a prohibited cloud metadata or link-local address")
 		}
 	}
 

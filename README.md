@@ -127,7 +127,9 @@ The server can be configured via environment variables or `.env` file:
 
 ### External App Providers & Screeny 30 FPS Multi-Chunk Streaming
 
-Tronbyt Server supports pluggable external app providers via the `ExternalAppProvider` interface. When `SCREENY_STUDIO_URL` is configured:
+Tronbyt Server supports pluggable external app providers via the `ExternalAppProvider` interface. For a complete step-by-step setup guide using Docker, see [SCREENY_SETUP.md](SCREENY_SETUP.md).
+
+When `SCREENY_STUDIO_URL` is configured:
 1. **Catalog & Parameters:** Screeny patches (Clocks, Split-Flap, Boids, Bats, Leaves, Flyover, etc.) appear in the Add App catalog badged as `[Screeny]`. Patch options are translated into native schema configuration controls.
 2. **30 FPS Native Frame Capture:** The server streams frames from `screeny-studio` via WebSocket at 30 fps, decoding wire UDP or preview packets with pure Go implementations of PAL5, PAL8_LZ, PAL4_LZ, BC1_DUAL, and SOLID codecs.
 3. **High-Resolution 128x64 Scaling for Tronberry / Raspberry Pi:**
