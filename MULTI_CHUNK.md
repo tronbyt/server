@@ -8,9 +8,8 @@ This document provides a comprehensive overview of the multi-chunk animation arc
 
 Microcontrollers like the ESP32 (used in Tidbyt Gen 1, Waveshare MatrixPortal, etc.) have strict RAM and hardware buffer constraints:
 
-* **Tidbyt Gen 1 & ESP32:** ~160 KB firmware image buffer limit (safe for double-buffering; chunks approaching 200 KB cause heap allocation exhaustion and "mind explode" fallbacks).
-* **ESP32-S3 & Matrix Wide devices:** ~450–460 KB firmware buffer limit.
-* **Pixoticker:** ~50 KB buffer limit.
+* **Tidbyt Gen 1, Gen 2 & ESP32 / S3:** ~450–460 KB firmware buffer limit (backed by PSRAM on the microcontroller).
+* **Pixoticker:** ~50 KB buffer limit (no PSRAM).
 * **Raspberry Pi / Tronberry:** 5+ MB (effectively unconstrained).
 
 A smooth 30 FPS WebP animation spanning a 10–15 second dwell time typically compresses to **600 KB – 2 MB**. When pushed as a single monolithic image to an ESP32:
@@ -168,8 +167,7 @@ The chunking engine automatically validates and partitions images and animations
 | Device Type | Identifiers | Max Chunk Size | Max Chunk Duration | Target Firmware Buffer |
 | :--- | :--- | :--- | :--- | :--- |
 | **Raspberry Pi / Tronberry** | `DeviceRaspberryPi*`, `DeviceTronberry*` | **5,242,880 B** (5 MB) | No duration limit (`0`) | Unlimited |
-| **ESP32-S3 & Matrix Wide** | `DeviceTronbytS3Wide`, `DeviceMatrixPortalWide`, `DeviceMatrixPortalSquare`, `DeviceTronbytS3`, `DeviceMatrixPortal`, `DeviceMatrixPortalWS`, `DeviceWaveshareS3`, `DeviceTidbytGen2` | **450,000 B** (450 KB) | Governed by byte budget (`0`) | 460,000 B |
-| **Tidbyt Gen 1 & Standard ESP32** | `DeviceTidbytGen1` | **160,000 B** (160 KB) | Governed by byte budget (`0`) | 220,000 B |
+| **Tidbyt Gen 1, Gen 2 & ESP32 / S3** | `DeviceTidbytGen1`, `DeviceTidbytGen2`, `DeviceTronbytS3*`, `DeviceMatrixPortal*`, `DeviceWaveshareS3` | **450,000 B** (450 KB) | Governed by byte budget (`0`) | 460,000 B |
 | **Pixoticker** | `DevicePixoticker` | **50,000 B** (50 KB) | Governed by byte budget (`0`) | 60,000 B |
 
 ---
@@ -178,6 +176,6 @@ The chunking engine automatically validates and partitions images and animations
 
 | Environment Variable | Default | Description |
 | :--- | :--- | :--- |
-| `TRONBYT_MAX_CHUNK_SIZE_ESP` | `160000` (160 KB) | Maximum chunk size budget for ESP32 and Tidbyt Gen 1 hardware. |
-| `TRONBYT_MAX_CHUNK_SIZE_S3` | `450000` (450 KB) | Maximum chunk size budget for ESP32-S3, Matrix Wide, and Tidbyt Gen 2 hardware. |
+| `TRONBYT_MAX_CHUNK_SIZE_ESP` | `450000` (450 KB) | Maximum chunk size budget for ESP32 and Tidbyt Gen 1 / Gen 2 hardware. |
+| `TRONBYT_MAX_CHUNK_SIZE_S3` | `450000` (450 KB) | Optional override for ESP32-S3, Matrix Wide, and Tidbyt Gen 2 hardware. |
 | `TRONBYT_MAX_CHUNK_SIZE_RPI` | `5242880` (5 MB) | Maximum chunk size budget for Raspberry Pi and Tronberry hardware. |
