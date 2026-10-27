@@ -50,8 +50,13 @@ func TestDeviceMaxChunkSize_ESP_vs_RPi(t *testing.T) {
 		ID:   "esp1",
 		Type: data.DeviceTidbytGen1,
 	}
-	assert.Equal(t, 160000, s.GetMaxChunkSizeForDevice(espDevice))
+	assert.Equal(t, 450000, s.GetMaxChunkSizeForDevice(espDevice))
 	assert.Equal(t, 0, s.GetMaxChunkDurationForDevice(espDevice))
+
+	// Config override for ESP devices
+	s.Config.MaxChunkSizeESP = 200000
+	assert.Equal(t, 200000, s.GetMaxChunkSizeForDevice(espDevice))
+	s.Config.MaxChunkSizeESP = 0 // reset
 
 	// MatrixPortal S3 and Wide devices have 450,000-byte firmware buffers
 	matrixDevice := &data.Device{
@@ -533,7 +538,7 @@ func TestMultiChunk_OversizedPrimaryProtection(t *testing.T) {
 	user := data.User{Username: "oversized_user"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
-	// Gen 1 device with 160KB limit
+	// Gen 1 device with 450KB limit
 	device := data.Device{
 		ID:       "gen1_oversized",
 		Username: user.Username,
@@ -556,9 +561,9 @@ func TestMultiChunk_OversizedPrimaryProtection(t *testing.T) {
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
 
-	// Write an oversized primary webp file (> 250,000 bytes)
+	// Write an oversized primary webp file (> 450,000 bytes)
 	primaryPath := filepath.Join(webpDir, "OverApp-over_app.webp")
-	oversizedBytes := make([]byte, 250000)
+	oversizedBytes := make([]byte, 500000)
 	copy(oversizedBytes, dummyChunkWebP1)
 	require.NoError(t, os.WriteFile(primaryPath, oversizedBytes, 0644))
 
