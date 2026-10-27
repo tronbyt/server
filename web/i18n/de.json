@@ -1595,6 +1595,51 @@
   "Dim Start Time": {
     "other": "Dimm-Startzeit"
   },
+  "At a fixed time": {
+    "other": "Zu einer festen Uhrzeit"
+  },
+  "At sunrise": {
+    "other": "Bei Sonnenaufgang"
+  },
+  "At sunset": {
+    "other": "Bei Sonnenuntergang"
+  },
+  "When night mode ends": {
+    "other": "Wenn der Nachtmodus endet"
+  },
+  "Same as weekdays": {
+    "other": "Wie an Wochentagen"
+  },
+  "minutes after (negative: before)": {
+    "other": "Minuten danach (negativ: davor)"
+  },
+  "Limits": {
+    "other": "Grenzen"
+  },
+  "Not before": {
+    "other": "Nicht vor"
+  },
+  "Not after": {
+    "other": "Nicht nach"
+  },
+  "Night End on Weekends": {
+    "other": "Nachtmodus Endzeit am Wochenende"
+  },
+  "Dim End Time": {
+    "other": "Dimm-Endzeit"
+  },
+  "Dim End on Weekends": {
+    "other": "Dimm-Endzeit am Wochenende"
+  },
+  "By default dim mode ends when night mode ends.": {
+    "other": "Standardmäßig endet der Dimm-Modus, wenn der Nachtmodus endet."
+  },
+  "Weekend ends apply on Saturday and Sunday mornings.": {
+    "other": "Die Wochenend-Endzeit gilt am Samstag- und Sonntagmorgen."
+  },
+  "Set this device's location to use sunrise and sunset.": {
+    "other": "Lege den Standort dieses Geräts fest, um Sonnenaufgang und Sonnenuntergang zu verwenden."
+  },
   "Leave empty to disable dim mode. Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
     "other": "Leer lassen, um den Dimm-Modus zu deaktivieren. Der Dimm-Modus endet standardmäßig zur Nacht-Endzeit (falls festgelegt) oder um 6:00 Uhr."
   },
@@ -1861,6 +1906,9 @@
   },
   "Invalid JSON file": {
     "other": "Ungültige JSON-Datei"
+  },
+  "Invalid night or dim mode schedule in file": {
+    "other": "Ungültiger Nacht- oder Dimm-Modus-Zeitplan in der Datei"
   },
   "Import failed. See server logs for details.": {
     "other": "Import fehlgeschlagen. Details in den Server-Logs."
@@ -2144,9 +2192,6 @@
   "Enable dim Mode": {
     "other": "Dimm-Modus aktivieren"
   },
-  "Dim mode ends at Night End Time (if set) or 6:00 AM by default.": {
-    "other": "Der Dimm-Modus endet zur Nacht-Endzeit (falls gesetzt) oder standardmäßig um 6:00 Uhr."
-  },
   "Apply custom filters to the image during dim mode.": {
     "other": "Benutzerdefinierte Filter auf das Bild im Dimm-Modus anwenden."
   },
@@ -2293,6 +2338,15 @@
   },
   "Contribute to community app stats": {
     "other": "Zu Community-App-Statistiken beitragen"
+  },
+  "Show stats from Niblet community": {
+    "other": "Statistiken an die Niblet-Community senden"
+  },
+  "Community app stats description": {
+    "other": "Teilen Sie, welche Bibliotheks-Apps Sie nutzen und eine ungefähre Geräteanzahl, damit andere beliebte Apps finden. Keine Namen, Einstellungen oder eigenen Apps—verwaltet von Niblet. Jederzeit unter Systemeinstellungen änderbar."
+  },
+  "Continue": {
+    "other": "Weiter"
   },
   "Help other Tronbyt/Niblet users discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included.": {
     "other": "Helfen Sie anderen Tronbyt-/Niblet-Nutzern, großartige Apps zu entdecken. Ihr Tronbyt teilt nur bei Änderungen mit, welche Bibliotheks-Apps Sie verwenden, und eine ungefähre Geräteanzahl, dazu ein kurzes wöchentliches Lebenszeichen. Ihr Name, Ihre Geräte, Einstellungen und eigenen Apps sind nie enthalten."

@@ -37,16 +37,13 @@
                 <div class="settings-field-row">
                     <div class="settings-field-label">{{ t .Localizer "Contribute" }}</div>
                     <div class="settings-field-control">
-                        <p class="settings-help">
-                            {{ t .Localizer "Help other Tronbyt/Niblet users discover great apps. Your Tronbyt shares which library apps you use and a rough device count only when they change, plus a tiny weekly check-in. Your name, devices, settings, and custom apps are never included." }}
-                        </p>
-                        <p class="settings-help">{{ t .Localizer "Niblet manages the community stats. Your IP address is used only to block spam and isn't saved with your stats, which are removed 30 days after your Tronbyt stops checking in." }}</p>
+                        <p class="settings-help">{{ t .Localizer "Community app stats description" }}</p>
                         <label>
                             <input type="checkbox"
                                    name="consent"
                                    value="true"
                                    {{ if .UsageSharing.Enabled }}checked{{ end }}>
-                            {{ t .Localizer "Contribute to community app stats" }}
+                            {{ t .Localizer "Show stats from Niblet community" }}
                         </label>
                         {{ if ne .UsageSharing.Status "Off" }}
                         <p class="settings-help" role="status">

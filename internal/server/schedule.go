@@ -9,21 +9,7 @@ import (
 
 // IsAppScheduleActive checks if an app's schedule is active.
 func IsAppScheduleActive(app *data.App, device *data.Device) bool {
-	// 1. Get Device Timezone
-	loc := time.Local // Default
-	if device.Timezone != nil {
-		if l, err := time.LoadLocation(*device.Timezone); err == nil {
-			loc = l
-		}
-	} else if device.Location.Timezone != "" {
-		// Try to get timezone from location (stored in JSON)
-		if l, err := time.LoadLocation(device.Location.Timezone); err == nil {
-			loc = l
-		}
-	}
-
-	currentTime := time.Now().In(loc)
-	return IsAppScheduleActiveAtTime(app, currentTime)
+	return IsAppScheduleActiveAtTime(app, time.Now().In(device.GetLocation()))
 }
 
 // IsAppScheduleActiveAtTime checks if app should be active at the given time.

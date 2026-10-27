@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -546,6 +547,14 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		device.NightEnd = parsed
 	}
 
+	nightScheduleWas := device.NightSchedule
+	nightSchedule, err := modeScheduleFromForm(r, "night", "night_start", "night_end", true)
+	if err != nil {
+		s.flashAndRedirect(w, r, fmt.Sprintf("Invalid night schedule: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+	device.NightSchedule = nightSchedule
+
 	if nbUI, err := strconv.Atoi(r.FormValue("night_brightness")); err == nil {
 		device.NightBrightness = data.BrightnessFromUIScale(nbUI, customScale)
 	}
@@ -575,7 +584,8 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		device.NightColorFilter = nil
 	}
 
-	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd {
+	if !device.NightModeEnabled || nightModeWasEnabled != device.NightModeEnabled || nightStartWas != device.NightStart || nightEndWas != device.NightEnd ||
+		!reflect.DeepEqual(nightScheduleWas, device.NightSchedule) {
 		clearNightModeOverride(device)
 	}
 
@@ -607,6 +617,14 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		device.DimTime = nil
 	}
 
+	dimScheduleWas := device.DimSchedule
+	dimSchedule, err := modeScheduleFromForm(r, "dim", "dim_time", "dim_end_time", false)
+	if err != nil {
+		s.flashAndRedirect(w, r, fmt.Sprintf("Invalid dim schedule: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+	device.DimSchedule = dimSchedule
+
 	if dimUI, err := strconv.Atoi(r.FormValue("dim_brightness")); err == nil {
 		val := data.BrightnessFromUIScale(dimUI, customScale)
 		device.DimBrightness = &val
@@ -624,7 +642,8 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 	if device.DimTime != nil {
 		currentDimTime = *device.DimTime
 	}
-	if !device.DimModeEnabled || dimModeWasEnabled != device.DimModeEnabled || dimTimeWas != currentDimTime {
+	if !device.DimModeEnabled || dimModeWasEnabled != device.DimModeEnabled || dimTimeWas != currentDimTime ||
+		!reflect.DeepEqual(dimScheduleWas, device.DimSchedule) {
 		clearDimModeOverride(device)
 	}
 
@@ -671,6 +690,16 @@ func (s *Server) handleUpdateDevicePost(w http.ResponseWriter, r *http.Request) 
 		device.Locale = &locale
 	} else {
 		device.Locale = nil
+	}
+
+	// Night and dim schedules are checked once the location is known.
+	if err := device.ValidateSchedules(); err != nil {
+		s.flashAndRedirect(w, r, fmt.Sprintf("Invalid schedule: %v", err), fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
+	if (device.NightSchedule.UsesSun() || device.DimSchedule.UsesSun()) && !device.HasCoordinates() {
+		s.flashAndRedirect(w, r, "Set this device's location to use sunrise and sunset.", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
 	}
 
 	// 8. API Key
@@ -808,6 +837,11 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		s.flashAndRedirect(w, r, "Invalid JSON file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
+	if err := importedDevice.ValidateSchedules(); err != nil {
+		slog.Error("Imported device has an invalid night or dim schedule", "error", err)
+		s.flashAndRedirect(w, r, "Invalid night or dim mode schedule in file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
 
 	// Clean up WebP files for this device to prevent orphans
 	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
@@ -854,6 +888,8 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		device.NightBrightness = importedDevice.NightBrightness
 		device.DimTime = importedDevice.DimTime
 		device.DimBrightness = importedDevice.DimBrightness
+		device.NightSchedule = importedDevice.NightSchedule
+		device.DimSchedule = importedDevice.DimSchedule
 		device.DefaultInterval = importedDevice.DefaultInterval
 		device.Timezone = importedDevice.Timezone
 		device.Locale = importedDevice.Locale
@@ -1210,6 +1246,11 @@ func (s *Server) handleImportNewDeviceConfig(w http.ResponseWriter, r *http.Requ
 	if err := json.NewDecoder(file).Decode(&importedDevice); err != nil {
 		slog.Error("Failed to decode imported device JSON", "error", err)
 		s.flashAndRedirect(w, r, "Invalid JSON file", "/devices/create", http.StatusSeeOther)
+		return
+	}
+	if err := importedDevice.ValidateSchedules(); err != nil {
+		slog.Error("Imported device has an invalid night or dim schedule", "error", err)
+		s.flashAndRedirect(w, r, "Invalid night or dim mode schedule in file", "/devices/create", http.StatusSeeOther)
 		return
 	}
 

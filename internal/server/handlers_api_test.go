@@ -1817,3 +1817,44 @@ func TestRemoveAppRendersRejectsUnsafeIname(t *testing.T) {
 
 	assert.FileExists(t, victim, "unrelated file must survive both attempts")
 }
+
+func TestHandlePatchDeviceSchedule(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey, deviceID := "test_api_key", "testdevice"
+	patch := func(update DeviceUpdate) *httptest.ResponseRecorder {
+		body, _ := json.Marshal(update)
+		rr := httptest.NewRecorder()
+		s.ServeHTTP(rr, newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s", deviceID), apiKey, body))
+		return rr
+	}
+
+	device, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	device.DimModeEnabled = true
+	require.NoError(t, s.DB.Save(device).Error)
+
+	// Sunrise and sunset need the device's location.
+	sunset := &ModeSchedulePayload{Start: &ScheduleTriggerPayload{Kind: data.TriggerSunset, Offset: 30}}
+	assert.Equal(t, http.StatusBadRequest, patch(DeviceUpdate{DimModeSchedule: sunset}).Code)
+
+	device.Location = data.DeviceLocation{Lat: 42.36, Lng: -71.06, Timezone: "America/New_York"}
+	require.NoError(t, s.DB.Save(device).Error)
+
+	rr := patch(DeviceUpdate{DimModeSchedule: sunset})
+	require.Equal(t, http.StatusOK, rr.Code)
+	var payload DevicePayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	assert.Equal(t, sunset.Start, payload.DimMode.Schedule.Start)
+	assert.NotNil(t, payload.DimMode.NextChangeAt)
+
+	// A plain start time replaces the sunset start.
+	start := "19:00"
+	require.Equal(t, http.StatusOK, patch(DeviceUpdate{DimModeStartTime: &start}).Code)
+	device, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(context.Background())
+	require.NoError(t, err)
+	assert.Nil(t, device.DimSchedule.Start)
+	assert.Equal(t, "19:00", *device.DimTime)
+
+	invalid := &ModeSchedulePayload{End: &ScheduleTriggerPayload{Kind: data.TriggerNightEnd}}
+	assert.Equal(t, http.StatusBadRequest, patch(DeviceUpdate{NightModeSchedule: invalid}).Code)
+}
