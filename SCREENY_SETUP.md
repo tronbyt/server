@@ -63,8 +63,10 @@ services:
 
 > [!TIP]
 > * **Hardware Acceleration:** Mounting `/dev/dri:/dev/dri` and passing `group_add: ["993"]` (or your host's render/video group GID) grants Screeny direct access to GPU acceleration for smooth 30 FPS animations.
-> * **Host Networking:** With `network_mode: host`, Screeny binds directly to host port `8787`. In Tronbyt Server, point your Studio URL to `http://127.0.0.1:8787` (or your host LAN IP `http://192.168.1.X:8787`).
-> * If running Tronbyt inside a standard Docker bridge network instead of host networking, use `ports: ["8787:8787"]` on the Screeny service and set `SCREENY_STUDIO_URL=http://screeny-studio:8787`.
+> * **Host Networking:** With `network_mode: host`, Screeny binds directly to host port `8787`.
+>   * If Tronbyt Server is also running on the host (or in `network_mode: host`), set Studio URL to `http://127.0.0.1:8787`.
+>   * If Tronbyt Server is running inside a Docker bridge container, set Studio URL to your host LAN IP: `http://192.168.1.X:8787` (or `http://host.docker.internal:8787`).
+>   * Alternatively, if running both containers on the same Docker bridge network, remove `network_mode: host`, add `ports: ["8787:8787"]` to Screeny, and connect via `http://screeny-studio:8787`.
 
 Start Screeny:
 ```bash
@@ -83,13 +85,14 @@ You can connect Screeny using either the Tronbyt Web UI or environment variables
 2. Navigate to **Settings** &rarr; **Content and Firmware**.
 3. Scroll down to the **External App Providers** card:
    - **Studio URL:** 
-     - If both containers are in Docker Compose: `http://screeny-studio:8787`
-     - If running on your host machine or LAN: `http://192.168.1.X:8787` (replace with your host's LAN IP; do **not** use `localhost` from inside a container).
+     - If Tronbyt is running on the host: `http://127.0.0.1:8787`
+     - If Tronbyt is running in a Docker bridge container: `http://192.168.1.X:8787` (your host LAN IP)
+     - If both share a Docker bridge network: `http://screeny-studio:8787`
    - **128x64 Scaling Filter:** Choose your preferred default upscaler (`Bicubic`, `Scale2x / EPX`, `Bilinear`, `Nearest`).
 4. Click **Save & Connect**.
 5. The status badge will instantly turn green and display:
    ```text
-   Connected (15 apps discovered)
+   Connected (15 patches available)
    ```
 
 ### Method 2: Environment Variables (`.env`)
@@ -97,8 +100,8 @@ You can connect Screeny using either the Tronbyt Web UI or environment variables
 Add the following to your `.env` file or container environment:
 
 ```ini
-# Screeny Studio URL
-SCREENY_STUDIO_URL="http://screeny-studio:8787"
+# Screeny Studio URL (adjust for host LAN IP or shared container name)
+SCREENY_STUDIO_URL="http://192.168.1.X:8787"
 
 # Frame rate for animations (default: 30)
 SCREENY_FPS=30

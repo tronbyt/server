@@ -194,10 +194,9 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	}
 	if cfg.ScreenyStudioURL != "" {
 		s.RegisterExternalProvider(screeny.NewAdapter(screeny.AdapterConfig{
-			StudioURL:    cfg.ScreenyStudioURL,
-			FPS:          cfg.ScreenyFPS,
-			MaxWebPBytes: cfg.ScreenyMaxWebPBytes,
-			ScaleFilter:  cfg.ScreenyScaleFilter,
+			StudioURL:   cfg.ScreenyStudioURL,
+			FPS:         cfg.ScreenyFPS,
+			ScaleFilter: cfg.ScreenyScaleFilter,
 		}))
 		slog.Info("Registered Screeny external app provider", "url", cfg.ScreenyStudioURL, "scaleFilter", cfg.ScreenyScaleFilter)
 	}
@@ -592,10 +591,9 @@ func (s *Server) updateScreenyConfig(studioURL, scaleFilter string) error {
 
 	if s.Config.ScreenyStudioURL != "" {
 		adapter := screeny.NewAdapter(screeny.AdapterConfig{
-			StudioURL:    s.Config.ScreenyStudioURL,
-			FPS:          s.Config.ScreenyFPS,
-			MaxWebPBytes: s.Config.ScreenyMaxWebPBytes,
-			ScaleFilter:  s.Config.ScreenyScaleFilter,
+			StudioURL:   s.Config.ScreenyStudioURL,
+			FPS:         s.Config.ScreenyFPS,
+			ScaleFilter: s.Config.ScreenyScaleFilter,
 		})
 		s.RegisterExternalProvider(adapter)
 		slog.Info("Updated Screeny external app provider", "url", s.Config.ScreenyStudioURL, "scaleFilter", s.Config.ScreenyScaleFilter)
@@ -827,12 +825,16 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 	}
 
 	// Save the complete unchunked animation (if available) to <appBasename>_full.webp
-	// for rich web previews and dashboard display.
+	// for rich web previews and dashboard display. If empty, remove any existing stale full file.
 	if len(chunks[0].FullWebPBytes) > 0 {
 		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
 			if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
 				slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
 			}
+		}
+	} else {
+		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
+			_ = os.Remove(fullPath)
 		}
 	}
 

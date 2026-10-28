@@ -1088,7 +1088,7 @@ func TestExternalAppGetMetadata(t *testing.T) {
 	}
 	s.RegisterExternalProvider(mock)
 
-	meta := s.getAppMetadata("screeny:clocks-minimal")
+	meta := s.getAppMetadata(context.Background(), "screeny:clocks-minimal")
 	require.NotNil(t, meta)
 	assert.Equal(t, "screeny:clocks-minimal", meta.ID)
 	assert.Equal(t, "Minimal Clock", meta.Name)
@@ -1148,8 +1148,9 @@ func TestExternalAppUIntervalFallbackAndNonBlockingAdd(t *testing.T) {
 	s.inFlightRenders[appKey] = doneCh
 	s.inFlightRendersMu.Unlock()
 
+	var saveWg sync.WaitGroup
 	// Simulate in-flight render completing and saving chunks
-	go func() {
+	saveWg.Go(func() {
 		_ = s.saveAppChunks(device.ID, &savedApp, []providers.RenderChunk{
 			{WebPBytes: []byte("fake_webp"), DurationMs: 15000},
 		})
@@ -1157,11 +1158,13 @@ func TestExternalAppUIntervalFallbackAndNonBlockingAdd(t *testing.T) {
 		delete(s.inFlightRenders, appKey)
 		close(doneCh)
 		s.inFlightRendersMu.Unlock()
-	}()
+	})
 
 	// While in flight, possiblyRender should wait for completion and return true without triggering a second render
 	rendered := s.possiblyRender(context.Background(), &savedApp, &device, &user)
 	assert.True(t, rendered)
+
+	saveWg.Wait()
 
 	// Wait for any background renders to complete before test cleanup
 	s.backgroundRenders.Wait()

@@ -10,6 +10,7 @@ import (
 	"image"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,7 +33,6 @@ const (
 type AdapterConfig struct {
 	StudioURL         string
 	FPS               int
-	MaxWebPBytes      int
 	ScaleFilter       string
 	TransitionSkipSec float32
 	HTTPClient        *http.Client
@@ -44,7 +44,6 @@ type ScreenyAdapter struct {
 	sem               chan struct{}
 	studioURL         string
 	fps               int
-	maxWebPBytes      int
 	scaleFilter       string
 	transitionSkipSec float32
 	httpClient        *http.Client
@@ -57,9 +56,10 @@ type ScreenyAdapter struct {
 	lastCached  time.Time
 
 	// Active patch tracking to preserve continuous procedural animation streams
-	activePatchMu sync.Mutex
-	activePatchID string
-	lastParams    map[string]float32
+	activePatchMu      sync.Mutex
+	activePatchID      string
+	lastParams         map[string]float32
+	lastPatchActivated time.Time
 }
 
 // NewAdapter creates a new ScreenyAdapter with the provided configuration.
@@ -72,25 +72,52 @@ func NewAdapter(cfg AdapterConfig) *ScreenyAdapter {
 	if fps <= 0 {
 		fps = DefaultFPS
 	}
-	maxBytes := cfg.MaxWebPBytes
-	if maxBytes <= 0 {
-		maxBytes = 5242880 // 5 MB default
-	}
 
 	scaleFilter := cfg.ScaleFilter
 	if scaleFilter == "" {
 		scaleFilter = FilterBicubic
 	}
 
+	safeDialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			host = addr
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			if providers.IsBlockedMetadataIP(ip) {
+				return nil, fmt.Errorf("connection to prohibited IP %s blocked", ip)
+			}
+		} else if ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host); err == nil {
+			for _, ip := range ips {
+				if providers.IsBlockedMetadataIP(ip) {
+					return nil, fmt.Errorf("connection to prohibited IP %s blocked", ip)
+				}
+			}
+		}
+		d := &net.Dialer{Timeout: 5 * time.Second}
+		return d.DialContext(ctx, network, addr)
+	}
+
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 10 * time.Second}
+		httpClient = &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				DialContext: safeDialContext,
+			},
+		}
+	}
+	if httpClient.CheckRedirect == nil {
+		httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return errors.New("HTTP redirects are not permitted for external provider requests")
+		}
 	}
 
 	wsDialer := cfg.WSUpgrader
 	if wsDialer == nil {
 		wsDialer = &websocket.Dialer{
 			HandshakeTimeout: 5 * time.Second,
+			NetDialContext:   safeDialContext,
 		}
 	}
 
@@ -105,7 +132,6 @@ func NewAdapter(cfg AdapterConfig) *ScreenyAdapter {
 		sem:               make(chan struct{}, 1),
 		studioURL:         studioURL,
 		fps:               fps,
-		maxWebPBytes:      maxBytes,
 		scaleFilter:       scaleFilter,
 		transitionSkipSec: transitionSkipSec,
 		httpClient:        httpClient,
@@ -220,10 +246,11 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 
 	maxChunkSize := req.MaxChunkSize
 
-	// 1. Activate the target patch in screeny-studio ONLY if it is not already active.
+	// 1. Activate the target patch in screeny-studio ONLY if it is not already active
+	// or if periodic re-sync is due (every 5 minutes in case studio restarted).
 	// Preserves continuous procedural generation (e.g. Overland, Knot) across chunk cycles.
 	a.activePatchMu.Lock()
-	patchChanged := a.activePatchID != req.AppID
+	patchChanged := a.activePatchID != req.AppID || time.Since(a.lastPatchActivated) > 5*time.Minute
 	if patchChanged {
 		a.activePatchID = req.AppID
 		a.lastParams = make(map[string]float32)
@@ -236,12 +263,14 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 	if patchChanged {
 		if err := a.activatePatch(ctx, req.AppID); err != nil {
 			a.activePatchMu.Lock()
-			if a.activePatchID == req.AppID {
-				a.activePatchID = ""
-			}
+			a.activePatchID = ""
+			a.lastParams = make(map[string]float32)
 			a.activePatchMu.Unlock()
 			return nil, fmt.Errorf("activating patch %s: %w", req.AppID, err)
 		}
+		a.activePatchMu.Lock()
+		a.lastPatchActivated = time.Now()
+		a.activePatchMu.Unlock()
 	}
 
 	scaleFilter := a.scaleFilter
@@ -262,6 +291,10 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 			if needsSet {
 				if err := a.setParam(ctx, paramID, fVal); err != nil {
 					slog.Warn("Failed to set screeny parameter", "param", paramID, "value", fVal, "error", err)
+					a.activePatchMu.Lock()
+					a.activePatchID = ""
+					a.lastParams = make(map[string]float32)
+					a.activePatchMu.Unlock()
 				} else {
 					a.activePatchMu.Lock()
 					a.lastParams[paramID] = fVal
@@ -281,10 +314,18 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 	}
 	frames, err := a.captureFrames(ctx, fps, captureDurationMs, req.Width, req.Height, scaleFilter, patchChanged)
 	if err != nil {
+		a.activePatchMu.Lock()
+		a.activePatchID = ""
+		a.lastParams = make(map[string]float32)
+		a.activePatchMu.Unlock()
 		return nil, fmt.Errorf("capturing screeny frames: %w", err)
 	}
 
 	if len(frames) == 0 {
+		a.activePatchMu.Lock()
+		a.activePatchID = ""
+		a.lastParams = make(map[string]float32)
+		a.activePatchMu.Unlock()
 		return nil, errors.New("captured zero frames from screeny-studio")
 	}
 
@@ -386,7 +427,11 @@ func (a *ScreenyAdapter) captureFrames(ctx context.Context, fps, durationMs, tar
 	if u.Scheme == "https" {
 		wsScheme = "wss"
 	}
-	wsURL := fmt.Sprintf("%s://%s/api/v1/ws?fps=%d&repeat=true&overview=false", wsScheme, u.Host, fps)
+	wsU := *u
+	wsU.Scheme = wsScheme
+	wsU.Path = strings.TrimRight(u.Path, "/") + "/api/v1/ws"
+	wsU.RawQuery = fmt.Sprintf("fps=%d&repeat=true&overview=false", fps)
+	wsURL := wsU.String()
 
 	conn, _, err := a.wsDialer.DialContext(ctx, wsURL, nil)
 	if err != nil {

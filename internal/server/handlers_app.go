@@ -241,7 +241,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid external app ID", http.StatusBadRequest)
 			return
 		}
-		if meta := s.getAppMetadata(appPath); meta != nil && meta.Name != "" {
+		if meta := s.getAppMetadata(r.Context(), appPath); meta != nil && meta.Name != "" {
 			appName = meta.Name
 		}
 	}
@@ -432,25 +432,15 @@ func (s *Server) ensureCleanPreviewCache(providerName string) string {
 		_ = os.MkdirAll(cacheDir, 0755)
 		_ = os.WriteFile(markerFile, []byte("v9"), 0644)
 
-		s.appChunksMu.Lock()
-		s.appChunksCache = make(map[string][]providers.RenderChunk)
-		s.appChunksMu.Unlock()
-
-		// Clean up any stale _full.webp or chunk files on disk so full-dwell renders regenerate cleanly
-		if fullFiles, err := filepath.Glob(filepath.Join(s.DataDir, "webp", "*", "*_full.webp")); err == nil {
-			for _, f := range fullFiles {
-				_ = os.Remove(f)
-			}
-		}
-		if chunkFiles, err := filepath.Glob(filepath.Join(s.DataDir, "webp", "*", "*_chunk*")); err == nil {
-			for _, f := range chunkFiles {
-				_ = os.Remove(f)
-			}
-		}
-
+		var providerApps []data.App
 		if s.DB != nil {
+			providerApps, _ = gorm.G[data.App](s.DB).Where("path LIKE ?", providerName+":%").Find(context.Background())
 			_, _ = gorm.G[data.App](s.DB).Where("path LIKE ?", providerName+":%").
 				Update(context.Background(), "LastRender", time.Time{})
+		}
+
+		for _, app := range providerApps {
+			s.cleanupAppChunks(app.DeviceID, &app)
 		}
 	}
 	return cacheDir
@@ -603,6 +593,21 @@ func (s *Server) preheatExternalAppThumbnails() {
 }
 
 // handleConfigAppGet renders the app configuration page, injecting the schema and available sounds.
+// isConfigEqual normalizes map types and nil values when comparing incoming config with app.Config.
+func isConfigEqual(a map[string]any, b data.JSONMap) bool {
+	var ma map[string]any
+	if len(a) > 0 {
+		ma = a
+	} else {
+		ma = make(map[string]any)
+	}
+	mb := map[string]any(b)
+	if len(mb) == 0 {
+		mb = make(map[string]any)
+	}
+	return reflect.DeepEqual(ma, mb)
+}
+
 func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
@@ -649,7 +654,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	var appMetadata *apps.AppMetadata
 	if app.Path != nil {
-		appMetadata = s.getAppMetadata(*app.Path)
+		appMetadata = s.getAppMetadata(r.Context(), *app.Path)
 	}
 
 	appID := app.Name
@@ -1133,7 +1138,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				return
 			}
 			// If the app has already been rendered with this exact saved config, serve existing full-dwell preview
-			if !app.LastRender.IsZero() && reflect.DeepEqual(configData, app.Config) {
+			if !app.LastRender.IsZero() && isConfigEqual(configData, app.Config) {
 				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
 				if err == nil {
 					fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
@@ -1417,27 +1422,30 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Save app chunks to disk and cache so _full.webp exists for browser preview,
-		// and chunk_*.webp exist for hardware playback.
-		if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
-			slog.Error("Failed to save app chunks on push preview", "device", device.ID, "app", app.Iname, "error", err)
+		isSavedConfig := configBody == nil || isConfigEqual(configBody, app.Config)
+		if isSavedConfig {
+			// Save app chunks to disk and cache so _full.webp exists for browser preview,
+			// and chunk_*.webp exist for hardware playback.
+			if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+				slog.Error("Failed to save app chunks on push preview", "device", device.ID, "app", app.Iname, "error", err)
+			}
+
+			// If multi-chunk and device is polling HTTP /next, set active chunk sequence
+			if len(chunks) > 1 {
+				s.deviceChunkMu.Lock()
+				s.deviceCurrentChunkApp[device.ID] = app.Iname
+				s.deviceChunkIndices[device.ID] = 0
+				s.deviceChunkMu.Unlock()
+			}
 		}
 
-		// If multi-chunk and device is polling HTTP /next, set active chunk sequence
-		if len(chunks) > 1 {
-			s.deviceChunkMu.Lock()
-			s.deviceCurrentChunkApp[device.ID] = app.Iname
-			s.deviceChunkIndices[device.ID] = 0
-			s.deviceChunkMu.Unlock()
-		} else {
-			// Single-chunk fallback for HTTP device polling
-			primaryBytes := chunks[0].WebPBytes
-			if len(chunks[0].FullWebPBytes) > 0 && len(chunks[0].FullWebPBytes) <= maxChunkSize {
-				primaryBytes = chunks[0].FullWebPBytes
-			}
-			if err := s.savePushedImage(device.ID, app.Iname, "", primaryBytes); err != nil {
-				slog.Warn("Failed to save pushed fallback image", "error", err)
-			}
+		// Single-chunk or draft preview fallback for HTTP device polling
+		primaryBytes := chunks[0].WebPBytes
+		if len(chunks[0].FullWebPBytes) > 0 && len(chunks[0].FullWebPBytes) <= maxChunkSize {
+			primaryBytes = chunks[0].FullWebPBytes
+		}
+		if err := s.savePushedImage(device.ID, app.Iname, "", primaryBytes); err != nil {
+			slog.Warn("Failed to save pushed fallback image", "error", err)
 		}
 
 		// Stream preview to WebSocket device

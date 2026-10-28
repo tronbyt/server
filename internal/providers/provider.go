@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"net"
 
 	"tronbyt-server/internal/chunker"
 )
@@ -46,4 +47,26 @@ type ExternalAppProvider interface {
 	ListApps(ctx context.Context) ([]ExternalAppMeta, error)
 	GetAppSchema(ctx context.Context, appID string) ([]byte, error)
 	RenderAppChunks(ctx context.Context, req RenderRequest) ([]RenderChunk, error)
+}
+
+// IsBlockedMetadataIP returns true if the IP belongs to link-local, AWS IPv6 IMDS, or cloud metadata ranges.
+func IsBlockedMetadataIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		if ip4.IsLinkLocalUnicast() || ip4.IsLinkLocalMulticast() {
+			return true
+		}
+		if ip4.Equal(net.ParseIP("169.254.169.254")) || ip4.Equal(net.ParseIP("100.100.100.200")) {
+			return true
+		}
+	}
+	if ip.Equal(net.ParseIP("fd00:ec2::254")) {
+		return true
+	}
+	return false
 }

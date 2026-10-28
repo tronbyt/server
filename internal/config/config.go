@@ -40,12 +40,9 @@ type Settings struct {
 	MaxChunkSizeRPi int `env:"TRONBYT_MAX_CHUNK_SIZE_RPI" envDefault:"5242880"`
 
 	// Screeny Integration Configuration
-	ScreenyStudioURL       string `env:"SCREENY_STUDIO_URL"`
-	ScreenyFPS             int    `env:"SCREENY_FPS"                envDefault:"30"`
-	ScreenyMaxWebPBytes    int    `env:"SCREENY_MAX_WEBP_BYTES"     envDefault:"5242880"`
-	ScreenyMaxWebPBytesESP int    `env:"SCREENY_MAX_WEBP_BYTES_ESP" envDefault:"160000"`
-	ScreenyMaxWebPBytesRPi int    `env:"SCREENY_MAX_WEBP_BYTES_RPI" envDefault:"5242880"`
-	ScreenyScaleFilter     string `env:"SCREENY_SCALE_FILTER"       envDefault:"bicubic"`
+	ScreenyStudioURL   string `env:"SCREENY_STUDIO_URL"`
+	ScreenyFPS         int    `env:"SCREENY_FPS"          envDefault:"30"`
+	ScreenyScaleFilter string `env:"SCREENY_SCALE_FILTER" envDefault:"bicubic"`
 
 	// OIDC Configuration
 	OIDCEnabled          bool   `env:"OIDC_ENABLED"`
