@@ -472,7 +472,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 				// Wait for update or timeout before retrying
 				timer := time.NewTimer(5 * time.Second)
 				select {
-				case <-broadcastCh:
+				case val := <-broadcastCh:
 					// Update available - reload device
 					reloadedDevice, err := s.reloadDevice(initialDevice.ID)
 					if err != nil {
@@ -480,6 +480,26 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 						return
 					}
 					device = *reloadedDevice
+
+					switch v := val.(type) {
+					case DeviceCommandMessage:
+						if err := conn.WriteMessage(websocket.TextMessage, v.Payload); err != nil {
+							slog.Error("Failed to write command to WS", "error", err)
+							timer.Stop()
+							return
+						}
+					case DevicePreviewMessage:
+						pendingPreview = &v
+						sendImmediate = true
+					case *DevicePreviewMessage:
+						pendingPreview = v
+						sendImmediate = true
+					case []byte:
+						if len(v) > 0 {
+							pendingImage = v
+							sendImmediate = true
+						}
+					}
 				case <-timer.C:
 					// Timeout - reload device just in case we missed something
 					reloadedDevice, err := s.reloadDevice(initialDevice.ID)
