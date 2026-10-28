@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"tronbyt-server/internal/apps"
+	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/data"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
@@ -502,17 +503,9 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Notify device via Websocket only if this is a foreground push
-	sent := false
-	if !dataReq.Background {
-		sent = s.Broadcaster.Notify(device.ID, imgBytes)
-	}
-
-	if !sent || installationID != "" {
-		if err := s.savePushedImage(device.ID, installationID, dataReq.CoalesceID, imgBytes); err != nil {
-			http.Error(w, "Failed to save image", http.StatusInternalServerError)
-			return
-		}
+	if err := s.processPushedImage(r.Context(), device, installationID, dataReq.CoalesceID, dataReq.Background, imgBytes); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to process pushed app: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	if dataReq.Sound != "" && !dataReq.Background {
@@ -617,17 +610,9 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Notify device via Websocket only if this is a foreground push
-	sent := false
-	if !dataReq.Background {
-		sent = s.Broadcaster.Notify(device.ID, imgBytes)
-	}
-
-	if !sent || installID != "" {
-		if err := s.savePushedImage(device.ID, installID, dataReq.CoalesceID, imgBytes); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to save image: %v", err), http.StatusInternalServerError)
-			return
-		}
+	if err := s.processPushedImage(r.Context(), device, installID, dataReq.CoalesceID, dataReq.Background, imgBytes); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to process pushed image: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	if dataReq.Sound != "" && !dataReq.Background {
@@ -644,7 +629,85 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []byte) error {
+// processPushedImage handles chunking, storage, and device notifications for pushed images/apps.
+func (s *Server) processPushedImage(ctx context.Context, device *data.Device, installID, coalesceID string, background bool, imgBytes []byte) error {
+	maxChunkSize := s.GetMaxChunkSizeForDevice(device)
+	var chunks []chunker.RenderChunk
+
+	var app *data.App
+	if installID != "" {
+		if a, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", device.ID, "pushed:"+installID).First(ctx); err == nil {
+			app = &a
+		}
+	}
+
+	if maxChunkSize > 0 && len(imgBytes) > maxChunkSize {
+		maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
+		dwellSecs := 0
+		if app != nil {
+			dwellSecs = device.GetEffectiveDwellTime(app)
+		}
+		if dwellSecs <= 0 {
+			dwellSecs = device.GetEffectiveDwellTime(nil)
+		}
+		if dwellSecs <= 0 {
+			dwellSecs = 10
+		}
+
+		splitChunks, err := chunker.SplitWebPBytesIntoChunks(imgBytes, maxChunkSize, maxChunkDurationMs, dwellSecs*1000)
+		if err == nil && len(splitChunks) > 1 {
+			chunks = splitChunks
+		}
+	}
+
+	if len(chunks) > 1 {
+		if app != nil {
+			// Persistent pushed app with multiple chunks
+			if err := s.saveAppChunks(device.ID, app, chunks); err != nil {
+				return err
+			}
+			if !background {
+				s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+					App:    app,
+					Chunks: chunks,
+				})
+			}
+			return nil
+		}
+
+		// Ephemeral pushed image with multiple chunks (no persistent app)
+		// Broadcast to active WebSocket streaming subscribers first; save chunk 0 as fallback
+		// for HTTP polling only when no subscriber is actively connected.
+		sent := false
+		if !background {
+			sent = s.Broadcaster.Notify(device.ID, DevicePreviewMessage{
+				App:    nil,
+				Chunks: chunks,
+			})
+		}
+		if !sent {
+			if err := s.savePushedImage(device.ID, "", coalesceID, chunks[0].WebPBytes); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Single chunk / non-chunked flow
+	sent := false
+	if !background {
+		sent = s.Broadcaster.Notify(device.ID, imgBytes)
+	}
+
+	if !sent || installID != "" {
+		if err := s.savePushedImage(device.ID, installID, coalesceID, imgBytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Server) savePushedImage(deviceID, installID, coalesceID string, imgData []byte) error {
 	dir, err := s.ensureDeviceImageDir(deviceID)
 	if err != nil {
 		return fmt.Errorf("failed to get device webp directory: %w", err)
@@ -701,8 +764,17 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, data []
 		return err
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, imgData, 0644); err != nil {
 		return err
+	}
+
+	// Invalidate any cached chunks for this pushed app
+	if installID != "" {
+		pushedPath := "pushed:" + installID
+		if app, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", deviceID, pushedPath).First(context.Background()); err == nil {
+			s.cleanupAppChunks(deviceID, &app)
+			s.invalidateAppChunks(deviceID, app.Iname)
+		}
 	}
 
 	// Clean up anonymous ephemeral files older than 24 hours.
@@ -1308,6 +1380,8 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 			slog.Error("Failed to remove webp file", "path", match, "error", err)
 		}
 	}
+	s.cleanupAppChunks(device.ID, &app)
+	s.invalidateAppChunks(device.ID, app.Iname)
 
 	// Notify Dashboard
 	user := GetUser(r)
