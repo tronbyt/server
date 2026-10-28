@@ -868,10 +868,10 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app1))
 	device.Apps = []*data.App{&app1}
 
-	// 2 preview chunks (50ms each for fast test)
+	// 2 rotation chunks
 	chunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP1, DurationMs: 50},
 		{WebPBytes: dummyChunkWebP2, DurationMs: 50},
-		{WebPBytes: dummyChunkWebP3, DurationMs: 50},
 	}
 	s.RegisterExternalProvider(&mockExternalProvider{name: "screeny", chunks: chunks})
 	require.NoError(t, s.saveAppChunks(deviceID, &app1, chunks))
@@ -888,13 +888,7 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 
 	assert.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
 
-	// Broadcast preview message
-	s.Broadcaster.Notify(deviceID, DevicePreviewMessage{
-		App:    &app1,
-		Chunks: chunks,
-	})
-
-	// Read messages from WS
+	// Read messages from WS helper
 	readNextBinary := func() []byte {
 		for {
 			msgType, data, err := conn.ReadMessage()
@@ -905,16 +899,30 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 		}
 	}
 
-	// First binary message must be chunk 0
+	// Drain initial rotation chunk sent upon WebSocket connect
+	initChunk := readNextBinary()
+	assert.Equal(t, dummyChunkWebP1, initChunk, "Must receive initial rotation chunk on connect")
+
+	// Broadcast preview message with distinct chunks
+	previewChunks := []providers.RenderChunk{
+		{WebPBytes: dummyChunkWebP2, DurationMs: 50},
+		{WebPBytes: dummyChunkWebP3, DurationMs: 50},
+	}
+	s.Broadcaster.Notify(deviceID, DevicePreviewMessage{
+		App:    &app1,
+		Chunks: previewChunks,
+	})
+
+	// First binary message after preview broadcast must be preview chunk 0
 	b0 := readNextBinary()
-	assert.Equal(t, dummyChunkWebP2, b0, "WS client must receive chunk 0 first")
+	assert.Equal(t, dummyChunkWebP2, b0, "WS client must receive preview chunk 0 first")
 
 	// Send displaying ACK to trigger chunk 1
 	_ = conn.WriteJSON(WSMessage{Displaying: new(int)})
 
-	// Second binary message must be chunk 1
+	// Second binary message must be preview chunk 1
 	b1 := readNextBinary()
-	assert.Equal(t, dummyChunkWebP3, b1, "WS client must receive chunk 1 next")
+	assert.Equal(t, dummyChunkWebP3, b1, "WS client must receive preview chunk 1 next")
 }
 
 func TestScreenyProceduralApp_ReRendersOnDwellRotationRegardlessOfUInterval(t *testing.T) {
