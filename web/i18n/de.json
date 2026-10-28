@@ -1604,6 +1604,12 @@
   "At sunset": {
     "other": "Bei Sonnenuntergang"
   },
+  "Today's sunrise": {
+    "other": "Heutiger Sonnenaufgang"
+  },
+  "Today's sunset": {
+    "other": "Heutiger Sonnenuntergang"
+  },
   "When night mode ends": {
     "other": "Wenn der Nachtmodus endet"
   },
