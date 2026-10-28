@@ -84,11 +84,11 @@ func TestDeviceMaxChunkSize_ESP_vs_RPi(t *testing.T) {
 	}
 	assert.Equal(t, 450000, s.GetMaxChunkSizeForDevice(matrixWSDevice))
 
-	// Config override for S3 devices
-	s.Config.MaxChunkSizeS3 = 200000
+	// Config override for ESP devices affects all ESP variants (Gen 1, Gen 2, S3, MatrixPortal)
+	s.Config.MaxChunkSizeESP = 200000
 	assert.Equal(t, 200000, s.GetMaxChunkSizeForDevice(wideDevice))
 	assert.Equal(t, 200000, s.GetMaxChunkSizeForDevice(matrixWideDevice))
-	s.Config.MaxChunkSizeS3 = 0 // reset
+	s.Config.MaxChunkSizeESP = 0 // reset
 
 	// Pixoticker has 50,000-byte buffer in firmware
 	pixoDevice := &data.Device{
