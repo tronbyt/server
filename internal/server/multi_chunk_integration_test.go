@@ -925,7 +925,7 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 	assert.Equal(t, dummyChunkWebP3, b1, "WS client must receive preview chunk 1 next")
 }
 
-func TestScreenyProceduralApp_ReRendersOnDwellRotationRegardlessOfUInterval(t *testing.T) {
+func TestScreenyApp_RespectsUIntervalAndNonBlockingRotation(t *testing.T) {
 	s := newTestServer(t)
 	ctx := context.Background()
 
@@ -963,33 +963,47 @@ func TestScreenyProceduralApp_ReRendersOnDwellRotationRegardlessOfUInterval(t *t
 		Enabled:    true,
 		Path:       &path,
 		UInterval:  10,                                // Default 10 minutes from DB
-		LastRender: time.Now().Add(-20 * time.Second), // 20s ago (greater than 15s dwell)
+		LastRender: time.Now().Add(-20 * time.Second), // 20s ago
 	}
 	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
 
-	// 1. Dwell elapsed (20s > 15s): possiblyRender MUST trigger re-render despite UInterval=10
+	// 1. App has no cached chunks yet: possiblyRender MUST trigger initial render synchronously
 	rendered := s.possiblyRender(ctx, &app, &device, &user)
 	assert.True(t, rendered)
-	assert.Equal(t, 1, renderCallCount, "Screeny app must re-render once dwell time has elapsed, ignoring 10-minute UInterval")
+	assert.Equal(t, 1, renderCallCount, "Screeny app must render initial batch when uncached")
+	assert.True(t, len(s.getAppChunks(device.ID, &app)) > 0, "Cached chunks must exist after initial render")
 
-	// 2. Dwell NOT elapsed (e.g. 2s since render) and not yet served: possiblyRender must skip re-render
-	app.LastRender = time.Now().Add(-2 * time.Second)
+	// 2. Dwell elapsed (20s > 15s) but UInterval has NOT elapsed (20s < 10m):
+	// possiblyRender MUST respect UInterval and NOT re-render
+	app.LastRender = time.Now().Add(-20 * time.Second)
 	rendered = s.possiblyRender(ctx, &app, &device, &user)
 	assert.True(t, rendered)
-	assert.Equal(t, 1, renderCallCount, "Screeny app must not re-render if dwell time has not yet elapsed and render has not been served")
+	assert.Equal(t, 1, renderCallCount, "Screeny app must respect 10m UInterval and not re-render every dwell cycle")
 
-	// 3. Once served via GetNextAppImage, the next rotation cycle must immediately render a fresh batch
+	// 3. Serving via GetNextAppImage on rotation cycles uses cached batch without re-rendering
 	device.Apps = []*data.App{&app}
 	_, servedApp, err := s.GetNextAppImage(ctx, &device, &user, "")
 	require.NoError(t, err)
 	require.NotNil(t, servedApp)
-	assert.Equal(t, 1, renderCallCount, "Serving unconsumed render uses cached batch")
+	assert.Equal(t, 1, renderCallCount, "Serving rotation uses cached batch without blocking")
 
-	// Immediate pre-fetch for the next cycle (as done by wsWriteLoop upon displaying ACK) must render fresh frames
+	// Subsequent rotation cycle still within UInterval uses cached batch
 	_, servedApp2, err := s.GetNextAppImage(ctx, &device, &user, "")
 	require.NoError(t, err)
 	require.NotNil(t, servedApp2)
-	assert.Equal(t, 2, renderCallCount, "Next cycle pre-fetch must generate a fresh continuation batch instead of repeating cached clip")
+	assert.Equal(t, 1, renderCallCount, "Subsequent rotation cycle uses cached batch")
+
+	// 4. Once UInterval has expired (e.g. 11 minutes ago):
+	// GetNextAppImage serves cached chunks immediately to avoid freezing rotation,
+	// and triggers the interval re-render asynchronously in the background.
+	app.LastRender = time.Now().Add(-11 * time.Minute)
+	_, servedApp3, err := s.GetNextAppImage(ctx, &device, &user, "")
+	require.NoError(t, err)
+	require.NotNil(t, servedApp3)
+
+	// Wait for the asynchronous background render to complete
+	s.backgroundRenders.Wait()
+	assert.Equal(t, 2, renderCallCount, "Screeny app must refresh in the background once UInterval has expired")
 }
 
 func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
