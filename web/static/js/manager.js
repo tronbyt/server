@@ -652,6 +652,10 @@ function filterByCategory() {
   applyFilters();
 }
 
+function filterByProvider() {
+  applyFilters();
+}
+
 function sortApps(searchId) {
   sortType = document.getElementById('sort_' + searchId).value;
   try {
@@ -765,6 +769,9 @@ function applyFilters() {
         const categorySelect = document.getElementById('category_' + searchId);
         const currentCategory = categorySelect ? categorySelect.value : '';
 
+        const providerSelect = document.getElementById('provider_' + searchId);
+        const currentProvider = providerSelect ? providerSelect.value.toLowerCase().trim() : '';
+
         // Get all app items from the grid
         const allItems = Array.from(grid.getElementsByClassName('app-item'));
 
@@ -777,6 +784,7 @@ function applyFilters() {
           const summary = (item.querySelector('p')?.textContent || '').toLowerCase();
           const tags = (item.getAttribute('data-tags') || '').toLowerCase().split(',');
           const category = (item.getAttribute('data-category') || '').toLowerCase();
+          const provider = (item.getAttribute('data-provider') || 'tronbyt').toLowerCase();
 
           // Apply search filter (search name, summary, tags, and author if search begins with @)
           if (currentSearchFilter) {
@@ -793,6 +801,11 @@ function applyFilters() {
 
           // Apply category filter
           if (currentCategory && category !== currentCategory) {
+            return false;
+          }
+
+          // Apply provider filter
+          if (currentProvider && provider !== currentProvider) {
             return false;
           }
 
@@ -1981,12 +1994,13 @@ document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('.app-item').forEach(i => i.classList.remove('selected'));
       appItem.classList.add('selected');
 
-      document.getElementById('selected_app').value = appItem.getAttribute('data-value');
+      document.getElementById('selected_app').value = appItem.getAttribute('data-name') || appItem.getAttribute('data-value');
       document.getElementById('selected_app_path').value = appItem.getAttribute('data-path');
 
       const recInterval = appItem.getAttribute('data-recommended-interval');
-      if (recInterval) {
-        document.getElementById('uinterval').value = recInterval;
+      const recInt = parseInt(recInterval, 10);
+      if (!isNaN(recInt) && recInt > 0) {
+        document.getElementById('uinterval').value = recInt;
       } else {
         document.getElementById('uinterval').value = 10;
       }

@@ -30,6 +30,19 @@
                 </select>
             </span>
         </label>
+        {{ if and .Providers (gt (len .Providers) 1) }}
+        <label for="provider_{{ .SearchID }}" class="control-label">
+            {{ t .Localizer "Provider:" }}
+            <span class="select-wrap">
+                <select id="provider_{{ .SearchID }}" onchange="filterByProvider()">
+                    <option value="">{{ t .Localizer "All Providers" }}</option>
+                    {{ range .Providers }}
+                    <option value="{{ . | lower }}">{{ . }}</option>
+                    {{ end }}
+                </select>
+            </span>
+        </label>
+        {{ end }}
         <label class="control-label">
             <input type="checkbox"
                    id="hide_installed_{{ .SearchID }}"
@@ -80,74 +93,75 @@
      data-broken="{{ .App.Broken }}"
      data-author="{{ .App.Author }}"
      data-category="{{ .App.Category }}"
+     data-provider="{{ if .App.Provider }}{{ .App.Provider | lower }}{{ else }}tronbyt{{ end }}"
      data-published="{{ .App.Published }}"
      data-updated="{{ .App.Updated }}"
      data-installs="{{ with .App.InstallCount }}{{ . }}{{ end }}"
      data-tags="{{ range $i, $tag := .App.Tags }}{{ if $i }},{{ end }}{{ $tag }}{{ end }}">
-    {{ if .App.IsInstalled }}
-    <div class="installed-badge">{{ t .Localizer "Installed" }}</div>
-    {{ end }}
-    {{ if .App.Supports2x }}
-    <div class="supports-2x-badge">2x</div>
-    {{ end }}
-    {{ if .App.Supports64x64 }}
-    <div class="supports-64x64-badge">64&times;64</div>
-    {{ end }}
-    <!-- Skeleton loader for images -->
-    <div class="app-img">
-        <div class="skeleton-loader"></div>
-        <img data-src="/preview/app/{{ .App.ID }}"
-             alt="{{ .App.Name }}"
-             class="lazy-image"
-             width="64"
-             height="32"
-             {{ if .App.Broken }}
-             style="opacity: 0.4"
-             {{ end }}>
-    </div>
-    <p class="app-item-title {{ if .App.Broken }}app-item-muted{{ end }}">
-        {{ .App.Name }}{{ if .App.Summary }} - {{ .App.Summary }}{{ end }}
-    </p>
-    {{ if .App.Author }}
-    <p class="app-item-meta {{ if .App.Broken }}app-item-muted{{ end }}">{{ t .Localizer "From" }} {{ .App.Author }}</p>
-    {{ end }}
-    <!-- Install count. Icon: Heroicons arrow-down-tray (MIT). -->
-    {{ with .App.InstallCount }}
-    <p class="app-item-installs"
-       title="{{ t $.Localizer "Number of installs" }}"
-       aria-label="{{ t $.Localizer "Number of installs" }}: {{ thousands . }}">
-        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z" />
-            <path d="M3.5 9.75a.75.75 0 0 0-1.5 0v1.5A2.75 2.75 0 0 0 4.75 14h6.5A2.75 2.75 0 0 0 14 11.25v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-1.5Z" />
-        </svg>
-        <span>{{ installCount . }}</span>
-    </p>
-    {{ end }}
-    {{ if .App.Broken }}
-    <div class="broken-badge">
-        <i class="fa-solid fa-xmark" aria-hidden="true"></i> {{ t .Localizer "BROKEN" }}
-    </div>
-    <p class="app-item-meta">{{ .App.BrokenReason }}</p>
-    {{ end }}
-    {{ if .IsCustom }}
-    <a href="/devices/{{ .DeviceID }}/uploads/{{ .App.ID }}/delete"
-       class="delete-upload-btn"
-       onclick="event.stopPropagation(); return confirm('{{ t .Localizer "Delete this uploaded app?" }}');">
-        <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
-    </a>
-    {{ end }}
-    {{ if not .ConfigProduction }}
-    {{ if .App.Broken }}
-    <button class="unmark-broken-btn"
-            onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
-        {{ t .Localizer "Unmark Broken" }}
-    </button>
+{{ if .App.IsInstalled }}
+<div class="installed-badge">{{ t .Localizer "Installed" }}</div>
+{{ end }}
+{{ if .App.Supports2x }}
+<div class="supports-2x-badge">2x</div>
+{{ end }}
+{{ if .App.Supports64x64 }}
+<div class="supports-64x64-badge">64×64</div>
+{{ end }}
+<!-- Skeleton loader for images -->
+<div class="app-img">
+    <div class="skeleton-loader"></div>
+    <img data-src="/preview/app/{{ .App.ID }}?v=4"
+         alt="{{ .App.Name }}"
+         class="lazy-image"
+         width="64"
+         height="32"
+         {{ if .App.Broken }}
+         style="opacity: 0.4"
+         {{ end }}>
+</div>
+<p class="app-item-title {{ if .App.Broken }}app-item-muted{{ end }}">
+    {{ .App.Name }}{{ if .App.Summary }} - {{ .App.Summary }}{{ end }}
+</p>
+{{ if .App.Author }}
+<p class="app-item-meta {{ if .App.Broken }}app-item-muted{{ end }}">{{ t .Localizer "From" }} {{ .App.Author }}</p>
+{{ end }}
+<!-- Install count. Icon: Heroicons arrow-down-tray (MIT). -->
+{{ with .App.InstallCount }}
+<p class="app-item-installs"
+   title="{{ t $.Localizer "Number of installs" }}"
+   aria-label="{{ t $.Localizer "Number of installs" }}: {{ thousands . }}">
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z" />
+        <path d="M3.5 9.75a.75.75 0 0 0-1.5 0v1.5A2.75 2.75 0 0 0 4.75 14h6.5A2.75 2.75 0 0 0 14 11.25v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-1.5Z" />
+    </svg>
+    <span>{{ installCount . }}</span>
+</p>
+{{ end }}
+{{ if .App.Broken }}
+<div class="broken-badge">
+    <i class="fa-solid fa-xmark" aria-hidden="true"></i> {{ t .Localizer "BROKEN" }}
+</div>
+<p class="app-item-meta">{{ .App.BrokenReason }}</p>
+{{ end }}
+{{ if .IsCustom }}
+<a href="/devices/{{ .DeviceID }}/uploads/{{ .App.ID }}/delete"
+   class="delete-upload-btn"
+   onclick="event.stopPropagation(); return confirm('{{ t .Localizer "Delete this uploaded app?" }}');">
+    <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
+</a>
+{{ end }}
+{{ if not .ConfigProduction }}
+{{ if .App.Broken }}
+<button class="unmark-broken-btn"
+        onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
+    {{ t .Localizer "Unmark Broken" }}
+</button>
 {{ else }}
-    <button class="mark-broken-btn"
-            onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
-        {{ t .Localizer "Mark Broken" }}
-    </button>
-    {{ end }}
-    {{ end }}
+<button class="mark-broken-btn"
+        onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
+    {{ t .Localizer "Mark Broken" }}
+</button>
+{{ end }}
+{{ end }}
 </div>
 {{ end }}

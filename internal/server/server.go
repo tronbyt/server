@@ -25,6 +25,8 @@ import (
 	"tronbyt-server/internal/chunker"
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
+	"tronbyt-server/internal/providers"
+	"tronbyt-server/internal/providers/screeny"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/internal/version"
 	"tronbyt-server/web"
@@ -37,29 +39,31 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/singleflight"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
 )
 
 type Server struct {
-	installCounts map[string]int64 // public app ID -> Niblet install count
-	usageRunning  atomic.Bool      // a community app stats sync is in progress
-	usageForce    atomic.Bool      // a consent change awaits a sync that ignores the retry wait
-	usageSyncs    sync.WaitGroup   // background syncs started by a consent change
-	DB            *gorm.DB
-	Router        *http.ServeMux
-	DataDir       string
-	BaseTemplates *template.Template
-	PageTemplates map[string]*template.Template
-	Config        *config.Settings
-	Store         *sessions.CookieStore
-	Bundle        *i18n.Bundle // Add i18n bundle
-	Broadcaster   *syncer.Broadcaster
-	Upgrader      *websocket.Upgrader
-	PromRegistry  prometheus.Registerer
-	PromGatherer  prometheus.Gatherer
-	metrics       *appMetrics
-	OIDCProvider  *OIDCProvider
+	installCounts     map[string]int64 // public app ID -> Niblet install count
+	usageRunning      atomic.Bool      // a community app stats sync is in progress
+	usageForce        atomic.Bool      // a consent change awaits a sync that ignores the retry wait
+	usageSyncs        sync.WaitGroup   // background syncs started by a consent change
+	backgroundRenders sync.WaitGroup   // background renders triggered asynchronously
+	DB                *gorm.DB
+	Router            *http.ServeMux
+	DataDir           string
+	BaseTemplates     *template.Template
+	PageTemplates     map[string]*template.Template
+	Config            *config.Settings
+	Store             *sessions.CookieStore
+	Bundle            *i18n.Bundle // Add i18n bundle
+	Broadcaster       *syncer.Broadcaster
+	Upgrader          *websocket.Upgrader
+	PromRegistry      prometheus.Registerer
+	PromGatherer      prometheus.Gatherer
+	metrics           *appMetrics
+	OIDCProvider      *OIDCProvider
 
 	systemAppsCache                      []apps.AppMetadata
 	systemAppsCacheMutex                 sync.RWMutex
@@ -69,11 +73,18 @@ type Server struct {
 	nibletCloudPreferenceMutex           sync.Mutex
 	nibletCloudEnabled                   atomic.Bool
 
-	appChunksCache        map[string][]chunker.RenderChunk
+	externalProviders     map[string]providers.ExternalAppProvider
+	externalProvidersMu   sync.RWMutex
+	appChunksCache        map[string][]providers.RenderChunk
 	appChunksMu           sync.RWMutex
 	deviceChunkIndices    map[string]int
 	deviceCurrentChunkApp map[string]string
 	deviceChunkMu         sync.Mutex
+	inFlightRenders       map[string]chan struct{}
+	renderPending         map[string]bool
+	appRenderServed       map[string]bool
+	inFlightRendersMu     sync.Mutex
+	thumbnailSingleFlight singleflight.Group
 
 	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
 	// cached HTTP responses so dynamic schema data (e.g. dropdown options
@@ -134,9 +145,13 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		},
 		PromRegistry:          prometheus.DefaultRegisterer,
 		PromGatherer:          prometheus.DefaultGatherer,
-		appChunksCache:        make(map[string][]chunker.RenderChunk),
+		externalProviders:     make(map[string]providers.ExternalAppProvider),
+		appChunksCache:        make(map[string][]providers.RenderChunk),
 		deviceChunkIndices:    make(map[string]int),
 		deviceCurrentChunkApp: make(map[string]string),
+		inFlightRenders:       make(map[string]chan struct{}),
+		renderPending:         make(map[string]bool),
+		appRenderServed:       make(map[string]bool),
 	}
 
 	// Load Settings from DB
@@ -169,6 +184,22 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	s.systemAppsAutoRefresh.Store(cfg.SystemAppsAutoRefresh)
 
 	s.loadNibletCloudEnabled()
+
+	// Screeny Studio Settings from DB or env
+	if val, err := s.getSetting("screeny_studio_url"); err == nil && val != "" {
+		cfg.ScreenyStudioURL = val
+	}
+	if val, err := s.getSetting("screeny_scale_filter"); err == nil && val != "" {
+		cfg.ScreenyScaleFilter = val
+	}
+	if cfg.ScreenyStudioURL != "" {
+		s.RegisterExternalProvider(screeny.NewAdapter(screeny.AdapterConfig{
+			StudioURL:   cfg.ScreenyStudioURL,
+			FPS:         cfg.ScreenyFPS,
+			ScaleFilter: cfg.ScreenyScaleFilter,
+		}))
+		slog.Info("Registered Screeny external app provider", "url", cfg.ScreenyStudioURL, "scaleFilter", cfg.ScreenyScaleFilter)
+	}
 
 	// Load OIDC settings from DB
 	if val, err := s.getSetting("oidc_enabled"); err == nil {
@@ -282,6 +313,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	go s.checkForUpdates(context.Background())
 	go s.autoRefreshSystemRepo(context.Background())
 	go s.autoRefreshCustomAppsRepos()
+	s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
 	if cfg.NibletCloudURL != "" {
 		go s.runNibletSync()
 		go s.runUsageSync()
@@ -421,6 +453,7 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /clear_system_apps_repo", s.RequireLogin(s.handleClearSystemAppsRepo))
 	s.Router.HandleFunc("POST /settings/system-apps-auto-refresh", s.RequireLogin(s.handleSetSystemAppsAutoRefresh))
 	s.Router.HandleFunc("POST /update_firmware", s.RequireLogin(s.handleUpdateFirmware))
+	s.Router.HandleFunc("POST /settings/screeny", s.RequireLogin(s.handleSetScreenyConfig))
 
 	// App broken status (development only)
 	s.Router.HandleFunc("POST /mark_app_broken", s.RequireLogin(s.handleMarkAppBroken))
@@ -514,6 +547,90 @@ func (s *Server) handleDots(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// RegisterExternalProvider registers an external app store/renderer provider.
+func (s *Server) RegisterExternalProvider(p providers.ExternalAppProvider) {
+	s.externalProvidersMu.Lock()
+	defer s.externalProvidersMu.Unlock()
+	s.externalProviders[p.Name()] = p
+}
+
+// GetExternalProvider retrieves an external app provider by name.
+func (s *Server) GetExternalProvider(name string) providers.ExternalAppProvider {
+	s.externalProvidersMu.RLock()
+	defer s.externalProvidersMu.RUnlock()
+	return s.externalProviders[name]
+}
+
+// ListExternalProviders returns all registered external app providers.
+func (s *Server) ListExternalProviders() []providers.ExternalAppProvider {
+	s.externalProvidersMu.RLock()
+	defer s.externalProvidersMu.RUnlock()
+	list := make([]providers.ExternalAppProvider, 0, len(s.externalProviders))
+	for _, p := range s.externalProviders {
+		list = append(list, p)
+	}
+	return list
+}
+
+// updateScreenyConfig updates Screeny settings in the DB and running server.
+func (s *Server) updateScreenyConfig(studioURL, scaleFilter string) error {
+	cleanURL := strings.TrimRight(strings.TrimSpace(studioURL), "/")
+	if err := validateExternalProviderURL(cleanURL); err != nil {
+		return fmt.Errorf("invalid Screeny Studio URL: %w", err)
+	}
+	s.Config.ScreenyStudioURL = cleanURL
+	if scaleFilter != "" {
+		s.Config.ScreenyScaleFilter = scaleFilter
+	}
+	if err := s.setSetting("screeny_studio_url", s.Config.ScreenyStudioURL); err != nil {
+		return err
+	}
+	if err := s.setSetting("screeny_scale_filter", s.Config.ScreenyScaleFilter); err != nil {
+		return err
+	}
+
+	if s.Config.ScreenyStudioURL != "" {
+		adapter := screeny.NewAdapter(screeny.AdapterConfig{
+			StudioURL:   s.Config.ScreenyStudioURL,
+			FPS:         s.Config.ScreenyFPS,
+			ScaleFilter: s.Config.ScreenyScaleFilter,
+		})
+		s.RegisterExternalProvider(adapter)
+		slog.Info("Updated Screeny external app provider", "url", s.Config.ScreenyStudioURL, "scaleFilter", s.Config.ScreenyScaleFilter)
+		s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
+	} else {
+		s.externalProvidersMu.Lock()
+		delete(s.externalProviders, "screeny")
+		s.externalProvidersMu.Unlock()
+		slog.Info("Deregistered Screeny external app provider")
+	}
+	return nil
+}
+
+// isExternalAppPath returns true if the path refers to an external provider (e.g. "screeny:clock").
+func (s *Server) isExternalAppPath(path string) bool {
+	_, _, ok := s.parseExternalAppPath(path)
+	return ok
+}
+
+// parseExternalAppPath splits a path like "screeny:split_flap" into (provider, "split_flap", true).
+// It verifies that the app ID contains only safe alphanumeric, underscore, or hyphen characters.
+func (s *Server) parseExternalAppPath(path string) (providers.ExternalAppProvider, string, bool) {
+	parts := strings.SplitN(path, ":", 2)
+	if len(parts) != 2 {
+		return nil, "", false
+	}
+	provider := s.GetExternalProvider(parts[0])
+	if provider == nil {
+		return nil, "", false
+	}
+	safeAppID, err := sanitizeAppID(parts[1])
+	if err != nil {
+		return nil, "", false
+	}
+	return provider, safeAppID, true
+}
+
 // GetMaxChunkSizeForDevice returns the chunk size budget based on device type.
 func (s *Server) GetMaxChunkSizeForDevice(device *data.Device) int {
 	if device == nil {
@@ -558,6 +675,11 @@ func (s *Server) invalidateAppChunks(deviceID string, iname string) {
 	s.appChunksMu.Lock()
 	delete(s.appChunksCache, key)
 	s.appChunksMu.Unlock()
+	s.inFlightRendersMu.Lock()
+	if s.appRenderServed != nil {
+		delete(s.appRenderServed, key)
+	}
+	s.inFlightRendersMu.Unlock()
 }
 
 func (s *Server) cleanupAppChunks(deviceID string, app *data.App) {
@@ -595,7 +717,7 @@ func (s *Server) getAppChunksCacheKey(deviceID, iname string) string {
 	return deviceID + ":" + iname
 }
 
-func (s *Server) getAppChunks(deviceID string, app *data.App) []chunker.RenderChunk {
+func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.RenderChunk {
 	if app == nil {
 		return nil
 	}
@@ -621,7 +743,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []chunker.RenderCh
 	if err == nil {
 		var metas []chunkMeta
 		if err := json.Unmarshal(metaBytes, &metas); err == nil && len(metas) > 0 {
-			var chunks []chunker.RenderChunk
+			var chunks []providers.RenderChunk
 			for _, m := range metas {
 				chunkFile := filepath.Base(m.File)
 				chunkPath, err := securejoin.SecureJoin(deviceWebpDir, chunkFile)
@@ -634,7 +756,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []chunker.RenderCh
 					chunks = nil
 					break
 				}
-				chunks = append(chunks, chunker.RenderChunk{
+				chunks = append(chunks, providers.RenderChunk{
 					WebPBytes:  b,
 					DurationMs: m.DurationMs,
 				})
@@ -655,7 +777,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []chunker.RenderCh
 		if durationMs <= 0 {
 			durationMs = 15000
 		}
-		chunks := []chunker.RenderChunk{
+		chunks := []providers.RenderChunk{
 			{
 				WebPBytes:  b,
 				DurationMs: durationMs,
@@ -670,7 +792,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []chunker.RenderCh
 	return nil
 }
 
-func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []chunker.RenderChunk) error {
+func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []providers.RenderChunk) error {
 	if app == nil || len(chunks) == 0 {
 		return nil
 	}
@@ -703,12 +825,16 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []chunker.
 	}
 
 	// Save the complete unchunked animation (if available) to <appBasename>_full.webp
-	// for rich web previews and dashboard display.
+	// for rich web previews and dashboard display. If empty, remove any existing stale full file.
 	if len(chunks[0].FullWebPBytes) > 0 {
 		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
 			if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
 				slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
 			}
+		}
+	} else {
+		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
+			_ = os.Remove(fullPath)
 		}
 	}
 

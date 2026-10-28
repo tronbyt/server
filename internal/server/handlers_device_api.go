@@ -89,6 +89,15 @@ func (s *Server) handleNextApp(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Check for firmware type header (e.g. Tronberry, ESP32)
+		if fwType := r.Header.Get("X-Firmware-Type"); fwType != "" {
+			if freshDevice.Info.FirmwareType != fwType {
+				slog.Debug("Updating firmware_type on /next request", "device", device.ID, "type", fwType)
+				freshDevice.Info.FirmwareType = fwType
+				updated = true
+			}
+		}
+
 		if updated {
 			if _, err := gorm.G[data.Device](tx).Where("id = ?", freshDevice.ID).Update(r.Context(), "info", freshDevice.Info); err != nil {
 				return err

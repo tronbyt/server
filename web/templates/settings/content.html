@@ -280,6 +280,82 @@
             {{ t .Localizer "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware." }}
         </p>
     </section>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "External App Providers" }}</h2>
+            <p>{{ t .Localizer "Connect external rendering engines and app catalogs like Screeny Studio." }}</p>
+        </div>
+        <div class="settings-card-subsection">
+            <div style="display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 1rem">
+                <h3 style="margin: 0;">Screeny Studio</h3>
+                {{ if .ScreenyConnected }}
+                <span class="w3-tag w3-green w3-round"
+                      style="font-size: 0.85rem;
+                             padding: 4px 10px">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ .ScreenyStatus }}
+                </span>
+                {{ else if .ScreenyStudioURL }}
+                <span class="w3-tag w3-amber w3-round"
+                      style="font-size: 0.85rem;
+                             padding: 4px 10px">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ .ScreenyStatus }}
+                </span>
+            {{ else }}
+                <span class="w3-tag w3-gray w3-round"
+                      style="font-size: 0.85rem;
+                             padding: 4px 10px">{{ t .Localizer "Not Configured" }}</span>
+                {{ end }}
+            </div>
+            <form method="post" action="/settings/screeny" class="settings-form">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="screeny_studio_url">Studio URL</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="url"
+                               class="w3-input w3-border"
+                               name="screeny_studio_url"
+                               id="screeny_studio_url"
+                               placeholder="http://192.168.1.15:8787"
+                               value="{{ .ScreenyStudioURL }}">
+                        <p class="settings-help">
+                            Base URL of a running <code>screeny-studio</code> instance (e.g. <code>http://192.168.1.15:8787</code> or <code>http://screeny-studio:8787</code>). Discovered patches will appear in the Add App catalog badged with <code>[Screeny]</code>.
+                        </p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="screeny_scale_filter">128x64 Scaling Filter</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <select class="w3-select w3-border"
+                                name="screeny_scale_filter"
+                                id="screeny_scale_filter">
+                            <option value="bicubic"
+                                    {{ if eq .ScreenyScaleFilter "bicubic" }}selected{{ end }}>Bicubic (Smooth Subpixel Gradients for 128x64 LEDs)</option>
+                            <option value="scale2x"
+                                    {{ if eq .ScreenyScaleFilter "scale2x" }}selected{{ end }}>Scale2x / EPX (Sharp 128x64 Pixel Art & Clocks)</option>
+                            <option value="bilinear"
+                                    {{ if eq .ScreenyScaleFilter "bilinear" }}selected{{ end }}>Bilinear (Color Interpolation)</option>
+                            <option value="nearest"
+                                    {{ if eq .ScreenyScaleFilter "nearest" }}selected{{ end }}>Nearest Neighbor (Classic 2x2 Blocks)</option>
+                        </select>
+                        <p class="settings-help">
+                            Default upscaling algorithm when rendering Screeny for 128x64 displays like Tronberry. Can also be overridden per-app.
+                        </p>
+                    </div>
+                </div>
+                <div class="settings-actions" style="margin-top: 1rem;">
+                    <button type="submit" class="w3-button w3-blue">
+                        <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save & Connect" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
 </div>
 <script>
     function saveSystemAppsAutoRefresh(checkbox) {
