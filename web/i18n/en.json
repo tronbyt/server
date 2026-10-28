@@ -1607,6 +1607,12 @@
   "At sunset": {
     "other": "At sunset"
   },
+  "Today's sunrise": {
+    "other": "Today's sunrise"
+  },
+  "Today's sunset": {
+    "other": "Today's sunset"
+  },
   "When night mode ends": {
     "other": "When night mode ends"
   },

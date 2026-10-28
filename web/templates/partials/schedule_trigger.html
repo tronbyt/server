@@ -1,5 +1,5 @@
 {{ define "schedule_trigger" }}
-{{- /* One night or dim mode boundary. Arguments (dict): Prefix, Label, TimeField, TimeValue, Trigger (*data.ScheduleTrigger, may be nil), Kinds (comma-separated), DefaultKind, HasCoordinates, Localizer. */ -}}
+{{- /* One night or dim mode boundary. Arguments (dict): Prefix, Label, TimeField, TimeValue, Trigger (*data.ScheduleTrigger, may be nil), Kinds (comma-separated), DefaultKind, HasCoordinates, SunTodayOK, SunToday (data.TodaySunEvents), Localizer. */ -}}
 {{ $kind := .DefaultKind }}
 {{ if .Trigger }}
 {{ $kind = string .Trigger.Kind }}
@@ -38,6 +38,14 @@
     <div class="schedule-trigger-sun"
          data-trigger-sun
          {{ if and (ne $kind "sunrise") (ne $kind "sunset") }}hidden{{ end }}>
+        {{ if $.SunTodayOK }}
+        <p class="settings-help schedule-sun-preview"
+           data-sun-preview
+           data-sunrise-label="{{ t $.Localizer "Today's sunrise" }}"
+           data-sunset-label="{{ t $.Localizer "Today's sunset" }}"
+           data-sunrise-time="{{ $.SunToday.Sunrise }}"
+           data-sunset-time="{{ $.SunToday.Sunset }}"></p>
+        {{ end }}
         <label>
             <input type="number"
                    name="{{ .Prefix }}_offset"

@@ -382,9 +382,13 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		firmwareImgURL = appendKeyToURLString(firmwareImgURL, device.APIKey)
 	}
 
+	sunToday, sunTodayOK := device.TodaySunEvents()
+
 	s.renderTemplate(w, r, "update", TemplateData{
 		User:                      user,
 		Device:                    device,
+		SunToday:                  sunToday,
+		SunTodayOK:                sunTodayOK,
 		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
 		ColorFilterOptions:        s.getColorFilterChoices(),
 		AvailableLocales:          locales,

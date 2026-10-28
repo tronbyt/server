@@ -128,6 +128,8 @@ type TemplateData struct {
 	UserCount                 int    // Number of users, for registration logic
 	DeleteOnCancel            bool   // Indicate if app should be deleted on cancel
 	URLWarning                string // Warning about localhost in image URL
+	SunToday                  data.TodaySunEvents
+	SunTodayOK                bool   // plain sunrise/sunset for the device's local today
 	DetectedAccessURL         string // Suggested URL (LAN IP) to use instead of localhost
 	ReadOnly                  bool   // Indicate if the view should be read-only
 	Partial                   string
