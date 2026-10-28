@@ -313,7 +313,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	go s.checkForUpdates(context.Background())
 	go s.autoRefreshSystemRepo(context.Background())
 	go s.autoRefreshCustomAppsRepos()
-	go s.preheatExternalAppThumbnails()
+	s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
 	if cfg.NibletCloudURL != "" {
 		go s.runNibletSync()
 		go s.runUsageSync()
@@ -597,7 +597,7 @@ func (s *Server) updateScreenyConfig(studioURL, scaleFilter string) error {
 		})
 		s.RegisterExternalProvider(adapter)
 		slog.Info("Updated Screeny external app provider", "url", s.Config.ScreenyStudioURL, "scaleFilter", s.Config.ScreenyScaleFilter)
-		go s.preheatExternalAppThumbnails()
+		s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
 	} else {
 		s.externalProvidersMu.Lock()
 		delete(s.externalProviders, "screeny")

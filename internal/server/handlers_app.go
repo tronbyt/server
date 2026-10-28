@@ -532,7 +532,7 @@ func (s *Server) serveThumbnailBytes(w http.ResponseWriter, r *http.Request, b [
 
 func (s *Server) warmExternalAppThumbnails(provider providers.ExternalAppProvider, apps []providers.ExternalAppMeta) {
 	cacheDir := s.ensureCleanPreviewCache(provider.Name())
-	go func() {
+	s.backgroundRenders.Go(func() {
 		for _, app := range apps {
 			safeAppID, err := sanitizeAppID(app.ID)
 			if err != nil {
@@ -569,7 +569,7 @@ func (s *Server) warmExternalAppThumbnails(provider providers.ExternalAppProvide
 				return chunks[0].WebPBytes, nil
 			})
 		}
-	}()
+	})
 }
 
 func (s *Server) preheatExternalAppThumbnails() {
