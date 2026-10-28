@@ -22,101 +22,54 @@ flowchart LR
 
 ## 2. Setting Up Screeny Studio in Docker
 
-### Option A: `docker-compose.yml` (Recommended)
+The official container image `ghcr.io/gotwalt/screeny-studio:latest` provides Screeny Studio with GPU hardware acceleration (Vulkan) for rendering 30 FPS generative patches.
 
-If you use Docker Compose to run Tronbyt Server, you can run `screeny-studio` alongside it on the same Docker bridge network.
+### Docker Compose Service
 
-#### 1. Create a `Dockerfile.screeny`
-In your Tronbyt Server directory (or adjacent folder), create a `Dockerfile.screeny`:
-
-```dockerfile
-FROM rust:1.80-slim-bookworm AS builder
-
-WORKDIR /usr/src/screeny
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    pkg-config \
-    libssl-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN git clone https://github.com/gotwalt/screeny.git .
-RUN cargo build --release -p screeny-studio
-
-FROM debian:bookworm-slim
-
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /usr/src/screeny/target/release/screeny-studio /usr/local/bin/screeny-studio
-
-EXPOSE 8787
-
-# Screeny Studio listens on port 8787
-CMD ["screeny-studio"]
-```
-
-#### 2. Add Screeny to your `docker-compose.yml`
+Add the `screeny` service to your `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
-
 services:
-  tronbyt:
-    image: ghcr.io/tronbyt/server:latest
-    container_name: tronbyt-server
-    ports:
-      - "8000:8000"
-    environment:
-      # Connect Tronbyt to Screeny using the Docker service name
-      - SCREENY_STUDIO_URL=http://screeny-studio:8787
-      - SCREENY_FPS=30
-      - SCREENY_SCALE_FILTER=bicubic
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-    depends_on:
-      - screeny-studio
-
-  screeny-studio:
-    build:
-      context: .
-      dockerfile: Dockerfile.screeny
+  screeny:
+    image: ghcr.io/gotwalt/screeny-studio:latest
     container_name: screeny-studio
-    ports:
-      - "8787:8787"
     restart: unless-stopped
+    network_mode: host
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "993"
+    environment:
+      - TZ=${TZ:-America/Denver}
+      - WGPU_BACKEND=vulkan
+      - SCREENY_STATE_DIR=/data
+      - SCREENY_LISTEN=0.0.0.0:8787
+      - SCREENY_PORT=8787
+    volumes:
+      - /data/docker/tronbyt/screeny:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:8787/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 ```
 
-#### 3. Start the containers
+> [!TIP]
+> * **Hardware Acceleration:** Mounting `/dev/dri:/dev/dri` and passing `group_add: ["993"]` (or your host's render/video group GID) grants Screeny direct access to GPU acceleration for smooth 30 FPS animations.
+> * **Host Networking:** With `network_mode: host`, Screeny binds directly to host port `8787`. In Tronbyt Server, point your Studio URL to `http://127.0.0.1:8787` (or your host LAN IP `http://192.168.1.X:8787`).
+> * If running Tronbyt inside a standard Docker bridge network instead of host networking, use `ports: ["8787:8787"]` on the Screeny service and set `SCREENY_STUDIO_URL=http://screeny-studio:8787`.
+
+Start Screeny:
 ```bash
-docker compose up -d --build
+docker compose up -d screeny
 ```
-
----
-
-### Option B: Standalone `docker run`
-
-If you prefer to run Screeny Studio as an independent container:
-
-1. **Build the container:**
-   ```bash
-   docker build -t screeny-studio -f Dockerfile.screeny .
-   ```
-
-2. **Run the container:**
-   ```bash
-   docker run -d \
-     --name screeny-studio \
-     -p 8787:8787 \
-     --restart unless-stopped \
-     screeny-studio
-   ```
-
-3. **Verify it is running:**
-   Open `http://localhost:8787` (or `http://<your-server-ip>:8787`) in your web browser. You should see the Screeny Studio web interface.
 
 ---
 
