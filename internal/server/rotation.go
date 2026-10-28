@@ -209,16 +209,6 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 		return getDefaultImage()
 	}
 
-	if app.Path != nil && s.isExternalAppPath(*app.Path) {
-		appKey := fmt.Sprintf("%s:%s", device.ID, app.Iname)
-		s.inFlightRendersMu.Lock()
-		if s.appRenderServed == nil {
-			s.appRenderServed = make(map[string]bool)
-		}
-		s.appRenderServed[appKey] = true
-		s.inFlightRendersMu.Unlock()
-	}
-
 	// 5. Save State
 	now := time.Now()
 	deviceUpdates := data.Device{

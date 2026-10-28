@@ -82,7 +82,6 @@ type Server struct {
 	deviceChunkMu         sync.Mutex
 	inFlightRenders       map[string]chan struct{}
 	renderPending         map[string]bool
-	appRenderServed       map[string]bool
 	inFlightRendersMu     sync.Mutex
 	thumbnailSingleFlight singleflight.Group
 
@@ -151,7 +150,6 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		deviceCurrentChunkApp: make(map[string]string),
 		inFlightRenders:       make(map[string]chan struct{}),
 		renderPending:         make(map[string]bool),
-		appRenderServed:       make(map[string]bool),
 	}
 
 	// Load Settings from DB
@@ -675,11 +673,6 @@ func (s *Server) invalidateAppChunks(deviceID string, iname string) {
 	s.appChunksMu.Lock()
 	delete(s.appChunksCache, key)
 	s.appChunksMu.Unlock()
-	s.inFlightRendersMu.Lock()
-	if s.appRenderServed != nil {
-		delete(s.appRenderServed, key)
-	}
-	s.inFlightRendersMu.Unlock()
 }
 
 func (s *Server) cleanupAppChunks(deviceID string, app *data.App) {
