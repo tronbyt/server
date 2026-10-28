@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"sync"
 	"time"
 
 	"github.com/tronbyt/go-libwebp/webp"
@@ -188,15 +189,23 @@ func SplitFramesWithTiming(frames []*image.RGBA, durations []time.Duration, maxC
 	}
 
 	// 2. Try encoding the entire animation in one chunk first if it fits within bounds.
-	allBytes, err := EncodeFramesToWebPWithFrameDurations(frames, durations, 0)
-	if err == nil && len(allBytes) <= maxChunkSize && (maxChunkDurationMs <= 0 || fullDurationMs <= maxChunkDurationMs) {
-		return []RenderChunk{
-			{
-				WebPBytes:     allBytes,
-				DurationMs:    fullDurationMs,
-				FullWebPBytes: allBytes,
-			},
-		}, nil
+	// If the requested animation duration exceeds maxChunkDurationMs, a single chunk is impossible;
+	// skip synchronous monolithic encoding and encode it concurrently with the chunks.
+	var allBytes []byte
+	singleChunkPossible := maxChunkDurationMs <= 0 || fullDurationMs <= maxChunkDurationMs
+
+	if singleChunkPossible {
+		var err error
+		allBytes, err = EncodeFramesToWebPWithFrameDurations(frames, durations, 0)
+		if err == nil && (maxChunkSize <= 0 || len(allBytes) <= maxChunkSize) {
+			return []RenderChunk{
+				{
+					WebPBytes:     allBytes,
+					DurationMs:    fullDurationMs,
+					FullWebPBytes: allBytes,
+				},
+			}, nil
+		}
 	}
 
 	// 3. Balanced Multi-Chunk Partitioning:
@@ -213,15 +222,32 @@ func SplitFramesWithTiming(frames []*image.RGBA, durations []time.Duration, maxC
 	if maxChunkDurationMs > 0 {
 		startK = max(startK, (fullDurationMs+maxChunkDurationMs-1)/maxChunkDurationMs)
 	}
-	if len(allBytes) > maxChunkSize {
+	if len(allBytes) > maxChunkSize && maxChunkSize > 0 {
 		startK = max(startK, (len(allBytes)+maxChunkSize-1)/maxChunkSize)
 	}
 
-	// Try balanced K-way partitioning
+	// If single chunk was impossible upfront, encode allBytes concurrently with chunk partitioning
+	// so FullWebPBytes is populated without blocking the chunk pipeline.
+	var allWg sync.WaitGroup
+	if !singleChunkPossible && len(allBytes) == 0 {
+		allWg.Go(func() {
+			allBytes, _ = EncodeFramesToWebPWithFrameDurations(frames, durations, 0)
+		})
+	}
+
+	// Try balanced K-way partitioning (encoding chunks in parallel across available CPU cores)
 	for k := startK; k <= maxPossibleK; k++ {
 		valid := true
 		candidateChunks := make([]RenderChunk, k)
 
+		type chunkResult struct {
+			index int
+			b     []byte
+			durMs int
+			err   error
+		}
+		results := make([]chunkResult, k)
+		var wg sync.WaitGroup
 		for i := range k {
 			cStart := (i * n) / k
 			cEnd := ((i + 1) * n) / k
@@ -233,19 +259,26 @@ func SplitFramesWithTiming(frames []*image.RGBA, durations []time.Duration, maxC
 				cDurMs += int(d.Milliseconds())
 			}
 
-			b, err := EncodeFramesToWebPWithFrameDurations(cSlice, cDurations, 0)
-			if err != nil || len(b) > maxChunkSize || (maxChunkDurationMs > 0 && cDurMs > maxChunkDurationMs) {
+			wg.Go(func() {
+				b, err := EncodeFramesToWebPWithFrameDurations(cSlice, cDurations, 0)
+				results[i] = chunkResult{index: i, b: b, durMs: cDurMs, err: err}
+			})
+		}
+		wg.Wait()
+
+		for _, res := range results {
+			if res.err != nil || len(res.b) > maxChunkSize || (maxChunkDurationMs > 0 && res.durMs > maxChunkDurationMs) {
 				valid = false
 				break
 			}
-
-			candidateChunks[i] = RenderChunk{
-				WebPBytes:  b,
-				DurationMs: cDurMs,
+			candidateChunks[res.index] = RenderChunk{
+				WebPBytes:  res.b,
+				DurationMs: res.durMs,
 			}
 		}
 
 		if valid {
+			allWg.Wait()
 			candidateChunks[0].FullWebPBytes = allBytes
 			return candidateChunks, nil
 		}
