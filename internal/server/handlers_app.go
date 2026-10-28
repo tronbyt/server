@@ -984,7 +984,7 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 		devCopy := *device
 		userCopy := *user
 		s.backgroundRenders.Go(func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 			s.possiblyRender(ctx, &appCopy, &devCopy, &userCopy)
 			s.notifyDashboard(userCopy.Username, WSEvent{Type: "apps_changed", DeviceID: devCopy.ID})
@@ -2447,7 +2447,18 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 			}
 		}
 	}
-	s.possiblyRender(ctx, &duplicatedApp, targetDevice, user)
+	if duplicatedApp.Path != nil && s.isExternalAppPath(*duplicatedApp.Path) {
+		appCopy := duplicatedApp
+		devCopy := *targetDevice
+		userCopy := *user
+		s.backgroundRenders.Go(func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			s.possiblyRender(bgCtx, &appCopy, &devCopy, &userCopy)
+		})
+	} else {
+		s.possiblyRender(ctx, &duplicatedApp, targetDevice, user)
+	}
 
 	return nil
 }

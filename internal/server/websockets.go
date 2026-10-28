@@ -697,7 +697,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 										appCopy := *app
 										devCopy := device
 										s.backgroundRenders.Go(func() {
-											bgCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+											bgCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 											defer cancel()
 											s.possiblyRender(bgCtx, &appCopy, &devCopy, user)
 										})
