@@ -37,7 +37,6 @@ type Settings struct {
 
 	// Multi-Chunk Buffer Limits (bytes)
 	MaxChunkSizeESP int `env:"TRONBYT_MAX_CHUNK_SIZE_ESP" envDefault:"450000"`
-	MaxChunkSizeS3  int `env:"TRONBYT_MAX_CHUNK_SIZE_S3"  envDefault:"450000"`
 	MaxChunkSizeRPi int `env:"TRONBYT_MAX_CHUNK_SIZE_RPI" envDefault:"5242880"`
 
 	// OIDC Configuration

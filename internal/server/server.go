@@ -539,19 +539,8 @@ func (s *Server) GetMaxChunkSizeForDevice(device *data.Device) int {
 		return 50000
 	}
 
-	// 3. Optional S3 override for ESP32-S3 and Wide devices
-	if s.Config.MaxChunkSizeS3 > 0 && (device.Type == data.DeviceTronbytS3Wide ||
-		device.Type == data.DeviceMatrixPortalWide ||
-		device.Type == data.DeviceMatrixPortalSquare ||
-		device.Type == data.DeviceTronbytS3 ||
-		device.Type == data.DeviceMatrixPortal ||
-		device.Type == data.DeviceMatrixPortalWS ||
-		device.Type == data.DeviceWaveshareS3 ||
-		device.Type == data.DeviceTidbytGen2) {
-		return s.Config.MaxChunkSizeS3
-	}
-
-	// 4. Tidbyt Gen 1, Gen 2, and ESP32 clients with PSRAM (default: 450 KB, matching 460 KB firmware buffer).
+	// 3. All ESP devices (Tidbyt Gen 1, Gen 2, ESP32, S3 variants, MatrixPortal, Waveshare)
+	// have PSRAM backing a ~460 KB firmware buffer (default: 450 KB).
 	if s.Config.MaxChunkSizeESP > 0 {
 		return s.Config.MaxChunkSizeESP
 	}

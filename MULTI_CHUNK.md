@@ -176,6 +176,5 @@ The chunking engine automatically validates and partitions images and animations
 
 | Environment Variable | Default | Description |
 | :--- | :--- | :--- |
-| `TRONBYT_MAX_CHUNK_SIZE_ESP` | `450000` (450 KB) | Maximum chunk size budget for ESP32 and Tidbyt Gen 1 / Gen 2 hardware. |
-| `TRONBYT_MAX_CHUNK_SIZE_S3` | `450000` (450 KB) | Optional override for ESP32-S3, Matrix Wide, and Tidbyt Gen 2 hardware. |
+| `TRONBYT_MAX_CHUNK_SIZE_ESP` | `450000` (450 KB) | Maximum chunk size budget for all ESP devices (Tidbyt Gen 1, Gen 2, ESP32, S3 variants, MatrixPortal). |
 | `TRONBYT_MAX_CHUNK_SIZE_RPI` | `5242880` (5 MB) | Maximum chunk size budget for Raspberry Pi and Tronberry hardware. |
