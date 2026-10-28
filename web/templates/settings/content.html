@@ -286,20 +286,27 @@
             <p>{{ t .Localizer "Connect external rendering engines and app catalogs like Screeny Studio." }}</p>
         </div>
         <div class="settings-card-subsection">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <div style="display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-bottom: 1rem">
                 <h3 style="margin: 0;">Screeny Studio</h3>
                 {{ if .ScreenyConnected }}
-                <span class="w3-tag w3-green w3-round" style="font-size: 0.85rem; padding: 4px 10px;">
+                <span class="w3-tag w3-green w3-round"
+                      style="font-size: 0.85rem;
+                             padding: 4px 10px">
                     <i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ .ScreenyStatus }}
                 </span>
                 {{ else if .ScreenyStudioURL }}
-                <span class="w3-tag w3-amber w3-round" style="font-size: 0.85rem; padding: 4px 10px;">
+                <span class="w3-tag w3-amber w3-round"
+                      style="font-size: 0.85rem;
+                             padding: 4px 10px">
                     <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {{ .ScreenyStatus }}
                 </span>
-                {{ else }}
-                <span class="w3-tag w3-gray w3-round" style="font-size: 0.85rem; padding: 4px 10px;">
-                    {{ t .Localizer "Not Configured" }}
-                </span>
+            {{ else }}
+                <span class="w3-tag w3-gray w3-round"
+                      style="font-size: 0.85rem;
+                             padding: 4px 10px">{{ t .Localizer "Not Configured" }}</span>
                 {{ end }}
             </div>
             <form method="post" action="/settings/screeny" class="settings-form">
@@ -324,11 +331,17 @@
                         <label for="screeny_scale_filter">128x64 Scaling Filter</label>
                     </div>
                     <div class="settings-field-control">
-                        <select class="w3-select w3-border" name="screeny_scale_filter" id="screeny_scale_filter">
-                            <option value="bicubic" {{ if eq .ScreenyScaleFilter "bicubic" }}selected{{ end }}>Bicubic (Smooth Subpixel Gradients for 128x64 LEDs)</option>
-                            <option value="scale2x" {{ if eq .ScreenyScaleFilter "scale2x" }}selected{{ end }}>Scale2x / EPX (Sharp 128x64 Pixel Art & Clocks)</option>
-                            <option value="bilinear" {{ if eq .ScreenyScaleFilter "bilinear" }}selected{{ end }}>Bilinear (Color Interpolation)</option>
-                            <option value="nearest" {{ if eq .ScreenyScaleFilter "nearest" }}selected{{ end }}>Nearest Neighbor (Classic 2x2 Blocks)</option>
+                        <select class="w3-select w3-border"
+                                name="screeny_scale_filter"
+                                id="screeny_scale_filter">
+                            <option value="bicubic"
+                                    {{ if eq .ScreenyScaleFilter "bicubic" }}selected{{ end }}>Bicubic (Smooth Subpixel Gradients for 128x64 LEDs)</option>
+                            <option value="scale2x"
+                                    {{ if eq .ScreenyScaleFilter "scale2x" }}selected{{ end }}>Scale2x / EPX (Sharp 128x64 Pixel Art & Clocks)</option>
+                            <option value="bilinear"
+                                    {{ if eq .ScreenyScaleFilter "bilinear" }}selected{{ end }}>Bilinear (Color Interpolation)</option>
+                            <option value="nearest"
+                                    {{ if eq .ScreenyScaleFilter "nearest" }}selected{{ end }}>Nearest Neighbor (Classic 2x2 Blocks)</option>
                         </select>
                         <p class="settings-help">
                             Default upscaling algorithm when rendering Screeny for 128x64 displays like Tronberry. Can also be overridden per-app.

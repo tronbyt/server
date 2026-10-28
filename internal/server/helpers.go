@@ -18,11 +18,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"tronbyt-server/internal/apps"
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
+	"tronbyt-server/internal/providers"
 	"tronbyt-server/internal/version"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
@@ -678,13 +680,18 @@ func (s *Server) replaceSystemAppsCache() error {
 
 // getAppMetadata retrieves metadata for an app path, checking the system cache first,
 // then falling back to reading the manifest.yaml from disk.
-func (s *Server) getAppMetadata(appPath string) *apps.AppMetadata {
+func (s *Server) getAppMetadata(ctx context.Context, appPath string) *apps.AppMetadata {
 	if appPath == "" {
 		return nil
 	}
 
 	if provider, appID, ok := s.parseExternalAppPath(appPath); ok {
-		extApps, err := provider.ListApps(context.Background())
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		listCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		extApps, err := provider.ListApps(listCtx)
 		if err == nil {
 			for _, ext := range extApps {
 				if ext.ID == appID {
@@ -1056,24 +1063,7 @@ func sanitizeAppID(appID string) (string, error) {
 
 // isBlockedMetadataIP returns true if the IP belongs to link-local, AWS IPv6 IMDS, or cloud metadata ranges.
 func isBlockedMetadataIP(ip net.IP) bool {
-	if ip == nil {
-		return false
-	}
-	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-		return true
-	}
-	if ip4 := ip.To4(); ip4 != nil {
-		if ip4.IsLinkLocalUnicast() || ip4.IsLinkLocalMulticast() {
-			return true
-		}
-		if ip4.Equal(net.ParseIP("169.254.169.254")) || ip4.Equal(net.ParseIP("100.100.100.200")) {
-			return true
-		}
-	}
-	if ip.Equal(net.ParseIP("fd00:ec2::254")) {
-		return true
-	}
-	return false
+	return providers.IsBlockedMetadataIP(ip)
 }
 
 // validateExternalProviderURL ensures provider URLs use HTTP/HTTPS, do not include embedded credentials,

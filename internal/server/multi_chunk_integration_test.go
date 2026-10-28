@@ -843,6 +843,7 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 	user := data.User{Username: "ws_prev_user"}
 	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
 
+	protoV1 := 1
 	device := data.Device{
 		ID:              deviceID,
 		Username:        user.Username,
@@ -850,6 +851,9 @@ func TestMultiChunk_WebSocketPreviewPlayback(t *testing.T) {
 		APIKey:          "wsprevkey",
 		Brightness:      50,
 		DefaultInterval: 10,
+		Info: data.DeviceInfo{
+			ProtocolVersion: &protoV1,
+		},
 	}
 	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
 

@@ -536,6 +536,18 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 					}
 				}
 
+				// Only send volume if device has speaker capability and volume changed
+				if device.HasSpeaker() {
+					effectiveVolume := device.GetEffectiveVolume()
+					if effectiveVolume != lastSentVolume {
+						if err := conn.WriteJSON(map[string]int{"volume": effectiveVolume}); err != nil {
+							slog.Error("Failed to write volume WS message", "error", err)
+							return
+						}
+						lastSentVolume = effectiveVolume
+					}
+				}
+
 				interrupted := false
 				for chunkIdx, chunk := range chunks {
 					select {
@@ -639,6 +651,26 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 									}
 									if user != nil {
 										s.notifyDashboard(user.Username, WSEvent{Type: "image_updated", DeviceID: device.ID})
+									}
+
+									// Play notification sound on every display if configured
+									if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && app.NotificationSoundTrigger == "every_display" {
+										if device.HasSpeaker() && !device.IsMuted() {
+											baseURLToUse := s.GetDeviceBaseURL(&device)
+											if baseURLToUse == "" || (!strings.Contains(baseURLToUse, ":") && strings.Contains(baseURL, ":")) {
+												baseURLToUse = baseURL
+											}
+											payload := s.ResolveSoundPayload(&device, baseURLToUse, *app.NotificationSound)
+											if payload != "" {
+												if err := conn.WriteJSON(map[string]any{
+													"type":   "sound",
+													"sound":  payload,
+													"volume": device.GetEffectiveVolume(),
+												}); err != nil {
+													slog.Error("Failed to write sound WS message on chunk display", "error", err)
+												}
+											}
+										}
 									}
 									// Pre-render the next cycle in the background while the remaining chunks of this cycle play
 									if app.Path != nil && s.isExternalAppPath(*app.Path) {

@@ -114,7 +114,7 @@ This ensures that the device is always showing the most up-to-date content while
 
 ## Multi-Chunk Animation Streaming
 
-For long or high-framerate animations that produce multi-chunk sequences to respect client RAM limits (such as 160 KB on Tidbyt Gen 1 / ESP32, 450 KB on ESP32-S3, or 5 MB on Raspberry Pi):
+For long or high-framerate animations that produce multi-chunk sequences to respect client RAM limits (such as 450 KB on Tidbyt Gen 1 / Gen 2 / ESP32 / ESP32-S3, 50 KB on Pixoticker, or 5 MB on Raspberry Pi):
 1. The server pushes each chunk sequentially: `chunk[0] -> chunk[1] -> ... -> chunk[K-1]`.
 2. For each chunk `i`:
    - Send `{"dwell_secs": chunk_dwell}` JSON message.

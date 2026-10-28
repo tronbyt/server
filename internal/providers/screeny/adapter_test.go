@@ -100,9 +100,8 @@ func TestScreenyAdapter_Lifecycle(t *testing.T) {
 	defer server.Close()
 
 	adapter := NewAdapter(AdapterConfig{
-		StudioURL:    server.URL,
-		FPS:          30,
-		MaxWebPBytes: 5242880,
+		StudioURL: server.URL,
+		FPS:       30,
 	})
 
 	ctx := context.Background()
@@ -222,7 +221,6 @@ func TestScreenyAdapter_DiscardsTransitionFrames(t *testing.T) {
 	adapter := NewAdapter(AdapterConfig{
 		StudioURL:         server.URL,
 		FPS:               30,
-		MaxWebPBytes:      5242880,
 		TransitionSkipSec: DefaultTransitionSkipSec,
 	})
 
