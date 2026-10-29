@@ -78,6 +78,14 @@
     <div class="firmware-path firmware-path--ota">{{ template "device_firmware_ota" . }}</div>
     {{ end }}
     {{ end }}
+    {{ if .Device.OTACapable }}
+    <form id="{{ .FirmwareOTAFormID }}"
+          action="/devices/{{ .Device.ID }}/ota"
+          method="post"
+          enctype="multipart/form-data"
+          hidden>
+    </form>
+    {{ end }}
 </div>
 <script id="firmware_releases_data" type="application/json">{{ json .FirmwareReleases }}</script>
 <script>

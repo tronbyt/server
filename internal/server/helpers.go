@@ -121,6 +121,7 @@ type TemplateData struct {
 	FirmwareReleases          map[string]FirmwareReleaseInfo
 	FirmwareVersionSelectID   string // HTML id for OTA version <select>
 	CustomFirmwareFileInputID string // HTML id for custom OTA file input
+	FirmwareOTAFormID         string // HTML id for the OTA upload form
 	ShowOTAReleaseNotes       bool   // show release notes under the OTA version select
 	FirmwareOTAFullSection    bool   // render OTA block as a top-level settings card
 	FirmwareOTARecommended    bool   // show "Recommended" badge on firmware page OTA path

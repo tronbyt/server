@@ -11,9 +11,7 @@
         <div>
             <p class="settings-eyebrow">{{ t .Localizer "Apps" }}</p>
             <h1>{{ t .Localizer "Add App" }}</h1>
-            <p class="settings-page-copy">
-                {{ t .Localizer "Choose an app to install on this device, then configure its timing and options." }}
-            </p>
+            <p class="settings-page-copy">{{ t .Localizer "Choose an app to install on this device." }}</p>
         </div>
     </header>
     <!-- Loading indicator -->
@@ -61,55 +59,9 @@
         </section>
         <input type="hidden" name="name" id="selected_app">
         <input type="hidden" name="path" id="selected_app_path">
-        <section class="settings-card">
-            <div class="settings-card-header">
-                <h2>{{ t .Localizer "Configuration" }}</h2>
-                <p>{{ t .Localizer "Set timing and notes before opening the app configuration screen." }}</p>
-            </div>
-            <div class="settings-field-list">
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="uinterval">{{ t .Localizer "Render Interval (minutes)" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <input name="uinterval"
-                               type="number"
-                               id="uinterval"
-                               min="0"
-                               value="-1"
-                               required
-                               class="settings-input">
-                    </div>
-                </div>
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="display_time">{{ t .Localizer "Display Time (seconds)" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <input name="display_time"
-                               type="number"
-                               id="display_time"
-                               min="0"
-                               value="0"
-                               required
-                               class="settings-input">
-                    </div>
-                </div>
-                <div class="settings-field-row">
-                    <div class="settings-field-label">
-                        <label for="notes">{{ t .Localizer "Notes" }}</label>
-                    </div>
-                    <div class="settings-field-control">
-                        <textarea name="notes" id="notes" class="settings-input settings-input-wide"></textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="settings-actions">
-                <button type="submit" class="w3-button w3-green">
-                    <i class="fa-solid fa-sliders" aria-hidden="true"></i> {{ t .Localizer "Configure" }}
-                </button>
-            </div>
-        </section>
+        <input type="hidden" name="uinterval" id="uinterval" value="-1">
+        <input type="hidden" name="display_time" id="display_time" value="0">
+        <input type="hidden" name="notes" id="notes" value="">
     </form>
 </div>
 {{ end }}

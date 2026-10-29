@@ -899,6 +899,9 @@
   "Admin": {
     "other": "Admin"
   },
+  "Choose an app to install on this device.": {
+    "other": "Choose an app to install on this device."
+  },
   "Choose an app to install on this device, then configure its timing and options.": {
     "other": "Choose an app to install on this device, then configure its timing and options."
   },

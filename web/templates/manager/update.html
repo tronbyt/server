@@ -1110,6 +1110,14 @@
         <input type="hidden" name="notes" value="{{ .Device.Notes }}">
     </div>
 </form>
+{{ if .Device.OTACapable }}
+<form id="{{ .FirmwareOTAFormID }}"
+      action="/devices/{{ .Device.ID }}/ota"
+      method="post"
+      enctype="multipart/form-data"
+      hidden>
+</form>
+{{ end }}
 <form action="/devices/{{ .Device.ID }}/import_config"
       method="post"
       enctype="multipart/form-data"

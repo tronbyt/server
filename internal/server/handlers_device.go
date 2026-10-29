@@ -411,6 +411,7 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		URLWarning:                urlWarning,
 		FirmwareVersionSelectID:   "firmware_version_select",
 		CustomFirmwareFileInputID: "custom_firmware_file",
+		FirmwareOTAFormID:         "device_firmware_ota_form",
 		ShowOTAReleaseNotes:       true,
 		FirmwareOTAFullSection:    false,
 	})

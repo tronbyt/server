@@ -79,14 +79,11 @@
 {{ else }}
 </div>
 {{ end }}
-<form action="/devices/{{ .Device.ID }}/ota"
-      method="post"
-      enctype="multipart/form-data"
-      style="display: none">
-    <input type="file"
-           name="firmware_file"
-           id="{{ .CustomFirmwareFileInputID }}"
-           onchange="if(confirm('{{ t .Localizer "Install custom firmware? The device will reboot." }}')) { this.form.submit(); } else { this.value = ''; }"
-           accept=".bin">
-</form>
+<input type="file"
+       name="firmware_file"
+       id="{{ .CustomFirmwareFileInputID }}"
+       form="{{ .FirmwareOTAFormID }}"
+       onchange="if(confirm('{{ t .Localizer "Install custom firmware? The device will reboot." }}')) { document.getElementById('{{ .FirmwareOTAFormID }}').submit(); } else { this.value = ''; }"
+       accept=".bin"
+       hidden>
 {{ end }}

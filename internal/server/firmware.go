@@ -649,6 +649,7 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 		URLWarning:                urlWarning,
 		FirmwareVersionSelectID:   "ota_firmware_version_select",
 		CustomFirmwareFileInputID: "ota_custom_firmware_file",
+		FirmwareOTAFormID:         "device_firmware_ota_form",
 		ShowOTAReleaseNotes:       false,
 		FirmwareOTAFullSection:    true,
 		FirmwareOTARecommended:    device.PreferFirmwareUpdateUI(),
