@@ -181,6 +181,41 @@ func (d Device) HasCoordinates() bool {
 	return d.Location.Lat != 0 || d.Location.Lng != 0
 }
 
+// TodaySunEvents holds plain sunrise and sunset wall-clock times (HH:MM) for
+// the device's local calendar day, for display in the settings UI.
+type TodaySunEvents struct {
+	Sunrise string
+	Sunset  string
+}
+
+// TodaySunEvents returns today's plain sunrise and sunset at the device
+// location, or false when coordinates are missing or times cannot be resolved.
+func (d Device) TodaySunEvents() (TodaySunEvents, bool) {
+	return d.todaySunEvents(time.Now())
+}
+
+func (d Device) todaySunEvents(now time.Time) (TodaySunEvents, bool) {
+	if !d.HasCoordinates() {
+		return TodaySunEvents{}, false
+	}
+	loc := d.GetLocation()
+	day := wallMidnight(wallOf(now.In(loc)))
+	rise, _, okR := d.resolveTriggerRegime(ScheduleTrigger{Kind: TriggerSunrise}, day, loc)
+	set, _, okS := d.resolveTriggerRegime(ScheduleTrigger{Kind: TriggerSunset}, day, loc)
+	if !okR || !okS {
+		return TodaySunEvents{}, false
+	}
+	return TodaySunEvents{
+		Sunrise: wallClockHHMM(rise),
+		Sunset:  wallClockHHMM(set),
+	}, true
+}
+
+func wallClockHHMM(wall time.Time) string {
+	w := wallOf(wall)
+	return fmt.Sprintf("%02d:%02d", w.Hour(), w.Minute())
+}
+
 // Schedules are evaluated in wall-clock time: local date and clock fields
 // carried in a UTC time.Time, so a day is always 24 hours. This is the same
 // space the original minutes-of-day comparison worked in, which keeps fixed

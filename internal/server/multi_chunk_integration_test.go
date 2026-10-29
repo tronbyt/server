@@ -1006,6 +1006,62 @@ func TestScreenyApp_RespectsUIntervalAndNonBlockingRotation(t *testing.T) {
 	assert.Equal(t, 2, renderCallCount, "Screeny app must refresh in the background once UInterval has expired")
 }
 
+func TestClockApp_ZeroUIntervalRerendersOnEveryRotation(t *testing.T) {
+	s := newTestServer(t)
+	ctx := context.Background()
+
+	user := data.User{Username: "clockuser"}
+	require.NoError(t, gorm.G[data.User](s.DB).Create(ctx, &user))
+
+	device := data.Device{
+		ID:              "dev_clock_zero",
+		Username:        user.Username,
+		Name:            "Clock Dev",
+		Brightness:      50,
+		DefaultInterval: 15,
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(ctx, &device))
+
+	renderCallCount := 0
+	mock := &mockExternalProvider{
+		name: "screeny",
+		renderFunc: func(ctx context.Context, req providers.RenderRequest) ([]providers.RenderChunk, error) {
+			renderCallCount++
+			return []providers.RenderChunk{
+				{WebPBytes: dummyChunkWebP1, DurationMs: 15000},
+			}, nil
+		},
+	}
+	s.RegisterExternalProvider(mock)
+
+	path := "screeny:clock"
+	// UInterval = 0 for clocks (re-render on every rotation)
+	app := data.App{
+		DeviceID:   device.ID,
+		Iname:      "clock_app",
+		Name:       "Clock",
+		Enabled:    true,
+		Path:       &path,
+		UInterval:  0, // Must be respected as 0 (not overridden to 10)
+		LastRender: time.Now(),
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	// Initial render
+	rendered := s.possiblyRender(ctx, &app, &device, &user)
+	assert.True(t, rendered)
+	assert.Equal(t, 1, renderCallCount)
+
+	// Even if LastRender was just now (0 seconds ago), UInterval=0 means it must re-render on rotation
+	device.Apps = []*data.App{&app}
+	_, served, err := s.GetNextAppImage(ctx, &device, &user, "")
+	require.NoError(t, err)
+	require.NotNil(t, served)
+
+	s.backgroundRenders.Wait()
+	assert.Equal(t, 2, renderCallCount, "App with UInterval=0 must re-render on every rotation cycle")
+}
+
 func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 	s := newTestServerAPI(t)
 	ctx := context.Background()

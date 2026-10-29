@@ -158,6 +158,43 @@ func TestHandleConfigAppPost(t *testing.T) {
 	if val, ok := updatedApp.Config["key"].(string); !ok || val != "val" {
 		t.Errorf("App config not updated")
 	}
+	assert.Equal(t, 30, updatedApp.UInterval)
+}
+
+func TestHandleConfigAppPost_ZeroUIntervalPreservedForClocks(t *testing.T) {
+	s := newTestServer(t)
+
+	user := data.User{Username: "testuser"}
+	s.DB.Create(&user)
+	device := data.Device{ID: "testdevice", Username: "testuser"}
+	s.DB.Create(&device)
+	app := data.App{
+		DeviceID:  "testdevice",
+		Iname:     "100",
+		Name:      "ClockApp",
+		UInterval: 10,
+		Enabled:   true,
+	}
+	s.DB.Create(&app)
+
+	payload := `{"enabled": true, "uinterval": 0, "display_time": 10}`
+
+	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/100/config", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	ctx := context.WithValue(req.Context(), userContextKey, &user)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	ctx = context.WithValue(ctx, appContextKey, &app)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(s.handleConfigAppPost)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusSeeOther, rr.Code)
+
+	var updatedApp data.App
+	s.DB.First(&updatedApp, "iname = ?", "100")
+	assert.Equal(t, 0, updatedApp.UInterval, "uinterval=0 must be preserved so clocks re-render on rotation")
 }
 
 func TestHandleConfigAppPost_TimeFormat(t *testing.T) {
@@ -1117,11 +1154,11 @@ func TestExternalAppUIntervalFallbackAndNonBlockingAdd(t *testing.T) {
 	}
 	s.RegisterExternalProvider(mock)
 
-	// Test 1: handleAddAppPost with uinterval="0" - should default to 10 and redirect immediately
+	// Test 1: handleAddAppPost with negative uinterval="-1" - should default to 10 and redirect immediately
 	form := url.Values{}
 	form.Add("name", "Flock")
 	form.Add("path", "screeny:flock")
-	form.Add("uinterval", "0") // 0 should be corrected to 10
+	form.Add("uinterval", "-1") // Negative should be corrected to 10
 
 	req, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/addapp", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -1139,7 +1176,25 @@ func TestExternalAppUIntervalFallbackAndNonBlockingAdd(t *testing.T) {
 	var savedApp data.App
 	err := s.DB.Where("device_id = ? AND name = ?", device.ID, "Flock").First(&savedApp).Error
 	require.NoError(t, err)
-	assert.Equal(t, 10, savedApp.UInterval) // verified uinterval corrected to 10
+	assert.Equal(t, 10, savedApp.UInterval) // verified negative uinterval corrected to default 10
+
+	// Test 1b: uinterval=0 (e.g. for clocks) must be preserved
+	form0 := url.Values{}
+	form0.Add("name", "Clock")
+	form0.Add("path", "screeny:clock")
+	form0.Add("uinterval", "0") // 0 is valid for clocks (render on every rotation)
+
+	req0, _ := http.NewRequest(http.MethodPost, "/devices/testdevice/addapp", strings.NewReader(form0.Encode()))
+	req0.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req0 = req0.WithContext(ctx)
+	rr0 := httptest.NewRecorder()
+	s.handleAddAppPost(rr0, req0)
+	assert.Equal(t, http.StatusSeeOther, rr0.Code)
+
+	var savedClock data.App
+	err = s.DB.Where("device_id = ? AND name = ?", device.ID, "Clock").First(&savedClock).Error
+	require.NoError(t, err)
+	assert.Equal(t, 0, savedClock.UInterval) // verified uinterval=0 preserved for clocks
 
 	// Test 2: In-flight deduplication in possiblyRender
 	appKey := fmt.Sprintf("%s:%s", device.ID, savedApp.Iname)

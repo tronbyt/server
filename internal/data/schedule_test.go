@@ -45,6 +45,20 @@ func fixed(hhmm string) *ScheduleTrigger { return &ScheduleTrigger{Kind: Trigger
 
 // Sun times are checked against published almanac values with a few minutes
 // of tolerance, so the test doesn't grade the library against itself.
+func TestTodaySunEvents(t *testing.T) {
+	loc := mustLoad(t, boston.tz)
+	device := Device{
+		Location: DeviceLocation{Lat: boston.lat, Lng: boston.lng, Timezone: boston.tz},
+	}
+	day := utcDay(2026, time.June, 21)
+	events, ok := device.todaySunEvents(day.Add(12 * time.Hour).In(loc))
+	require.True(t, ok)
+	rise, _ := sunEventFor(TriggerSunrise, boston.lat, boston.lng, day, loc)
+	set, _ := sunEventFor(TriggerSunset, boston.lat, boston.lng, day, loc)
+	assert.Equal(t, wallClockHHMM(rise), events.Sunrise)
+	assert.Equal(t, wallClockHHMM(set), events.Sunset)
+}
+
 func TestSunEventMatchesAlmanac(t *testing.T) {
 	cases := []struct {
 		name string

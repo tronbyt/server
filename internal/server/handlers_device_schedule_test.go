@@ -67,6 +67,8 @@ func TestDeviceFormSunSchedules(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 	body := rr.Body.String()
 	assert.Contains(t, body, `name="night_start_offset"`)
+	assert.Contains(t, body, `data-sun-preview`)
+	assert.Contains(t, body, `data-sunrise-time=`)
 	assert.Contains(t, body, `<label for="night_weekend_end_kind">`)
 	assert.Contains(t, body, `id="dim_time"`)
 	assert.Regexp(t, `name="night_start_kind"[^>]*>\s*<option value="time"\s*>[^<]*</option>\s*<option value="sunset"\s*selected`, body)
