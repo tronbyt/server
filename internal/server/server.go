@@ -693,12 +693,8 @@ func (s *Server) cleanupAppChunks(deviceID string, app *data.App) {
 			}
 		}
 	}
-	if p, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename)); err == nil {
-		_ = os.Remove(p)
-	}
-	if p, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
-		_ = os.Remove(p)
-	}
+	_ = os.Remove(filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename)))
+	_ = os.Remove(filepath.Join(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)))
 }
 
 type chunkMeta struct {
@@ -728,10 +724,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.Render
 		return nil
 	}
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	metaFile, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
-	if err != nil {
-		return nil
-	}
+	metaFile := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
 	metaBytes, err := os.ReadFile(metaFile)
 	if err == nil {
 		var metas []chunkMeta
@@ -739,11 +732,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.Render
 			var chunks []providers.RenderChunk
 			for _, m := range metas {
 				chunkFile := filepath.Base(m.File)
-				chunkPath, err := securejoin.SecureJoin(deviceWebpDir, chunkFile)
-				if err != nil {
-					chunks = nil
-					break
-				}
+				chunkPath := filepath.Join(deviceWebpDir, chunkFile)
 				b, err := os.ReadFile(chunkPath)
 				if err != nil {
 					chunks = nil
@@ -819,29 +808,24 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 
 	// Save the complete unchunked animation (if available) to <appBasename>_full.webp
 	// for rich web previews and dashboard display. If empty, remove any existing stale full file.
+	fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename))
 	if len(chunks[0].FullWebPBytes) > 0 {
-		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
-			if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
-				slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
-			}
+		if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
+			slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
+			return err
 		}
 	} else {
-		if fullPath, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)); err == nil {
-			_ = os.Remove(fullPath)
-		}
+		_ = os.Remove(fullPath)
 	}
 
 	// If multiple chunks, write individual chunk files and chunk metadata JSON
 	var metas []chunkMeta
 	for i, chunk := range chunks {
 		fileName := fmt.Sprintf("%s_chunk_%d.webp", appBasename, i)
-		chunkPath, err := securejoin.SecureJoin(deviceWebpDir, fileName)
-		if err != nil {
-			slog.Error("Invalid chunk path", "file", fileName, "error", err)
-			continue
-		}
+		chunkPath := filepath.Join(deviceWebpDir, fileName)
 		if err := os.WriteFile(chunkPath, chunk.WebPBytes, 0644); err != nil {
 			slog.Error("Failed to write chunk file", "path", chunkPath, "error", err)
+			return err
 		}
 		metas = append(metas, chunkMeta{
 			DurationMs: chunk.DurationMs,
@@ -849,10 +833,10 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 		})
 	}
 
-	metaFile, err := securejoin.SecureJoin(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
-	if err == nil {
-		if metaBytes, err := json.Marshal(metas); err == nil {
-			_ = os.WriteFile(metaFile, metaBytes, 0644)
+	metaFile := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
+	if metaBytes, err := json.Marshal(metas); err == nil {
+		if err := os.WriteFile(metaFile, metaBytes, 0644); err != nil {
+			slog.Error("Failed to write chunks metadata", "path", metaFile, "error", err)
 		}
 	}
 
