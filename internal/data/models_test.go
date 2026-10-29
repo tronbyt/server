@@ -335,3 +335,17 @@ func TestDeviceType_SupportsAudio(t *testing.T) {
 	assert.Equal(t, AudioCapPiezo, gen2Dev.GetAudioCapability())
 	assert.True(t, gen2Dev.HasSpeaker())
 }
+
+func TestDevicePreferFirmwareUpdateUI(t *testing.T) {
+	t.Parallel()
+
+	neverSeen := &Device{}
+	assert.False(t, neverSeen.PreferFirmwareUpdateUI())
+
+	reportedVersion := &Device{Info: DeviceInfo{FirmwareVersion: "v1.2.3"}}
+	assert.True(t, reportedVersion.PreferFirmwareUpdateUI())
+
+	lastSeen := time.Now()
+	seen := &Device{LastSeen: &lastSeen}
+	assert.True(t, seen.PreferFirmwareUpdateUI())
+}

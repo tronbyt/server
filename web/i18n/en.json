@@ -1964,14 +1964,44 @@
   "Error parsing config file.": {
     "other": "Error parsing config file."
   },
+  "or": {
+    "other": "or"
+  },
+  "Optional": {
+    "other": "Optional"
+  },
+  "USB flash (recovery, new Wi-Fi, or first-time setup)": {
+    "other": "USB flash (recovery, new Wi-Fi, or first-time setup)"
+  },
+  "USB cable required": {
+    "other": "USB cable required"
+  },
+  "Flash over USB": {
+    "other": "Flash over USB"
+  },
+  "Download a firmware file with your Wi-Fi and server settings, then flash it with a web flasher. Use this for a new device, recovery, or when you must change Wi-Fi or server URL stored on the chip.": {
+    "other": "Download a firmware file with your Wi-Fi and server settings, then flash it with a web flasher. Use this for a new device, recovery, or when you must change Wi-Fi or server URL stored on the chip."
+  },
+  "Advanced: app-only binary for flashing at 0x10000 on devices that already have a bootloader. Most first-time setups should leave this unchecked (full image at 0x0).": {
+    "other": "Advanced: app-only binary for flashing at 0x10000 on devices that already have a bootloader. Most first-time setups should leave this unchecked (full image at 0x0)."
+  },
+  "Update over Wi-Fi (OTA)": {
+    "other": "Update over Wi-Fi (OTA)"
+  },
+  "Recommended": {
+    "other": "Recommended"
+  },
   "Firmware Update": {
     "other": "Firmware Update"
+  },
+  "Install a new firmware version over the air while the device stays connected to Wi-Fi.": {
+    "other": "Install a new firmware version over the air while the device stays connected to Wi-Fi."
   },
   "Downloaded firmware version": {
     "other": "Downloaded firmware version"
   },
-  "Device Version": {
-    "other": "Device Version"
+  "Version on Device": {
+    "other": "Version on Device"
   },
   "Swap Colors (Fix for some Tidbyt Gen 1 displays)": {
     "other": "Swap Colors (Fix for some Tidbyt Gen 1 displays)"
@@ -2126,8 +2156,8 @@
   "After generating and downloading the firmware file, use one of these web-based flashers:": {
     "other": "After generating and downloading the firmware file, use one of these web-based flashers:"
   },
-  "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section.": {
-    "other": "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section."
+  "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0). Use the Firmware Update section on this page (or Edit Device → Maintenance) to install updates over the air on an already-flashed device.": {
+    "other": "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0). Use the Firmware Update section on this page (or Edit Device → Maintenance) to install updates over the air on an already-flashed device."
   },
   "Click Connect and select your device's serial port": {
     "other": "Click Connect and select your device's serial port"
