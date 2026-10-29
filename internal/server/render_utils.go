@@ -168,15 +168,16 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	now := time.Now()
 	forceRender := s.filtersChangedSinceLastRender(device, app)
 	uinterval := app.UInterval
-	if uinterval <= 0 {
+	if uinterval < 0 {
 		uinterval = 10
 	}
-	// uinterval is minutes. Allow a 5-second grace window to absorb rotation timer jitter for 1-minute apps.
+	// uinterval is minutes. When uinterval == 0 (e.g. clock apps), it re-renders every rotation.
+	// Allow a 5-second grace window to absorb rotation timer jitter for 1-minute apps.
 	uintervalDuration := time.Duration(uinterval) * time.Minute
 	if uintervalDuration >= 10*time.Second {
 		uintervalDuration -= 5 * time.Second
 	}
-	if forceRender || time.Since(app.LastRender) >= uintervalDuration {
+	if forceRender || uinterval == 0 || time.Since(app.LastRender) >= uintervalDuration {
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
@@ -371,17 +372,18 @@ func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *d
 	}
 
 	// Refresh cadence:
-	// External apps (e.g. Screeny, Awtrix) respect the configured render interval (app.UInterval in minutes),
-	// defaulting to 10 minutes if unset or non-positive.
+	// External apps (e.g. Screeny, Awtrix) respect the configured render interval (app.UInterval in minutes).
+	// A value of 0 means render on every rotation cycle (e.g. clocks or live simulations).
+	// Negative values default to 10 minutes.
 	uinterval := app.UInterval
-	if uinterval <= 0 {
+	if uinterval < 0 {
 		uinterval = 10
 	}
 	uintervalDuration := time.Duration(uinterval) * time.Minute
 	if uintervalDuration >= 10*time.Second {
 		uintervalDuration -= 5 * time.Second
 	}
-	renderExpired := !hasCachedChunks || time.Since(app.LastRender) >= uintervalDuration
+	renderExpired := !hasCachedChunks || uinterval == 0 || time.Since(app.LastRender) >= uintervalDuration
 
 	maxChunkSize := s.GetMaxChunkSizeForDevice(device)
 	needsRechunk := false

@@ -205,8 +205,8 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			uinterval = val
 		}
 	}
-	// If not set or <= 0, default to 10
-	if uinterval <= 0 {
+	// If not set (was -1) or negative, default to 10
+	if uinterval < 0 {
 		uinterval = 10
 	}
 
@@ -866,7 +866,7 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 	// Update App
 	app.Enabled = payload.Enabled
 	app.AutoPin = payload.AutoPin
-	if payload.UInterval <= 0 {
+	if payload.UInterval < 0 {
 		payload.UInterval = 10
 	}
 	app.UInterval = payload.UInterval
