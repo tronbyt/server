@@ -647,6 +647,11 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 		DeviceTypeChoices:         s.getDeviceTypeChoices(localizer),
 		Localizer:                 localizer,
 		URLWarning:                urlWarning,
+		FirmwareVersionSelectID:   "ota_firmware_version_select",
+		CustomFirmwareFileInputID: "ota_custom_firmware_file",
+		ShowOTAReleaseNotes:       false,
+		FirmwareOTAFullSection:    true,
+		FirmwareOTARecommended:    device.PreferFirmwareUpdateUI(),
 	})
 }
 

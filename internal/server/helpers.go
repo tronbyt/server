@@ -119,6 +119,11 @@ type TemplateData struct {
 	FirmwareReleasesURL       string
 	AvailableFirmwareVersions []string
 	FirmwareReleases          map[string]FirmwareReleaseInfo
+	FirmwareVersionSelectID   string // HTML id for OTA version <select>
+	CustomFirmwareFileInputID string // HTML id for custom OTA file input
+	ShowOTAReleaseNotes       bool   // show release notes under the OTA version select
+	FirmwareOTAFullSection    bool   // render OTA block as a top-level settings card
+	FirmwareOTARecommended    bool   // show "Recommended" badge on firmware page OTA path
 	ServerVersion             string
 	CommitHash                string
 	CommitURL                 string

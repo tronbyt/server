@@ -1961,14 +1961,44 @@
   "Unknown": {
     "other": "Unbekannt"
   },
+  "or": {
+    "other": "oder"
+  },
+  "Optional": {
+    "other": "Optional"
+  },
+  "USB flash (recovery, new Wi-Fi, or first-time setup)": {
+    "other": "USB-Flash (Recovery, neues WLAN oder Ersteinrichtung)"
+  },
+  "USB cable required": {
+    "other": "USB-Kabel erforderlich"
+  },
+  "Flash over USB": {
+    "other": "Per USB flashen"
+  },
+  "Download a firmware file with your Wi-Fi and server settings, then flash it with a web flasher. Use this for a new device, recovery, or when you must change Wi-Fi or server URL stored on the chip.": {
+    "other": "Laden Sie eine Firmware-Datei mit WLAN- und Server-Einstellungen herunter und flashen Sie sie mit einem Web-Flasher. Für neue Geräte, Recovery oder wenn Sie WLAN oder Server-URL auf dem Chip ändern müssen."
+  },
+  "Advanced: app-only binary for flashing at 0x10000 on devices that already have a bootloader. Most first-time setups should leave this unchecked (full image at 0x0).": {
+    "other": "Erweitert: Nur-App-Binärdatei zum Flashen bei 0x10000 auf Geräten mit Bootloader. Bei Ersteinrichtung in der Regel deaktiviert lassen (vollständiges Image bei 0x0)."
+  },
+  "Update over Wi-Fi (OTA)": {
+    "other": "Update über WLAN (OTA)"
+  },
+  "Recommended": {
+    "other": "Empfohlen"
+  },
   "Firmware Update": {
     "other": "Firmware-Update"
+  },
+  "Install a new firmware version over the air while the device stays connected to Wi-Fi.": {
+    "other": "Installieren Sie eine neue Firmware-Version over-the-air, während das Gerät mit dem WLAN verbunden bleibt."
   },
   "Downloaded firmware version": {
     "other": "Heruntergeladene Firmware-Version"
   },
-  "Device Version": {
-    "other": "Geräte-Version"
+  "Version on Device": {
+    "other": "Version auf dem Gerät"
   },
   "Swap Colors (Fix for some Tidbyt Gen 1 displays)": {
     "other": "Farben tauschen (Fix für manche Tidbyt Gen 1 Displays)"
@@ -2123,8 +2153,8 @@
   "After generating and downloading the firmware file, use one of these web-based flashers:": {
     "other": "Nachdem die Firmware-Datei generiert und heruntergeladen wurde, verwenden Sie einen dieser webbasierten Flasher:"
   },
-  "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0).  To update the firmware on device go to the edit device page and scroll down to the firmware update section.": {
-    "other": "Aktivieren Sie dies für reine OTA-Firmware (nur App, Flash bei 0x10000). Lassen Sie es deaktiviert für eine vollständige Flash-Binärdatei, die den Bootloader und die Partitionstabelle enthält (Flash bei 0x0). Um die Firmware auf dem Gerät zu aktualisieren, gehen Sie zur Seite \"Gerät bearbeiten\" und scrollen Sie nach unten zum Abschnitt \"Firmware-Update\"."
+  "Check this for OTA-only firmware (app only, flash at 0x10000). Leave unchecked for a full flash binary that includes the bootloader and partition table (flash at 0x0). Use the Firmware Update section on this page (or Edit Device → Maintenance) to install updates over the air on an already-flashed device.": {
+    "other": "Aktivieren Sie dies für reine OTA-Firmware (nur App, Flash bei 0x10000). Lassen Sie es deaktiviert für eine vollständige Flash-Binärdatei, die den Bootloader und die Partitionstabelle enthält (Flash bei 0x0). Nutzen Sie den Abschnitt „Firmware-Update“ auf dieser Seite (oder Gerät bearbeiten → Wartung), um Updates over-the-air auf einem bereits geflashten Gerät zu installieren."
   },
   "Click Connect and select your device's serial port": {
     "other": "Klicken Sie auf \"Verbinden\" und wählen Sie den seriellen Anschluss Ihres Geräts aus"

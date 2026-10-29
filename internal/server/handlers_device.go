@@ -303,8 +303,12 @@ func (s *Server) handleCreateDevicePost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Redirect to dashboard
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	// Redirect to firmware setup for flash-capable devices, otherwise the dashboard.
+	redirectURL := "/"
+	if newDevice.Type.SupportsFirmware() {
+		redirectURL = fmt.Sprintf("/devices/%s/firmware", newDevice.ID)
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 func (s *Server) handleDeviceTV(w http.ResponseWriter, r *http.Request) {
@@ -405,6 +409,10 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		FirmwareReleases:          s.GetAllAvailableFirmwareReleaseNotesForDevice(device),
 		Localizer:                 localizer,
 		URLWarning:                urlWarning,
+		FirmwareVersionSelectID:   "firmware_version_select",
+		CustomFirmwareFileInputID: "custom_firmware_file",
+		ShowOTAReleaseNotes:       true,
+		FirmwareOTAFullSection:    false,
 	})
 }
 
