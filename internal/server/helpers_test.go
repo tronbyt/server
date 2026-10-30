@@ -219,3 +219,36 @@ func TestRenderTemplatePopulatesVersionAndCommitURL(t *testing.T) {
 	assert.Contains(t, body2, version.Commit[:7])
 	assert.NotContains(t, body2, "["+version.Branch+"]")
 }
+
+func TestGetBaseURL(t *testing.T) {
+	s := &Server{}
+	tests := []struct {
+		name    string
+		host    string
+		headers map[string]string
+		want    string
+	}{
+		{"plain", "example.com", nil, "http://example.com"},
+		{"custom port", "example.com:8000", nil, "http://example.com:8000"},
+		{"https proxy default port", "internal:8000", map[string]string{
+			"X-Forwarded-Proto": "https", "X-Forwarded-Host": "tronbyt.example", "X-Forwarded-Port": "443",
+		}, "https://tronbyt.example"},
+		{"https proxy custom port", "internal:8000", map[string]string{
+			"X-Forwarded-Proto": "https", "X-Forwarded-Host": "tronbyt.example", "X-Forwarded-Port": "8443",
+		}, "https://tronbyt.example:8443"},
+		{"http default port in host", "example.com:80", nil, "http://example.com"},
+		{"https port on http is kept", "example.com:443", nil, "http://example.com:443"},
+		{"ipv6 default port", "[::1]:80", nil, "http://[::1]"},
+		{"ipv6 custom port", "[::1]:8000", nil, "http://[::1]:8000"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Host = tt.host
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
+			assert.Equal(t, tt.want, s.GetBaseURL(req))
+		})
+	}
+}

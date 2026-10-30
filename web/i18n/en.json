@@ -2449,5 +2449,158 @@
   },
   "No Changes Provided": {
     "other": "No Changes Provided"
+  },
+  "Could not load the app's settings.": {
+    "other": "Could not load the app's settings."
+  },
+  "This app field does not support sign-in on this server.": {
+    "other": "This app field does not support sign-in on this server."
+  },
+  "This app declares invalid OAuth endpoints.": {
+    "other": "This app declares invalid OAuth endpoints."
+  },
+  "The selected OAuth client cannot be used with this app.": {
+    "other": "The selected OAuth client cannot be used with this app."
+  },
+  "The sign-in link is invalid or was already used. Please try again.": {
+    "other": "The sign-in link is invalid or was already used. Please try again."
+  },
+  "The sign-in took too long. Please try again.": {
+    "other": "The sign-in took too long. Please try again."
+  },
+  "Sign-in failed.": {
+    "other": "Sign-in failed."
+  },
+  "The app no longer exists.": {
+    "other": "The app no longer exists."
+  },
+  "The OAuth client no longer exists.": {
+    "other": "The OAuth client no longer exists."
+  },
+  "Sign-in failed: the provider did not accept the authorization code.": {
+    "other": "Sign-in failed: the provider did not accept the authorization code."
+  },
+  "Could not save the sign-in.": {
+    "other": "Could not save the sign-in."
+  },
+  "Please fill in the name and client ID.": {
+    "other": "Please fill in the name and client ID."
+  },
+  "Invalid authorization endpoint:": {
+    "other": "Invalid authorization endpoint:"
+  },
+  "Invalid token endpoint:": {
+    "other": "Invalid token endpoint:"
+  },
+  "OAuth client saved.": {
+    "other": "OAuth client saved."
+  },
+  "OAuth client deleted.": {
+    "other": "OAuth client deleted."
+  },
+  "OAuth Clients": {
+    "other": "OAuth Clients"
+  },
+  "Apps that connect to an online account sign in through an OAuth client you register with that service.": {
+    "other": "Apps that connect to an online account sign in through an OAuth client you register with that service."
+  },
+  "Your OAuth Clients": {
+    "other": "Your OAuth Clients"
+  },
+  "An app offers a client only when both of its endpoints match the ones the app declares.": {
+    "other": "An app offers a client only when both of its endpoints match the ones the app declares."
+  },
+  "Shared": {
+    "other": "Shared"
+  },
+  "Owner": {
+    "other": "Owner"
+  },
+  "Authorization endpoint": {
+    "other": "Authorization endpoint"
+  },
+  "Token endpoint": {
+    "other": "Token endpoint"
+  },
+  "Redirect URI": {
+    "other": "Redirect URI"
+  },
+  "Connected apps": {
+    "other": "Connected apps"
+  },
+  "Delete this OAuth client? Apps signed in with it will be disconnected.": {
+    "other": "Delete this OAuth client? Apps signed in with it will be disconnected."
+  },
+  "No OAuth clients yet.": {
+    "other": "No OAuth clients yet."
+  },
+  "Edit OAuth Client": {
+    "other": "Edit OAuth Client"
+  },
+  "New OAuth Client": {
+    "other": "New OAuth Client"
+  },
+  "Register an application with the service, using the redirect URI below, then enter the client ID and secret it gives you.": {
+    "other": "Register an application with the service, using the redirect URI below, then enter the client ID and secret it gives you."
+  },
+  "Many services accept only https redirect URIs. If this one starts with http://, open Tronbyt over HTTPS first.": {
+    "other": "Many services accept only https redirect URIs. If this one starts with http://, open Tronbyt over HTTPS first."
+  },
+  "The client secret is sent only to this token endpoint.": {
+    "other": "The client secret is sent only to this token endpoint."
+  },
+  "Client ID": {
+    "other": "Client ID"
+  },
+  "Client secret": {
+    "other": "Client secret"
+  },
+  "Set. Leave empty to keep it.": {
+    "other": "Set. Leave empty to keep it."
+  },
+  "Leave empty for public clients that use PKCE only.": {
+    "other": "Leave empty for public clients that use PKCE only."
+  },
+  "Sharing": {
+    "other": "Sharing"
+  },
+  "Available to all users of this server": {
+    "other": "Available to all users of this server"
+  },
+  "Each user still signs in with their own account. Only the app registration is shared.": {
+    "other": "Each user still signs in with their own account. Only the app registration is shared."
+  },
+  "This app uses Tidbyt's sign-in, which this server does not support.": {
+    "other": "This app uses Tidbyt's sign-in, which this server does not support."
+  },
+  "The app no longer matches the OAuth client it was connected with. Sign in again.": {
+    "other": "The app no longer matches the OAuth client it was connected with. Sign in again."
+  },
+  "The sign-in has expired or was revoked. Sign in again.": {
+    "other": "The sign-in has expired or was revoked. Sign in again."
+  },
+  "Connected with": {
+    "other": "Connected with"
+  },
+  "Disconnect": {
+    "other": "Disconnect"
+  },
+  "Disconnect this account from the app?": {
+    "other": "Disconnect this account from the app?"
+  },
+  "No OAuth client is set up for this service yet.": {
+    "other": "No OAuth client is set up for this service yet."
+  },
+  "Set up an OAuth client": {
+    "other": "Set up an OAuth client"
+  },
+  "OAuth client": {
+    "other": "OAuth client"
+  },
+  "Sign in": {
+    "other": "Sign in"
+  },
+  "Add another OAuth client": {
+    "other": "Add another OAuth client"
   }
 }

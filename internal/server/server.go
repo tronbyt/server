@@ -85,6 +85,13 @@ type Server struct {
 
 	// githubAPIBase, when set, replaces https://api.github.com (used by tests).
 	githubAPIBase string
+
+	// schemaLoader, when set, replaces renderer.GetSchema (used by tests).
+	schemaLoader func(ctx context.Context, path string, width, height int, output2x bool) ([]byte, error)
+
+	// oauthRefreshLocks holds a *sync.Mutex per OAuthToken.ID so that one
+	// token is never refreshed twice at the same time.
+	oauthRefreshLocks sync.Map
 }
 
 // SchemaCacheBypasser forces cache reads for keys with the given prefix to miss
@@ -103,6 +110,7 @@ var templateFiles = map[string]string{
 	"settings_account": "settings/account.html",
 	"settings_content": "settings/content.html",
 	"settings_admin":   "settings/admin.html",
+	"settings_oauth":   "settings/oauth.html",
 	"create":           "manager/create.html",
 	"addapp":           "manager/addapp.html",
 	"configapp":        "manager/configapp.html",
@@ -396,6 +404,15 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("GET /devices/{id}/{iname}/schema", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleAppSchemaGet))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/config", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleConfigAppPost))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/schema_handler/{handler}", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleSchemaHandler))))
+
+	// Server-managed OAuth2 sign-in for app fields
+	csrf := http.NewCrossOriginProtection()
+	s.Router.Handle("POST /devices/{id}/{iname}/oauth/{field}/connect", csrf.Handler(s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleOAuthConnect)))))
+	s.Router.Handle("POST /devices/{id}/{iname}/oauth/{field}/disconnect", csrf.Handler(s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleOAuthDisconnect)))))
+	s.Router.HandleFunc("GET /oauth/callback/{client}", s.RequireLogin(s.handleOAuthCallback))
+	s.Router.HandleFunc("GET /settings/oauth", s.RequireLogin(s.handleOAuthClientsGet))
+	s.Router.Handle("POST /settings/oauth/clients", csrf.Handler(s.RequireLogin(s.handleOAuthClientSave)))
+	s.Router.Handle("POST /settings/oauth/clients/{client}/delete", csrf.Handler(s.RequireLogin(s.handleOAuthClientDelete)))
 
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_pin", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleTogglePin))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_enabled", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleToggleEnabled))))

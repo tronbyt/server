@@ -1353,7 +1353,13 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Delete the app
-	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Delete(r.Context()); err != nil {
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := deleteOAuthTokensForApp(r.Context(), tx, &app); err != nil {
+			return err
+		}
+		_, err := gorm.G[data.App](tx).Where("id = ?", app.ID).Delete(r.Context())
+		return err
+	}); err != nil {
 		http.Error(w, "Failed to delete app", http.StatusInternalServerError)
 		return
 	}

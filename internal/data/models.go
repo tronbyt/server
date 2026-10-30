@@ -636,6 +636,56 @@ type OIDCIdentity struct {
 	UpdatedAt time.Time
 }
 
+// OAuthClient is an application registered with an OAuth2 provider by a user
+// (for themselves) or an admin (shared with every user of the server). Apps
+// declare the provider's endpoints in their schema; a client is offered to an
+// app only when its IssuerKey matches the app's.
+type OAuthClient struct {
+	ID                    string    `gorm:"primaryKey"             json:"id"` // random hex, part of the redirect URI
+	Name                  string    `json:"name"`
+	OwnerUsername         string    `gorm:"index"                  json:"owner_username"`
+	Shared                bool      `gorm:"default:false"          json:"shared"` // usable by every user; admins only
+	AuthorizationEndpoint string    `json:"authorization_endpoint"`               // canonical form
+	TokenEndpoint         string    `json:"token_endpoint"`                       // canonical form
+	IssuerKey             string    `json:"issuer_key"`                           // not indexed: MySQL would cap an indexed string at 191 characters
+	ClientID              string    `json:"client_id"`
+	ClientSecret          Secret    `gorm:"type:text"              json:"-"` // write-only, empty for public clients
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
+}
+
+func (OAuthClient) TableName() string { return "oauth_clients" }
+
+// OAuthTokenStatus says whether a stored OAuth token still works.
+type OAuthTokenStatus string
+
+const (
+	OAuthTokenOK             OAuthTokenStatus = "ok"
+	OAuthTokenReauthRequired OAuthTokenStatus = "reauth_required"
+)
+
+// OAuthToken is the token one app installation got for one of its OAuth2
+// schema fields. It is kept out of App.Config: the server refreshes it and
+// hands the app only the access token, at render time.
+type OAuthToken struct {
+	ID            uint   `gorm:"primaryKey"`
+	AppID         uint   `gorm:"uniqueIndex:idx_oauth_token_app_field,priority:1"`
+	FieldID       string `gorm:"uniqueIndex:idx_oauth_token_app_field,priority:2"`
+	DeviceID      string `gorm:"index"` // with Iname, guards against a reused App ID
+	Iname         string
+	OAuthClientID string `gorm:"column:oauth_client_id;index"`
+	AccessToken   Secret `gorm:"type:text"`
+	RefreshToken  Secret `gorm:"type:text"`
+	TokenType     string
+	Expiry        *time.Time
+	Scopes        string           // space-separated, as requested
+	Status        OAuthTokenStatus `gorm:"default:'ok'"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (OAuthToken) TableName() string { return "oauth_tokens" }
+
 type App struct {
 	// Composite key might be better, but a surrogate ID is easier for GORM
 	ID uint `gorm:"primaryKey" json:"id"`

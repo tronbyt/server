@@ -29,11 +29,16 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 	var config map[string]any
 	switch {
 	case configOverrides != nil:
-		config = configOverrides
+		config = maps.Clone(configOverrides)
 	case app != nil && app.Config != nil:
 		config = maps.Clone(app.Config)
 	default:
 		config = make(map[string]any)
+	}
+
+	// OAuth access tokens live outside App.Config and are added per render.
+	if app != nil && app.ID != 0 {
+		s.injectOAuthTokens(ctx, app, config)
 	}
 
 	// Timezone & Locale

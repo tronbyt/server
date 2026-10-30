@@ -99,6 +99,11 @@ type TemplateData struct {
 	Schema      template.JS
 	AppConfig   map[string]any
 	AppMetadata *apps.AppMetadata
+	OAuthFields template.JS // per OAuth2 field: clients and connection state
+
+	// OAuth Clients settings
+	OAuthClients    []oauthClientRow
+	OAuthClientForm oauthClientForm
 
 	// Device Update Extras
 	ColorFilterOptions       []ColorFilterOption
@@ -822,6 +827,17 @@ func (s *Server) GetBaseURL(r *http.Request) string {
 			host = h
 		}
 		host = net.JoinHostPort(host, port)
+	}
+
+	// Leave out the scheme's default port, as browsers do: OAuth providers
+	// compare redirect URIs as strings, and proxies often send
+	// X-Forwarded-Port: 443.
+	if h, port, err := net.SplitHostPort(host); err == nil &&
+		((scheme == "https" && port == "443") || (scheme == "http" && port == "80")) {
+		host = h
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, host)

@@ -46,7 +46,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		}
 	})
 
-	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
+	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}, &data.OAuthClient{}, &data.OAuthToken{}); err != nil {
 		t.Fatalf("Failed to migrate DB: %v", err)
 	}
 

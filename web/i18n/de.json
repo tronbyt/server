@@ -2446,5 +2446,158 @@
   },
   "No Changes Provided": {
     "other": "Keine Änderungen angegeben"
+  },
+  "Could not load the app's settings.": {
+    "other": "Die Einstellungen der App konnten nicht geladen werden."
+  },
+  "This app field does not support sign-in on this server.": {
+    "other": "Dieses App-Feld unterstützt die Anmeldung auf diesem Server nicht."
+  },
+  "This app declares invalid OAuth endpoints.": {
+    "other": "Diese App gibt ungültige OAuth-Endpunkte an."
+  },
+  "The selected OAuth client cannot be used with this app.": {
+    "other": "Der ausgewählte OAuth-Client kann mit dieser App nicht verwendet werden."
+  },
+  "The sign-in link is invalid or was already used. Please try again.": {
+    "other": "Der Anmeldelink ist ungültig oder wurde bereits verwendet. Bitte versuche es erneut."
+  },
+  "The sign-in took too long. Please try again.": {
+    "other": "Die Anmeldung hat zu lange gedauert. Bitte versuche es erneut."
+  },
+  "Sign-in failed.": {
+    "other": "Anmeldung fehlgeschlagen."
+  },
+  "The app no longer exists.": {
+    "other": "Die App existiert nicht mehr."
+  },
+  "The OAuth client no longer exists.": {
+    "other": "Der OAuth-Client existiert nicht mehr."
+  },
+  "Sign-in failed: the provider did not accept the authorization code.": {
+    "other": "Anmeldung fehlgeschlagen: Der Anbieter hat den Autorisierungscode nicht akzeptiert."
+  },
+  "Could not save the sign-in.": {
+    "other": "Die Anmeldung konnte nicht gespeichert werden."
+  },
+  "Please fill in the name and client ID.": {
+    "other": "Bitte gib den Namen und die Client-ID ein."
+  },
+  "Invalid authorization endpoint:": {
+    "other": "Ungültiger Autorisierungsendpunkt:"
+  },
+  "Invalid token endpoint:": {
+    "other": "Ungültiger Token-Endpunkt:"
+  },
+  "OAuth client saved.": {
+    "other": "OAuth-Client gespeichert."
+  },
+  "OAuth client deleted.": {
+    "other": "OAuth-Client gelöscht."
+  },
+  "OAuth Clients": {
+    "other": "OAuth-Clients"
+  },
+  "Apps that connect to an online account sign in through an OAuth client you register with that service.": {
+    "other": "Apps, die sich mit einem Online-Konto verbinden, melden sich über einen OAuth-Client an, den du bei diesem Dienst registrierst."
+  },
+  "Your OAuth Clients": {
+    "other": "Deine OAuth-Clients"
+  },
+  "An app offers a client only when both of its endpoints match the ones the app declares.": {
+    "other": "Eine App bietet einen Client nur an, wenn beide Endpunkte mit denen der App übereinstimmen."
+  },
+  "Shared": {
+    "other": "Geteilt"
+  },
+  "Owner": {
+    "other": "Besitzer"
+  },
+  "Authorization endpoint": {
+    "other": "Autorisierungsendpunkt"
+  },
+  "Token endpoint": {
+    "other": "Token-Endpunkt"
+  },
+  "Redirect URI": {
+    "other": "Weiterleitungs-URI"
+  },
+  "Connected apps": {
+    "other": "Verbundene Apps"
+  },
+  "Delete this OAuth client? Apps signed in with it will be disconnected.": {
+    "other": "Diesen OAuth-Client löschen? Damit angemeldete Apps werden getrennt."
+  },
+  "No OAuth clients yet.": {
+    "other": "Noch keine OAuth-Clients."
+  },
+  "Edit OAuth Client": {
+    "other": "OAuth-Client bearbeiten"
+  },
+  "New OAuth Client": {
+    "other": "Neuer OAuth-Client"
+  },
+  "Register an application with the service, using the redirect URI below, then enter the client ID and secret it gives you.": {
+    "other": "Registriere beim Dienst eine Anwendung mit der unten stehenden Weiterleitungs-URI und gib dann die erhaltene Client-ID und das Secret ein."
+  },
+  "Many services accept only https redirect URIs. If this one starts with http://, open Tronbyt over HTTPS first.": {
+    "other": "Viele Dienste akzeptieren nur https-Weiterleitungs-URIs. Wenn diese mit http:// beginnt, öffne Tronbyt zuerst über HTTPS."
+  },
+  "The client secret is sent only to this token endpoint.": {
+    "other": "Das Client-Secret wird nur an diesen Token-Endpunkt gesendet."
+  },
+  "Client ID": {
+    "other": "Client-ID"
+  },
+  "Client secret": {
+    "other": "Client-Secret"
+  },
+  "Set. Leave empty to keep it.": {
+    "other": "Gesetzt. Leer lassen, um es zu behalten."
+  },
+  "Leave empty for public clients that use PKCE only.": {
+    "other": "Leer lassen für öffentliche Clients, die nur PKCE verwenden."
+  },
+  "Sharing": {
+    "other": "Freigabe"
+  },
+  "Available to all users of this server": {
+    "other": "Für alle Benutzer dieses Servers verfügbar"
+  },
+  "Each user still signs in with their own account. Only the app registration is shared.": {
+    "other": "Jeder Benutzer meldet sich weiterhin mit seinem eigenen Konto an. Geteilt wird nur die App-Registrierung."
+  },
+  "This app uses Tidbyt's sign-in, which this server does not support.": {
+    "other": "Diese App verwendet die Tidbyt-Anmeldung, die dieser Server nicht unterstützt."
+  },
+  "The app no longer matches the OAuth client it was connected with. Sign in again.": {
+    "other": "Die App passt nicht mehr zum OAuth-Client, mit dem sie verbunden wurde. Bitte melde dich erneut an."
+  },
+  "The sign-in has expired or was revoked. Sign in again.": {
+    "other": "Die Anmeldung ist abgelaufen oder wurde widerrufen. Bitte melde dich erneut an."
+  },
+  "Connected with": {
+    "other": "Verbunden mit"
+  },
+  "Disconnect": {
+    "other": "Trennen"
+  },
+  "Disconnect this account from the app?": {
+    "other": "Dieses Konto von der App trennen?"
+  },
+  "No OAuth client is set up for this service yet.": {
+    "other": "Für diesen Dienst ist noch kein OAuth-Client eingerichtet."
+  },
+  "Set up an OAuth client": {
+    "other": "OAuth-Client einrichten"
+  },
+  "OAuth client": {
+    "other": "OAuth-Client"
+  },
+  "Sign in": {
+    "other": "Anmelden"
+  },
+  "Add another OAuth client": {
+    "other": "Weiteren OAuth-Client hinzufügen"
   }
 }

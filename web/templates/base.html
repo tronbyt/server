@@ -151,6 +151,8 @@
            class="settings-subnav-link {{ if eq .SettingsSection "content" }}active{{ end }}">{{ t .Localizer "Content and Firmware" }}</a>
         <a href="/settings/account"
            class="settings-subnav-link {{ if eq .SettingsSection "account" }}active{{ end }}">{{ t .Localizer "Account" }}</a>
+        <a href="/settings/oauth"
+           class="settings-subnav-link {{ if eq .SettingsSection "oauth" }}active{{ end }}">{{ t .Localizer "OAuth Clients" }}</a>
         {{ if and .User .User.IsAdmin }}
         <a href="/settings/admin"
            class="settings-subnav-link {{ if eq .SettingsSection "admin" }}active{{ end }}">{{ t .Localizer "Admin" }}</a>

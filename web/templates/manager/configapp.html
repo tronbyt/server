@@ -847,6 +847,8 @@
   let schema = {{ .Schema }};
   const config = {{ .AppConfig | json }} || {};
   const deleteOnCancel = {{ .DeleteOnCancel }};
+  // Per OAuth2 field: the server's OAuth clients for it and the connection state
+  const oauthFields = {{ if .OAuthFields }}{{ .OAuthFields }}{{ else }}{}{{ end }};
 
   // Device Location
   const deviceLocation = {{ if .Device.HasLocation }}{{ json .Device.Location }}{{ else }}null{{ end }};
@@ -968,6 +970,29 @@
     updateConfigAndPreview();
   }
 
+  // Font Awesome keeps brand icons (github, spotify, ...) in their own font,
+  // so they need fa-brands; the rest come from the solid font. The brand
+  // names are read from brands.min.css, the only stylesheet defining them.
+  let faBrandIcons = null;
+  function fontAwesomeIconClass(name) {
+    const icon = name.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`);
+    if (faBrandIcons === null) {
+      faBrandIcons = new Set();
+      for (const sheet of document.styleSheets) {
+        if (!sheet.href || !sheet.href.endsWith("/brands.min.css")) continue;
+        try {
+          for (const rule of sheet.cssRules) {
+            const m = /^\.fa-([a-z0-9-]+)$/.exec(rule.selectorText || "");
+            if (m) faBrandIcons.add(m[1]);
+          }
+        } catch (e) {
+          // The stylesheet is not readable; fall back to the solid font.
+        }
+      }
+    }
+    return `${faBrandIcons.has(icon) ? "fa-brands" : "fa"} fa-${icon}`;
+  }
+
   function createFormFields(schema, config) {
     const rows = [];
     if (!schema || !schema.schema) return rows;
@@ -985,7 +1010,7 @@
       // Icon handling if available in schema
       if (field.icon) {
           const icon = document.createElement("i");
-          icon.className = `fa fa-${field.icon.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`;
+          icon.className = fontAwesomeIconClass(field.icon);
           label.appendChild(icon);
           label.appendChild(document.createTextNode(" "));
       }
@@ -1074,6 +1099,9 @@
           break;
         case "typeahead":
           inputElement = createTypeaheadField(field, config);
+          break;
+        case "oauth2":
+          inputElement = createOAuth2Field(field);
           break;
         default:
           inputElement = document.createElement("input");
@@ -1759,6 +1787,111 @@ function createImageUploadField(field, config) {
 
   return container;
 }
+
+  // OAuth2 fields hold no config value: the server stores the token and hands
+  // the app a fresh access token at render time. The buttons post outside the
+  // config form, since leaving the page to sign in is a full navigation.
+  function createOAuth2Field(field) {
+    const container = document.createElement("div");
+    container.className = "oauth2-field";
+    container.setAttribute("data-ignore-config", "true");
+    const view = oauthFields[field.id];
+
+    const addText = (text, className) => {
+      const p = document.createElement("p");
+      p.textContent = text;
+      if (className) p.className = className;
+      container.appendChild(p);
+      return p;
+    };
+    const addButton = (text, iconClass, className, onClick) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `w3-button w3-round ${className}`;
+      const icon = document.createElement("i");
+      icon.className = iconClass;
+      icon.setAttribute("aria-hidden", "true");
+      button.appendChild(icon);
+      button.appendChild(document.createTextNode(" " + text));
+      button.addEventListener("click", onClick);
+      container.appendChild(button);
+      return button;
+    };
+    const post = (url, params) => {
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = url;
+      for (const [name, value] of Object.entries(params || {})) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    };
+
+    if (!view || !view.server_managed) {
+      addText("{{ t .Localizer "This app uses Tidbyt's sign-in, which this server does not support." }}", "oauth2-note");
+      return container;
+    }
+    if (view.invalid) {
+      addText("{{ t .Localizer "This app declares invalid OAuth endpoints." }}", "oauth2-note");
+      return container;
+    }
+
+    const connected = view.connected;
+    if (connected) {
+      if (connected.mismatch) {
+        addText("{{ t .Localizer "The app no longer matches the OAuth client it was connected with. Sign in again." }}", "oauth2-warning");
+      } else if (connected.reauth_required) {
+        addText("{{ t .Localizer "The sign-in has expired or was revoked. Sign in again." }}", "oauth2-warning");
+      } else {
+        addText("{{ t .Localizer "Connected with" }} " + connected.client_name, "oauth2-status");
+      }
+      addButton("{{ t .Localizer "Disconnect" }}", "fa-solid fa-link-slash", "w3-red", () => {
+        if (confirm("{{ t .Localizer "Disconnect this account from the app?" }}")) {
+          post(view.disconnect_url);
+        }
+      });
+      if (!connected.mismatch && !connected.reauth_required) {
+        return container;
+      }
+    }
+
+    const newClientLink = document.createElement("a");
+    newClientLink.href = view.new_client_url;
+
+    if (view.clients.length === 0) {
+      addText("{{ t .Localizer "No OAuth client is set up for this service yet." }}", "oauth2-note");
+      newClientLink.textContent = "{{ t .Localizer "Set up an OAuth client" }}";
+      newClientLink.className = "w3-button w3-blue w3-round";
+      container.appendChild(newClientLink);
+      return container;
+    }
+
+    let select = null;
+    if (view.clients.length > 1) {
+      select = document.createElement("select");
+      select.className = "form-control";
+      select.setAttribute("aria-label", "{{ t .Localizer "OAuth client" }}");
+      view.clients.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c.id;
+        option.textContent = c.shared ? c.name + " ({{ t .Localizer "Shared" }})" : c.name;
+        select.appendChild(option);
+      });
+      container.appendChild(select);
+    }
+    addButton("{{ t .Localizer "Sign in" }}", "fa-solid fa-right-to-bracket", "w3-green", () => {
+      post(view.connect_url, { client: select ? select.value : view.clients[0].id });
+    });
+    newClientLink.textContent = "{{ t .Localizer "Add another OAuth client" }}";
+    newClientLink.className = "oauth2-new-client";
+    container.appendChild(newClientLink);
+    return container;
+  }
 
   function createTypeaheadField(field, config) {
     let inputElement = document.createElement("div");

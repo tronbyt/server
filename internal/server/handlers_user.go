@@ -157,6 +157,9 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		for _, d := range targetUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}
+		if err := deleteOAuthTokensForDevices(r.Context(), tx, deviceIDs); err != nil {
+			return err
+		}
 		if len(deviceIDs) > 0 {
 			if _, err := gorm.G[data.App](tx).Where("device_id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
@@ -173,7 +176,20 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// 4. Delete User
+		// 4. Delete OAuth clients the user owns, with the tokens issued through them
+		ownedClients, err := gorm.G[data.OAuthClient](tx).Where("owner_username = ?", targetUsername).Find(r.Context())
+		if err != nil {
+			return err
+		}
+		clientIDs := make([]string, 0, len(ownedClients))
+		for _, c := range ownedClients {
+			clientIDs = append(clientIDs, c.ID)
+		}
+		if err := deleteOAuthClients(r.Context(), tx, clientIDs); err != nil {
+			return err
+		}
+
+		// 5. Delete User
 		if _, err := gorm.G[data.User](tx).Where("username = ?", targetUsername).Delete(r.Context()); err != nil {
 			return err
 		}
@@ -446,6 +462,9 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 			deviceIDs = append(deviceIDs, d.ID)
 		}
 		if len(deviceIDs) > 0 {
+			if err := deleteOAuthTokensForDevices(r.Context(), tx, deviceIDs); err != nil {
+				return err
+			}
 			if _, err := gorm.G[data.App](tx).Where("device_id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
 			}

@@ -771,6 +771,9 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	// Cascading delete in transaction
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps
+		if err := deleteOAuthTokensForDevices(r.Context(), tx, []string{device.ID}); err != nil {
+			return err
+		}
 		if _, err := gorm.G[data.App](tx).Where("device_id = ?", device.ID).Delete(r.Context()); err != nil {
 			return err
 		}
@@ -881,6 +884,9 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	// Begin a transaction to ensure atomicity
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete existing apps for this device
+		if err := deleteOAuthTokensForDevices(r.Context(), tx, []string{device.ID}); err != nil {
+			return err
+		}
 		if err := tx.Where("device_id = ?", device.ID).Delete(&data.App{}).Error; err != nil {
 			return fmt.Errorf("failed to delete existing apps: %w", err)
 		}
