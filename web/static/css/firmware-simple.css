@@ -211,3 +211,126 @@
   color: var(--muted-text);
   font-style: italic;
 }
+
+/* Two-path layout: OTA vs USB flash */
+.firmware-path {
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+  box-sizing: border-box;
+}
+
+.firmware-path--ota {
+  border: 2px solid #2e7d32;
+  background: color-mix(in srgb, #2e7d32 8%, var(--content-bg, #fff));
+}
+
+.firmware-path--usb {
+  border: 2px solid #e65100;
+  background: color-mix(in srgb, #e65100 6%, var(--content-bg, #fff));
+}
+
+.firmware-path-inner.settings-card {
+  border: none;
+  box-shadow: none;
+  margin-bottom: 0;
+  background: transparent;
+}
+
+.firmware-path-inner.settings-card + .firmware-path-inner.settings-card {
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.firmware-path-kicker {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-text, #888);
+}
+
+.firmware-path-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.firmware-path-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #2e7d32;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.firmware-path-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0 1.25rem;
+  color: var(--muted-text, #888);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.firmware-path-divider::before,
+.firmware-path-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-color, #ccc);
+}
+
+.firmware-path-collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
+.firmware-path-collapsible-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  user-select: none;
+}
+
+.firmware-path-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.firmware-path-collapsible-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--page-text, inherit);
+}
+
+.firmware-path-collapsible-summary::after {
+  content: "+";
+  float: right;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--muted-text, #888);
+}
+
+.firmware-path-collapsible[open] > .firmware-path-collapsible-summary::after {
+  content: "−";
+}
+
+.firmware-path-collapsible-body {
+  padding: 0 0.5rem 0.5rem;
+  border-top: 1px solid color-mix(in srgb, #e65100 25%, transparent);
+}

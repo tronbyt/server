@@ -124,27 +124,34 @@ type TemplateData struct {
 	DefaultBrightnessScale   string
 
 	// Firmware
-	FirmwareBinsAvailable     bool
-	FirmwareAvailable         bool
-	FirmwareVersion           string
-	FirmwareReleasesURL       string
-	AvailableFirmwareVersions []string
-	FirmwareReleases          map[string]FirmwareReleaseInfo
-	ServerVersion             string
-	CommitHash                string
-	CommitURL                 string
-	Branch                    string
-	ShowBranchTag             bool
-	IsAutoLoginActive         bool   // Indicate if single-user auto-login is active
-	UserCount                 int    // Number of users, for registration logic
-	DeleteOnCancel            bool   // Indicate if app should be deleted on cancel
-	URLWarning                string // Warning about localhost in image URL
-	SunToday                  data.TodaySunEvents
-	SunTodayOK                bool   // plain sunrise/sunset for the device's local today
-	DetectedAccessURL         string // Suggested URL (LAN IP) to use instead of localhost
-	ReadOnly                  bool   // Indicate if the view should be read-only
-	Partial                   string
-	SettingsSection           string
+	FirmwareBinsAvailable      bool
+	FirmwareAvailable          bool
+	FirmwareVersion            string
+	FirmwareReleasesURL        string
+	AvailableFirmwareVersions  []string
+	FirmwareReleases           map[string]FirmwareReleaseInfo
+	FirmwareVersionSelectID    string // HTML id for OTA version <select>
+	CustomFirmwareFileInputID  string // HTML id for custom OTA file input
+	FirmwareOTAFormID          string // HTML id for the OTA upload form
+	ShowOTAReleaseNotes        bool   // show release notes under the OTA version select
+	FirmwareReleaseNotesPrefix string // DOM id prefix for release notes (e.g. "ota_")
+	FirmwareOTAFullSection     bool   // render OTA block as a top-level settings card
+	FirmwareOTARecommended     bool   // show "Recommended" badge on firmware page OTA path
+	ServerVersion              string
+	CommitHash                 string
+	CommitURL                  string
+	Branch                     string
+	ShowBranchTag              bool
+	IsAutoLoginActive          bool   // Indicate if single-user auto-login is active
+	UserCount                  int    // Number of users, for registration logic
+	DeleteOnCancel             bool   // Indicate if app should be deleted on cancel
+	URLWarning                 string // Warning about localhost in image URL
+	SunToday                   data.TodaySunEvents
+	SunTodayOK                 bool   // plain sunrise/sunset for the device's local today
+	DetectedAccessURL          string // Suggested URL (LAN IP) to use instead of localhost
+	ReadOnly                   bool   // Indicate if the view should be read-only
+	Partial                    string
+	SettingsSection            string
 
 	// OIDC Support
 	OIDCEnabled          bool

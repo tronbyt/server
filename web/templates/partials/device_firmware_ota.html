@@ -1,0 +1,90 @@
+{{ define "device_firmware_ota" }}
+{{ if .FirmwareOTAFullSection }}
+<section class="settings-card firmware-path-inner" id="firmware-ota">
+    <div class="settings-card-header">
+        <div class="firmware-path-title-row">
+            <h2>{{ t .Localizer "Update over Wi-Fi (OTA)" }}</h2>
+            {{ if .FirmwareOTARecommended }}
+            <span class="firmware-path-badge">{{ t .Localizer "Recommended" }}</span>
+            {{ end }}
+        </div>
+    </div>
+{{ else }}
+    <div class="settings-card-subsection">
+        <h3>{{ t .Localizer "Firmware Update" }}</h3>
+        {{ end }}
+        <div class="settings-field-list">
+            <div class="settings-field-row">
+                <div class="settings-field-label">{{ t .Localizer "Version on Device" }}</div>
+                <div class="settings-field-control">
+                {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
+                </div>
+            </div>
+            {{ if .AvailableFirmwareVersions }}
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="{{ .FirmwareVersionSelectID }}">
+                    <a href="{{ if .Device.Type.IsRaspberryPi }}https://github.com/tronbyt/tronberry/releases{{ else }}https://github.com/tronbyt/firmware-esp32/releases{{ end }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       style="color: inherit;
+                              text-decoration: underline">
+                        {{ t .Localizer "Select Version" }} <i class="fa-solid fa-arrow-up-right-from-square"
+    style="font-size: 0.8em"
+    aria-hidden="true"></i>
+                    </a>
+                </label>
+            </div>
+            <div class="settings-field-control">
+                <select id="{{ .FirmwareVersionSelectID }}"
+                        class="settings-input"
+                        {{ if .ShowOTAReleaseNotes }}onchange="renderFirmwareReleaseNotes(this.value, '{{ .FirmwareReleaseNotesPrefix }}')"
+                        {{ end }}>
+                    {{ range .AvailableFirmwareVersions }}
+                    <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
+                    {{ end }}
+                </select>
+            </div>
+        </div>
+        {{ if .ShowOTAReleaseNotes }}
+        <div class="settings-field-row"
+             id="{{ .FirmwareReleaseNotesPrefix }}firmware_release_notes_row"
+             style="display: none">
+            <div class="settings-field-label">
+                <label>{{ t .Localizer "Release Details" }}</label>
+            </div>
+            <div class="settings-field-control">
+                <div id="{{ .FirmwareReleaseNotesPrefix }}firmware_release_notes"
+                     class="firmware-release-notes"></div>
+            </div>
+        </div>
+        {{ end }}
+        {{ end }}
+    </div>
+    <div class="settings-actions">
+        {{ if .AvailableFirmwareVersions }}
+        <button type="button"
+                class="w3-button w3-blue"
+                onclick="triggerOTAWithVersion('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
+            <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Selected Firmware" }}
+        </button>
+        {{ end }}
+        <button type="button"
+                class="w3-button w3-orange"
+                onclick="document.getElementById('{{ .CustomFirmwareFileInputID }}').click();">
+            <i class="fa-solid fa-file-arrow-up"></i> {{ t .Localizer "Install Custom Firmware" }}
+        </button>
+    </div>
+    {{ if .FirmwareOTAFullSection }}
+</section>
+{{ else }}
+</div>
+{{ end }}
+<input type="file"
+       name="firmware_file"
+       id="{{ .CustomFirmwareFileInputID }}"
+       form="{{ .FirmwareOTAFormID }}"
+       onchange="if(confirm('{{ t .Localizer "Install custom firmware? The device will reboot." }}')) { document.getElementById('{{ .FirmwareOTAFormID }}').submit(); } else { this.value = ''; }"
+       accept=".bin"
+       hidden>
+{{ end }}
