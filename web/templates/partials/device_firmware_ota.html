@@ -38,7 +38,7 @@
             <div class="settings-field-control">
                 <select id="{{ .FirmwareVersionSelectID }}"
                         class="settings-input"
-                        {{ if .ShowOTAReleaseNotes }}onchange="renderFirmwareReleaseNotes(this.value)"
+                        {{ if .ShowOTAReleaseNotes }}onchange="renderFirmwareReleaseNotes(this.value, '{{ .FirmwareReleaseNotesPrefix }}')"
                         {{ end }}>
                     {{ range .AvailableFirmwareVersions }}
                     <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
@@ -48,13 +48,14 @@
         </div>
         {{ if .ShowOTAReleaseNotes }}
         <div class="settings-field-row"
-             id="firmware_release_notes_row"
+             id="{{ .FirmwareReleaseNotesPrefix }}firmware_release_notes_row"
              style="display: none">
             <div class="settings-field-label">
                 <label>{{ t .Localizer "Release Details" }}</label>
             </div>
             <div class="settings-field-control">
-                <div id="firmware_release_notes" class="firmware-release-notes"></div>
+                <div id="{{ .FirmwareReleaseNotesPrefix }}firmware_release_notes"
+                     class="firmware-release-notes"></div>
             </div>
         </div>
         {{ end }}

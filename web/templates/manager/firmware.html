@@ -252,9 +252,12 @@
         }
     }
 
-    async function renderFirmwareReleaseNotes(version) {
-        const row = document.getElementById('firmware_release_notes_row');
-        const container = document.getElementById('firmware_release_notes');
+    async function renderFirmwareReleaseNotes(version, prefix) {
+        if (prefix === undefined) {
+            prefix = '';
+        }
+        const row = document.getElementById(prefix + 'firmware_release_notes_row');
+        const container = document.getElementById(prefix + 'firmware_release_notes');
         if (!row || !container || !version) return;
 
         if (releasesMap[version]) {
@@ -278,11 +281,15 @@
     }
 
     (function() {
+        const otaSelect = document.getElementById('ota_firmware_version_select');
+        if (otaSelect && otaSelect.value && otaSelect.value !== 'Unknown') {
+            renderFirmwareReleaseNotes(otaSelect.value, 'ota_');
+        }
         const verSelect = document.getElementById('firmware_version_select');
         const verText = document.getElementById('firmware_version_text');
         const initialVer = verSelect ? verSelect.value : (verText ? verText.textContent.trim() : '');
         if (initialVer && initialVer !== 'Unknown') {
-            renderFirmwareReleaseNotes(initialVer);
+            renderFirmwareReleaseNotes(initialVer, '');
         }
     })();
 </script>

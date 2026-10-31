@@ -1494,9 +1494,12 @@
         }
     }
 
-    async function renderFirmwareReleaseNotes(version) {
-        const row = document.getElementById('firmware_release_notes_row');
-        const container = document.getElementById('firmware_release_notes');
+    async function renderFirmwareReleaseNotes(version, prefix) {
+        if (prefix === undefined) {
+            prefix = '';
+        }
+        const row = document.getElementById(prefix + 'firmware_release_notes_row');
+        const container = document.getElementById(prefix + 'firmware_release_notes');
         if (!row || !container || !version) return;
 
         if (releasesMap[version]) {

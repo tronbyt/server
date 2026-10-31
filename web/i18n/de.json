@@ -557,8 +557,8 @@
   "Download": {
     "other": "Herunterladen"
   },
-  "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually reflashed to use the new firmware.": {
-    "other": "Hinweis: Dies aktualisiert die zum Flashen verfügbaren Firmware-Dateien, nicht die Firmware auf vorhandenen Geräten. Geräte müssen manuell neu geflasht werden, um die neue Firmware zu verwenden."
+  "Note: This updates the firmware files available for flashing, not the firmware on existing devices. Devices must be manually updated to use the new firmware.": {
+    "other": "Hinweis: Dies aktualisiert die zum Flashen verfügbaren Firmware-Dateien, nicht die Firmware auf vorhandenen Geräten. Geräte müssen manuell aktualisiert werden, um die neue Firmware zu verwenden."
   },
   "User Settings": {
     "other": "Einstellungen"
@@ -829,6 +829,9 @@
   },
   "Firmware files available for generating or flashing devices.": {
     "other": "Firmware-Dateien zum Generieren oder Flashen von Geräten verfügbar."
+  },
+  "View firmware releases on GitHub": {
+    "other": "Firmware-Releases auf GitHub ansehen"
   },
   "Manage backups and user accounts for this server.": {
     "other": "Verwalten Sie Backups und Benutzerkonten für diesen Server."
