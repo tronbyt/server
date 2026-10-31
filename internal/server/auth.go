@@ -1,11 +1,14 @@
 package server
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"log/slog"
 	"tronbyt-server/internal/auth"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/gitutils"
@@ -61,6 +64,34 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 		}
 	}
 
+	screenyURL := s.Config.ScreenyStudioURL
+	screenyFilter := s.Config.ScreenyScaleFilter
+	if screenyFilter == "" {
+		screenyFilter = "bicubic"
+	}
+	var screenyConnected bool
+	var screenyPatchCount int
+	var screenyStatus string
+
+	if screenyURL != "" {
+		if provider := s.GetExternalProvider("screeny"); provider != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			extApps, err := provider.ListApps(ctx)
+			cancel()
+			if err == nil {
+				screenyConnected = true
+				screenyPatchCount = len(extApps)
+				screenyStatus = fmt.Sprintf("Connected (%d patches available)", len(extApps))
+			} else {
+				screenyStatus = fmt.Sprintf("Error connecting: %v", err)
+			}
+		} else {
+			screenyStatus = "Configured but not initialized"
+		}
+	} else {
+		screenyStatus = "Not Configured"
+	}
+
 	return TemplateData{
 		User:                  user,
 		FirmwareVersion:       firmwareVersion,
@@ -68,8 +99,47 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 		UserRepoInfo:          userRepoInfo,
 		GlobalSystemRepoURL:   s.Config.SystemAppsRepo,
 		SystemAppsAutoRefresh: s.isSystemAppsAutoRefreshEnabled(),
+		ScreenyStudioURL:      screenyURL,
+		ScreenyScaleFilter:    screenyFilter,
+		ScreenyConnected:      screenyConnected,
+		ScreenyPatchCount:     screenyPatchCount,
+		ScreenyStatus:         screenyStatus,
 		SettingsSection:       "content",
 	}
+}
+
+func (s *Server) handleSetScreenyConfig(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	studioURL := strings.TrimSpace(r.FormValue("screeny_studio_url"))
+	scaleFilter := strings.TrimSpace(r.FormValue("screeny_scale_filter"))
+
+	if err := s.updateScreenyConfig(studioURL, scaleFilter); err != nil {
+		slog.Error("Failed to update Screeny settings", "error", err)
+		s.flashAndRedirect(w, r, "Failed to save Screeny settings.", "/settings/content", http.StatusSeeOther)
+		return
+	}
+
+	if studioURL != "" {
+		if provider := s.GetExternalProvider("screeny"); provider != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+			extApps, err := provider.ListApps(ctx)
+			cancel()
+			if err != nil {
+				slog.Warn("Screeny connection test failed", "error", err)
+				s.flashAndRedirect(w, r, "Saved Screeny settings, but connection test failed. Please verify the URL.", "/settings/content", http.StatusSeeOther)
+				return
+			}
+			s.flashAndRedirect(w, r, fmt.Sprintf("Connected to Screeny Studio successfully (%d patches discovered).", len(extApps)), "/settings/content", http.StatusSeeOther)
+			return
+		}
+	}
+
+	s.flashAndRedirect(w, r, "Screeny settings updated.", "/settings/content", http.StatusSeeOther)
 }
 
 func (s *Server) loginTemplateData(r *http.Request, flashes []string) TemplateData {

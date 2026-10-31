@@ -244,6 +244,53 @@ func TestHandleClearSystemAppsRepoRequiresAdmin(t *testing.T) {
 	require.DirExists(t, filepath.Join(s.DataDir, "system-apps"))
 }
 
+func TestSettingsContentScreenyProvider(t *testing.T) {
+	s := newTestServer(t)
+	admin := data.User{Username: "admin", IsAdmin: true, APIKey: "admin-api-key"}
+	require.NoError(t, s.DB.Create(&admin).Error)
+
+	seedReq := httptest.NewRequest(http.MethodGet, "/settings/content", nil)
+	seedRR := httptest.NewRecorder()
+	session, _ := s.Store.Get(seedReq, "session-name")
+	session.Values["username"] = admin.Username
+	require.NoError(t, s.saveSession(seedRR, seedReq, session))
+
+	// 1. Initial GET shows Screeny controls
+	req := httptest.NewRequest(http.MethodGet, "/settings/content", nil)
+	for _, cookie := range seedRR.Result().Cookies() {
+		req.AddCookie(cookie)
+	}
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Contains(t, rr.Body.String(), "Screeny Studio")
+	require.Contains(t, rr.Body.String(), `name="screeny_studio_url"`)
+	require.Contains(t, rr.Body.String(), `name="screeny_scale_filter"`)
+
+	// 2. POST update screeny config
+	form := url.Values{}
+	form.Add("screeny_studio_url", "http://localhost:8787")
+	form.Add("screeny_scale_filter", "scale2x")
+	postReq := httptest.NewRequest(http.MethodPost, "/settings/screeny", strings.NewReader(form.Encode()))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for _, cookie := range seedRR.Result().Cookies() {
+		postReq.AddCookie(cookie)
+	}
+	postRR := httptest.NewRecorder()
+	s.ServeHTTP(postRR, postReq)
+
+	require.Equal(t, http.StatusSeeOther, postRR.Code)
+	require.Equal(t, "http://localhost:8787", s.Config.ScreenyStudioURL)
+	require.Equal(t, "scale2x", s.Config.ScreenyScaleFilter)
+	require.NotNil(t, s.GetExternalProvider("screeny"))
+
+	// Check DB setting
+	val, err := s.getSetting("screeny_studio_url")
+	require.NoError(t, err)
+	require.Equal(t, "http://localhost:8787", val)
+}
+
 func TestHandleEditUserPostUpdatesEmail(t *testing.T) {
 	s := newTestServer(t)
 

@@ -112,6 +112,11 @@ The server can be configured via environment variables or `.env` file:
 *   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily, and destination of the opt-in community app stats in System Settings, which are off by default (default: `https://cloud.heyniblet.com`). Set to an empty string to disable both. Administrators can also turn off all Niblet Cloud traffic under **Settings → Admin** without changing this variable.
 *   `FIRMWARE_REPO`: GitHub repository URL for ESP32 firmware binaries (default: `https://github.com/tronbyt/firmware-esp32`). Set to `"none"` to disable ESP32 firmware fetching.
 *   `TRONBERRY_REPO`: GitHub repository URL for Tronberry (Raspberry Pi) binaries (default: `https://github.com/tronbyt/tronberry`). Set to `"none"` to disable Tronberry binary fetching.
+*   `SCREENY_STUDIO_URL`: Base URL of a running `screeny-studio` instance (e.g. `http://screeny-studio:8787`). When set, Screeny patches are automatically discovered and badged with `[Screeny]` in the Add App catalog, translated to native Pixlet configuration forms, and rendered into 30 FPS animations.
+*   `SCREENY_FPS`: Frame rate for Screeny animations (default: `30`).
+*   `SCREENY_SCALE_FILTER`: Global 128x64 upscaling filter algorithm: `bicubic`, `scale2x`, `bilinear`, `nearest` (default: `bicubic`). Can also be customized per installed app instance in the web UI.
+*   `TRONBYT_MAX_CHUNK_SIZE_ESP`: Maximum WebP animation chunk size in bytes for ESP devices (default: `450000` / 450 KB for Tidbyt Gen 1, Gen 2, ESP32, ESP32-S3 variants, MatrixPortal; Pixoticker uses `50000` / 50 KB).
+*   `TRONBYT_MAX_CHUNK_SIZE_RPI`: Maximum WebP animation chunk size in bytes for Raspberry Pi / Tronberry devices (default: `5242880` / 5 MB).
 *   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).
@@ -119,9 +124,35 @@ The server can be configured via environment variables or `.env` file:
 *   `TRONBYT_REPO_URL`: Repository URL override for footer links and commit resolution (optional).
 *   `TRONBYT_COMMIT`: Commit hash override for footer display (optional).
 
+### External App Providers & Screeny 30 FPS Multi-Chunk Streaming
+
+Tronbyt Server supports pluggable external app providers via the `ExternalAppProvider` interface. For a complete step-by-step setup guide using Docker, see [SCREENY_SETUP.md](SCREENY_SETUP.md).
+
+When `SCREENY_STUDIO_URL` is configured:
+1. **Catalog & Parameters:** Screeny patches (Clocks, Split-Flap, Boids, Bats, Leaves, Flyover, etc.) appear in the Add App catalog badged as `[Screeny]`. Patch options are translated into native schema configuration controls.
+2. **30 FPS Native Frame Capture:** The server streams frames from `screeny-studio` via WebSocket at 30 fps, decoding wire UDP or preview packets with pure Go implementations of PAL5, PAL8_LZ, PAL4_LZ, BC1_DUAL, and SOLID codecs.
+3. **High-Resolution 128x64 Scaling for Tronberry / Raspberry Pi:**
+   - Screeny renders internally at 64x32. Rather than naive 2x nearest-neighbor pixel doubling (which produces chunky 4-LED blocks), Tronbyt Server provides advanced real-time integer scalers:
+     - **Bicubic (Catmull-Rom with anti-ringing, default):** Calculates smooth continuous subpixel gradients across all 8,192 physical LEDs on 128x64 panels—ideal for 3D shaders, lighting gradients, and smooth particle animations.
+     - **Scale2x / EPX (AdvMAME2x):** Pattern-matches diagonal pixel transitions to smooth angles without blur, keeping exact palette colors razor-sharp—ideal for clocks, split-flap airport boards, dials, and retro pixel art.
+     - **Bilinear:** Smooth 4-way subpixel color interpolation.
+     - **Nearest:** Classic retro 2x2 LED block doubling.
+   - Users can select their preferred filter globally via `SCREENY_SCALE_FILTER` or override it per app instance in the Tronbyt web UI app settings (automatically offered for devices that support 2x scaling, such as Tronberry / Raspberry Pi 128x64).
+4. **Multi-Chunk WebP Streaming:**
+   - For high-capacity clients (Raspberry Pi / `tronberry`), animations up to 5 MB (configurable via `SCREENY_MAX_WEBP_BYTES_RPI`) stream in a single high-fidelity chunk.
+   - For memory-constrained clients (ESP32 / Tidbyt), animations exceeding the device limit (160 KB on Tidbyt Gen 1, 450 KB on ESP32-S3 / Wide) or 5,000 ms duration are seamlessly split into sequential chunks with exact playback durations, preventing hardware buffer exhaustion and heap allocation errors.
+   - **WebSocket (`/ws`):** Chunks stream sequentially using firmware double-buffering (chunk 0 displays while chunk 1 is pre-buffered in the hardware queue, swapping seamlessly on dwell completion) before rotating to the next app.
+   - **HTTP (`/next`):** Sequential chunks are tracked per device and served with individual `Tronbyt-Dwell-Secs` headers before advancing rotation.
+   - **Fault Tolerance:** If Screeny Studio is temporarily unreachable, Tronbyt Server falls back to cached chunk files to avoid interrupted playback.
+5. **Catalog Provider Filter & Live Previews:**
+   - **Dynamic Provider Filter:** When multiple providers (e.g. Tronbyt and Screeny) are active, a Provider dropdown filter dynamically appears on the Add App page, allowing users to filter by provider or view all apps together. If only one provider is configured, the dropdown automatically hides.
+   - **Full-Duration Uninterrupted Previews:** Both in the web configuration UI and during device preview pushes, previews span the complete dwell time window without premature looping. The web UI renders and caches complete, unchunked WebP animations (`<appBasename>_full.webp`) matching the full dwell time, while device preview pushes stream all sequential chunks over WebSocket (or HTTP) to fill the device time window with an uninterrupted animation.
+   - **Preview Generation & Crossfade Elimination:** Screeny patches generate on-demand animated WebP previews with automatic disk caching under `cache/previews/<provider>/`. Screeny Studio's built-in 2.0-second patch crossfade is automatically detected and skipped during frame capture, ensuring live catalog thumbnails and rendered device animations are 100% clean, crisp, and free from app-blending artifacts.
+
 **HTTPS (TLS):**
 *   Can be achieved by configuring `TRONBYT_SSL_KEYFILE` and `TRONBYT_SSL_CERTFILE`.
 *   Or by fronting the service with a reverse proxy like Caddy (see `docker-compose.https.yaml`).
 *   After enabling HTTPS, configure the health check to use the corresponding URL, e.g. `test: ["CMD", "/app/tronbyt-server", "health", "https://tronbyt.example.com/health"]`.
 
 **Cache:** By default, an in-memory cache is used. Redis can be configured via `REDIS_URL` for persistent caching across container restarts.
+

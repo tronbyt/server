@@ -17,7 +17,7 @@
     <!-- Left: Preview Image -->
     <div class="app-preview">
         <div class="app-img">
-            <img src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview"
+            <img src="/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}/preview?t={{ if .App.LastRender.IsZero }}0{{ else }}{{ .App.LastRender.UnixNano }}{{ end }}"
                  alt="{{ t .Localizer "Preview" }}"
                  width="128"
                  height="64">

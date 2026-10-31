@@ -67,6 +67,9 @@ func newTestServerAPI(t *testing.T) *Server {
 	}
 
 	s := NewServer(db, cfg)
+	t.Cleanup(func() {
+		s.backgroundRenders.Wait()
+	})
 
 	// Setup common test user and device
 	adminUser := data.User{

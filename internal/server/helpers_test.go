@@ -132,6 +132,62 @@ func TestDeviceTypeChoicesOfferEveryTypeGroupedByPanelSize(t *testing.T) {
 	}
 }
 
+func TestSanitizeAppID(t *testing.T) {
+	validIDs := []string{
+		"clock",
+		"overland",
+		"knot_3d",
+		"weather-forecast",
+		"App123",
+	}
+	for _, id := range validIDs {
+		sanitized, err := sanitizeAppID(id)
+		assert.NoError(t, err)
+		assert.Equal(t, id, sanitized)
+	}
+
+	invalidIDs := []string{
+		"../../evil",
+		"clock/nested",
+		"clock\\back",
+		"clock;rm",
+		"clock name",
+		"app\x00null",
+	}
+	for _, id := range invalidIDs {
+		_, err := sanitizeAppID(id)
+		assert.Error(t, err, "expected error for invalid ID %q", id)
+	}
+}
+
+func TestValidateExternalProviderURL(t *testing.T) {
+	validURLs := []string{
+		"http://localhost:8787",
+		"http://127.0.0.1:8787",
+		"https://studio.example.com",
+		"http://192.168.1.100:7080",
+		"",
+	}
+	for _, u := range validURLs {
+		assert.NoError(t, validateExternalProviderURL(u))
+	}
+
+	invalidURLs := []string{
+		"ftp://example.com",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://instance-data/latest/meta-data/",
+		"http://metadata.google.internal/computeMetadata/v1/",
+		"http://[fe80::1]/",
+		"http://[fd00:ec2::254]/latest/meta-data/", // AWS IMDSv2 IPv6
+		"http://100.100.100.200/",                  // Alibaba Cloud IMDS
+		"http://user:pass@example.com:8787",        // Credentials forbidden
+		"://bad-url",
+	}
+	for _, u := range invalidURLs {
+		assert.Error(t, validateExternalProviderURL(u), "expected error for invalid URL %q", u)
+	}
+}
+
 // TestGetBaseURLAndGetDeviceBaseURL verifies the expected behavior under test.
 func TestGetBaseURLAndGetDeviceBaseURL(t *testing.T) {
 	s := &Server{

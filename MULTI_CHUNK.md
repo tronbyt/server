@@ -96,7 +96,7 @@ When chunks are saved to `data/webp/<device_id>/` via `saveAppChunks`:
 
 ### A. WebSocket Streaming (`internal/server/websockets.go`)
 
-WebSocket devices (`/ws/{device_id}`) utilize hardware double-buffering for seamless playback:
+WebSocket devices (`/{device_id}/ws`) utilize hardware double-buffering for seamless playback:
 
 1. **Chunk 0 Delivery:**
    - Server writes JSON metadata: `{"dwell_secs": chunkDwell}` (where `chunkDwell = max(1, DurationMs/1000)`).

@@ -39,6 +39,11 @@ type Settings struct {
 	MaxChunkSizeESP int `env:"TRONBYT_MAX_CHUNK_SIZE_ESP" envDefault:"450000"`
 	MaxChunkSizeRPi int `env:"TRONBYT_MAX_CHUNK_SIZE_RPI" envDefault:"5242880"`
 
+	// Screeny Integration Configuration
+	ScreenyStudioURL   string `env:"SCREENY_STUDIO_URL"`
+	ScreenyFPS         int    `env:"SCREENY_FPS"          envDefault:"30"`
+	ScreenyScaleFilter string `env:"SCREENY_SCALE_FILTER" envDefault:"bicubic"`
+
 	// OIDC Configuration
 	OIDCEnabled          bool   `env:"OIDC_ENABLED"`
 	OIDCIssuerURL        string `env:"OIDC_ISSUER_URL"`

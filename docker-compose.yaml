@@ -23,7 +23,9 @@ services:
       - NIBLET_CLOUD_URL
       - MAX_REPO_SIZE_MB
       - ENABLE_PPROF
-
+      - SCREENY_STUDIO_URL
+      - SCREENY_FPS
+      - SCREENY_SCALE_FILTER
 
     healthcheck:
       test: ["CMD", "/app/tronbyt-server", "health"]
