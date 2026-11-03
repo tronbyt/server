@@ -5,8 +5,10 @@ FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
-# git for go mod download
-RUN apk add --no-cache git clang
+# ca-certificates for HTTPS/GitHub API calls
+RUN apk add --no-cache git clang \
+    && apk add --no-cache --upgrade ca-certificates \
+    && update-ca-certificates
 
 # Copy go mod and sum files for dependency caching
 COPY go.mod go.sum ./

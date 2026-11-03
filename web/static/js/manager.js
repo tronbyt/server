@@ -2051,7 +2051,9 @@ function triggerOTAWithVersion(deviceId, confirmMessage) {
     form.method = 'POST';
     form.action = `/devices/${deviceId}/ota`;
 
-    const select = document.getElementById('firmware_version_select');
+    const select =
+      document.getElementById('ota_firmware_version_select') ||
+      document.getElementById('firmware_version_select');
     if (select) {
         const versionInput = document.createElement('input');
         versionInput.type = 'hidden';

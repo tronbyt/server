@@ -1,0 +1,182 @@
+{{ define "firmware_usb_flash_bundle" }}
+<form method="post" id="firmware-form" class="settings-form">
+    <section class="settings-card firmware-path-inner">
+        <div class="settings-card-header">
+            <p class="firmware-path-kicker">{{ t .Localizer "USB cable required" }}</p>
+            <h2>{{ t .Localizer "Flash over USB" }}</h2>
+            <p>{{ t .Localizer "Download a firmware file with your Wi-Fi and server settings, then flash it with a web flasher. Use this for a new device, recovery, or when you must change Wi-Fi or server URL stored on the chip." }}</p>
+        </div>
+        <input type="hidden" name="id" id="id" value="{{ .Device.ID }}">
+        <div class="settings-field-list">
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="firmware_version_select">
+                        <a href="{{ .FirmwareReleasesURL }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           style="color: inherit;
+                                  text-decoration: underline">
+                            {{ t .Localizer "Firmware Image Version" }} <i class="fa-solid fa-arrow-up-right-from-square"
+    style="font-size: 0.8em"
+    aria-hidden="true"></i>
+                        </a>
+                    </label>
+                </div>
+                <div class="settings-field-control">
+                    {{ if .AvailableFirmwareVersions }}
+                    <select name="version"
+                            id="firmware_version_select"
+                            form="firmware-form"
+                            class="settings-input"
+                            onchange="renderFirmwareReleaseNotes(this.value)">
+                        {{ range .AvailableFirmwareVersions }}
+                        <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
+                        {{ end }}
+                    </select>
+                {{ else }}
+                    <div id="firmware_version_text">{{ .FirmwareVersion }}</div>
+                    {{ end }}
+                </div>
+            </div>
+            <div class="settings-field-row"
+                 id="firmware_release_notes_row"
+                 style="display: none">
+                <div class="settings-field-label">
+                    <label>{{ t .Localizer "Release Details" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <div id="firmware_release_notes" class="firmware-release-notes"></div>
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">{{ t .Localizer "Connection Type" }}</div>
+                <div class="settings-field-control">
+                    <div class="settings-inline-group connection-type-container">
+                        <label>
+                            <input type="radio" name="url_variant" id="variant_ws" value="ws">
+                            WebSocket
+                        </label>
+                        <label>
+                            <input type="radio" name="url_variant" id="variant_http" value="http">
+                            HTTP
+                        </label>
+                        <label>
+                            <input type="radio" name="url_variant" id="variant_custom" value="custom">
+                            Custom
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="img_url">{{ t .Localizer "Image URL" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <input name="img_url"
+                           id="img_url"
+                           value="{{ .Device.ImgURL }}"
+                           class="settings-input settings-input-wide">
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="wifi_ap">{{ t .Localizer "WiFi Network Name (SSID) 2.4Ghz Only" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <input name="wifi_ap" id="wifi_ap" required class="settings-input">
+                </div>
+            </div>
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="wifi_password">{{ t .Localizer "WiFi Password" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <input name="wifi_password"
+                           id="wifi_password"
+                           required
+                           class="settings-input">
+                </div>
+            </div>
+            {{ if eq .Device.Type.Slug "tidbyt_gen1" }}
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="swap_colors">{{ t .Localizer "Swap Colors?" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <label class="settings-inline-option">
+                        <input type="checkbox" name="swap_colors" id="swap_colors">
+                        <span>{{ t .Localizer "Enable swapped color output" }}</span>
+                    </label>
+                </div>
+            </div>
+            {{ end }}
+            <div class="settings-field-row">
+                <div class="settings-field-label">
+                    <label for="ota_only">{{ t .Localizer "Firmware Type" }}</label>
+                </div>
+                <div class="settings-field-control">
+                    <label class="settings-inline-option">
+                        <input type="checkbox" name="ota_only" id="ota_only">
+                        <span>{{ t .Localizer "OTA Update Only" }}</span>
+                    </label>
+                    <p class="settings-help">
+                        {{ t .Localizer "Advanced: app-only binary for flashing at 0x10000 on devices that already have a bootloader. Most first-time setups should leave this unchecked (full image at 0x0)." }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="settings-actions">
+            <button class="w3-button w3-blue" type="submit">
+                <i class="fa-solid fa-download" aria-hidden="true"></i> {{ t .Localizer "Generate Firmware File" }}
+            </button>
+        </div>
+    </section>
+</form>
+<section class="settings-card firmware-path-inner">
+    <div class="settings-card-header">
+        <h2>{{ t .Localizer "Flashing Instructions" }}</h2>
+        <p>{{ t .Localizer "After generating and downloading the firmware file, use one of these web-based flashers:" }}</p>
+    </div>
+    <ul>
+        <li>
+            <a href="https://espressif.github.io/esptool-js/" target="_blank">Espressif Web Flasher</a>
+        </li>
+        <li>
+            <a href="https://thelastoutpostworkshop.github.io/ESPConnect/"
+               target="_blank">ESPConnect Web Flasher</a>
+        </li>
+    </ul>
+    <ol>
+        <li>{{ t .Localizer "Connect your device to your computer with a data USB cable" }}</li>
+        <li>{{ t .Localizer "Open one of the web flashers above in Chrome or Edge" }}</li>
+        <li>{{ t .Localizer "Click Connect and select your device's serial port" }}</li>
+        <li>{{ t .Localizer "Click Flash Tools if needed" }}</li>
+        <li>
+            {{ t .Localizer "Set the flash address to" }} <strong>0x0</strong>
+        </li>
+        <li>{{ t .Localizer "Select your downloaded firmware file and click Program/Flash" }}</li>
+        <li>{{ t .Localizer "Reboot the device if it doesn't restart automatically" }}</li>
+    </ol>
+</section>
+<section class="settings-card firmware-path-inner">
+    <div class="settings-card-header">
+        <h2>{{ t .Localizer "Troubleshooting" }}</h2>
+    </div>
+    <p class="settings-help">
+        <i class="fa-solid fa-circle-info"></i>
+        {{ t .Localizer "If you are changing WiFi credentials or the image URL on a previously flashed device, select \"Full Erase\" or \"Erase All Flash\" before flashing. Otherwise the old settings stored on the device will be used instead of the new ones." }}
+    </p>
+    <p>
+        <i>{{ t .Localizer "macOS and Windows users may need to install a serial driver:" }}</i>
+    </p>
+    <ul>
+        <li>
+            <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads"
+               target="_blank">CP210x Drivers</a>
+        </li>
+        <li>
+            <a href="https://github.com/WCHSoftGroup/ch34xser_macos" target="_blank">CH34x Drivers</a>
+        </li>
+    </ul>
+</section>
+{{ end }}

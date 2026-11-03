@@ -1059,6 +1059,17 @@ func (d *Device) OTACapable() bool {
 	return semver.Compare(v, minOTAFirmwareVersion) >= 0
 }
 
+// PreferFirmwareUpdateUI reports whether the firmware page should emphasize
+// over-the-air updates over USB flashing. Devices that have never checked in
+// with the server are treated as new setups; once the device has connected or
+// reported a firmware version, updates are prioritized.
+func (d *Device) PreferFirmwareUpdateUI() bool {
+	if d.LastSeen != nil {
+		return true
+	}
+	return d.Info.FirmwareVersion != ""
+}
+
 func (d *Device) SupportsFirmwareFeatures() bool {
 	if d.Info.ProtocolType != ProtocolWS {
 		return false

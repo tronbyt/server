@@ -42,7 +42,7 @@ func TestHandleCreateDevicePost(t *testing.T) {
 	handler := http.HandlerFunc(s.handleCreateDevicePost)
 	handler.ServeHTTP(rr, req)
 
-	// Check redirect to dashboard
+	// Check redirect to firmware page (tidbyt_gen1 supports firmware)
 	if rr.Code != http.StatusSeeOther {
 		t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, http.StatusSeeOther)
 	}
@@ -54,6 +54,9 @@ func TestHandleCreateDevicePost(t *testing.T) {
 	}
 	if device.Username != "testuser" {
 		t.Errorf("Device username mismatch")
+	}
+	if loc := rr.Header().Get("Location"); loc != "/devices/"+device.ID+"/firmware" {
+		t.Errorf("unexpected redirect: got %q want %q", loc, "/devices/"+device.ID+"/firmware")
 	}
 }
 
