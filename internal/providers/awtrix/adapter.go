@@ -295,16 +295,19 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 	decodeErr := json.NewDecoder(sResp.Body).Decode(&origSettings)
 	_, _ = io.Copy(io.Discard, io.LimitReader(sResp.Body, 1024))
 	_ = sResp.Body.Close()
-	if decodeErr != nil || origSettings.AutoTransition == nil {
-		return nil, fmt.Errorf("invalid awtrix settings response (autoTransition required): %w", decodeErr)
+	if decodeErr != nil {
+		return nil, fmt.Errorf("decoding awtrix settings response: %w", decodeErr)
+	}
+	if origSettings.AutoTransition == nil {
+		return nil, errors.New("invalid awtrix settings response: autoTransition field missing")
 	}
 
 	var (
-		origFieldValues map[string]any
-		configPatchURL  string
-		configPatched   bool
-		origCurrentApp  string
-		activated       bool
+		restoreConfigBody map[string]any
+		configPatchURL    string
+		configPatched     bool
+		origCurrentApp    string
+		activated         bool
 	)
 
 	// Ensure AWTRIX auto-transition, app configuration, and active app are restored when rendering completes or aborts
@@ -320,23 +323,28 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 			restoreMap["transitionDurationMs"] = *origSettings.TransitionDurationMs
 		}
 		if b, err := json.Marshal(restoreMap); err == nil {
-			if rReq, err := http.NewRequestWithContext(cleanupCtx, http.MethodPatch, settingsURL, bytes.NewReader(b)); err == nil {
-				rReq.Header.Set("Content-Type", "application/json")
-				if rResp, err := a.httpClient.Do(rReq); err != nil {
-					slog.Warn("Failed to restore awtrix display settings", "error", err)
-				} else {
-					if rResp.StatusCode < 200 || rResp.StatusCode >= 300 {
-						slog.Warn("Awtrix display settings restore returned non-2xx status", "status", rResp.StatusCode)
+			for attempt := range 2 {
+				if rReq, err := http.NewRequestWithContext(cleanupCtx, http.MethodPatch, settingsURL, bytes.NewReader(b)); err == nil {
+					rReq.Header.Set("Content-Type", "application/json")
+					if rResp, err := a.httpClient.Do(rReq); err != nil {
+						slog.Warn("Failed to restore awtrix display settings", "attempt", attempt+1, "error", err)
+					} else {
+						statusCode := rResp.StatusCode
+						_, _ = io.Copy(io.Discard, io.LimitReader(rResp.Body, 1024))
+						_ = rResp.Body.Close()
+						if statusCode >= 200 && statusCode < 300 {
+							break
+						}
+						slog.Warn("Awtrix display settings restore returned non-2xx status", "attempt", attempt+1, "status", statusCode)
 					}
-					_, _ = io.Copy(io.Discard, io.LimitReader(rResp.Body, 1024))
-					_ = rResp.Body.Close()
 				}
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 
 		// 2. Restore app configuration if modified
-		if configPatched && len(origFieldValues) > 0 && configPatchURL != "" {
-			if b, err := json.Marshal(origFieldValues); err == nil {
+		if configPatched && len(restoreConfigBody) > 0 && configPatchURL != "" {
+			if b, err := json.Marshal(restoreConfigBody); err == nil {
 				if rReq, err := http.NewRequestWithContext(cleanupCtx, http.MethodPatch, configPatchURL, bytes.NewReader(b)); err == nil {
 					rReq.Header.Set("Content-Type", "application/json")
 					if rResp, err := a.httpClient.Do(rReq); err != nil {
@@ -375,12 +383,21 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 	// 2. If custom configuration options were provided, apply them via PATCH
 	if len(req.Config) > 0 {
 		if cfg, isBuiltin, err := a.fetchAppConfig(ctx, req.AppID); err == nil && len(cfg.Fields) > 0 {
-			origFieldValues = make(map[string]any)
+			origUserConfig := make(map[string]any)
 			for _, f := range cfg.Fields {
+				k := f.Key
+				if len(f.Path) > 0 {
+					k = strings.Join(f.Path, ".")
+				}
 				if f.Value != nil {
-					origFieldValues[f.Key] = f.Value
+					if _, ok := req.Config[k]; ok {
+						origUserConfig[k] = f.Value
+					} else if _, ok := req.Config[f.Key]; ok {
+						origUserConfig[k] = f.Value
+					}
 				}
 			}
+			restoreConfigBody = ConvertUserConfigToAwtrix(cfg.Fields, origUserConfig)
 			patchBody := ConvertUserConfigToAwtrix(cfg.Fields, req.Config)
 			if len(patchBody) > 0 {
 				configPatchURL = fmt.Sprintf("%s/api/v1/apps/builtin/%s/config", a.baseURL, url.PathEscape(req.AppID))

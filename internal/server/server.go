@@ -648,11 +648,13 @@ func (s *Server) updateAwtrixConfig(awtrixURL, scaleFilter, layout string) error
 		return err
 	}
 	oldURL := s.Config.AwtrixURL
+	oldFilter := s.Config.AwtrixScaleFilter
+	oldLayout := s.Config.AwtrixLayout
 	s.Config.AwtrixURL = cleanURL
 	s.Config.AwtrixScaleFilter = filter
 	s.Config.AwtrixLayout = awtrixLayout
 
-	if oldURL != cleanURL {
+	if oldURL != cleanURL || oldFilter != filter || oldLayout != awtrixLayout {
 		markerFile := filepath.Join(s.DataDir, "cache", "previews", "awtrix", ".previews_v9")
 		_ = os.Remove(markerFile)
 	}
