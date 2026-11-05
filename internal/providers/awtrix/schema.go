@@ -407,6 +407,7 @@ func ConvertUserConfigToAwtrix(fields []AwtrixField, userConfig map[string]any) 
 	return body
 }
 
+// colorToHex converts an AWTRIX color representation (string, float64, or int) to a hex color string.
 func colorToHex(val any) string {
 	if val == nil {
 		return ""
@@ -427,6 +428,7 @@ func colorToHex(val any) string {
 	return ""
 }
 
+// hexToColorInt converts a hexadecimal color string into a 24-bit integer (0xRRGGBB).
 func hexToColorInt(hexStr string) int {
 	clean := strings.TrimPrefix(hexStr, "#")
 	if len(clean) == 3 {
@@ -443,6 +445,7 @@ func hexToColorInt(hexStr string) int {
 	return (int(b[0]) << 16) | (int(b[1]) << 8) | int(b[2])
 }
 
+// titleCase converts camelCase or dot-separated identifiers into Title Case labels.
 func titleCase(s string) string {
 	parts := strings.Split(s, ".")
 	last := parts[len(parts)-1]
@@ -461,6 +464,7 @@ func titleCase(s string) string {
 	return s
 }
 
+// iconForField selects a suitable icon name for a configuration field based on its identifier and type.
 func iconForField(fieldID, fieldType string) string {
 	lower := strings.ToLower(fieldID)
 	switch {

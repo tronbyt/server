@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"tronbyt-server/internal/chunker"
@@ -33,14 +34,21 @@ type AdapterConfig struct {
 	Semaphore   chan struct{}
 }
 
+type awtrixDisplaySettings struct {
+	AutoTransition       *bool `json:"autoTransition"`
+	TransitionDurationMs *int  `json:"transitionDurationMs"`
+}
+
 // AwtrixAdapter implements providers.ExternalAppProvider for AWTRIX NG.
 type AwtrixAdapter struct {
-	sem         chan struct{}
-	baseURL     string
-	fps         int
-	scaleFilter string
-	layout      string
-	httpClient  *http.Client
+	sem            chan struct{}
+	baseURL        string
+	fps            int
+	scaleFilter    string
+	layout         string
+	httpClient     *http.Client
+	stateMu        sync.Mutex
+	frozenSettings *awtrixDisplaySettings
 }
 
 // NewAdapter creates a new AwtrixAdapter with safe transport dials and redirect checks.
@@ -211,6 +219,8 @@ func (a *AwtrixAdapter) GetAppSchema(ctx context.Context, appID string) ([]byte,
 	return TranslateAwtrixSchema(*cfg, isBuiltin)
 }
 
+// fetchAppConfig retrieves the configuration schema and current values for an AWTRIX app,
+// attempting builtin app endpoints first before falling back to non-builtin app endpoints.
 func (a *AwtrixAdapter) fetchAppConfig(ctx context.Context, appID string) (*AwtrixConfigResponse, bool, error) {
 	// Try builtin URL first
 	builtinURL := fmt.Sprintf("%s/api/v1/apps/builtin/%s/config", a.baseURL, url.PathEscape(appID))
@@ -273,11 +283,7 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 	}
 
 	// 1. Query original settings so we can reliably restore them on exit
-	type awtrixSettingsResp struct {
-		AutoTransition       *bool `json:"autoTransition"`
-		TransitionDurationMs *int  `json:"transitionDurationMs"`
-	}
-	var origSettings awtrixSettingsResp
+	var fetchedSettings awtrixDisplaySettings
 	settingsURL := fmt.Sprintf("%s/api/v1/settings", a.baseURL)
 	sReq, err := http.NewRequestWithContext(ctx, http.MethodGet, settingsURL, nil)
 	if err != nil {
@@ -292,15 +298,23 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 		_ = sResp.Body.Close()
 		return nil, fmt.Errorf("fetching awtrix settings returned status %d", sResp.StatusCode)
 	}
-	decodeErr := json.NewDecoder(sResp.Body).Decode(&origSettings)
+	decodeErr := json.NewDecoder(sResp.Body).Decode(&fetchedSettings)
 	_, _ = io.Copy(io.Discard, io.LimitReader(sResp.Body, 1024))
 	_ = sResp.Body.Close()
 	if decodeErr != nil {
 		return nil, fmt.Errorf("decoding awtrix settings response: %w", decodeErr)
 	}
-	if origSettings.AutoTransition == nil {
+	if fetchedSettings.AutoTransition == nil {
 		return nil, errors.New("invalid awtrix settings response: autoTransition field missing")
 	}
+
+	a.stateMu.Lock()
+	origSettings := fetchedSettings
+	if a.frozenSettings != nil {
+		// Device was left in a frozen state by a previous failed/aborted render; preserve pre-freeze settings
+		origSettings = *a.frozenSettings
+	}
+	a.stateMu.Unlock()
 
 	var (
 		restoreConfigBody map[string]any
@@ -333,6 +347,9 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 						_, _ = io.Copy(io.Discard, io.LimitReader(rResp.Body, 1024))
 						_ = rResp.Body.Close()
 						if statusCode >= 200 && statusCode < 300 {
+							a.stateMu.Lock()
+							a.frozenSettings = nil
+							a.stateMu.Unlock()
 							break
 						}
 						slog.Warn("Awtrix display settings restore returned non-2xx status", "attempt", attempt+1, "status", statusCode)
@@ -445,6 +462,13 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 	if fStatusCode != http.StatusOK {
 		return nil, fmt.Errorf("freezing awtrix display returned status %d", fStatusCode)
 	}
+
+	a.stateMu.Lock()
+	if a.frozenSettings == nil {
+		saved := origSettings
+		a.frozenSettings = &saved
+	}
+	a.stateMu.Unlock()
 
 	// 4. Activate the app on the AWTRIX display
 	activateURL := fmt.Sprintf("%s/api/v1/apps/active", a.baseURL)
@@ -649,6 +673,7 @@ type layoutInfo struct {
 	bgColor [4]byte // R, G, B, A
 }
 
+// detectLayoutInfo inspects an RGBA image frame to classify its layout geometry and background color.
 func detectLayoutInfo(img *image.RGBA) (layoutInfo, bool) {
 	if img == nil || img.Bounds().Dx() < 64 || img.Bounds().Dy() < 32 {
 		return layoutInfo{}, false
@@ -715,6 +740,8 @@ func detectLayoutInfo(img *image.RGBA) (layoutInfo, bool) {
 	return layoutInfo{mode: mode, bgColor: bgColor}, true
 }
 
+// applyAwtrixLayout extracts and rearranges pixels from an AWTRIX frame into a standard 64x32 canvas
+// based on detected layout mode and user layout preference.
 func applyAwtrixLayout(src *image.RGBA, info layoutInfo, layout string) *image.RGBA {
 	if layout == "native" {
 		return src
@@ -860,6 +887,7 @@ func applyAwtrixLayout(src *image.RGBA, info layoutInfo, layout string) *image.R
 	}
 }
 
+// fitToTargetCanvas scales and positions a processed image to match the target device display dimensions.
 func fitToTargetCanvas(img *image.RGBA, targetW, targetH int, layout string, info layoutInfo, scaleFilter string) *image.RGBA {
 	if img == nil {
 		return nil

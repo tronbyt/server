@@ -63,6 +63,7 @@ func manifestScalar(tag, value string) *yaml.Node {
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
+// handleAddAppGet renders the app catalog page listing system apps, user apps, and external provider apps.
 func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
@@ -444,6 +445,7 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 
 const externalAppThumbnailDurationMs = 3000
 
+// ensureCleanPreviewCache ensures the provider's preview cache directory exists and is invalidated when marker version changes.
 func (s *Server) ensureCleanPreviewCache(providerName string) string {
 	cacheDir := filepath.Join(s.DataDir, "cache", "previews", providerName)
 	markerFile := filepath.Join(cacheDir, ".previews_v9")
@@ -466,6 +468,7 @@ func (s *Server) ensureCleanPreviewCache(providerName string) string {
 	return cacheDir
 }
 
+// serveExternalAppThumbnail handles HTTP requests to serve or render thumbnail previews of external apps.
 func (s *Server) serveExternalAppThumbnail(w http.ResponseWriter, r *http.Request, provider providers.ExternalAppProvider, appID string) {
 	safeAppID, err := sanitizeAppID(appID)
 	if err != nil {
@@ -535,6 +538,7 @@ func (s *Server) serveExternalAppThumbnail(w http.ResponseWriter, r *http.Reques
 	http.NotFound(w, r)
 }
 
+// serveThumbnailBytes writes thumbnail bytes to the HTTP response with ETag and caching headers.
 func (s *Server) serveThumbnailBytes(w http.ResponseWriter, r *http.Request, b []byte) {
 	h := sha256.Sum256(b)
 	etag := fmt.Sprintf("\"%x\"", h[:16])
@@ -550,6 +554,7 @@ func (s *Server) serveThumbnailBytes(w http.ResponseWriter, r *http.Request, b [
 	_, _ = w.Write(b)
 }
 
+// warmExternalAppThumbnails asynchronously pre-renders thumbnails for discovered external apps.
 func (s *Server) warmExternalAppThumbnails(provider providers.ExternalAppProvider, apps []providers.ExternalAppMeta) {
 	cacheDir := s.ensureCleanPreviewCache(provider.Name())
 	s.backgroundRenders.Go(func() {
@@ -1121,6 +1126,7 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleRenderConfigPreview renders or serves an on-the-fly preview of an app with the requested configuration.
 func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 

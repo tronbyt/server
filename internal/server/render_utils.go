@@ -329,6 +329,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	return true // Not time to render yet, assume existing is fine
 }
 
+// renderExternalApp delegates rendering of third-party external apps to their registered provider adapter.
 func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *data.Device, user *data.User, forceRender bool) bool {
 	provider, appID, ok := s.parseExternalAppPath(*app.Path)
 	if !ok {

@@ -146,6 +146,7 @@ func (s *Server) getSettingsContentData(user *data.User) TemplateData {
 	}
 }
 
+// handleExternalProviderConfig parses, validates, and updates external provider settings from an HTTP POST request.
 func (s *Server) handleExternalProviderConfig(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -185,10 +186,12 @@ func (s *Server) handleExternalProviderConfig(
 	s.flashAndRedirect(w, r, fmt.Sprintf("%s settings updated.", displayName), "/settings/content", http.StatusSeeOther)
 }
 
+// handleSetScreenyConfig handles POST requests to configure Screeny settings.
 func (s *Server) handleSetScreenyConfig(w http.ResponseWriter, r *http.Request) {
 	s.handleExternalProviderConfig(w, r, "Screeny", "screeny", "screeny_studio_url", "screeny_scale_filter", "patches", s.updateScreenyConfig)
 }
 
+// handleSetAwtrixConfig handles POST requests to configure AWTRIX NG settings.
 func (s *Server) handleSetAwtrixConfig(w http.ResponseWriter, r *http.Request) {
 	layout := strings.TrimSpace(r.FormValue("awtrix_layout"))
 	s.handleExternalProviderConfig(w, r, "Awtrix NG", "awtrix", "awtrix_url", "awtrix_scale_filter", "apps", func(u, f string) error {

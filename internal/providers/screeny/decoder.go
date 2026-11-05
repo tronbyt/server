@@ -405,14 +405,17 @@ func lerp8(a, b byte, w uint32) byte {
 	return byte((uint32(a)*(256-w) + uint32(b)*w + 128) >> 8)
 }
 
+// x5 expands a 5-bit color component to 8 bits.
 func x5(v uint32) byte {
 	return byte((v << 3) | (v >> 2))
 }
 
+// x6 expands a 6-bit color component to 8 bits.
 func x6(v uint32) byte {
 	return byte((v << 2) | (v >> 4))
 }
 
+// rgb565 unpacks two RGB565 bytes into 8-bit RGB components.
 func rgb565(lo, hi byte) [3]byte {
 	v := uint32(lo) | (uint32(hi) << 8)
 	return [3]byte{
