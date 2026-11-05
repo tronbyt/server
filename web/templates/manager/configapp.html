@@ -68,7 +68,7 @@
 {{ if .AppMetadata }}
 <div class="app-metadata">
     {{ if .AppMetadata.Summary }}
-    <p class="app-summary">{{ .AppMetadata.Summary }}</p>
+    <p class="app-summary">{{ .AppMetadata.Summary }} {{ t .Localizer "by" }} <a href="https://github.com/{{ .AppMetadata.Author }}">{{ .AppMetadata.Author }}</a></p>
     {{ end }}
     {{ if .AppMetadata.Desc }}
     <div class="app-desc">{{ .AppMetadata.Desc }}</div>
@@ -2121,7 +2121,7 @@ function createImageUploadField(field, config) {
     if (!sel) return;
     const urlContainer = document.getElementById('notification_sound_url_container');
     const triggerRow = document.getElementById('notification_sound_trigger_row');
-    
+
     if (urlContainer) {
       urlContainer.style.display = (sel.value === 'custom_url') ? 'block' : 'none';
     }
