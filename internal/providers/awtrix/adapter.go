@@ -9,6 +9,7 @@ import (
 	"image"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -29,6 +30,7 @@ type AdapterConfig struct {
 	ScaleFilter string
 	Layout      string
 	HTTPClient  *http.Client
+	Semaphore   chan struct{}
 }
 
 // AwtrixAdapter implements providers.ExternalAppProvider for AWTRIX NG.
@@ -41,7 +43,7 @@ type AwtrixAdapter struct {
 	httpClient  *http.Client
 }
 
-// NewAdapter creates a new AwtrixAdapter.
+// NewAdapter creates a new AwtrixAdapter with safe transport dials and redirect checks.
 func NewAdapter(cfg AdapterConfig) *AwtrixAdapter {
 	baseURL := strings.TrimRight(cfg.BaseURL, "/")
 	if baseURL == "" {
@@ -59,19 +61,60 @@ func NewAdapter(cfg AdapterConfig) *AwtrixAdapter {
 	if layout == "" {
 		layout = "center"
 	}
+
+	safeDialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			host = addr
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			if providers.IsBlockedMetadataIP(ip) {
+				return nil, fmt.Errorf("connection to prohibited IP %s blocked", ip)
+			}
+		} else if ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host); err == nil {
+			for _, ip := range ips {
+				if providers.IsBlockedMetadataIP(ip) {
+					return nil, fmt.Errorf("connection to prohibited IP %s blocked", ip)
+				}
+			}
+		}
+		d := &net.Dialer{Timeout: 5 * time.Second}
+		return d.DialContext(ctx, network, addr)
+	}
+
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 10 * time.Second}
+		httpClient = &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				DialContext: safeDialContext,
+			},
+		}
+	}
+	if httpClient.CheckRedirect == nil {
+		httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return errors.New("HTTP redirects are not permitted for external provider requests")
+		}
+	}
+
+	sem := cfg.Semaphore
+	if sem == nil {
+		sem = make(chan struct{}, 1)
 	}
 
 	return &AwtrixAdapter{
-		sem:         make(chan struct{}, 1),
+		sem:         sem,
 		baseURL:     baseURL,
 		fps:         fps,
 		scaleFilter: scaleFilter,
 		layout:      layout,
 		httpClient:  httpClient,
 	}
+}
+
+// Semaphore returns the adapter's concurrency synchronization channel.
+func (a *AwtrixAdapter) Semaphore() chan struct{} {
+	return a.sem
 }
 
 // Name returns the provider's unique identifier.
@@ -145,11 +188,12 @@ func (a *AwtrixAdapter) ListApps(ctx context.Context) ([]providers.ExternalAppMe
 		}
 
 		result = append(result, providers.ExternalAppMeta{
-			ID:      item.Name,
-			Name:    name,
-			Summary: summary,
-			Desc:    desc,
-			Author:  author,
+			ID:       item.Name,
+			Name:     name,
+			Summary:  summary,
+			Desc:     desc,
+			Author:   author,
+			Disabled: !item.Enabled,
 		})
 	}
 
@@ -160,8 +204,8 @@ func (a *AwtrixAdapter) ListApps(ctx context.Context) ([]providers.ExternalAppMe
 func (a *AwtrixAdapter) GetAppSchema(ctx context.Context, appID string) ([]byte, error) {
 	cfg, isBuiltin, err := a.fetchAppConfig(ctx, appID)
 	if err != nil {
-		slog.Warn("Failed to fetch awtrix app config, returning empty schema", "app", appID, "error", err)
-		return []byte(`{"version":"1","schema":[]}`), nil
+		slog.Warn("Failed to fetch awtrix app config, returning schema with layout defaults", "app", appID, "error", err)
+		return TranslateAwtrixSchema(AwtrixConfigResponse{}, false)
 	}
 
 	return TranslateAwtrixSchema(*cfg, isBuiltin)
@@ -218,6 +262,7 @@ type screenData struct {
 }
 
 // RenderAppChunks configures the app on AWTRIX NG, captures virtual screen frames, and encodes them into WebP chunks.
+// Note: AWTRIX clock apps display time based on the AWTRIX hub's configured timezone; req.Timezone does not override the hub-wide setting.
 func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.RenderRequest) ([]providers.RenderChunk, error) {
 	// Acquire semaphore to ensure exclusive access to the Awtrix virtual display
 	select {
@@ -229,27 +274,47 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 
 	// 1. Query original settings so we can reliably restore them on exit
 	type awtrixSettingsResp struct {
-		AutoTransition       *bool `json:"autoTransition,omitempty"`
-		TransitionDurationMs *int  `json:"transitionDurationMs,omitempty"`
+		AutoTransition       *bool `json:"autoTransition"`
+		TransitionDurationMs *int  `json:"transitionDurationMs"`
 	}
 	var origSettings awtrixSettingsResp
 	settingsURL := fmt.Sprintf("%s/api/v1/settings", a.baseURL)
-	if sReq, err := http.NewRequestWithContext(ctx, http.MethodGet, settingsURL, nil); err == nil {
-		if sResp, err := a.httpClient.Do(sReq); err == nil {
-			_ = json.NewDecoder(sResp.Body).Decode(&origSettings)
-			_, _ = io.Copy(io.Discard, io.LimitReader(sResp.Body, 1024))
-			_ = sResp.Body.Close()
-		}
+	sReq, err := http.NewRequestWithContext(ctx, http.MethodGet, settingsURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating settings request: %w", err)
+	}
+	sResp, err := a.httpClient.Do(sReq)
+	if err != nil {
+		return nil, fmt.Errorf("fetching awtrix settings: %w", err)
+	}
+	if sResp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(sResp.Body, 1024))
+		_ = sResp.Body.Close()
+		return nil, fmt.Errorf("fetching awtrix settings returned status %d", sResp.StatusCode)
+	}
+	decodeErr := json.NewDecoder(sResp.Body).Decode(&origSettings)
+	_, _ = io.Copy(io.Discard, io.LimitReader(sResp.Body, 1024))
+	_ = sResp.Body.Close()
+	if decodeErr != nil || origSettings.AutoTransition == nil {
+		return nil, fmt.Errorf("invalid awtrix settings response (autoTransition required): %w", decodeErr)
 	}
 
-	// Ensure AWTRIX auto-transition and display settings are always restored when rendering completes or aborts
+	var (
+		origFieldValues map[string]any
+		configPatchURL  string
+		configPatched   bool
+		origCurrentApp  string
+		activated       bool
+	)
+
+	// Ensure AWTRIX auto-transition, app configuration, and active app are restored when rendering completes or aborts
 	defer func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		restoreMap := map[string]any{"autoTransition": true}
-		if origSettings.AutoTransition != nil {
-			restoreMap["autoTransition"] = *origSettings.AutoTransition
+		// 1. Restore display settings
+		restoreMap := map[string]any{
+			"autoTransition": *origSettings.AutoTransition,
 		}
 		if origSettings.TransitionDurationMs != nil {
 			restoreMap["transitionDurationMs"] = *origSettings.TransitionDurationMs
@@ -257,9 +322,51 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 		if b, err := json.Marshal(restoreMap); err == nil {
 			if rReq, err := http.NewRequestWithContext(cleanupCtx, http.MethodPatch, settingsURL, bytes.NewReader(b)); err == nil {
 				rReq.Header.Set("Content-Type", "application/json")
-				if rResp, err := a.httpClient.Do(rReq); err == nil {
+				if rResp, err := a.httpClient.Do(rReq); err != nil {
+					slog.Warn("Failed to restore awtrix display settings", "error", err)
+				} else {
+					if rResp.StatusCode < 200 || rResp.StatusCode >= 300 {
+						slog.Warn("Awtrix display settings restore returned non-2xx status", "status", rResp.StatusCode)
+					}
 					_, _ = io.Copy(io.Discard, io.LimitReader(rResp.Body, 1024))
 					_ = rResp.Body.Close()
+				}
+			}
+		}
+
+		// 2. Restore app configuration if modified
+		if configPatched && len(origFieldValues) > 0 && configPatchURL != "" {
+			if b, err := json.Marshal(origFieldValues); err == nil {
+				if rReq, err := http.NewRequestWithContext(cleanupCtx, http.MethodPatch, configPatchURL, bytes.NewReader(b)); err == nil {
+					rReq.Header.Set("Content-Type", "application/json")
+					if rResp, err := a.httpClient.Do(rReq); err != nil {
+						slog.Warn("Failed to restore awtrix app configuration", "error", err)
+					} else {
+						if rResp.StatusCode < 200 || rResp.StatusCode >= 300 {
+							slog.Warn("Awtrix app configuration restore returned non-2xx status", "status", rResp.StatusCode)
+						}
+						_, _ = io.Copy(io.Discard, io.LimitReader(rResp.Body, 1024))
+						_ = rResp.Body.Close()
+					}
+				}
+			}
+		}
+
+		// 3. Restore previously active app if activation succeeded and differed from target
+		if activated && origCurrentApp != "" && origCurrentApp != req.AppID {
+			activateURL := fmt.Sprintf("%s/api/v1/apps/active", a.baseURL)
+			if b, err := json.Marshal(map[string]string{"name": origCurrentApp}); err == nil {
+				if rReq, err := http.NewRequestWithContext(cleanupCtx, http.MethodPut, activateURL, bytes.NewReader(b)); err == nil {
+					rReq.Header.Set("Content-Type", "application/json")
+					if rResp, err := a.httpClient.Do(rReq); err != nil {
+						slog.Warn("Failed to restore previous awtrix active app", "app", origCurrentApp, "error", err)
+					} else {
+						if rResp.StatusCode < 200 || rResp.StatusCode >= 300 {
+							slog.Warn("Awtrix active app restore returned non-2xx status", "status", rResp.StatusCode)
+						}
+						_, _ = io.Copy(io.Discard, io.LimitReader(rResp.Body, 1024))
+						_ = rResp.Body.Close()
+					}
 				}
 			}
 		}
@@ -268,35 +375,58 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 	// 2. If custom configuration options were provided, apply them via PATCH
 	if len(req.Config) > 0 {
 		if cfg, isBuiltin, err := a.fetchAppConfig(ctx, req.AppID); err == nil && len(cfg.Fields) > 0 {
+			origFieldValues = make(map[string]any)
+			for _, f := range cfg.Fields {
+				if f.Value != nil {
+					origFieldValues[f.Key] = f.Value
+				}
+			}
 			patchBody := ConvertUserConfigToAwtrix(cfg.Fields, req.Config)
 			if len(patchBody) > 0 {
-				patchURL := fmt.Sprintf("%s/api/v1/apps/builtin/%s/config", a.baseURL, url.PathEscape(req.AppID))
+				configPatchURL = fmt.Sprintf("%s/api/v1/apps/builtin/%s/config", a.baseURL, url.PathEscape(req.AppID))
 				if !isBuiltin {
-					patchURL = fmt.Sprintf("%s/api/v1/apps/%s/config", a.baseURL, url.PathEscape(req.AppID))
+					configPatchURL = fmt.Sprintf("%s/api/v1/apps/%s/config", a.baseURL, url.PathEscape(req.AppID))
 				}
 				bodyBytes, err := json.Marshal(patchBody)
-				if err == nil {
-					pReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, patchURL, bytes.NewReader(bodyBytes))
-					if err == nil {
-						pReq.Header.Set("Content-Type", "application/json")
-						if pResp, err := a.httpClient.Do(pReq); err == nil {
-							_, _ = io.Copy(io.Discard, io.LimitReader(pResp.Body, 1024))
-							_ = pResp.Body.Close()
-						}
-					}
+				if err != nil {
+					return nil, fmt.Errorf("encoding awtrix config patch: %w", err)
 				}
+				pReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, configPatchURL, bytes.NewReader(bodyBytes))
+				if err != nil {
+					return nil, fmt.Errorf("creating awtrix config patch request: %w", err)
+				}
+				pReq.Header.Set("Content-Type", "application/json")
+				pResp, err := a.httpClient.Do(pReq)
+				if err != nil {
+					return nil, fmt.Errorf("patching awtrix app config: %w", err)
+				}
+				pStatusCode := pResp.StatusCode
+				_, _ = io.Copy(io.Discard, io.LimitReader(pResp.Body, 1024))
+				_ = pResp.Body.Close()
+				if pStatusCode < 200 || pStatusCode >= 300 {
+					return nil, fmt.Errorf("patching awtrix app config returned status %d", pStatusCode)
+				}
+				configPatched = true
 			}
 		}
 	}
 
 	// 3. Freeze AWTRIX auto-rotation and disable transitions so only this single app renders
 	freezeBody := []byte(`{"autoTransition":false,"transitionDurationMs":0}`)
-	if fReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, settingsURL, bytes.NewReader(freezeBody)); err == nil {
-		fReq.Header.Set("Content-Type", "application/json")
-		if fResp, err := a.httpClient.Do(fReq); err == nil {
-			_, _ = io.Copy(io.Discard, io.LimitReader(fResp.Body, 1024))
-			_ = fResp.Body.Close()
-		}
+	fReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, settingsURL, bytes.NewReader(freezeBody))
+	if err != nil {
+		return nil, fmt.Errorf("creating freeze request: %w", err)
+	}
+	fReq.Header.Set("Content-Type", "application/json")
+	fResp, err := a.httpClient.Do(fReq)
+	if err != nil {
+		return nil, fmt.Errorf("freezing awtrix display: %w", err)
+	}
+	fStatusCode := fResp.StatusCode
+	_, _ = io.Copy(io.Discard, io.LimitReader(fResp.Body, 1024))
+	_ = fResp.Body.Close()
+	if fStatusCode != http.StatusOK {
+		return nil, fmt.Errorf("freezing awtrix display returned status %d", fStatusCode)
 	}
 
 	// 4. Activate the app on the AWTRIX display
@@ -311,12 +441,15 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 			var devInfo struct {
 				CurrentApp string `json:"currentApp"`
 			}
-			if json.NewDecoder(dResp.Body).Decode(&devInfo) == nil && devInfo.CurrentApp == req.AppID {
-				nextURL := fmt.Sprintf("%s/api/v1/apps/next", a.baseURL)
-				if nReq, err := http.NewRequestWithContext(ctx, http.MethodPost, nextURL, nil); err == nil {
-					if nResp, err := a.httpClient.Do(nReq); err == nil {
-						_, _ = io.Copy(io.Discard, io.LimitReader(nResp.Body, 1024))
-						_ = nResp.Body.Close()
+			if json.NewDecoder(dResp.Body).Decode(&devInfo) == nil {
+				origCurrentApp = devInfo.CurrentApp
+				if devInfo.CurrentApp == req.AppID {
+					nextURL := fmt.Sprintf("%s/api/v1/apps/next", a.baseURL)
+					if nReq, err := http.NewRequestWithContext(ctx, http.MethodPost, nextURL, nil); err == nil {
+						if nResp, err := a.httpClient.Do(nReq); err == nil {
+							_, _ = io.Copy(io.Discard, io.LimitReader(nResp.Body, 1024))
+							_ = nResp.Body.Close()
+						}
 					}
 				}
 			}
@@ -336,11 +469,13 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 	if err != nil {
 		return nil, fmt.Errorf("activating awtrix app: %w", err)
 	}
+	actStatusCode := actResp.StatusCode
 	_, _ = io.Copy(io.Discard, io.LimitReader(actResp.Body, 1024))
 	_ = actResp.Body.Close()
-	if actResp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("activating awtrix app returned status %d", actResp.StatusCode)
+	if actStatusCode != http.StatusOK {
+		return nil, fmt.Errorf("activating awtrix app returned status %d", actStatusCode)
 	}
+	activated = true
 
 	// Wait 150ms for initial layout rendering
 	select {
@@ -349,7 +484,7 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 		return nil, ctx.Err()
 	}
 
-	// 4. Determine capture parameters
+	// 5. Determine capture parameters
 	fps := req.FPS
 	if fps <= 0 {
 		fps = a.fps
@@ -380,11 +515,9 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 		layoutMode = "center"
 	}
 
-	var frames []*image.RGBA
-	var layoutDetermined bool
-	var detectedLayout layoutInfo
+	var rawFrames []*image.RGBA
 
-	// 5. Capture frames
+	// 6. Capture frames
 	ticker := time.NewTicker(frameInterval)
 	defer ticker.Stop()
 
@@ -418,18 +551,22 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 			}
 			continue
 		}
-		consecutiveErrors = 0
 
 		var sd screenData
-		decodeErr := json.NewDecoder(sResp.Body).Decode(&sd)
+		decodeErr := json.NewDecoder(io.LimitReader(sResp.Body, 1024*1024)).Decode(&sd)
 		_, _ = io.Copy(io.Discard, io.LimitReader(sResp.Body, 4096))
 		_ = sResp.Body.Close()
 
-		if decodeErr != nil || sd.Width <= 0 || sd.Height <= 0 || len(sd.Pixels) != sd.Width*sd.Height {
+		if decodeErr != nil || sd.Width <= 0 || sd.Width > 256 || sd.Height <= 0 || sd.Height > 256 || len(sd.Pixels) != sd.Width*sd.Height {
+			consecutiveErrors++
+			if consecutiveErrors >= 5 {
+				return nil, errors.New("awtrix screen frame decoding failed repeatedly or returned invalid dimensions")
+			}
 			continue
 		}
+		consecutiveErrors = 0
 
-		// Convert pixel array to image.RGBA (row-major 64x32)
+		// Convert pixel array to image.RGBA (row-major)
 		img := image.NewRGBA(image.Rect(0, 0, sd.Width, sd.Height))
 		for idx, pix := range sd.Pixels {
 			offset := idx * 4
@@ -439,29 +576,55 @@ func (a *AwtrixAdapter) RenderAppChunks(ctx context.Context, req providers.Rende
 			img.Pix[offset+3] = 0xFF
 		}
 
-		// Determine layout mode on the first frame with visible content
-		if !layoutDetermined && layoutMode != "native" && sd.Width == 64 && sd.Height == 32 {
-			if info, ok := detectLayoutInfo(img); ok {
-				layoutDetermined = true
-				detectedLayout = info
-			}
-		}
-
-		if sd.Width == 64 && sd.Height == 32 {
-			img = applyAwtrixLayout(img, detectedLayout, layoutMode)
-		}
-
-		img = fitToTargetCanvas(img, req.Width, req.Height, layoutMode, detectedLayout, a.scaleFilter)
-
-		frames = append(frames, img)
+		rawFrames = append(rawFrames, img)
 	}
 
-	if len(frames) == 0 {
+	if len(rawFrames) == 0 {
 		return nil, errors.New("no frames captured from awtrix screen")
 	}
 
-	// 5. Partition frames into WebP chunk(s)
+	// Determine layout mode across all captured frames to avoid partial-frame misclassification
+	var detectedLayout layoutInfo
+	if layoutMode != "native" {
+		detectedLayout = detectLayoutAcrossFrames(rawFrames)
+	}
+
+	frames := make([]*image.RGBA, 0, len(rawFrames))
+	for _, raw := range rawFrames {
+		img := raw
+		if raw.Bounds().Dx() == 64 && raw.Bounds().Dy() == 32 {
+			img = applyAwtrixLayout(img, detectedLayout, layoutMode)
+		}
+		img = fitToTargetCanvas(img, req.Width, req.Height, layoutMode, detectedLayout, a.scaleFilter)
+		frames = append(frames, img)
+	}
+
+	// 7. Partition frames into WebP chunk(s)
 	return chunker.SplitFramesIntoChunksWithDuration(frames, fps, req.MaxChunkSize, req.MaxChunkDurationMs, durationMs)
+}
+
+// detectLayoutAcrossFrames scans all captured frames to determine the most accurate layout,
+// prioritizing full 32-row content over 16-row or 8-row modes.
+func detectLayoutAcrossFrames(frames []*image.RGBA) layoutInfo {
+	var best layoutInfo
+	found := false
+	for _, frame := range frames {
+		if info, ok := detectLayoutInfo(frame); ok {
+			if !found {
+				best = info
+				found = true
+			}
+			// 32row always takes highest precedence over 16row and 8row
+			if info.mode == "32row" {
+				return info
+			}
+			// 16row takes precedence over 8row
+			if (info.mode == "16row-full" || info.mode == "16row-narrow") && best.mode == "8row" {
+				best = info
+			}
+		}
+	}
+	return best
 }
 
 type layoutInfo struct {

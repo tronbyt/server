@@ -19,6 +19,17 @@ func TestAwtrixIntegration(t *testing.T) {
 	// Mock Awtrix NG server
 	awtrixServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/api/v1/settings":
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"autoTransition":true,"transitionDurationMs":5000}`))
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		case "/api/v1/device":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"currentApp":"OtherApp"}`))
 		case "/api/v1/apps":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`[

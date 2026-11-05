@@ -6,6 +6,7 @@ import (
 	"image"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"tronbyt-server/internal/providers"
@@ -108,8 +109,31 @@ func TestAwtrixAdapter_GetAppSchema(t *testing.T) {
 
 func TestAwtrixAdapter_RenderAppChunks(t *testing.T) {
 	activated := false
+	var settingsPatches []map[string]any
+	var mu sync.Mutex
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/api/v1/settings":
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"autoTransition":true,"transitionDurationMs":5000}`))
+				return
+			}
+			if r.Method == http.MethodPatch {
+				var body map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&body)
+				mu.Lock()
+				settingsPatches = append(settingsPatches, body)
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"ok":true}`))
+				return
+			}
+			http.Error(w, "bad method", http.StatusMethodNotAllowed)
+		case "/api/v1/device":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"currentApp":"OtherApp"}`))
 		case "/api/v1/apps/active":
 			assert.Equal(t, http.MethodPut, r.Method)
 			activated = true
@@ -153,6 +177,15 @@ func TestAwtrixAdapter_RenderAppChunks(t *testing.T) {
 	assert.True(t, activated, "App should have been activated via PUT")
 	require.NotEmpty(t, chunks)
 	assert.NotEmpty(t, chunks[0].WebPBytes)
+
+	// Verify freeze and restore PATCHes
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, settingsPatches, 2, "Expected freeze PATCH followed by restore PATCH")
+	assert.Equal(t, false, settingsPatches[0]["autoTransition"])
+	assert.Equal(t, float64(0), settingsPatches[0]["transitionDurationMs"])
+	assert.Equal(t, true, settingsPatches[1]["autoTransition"])
+	assert.Equal(t, float64(5000), settingsPatches[1]["transitionDurationMs"])
 }
 
 func TestConvertUserConfigToAwtrix(t *testing.T) {
@@ -432,4 +465,92 @@ func TestFitToTargetCanvas_ZeroDimensions(t *testing.T) {
 	assert.NotPanics(t, func() {
 		detectLayoutInfo(emptyImg)
 	})
+}
+
+func TestAwtrixAdapter_GetAppSchema_FallbackOnFetchError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "server down", http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	adapter := NewAdapter(AdapterConfig{
+		BaseURL: server.URL,
+	})
+
+	schemaBytes, err := adapter.GetAppSchema(context.Background(), "BrokenApp")
+	require.NoError(t, err)
+
+	var schema PixletSchema
+	require.NoError(t, json.Unmarshal(schemaBytes, &schema))
+	assert.Equal(t, "1", schema.Version)
+	require.NotEmpty(t, schema.Schema)
+	hasLayout := false
+	for _, f := range schema.Schema {
+		if f.ID == "_layout" {
+			hasLayout = true
+			break
+		}
+	}
+	assert.True(t, hasLayout, "Fallback schema must include _layout field")
+}
+
+func TestAwtrixAdapter_ListApps_DisabledField(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]awtrixAppItem{
+			{Name: "ActiveApp", Enabled: true, Present: true},
+			{Name: "InactiveApp", Enabled: false, Present: true},
+		})
+	}))
+	defer server.Close()
+
+	adapter := NewAdapter(AdapterConfig{
+		BaseURL: server.URL,
+	})
+
+	apps, err := adapter.ListApps(context.Background())
+	require.NoError(t, err)
+	require.Len(t, apps, 2)
+	assert.Equal(t, "ActiveApp", apps[0].ID)
+	assert.False(t, apps[0].Disabled)
+	assert.Equal(t, "InactiveApp", apps[1].ID)
+	assert.True(t, apps[1].Disabled)
+}
+
+func TestTranslateAwtrixSchema_BoolValuePrecedence(t *testing.T) {
+	resp := AwtrixConfigResponse{
+		Name: "TestApp",
+		Fields: []AwtrixField{
+			{
+				Key:     "flag",
+				Type:    "bool",
+				Default: false,
+				Value:   true,
+			},
+		},
+	}
+
+	b, err := TranslateAwtrixSchema(resp, false)
+	require.NoError(t, err)
+
+	var schema PixletSchema
+	require.NoError(t, json.Unmarshal(b, &schema))
+	require.NotEmpty(t, schema.Schema)
+	assert.Equal(t, "true", schema.Schema[0].Default, "f.Value must take precedence over f.Default for bool fields")
+}
+
+func TestConvertUserConfigToAwtrix_SelectFloat(t *testing.T) {
+	fields := []AwtrixField{
+		{
+			Key:     "speed",
+			Type:    "select",
+			Options: []any{0.5, 1.0, 1.5, 2.0},
+		},
+	}
+	userConfig := map[string]any{
+		"speed": "1.5",
+	}
+
+	converted := ConvertUserConfigToAwtrix(fields, userConfig)
+	assert.Equal(t, 1.5, converted["speed"])
 }

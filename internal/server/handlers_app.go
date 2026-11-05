@@ -93,6 +93,9 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 			s.warmExternalAppThumbnails(provider, extApps)
 		}
 		for _, ext := range extApps {
+			if ext.Disabled {
+				continue
+			}
 			category := "Visuals"
 			if strings.HasPrefix(ext.ID, "clocks") {
 				category = "Clocks"
@@ -551,6 +554,9 @@ func (s *Server) warmExternalAppThumbnails(provider providers.ExternalAppProvide
 	cacheDir := s.ensureCleanPreviewCache(provider.Name())
 	s.backgroundRenders.Go(func() {
 		for _, app := range apps {
+			if app.Disabled {
+				continue
+			}
 			safeAppID, err := sanitizeAppID(app.ID)
 			if err != nil {
 				continue
@@ -1204,8 +1210,10 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				Timezone:     device.GetTimezone(),
 				Config:       configData,
 			}
-			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			renderTimeout := max(30*time.Second, time.Duration(previewDurationMs)*time.Millisecond+15*time.Second)
+			ctx, cancel := context.WithTimeout(r.Context(), renderTimeout)
 			defer cancel()
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(renderTimeout))
 
 			chunks, err := provider.RenderAppChunks(ctx, req)
 			if err != nil || len(chunks) == 0 {
@@ -1297,8 +1305,11 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				Timezone:     device.GetTimezone(),
 				Config:       app.Config,
 			}
-			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			renderTimeout := max(30*time.Second, time.Duration(previewDurationMs)*time.Millisecond+15*time.Second)
+			ctx, cancel := context.WithTimeout(r.Context(), renderTimeout)
 			defer cancel()
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(renderTimeout))
+
 			chunks, err := provider.RenderAppChunks(ctx, req)
 			if err == nil && len(chunks) > 0 {
 				previewBytes := chunks[0].WebPBytes

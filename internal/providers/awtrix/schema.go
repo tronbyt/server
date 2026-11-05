@@ -173,6 +173,7 @@ type PixletSchema struct {
 	Schema  []PixletSchemaField `json:"schema"`
 }
 
+// PixletSchemaField represents an individual parameter control in a Pixlet schema.
 type PixletSchemaField struct {
 	ID          string         `json:"id"`
 	Name        string         `json:"name"`
@@ -183,6 +184,7 @@ type PixletSchemaField struct {
 	Options     []PixletOption `json:"options,omitempty"`
 }
 
+// PixletOption represents a selectable option in a dropdown control.
 type PixletOption struct {
 	Display string `json:"display"`
 	Value   string `json:"value"`
@@ -229,10 +231,10 @@ func TranslateAwtrixSchema(resp AwtrixConfigResponse, isBuiltin bool) ([]byte, e
 		switch f.Type {
 		case "bool":
 			field.Type = "onoff"
-			if d, ok := f.Default.(bool); ok {
-				field.Default = fmt.Sprintf("%t", d)
-			} else if v, ok := f.Value.(bool); ok {
+			if v, ok := f.Value.(bool); ok {
 				field.Default = fmt.Sprintf("%t", v)
+			} else if d, ok := f.Default.(bool); ok {
+				field.Default = fmt.Sprintf("%t", d)
 			} else {
 				field.Default = "false"
 			}
@@ -365,6 +367,8 @@ func ConvertUserConfigToAwtrix(fields []AwtrixField, userConfig map[string]any) 
 					if s, ok := v.(string); ok {
 						if n, err := strconv.Atoi(s); err == nil {
 							converted = n
+						} else if fl, err := strconv.ParseFloat(s, 64); err == nil {
+							converted = fl
 						}
 					}
 				}

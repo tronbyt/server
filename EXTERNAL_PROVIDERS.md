@@ -177,7 +177,7 @@ sequenceDiagram
 ### Live Architecture Details
 * **Target Hub**: REST API at `AWTRIX_URL` (e.g. `http://192.168.1.15:7080`).
 * **Native Geometry**: 64&times;32 pixels (`2,048` total pixels).
-* **Frame Endpoint**: `GET /api/v1/display/screen` returns a 2,048-element JSON array of 24-bit integers formatted as `0xRRGGBB` (`(r << 16) | (g << 8) | b`).
+* **Frame Endpoint**: `GET /api/v1/display/screen` returns a JSON object containing `width` (64), `height` (32), and a `pixels` array of 2,048 row-major 24-bit integers formatted as `0xRRGGBB` (`(r << 16) | (g << 8) | b`).
 * **Frame Performance**: Average HTTP request latency over local LAN is **~24.2 ms** (delivering up to 40 FPS).
 
 ### App Discovery & Classification
@@ -216,13 +216,16 @@ AWTRIX NG schemas use native data types that do not match Pixlet schemas. The ad
 | AWTRIX NG Schema Field | Translated Pixlet Schema Control | Notes / Transformations |
 | :--- | :--- | :--- |
 | `bool` | `schema.Toggle` | Maps `true` / `false`. |
-| `select` | `schema.Dropdown` | Maps options with values and labels. |
+| `select` | `schema.Dropdown` | Maps options with values and labels (numeric options converted on `PATCH`). |
 | `color` | `schema.Color` | Converts `#RRGGBB` hex string &harr; 24-bit RGB int (`16711680`). |
-| `days` | `schema.Dropdown` | Prepopulates week range options (`All Days`, `Weekdays`, etc.). |
+| `days` | `schema.Text` | Not translated to a dropdown. Uses the default text control. |
 | `string` / `text` | `schema.Text` | Direct string entry. |
-| `int` / `float` | `schema.Text` or `schema.Dropdown` | Validated and converted back to numbers on `PATCH`. |
+| `number` / `slider` | `schema.Text` | Converted to a number on `PATCH`. Other types keep their submitted value type. |
 
 The schema translator also incorporates an embedded human-readable dictionary providing user-friendly titles and field descriptions for common AWTRIX configuration parameters (e.g., `showSeconds`, `calendarIcon`, `appEffect`, `textColor`).
+
+> [!NOTE]
+> **Timezone Behavior**: AWTRIX clock apps display time based on the AWTRIX hub's configured timezone. `RenderAppChunks` does not alter the hub-wide timezone during rendering to avoid disrupting other devices sharing the hub.
 
 ---
 

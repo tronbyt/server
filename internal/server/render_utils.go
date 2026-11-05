@@ -115,8 +115,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 
 	// External Provider App (e.g. Screeny, Awtrix)
-	if _, _, ok := s.parseExternalAppPath(*app.Path); ok {
-		return s.renderExternalApp(ctx, app, device, user, false)
+	if s.isExternalAppPath(*app.Path) {
+		if _, _, ok := s.parseExternalAppPath(*app.Path); ok {
+			return s.renderExternalApp(ctx, app, device, user, false)
+		}
+		slog.Warn("External app provider unavailable for path", "path", *app.Path)
+		return false
 	}
 
 	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
