@@ -291,6 +291,61 @@ func TestSettingsContentScreenyProvider(t *testing.T) {
 	require.Equal(t, "http://localhost:8787", val)
 }
 
+func TestHandleSetAwtrixConfig(t *testing.T) {
+	s := newTestServer(t)
+
+	admin := data.User{Username: "admin", Password: "hashed", IsAdmin: true}
+	require.NoError(t, s.DB.Create(&admin).Error)
+
+	seedReq := httptest.NewRequest(http.MethodGet, "/settings/content", nil)
+	seedRR := httptest.NewRecorder()
+	session, _ := s.Store.Get(seedReq, "session-name")
+	session.Values["username"] = "admin"
+	require.NoError(t, session.Save(seedReq, seedRR))
+
+	// 1. GET settings content page
+	req := httptest.NewRequest(http.MethodGet, "/settings/content", nil)
+	for _, cookie := range seedRR.Result().Cookies() {
+		req.AddCookie(cookie)
+	}
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Contains(t, rr.Body.String(), "AWTRIX NG")
+	require.Contains(t, rr.Body.String(), `name="awtrix_url"`)
+	require.Contains(t, rr.Body.String(), `name="awtrix_scale_filter"`)
+	require.Contains(t, rr.Body.String(), `name="awtrix_layout"`)
+
+	// 2. POST update awtrix config
+	form := url.Values{}
+	form.Add("awtrix_url", "http://localhost:7080")
+	form.Add("awtrix_scale_filter", "scale2x")
+	form.Add("awtrix_layout", "center")
+	postReq := httptest.NewRequest(http.MethodPost, "/settings/awtrix", strings.NewReader(form.Encode()))
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for _, cookie := range seedRR.Result().Cookies() {
+		postReq.AddCookie(cookie)
+	}
+	postRR := httptest.NewRecorder()
+	s.ServeHTTP(postRR, postReq)
+
+	require.Equal(t, http.StatusSeeOther, postRR.Code)
+	require.Equal(t, "http://localhost:7080", s.Config.AwtrixURL)
+	require.Equal(t, "scale2x", s.Config.AwtrixScaleFilter)
+	require.Equal(t, "center", s.Config.AwtrixLayout)
+	require.NotNil(t, s.GetExternalProvider("awtrix"))
+
+	// Check DB setting
+	val, err := s.getSetting("awtrix_url")
+	require.NoError(t, err)
+	require.Equal(t, "http://localhost:7080", val)
+
+	valLayout, err := s.getSetting("awtrix_layout")
+	require.NoError(t, err)
+	require.Equal(t, "center", valLayout)
+}
+
 func TestHandleEditUserPostUpdatesEmail(t *testing.T) {
 	s := newTestServer(t)
 

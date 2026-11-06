@@ -26,6 +26,7 @@ import (
 	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/providers"
+	"tronbyt-server/internal/providers/awtrix"
 	"tronbyt-server/internal/providers/screeny"
 	syncer "tronbyt-server/internal/sync"
 	"tronbyt-server/internal/version"
@@ -197,6 +198,25 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 			ScaleFilter: cfg.ScreenyScaleFilter,
 		}))
 		slog.Info("Registered Screeny external app provider", "url", cfg.ScreenyStudioURL, "scaleFilter", cfg.ScreenyScaleFilter)
+	}
+	// Awtrix Settings from DB or env
+	if val, err := s.getSetting("awtrix_url"); err == nil {
+		cfg.AwtrixURL = val
+	}
+	if val, err := s.getSetting("awtrix_scale_filter"); err == nil && val != "" {
+		cfg.AwtrixScaleFilter = val
+	}
+	if val, err := s.getSetting("awtrix_layout"); err == nil && val != "" {
+		cfg.AwtrixLayout = val
+	}
+	if cfg.AwtrixURL != "" {
+		s.RegisterExternalProvider(awtrix.NewAdapter(awtrix.AdapterConfig{
+			BaseURL:     cfg.AwtrixURL,
+			FPS:         cfg.AwtrixFPS,
+			ScaleFilter: cfg.AwtrixScaleFilter,
+			Layout:      cfg.AwtrixLayout,
+		}))
+		slog.Info("Registered Awtrix external app provider", "url", cfg.AwtrixURL, "scaleFilter", cfg.AwtrixScaleFilter, "layout", cfg.AwtrixLayout)
 	}
 
 	// Load OIDC settings from DB
@@ -452,6 +472,7 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /settings/system-apps-auto-refresh", s.RequireLogin(s.handleSetSystemAppsAutoRefresh))
 	s.Router.HandleFunc("POST /update_firmware", s.RequireLogin(s.handleUpdateFirmware))
 	s.Router.HandleFunc("POST /settings/screeny", s.RequireLogin(s.handleSetScreenyConfig))
+	s.Router.HandleFunc("POST /settings/awtrix", s.RequireLogin(s.handleSetAwtrixConfig))
 
 	// App broken status (development only)
 	s.Router.HandleFunc("POST /mark_app_broken", s.RequireLogin(s.handleMarkAppBroken))
@@ -605,10 +626,71 @@ func (s *Server) updateScreenyConfig(studioURL, scaleFilter string) error {
 	return nil
 }
 
-// isExternalAppPath returns true if the path refers to an external provider (e.g. "screeny:clock").
+// updateAwtrixConfig updates Awtrix settings in the DB and running server.
+func (s *Server) updateAwtrixConfig(awtrixURL, scaleFilter, layout string) error {
+	cleanURL := strings.TrimRight(strings.TrimSpace(awtrixURL), "/")
+	if err := validateExternalProviderURL(cleanURL); err != nil {
+		return fmt.Errorf("invalid Awtrix URL: %w", err)
+	}
+	filter := s.Config.AwtrixScaleFilter
+	if scaleFilter != "" {
+		filter = scaleFilter
+	}
+	awtrixLayout := s.Config.AwtrixLayout
+	if layout != "" {
+		awtrixLayout = layout
+	}
+	if err := s.setSettings(map[string]string{
+		"awtrix_url":          cleanURL,
+		"awtrix_scale_filter": filter,
+		"awtrix_layout":       awtrixLayout,
+	}); err != nil {
+		return err
+	}
+	oldURL := s.Config.AwtrixURL
+	oldFilter := s.Config.AwtrixScaleFilter
+	oldLayout := s.Config.AwtrixLayout
+	s.Config.AwtrixURL = cleanURL
+	s.Config.AwtrixScaleFilter = filter
+	s.Config.AwtrixLayout = awtrixLayout
+
+	if oldURL != cleanURL || oldFilter != filter || oldLayout != awtrixLayout {
+		markerFile := filepath.Join(s.DataDir, "cache", "previews", "awtrix", ".previews_v9")
+		_ = os.Remove(markerFile)
+	}
+
+	if s.Config.AwtrixURL != "" {
+		var sem chan struct{}
+		s.externalProvidersMu.RLock()
+		if existing, ok := s.externalProviders["awtrix"].(*awtrix.AwtrixAdapter); ok {
+			sem = existing.Semaphore()
+		}
+		s.externalProvidersMu.RUnlock()
+
+		adapter := awtrix.NewAdapter(awtrix.AdapterConfig{
+			BaseURL:     s.Config.AwtrixURL,
+			FPS:         s.Config.AwtrixFPS,
+			ScaleFilter: s.Config.AwtrixScaleFilter,
+			Layout:      s.Config.AwtrixLayout,
+			Semaphore:   sem,
+		})
+		s.RegisterExternalProvider(adapter)
+		slog.Info("Updated Awtrix external app provider", "url", s.Config.AwtrixURL, "scaleFilter", s.Config.AwtrixScaleFilter, "layout", s.Config.AwtrixLayout)
+		s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
+	} else {
+		s.externalProvidersMu.Lock()
+		delete(s.externalProviders, "awtrix")
+		s.externalProvidersMu.Unlock()
+		slog.Info("Deregistered Awtrix external app provider")
+	}
+	return nil
+}
+
+// isExternalAppPath returns true if the path follows the external provider naming convention ("<provider>:<appID>").
 func (s *Server) isExternalAppPath(path string) bool {
-	_, _, ok := s.parseExternalAppPath(path)
-	return ok
+	parts := strings.SplitN(path, ":", 2)
+	return len(parts) == 2 && len(parts[0]) > 1 && parts[1] != "" &&
+		!strings.Contains(parts[0], "/") && !strings.Contains(parts[0], "\\")
 }
 
 // parseExternalAppPath splits a path like "screeny:split_flap" into (provider, "split_flap", true).
@@ -627,6 +709,20 @@ func (s *Server) parseExternalAppPath(path string) (providers.ExternalAppProvide
 		return nil, "", false
 	}
 	return provider, safeAppID, true
+}
+
+// getExternalProviderFPS returns the configured frame rate for a provider.
+func (s *Server) getExternalProviderFPS(provider providers.ExternalAppProvider) int {
+	if provider != nil && provider.Name() == "awtrix" {
+		if s.Config.AwtrixFPS > 0 {
+			return s.Config.AwtrixFPS
+		}
+		return 15
+	}
+	if s.Config.ScreenyFPS > 0 {
+		return s.Config.ScreenyFPS
+	}
+	return 30
 }
 
 // GetMaxChunkSizeForDevice returns the chunk size budget based on device type.

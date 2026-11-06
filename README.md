@@ -117,6 +117,10 @@ The server can be configured via environment variables or `.env` file:
 *   `SCREENY_SCALE_FILTER`: Global 128x64 upscaling filter algorithm: `bicubic`, `scale2x`, `bilinear`, `nearest` (default: `bicubic`). Can also be customized per installed app instance in the web UI.
 *   `TRONBYT_MAX_CHUNK_SIZE_ESP`: Maximum WebP animation chunk size in bytes for ESP devices (default: `450000` / 450 KB for Tidbyt Gen 1, Gen 2, ESP32, ESP32-S3 variants, MatrixPortal; Pixoticker uses `50000` / 50 KB).
 *   `TRONBYT_MAX_CHUNK_SIZE_RPI`: Maximum WebP animation chunk size in bytes for Raspberry Pi / Tronberry devices (default: `5242880` / 5 MB).
+*   `AWTRIX_URL`: Base URL of a running `AWTRIX NG` instance or virtual hub container (e.g. `http://192.168.1.15:7080`). When set, Awtrix apps (Time, Date, Berry scripts) are automatically discovered and badged with `[Awtrix]` in the Add App catalog, translated to native Pixlet configuration forms, and rendered into WebP animations.
+*   `AWTRIX_FPS`: Frame rate for Awtrix screen capture (default: `15`).
+*   `AWTRIX_SCALE_FILTER`: Global 128x64 upscaling filter algorithm for Awtrix apps: `bicubic`, `scale2x`, `bilinear`, `nearest` (default: `bicubic`).
+*   `AWTRIX_LAYOUT`: Display centering and layout mode: `center` (default, auto-centers 16-row widgets like weather and 2x scales 8-row widgets like arcade games), `fill` (stretches and scales widgets vertically and horizontally to fill the display canvas without black bars), `native` (raw top-left placement). Can also be configured per app in the app settings.
 *   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).

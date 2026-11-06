@@ -63,6 +63,7 @@ func manifestScalar(tag, value string) *yaml.Node {
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
+// handleAddAppGet renders the app catalog page listing system apps, user apps, and external provider apps.
 func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	device := GetDevice(r)
@@ -93,6 +94,9 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 			s.warmExternalAppThumbnails(provider, extApps)
 		}
 		for _, ext := range extApps {
+			if ext.Disabled {
+				continue
+			}
 			category := "Visuals"
 			if strings.HasPrefix(ext.ID, "clocks") {
 				category = "Clocks"
@@ -153,7 +157,10 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 	installedNames := make(map[string]bool)
 	installedPaths := make(map[string]bool)
 	for _, da := range device.Apps {
-		installedNames[da.Name] = true
+		isExt := da.Path != nil && s.isExternalAppPath(*da.Path)
+		if !isExt {
+			installedNames[da.Name] = true
+		}
 		if da.Path != nil && *da.Path != "" {
 			p := *da.Path
 			installedPaths[p] = true
@@ -169,6 +176,13 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 	}
 
 	for i := range systemApps {
+		isExt := systemApps[i].Provider != "" || s.isExternalAppPath(systemApps[i].Path)
+		if isExt {
+			if installedPaths[systemApps[i].Path] {
+				systemApps[i].IsInstalled = true
+			}
+			continue
+		}
 		fullPath := filepath.Join(systemApps[i].Path, systemApps[i].FileName)
 		if installedNames[systemApps[i].ID] || installedNames[systemApps[i].Name] ||
 			installedPaths[systemApps[i].Path] || installedPaths[fullPath] {
@@ -176,6 +190,13 @@ func (s *Server) markInstalledApps(device *data.Device, systemApps []apps.AppMet
 		}
 	}
 	for i := range customApps {
+		isExt := customApps[i].Provider != "" || s.isExternalAppPath(customApps[i].Path)
+		if isExt {
+			if installedPaths[customApps[i].Path] {
+				customApps[i].IsInstalled = true
+			}
+			continue
+		}
 		if installedNames[customApps[i].ID] || installedNames[customApps[i].Name] ||
 			installedPaths[customApps[i].Path] || installedPaths[filepath.ToSlash(filepath.Dir(customApps[i].Path))] {
 			customApps[i].IsInstalled = true
@@ -424,6 +445,7 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 
 const externalAppThumbnailDurationMs = 3000
 
+// ensureCleanPreviewCache ensures the provider's preview cache directory exists and is invalidated when marker version changes.
 func (s *Server) ensureCleanPreviewCache(providerName string) string {
 	cacheDir := filepath.Join(s.DataDir, "cache", "previews", providerName)
 	markerFile := filepath.Join(cacheDir, ".previews_v9")
@@ -446,6 +468,7 @@ func (s *Server) ensureCleanPreviewCache(providerName string) string {
 	return cacheDir
 }
 
+// serveExternalAppThumbnail handles HTTP requests to serve or render thumbnail previews of external apps.
 func (s *Server) serveExternalAppThumbnail(w http.ResponseWriter, r *http.Request, provider providers.ExternalAppProvider, appID string) {
 	safeAppID, err := sanitizeAppID(appID)
 	if err != nil {
@@ -515,6 +538,7 @@ func (s *Server) serveExternalAppThumbnail(w http.ResponseWriter, r *http.Reques
 	http.NotFound(w, r)
 }
 
+// serveThumbnailBytes writes thumbnail bytes to the HTTP response with ETag and caching headers.
 func (s *Server) serveThumbnailBytes(w http.ResponseWriter, r *http.Request, b []byte) {
 	h := sha256.Sum256(b)
 	etag := fmt.Sprintf("\"%x\"", h[:16])
@@ -530,10 +554,14 @@ func (s *Server) serveThumbnailBytes(w http.ResponseWriter, r *http.Request, b [
 	_, _ = w.Write(b)
 }
 
+// warmExternalAppThumbnails asynchronously pre-renders thumbnails for discovered external apps.
 func (s *Server) warmExternalAppThumbnails(provider providers.ExternalAppProvider, apps []providers.ExternalAppMeta) {
 	cacheDir := s.ensureCleanPreviewCache(provider.Name())
 	s.backgroundRenders.Go(func() {
 		for _, app := range apps {
+			if app.Disabled {
+				continue
+			}
 			safeAppID, err := sanitizeAppID(app.ID)
 			if err != nil {
 				continue
@@ -652,6 +680,17 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	deleteOnCancel := r.URL.Query().Get("delete_on_cancel") == "true"
 
+	var externalAppURL string
+	var externalProviderName string
+	if app.Path != nil && s.isExternalAppPath(*app.Path) {
+		if provider, _, ok := s.parseExternalAppPath(*app.Path); ok {
+			if provider.Name() == "screeny" && s.Config.ScreenyStudioURL != "" {
+				externalAppURL = s.Config.ScreenyStudioURL
+				externalProviderName = "Screeny"
+			}
+		}
+	}
+
 	var appMetadata *apps.AppMetadata
 	if app.Path != nil {
 		appMetadata = s.getAppMetadata(r.Context(), *app.Path)
@@ -675,6 +714,8 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		ColorFilterOptions:       s.getColorFilterChoices(),
 		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
 		AppMetadata:              appMetadata,
+		ExternalAppURL:           externalAppURL,
+		ExternalProviderName:     externalProviderName,
 		DefaultSounds:            GetDefaultSounds(),
 		CustomSounds:             customSounds,
 		AppSounds:                appSounds,
@@ -1085,6 +1126,7 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleRenderConfigPreview renders or serves an on-the-fly preview of an app with the requested configuration.
 func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
@@ -1155,10 +1197,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				width *= 2
 				height *= 2
 			}
-			fps := s.Config.ScreenyFPS
-			if fps <= 0 {
-				fps = 30
-			}
+			fps := s.getExternalProviderFPS(provider)
 			dwellSecs := 10
 			if device != nil {
 				dwellSecs = device.GetEffectiveDwellTime(app)
@@ -1177,8 +1216,10 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				Timezone:     device.GetTimezone(),
 				Config:       configData,
 			}
-			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			renderTimeout := max(30*time.Second, time.Duration(previewDurationMs)*time.Millisecond+15*time.Second)
+			ctx, cancel := context.WithTimeout(r.Context(), renderTimeout)
 			defer cancel()
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(renderTimeout))
 
 			chunks, err := provider.RenderAppChunks(ctx, req)
 			if err != nil || len(chunks) == 0 {
@@ -1251,10 +1292,7 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				width *= 2
 				height *= 2
 			}
-			fps := s.Config.ScreenyFPS
-			if fps <= 0 {
-				fps = 30
-			}
+			fps := s.getExternalProviderFPS(provider)
 			dwellSecs := 10
 			if device != nil {
 				dwellSecs = device.GetEffectiveDwellTime(app)
@@ -1273,8 +1311,11 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				Timezone:     device.GetTimezone(),
 				Config:       app.Config,
 			}
-			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			renderTimeout := max(30*time.Second, time.Duration(previewDurationMs)*time.Millisecond+15*time.Second)
+			ctx, cancel := context.WithTimeout(r.Context(), renderTimeout)
 			defer cancel()
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(renderTimeout))
+
 			chunks, err := provider.RenderAppChunks(ctx, req)
 			if err == nil && len(chunks) > 0 {
 				previewBytes := chunks[0].WebPBytes
@@ -1386,10 +1427,7 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 
 	if provider, appID, ok := s.parseExternalAppPath(*app.Path); ok {
 		width, height := device.Type.CanvasSize()
-		fps := s.Config.ScreenyFPS
-		if fps <= 0 {
-			fps = 30
-		}
+		fps := s.getExternalProviderFPS(provider)
 		maxChunkSize := s.GetMaxChunkSizeForDevice(device)
 		previewConfig := app.Config
 		if configBody != nil {

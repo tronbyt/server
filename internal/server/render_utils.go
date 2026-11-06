@@ -114,9 +114,13 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 
 	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
 
-	// External Provider App (e.g. Screeny)
-	if _, _, ok := s.parseExternalAppPath(*app.Path); ok {
-		return s.renderExternalApp(ctx, app, device, user, false)
+	// External Provider App (e.g. Screeny, Awtrix)
+	if s.isExternalAppPath(*app.Path) {
+		if _, _, ok := s.parseExternalAppPath(*app.Path); ok {
+			return s.renderExternalApp(ctx, app, device, user, false)
+		}
+		slog.Warn("External app provider unavailable for path", "path", *app.Path)
+		return false
 	}
 
 	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
@@ -325,6 +329,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	return true // Not time to render yet, assume existing is fine
 }
 
+// renderExternalApp delegates rendering of third-party external apps to their registered provider adapter.
 func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *data.Device, user *data.User, forceRender bool) bool {
 	provider, appID, ok := s.parseExternalAppPath(*app.Path)
 	if !ok {
@@ -479,7 +484,7 @@ func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *d
 		AppID:              appID,
 		Width:              width,
 		Height:             height,
-		FPS:                s.Config.ScreenyFPS,
+		FPS:                s.getExternalProviderFPS(provider),
 		DurationMs:         renderDurationMs,
 		MaxChunkSize:       maxChunkSize,
 		MaxChunkDurationMs: maxChunkDurationMs,

@@ -39,6 +39,7 @@ type ExternalAppMeta struct {
 	Supports2x bool     `json:"supports2x"`
 	Tags       []string `json:"tags"`
 	PreviewURL string   `json:"preview_url"`
+	Disabled   bool     `json:"disabled,omitempty"`
 }
 
 // ExternalAppProvider defines the pluggable interface for third-party app stores / renderers.
