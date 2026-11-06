@@ -3,7 +3,7 @@ module tronbyt-server
 go 1.27.1
 
 require (
-	github.com/caarlos0/env/v11 v11.4.1
+	github.com/caarlos0/env/v11 v11.4.2
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/cyphar/filepath-securejoin v0.7.0
 	github.com/fsnotify/fsnotify v1.10.1
@@ -25,10 +25,12 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
+	github.com/tronbyt/go-libwebp v0.0.0-20251221160926-0c04b4a7738a
 	github.com/tronbyt/pixlet v0.55.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/mod v0.42.0
 	golang.org/x/oauth2 v0.37.0
+	golang.org/x/sync v0.24.0
 	golang.org/x/text v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.6.0
@@ -116,7 +118,6 @@ require (
 	github.com/tdewolff/test v1.0.12 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tronbyt/gg v0.0.0-20220808163829-95806fa1d427 // indirect
-	github.com/tronbyt/go-libwebp v0.0.0-20251221160926-0c04b4a7738a // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -126,7 +127,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
