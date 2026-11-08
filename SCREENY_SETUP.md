@@ -10,8 +10,8 @@ With Screeny Studio connected, you can discover, configure, and stream beautiful
 
 ```mermaid
 flowchart LR
-    Screeny["Screeny Studio (Docker)<br/>Port 8787"] -->|WebSocket Stream (30 FPS)| Tronbyt["Tronbyt Server<br/>Port 8000"]
-    Tronbyt -->|Multi-Chunk WebP| Hardware["Tidbyt / ESP32 / Tronberry<br/>64x32 or 128x64 Matrix"]
+    Screeny["Screeny Studio (Docker)<br/>Port 8787"] -->|"WebSocket Stream (30 FPS)"| Tronbyt["Tronbyt Server<br/>Port 8000"]
+    Tronbyt -->|"Multi-Chunk WebP"| Hardware["Tidbyt / ESP32 / Tronberry<br/>64x32 or 128x64 Matrix"]
 ```
 
 * **Screeny Studio** renders high-framerate procedural canvas graphics and exposes a REST API (`/api/v1/bootstrap`) and WebSocket preview stream on port `8787`.
