@@ -181,6 +181,7 @@ func TestDeviceTypeCanvasAndDisplaySize(t *testing.T) {
 		{"square", DeviceRaspberryPiSquare, 64, 64, 64, 64},
 		{"square s3", DeviceMatrixPortalSquare, 64, 64, 64, 64},
 		{"wide s3 renders 2x", DeviceMatrixPortalWide, 64, 32, 128, 64},
+		{"waveshare wide s3 renders 2x", DeviceWaveshareS3Wide, 64, 32, 128, 64},
 		{"unknown falls back", DeviceOther, 64, 32, 64, 32},
 	}
 
@@ -256,6 +257,30 @@ func TestDeviceTypeWideMatrixPortalRoundTripsAsSlug(t *testing.T) {
 	assert.Equal(t, DeviceMatrixPortalWide, scanned)
 }
 
+func TestDeviceTypeWideWaveshareS3HasItsOwnFirmware(t *testing.T) {
+	assert.True(t, DeviceWaveshareS3Wide.SupportsFirmware())
+	assert.True(t, DeviceWaveshareS3Wide.SupportsOTA())
+
+	firmware := DeviceWaveshareS3Wide.FirmwareFilename(false)
+	merged := DeviceWaveshareS3Wide.MergedFilename(false)
+	assert.Equal(t, "waveshare-s3-wide.bin", firmware)
+	assert.Equal(t, "waveshare-s3-wide_merged.bin", merged)
+	for _, other := range []DeviceType{DeviceTronbytS3Wide, DeviceWaveshareS3, DeviceMatrixPortalWide} {
+		assert.NotEqual(t, other.FirmwareFilename(false), firmware)
+		assert.NotEqual(t, other.MergedFilename(false), merged)
+	}
+}
+
+func TestDeviceTypeWideWaveshareS3RoundTripsAsSlug(t *testing.T) {
+	assert.Equal(t, "waveshare_s3_wide", DeviceWaveshareS3Wide.Slug())
+	assert.Equal(t, DeviceWaveshareS3Wide, StringToDeviceType["waveshare_s3_wide"])
+	assert.Equal(t, "Waveshare S3 Wide", DeviceWaveshareS3Wide.String())
+
+	var scanned DeviceType
+	require.NoError(t, scanned.Scan("waveshare_s3_wide"))
+	assert.Equal(t, DeviceWaveshareS3Wide, scanned)
+}
+
 // A device type that offers firmware but names no binary would fail only at
 // the point someone tries to flash it, so check the pairing directly. Merged
 // images are deliberately not required: Pixoticker ships OTA-only.
@@ -319,6 +344,7 @@ func TestDeviceType_SupportsAudio(t *testing.T) {
 	assert.True(t, DeviceMatrixPortalSquare.SupportsAudio())
 	assert.True(t, DeviceMatrixPortalWide.SupportsAudio())
 	assert.True(t, DeviceWaveshareS3.SupportsAudio())
+	assert.True(t, DeviceWaveshareS3Wide.SupportsAudio())
 	assert.True(t, DeviceOther.SupportsAudio())
 
 	gen1Dev := &Device{
