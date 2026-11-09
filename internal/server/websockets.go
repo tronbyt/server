@@ -882,6 +882,16 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			continue
 		}
 
+		// Drain any leftover ACKs from previous images before writing the new image
+		for {
+			select {
+			case <-ackCh:
+			default:
+				goto drainedOldAck
+			}
+		}
+	drainedOldAck:
+
 		if err := conn.WriteJSON(map[string]any{"dwell_secs": dwell}); err != nil {
 			slog.Error("Failed to write metadata WS message", "error", err)
 			return
