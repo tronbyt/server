@@ -88,6 +88,7 @@ type TemplateData struct {
 	Device            *data.Device
 	SystemApps        []apps.AppMetadata
 	CustomApps        []apps.AppMetadata
+	PublicAppsCatalog bool
 	Providers         []string
 	DeviceTypeChoices []DeviceTypeGroup
 	Form              CreateDeviceFormData

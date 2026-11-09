@@ -21,6 +21,36 @@ func TestCatalogSlugPrefersPackageName(t *testing.T) {
 	}
 }
 
+func TestUsesPublicAppsCatalog(t *testing.T) {
+	cases := map[string]bool{
+		PublicSystemAppsRepoURL:                    true,
+		PublicSystemAppsRepoURL + "#main":          true,
+		"git@github.com:tronbyt/apps.git":          true,
+		"https://github.com/tronbyt/apps":          true,
+		"https://github.com/someone/apps-fork.git": false,
+		"file:///tmp/my-apps":                      false,
+	}
+	for repo, want := range cases {
+		if got := UsesPublicAppsCatalog(repo); got != want {
+			t.Fatalf("%q: got %v want %v", repo, got, want)
+		}
+	}
+}
+
+func TestPublicCatalogDetailsURL(t *testing.T) {
+	meta := AppMetadata{ID: "clock", PackageName: "clock", Provider: "screeny"}
+	if got := meta.PublicCatalogDetailsURL(true); got != "" {
+		t.Fatalf("external provider: got %q", got)
+	}
+	meta.Provider = ""
+	if got := meta.PublicCatalogDetailsURL(false); got != "" {
+		t.Fatalf("private repo: got %q", got)
+	}
+	if got := meta.PublicCatalogDetailsURL(true); got != "https://apps.tronbyt.com/details/clock" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestIsSystemCatalogPath(t *testing.T) {
 	if !IsSystemCatalogPath("system-apps/apps/streamgauge/streamgauge.star") {
 		t.Fatal("expected system path")

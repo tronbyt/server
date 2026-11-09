@@ -120,13 +120,14 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, r, "addapp", TemplateData{
-		User:           user,
-		Device:         device,
-		SystemApps:     systemApps,
-		CustomApps:     customApps,
-		Providers:      availableProviders,
-		SystemRepoInfo: systemRepoInfo,
-		Config:         &config.TemplateConfig{Production: s.Config.Production},
+		User:              user,
+		Device:            device,
+		SystemApps:        systemApps,
+		CustomApps:        customApps,
+		Providers:         availableProviders,
+		SystemRepoInfo:    systemRepoInfo,
+		PublicAppsCatalog: apps.UsesPublicAppsCatalog(s.Config.SystemAppsRepo),
+		Config:            &config.TemplateConfig{Production: s.Config.Production},
 	})
 }
 
@@ -681,9 +682,10 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	appSounds := extractAppSounds(schemaBytes, appID)
 
 	var appCatalogURL string
-	if app.Path != nil && apps.IsSystemCatalogPath(*app.Path) && !app.Pushed {
+	publicCatalog := apps.UsesPublicAppsCatalog(s.Config.SystemAppsRepo)
+	if publicCatalog && app.Path != nil && apps.IsSystemCatalogPath(*app.Path) && !app.Pushed {
 		if appMetadata != nil {
-			appCatalogURL = appMetadata.CatalogDetailsURL()
+			appCatalogURL = appMetadata.PublicCatalogDetailsURL(true)
 		} else {
 			dir := filepath.Base(filepath.Dir(filepath.ToSlash(*app.Path)))
 			appCatalogURL = apps.CatalogDetailsURL(dir)

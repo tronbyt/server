@@ -67,7 +67,7 @@
 </div>
 {{ if or .AppMetadata .AppCatalogURL }}
 <div class="app-metadata">
-    {{ if .AppMetadata.Summary }}
+    {{ if and .AppMetadata .AppMetadata.Summary }}
     <p class="app-summary">
         {{ .AppMetadata.Summary }} {{ t .Localizer "by" }} <a href="https://github.com/{{ .AppMetadata.Author }}">{{ .AppMetadata.Author }}</a>{{ if .AppCatalogURL }}
         <span class="app-info-wrap">
