@@ -65,12 +65,33 @@
         {{ t .Localizer "Auto Render Preview" }}
     </label>
 </div>
-{{ if .AppMetadata }}
+{{ if or .AppMetadata .AppCatalogURL }}
 <div class="app-metadata">
-    {{ if .AppMetadata.Summary }}
-    <p class="app-summary">{{ .AppMetadata.Summary }} {{ t .Localizer "by" }} <a href="https://github.com/{{ .AppMetadata.Author }}">{{ .AppMetadata.Author }}</a></p>
+    {{ if and .AppMetadata .AppMetadata.Summary }}
+    <p class="app-summary">
+        {{ .AppMetadata.Summary }} {{ t .Localizer "by" }} <a href="https://github.com/{{ .AppMetadata.Author }}">{{ .AppMetadata.Author }}</a>{{ if .AppCatalogURL }}
+        <span class="app-info-wrap">
+            <a href="{{ .AppCatalogURL }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="app-info-link"
+               title="{{ t .Localizer "View app info" }}">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ t .Localizer "App info" }}
+            </a>
+        </span>{{ end }}
+    </p>
+    {{ else if .AppCatalogURL }}
+    <p class="app-summary">
+        <a href="{{ .AppCatalogURL }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="app-info-link"
+           title="{{ t .Localizer "View app info" }}">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ t .Localizer "App info" }}
+        </a>
+    </p>
     {{ end }}
-    {{ if .AppMetadata.Desc }}
+    {{ if and .AppMetadata .AppMetadata.Desc }}
     <div class="app-desc">{{ .AppMetadata.Desc }}</div>
     {{ end }}
 </div>

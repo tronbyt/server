@@ -86,7 +86,7 @@ func TestNibletCountCardRendersFullNumbers(t *testing.T) {
 		err := s.BaseTemplates.ExecuteTemplate(&output, "app_card_grid_item", map[string]any{
 			"App":       apps.AppMetadata{Manifest: apps.Manifest{ID: "clock", Name: "Clock"}, InstallCount: &count},
 			"Localizer": i18n.NewLocalizer(s.Bundle, "en"),
-			"IsCustom":  false, "ConfigProduction": true, "DeviceID": "test",
+			"IsCustom":  false, "DeviceID": "test",
 		})
 		require.NoError(t, err)
 		assert.Contains(t, output.String(), "<span>"+want+"</span>")
@@ -105,7 +105,7 @@ func TestNibletCountCardHiddenWithoutCount(t *testing.T) {
 	err := s.BaseTemplates.ExecuteTemplate(&output, "app_card_grid_item", map[string]any{
 		"App":       apps.AppMetadata{Manifest: apps.Manifest{ID: "custom", Name: "Custom"}},
 		"Localizer": i18n.NewLocalizer(s.Bundle, "en"),
-		"IsCustom":  true, "ConfigProduction": true, "DeviceID": "test",
+		"IsCustom":  true, "DeviceID": "test",
 	})
 	require.NoError(t, err)
 	assert.NotContains(t, output.String(), "app-item-installs")

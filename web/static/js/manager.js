@@ -1600,70 +1600,6 @@ function toggleDeviceInfo(button) {
   }
 }
 
-// Function to mark app as broken (development mode only)
-function markAppAsBroken(appName, packageName, event) {
-  event.stopPropagation();
-  event.preventDefault();
-
-  if (!confirm("Mark '" + appName + "' as broken? This will add 'broken: true' to its manifest.yaml and prevent it from being installed.")) {
-    return;
-  }
-
-  let url = "/mark_app_broken?app_name=" + encodeURIComponent(appName);
-  if (packageName && packageName !== 'None' && packageName !== '') {
-    url += "&package_name=" + encodeURIComponent(packageName);
-  }
-
-  fetch(url, {
-    method: 'POST'
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert("App marked as broken successfully!");
-        location.reload();
-      } else {
-        alert("Error: " + data.message);
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert("Failed to mark app as broken");
-    });
-}
-
-// Function to unmark app as broken (development mode only)
-function unmarkAppAsBroken(appName, packageName, event) {
-  event.stopPropagation();
-  event.preventDefault();
-
-  if (!confirm("Unmark '" + appName + "' as broken? This will set 'broken: false' in its manifest.yaml and allow it to be installed.")) {
-    return;
-  }
-
-  let url = "/unmark_app_broken?app_name=" + encodeURIComponent(appName);
-  if (packageName && packageName !== 'None' && packageName !== '') {
-    url += "&package_name=" + encodeURIComponent(packageName);
-  }
-
-  fetch(url, {
-    method: 'POST'
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert("App unmarked successfully!");
-        location.reload();
-      } else {
-        alert("Error: " + data.message);
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert("Failed to unmark app");
-    });
-}
-
 function initializeViewToggles() {
   // Restore saved preferences for all devices
   const appLists = document.querySelectorAll('[id^="appsList-"]');
@@ -1985,6 +1921,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!appItem) return;
 
       if (e.target.closest('.delete-upload-btn')) return;
+      if (e.target.closest('.app-catalog-info-btn')) return;
 
       // Don't allow clicking on broken apps
       if (appItem.classList.contains('broken-app')) {
