@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -274,4 +276,33 @@ func TestRenderTemplatePopulatesVersionAndCommitURL(t *testing.T) {
 	assert.Contains(t, body2, "Server")
 	assert.Contains(t, body2, version.Commit[:7])
 	assert.NotContains(t, body2, "["+version.Branch+"]")
+}
+
+func TestOTAURLFromCommandPayload(t *testing.T) {
+	ota, err := json.Marshal(map[string]string{"ota_url": "http://example.com/fw.bin"})
+	assert.NoError(t, err)
+	url, ok := otaURLFromCommandPayload(ota)
+	assert.True(t, ok)
+	assert.Equal(t, "http://example.com/fw.bin", url)
+	assert.False(t, func() bool { _, ok := otaURLFromCommandPayload([]byte(`{"brightness":50}`)); return ok }())
+}
+
+func TestClearPendingOTAIfMatching(t *testing.T) {
+	s := newTestServerAPI(t)
+	device := data.Device{
+		ID:               "otamatch",
+		Username:         "testuser",
+		PendingUpdateURL: "http://example.com/firmware.bin",
+	}
+	assert.NoError(t, s.DB.Create(&device).Error)
+
+	s.clearPendingOTAIfMatching(context.Background(), &device, "http://example.com/other.bin")
+	assert.Equal(t, "http://example.com/firmware.bin", device.PendingUpdateURL)
+
+	s.clearPendingOTAIfMatching(context.Background(), &device, "http://example.com/firmware.bin")
+	assert.Empty(t, device.PendingUpdateURL)
+
+	var stored data.Device
+	assert.NoError(t, s.DB.First(&stored, "id = ?", "otamatch").Error)
+	assert.Empty(t, stored.PendingUpdateURL)
 }
