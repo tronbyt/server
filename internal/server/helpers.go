@@ -118,6 +118,7 @@ type TemplateData struct {
 	Schema               template.JS
 	AppConfig            map[string]any
 	AppMetadata          *apps.AppMetadata
+	AppCatalogURL        string
 	ExternalAppURL       string
 	ExternalProviderName string
 

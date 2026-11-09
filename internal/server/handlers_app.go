@@ -2,7 +2,6 @@ package server
 
 import (
 	"archive/zip"
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -39,27 +38,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-// setManifestKey sets key on a manifest.yaml mapping, appending it when absent.
-// Editing the node tree rather than a typed struct is deliberate: a struct round
-// trip writes back only the fields it declares, so every other key in the file -
-// id, name, supports2x, tags, everything - is destroyed on save.
-func setManifestKey(mapping *yaml.Node, key string, value *yaml.Node) {
-	for i := 0; i+1 < len(mapping.Content); i += 2 {
-		if mapping.Content[i].Value == key {
-			mapping.Content[i+1] = value
-			return
-		}
-	}
-	mapping.Content = append(mapping.Content,
-		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, value)
-}
-
-// manifestScalar builds a scalar node with an explicit tag, so a reason like
-// "true" or "123" stays a string instead of being re-read as another type.
-func manifestScalar(tag, value string) *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value}
-}
 
 var packageNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
@@ -702,6 +680,16 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 	}
 	appSounds := extractAppSounds(schemaBytes, appID)
 
+	var appCatalogURL string
+	if app.Path != nil && apps.IsSystemCatalogPath(*app.Path) && !app.Pushed {
+		if appMetadata != nil {
+			appCatalogURL = appMetadata.CatalogDetailsURL()
+		} else {
+			dir := filepath.Base(filepath.Dir(filepath.ToSlash(*app.Path)))
+			appCatalogURL = apps.CatalogDetailsURL(dir)
+		}
+	}
+
 	customSounds, _ := s.GetCustomSounds()
 
 	s.renderTemplate(w, r, "configapp", TemplateData{
@@ -714,6 +702,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		ColorFilterOptions:       s.getColorFilterChoices(),
 		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
 		AppMetadata:              appMetadata,
+		AppCatalogURL:            appCatalogURL,
 		ExternalAppURL:           externalAppURL,
 		ExternalProviderName:     externalProviderName,
 		DefaultSounds:            GetDefaultSounds(),
@@ -2280,100 +2269,6 @@ func (s *Server) handleDeleteUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/devices/%s/addapp", id), http.StatusSeeOther)
-}
-
-func (s *Server) handleMarkAppBroken(w http.ResponseWriter, r *http.Request) {
-	s.updateAppBrokenStatus(w, r, true)
-}
-
-func (s *Server) handleUnmarkAppBroken(w http.ResponseWriter, r *http.Request) {
-	s.updateAppBrokenStatus(w, r, false)
-}
-
-func (s *Server) updateAppBrokenStatus(w http.ResponseWriter, r *http.Request, broken bool) {
-	if s.Config.Production {
-		http.Error(w, "Not allowed in production mode", http.StatusForbidden)
-		return
-	}
-
-	appName := r.URL.Query().Get("app_name")
-	packageName := r.URL.Query().Get("package_name")
-
-	if appName == "" {
-		http.Error(w, "App name is required", http.StatusBadRequest)
-		return
-	}
-
-	appID := appName
-	if packageName != "" && packageName != "None" {
-		appID = packageName
-	}
-
-	appsDir := filepath.Join(s.DataDir, "system-apps", "apps")
-	manifestPath, err := securejoin.SecureJoin(appsDir, filepath.Join(appID, "manifest.yaml"))
-	if err != nil {
-		slog.Warn("Path traversal attempt blocked", "error", err)
-		http.Error(w, "Invalid app ID", http.StatusBadRequest)
-		return
-	}
-
-	manifestData, err := os.ReadFile(manifestPath)
-	if err != nil {
-		slog.Error("Failed to read manifest.yaml", "path", manifestPath, "error", err)
-		http.Error(w, "Failed to read manifest", http.StatusInternalServerError)
-		return
-	}
-	var doc yaml.Node
-	if err := yaml.Unmarshal(manifestData, &doc); err != nil {
-		slog.Error("Failed to unmarshal manifest.yaml", "path", manifestPath, "error", err)
-		http.Error(w, "Failed to parse manifest", http.StatusInternalServerError)
-		return
-	}
-	mapping := &doc
-	if mapping.Kind == yaml.DocumentNode && len(mapping.Content) > 0 {
-		mapping = mapping.Content[0]
-	}
-	if mapping.Kind != yaml.MappingNode {
-		slog.Error("manifest.yaml is not a mapping", "path", manifestPath)
-		http.Error(w, "Failed to parse manifest", http.StatusInternalServerError)
-		return
-	}
-
-	reason := ""
-	if broken {
-		reason = r.URL.Query().Get("broken_reason")
-		if reason == "" {
-			reason = "Marked broken by user"
-		}
-	}
-	setManifestKey(mapping, "broken", manifestScalar("!!bool", strconv.FormatBool(broken)))
-	setManifestKey(mapping, "brokenReason", manifestScalar("!!str", reason))
-
-	var buf bytes.Buffer
-	encoder := yaml.NewEncoder(&buf)
-	encoder.SetIndent(2)
-	if err := encoder.Encode(&doc); err != nil {
-		slog.Error("Failed to marshal updated manifest.yaml", "error", err)
-		http.Error(w, "Failed to update manifest", http.StatusInternalServerError)
-		return
-	}
-	if err := encoder.Close(); err != nil {
-		slog.Error("Failed to finalise updated manifest.yaml", "error", err)
-		http.Error(w, "Failed to update manifest", http.StatusInternalServerError)
-		return
-	}
-	updatedManifestData := buf.Bytes()
-
-	if err := os.WriteFile(manifestPath, updatedManifestData, 0644); err != nil {
-		slog.Error("Failed to write updated manifest.yaml", "path", manifestPath, "error", err)
-		http.Error(w, "Failed to save manifest", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
-		slog.Error("Failed to write JSON success response", "error", err)
-	}
 }
 
 func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sourceDevice *data.Device, originalApp *data.App, targetDevice *data.Device, targetAppIname string, insertAfter bool) error {

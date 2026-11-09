@@ -77,7 +77,7 @@
 {{ end }}
 <div id="{{ .GridID }}" class="app-grid">
     {{ range .Apps }}
-    {{ template "app_card_grid_item" (dict "App" . "DeviceID" $.DeviceID "Localizer" $.Localizer "IsCustom" $.IsCustom "ConfigProduction" $.ConfigProduction) }}
+    {{ template "app_card_grid_item" (dict "App" . "DeviceID" $.DeviceID "Localizer" $.Localizer "IsCustom" $.IsCustom) }}
     {{ end }}
 </div>
 </div>
@@ -100,6 +100,17 @@
      data-tags="{{ range $i, $tag := .App.Tags }}{{ if $i }},{{ end }}{{ $tag }}{{ end }}">
 {{ if .App.IsInstalled }}
 <div class="installed-badge">{{ t .Localizer "Installed" }}</div>
+{{ end }}
+{{ if and (not .IsCustom) (or (not .App.Provider) (eq (.App.Provider | lower) "tronbyt")) .App.CatalogDetailsURL }}
+<a href="{{ .App.CatalogDetailsURL }}"
+   class="app-catalog-info-btn"
+   target="_blank"
+   rel="noopener noreferrer"
+   title="{{ t .Localizer "View app details" }}"
+   aria-label="{{ t .Localizer "View app details" }}"
+   onclick="event.stopPropagation();">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+</a>
 {{ end }}
 {{ if .App.Supports2x }}
 <div class="supports-2x-badge">2x</div>
@@ -149,19 +160,6 @@
    onclick="event.stopPropagation(); return confirm('{{ t .Localizer "Delete this uploaded app?" }}');">
     <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t .Localizer "Delete" }}
 </a>
-{{ end }}
-{{ if not .ConfigProduction }}
-{{ if .App.Broken }}
-<button class="unmark-broken-btn"
-        onclick="unmarkAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "UnmarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
-    {{ t .Localizer "Unmark Broken" }}
-</button>
-{{ else }}
-<button class="mark-broken-btn"
-        onclick="markAppAsBroken('{{ .App.FileName }}', '{{ .App.PackageName }}', event, {{ t .Localizer "MarkAppBrokenConfirm" (dict "AppName" .App.FileName) | json }});">
-    {{ t .Localizer "Mark Broken" }}
-</button>
-{{ end }}
 {{ end }}
 </div>
 {{ end }}
