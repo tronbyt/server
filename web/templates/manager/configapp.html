@@ -801,7 +801,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <!-- Disable App -->
             <div style="margin-bottom: 20px;">
@@ -810,7 +810,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <!-- Pin App -->
             <div style="margin-bottom: 20px;">
@@ -819,7 +819,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": "{{ .App.Iname }}"}' \
-  /v0/devices/{{ .Device.ID }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}</pre>
             </div>
             <!-- Unpin App -->
             <div style="margin-bottom: 20px;">
@@ -828,7 +828,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": ""}' \
-  /v0/devices/{{ .Device.ID }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}</pre>
             </div>
             <!-- Set Schedule -->
             <div style="margin-bottom: 20px;">
@@ -837,7 +837,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"startTime": "09:00", "endTime": "17:00", "days": ["monday","tuesday","wednesday","thursday","friday"]}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <!-- Clear Schedule -->
             <div style="margin-bottom: 20px;">
@@ -846,7 +846,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"startTime": "", "endTime": "", "days": []}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <small>
                 <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
