@@ -829,6 +829,10 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	}
 	device.PendingUpdateURL = updateURL
 
+	// Drop any half-open WebSocket so a powered-off device cannot consume and
+	// clear the staged URL on a dead connection before it comes back online.
+	s.disconnectDeviceWS(device.ID)
+
 	// Notify Device (to wake up WS loop)
 	payload := map[string]string{"ota_url": updateURL}
 	jsonPayload, err := json.Marshal(payload)

@@ -86,6 +86,9 @@ type Server struct {
 	inFlightRendersMu     sync.Mutex
 	thumbnailSingleFlight singleflight.Group
 
+	// activeDeviceWS tracks the stop signal for each device's live WebSocket write loop.
+	activeDeviceWS sync.Map // device ID -> *deviceWSStop
+
 	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
 	// cached HTTP responses so dynamic schema data (e.g. dropdown options
 	// fetched in get_schema) can be refreshed before the app's TTL expires.

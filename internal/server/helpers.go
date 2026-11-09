@@ -1010,17 +1010,38 @@ func (s *Server) sendFirmwareSettingsCommand(ctx context.Context, deviceID strin
 	return nil
 }
 
+// otaURLFromCommandPayload extracts an OTA download URL from a device WebSocket command.
+func otaURLFromCommandPayload(payload []byte) (string, bool) {
+	var cmd struct {
+		OTAURL string `json:"ota_url"`
+	}
+	if err := json.Unmarshal(payload, &cmd); err != nil || cmd.OTAURL == "" {
+		return "", false
+	}
+	return cmd.OTAURL, true
+}
+
+// clearPendingOTAIfMatching clears a staged OTA URL only when it matches what was delivered.
+func (s *Server) clearPendingOTAIfMatching(ctx context.Context, device *data.Device, deliveredURL string) {
+	if deliveredURL == "" {
+		return
+	}
+	rows, err := gorm.G[data.Device](s.DB).Where("id = ? AND pending_update_url = ?", device.ID, deliveredURL).Update(ctx, "pending_update_url", "")
+	if err != nil {
+		slog.Error("Failed to clear pending update", "error", err, "device", device.ID)
+		return
+	}
+	if rows > 0 {
+		device.PendingUpdateURL = ""
+	}
+}
+
 // sendPendingHTTPDeviceHeaders injects pending sound, volume, and OTA headers into HTTP device responses.
 func (s *Server) sendPendingHTTPDeviceHeaders(w http.ResponseWriter, ctx context.Context, device *data.Device) {
 	if updateURL := device.PendingUpdateURL; updateURL != "" {
 		slog.Info("Sending OTA update header", "device", device.ID, "url", updateURL)
 		w.Header().Set("Tronbyt-OTA-URL", updateURL)
-
-		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_update_url", ""); err != nil {
-			slog.Error("Failed to clear pending update", "error", err)
-		} else {
-			device.PendingUpdateURL = ""
-		}
+		s.clearPendingOTAIfMatching(ctx, device, updateURL)
 	}
 
 	if imageURL := device.PendingImageURL; imageURL != "" {
