@@ -155,6 +155,7 @@ type TemplateData struct {
 	IsAutoLoginActive          bool   // Indicate if single-user auto-login is active
 	UserCount                  int    // Number of users, for registration logic
 	DeleteOnCancel             bool   // Indicate if app should be deleted on cancel
+	APIBaseURL                 string // External base URL for API example commands
 	URLWarning                 string // Warning about localhost in image URL
 	SunToday                   data.TodaySunEvents
 	SunTodayOK                 bool   // plain sunrise/sunset for the device's local today
@@ -210,6 +211,10 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	// Create localizer based on user's locale preference or request header
 	if tmplData.Localizer == nil {
 		tmplData.Localizer = s.getLocalizer(r)
+	}
+
+	if tmplData.APIBaseURL == "" && r != nil {
+		tmplData.APIBaseURL = s.GetBaseURL(r)
 	}
 
 	// Set version

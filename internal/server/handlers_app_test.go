@@ -1103,6 +1103,7 @@ func TestExternalAppConfigGet(t *testing.T) {
 	s.RegisterExternalProvider(mock)
 
 	req, _ := http.NewRequest(http.MethodGet, "/devices/testdevice/testapp/config", nil)
+	req.Host = "tronbyt.example.com"
 	ctx := context.WithValue(req.Context(), userContextKey, &user)
 	ctx = context.WithValue(ctx, deviceContextKey, &device)
 	ctx = context.WithValue(ctx, appContextKey, &app)
@@ -1115,6 +1116,7 @@ func TestExternalAppConfigGet(t *testing.T) {
 	body := rr.Body.String()
 	assert.Contains(t, body, "schemaConfigContainer")
 	assert.Contains(t, body, "let schema =")
+	assert.Contains(t, body, "http://tronbyt.example.com/v0/devices/testdevice/installations/testapp")
 }
 
 func TestExternalAppPushPreview(t *testing.T) {
