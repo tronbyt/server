@@ -1042,3 +1042,129 @@ func TestCustomSoundsSecurityAndDirectoryTraversal(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code, "Owner should be able to access their own app sound")
 	assert.Equal(t, "private-audio", rr.Body.String())
 }
+
+// TestAppRequestedSound verifies the "app_request" trigger: a sound plays once
+// per new render.Root(sound_id), and repeats, missing or invalid IDs are ignored.
+func TestAppRequestedSound(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+	deviceID := "testdevice"
+	_, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).Update(ctx, "audio_capability", data.AudioCapPiezo)
+	require.NoError(t, err)
+
+	dev, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(ctx)
+	require.NoError(t, err)
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", dev.Username).First(ctx)
+	require.NoError(t, err)
+
+	appRelPath := filepath.Join("system-apps", "apps", "scoresapp", "scoresapp.star")
+	appFullPath := filepath.Join(s.DataDir, appRelPath)
+	require.NoError(t, os.MkdirAll(filepath.Dir(appFullPath), 0755))
+	// The match clock changes the image on every render; only sound_id says
+	// whether something worth a sound happened.
+	script := `
+load("render.star", "render")
+load("time.star", "time")
+def main(config):
+    sid = config.get("sid", "")
+    child = render.Text(str(time.now().unix_nano))
+    if sid:
+        return render.Root(sound_id = sid, child = child)
+    return render.Root(child = child)
+`
+	require.NoError(t, os.WriteFile(appFullPath, []byte(script), 0644))
+
+	sound := "default:chime"
+	app := data.App{
+		Iname:                    "scores-1",
+		Name:                     "scoresapp",
+		DeviceID:                 deviceID,
+		Path:                     &appRelPath,
+		NotificationSound:        &sound,
+		NotificationSoundTrigger: "app_request",
+		Config:                   data.JSONMap{"sid": "match-1-score-1-0"},
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &app))
+
+	// renderAgain clears the pending sound and the cooldown, renders the app
+	// with the given sound_id and reports whether a sound was queued.
+	renderAgain := func(sid string) bool {
+		t.Helper()
+		_, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).Update(ctx, "pending_sound", "")
+		require.NoError(t, err)
+		dev.PendingSound = ""
+		app.LastSoundAt = nil
+		app.LastRender = time.Time{}
+		app.Config = data.JSONMap{"sid": sid}
+		require.True(t, s.possiblyRender(ctx, &app, &dev, &user))
+		devCheck, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(ctx)
+		require.NoError(t, err)
+		return devCheck.PendingSound != ""
+	}
+
+	// A new sound_id plays the user's chosen sound and is remembered.
+	assert.True(t, renderAgain("match-1-score-1-0"), "new sound_id should play")
+	assert.Equal(t, "match-1-score-1-0", app.LastSoundRequestID)
+	stored, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "match-1-score-1-0", stored.LastSoundRequestID)
+
+	// The same sound_id on later renders doesn't play again, although the image changed.
+	assert.False(t, renderAgain("match-1-score-1-0"), "repeated sound_id must not play")
+
+	// No sound_id: nothing plays, and the remembered ID is kept.
+	assert.False(t, renderAgain(""), "render without sound_id must not play")
+	assert.Equal(t, "match-1-score-1-0", app.LastSoundRequestID)
+
+	// Invalid IDs are ignored.
+	assert.False(t, renderAgain(strings.Repeat("x", maxSoundRequestIDLength+1)), "over-long sound_id must not play")
+	assert.False(t, renderAgain("goal\nagain"), "sound_id with control characters must not play")
+
+	// The next event plays.
+	assert.True(t, renderAgain("match-1-score-2-0"), "next sound_id should play")
+	assert.Equal(t, "match-1-score-2-0", app.LastSoundRequestID)
+
+	// Within the 30-second cooldown, a new sound_id waits and plays on a later render.
+	_, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).Update(ctx, "pending_sound", "")
+	require.NoError(t, err)
+	recent := time.Now().Add(-5 * time.Second)
+	app.LastSoundAt = &recent
+	app.LastRender = time.Time{}
+	app.Config = data.JSONMap{"sid": "match-1-score-2-1"}
+	require.True(t, s.possiblyRender(ctx, &app, &dev, &user))
+	devCheck, err := gorm.G[data.Device](s.DB).Where("id = ?", deviceID).First(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, devCheck.PendingSound, "cooldown should hold back the sound")
+	assert.Equal(t, "match-1-score-2-0", app.LastSoundRequestID, "held-back ID must not be marked as played")
+	assert.True(t, renderAgain("match-1-score-2-1"), "held-back sound_id should play after the cooldown")
+
+	// Other triggers ignore sound_id.
+	app.NotificationSoundTrigger = "on_change"
+	app.LastSoundRequestID = ""
+	renderAgain("match-1-score-3-1")
+	assert.Empty(t, app.LastSoundRequestID, "on_change must not record sound_id")
+}
+
+// TestPatchInstallationAppRequestTrigger verifies the API accepts the "app_request" trigger.
+func TestPatchInstallationAppRequestTrigger(t *testing.T) {
+	s := newTestServerAPI(t)
+	deviceID := "testdevice"
+	installID := "scores_app"
+
+	app := data.App{DeviceID: deviceID, Iname: installID, Name: "Scores", UInterval: 1, DisplayTime: 10, Enabled: true}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(context.Background(), &app))
+
+	sound := "ding"
+	trigger := "app_request"
+	body, err := json.Marshal(InstallationUpdate{NotificationSound: &sound, NotificationSoundTrigger: &trigger})
+	require.NoError(t, err)
+
+	req := newAPIRequest("PATCH", fmt.Sprintf("/v0/devices/%s/installations/%s", deviceID, installID), "test_api_key", body)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	updated, err := gorm.G[data.App](s.DB).Where("iname = ?", installID).First(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "app_request", updated.NotificationSoundTrigger)
+}

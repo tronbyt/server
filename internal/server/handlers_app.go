@@ -975,8 +975,8 @@ func (s *Server) handleConfigAppPost(w http.ResponseWriter, r *http.Request) {
 
 	if app.NotificationSound == nil {
 		app.NotificationSoundTrigger = ""
-	} else if payload.NotificationSoundTrigger == "on_change" {
-		app.NotificationSoundTrigger = "on_change"
+	} else if payload.NotificationSoundTrigger == "on_change" || payload.NotificationSoundTrigger == "app_request" {
+		app.NotificationSoundTrigger = payload.NotificationSoundTrigger
 	} else {
 		app.NotificationSoundTrigger = "every_display"
 	}
