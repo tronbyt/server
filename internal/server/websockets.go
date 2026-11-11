@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"tronbyt-server/internal/data"
@@ -62,6 +63,68 @@ type WSEvent struct {
 
 type DeviceCommandMessage struct {
 	Payload []byte
+}
+
+// deviceWSStop closes a device WebSocket session stop channel at most once.
+type deviceWSStop struct {
+	ch   chan struct{}
+	once sync.Once
+}
+
+func (s *deviceWSStop) close() {
+	s.once.Do(func() { close(s.ch) })
+}
+
+func (s *Server) registerDeviceWS(deviceID string) *deviceWSStop {
+	stop := &deviceWSStop{ch: make(chan struct{})}
+	if prev, loaded := s.activeDeviceWS.Swap(deviceID, stop); loaded {
+		prev.(*deviceWSStop).close()
+	}
+	return stop
+}
+
+func (s *Server) unregisterDeviceWS(deviceID string, stop *deviceWSStop) {
+	s.activeDeviceWS.CompareAndDelete(deviceID, stop)
+}
+
+// disconnectDeviceWS ends any in-flight device WebSocket write loop.
+func (s *Server) disconnectDeviceWS(deviceID string) {
+	if prev, loaded := s.activeDeviceWS.LoadAndDelete(deviceID); loaded {
+		prev.(*deviceWSStop).close()
+	}
+}
+
+// writeWSDeviceCommand sends a JSON command and clears a matching staged OTA URL on success.
+func (s *Server) writeWSDeviceCommand(ctx context.Context, conn *websocket.Conn, device *data.Device, payload []byte) error {
+	if err := conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+		return err
+	}
+	if otaURL, ok := otaURLFromCommandPayload(payload); ok {
+		s.clearPendingOTAIfMatching(ctx, device, otaURL)
+	}
+	return nil
+}
+
+// sendPendingOTAOnWSConnect delivers a staged OTA URL when a device opens a new WebSocket.
+func (s *Server) sendPendingOTAOnWSConnect(ctx context.Context, conn *websocket.Conn, device *data.Device) {
+	fresh, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).First(ctx)
+	if err != nil {
+		slog.Error("Failed to reload device for pending OTA", "device", device.ID, "error", err)
+		return
+	}
+	if fresh.PendingUpdateURL == "" {
+		return
+	}
+	device.PendingUpdateURL = fresh.PendingUpdateURL
+	slog.Info("Sending pending OTA update on WS connect", "device", device.ID, "url", fresh.PendingUpdateURL)
+	jsonPayload, err := json.Marshal(map[string]string{"ota_url": fresh.PendingUpdateURL})
+	if err != nil {
+		slog.Error("Failed to marshal OTA payload on WS connect", "device", device.ID, "error", err)
+		return
+	}
+	if err := s.writeWSDeviceCommand(ctx, conn, device, jsonPayload); err != nil {
+		slog.Error("Failed to send pending OTA on WS connect", "device", device.ID, "error", err)
+	}
 }
 
 type DevicePreviewMessage struct {
@@ -122,11 +185,12 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	defer s.Broadcaster.Unsubscribe(deviceID, ch)
 
 	ackCh := make(chan WSMessage, 10)
-	stopCh := make(chan struct{})
+	wsStop := s.registerDeviceWS(deviceID)
+	defer s.unregisterDeviceWS(deviceID, wsStop)
 
 	// Read loop to handle ping/pong/close and client messages
 	go func() {
-		defer close(stopCh)
+		defer wsStop.close()
 		for {
 			var msg WSMessage
 			if err := conn.ReadJSON(&msg); err != nil {
@@ -234,7 +298,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, stopCh, s.GetBaseURL(r))
+	s.wsWriteLoop(r.Context(), conn, device, &user, ackCh, ch, wsStop.ch, s.GetBaseURL(r))
 }
 
 // baseURL is this server's address as the device connected to it, captured
@@ -245,21 +309,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 	device := *initialDevice
 	lastSentBrightness := -1
 	lastSentVolume := -1
-	// Send any pending OTA update on connection
-	if device.PendingUpdateURL != "" {
-		updateURL := device.PendingUpdateURL
-		slog.Info("Sending pending OTA update on WS connect", "device", device.ID, "url", updateURL)
-		payload := map[string]string{"ota_url": updateURL}
-		if jsonPayload, err := json.Marshal(payload); err == nil {
-			if err := conn.WriteMessage(websocket.TextMessage, jsonPayload); err == nil {
-				if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_update_url", ""); err != nil {
-					slog.Error("Failed to clear pending update", "error", err)
-				} else {
-					device.PendingUpdateURL = ""
-				}
-			}
-		}
-	}
+	s.sendPendingOTAOnWSConnect(ctx, conn, &device)
 	sendImmediate := false
 
 	for {
@@ -397,7 +447,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 						switch v := val.(type) {
 						case DeviceCommandMessage:
-							if err := conn.WriteMessage(websocket.TextMessage, v.Payload); err != nil {
+							if err := s.writeWSDeviceCommand(ctx, conn, &device, v.Payload); err != nil {
 								slog.Error("Failed to write command to WS", "error", err)
 								if timer != nil {
 									timer.Stop()
@@ -483,7 +533,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 					switch v := val.(type) {
 					case DeviceCommandMessage:
-						if err := conn.WriteMessage(websocket.TextMessage, v.Payload); err != nil {
+						if err := s.writeWSDeviceCommand(ctx, conn, &device, v.Payload); err != nil {
 							slog.Error("Failed to write command to WS", "error", err)
 							timer.Stop()
 							return
@@ -745,7 +795,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 							}
 
 							if isCommand {
-								if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+								if err := s.writeWSDeviceCommand(ctx, conn, &device, cmdPayload); err != nil {
 									slog.Error("Failed to write command to WS", "error", err)
 									if timer != nil {
 										timer.Stop()
@@ -831,6 +881,16 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 			slog.Error("WS image exceeds device max buffer size, skipping", "device", device.ID, "size", len(imgData), "max", maxChunkSize)
 			continue
 		}
+
+		// Drain any leftover ACKs from previous images before writing the new image
+		for {
+			select {
+			case <-ackCh:
+			default:
+				goto drainedOldAck
+			}
+		}
+	drainedOldAck:
 
 		if err := conn.WriteJSON(map[string]any{"dwell_secs": dwell}); err != nil {
 			slog.Error("Failed to write metadata WS message", "error", err)
@@ -979,7 +1039,7 @@ func (s *Server) wsWriteLoop(ctx context.Context, conn *websocket.Conn, initialD
 
 				if isCommand {
 					// It's a command, send it directly as JSON (TextMessage)
-					if err := conn.WriteMessage(websocket.TextMessage, cmdPayload); err != nil {
+					if err := s.writeWSDeviceCommand(ctx, conn, &device, cmdPayload); err != nil {
 						slog.Error("Failed to write command to WS", "error", err)
 						return
 					}

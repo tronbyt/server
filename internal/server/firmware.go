@@ -302,6 +302,7 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 		"matrixportal-s3-wide_firmware.bin":      "matrixportal-s3-wide.bin",
 		"matrixportal-s3-waveshare_firmware.bin": "matrixportal-s3-waveshare.bin",
 		"waveshare-s3_firmware.bin":              "waveshare-s3.bin",
+		"waveshare-s3-wide_firmware.bin":         "waveshare-s3-wide.bin",
 		// Merged binaries (bootloader + partition + app, flashable at 0x0)
 		"tidbyt-gen1_merged.bin":            "tidbyt-gen1_merged.bin",
 		"tronbyt-s3_merged.bin":             "tronbyt-S3_merged.bin",
@@ -309,6 +310,7 @@ func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
 		"matrixportal-s3-square_merged.bin": "matrixportal-s3-square_merged.bin",
 		"matrixportal-s3-wide_merged.bin":   "matrixportal-s3-wide_merged.bin",
 		"waveshare-s3_merged.bin":           "waveshare-s3_merged.bin",
+		"waveshare-s3-wide_merged.bin":      "waveshare-s3-wide_merged.bin",
 	}
 
 	firmwareRepo := os.Getenv("FIRMWARE_REPO")
@@ -828,6 +830,10 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	device.PendingUpdateURL = updateURL
+
+	// Drop any half-open WebSocket so a powered-off device cannot consume and
+	// clear the staged URL on a dead connection before it comes back online.
+	s.disconnectDeviceWS(device.ID)
 
 	// Notify Device (to wake up WS loop)
 	payload := map[string]string{"ota_url": updateURL}

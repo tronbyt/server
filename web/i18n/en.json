@@ -1,4 +1,16 @@
 {
+  "App info": {
+    "other": "App info"
+  },
+  "View app info": {
+    "other": "View app info"
+  },
+  "App details": {
+    "other": "App details"
+  },
+  "View app details": {
+    "other": "View app details"
+  },
   "Refresh options": {
     "other": "Refresh options"
   },
@@ -524,6 +536,9 @@
   "Waveshare S3": {
     "other": "Waveshare S3"
   },
+  "Waveshare S3 Wide": {
+    "other": "Waveshare S3 Wide"
+  },
   "Other": {
     "other": "Other"
   },
@@ -751,12 +766,6 @@
   },
   "Delete": {
     "other": "Delete"
-  },
-  "Unmark Broken": {
-    "other": "Unmark Broken"
-  },
-  "Mark Broken": {
-    "other": "Mark Broken"
   },
   "app": {
     "other": "app"
@@ -1894,12 +1903,6 @@
   },
   "Administrator": {
     "other": "Administrator"
-  },
-  "MarkAppBrokenConfirm": {
-    "other": "Mark '{{.AppName}}' as broken? This will add 'broken: true' to its manifest.yaml and prevent it from being installed."
-  },
-  "UnmarkAppBrokenConfirm": {
-    "other": "Unmark '{{.AppName}}' as broken? This will set 'broken: false' in its manifest.yaml and allow it to be installed."
   },
   "Invalid old password": {
     "other": "Invalid old password"

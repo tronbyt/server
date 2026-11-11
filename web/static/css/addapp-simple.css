@@ -250,6 +250,31 @@
   opacity: 1;
 }
 
+.app-catalog-info-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 11;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--input-border);
+  background: color-mix(in srgb, var(--surface-bg) 90%, var(--page-text) 10%);
+  color: var(--muted-text);
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.app-catalog-info-btn:hover {
+  color: var(--primary-color);
+  border-color: color-mix(in srgb, var(--primary-color) 35%, var(--input-border));
+  background: color-mix(in srgb, var(--surface-bg) 84%, var(--primary-color) 16%);
+}
+
 .installed-badge,
 .supports-2x-badge,
 .supports-64x64-badge,
@@ -291,9 +316,7 @@
   color: var(--danger-text);
 }
 
-.delete-upload-btn,
-.mark-broken-btn,
-.unmark-broken-btn {
+.delete-upload-btn {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
@@ -314,11 +337,6 @@
 .delete-upload-btn {
   color: var(--danger-text);
   border-color: color-mix(in srgb, var(--input-border) 70%, #c63c37 30%);
-}
-
-.mark-broken-btn,
-.unmark-broken-btn {
-  border: 1px solid var(--input-border);
 }
 
 @media screen and (max-width: 768px) {

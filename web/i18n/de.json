@@ -1,4 +1,16 @@
 {
+  "App info": {
+    "other": "App-Info"
+  },
+  "View app info": {
+    "other": "App-Info anzeigen"
+  },
+  "App details": {
+    "other": "App-Details"
+  },
+  "View app details": {
+    "other": "App-Details anzeigen"
+  },
   "Refresh options": {
     "other": "Optionen aktualisieren"
   },
@@ -524,6 +536,9 @@
   "Waveshare S3": {
     "other": "Waveshare S3"
   },
+  "Waveshare S3 Wide": {
+    "other": "Waveshare S3 Wide"
+  },
   "Other": {
     "other": "Sonstige"
   },
@@ -751,12 +766,6 @@
   },
   "Delete": {
     "other": "Löschen"
-  },
-  "Unmark Broken": {
-    "other": "Als funktionierend markieren"
-  },
-  "Mark Broken": {
-    "other": "Als defekt markieren"
   },
   "app": {
     "other": "App"
@@ -1897,12 +1906,6 @@
   },
   "Administrator": {
     "other": "Administrator"
-  },
-  "MarkAppBrokenConfirm": {
-    "other": "Möchten Sie '{{.AppName}}' wirklich als defekt markieren? Dies fügt 'broken: true' zur manifest.yaml hinzu und verhindert die Installation."
-  },
-  "UnmarkAppBrokenConfirm": {
-    "other": "Möchten Sie die Markierung als defekt für '{{.AppName}}' entfernen? Dies setzt 'broken: false' in der manifest.yaml und ermöglicht die Installation."
   },
   "Copy to...": {
     "other": "Kopieren nach..."

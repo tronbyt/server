@@ -86,6 +86,9 @@ type Server struct {
 	inFlightRendersMu     sync.Mutex
 	thumbnailSingleFlight singleflight.Group
 
+	// activeDeviceWS tracks the stop signal for each device's live WebSocket write loop.
+	activeDeviceWS sync.Map // device ID -> *deviceWSStop
+
 	// SchemaCache, when set, allows forcing a one-shot refetch of an app's
 	// cached HTTP responses so dynamic schema data (e.g. dropdown options
 	// fetched in get_schema) can be refreshed before the app's TTL expires.
@@ -475,8 +478,6 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /settings/awtrix", s.RequireLogin(s.handleSetAwtrixConfig))
 
 	// App broken status (development only)
-	s.Router.HandleFunc("POST /mark_app_broken", s.RequireLogin(s.handleMarkAppBroken))
-	s.Router.HandleFunc("POST /unmark_app_broken", s.RequireLogin(s.handleUnmarkAppBroken))
 
 	s.Router.HandleFunc("GET /devices/{id}/current", s.RequireLogin(s.RequireDevice(s.handleCurrentApp)))
 	s.Router.HandleFunc("GET /devices/{id}/installations/{iname}/preview", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleRenderConfigPreview))))

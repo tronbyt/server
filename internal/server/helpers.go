@@ -88,6 +88,7 @@ type TemplateData struct {
 	Device            *data.Device
 	SystemApps        []apps.AppMetadata
 	CustomApps        []apps.AppMetadata
+	PublicAppsCatalog bool
 	Providers         []string
 	DeviceTypeChoices []DeviceTypeGroup
 	Form              CreateDeviceFormData
@@ -118,6 +119,7 @@ type TemplateData struct {
 	Schema               template.JS
 	AppConfig            map[string]any
 	AppMetadata          *apps.AppMetadata
+	AppCatalogURL        string
 	ExternalAppURL       string
 	ExternalProviderName string
 
@@ -155,6 +157,7 @@ type TemplateData struct {
 	IsAutoLoginActive          bool   // Indicate if single-user auto-login is active
 	UserCount                  int    // Number of users, for registration logic
 	DeleteOnCancel             bool   // Indicate if app should be deleted on cancel
+	APIBaseURL                 string // External base URL for API example commands
 	URLWarning                 string // Warning about localhost in image URL
 	SunToday                   data.TodaySunEvents
 	SunTodayOK                 bool   // plain sunrise/sunset for the device's local today
@@ -210,6 +213,10 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	// Create localizer based on user's locale preference or request header
 	if tmplData.Localizer == nil {
 		tmplData.Localizer = s.getLocalizer(r)
+	}
+
+	if tmplData.APIBaseURL == "" && r != nil {
+		tmplData.APIBaseURL = s.GetBaseURL(r)
 	}
 
 	// Set version
@@ -337,6 +344,7 @@ func (s *Server) getDeviceTypeChoices(localizer *i18n.Localizer) []DeviceTypeGro
 		data.DeviceMatrixPortalSquare,
 		data.DeviceMatrixPortalWide,
 		data.DeviceWaveshareS3,
+		data.DeviceWaveshareS3Wide,
 		data.DevicePixoticker,
 		data.DeviceRaspberryPi,
 		data.DeviceRaspberryPiWide,
@@ -1010,17 +1018,38 @@ func (s *Server) sendFirmwareSettingsCommand(ctx context.Context, deviceID strin
 	return nil
 }
 
+// otaURLFromCommandPayload extracts an OTA download URL from a device WebSocket command.
+func otaURLFromCommandPayload(payload []byte) (string, bool) {
+	var cmd struct {
+		OTAURL string `json:"ota_url"`
+	}
+	if err := json.Unmarshal(payload, &cmd); err != nil || cmd.OTAURL == "" {
+		return "", false
+	}
+	return cmd.OTAURL, true
+}
+
+// clearPendingOTAIfMatching clears a staged OTA URL only when it matches what was delivered.
+func (s *Server) clearPendingOTAIfMatching(ctx context.Context, device *data.Device, deliveredURL string) {
+	if deliveredURL == "" {
+		return
+	}
+	rows, err := gorm.G[data.Device](s.DB).Where("id = ? AND pending_update_url = ?", device.ID, deliveredURL).Update(ctx, "pending_update_url", "")
+	if err != nil {
+		slog.Error("Failed to clear pending update", "error", err, "device", device.ID)
+		return
+	}
+	if rows > 0 {
+		device.PendingUpdateURL = ""
+	}
+}
+
 // sendPendingHTTPDeviceHeaders injects pending sound, volume, and OTA headers into HTTP device responses.
 func (s *Server) sendPendingHTTPDeviceHeaders(w http.ResponseWriter, ctx context.Context, device *data.Device) {
 	if updateURL := device.PendingUpdateURL; updateURL != "" {
 		slog.Info("Sending OTA update header", "device", device.ID, "url", updateURL)
 		w.Header().Set("Tronbyt-OTA-URL", updateURL)
-
-		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_update_url", ""); err != nil {
-			slog.Error("Failed to clear pending update", "error", err)
-		} else {
-			device.PendingUpdateURL = ""
-		}
+		s.clearPendingOTAIfMatching(ctx, device, updateURL)
 	}
 
 	if imageURL := device.PendingImageURL; imageURL != "" {

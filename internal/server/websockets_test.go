@@ -200,10 +200,13 @@ func TestWebsockets_NotificationSoundUpdatedWhileWaitingForACK(t *testing.T) {
 
 	assert.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
 
-	// Drain initial frame messages: dwell_secs, brightness, binary image
-	for range 3 {
-		_, _, err := conn.ReadMessage()
+	// Drain initial frame messages until binary image
+	for {
+		msgType, _, err := conn.ReadMessage()
 		require.NoError(t, err)
+		if msgType == websocket.BinaryMessage {
+			break
+		}
 	}
 
 	// While server is waiting for ACK, update the app sound to "bell"
@@ -214,8 +217,9 @@ func TestWebsockets_NotificationSoundUpdatedWhileWaitingForACK(t *testing.T) {
 	// Give a moment for the broadcast channel to be processed by wsWriteLoop
 	time.Sleep(50 * time.Millisecond)
 
-	// Send ACK from device
+	// Send ACK from device, followed immediately by a duplicate/stale ACK to test draining
 	displaying := 1
+	assert.NoError(t, conn.WriteJSON(WSMessage{Displaying: &displaying}))
 	assert.NoError(t, conn.WriteJSON(WSMessage{Displaying: &displaying}))
 
 	// Expect sound message
@@ -239,4 +243,44 @@ func TestWebsockets_NotificationSoundUpdatedWhileWaitingForACK(t *testing.T) {
 	soundURL, ok := soundMsg["sound"].(string)
 	assert.True(t, ok)
 	assert.Contains(t, soundURL, "bell.wav", "Expected updated sound 'bell.wav', got: %s", soundURL)
+
+	// Drain messages for the next frame iteration until the binary image is sent
+	for {
+		msgType, _, err := conn.ReadMessage()
+		require.NoError(t, err)
+		if msgType == websocket.BinaryMessage {
+			break
+		}
+	}
+
+	// Because the duplicate/stale ACK was drained before entering the wait loop,
+	// the server is currently waiting for the second frame's ACK.
+	// Update the sound to "chime" while it is waiting. If the stale ACK had NOT been drained,
+	// the server would have already consumed it and sent "bell.wav" upon image transmission.
+	thirdSound := "chime"
+	assert.NoError(t, s.DB.Model(&data.App{ID: app.ID}).Update("notification_sound", thirdSound).Error)
+	s.notifyDashboard("testuser", WSEvent{Type: "apps_changed", DeviceID: deviceID})
+	time.Sleep(50 * time.Millisecond)
+
+	// Now send legitimate fresh ACK confirming the second frame display
+	disp2 := 2
+	assert.NoError(t, conn.WriteJSON(WSMessage{Displaying: &disp2}))
+
+	// Verify that sound is sent now in response to the fresh ACK with the updated "chime.wav"
+	var secondSoundMsg map[string]any
+	for {
+		msgType, data, err := conn.ReadMessage()
+		require.NoError(t, err, "did not receive second sound message")
+		if msgType == websocket.TextMessage {
+			var parsed map[string]any
+			if err := json.Unmarshal(data, &parsed); err == nil && parsed["type"] == "sound" {
+				secondSoundMsg = parsed
+				break
+			}
+		}
+	}
+	assert.NotNil(t, secondSoundMsg)
+	soundURL2, ok := secondSoundMsg["sound"].(string)
+	assert.True(t, ok)
+	assert.Contains(t, soundURL2, "chime.wav", "Expected sound 'chime.wav', got: %s", soundURL2)
 }

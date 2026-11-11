@@ -65,12 +65,33 @@
         {{ t .Localizer "Auto Render Preview" }}
     </label>
 </div>
-{{ if .AppMetadata }}
+{{ if or .AppMetadata .AppCatalogURL }}
 <div class="app-metadata">
-    {{ if .AppMetadata.Summary }}
-    <p class="app-summary">{{ .AppMetadata.Summary }} {{ t .Localizer "by" }} <a href="https://github.com/{{ .AppMetadata.Author }}">{{ .AppMetadata.Author }}</a></p>
+    {{ if and .AppMetadata .AppMetadata.Summary }}
+    <p class="app-summary">
+        {{ .AppMetadata.Summary }} {{ t .Localizer "by" }} <a href="https://github.com/{{ .AppMetadata.Author }}">{{ .AppMetadata.Author }}</a>{{ if .AppCatalogURL }}
+        <span class="app-info-wrap">
+            <a href="{{ .AppCatalogURL }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="app-info-link"
+               title="{{ t .Localizer "View app info" }}">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ t .Localizer "App info" }}
+            </a>
+        </span>{{ end }}
+    </p>
+    {{ else if .AppCatalogURL }}
+    <p class="app-summary">
+        <a href="{{ .AppCatalogURL }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="app-info-link"
+           title="{{ t .Localizer "View app info" }}">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ t .Localizer "App info" }}
+        </a>
+    </p>
     {{ end }}
-    {{ if .AppMetadata.Desc }}
+    {{ if and .AppMetadata .AppMetadata.Desc }}
     <div class="app-desc">{{ .AppMetadata.Desc }}</div>
     {{ end }}
 </div>
@@ -765,12 +786,14 @@
         <button type="button" class="w3-button w3-red w3-round" id="cancelButton">
             <i class="fa-solid fa-circle-xmark"></i> {{ t .Localizer "Cancel" }}
         </button>
+        {{ if not .DeleteOnCancel }}
         <button type="button"
                 class="w3-button w3-red w3-round"
                 id="deleteButton"
-                onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true)">
+                onclick="if(confirm('{{ t .Localizer "Delete App?" }}')) deleteAppFromConfig('{{ .Device.ID }}', '{{ .App.Iname }}')">
             <i class="fa-solid fa-trash"></i> {{ t .Localizer "Delete" }}
         </button>
+        {{ end }}
     </div>
 </form>
 <input type="file"
@@ -799,7 +822,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <!-- Disable App -->
             <div style="margin-bottom: 20px;">
@@ -808,7 +831,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": false}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <!-- Pin App -->
             <div style="margin-bottom: 20px;">
@@ -817,7 +840,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": "{{ .App.Iname }}"}' \
-  /v0/devices/{{ .Device.ID }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}</pre>
             </div>
             <!-- Unpin App -->
             <div style="margin-bottom: 20px;">
@@ -826,7 +849,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"pinnedApp": ""}' \
-  /v0/devices/{{ .Device.ID }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}</pre>
             </div>
             <!-- Set Schedule -->
             <div style="margin-bottom: 20px;">
@@ -835,7 +858,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"startTime": "09:00", "endTime": "17:00", "days": ["monday","tuesday","wednesday","thursday","friday"]}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <!-- Clear Schedule -->
             <div style="margin-bottom: 20px;">
@@ -844,7 +867,7 @@
   -H "Authorization: Bearer {{ .Device.APIKey }}" \
   -H "Content-Type: application/json" \
   -d '{"startTime": "", "endTime": "", "days": []}' \
-  /v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
+  {{ .APIBaseURL }}/v0/devices/{{ .Device.ID }}/installations/{{ .App.Iname }}</pre>
             </div>
             <small>
                 <strong>{{ t .Localizer "Note:" }}</strong> {{ t .Localizer "Replace YOUR_API_KEY with your device API key if not using the one shown above." }}
@@ -2396,14 +2419,16 @@ function createImageUploadField(field, config) {
       reader.readAsText(file);
   }
 
-  function deleteApp(deviceId, iname, deleteOnCancel) {
+  // Named deleteAppFromConfig (not deleteApp) so deferred manager.js does not
+  // replace this with its global deleteApp(), which always prompts "Delete App?".
+  function deleteAppFromConfig(deviceId, iname, redirectTo = "/") {
       fetch(`/devices/${deviceId}/${iname}/delete`, {
         method: 'POST'
       }).then(() => {
-           window.location.href = "/";
+           window.location.href = redirectTo;
       }).catch(() => {
         alert("{{ t .Localizer "Error deleting app." }}");
-        window.location.href = "/";
+        window.location.href = redirectTo;
       });
   }
 
@@ -2510,7 +2535,7 @@ function createImageUploadField(field, config) {
     const cancelButton = document.getElementById("cancelButton");
     if (cancelButton) cancelButton.addEventListener("click", () => {
         if (deleteOnCancel) {
-            deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true);
+            deleteAppFromConfig('{{ .Device.ID }}', '{{ .App.Iname }}', '/devices/{{ .Device.ID }}/addapp');
         } else {
             window.location.href = "/";
         }
@@ -2518,7 +2543,7 @@ function createImageUploadField(field, config) {
     const cancelButtonTop = document.getElementById("cancelButtonTop");
     if (cancelButtonTop) cancelButtonTop.addEventListener("click", () => {
         if (deleteOnCancel) {
-            deleteApp('{{ .Device.ID }}', '{{ .App.Iname }}', true);
+            deleteAppFromConfig('{{ .Device.ID }}', '{{ .App.Iname }}', '/devices/{{ .Device.ID }}/addapp');
         } else {
             window.location.href = "/";
         }
