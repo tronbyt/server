@@ -694,8 +694,18 @@ func (s *Server) replaceSystemAppsCache() error {
 		return err
 	}
 
+	// Remember which app store commit is installed, for apps that ask
+	// (server.system_apps_commit()). Missing or unreadable repos leave it empty.
+	commit, commitTime, err := gitutils.HeadCommit(filepath.Join(s.DataDir, "system-apps"))
+	if err != nil {
+		slog.Debug("Could not read system apps commit", "error", err)
+		commit, commitTime = "", time.Time{}
+	}
+
 	s.systemAppsCacheMutex.Lock()
 	s.systemAppsCache = refreshedApps
+	s.systemAppsCommit = commit
+	s.systemAppsCommitTime = commitTime
 	count := len(s.systemAppsCache)
 	s.systemAppsCacheMutex.Unlock()
 
