@@ -557,8 +557,8 @@
   "Version": {
     "other": "Version"
   },
-  "Firmware is automatically updated when the server starts.": {
-    "other": "Firmware wird automatisch aktualisiert, wenn der Server startet."
+  "New firmware releases are downloaded automatically (checked every 12 hours).": {
+    "other": "Neue Firmware-Versionen werden automatisch heruntergeladen (Prüfung alle 12 Stunden)."
   },
   "No firmware version information available": {
     "other": "Keine Firmware-Versionsinformationen verfügbar"
@@ -2281,6 +2281,9 @@
   },
   "Mute Sounds": {
     "other": "Töne stummschalten"
+  },
+  "Firmware update available": {
+    "other": "Firmware-Update verfügbar"
   },
   "Muted": {
     "other": "Stummgeschaltet"

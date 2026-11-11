@@ -66,25 +66,14 @@ func (s *Server) checkForUpdates(ctx context.Context) {
 }
 
 const (
-	systemAppsAutoRefreshInterval   = 12 * time.Hour
+	systemAppsAutoRefreshInterval   = scheduledCheckInterval
 	systemAppsAutoRefreshSettingKey = "system_apps_auto_refresh"
 )
 
 func (s *Server) autoRefreshSystemRepo(ctx context.Context) {
-	ticker := time.NewTicker(systemAppsAutoRefreshInterval)
-	defer ticker.Stop()
-	s.runSystemAppsAutoRefresh(ctx, ticker.C, s.refreshSystemRepo)
-}
-
-func (s *Server) runSystemAppsAutoRefresh(ctx context.Context, ticks <-chan time.Time, refresh func() error) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticks:
-			s.refreshSystemAppsIfEnabled(refresh)
-		}
-	}
+	runEvery(ctx, systemAppsAutoRefreshInterval, func() {
+		s.refreshSystemAppsIfEnabled(s.refreshSystemRepoIfChanged)
+	})
 }
 
 func (s *Server) refreshSystemAppsIfEnabled(refresh func() error) {
@@ -100,6 +89,33 @@ func (s *Server) refreshSystemAppsIfEnabled(refresh func() error) {
 
 func (s *Server) isSystemAppsAutoRefreshEnabled() bool {
 	return s.systemAppsAutoRefresh.Load()
+}
+
+// refreshSystemRepoIfChanged refreshes the system apps only when the remote
+// branch has new commits. The check lists the remote's refs, so a scheduled
+// check with nothing new is one small request with no fetch, no repository
+// growth and no rebuild of the app list.
+func (s *Server) refreshSystemRepoIfChanged() error {
+	return s.withSystemAppsRefresh(func() error {
+		repoURL := s.Config.SystemAppsRepo
+		appsPath := filepath.Join(s.DataDir, "system-apps")
+		upToDate, err := gitutils.IsUpToDate(appsPath, repoURL, s.Config.GitHubToken)
+		if err != nil {
+			return err
+		}
+		if upToDate {
+			if !s.systemAppsCacheStale.Load() {
+				slog.Debug("System apps already up to date, skipping refresh")
+				return nil
+			}
+			// The repository is current but the last cache rebuild failed.
+			return s.replaceSystemAppsCache()
+		}
+		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
+			return err
+		}
+		return s.replaceSystemAppsCache()
+	})
 }
 
 func (s *Server) refreshSystemRepo() error {
