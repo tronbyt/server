@@ -692,8 +692,10 @@ func (s *Server) replaceSystemAppsCache() error {
 	slog.Info("Refreshing system apps cache")
 	refreshedApps, err := apps.ListSystemApps(s.DataDir)
 	if err != nil {
+		s.systemAppsCacheStale.Store(true)
 		return err
 	}
+	s.systemAppsCacheStale.Store(false)
 
 	s.systemAppsCacheMutex.Lock()
 	s.systemAppsCache = refreshedApps

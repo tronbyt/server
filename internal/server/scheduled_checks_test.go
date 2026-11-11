@@ -2,15 +2,19 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"tronbyt-server/internal/data"
 
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,4 +78,85 @@ func TestHandleIndexShowsFirmwareUpdateBadge(t *testing.T) {
 	// The single-card refresh used by the dashboard shows it too.
 	assert.Contains(t, render("?device_id=dev-old&partial=device_card"), `class="firmware-update-badge"`)
 	assert.NotContains(t, render("?device_id=dev-current&partial=device_card"), `class="firmware-update-badge"`)
+}
+
+// A shallow check (2 releases) and a deeper one (5 releases) keep separate
+// ETags, so the deeper one still downloads the older releases after the
+// shallow one has seen the same list.
+func TestFirmwareETagIsPerDepth(t *testing.T) {
+	s := newTestServer(t)
+	t.Setenv("FIRMWARE_REPO", "")
+	t.Setenv("TRONBERRY_REPO", "none")
+
+	firmwareBytes := make([]byte, 64)
+	firmwareBytes[0] = 0xE9
+	const etag = `"releases-v1"`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases"):
+			if r.Header.Get("If-None-Match") == etag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			w.Header().Set("ETag", etag)
+			w.Header().Set("Content-Type", "application/json")
+			base := "http://" + r.Host
+			var releases []string
+			for _, v := range []string{"v1.0.3", "v1.0.2", "v1.0.1"} {
+				releases = append(releases, fmt.Sprintf(`{"tag_name":%q,"assets":[{"name":"tidbyt-gen2_firmware.bin","browser_download_url":"%s/fw"}]}`, v, base))
+			}
+			_, _ = w.Write([]byte("[" + strings.Join(releases, ",") + "]"))
+		case r.URL.Path == "/fw":
+			_, _ = w.Write(firmwareBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	released := func(v string) bool {
+		_, err := os.Stat(filepath.Join(s.DataDir, "firmware", "releases", v, "tidbyt-gen2.bin"))
+		return err == nil
+	}
+
+	require.NoError(t, s.UpdateFirmwareBinaries(FirmwareReleasesAtStartup))
+	assert.True(t, released("v1.0.2"))
+	assert.False(t, released("v1.0.1"), "shallow check downloads only 2 releases")
+
+	require.NoError(t, s.UpdateFirmwareBinaries(FirmwareReleasesToList))
+	assert.True(t, released("v1.0.1"), "deeper check must not reuse the shallow check's ETag")
+}
+
+// newAppsSourceRepo makes a local git repository for the system apps refresh
+// to clone, with one commit.
+func newAppsSourceRepo(t *testing.T) string {
+	t.Helper()
+	path := t.TempDir()
+	r, err := git.PlainInit(path, false)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(path, "README.md"), []byte("apps"), 0o644))
+	w, err := r.Worktree()
+	require.NoError(t, err)
+	_, err = w.Add("README.md")
+	require.NoError(t, err)
+	_, err = w.Commit("initial", &git.CommitOptions{Author: &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()}})
+	require.NoError(t, err)
+	return path
+}
+
+// When the repository is current but the last cache rebuild failed, the
+// scheduled check rebuilds the cache instead of skipping.
+func TestRefreshSystemRepoIfChangedRetriesFailedCacheRebuild(t *testing.T) {
+	s := newTestServer(t)
+	s.Config.SystemAppsRepo = newAppsSourceRepo(t)
+	require.NoError(t, s.refreshSystemRepo())
+	require.False(t, s.systemAppsCacheStale.Load())
+
+	s.systemAppsCacheStale.Store(true)
+	require.NoError(t, s.refreshSystemRepoIfChanged())
+	assert.False(t, s.systemAppsCacheStale.Load(), "stale cache should be rebuilt although the repo is unchanged")
+
+	require.NoError(t, s.refreshSystemRepoIfChanged(), "unchanged repo and current cache: nothing to do")
 }

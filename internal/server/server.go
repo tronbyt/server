@@ -71,8 +71,12 @@ type Server struct {
 	systemAppsRefreshMutex               sync.Mutex
 	systemAppsAutoRefreshPreferenceMutex sync.Mutex
 	systemAppsAutoRefresh                atomic.Bool
-	nibletCloudPreferenceMutex           sync.Mutex
-	nibletCloudEnabled                   atomic.Bool
+	// systemAppsCacheStale is set when rebuilding the system apps cache
+	// failed, so the next scheduled check rebuilds it even if the
+	// repository hasn't changed since.
+	systemAppsCacheStale       atomic.Bool
+	nibletCloudPreferenceMutex sync.Mutex
+	nibletCloudEnabled         atomic.Bool
 
 	externalProviders     map[string]providers.ExternalAppProvider
 	externalProvidersMu   sync.RWMutex

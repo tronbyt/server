@@ -104,8 +104,12 @@ func (s *Server) refreshSystemRepoIfChanged() error {
 			return err
 		}
 		if upToDate {
-			slog.Debug("System apps already up to date, skipping refresh")
-			return nil
+			if !s.systemAppsCacheStale.Load() {
+				slog.Debug("System apps already up to date, skipping refresh")
+				return nil
+			}
+			// The repository is current but the last cache rebuild failed.
+			return s.replaceSystemAppsCache()
 		}
 		if err := gitutils.EnsureRepo(appsPath, repoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
 			return err

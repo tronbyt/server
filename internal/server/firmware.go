@@ -69,6 +69,11 @@ func parseOwnerRepo(repoURL string, defaultOwner, defaultRepo string) (string, s
 func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultRepo string, etagKey string, mapping map[string]string, maxReleases int) error {
 	owner, repo := parseOwnerRepo(repoURL, defaultOwner, defaultRepo)
 
+	// Each depth (startup and scheduled checks fetch 2 releases, the manual
+	// update 5) keeps its own ETag. Otherwise a 304 after a shallow check
+	// would make a deeper one skip the releases it never downloaded.
+	etagKey = fmt.Sprintf("%s_top%d", etagKey, maxReleases)
+
 	// Read stored ETag
 	var storedETag string
 	if val, err := s.getSetting(etagKey); err == nil {
