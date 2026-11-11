@@ -54,6 +54,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	// Devices: filtered list for rendering, AllDevices: lightweight list for "Copy to" dropdown
 	tmplData := TemplateData{User: user, Devices: devices, AllDevices: allDevices}
+	for i := range devices {
+		if v := s.FirmwareUpdateForDevice(&devices[i]); v != "" {
+			if tmplData.FirmwareUpdates == nil {
+				tmplData.FirmwareUpdates = make(map[string]string)
+			}
+			tmplData.FirmwareUpdates[devices[i].ID] = v
+		}
+	}
 	if partial == "device_card" && len(devices) == 1 {
 		tmplData.Partial = "device_card"
 		tmplData.Item = &devices[0]

@@ -76,9 +76,10 @@ type TemplateData struct {
 	Users                 []data.User // For admin view
 	Config                *config.TemplateConfig
 	Flashes               []string
-	Devices               []data.Device   // Filtered devices for rendering
-	AllDevices            []DeviceSummary // Lightweight list for "Copy to" dropdown
-	Item                  *data.Device    // For single item partials
+	Devices               []data.Device     // Filtered devices for rendering
+	AllDevices            []DeviceSummary   // Lightweight list for "Copy to" dropdown
+	Item                  *data.Device      // For single item partials
+	FirmwareUpdates       map[string]string // Device ID -> newer firmware version available
 	Localizer             *i18n.Localizer
 
 	UpdateAvailable  bool

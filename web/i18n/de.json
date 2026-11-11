@@ -557,8 +557,8 @@
   "Version": {
     "other": "Version"
   },
-  "Firmware is automatically updated when the server starts.": {
-    "other": "Firmware wird automatisch aktualisiert, wenn der Server startet."
+  "New firmware releases are downloaded automatically (checked every hour).": {
+    "other": "Neue Firmware-Versionen werden automatisch heruntergeladen (stündliche Prüfung)."
   },
   "No firmware version information available": {
     "other": "Keine Firmware-Versionsinformationen verfügbar"
@@ -2282,6 +2282,9 @@
   "Mute Sounds": {
     "other": "Töne stummschalten"
   },
+  "Firmware update available": {
+    "other": "Firmware-Update verfügbar"
+  },
   "Muted": {
     "other": "Stummgeschaltet"
   },
@@ -2351,8 +2354,8 @@
   "Update Schedule": {
     "other": "Aktualisierungszeitplan"
   },
-  "Automatically update system apps every 12 hours": {
-    "other": "System-Apps automatisch alle 12 Stunden aktualisieren"
+  "Automatically update system apps (checked every hour)": {
+    "other": "System-Apps automatisch aktualisieren (stündliche Prüfung)"
   },
   "Automatic updates may change or break apps already installed on your devices.": {
     "other": "Automatische Updates können bereits auf Ihren Geräten installierte Apps verändern oder funktionsunfähig machen."

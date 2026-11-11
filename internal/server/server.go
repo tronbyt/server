@@ -97,6 +97,10 @@ type Server struct {
 	UpdateAvailable  bool
 	LatestReleaseURL string
 
+	// firmwareUpdateMutex stops a scheduled and a manual firmware update
+	// from downloading the same files at once.
+	firmwareUpdateMutex sync.Mutex
+
 	// githubAPIBase, when set, replaces https://api.github.com (used by tests).
 	githubAPIBase string
 }
@@ -333,6 +337,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 
 	go s.checkForUpdates(context.Background())
 	go s.autoRefreshSystemRepo(context.Background())
+	go s.autoUpdateFirmware(context.Background())
 	go s.autoRefreshCustomAppsRepos()
 	s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
 	if cfg.NibletCloudURL != "" {

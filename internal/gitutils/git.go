@@ -141,19 +141,7 @@ func GetRepoInfo(path string, remoteURL string) (*RepoInfo, error) {
 func EnsureRepo(path string, repoURL string, token string, update bool, maxSize int64) error {
 	slog.Info("Checking git repo", "path", path, "url", repoURL)
 
-	var clientOpts []client.Option
-
-	u, err := url.Parse(repoURL)
-	if err == nil && u.User == nil {
-		if token != "" && (u.Scheme == "http" || u.Scheme == "https") && u.Host == "github.com" {
-			clientOpts = append(clientOpts, client.WithHTTPAuth(&http.BasicAuth{
-				Username: token,
-				Password: "", // For GitHub PATs, the password can be empty.
-			}))
-		}
-	} else if err != nil {
-		slog.Warn("Failed to parse repo URL", "url", repoURL, "error", err)
-	}
+	clientOpts := clientOptions(repoURL, token)
 
 	repoSrc := parseRepoSource(repoURL)
 
@@ -293,6 +281,66 @@ func EnsureRepo(path string, repoURL string, token string, update bool, maxSize 
 	}
 
 	return nil
+}
+
+// clientOptions returns the transport options for repoURL: GitHub token
+// authentication when a token is set and the URL has no credentials of its own.
+func clientOptions(repoURL string, token string) []client.Option {
+	var clientOpts []client.Option
+
+	u, err := url.Parse(repoURL)
+	if err == nil && u.User == nil {
+		if token != "" && (u.Scheme == "http" || u.Scheme == "https") && u.Host == "github.com" {
+			clientOpts = append(clientOpts, client.WithHTTPAuth(&http.BasicAuth{
+				Username: token,
+				Password: "", // For GitHub PATs, the password can be empty.
+			}))
+		}
+	} else if err != nil {
+		slog.Warn("Failed to parse repo URL", "url", repoURL, "error", err)
+	}
+	return clientOpts
+}
+
+// IsUpToDate reports whether the clone at path already has the latest commit
+// of its branch on the remote. It only lists the remote's refs, which is far
+// cheaper than a fetch and transfers no objects, so callers can poll often
+// and skip EnsureRepo when nothing has changed.
+//
+// It returns false, without an error, whenever EnsureRepo would have work to
+// do anyway: no clone yet, a different remote URL or branch, or a detached
+// HEAD.
+func IsUpToDate(path string, repoURL string, token string) (bool, error) {
+	if _, err := os.Stat(path); err != nil {
+		return false, nil
+	}
+	r, err := git.PlainOpen(path)
+	if err != nil {
+		return false, nil
+	}
+	defer func() { _ = r.Close() }()
+
+	repoSrc := parseRepoSource(repoURL)
+	rem, err := r.Remote("origin")
+	if err != nil || len(rem.Config().URLs) == 0 || rem.Config().URLs[0] != repoSrc.url || recordedBranch(r) != repoSrc.branch {
+		return false, nil
+	}
+
+	head, err := r.Head()
+	if err != nil || !head.Name().IsBranch() {
+		return false, nil
+	}
+
+	refs, err := rem.List(&git.ListOptions{ClientOptions: clientOptions(repoURL, token), Timeout: 30})
+	if err != nil {
+		return false, fmt.Errorf("failed to list remote refs: %w", err)
+	}
+	for _, ref := range refs {
+		if ref.Name() == head.Name() {
+			return ref.Hash() == head.Hash(), nil
+		}
+	}
+	return false, nil
 }
 
 // dirSize returns the total size in bytes of all regular files under path.

@@ -267,6 +267,9 @@ func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultR
 // which does not count against the GitHub API rate limit; the API asset URL is
 // only used as a fallback for private repositories.
 func (s *Server) UpdateFirmwareBinaries(maxReleases int) error {
+	s.firmwareUpdateMutex.Lock()
+	defer s.firmwareUpdateMutex.Unlock()
+
 	baseFirmwareDir := filepath.Join(s.DataDir, "firmware")
 
 	// Cleanup old custom firmware uploads
@@ -413,6 +416,28 @@ func (s *Server) GetLatestFirmwareVersionForDevice(device *data.Device) string {
 		return versions[0]
 	}
 	return ""
+}
+
+// FirmwareUpdateForDevice returns the newest firmware version this server has
+// for device when it is newer than the version the device last reported, or
+// "" when the device is up to date, its version is unknown, or it doesn't
+// take Tronbyt firmware.
+func (s *Server) FirmwareUpdateForDevice(device *data.Device) string {
+	if device == nil || !device.Type.SupportsFirmware() {
+		return ""
+	}
+	current := device.Info.FirmwareVersion
+	if current != "" && !strings.HasPrefix(current, "v") {
+		current = "v" + current
+	}
+	if !semver.IsValid(current) {
+		return ""
+	}
+	latest := s.GetLatestFirmwareVersionForDevice(device)
+	if !semver.IsValid(latest) || semver.Compare(latest, current) <= 0 {
+		return ""
+	}
+	return latest
 }
 
 // isTronberryDevice reports whether the device is a Raspberry Pi or Tronberry device.

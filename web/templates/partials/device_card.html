@@ -32,6 +32,17 @@
                         <i class="fa-solid fa-volume-xmark" aria-hidden="true"></i> {{ t .Localizer "Muted" }}
                     </span>
                     {{ end }}
+                    {{ if not .ReadOnly }}
+                    {{ with .FirmwareUpdates }}
+                    {{ with index . $.Item.ID }}
+                    <a class="firmware-update-badge"
+                       href="/devices/{{ $.Item.ID }}/firmware"
+                       title="{{ t $.Localizer "Firmware update available" }}">
+                        <i class="fa-solid fa-circle-arrow-up" aria-hidden="true"></i> {{ t $.Localizer "Firmware" }} {{ . }}
+                    </a>
+                    {{ end }}
+                    {{ end }}
+                    {{ end }}
                 </h1>
                 <p class="settings-page-copy">
                 {{ len .Item.Apps }} {{ if eq (len .Item.Apps) 1 }}{{ t .Localizer "app" }}{{ else }}{{ t .Localizer "apps" }}{{ end }}

@@ -171,7 +171,7 @@ func TestSettingsContentRendersSystemAppsAutoRefreshControl(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rr.Code)
 	require.Contains(t, rr.Body.String(), `id="system_apps_auto_refresh"`)
-	require.Contains(t, rr.Body.String(), "Automatically update system apps every 12 hours")
+	require.Contains(t, rr.Body.String(), "Automatically update system apps (checked every hour)")
 	require.Contains(t, rr.Body.String(), "Automatic updates may change or break apps already installed on your devices.")
 	require.Contains(t, rr.Body.String(), "checked")
 	require.Contains(t, rr.Body.String(), `onchange="saveSystemAppsAutoRefresh(this)"`)
