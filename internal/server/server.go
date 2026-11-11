@@ -68,6 +68,8 @@ type Server struct {
 
 	systemAppsCache                      []apps.AppMetadata
 	systemAppsCacheMutex                 sync.RWMutex
+	systemAppsCommit                     string    // HEAD of the system apps repo; guarded by systemAppsCacheMutex
+	systemAppsCommitTime                 time.Time // guarded by systemAppsCacheMutex
 	systemAppsRefreshMutex               sync.Mutex
 	systemAppsAutoRefreshPreferenceMutex sync.Mutex
 	systemAppsAutoRefresh                atomic.Bool

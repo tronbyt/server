@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/config"
@@ -404,4 +405,23 @@ func replaceRepoDir(src, dst string) error {
 		slog.Warn("Failed to remove old repo backup", "path", backup, "error", err)
 	}
 	return nil
+}
+
+// HeadCommit returns the hash and committer time of the repository's HEAD.
+func HeadCommit(path string) (string, time.Time, error) {
+	r, err := git.PlainOpen(path)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to open repo at %s: %w", path, err)
+	}
+	defer func() { _ = r.Close() }()
+
+	headRef, err := r.Head()
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to get HEAD reference: %w", err)
+	}
+	commit, err := r.CommitObject(headRef.Hash())
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to get commit object: %w", err)
+	}
+	return commit.Hash.String(), commit.Committer.When, nil
 }

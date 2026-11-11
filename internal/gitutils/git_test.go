@@ -258,3 +258,17 @@ func TestReplaceRepoDirKeepsDestinationWhenMoveFails(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, entries, 1, "no backup should be left behind")
 }
+
+func TestHeadCommit(t *testing.T) {
+	src := newSourceRepo(t)
+	head, err := src.repo.Head()
+	require.NoError(t, err)
+
+	hash, when, err := HeadCommit(src.path)
+	require.NoError(t, err)
+	assert.Equal(t, head.Hash().String(), hash)
+	assert.WithinDuration(t, time.Now(), when, time.Minute)
+
+	_, _, err = HeadCommit(t.TempDir())
+	assert.Error(t, err)
+}

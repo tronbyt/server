@@ -95,6 +95,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		locale,
 		filters,
 		showFullAnimation,
+		s.hostInfo(device),
 	)
 }
 

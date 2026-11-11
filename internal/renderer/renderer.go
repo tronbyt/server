@@ -9,6 +9,7 @@ import (
 
 	"github.com/tronbyt/pixlet/encode"
 	"github.com/tronbyt/pixlet/runtime"
+	"github.com/tronbyt/pixlet/runtime/modules/host"
 	"github.com/tronbyt/pixlet/runtime/modules/render_runtime/canvas"
 	"github.com/tronbyt/pixlet/server/loader"
 	"golang.org/x/text/language"
@@ -28,6 +29,7 @@ func Render(
 	locale *string,
 	filters []string,
 	showFullAnimation *bool,
+	hostInfo host.Info,
 ) ([]byte, []string, error) {
 	location := time.Local
 	if timezone != nil && *timezone != "" {
@@ -70,11 +72,12 @@ func Render(
 		loader.WithLanguage(lang),
 		loader.WithFilters(renderFilters),
 		loader.WithShowFullAnimation(showFullAnimation),
+		loader.WithHostInfo(hostInfo),
 	)
 }
 
 // GetSchema returns the schema JSON for the given script.
-func GetSchema(ctx context.Context, path string, width, height int, output2x bool) ([]byte, error) {
+func GetSchema(ctx context.Context, path string, width, height int, output2x bool, hostInfo host.Info) ([]byte, error) {
 	applet, err := runtime.NewAppletFromPath(
 		ctx, path,
 		runtime.WithCanvasMeta(canvas.Metadata{
@@ -82,6 +85,7 @@ func GetSchema(ctx context.Context, path string, width, height int, output2x boo
 			Height: height,
 			Is2x:   output2x,
 		}),
+		runtime.WithHostInfo(hostInfo),
 	)
 	if err != nil {
 		return nil, err
@@ -109,6 +113,7 @@ func CallSchemaHandler(
 	output2x bool,
 	handlerName string,
 	parameter string,
+	hostInfo host.Info,
 ) (string, error) {
 	applet, err := runtime.NewAppletFromPath(
 		ctx, path,
@@ -117,6 +122,7 @@ func CallSchemaHandler(
 			Height: height,
 			Is2x:   output2x,
 		}),
+		runtime.WithHostInfo(hostInfo),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to load applet from path: %w", err)
