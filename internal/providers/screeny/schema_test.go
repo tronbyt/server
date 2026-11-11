@@ -93,4 +93,21 @@ func TestTranslatePatchParamsToPixletSchema(t *testing.T) {
 	for _, field := range rootNoScale.Schema {
 		assert.NotEqual(t, "scale_filter", field.ID)
 	}
+
+	// Test with isSeeded = true (seeded procedural patches)
+	schemaBytesSeeded, err := TranslatePatchParamsToPixletSchema(params, true, true)
+	require.NoError(t, err)
+
+	var rootSeeded PixletSchemaRoot
+	err = json.Unmarshal(schemaBytesSeeded, &rootSeeded)
+	require.NoError(t, err)
+
+	assert.Equal(t, "1", rootSeeded.Version)
+	require.Len(t, rootSeeded.Schema, 5) // 3 params + seed + scale_filter
+	assert.Equal(t, "seed", rootSeeded.Schema[3].ID)
+	assert.Equal(t, "Random Seed", rootSeeded.Schema[3].Name)
+	assert.Equal(t, "text", rootSeeded.Schema[3].Type)
+	assert.Equal(t, "dice", rootSeeded.Schema[3].Icon)
+	assert.Equal(t, "", rootSeeded.Schema[3].Default)
+	assert.Equal(t, "scale_filter", rootSeeded.Schema[4].ID)
 }
