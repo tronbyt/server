@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -41,11 +42,106 @@ const FirmwareReleasesToList = 5
 // The rest can be fetched on demand via the "update firmware" admin action.
 const FirmwareReleasesAtStartup = 2
 
+const firmwareAlphaReleaseTag = "alpha"
+
+type githubFirmwareAsset struct {
+	Name               string `json:"name"`
+	URL                string `json:"url"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+}
+
+type githubFirmwareRelease struct {
+	TagName    string                `json:"tag_name"`
+	Name       string                `json:"name"`
+	Body       string                `json:"body"`
+	HTMLURL    string                `json:"html_url"`
+	Draft      bool                  `json:"draft"`
+	Prerelease bool                  `json:"prerelease"`
+	Assets     []githubFirmwareAsset `json:"assets"`
+}
+
+func (s *Server) includeFirmwareAlpha() bool {
+	return s.Config.FirmwareIncludeAlpha && s.Config.GitHubToken != ""
+}
+
+func draftFirmwareCacheIncomplete(releasesDir, tag string) bool {
+	if tag == "" {
+		return true
+	}
+	versionDir := filepath.Join(releasesDir, tag)
+	entries, err := os.ReadDir(versionDir)
+	if err != nil {
+		return true
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".bin") || name == "tronberry" {
+			info, err := entry.Info()
+			if err == nil && info.Size() > 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+var firmwareVersionTagPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`)
+
+// validFirmwareVersionTag reports whether a release tag is safe to use as a
+// firmware version directory name (semver or a short stable tag such as alpha).
+func validFirmwareVersionTag(version string) bool {
+	if semver.IsValid(version) {
+		return true
+	}
+	return firmwareVersionTagPattern.MatchString(version)
+}
+
+func compareFirmwareVersionDesc(a, b string) int {
+	aSemver := semver.IsValid(a)
+	bSemver := semver.IsValid(b)
+	if aSemver && bSemver {
+		return semver.Compare(b, a)
+	}
+	if aSemver && !bSemver {
+		return -1
+	}
+	if !aSemver && bSemver {
+		return 1
+	}
+	return strings.Compare(b, a)
+}
+
 func (s *Server) githubAPIBaseURL() string {
 	if s.githubAPIBase != "" {
 		return strings.TrimRight(s.githubAPIBase, "/")
 	}
 	return "https://api.github.com"
+}
+
+// firmwareDownloadHTTPClient builds an HTTP client for release asset downloads.
+// GitHub draft (and private) assets redirect off api.github.com; Go strips the
+// Authorization header on cross-host redirects unless we re-attach it for
+// github.com and githubusercontent.com.
+func firmwareDownloadHTTPClient(token string, timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("too many redirects")
+			}
+			if token == "" {
+				return nil
+			}
+			host := strings.ToLower(req.URL.Hostname())
+			if host == "github.com" || strings.HasSuffix(host, "githubusercontent.com") {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			return nil
+		},
+	}
 }
 
 // UpdateFirmwareBinaries downloads firmware binaries for the most recent
@@ -65,24 +161,194 @@ func parseOwnerRepo(repoURL string, defaultOwner, defaultRepo string) (string, s
 	return defaultOwner, defaultRepo
 }
 
+func (s *Server) applyGithubFirmwareRelease(
+	release githubFirmwareRelease,
+	releasesDir, defaultRepo string,
+	mapping map[string]string,
+	client *http.Client,
+	token string,
+) {
+	draftWithToken := release.Draft && token != ""
+	if release.TagName == "" || !validFirmwareVersionTag(release.TagName) {
+		if release.Draft {
+			slog.Warn("Skipping draft release without a usable tag", "name", release.Name, "tag", release.TagName)
+		}
+		return
+	}
+
+	versionDir := filepath.Join(releasesDir, release.TagName)
+	if err := os.MkdirAll(versionDir, 0755); err != nil {
+		slog.Error("Failed to create version dir", "version", release.TagName, "error", err)
+		return
+	}
+
+	info := FirmwareReleaseInfo{
+		TagName: release.TagName,
+		Name:    release.Name,
+		Body:    release.Body,
+		HTMLURL: release.HTMLURL,
+	}
+	if metaBytes, err := json.Marshal(info); err == nil {
+		_ = os.WriteFile(filepath.Join(versionDir, "release.json"), metaBytes, 0644)
+		_ = os.WriteFile(filepath.Join(versionDir, fmt.Sprintf("release-%s.json", defaultRepo)), metaBytes, 0644)
+	}
+
+	if release.Draft {
+		slog.Info("Downloading draft firmware release", "tag", release.TagName, "name", release.Name)
+	}
+
+	for _, asset := range release.Assets {
+		localName, ok := mapping[asset.Name]
+		if !ok {
+			continue
+		}
+
+		localPath := filepath.Join(versionDir, localName)
+		if info, err := os.Stat(localPath); err == nil && info.Size() > 0 {
+			continue // Already exists and is not empty
+		}
+
+		slog.Info("Downloading firmware asset", "version", release.TagName, "asset", asset.Name)
+
+		downloadAsset := func(downloadURL string, useAPIEndpoint bool) bool {
+			dReq, err := http.NewRequest(http.MethodGet, downloadURL, nil)
+			if err != nil {
+				slog.Error("Failed to create firmware download request", "asset", asset.Name, "error", err)
+				return false
+			}
+			if useAPIEndpoint {
+				dReq.Header.Set("Accept", "application/octet-stream")
+				if token != "" {
+					dReq.Header.Set("Authorization", "Bearer "+token)
+				}
+			}
+
+			dResp, err := client.Do(dReq)
+			if err != nil {
+				slog.Error("Failed to download firmware asset", "asset", asset.Name, "error", err)
+				return false
+			}
+			defer func() {
+				if err := dResp.Body.Close(); err != nil {
+					slog.Error("Failed to close response body", "asset", asset.Name, "error", err)
+				}
+			}()
+
+			if dResp.StatusCode != http.StatusOK {
+				slog.Error("Failed to download firmware asset", "asset", asset.Name, "status", dResp.StatusCode)
+				return false
+			}
+
+			tempPath := localPath + ".tmp"
+			outFile, err := os.Create(tempPath)
+			if err != nil {
+				slog.Error("Failed to create temp firmware file", "file", tempPath, "error", err)
+				return false
+			}
+
+			if _, err := io.Copy(outFile, dResp.Body); err != nil {
+				_ = outFile.Close()
+				_ = os.Remove(tempPath)
+				slog.Error("Failed to write firmware file", "file", localPath, "error", err)
+				return false
+			}
+			if err := outFile.Close(); err != nil {
+				_ = os.Remove(tempPath)
+				slog.Error("Failed to close temp firmware file", "file", tempPath, "error", err)
+				return false
+			}
+
+			content, err := os.ReadFile(tempPath)
+			if err != nil {
+				_ = os.Remove(tempPath)
+				slog.Error("Failed to read temp firmware file", "file", tempPath, "error", err)
+				return false
+			}
+			if !firmware.LooksLikeFirmware(content) {
+				_ = os.Remove(tempPath)
+				slog.Error("Downloaded content is not a firmware binary", "asset", asset.Name)
+				return false
+			}
+
+			if err := os.Rename(tempPath, localPath); err != nil {
+				slog.Error("Failed to rename firmware file", "from", tempPath, "to", localPath, "error", err)
+				_ = os.Remove(tempPath)
+				return false
+			}
+			return true
+		}
+
+		if draftWithToken {
+			downloadAsset(asset.URL, true)
+		} else if !downloadAsset(asset.BrowserDownloadURL, false) && token != "" {
+			slog.Info("Retrying firmware download via API endpoint", "version", release.TagName, "asset", asset.Name)
+			downloadAsset(asset.URL, true)
+		}
+	}
+}
+
+func (s *Server) syncFirmwareDraftReleaseByTag(
+	owner, repo, defaultRepo string,
+	mapping map[string]string,
+	client *http.Client,
+	token, releasesDir string,
+) {
+	tag := firmwareAlphaReleaseTag
+	if !validFirmwareVersionTag(tag) || !draftFirmwareCacheIncomplete(releasesDir, tag) {
+		return
+	}
+
+	apiURL := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", s.githubAPIBaseURL(), owner, repo, url.PathEscape(tag))
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		slog.Warn("Failed to create draft firmware release request", "tag", tag, "error", err)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		slog.Warn("Failed to fetch draft firmware release", "tag", tag, "error", err)
+		return
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("Failed to close response body", "error", err)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("Draft firmware release not available", "repo", repo, "tag", tag, "status", resp.StatusCode)
+		return
+	}
+
+	var release githubFirmwareRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		slog.Warn("Failed to decode draft firmware release", "tag", tag, "error", err)
+		return
+	}
+	s.applyGithubFirmwareRelease(release, releasesDir, defaultRepo, mapping, client, token)
+}
+
 // downloadReleasesFromRepo downloads assets for the most recent releases from a specified GitHub repository.
 func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultRepo string, etagKey string, mapping map[string]string, maxReleases int) error {
 	owner, repo := parseOwnerRepo(repoURL, defaultOwner, defaultRepo)
 
-	// Each depth (startup and scheduled checks fetch 2 releases, the manual
-	// update 5) keeps its own ETag. Otherwise a 304 after a shallow check
-	// would make a deeper one skip the releases it never downloaded.
-	etagKey = fmt.Sprintf("%s_top%d", etagKey, maxReleases)
+	includeAlpha := s.includeFirmwareAlpha()
 
-	// Read stored ETag
+	// Each depth (startup and manual update) keeps its own ETag. Alpha sync
+	// is part of the key so a 304 from a pass without alpha does not block a
+	// later FIRMWARE_INCLUDE_ALPHA fetch over the same GitHub list.
+	etagKey = fmt.Sprintf("%s_top%d_alpha%t", etagKey, maxReleases, includeAlpha)
+
 	var storedETag string
 	if val, err := s.getSetting(etagKey); err == nil {
 		storedETag = val
 	}
 
-	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=5", s.githubAPIBaseURL(), owner, repo)
+	listURL := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=5", s.githubAPIBaseURL(), owner, repo)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, listURL, nil)
 	if err != nil {
 		return err
 	}
@@ -107,23 +373,34 @@ func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultR
 		}
 	}()
 
+	downloadClient := firmwareDownloadHTTPClient(token, 30*time.Second)
+
+	releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
+	if err := os.MkdirAll(releasesDir, 0755); err != nil {
+		return err
+	}
+
 	if resp.StatusCode == http.StatusNotModified {
 		slog.Info("Firmware releases not modified (ETag match)", "repo", repo)
+		if includeAlpha && token != "" {
+			s.syncFirmwareDraftReleaseByTag(owner, repo, defaultRepo, mapping, downloadClient, token, releasesDir)
+		}
 		return nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-			releasesDir := filepath.Join(s.DataDir, "firmware", "releases")
 			if entries, err := os.ReadDir(releasesDir); err == nil && len(entries) > 0 {
 				slog.Warn("GitHub API rate limit exceeded. Using cached firmware releases.", "repo", repo, "count", len(entries))
+				if includeAlpha && token != "" {
+					s.syncFirmwareDraftReleaseByTag(owner, repo, defaultRepo, mapping, downloadClient, token, releasesDir)
+				}
 				return nil
 			}
 		}
 		return fmt.Errorf("GitHub API returned %d for %s/%s", resp.StatusCode, owner, repo)
 	}
 
-	// Save new ETag
 	newETag := resp.Header.Get("ETag")
 	if newETag != "" {
 		if err := s.setSetting(etagKey, newETag); err != nil {
@@ -131,138 +408,31 @@ func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultR
 		}
 	}
 
-	var releases []struct {
-		TagName string `json:"tag_name"`
-		Name    string `json:"name"`
-		Body    string `json:"body"`
-		HTMLURL string `json:"html_url"`
-		Assets  []struct {
-			Name               string `json:"name"`
-			URL                string `json:"url"`                  // API URL
-			BrowserDownloadURL string `json:"browser_download_url"` // Direct download URL (not rate limited)
-		} `json:"assets"`
-	}
+	var releases []githubFirmwareRelease
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return err
 	}
 
-	baseFirmwareDir := filepath.Join(s.DataDir, "firmware")
-	releasesDir := filepath.Join(baseFirmwareDir, "releases")
-	if err := os.MkdirAll(releasesDir, 0755); err != nil {
-		return err
-	}
-
-	for i, release := range releases {
-		if i >= maxReleases {
-			break
-		}
-
-		versionDir := filepath.Join(releasesDir, release.TagName)
-		if err := os.MkdirAll(versionDir, 0755); err != nil {
-			slog.Error("Failed to create version dir", "version", release.TagName, "error", err)
+	downloaded := 0
+	for _, release := range releases {
+		if release.Draft && !includeAlpha {
 			continue
 		}
-
-		info := FirmwareReleaseInfo{
-			TagName: release.TagName,
-			Name:    release.Name,
-			Body:    release.Body,
-			HTMLURL: release.HTMLURL,
+		if release.TagName == "" || !validFirmwareVersionTag(release.TagName) {
+			if release.Draft {
+				slog.Warn("Skipping draft release without a usable tag", "name", release.Name, "repo", repo)
+			}
+			continue
 		}
-		if metaBytes, err := json.Marshal(info); err == nil {
-			_ = os.WriteFile(filepath.Join(versionDir, "release.json"), metaBytes, 0644)
-			_ = os.WriteFile(filepath.Join(versionDir, fmt.Sprintf("release-%s.json", defaultRepo)), metaBytes, 0644)
+		if downloaded >= maxReleases {
+			break
 		}
+		downloaded++
+		s.applyGithubFirmwareRelease(release, releasesDir, defaultRepo, mapping, downloadClient, token)
+	}
 
-		for _, asset := range release.Assets {
-			localName, ok := mapping[asset.Name]
-			if !ok {
-				continue
-			}
-
-			localPath := filepath.Join(versionDir, localName)
-			if info, err := os.Stat(localPath); err == nil && info.Size() > 0 {
-				continue // Already exists and is not empty
-			}
-
-			slog.Info("Downloading firmware asset", "version", release.TagName, "asset", asset.Name)
-
-			downloadAsset := func(downloadURL string, useAPIEndpoint bool) bool {
-				dReq, err := http.NewRequest(http.MethodGet, downloadURL, nil)
-				if err != nil {
-					slog.Error("Failed to create firmware download request", "asset", asset.Name, "error", err)
-					return false
-				}
-				if useAPIEndpoint {
-					dReq.Header.Set("Accept", "application/octet-stream")
-					if token != "" {
-						dReq.Header.Set("Authorization", "Bearer "+token)
-					}
-				}
-
-				dResp, err := client.Do(dReq)
-				if err != nil {
-					slog.Error("Failed to download firmware asset", "asset", asset.Name, "error", err)
-					return false
-				}
-				defer func() {
-					if err := dResp.Body.Close(); err != nil {
-						slog.Error("Failed to close response body", "asset", asset.Name, "error", err)
-					}
-				}()
-
-				if dResp.StatusCode != http.StatusOK {
-					slog.Error("Failed to download firmware asset", "asset", asset.Name, "status", dResp.StatusCode)
-					return false
-				}
-
-				tempPath := localPath + ".tmp"
-				outFile, err := os.Create(tempPath)
-				if err != nil {
-					slog.Error("Failed to create temp firmware file", "file", tempPath, "error", err)
-					return false
-				}
-
-				if _, err := io.Copy(outFile, dResp.Body); err != nil {
-					_ = outFile.Close()
-					_ = os.Remove(tempPath)
-					slog.Error("Failed to write firmware file", "file", localPath, "error", err)
-					return false
-				}
-				if err := outFile.Close(); err != nil {
-					_ = os.Remove(tempPath)
-					slog.Error("Failed to close temp firmware file", "file", tempPath, "error", err)
-					return false
-				}
-
-				content, err := os.ReadFile(tempPath)
-				if err != nil {
-					_ = os.Remove(tempPath)
-					slog.Error("Failed to read temp firmware file", "file", tempPath, "error", err)
-					return false
-				}
-				if !firmware.LooksLikeFirmware(content) {
-					_ = os.Remove(tempPath)
-					slog.Error("Downloaded content is not a firmware binary", "asset", asset.Name)
-					return false
-				}
-
-				if err := os.Rename(tempPath, localPath); err != nil {
-					slog.Error("Failed to rename firmware file", "from", tempPath, "to", localPath, "error", err)
-					_ = os.Remove(tempPath)
-					return false
-				}
-				return true
-			}
-
-			// Prefer the browser download URL: it redirects to S3 and does not
-			// count against the GitHub API rate limit. Fall back to the API
-			// asset endpoint for private repositories.
-			if !downloadAsset(asset.BrowserDownloadURL, false) && token != "" {
-				slog.Info("Retrying firmware download via API endpoint", "version", release.TagName, "asset", asset.Name)
-				downloadAsset(asset.URL, true)
-			}
-		}
+	if includeAlpha && token != "" {
+		s.syncFirmwareDraftReleaseByTag(owner, repo, defaultRepo, mapping, downloadClient, token, releasesDir)
 	}
 	return nil
 }
@@ -372,7 +542,7 @@ func (s *Server) GetAvailableFirmwareVersions() []string {
 	}
 
 	slices.SortFunc(versions, func(a, b string) int {
-		return semver.Compare(b, a) // Descending order
+		return compareFirmwareVersionDesc(a, b)
 	})
 
 	return versions
@@ -407,18 +577,20 @@ func (s *Server) GetAvailableFirmwareVersionsForDevice(device *data.Device) []st
 	}
 
 	slices.SortFunc(versions, func(a, b string) int {
-		return semver.Compare(b, a) // Descending order
+		return compareFirmwareVersionDesc(a, b)
 	})
 
 	return versions
 }
 
-// GetLatestFirmwareVersionForDevice returns the latest available firmware version
-// for the given device.
+// GetLatestFirmwareVersionForDevice returns the latest stable semver firmware
+// version for the given device. Non-semver tags (e.g. draft alpha builds) are
+// omitted so they never become the default flash/OTA selection.
 func (s *Server) GetLatestFirmwareVersionForDevice(device *data.Device) string {
-	versions := s.GetAvailableFirmwareVersionsForDevice(device)
-	if len(versions) > 0 {
-		return versions[0]
+	for _, v := range s.GetAvailableFirmwareVersionsForDevice(device) {
+		if semver.IsValid(v) {
+			return v
+		}
 	}
 	return ""
 }
@@ -468,7 +640,7 @@ func (s *Server) GetFirmwareReleaseInfoForDevice(device *data.Device, version st
 		return nil, errors.New("empty version")
 	}
 	cleanVersion := filepath.Base(version)
-	if !semver.IsValid(cleanVersion) || cleanVersion != version || strings.ContainsAny(version, `/\`) {
+	if !validFirmwareVersionTag(cleanVersion) || cleanVersion != version || strings.ContainsAny(version, `/\`) {
 		return nil, errors.New("invalid version")
 	}
 
@@ -618,7 +790,7 @@ func (s *Server) handleFirmwareReleaseNotes(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	cleanVersion := filepath.Base(version)
-	if !semver.IsValid(cleanVersion) || cleanVersion != version || strings.ContainsAny(version, `/\`) {
+	if !validFirmwareVersionTag(cleanVersion) || cleanVersion != version || strings.ContainsAny(version, `/\`) {
 		http.Error(w, "invalid version parameter", http.StatusBadRequest)
 		return
 	}
@@ -879,9 +1051,10 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) GetLatestFirmwareVersion() string {
-	versions := s.GetAvailableFirmwareVersions()
-	if len(versions) > 0 {
-		return versions[0]
+	for _, v := range s.GetAvailableFirmwareVersions() {
+		if semver.IsValid(v) {
+			return v
+		}
 	}
 	return ""
 }

@@ -121,7 +121,8 @@ The server can be configured via environment variables or `.env` file:
 *   `AWTRIX_FPS`: Frame rate for Awtrix screen capture (default: `15`).
 *   `AWTRIX_SCALE_FILTER`: Global 128x64 upscaling filter algorithm for Awtrix apps: `bicubic`, `scale2x`, `bilinear`, `nearest` (default: `bicubic`).
 *   `AWTRIX_LAYOUT`: Display centering and layout mode: `center` (default, auto-centers 16-row widgets like weather and 2x scales 8-row widgets like arcade games), `fill` (stretches and scales widgets vertically and horizontally to fill the display canvas without black bars), `native` (raw top-left placement). Can also be configured per app in the app settings.
-*   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
+*   `GITHUB_TOKEN`: GitHub token for private app repositories and alpha firmware downloads (optional).
+*   `FIRMWARE_INCLUDE_ALPHA`: When `true`, also download the draft GitHub release tagged `alpha`. Requires `GITHUB_TOKEN` with access to the firmware repository. Alpha builds appear in device firmware version lists for manual selection; they are not chosen as the default stable version.
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).
 *   `TRONBYT_BRANCH`: Branch name override for footer links (e.g. `feat/custom-branch`, optional).
@@ -159,4 +160,3 @@ When `SCREENY_STUDIO_URL` is configured:
 *   After enabling HTTPS, configure the health check to use the corresponding URL, e.g. `test: ["CMD", "/app/tronbyt-server", "health", "https://tronbyt.example.com/health"]`.
 
 **Cache:** By default, an in-memory cache is used. Redis can be configured via `REDIS_URL` for persistent caching across container restarts.
-
