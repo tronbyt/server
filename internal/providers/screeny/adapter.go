@@ -289,6 +289,9 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 			if needsSeed {
 				if err := a.setSeed(ctx, fixedSeed); err != nil {
 					slog.Warn("Failed to set screeny seed", "patch", req.AppID, "seed", fixedSeed, "error", err)
+					a.activePatchMu.Lock()
+					a.lastSeed = 0
+					a.activePatchMu.Unlock()
 				} else {
 					a.activePatchMu.Lock()
 					a.lastSeed = fixedSeed
@@ -301,6 +304,9 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 			randomSeed := 1 + rand.Uint32N(math.MaxUint32-1)
 			if err := a.setSeed(ctx, randomSeed); err != nil {
 				slog.Warn("Failed to randomize screeny seed", "patch", req.AppID, "seed", randomSeed, "error", err)
+				a.activePatchMu.Lock()
+				a.lastSeed = 0
+				a.activePatchMu.Unlock()
 			} else {
 				a.activePatchMu.Lock()
 				a.lastSeed = randomSeed
@@ -629,16 +635,16 @@ func parseParamValue(val any) (float32, bool) {
 	return 0, false
 }
 
-// parseSeedValue extracts a user-configured seed if present, positive, and non-zero.
+// parseSeedValue extracts a user-configured seed if present, positive, and <= math.MaxUint32.
 // Returns (seed, true) if a specific fixed seed is configured, or (0, false) if
-// the seed should be randomized (e.g. empty, "0", "random", "auto", or omitted).
+// the seed should be randomized (e.g. empty, "0", "random", "auto", out-of-range, or omitted).
 func parseSeedValue(val any) (uint32, bool) {
 	if val == nil {
 		return 0, false
 	}
 	switch v := val.(type) {
 	case int:
-		if v > 0 {
+		if v > 0 && int64(v) <= math.MaxUint32 {
 			return uint32(v), true
 		}
 	case int32:
@@ -646,11 +652,11 @@ func parseSeedValue(val any) (uint32, bool) {
 			return uint32(v), true
 		}
 	case int64:
-		if v > 0 {
+		if v > 0 && v <= math.MaxUint32 {
 			return uint32(v), true
 		}
 	case uint:
-		if v > 0 {
+		if v > 0 && uint64(v) <= math.MaxUint32 {
 			return uint32(v), true
 		}
 	case uint32:
@@ -658,20 +664,24 @@ func parseSeedValue(val any) (uint32, bool) {
 			return v, true
 		}
 	case uint64:
-		if v > 0 {
+		if v > 0 && v <= math.MaxUint32 {
 			return uint32(v), true
 		}
 	case float64:
-		if v > 0 {
+		if !math.IsNaN(v) && !math.IsInf(v, 0) && v > 0 && v <= math.MaxUint32 && v == math.Trunc(v) {
 			return uint32(v), true
 		}
 	case float32:
-		if v > 0 {
+		f64 := float64(v)
+		if !math.IsNaN(f64) && !math.IsInf(f64, 0) && f64 > 0 && f64 <= math.MaxUint32 && f64 == math.Trunc(f64) {
 			return uint32(v), true
 		}
 	case json.Number:
-		if n, err := v.Int64(); err == nil && n > 0 {
+		if n, err := strconv.ParseUint(string(v), 10, 32); err == nil && n > 0 {
 			return uint32(n), true
+		}
+		if f, err := v.Float64(); err == nil && !math.IsNaN(f) && !math.IsInf(f, 0) && f > 0 && f <= math.MaxUint32 && f == math.Trunc(f) {
+			return uint32(f), true
 		}
 	case string:
 		trimmed := strings.TrimSpace(v)

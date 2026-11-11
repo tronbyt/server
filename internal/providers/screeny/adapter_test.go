@@ -22,6 +22,7 @@ func TestScreenyAdapter_Lifecycle(t *testing.T) {
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	var setPatchReceived string
 	var setSeedReceived uint32
+	var failSeed bool
 	setParamReceived := make(map[string]float32)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +72,10 @@ func TestScreenyAdapter_Lifecycle(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 
 		case "/api/v1/set_seed":
+			if failSeed {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
 			var req struct {
 				Seed uint32 `json:"seed"`
 			}
@@ -216,6 +221,105 @@ func TestScreenyAdapter_Lifecycle(t *testing.T) {
 	require.NotEmpty(t, chunks4)
 	assert.Equal(t, uint32(42), setSeedReceived, "fixed seed in config must be applied via set_seed")
 	assert.NotContains(t, setParamReceived, "seed", "seed must not be sent to set_param")
+
+	// 7. Changing fixed seed on the same patch -> calls set_seed with the new seed
+	reqNewSeed := providers.RenderRequest{
+		AppID:        "metaballs",
+		Width:        64,
+		Height:       32,
+		FPS:          30,
+		DurationMs:   300,
+		MaxChunkSize: 5242880,
+		Config: map[string]any{
+			"seed": "99",
+		},
+	}
+	chunks5, err := adapter.RenderAppChunks(ctx, reqNewSeed)
+	require.NoError(t, err)
+	require.NotEmpty(t, chunks5)
+	assert.Equal(t, uint32(99), setSeedReceived, "changed fixed seed must be applied via set_seed")
+
+	// 8. Subsequent render with same fixed seed 99 does NOT call set_seed again
+	setSeedReceived = 0
+	chunks6, err := adapter.RenderAppChunks(ctx, reqNewSeed)
+	require.NoError(t, err)
+	require.NotEmpty(t, chunks6)
+	assert.Equal(t, uint32(0), setSeedReceived, "same fixed seed on active patch should not re-invoke set_seed")
+
+	// 9. When set_seed fails, error is logged and lastSeed is invalidated (reset to 0)
+	failSeed = true
+	reqFailSeed := providers.RenderRequest{
+		AppID:        "metaballs",
+		Width:        64,
+		Height:       32,
+		FPS:          30,
+		DurationMs:   300,
+		MaxChunkSize: 5242880,
+		Config: map[string]any{
+			"seed": "101",
+		},
+	}
+	chunks7, err := adapter.RenderAppChunks(ctx, reqFailSeed)
+	require.NoError(t, err, "render still proceeds even if seed setting fails")
+	require.NotEmpty(t, chunks7)
+	adapter.activePatchMu.Lock()
+	assert.Equal(t, uint32(0), adapter.lastSeed, "lastSeed must be invalidated to 0 on set_seed failure")
+	adapter.activePatchMu.Unlock()
+	failSeed = false
+}
+
+func TestParseSeedValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    any
+		wantSeed uint32
+		wantOk   bool
+	}{
+		{"nil", nil, 0, false},
+		{"empty string", "", 0, false},
+		{"whitespace string", "   ", 0, false},
+		{"string random", "random", 0, false},
+		{"string auto", "auto", 0, false},
+		{"string RANDOM with spaces", "  RANDOM  ", 0, false},
+		{"zero int", 0, 0, false},
+		{"negative int", -1, 0, false},
+		{"negative int64", int64(-50), 0, false},
+		{"valid int", 42, 42, true},
+		{"valid int32", int32(42), 42, true},
+		{"valid int64", int64(42), 42, true},
+		{"valid uint", uint(42), 42, true},
+		{"valid uint32", uint32(42), 42, true},
+		{"valid uint64", uint64(42), 42, true},
+		{"valid float64 whole", float64(42), 42, true},
+		{"valid float32 whole", float32(42), 42, true},
+		{"float with fractional part", float64(42.5), 0, false},
+		{"valid json.Number int", json.Number("42"), 42, true},
+		{"valid json.Number float whole", json.Number("42.0"), 42, true},
+		{"valid string number", "42", 42, true},
+		{"valid string with whitespace", "  42  ", 42, true},
+		{"max uint32 uint32", uint32(math.MaxUint32), math.MaxUint32, true},
+		{"max uint32 int64", int64(math.MaxUint32), math.MaxUint32, true},
+		{"max uint32 uint64", uint64(math.MaxUint32), math.MaxUint32, true},
+		{"max uint32 string", "4294967295", math.MaxUint32, true},
+		{"max uint32 json.Number", json.Number("4294967295"), math.MaxUint32, true},
+		{"overflow int64", int64(math.MaxUint32) + 1, 0, false},
+		{"overflow uint64", uint64(math.MaxUint32) + 1, 0, false},
+		{"overflow string", "4294967296", 0, false},
+		{"overflow json.Number", json.Number("4294967296"), 0, false},
+		{"overflow float64", 1e20, 0, false},
+		{"NaN float64", math.NaN(), 0, false},
+		{"Inf float64", math.Inf(1), 0, false},
+		{"negative float64", -1.0, 0, false},
+		{"invalid string", "not_a_number", 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSeed, gotOk := parseSeedValue(tt.input)
+			assert.Equal(t, tt.wantOk, gotOk)
+			assert.Equal(t, tt.wantSeed, gotSeed)
+		})
+	}
 }
 
 func TestScreenyAdapter_DiscardsTransitionFrames(t *testing.T) {
