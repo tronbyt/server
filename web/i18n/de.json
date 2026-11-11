@@ -557,8 +557,8 @@
   "Version": {
     "other": "Version"
   },
-  "New firmware releases are downloaded automatically (checked every hour).": {
-    "other": "Neue Firmware-Versionen werden automatisch heruntergeladen (stündliche Prüfung)."
+  "New firmware releases are downloaded automatically (checked every 12 hours).": {
+    "other": "Neue Firmware-Versionen werden automatisch heruntergeladen (Prüfung alle 12 Stunden)."
   },
   "No firmware version information available": {
     "other": "Keine Firmware-Versionsinformationen verfügbar"
@@ -2354,8 +2354,8 @@
   "Update Schedule": {
     "other": "Aktualisierungszeitplan"
   },
-  "Automatically update system apps (checked every hour)": {
-    "other": "System-Apps automatisch aktualisieren (stündliche Prüfung)"
+  "Automatically update system apps every 12 hours": {
+    "other": "System-Apps automatisch alle 12 Stunden aktualisieren"
   },
   "Automatic updates may change or break apps already installed on your devices.": {
     "other": "Automatische Updates können bereits auf Ihren Geräten installierte Apps verändern oder funktionsunfähig machen."

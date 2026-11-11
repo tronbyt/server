@@ -78,7 +78,7 @@
                                    {{ if .SystemAppsAutoRefresh }}
                                    checked
                                    {{ end }}>
-                            <span>{{ t .Localizer "Automatically update system apps (checked every hour)" }}</span>
+                            <span>{{ t .Localizer "Automatically update system apps every 12 hours" }}</span>
                         </label>
                         <p class="settings-help settings-note-danger"
                            id="system-apps-auto-refresh-warning">
@@ -261,7 +261,7 @@
                 <div class="settings-field-label">{{ t .Localizer "Downloaded firmware version" }}</div>
                 <div class="settings-field-control">
                     <div id="firmware-version">{{ .FirmwareVersion }}</div>
-                    <p class="settings-help">{{ t .Localizer "New firmware releases are downloaded automatically (checked every hour)." }}</p>
+                    <p class="settings-help">{{ t .Localizer "New firmware releases are downloaded automatically (checked every 12 hours)." }}</p>
                 </div>
             </div>
         </div>

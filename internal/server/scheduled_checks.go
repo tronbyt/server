@@ -11,7 +11,7 @@ import (
 // firmware releases and, when automatic updates are on, for system app
 // changes. Unchanged checks cost one small request each: an ETag-matched API
 // call for firmware, and a ref listing for the app store.
-const scheduledCheckInterval = time.Hour
+const scheduledCheckInterval = 12 * time.Hour
 
 // runEvery calls fn every interval until ctx ends. The first call waits a
 // random part of the interval, so that servers started at the same time
@@ -38,7 +38,7 @@ func runEvery(ctx context.Context, interval time.Duration, fn func()) {
 	}
 }
 
-// autoUpdateFirmware checks for new firmware releases every hour, so the
+// autoUpdateFirmware checks for new firmware releases every 12 hours, so the
 // server knows about a release without waiting for a restart. Releases are
 // listed with an ETag, so a check with nothing new transfers no data, and
 // firmware files are only downloaded for releases the server doesn't have.

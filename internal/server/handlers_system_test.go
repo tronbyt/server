@@ -134,6 +134,6 @@ func TestRunEveryRunsRepeatedlyAndStops(t *testing.T) {
 }
 
 func TestScheduledChecksRunHourly(t *testing.T) {
-	require.Equal(t, time.Hour, scheduledCheckInterval)
+	require.Equal(t, 12*time.Hour, scheduledCheckInterval)
 	require.Equal(t, scheduledCheckInterval, systemAppsAutoRefreshInterval)
 }

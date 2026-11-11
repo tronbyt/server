@@ -92,7 +92,7 @@ func (s *Server) isSystemAppsAutoRefreshEnabled() bool {
 }
 
 // refreshSystemRepoIfChanged refreshes the system apps only when the remote
-// branch has new commits. The check lists the remote's refs, so an hourly
+// branch has new commits. The check lists the remote's refs, so a scheduled
 // check with nothing new is one small request with no fetch, no repository
 // growth and no rebuild of the app list.
 func (s *Server) refreshSystemRepoIfChanged() error {
