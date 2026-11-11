@@ -297,7 +297,7 @@ func TestParseSeedValue(t *testing.T) {
 		{"valid json.Number float whole", json.Number("42.0"), 42, true},
 		{"valid string number", "42", 42, true},
 		{"valid string with whitespace", "  42  ", 42, true},
-		{"max uint32 uint32", uint32(math.MaxUint32), math.MaxUint32, true},
+		{"max uint32 value", uint32(math.MaxUint32), math.MaxUint32, true},
 		{"max uint32 int64", int64(math.MaxUint32), math.MaxUint32, true},
 		{"max uint32 uint64", uint64(math.MaxUint32), math.MaxUint32, true},
 		{"max uint32 string", "4294967295", math.MaxUint32, true},
