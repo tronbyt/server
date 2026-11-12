@@ -936,8 +936,11 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 // as localhost, an https proxy with a certificate the device can't verify, or
 // a VPN name), so the address the device uses comes first: the URL it reports,
 // then its configured URL. If that is plain http but the browser is on https
-// with a publicly trusted certificate, the browser's address is used instead,
-// so the firmware is downloaded over https wherever the device can verify it.
+// at the same host name, with a publicly trusted certificate, the browser's
+// address is used instead, so the firmware is downloaded over https wherever
+// the device can verify it. The host name must match because the server
+// reaching an address doesn't mean the device can: the device already looks
+// up its own host name, but may not be able to find a VPN-only or other name.
 // The browser's address is also the last resort when the device has no usable
 // URL.
 func (s *Server) otaBaseURL(r *http.Request, device *data.Device, firmwarePath string) string {
@@ -956,10 +959,22 @@ func (s *Server) otaBaseURL(r *http.Request, device *data.Device, firmwarePath s
 	if deviceBase == "" {
 		return browserBase
 	}
-	if strings.HasPrefix(browserBase, "https://") && s.firmwareURLTrusted(r.Context(), browserBase+firmwarePath) {
+	if strings.HasPrefix(browserBase, "https://") && sameHostname(browserBase, deviceBase) &&
+		s.firmwareURLTrusted(r.Context(), browserBase+firmwarePath) {
 		return browserBase
 	}
 	return deviceBase
+}
+
+// sameHostname reports whether two base URLs have the same host name, ignoring
+// scheme and port.
+func sameHostname(a, b string) bool {
+	ua, errA := url.Parse(a)
+	ub, errB := url.Parse(b)
+	if errA != nil || errB != nil || ua.Hostname() == "" {
+		return false
+	}
+	return strings.EqualFold(ua.Hostname(), ub.Hostname())
 }
 
 // firmwareURLTrusted reports whether fileURL can be fetched over https with a
