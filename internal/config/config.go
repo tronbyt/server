@@ -23,17 +23,19 @@ type Settings struct {
 	MaxRepoSizeMB          int64  `env:"MAX_REPO_SIZE_MB"         envDefault:"750"`
 	CustomAppsAutoRefresh  bool   `env:"CUSTOM_APPS_AUTO_REFRESH"`
 	GitHubToken            string `env:"GITHUB_TOKEN"`
-	RedisURL               string `env:"REDIS_URL"`
-	Host                   string `env:"TRONBYT_HOST"             envDefault:""`
-	Port                   string `env:"TRONBYT_PORT"             envDefault:"8000"`
-	UnixSocket             string `env:"TRONBYT_UNIX_SOCKET"`
-	SSLKeyFile             string `env:"TRONBYT_SSL_KEYFILE"`
-	SSLCertFile            string `env:"TRONBYT_SSL_CERTFILE"`
-	TrustedProxies         string `env:"TRONBYT_TRUSTED_PROXIES"  envDefault:"*"`
-	LogLevel               string `env:"LOG_LEVEL"                envDefault:"INFO"`
-	LogFormat              string `env:"LOG_FORMAT"               envDefault:"text"`
-	EnableUpdateChecks     bool   `env:"ENABLE_UPDATE_CHECKS"     envDefault:"true"`
-	AltSvcMode             string `env:"ALT_SVC_MODE"             envDefault:"external"` // "internal" or "external"
+	// FirmwareIncludeAlpha fetches the draft "alpha" GitHub release. Requires GitHubToken with firmware repo access.
+	FirmwareIncludeAlpha bool   `env:"FIRMWARE_INCLUDE_ALPHA"`
+	RedisURL             string `env:"REDIS_URL"`
+	Host                 string `env:"TRONBYT_HOST"            envDefault:""`
+	Port                 string `env:"TRONBYT_PORT"            envDefault:"8000"`
+	UnixSocket           string `env:"TRONBYT_UNIX_SOCKET"`
+	SSLKeyFile           string `env:"TRONBYT_SSL_KEYFILE"`
+	SSLCertFile          string `env:"TRONBYT_SSL_CERTFILE"`
+	TrustedProxies       string `env:"TRONBYT_TRUSTED_PROXIES" envDefault:"*"`
+	LogLevel             string `env:"LOG_LEVEL"               envDefault:"INFO"`
+	LogFormat            string `env:"LOG_FORMAT"              envDefault:"text"`
+	EnableUpdateChecks   bool   `env:"ENABLE_UPDATE_CHECKS"    envDefault:"true"`
+	AltSvcMode           string `env:"ALT_SVC_MODE"            envDefault:"external"` // "internal" or "external"
 
 	// Multi-Chunk Buffer Limits (bytes)
 	MaxChunkSizeESP int `env:"TRONBYT_MAX_CHUNK_SIZE_ESP" envDefault:"450000"`
