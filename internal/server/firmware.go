@@ -928,6 +928,23 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// otaBaseURL returns the base URL the device should download firmware from.
+// The browser may reach the server at an address the device can't use (such
+// as localhost, an https proxy with a certificate the device can't verify, or
+// a VPN name), so the address the device reports using comes first, then the
+// device's configured URL, and the browser's address only as a last resort.
+func (s *Server) otaBaseURL(r *http.Request, device *data.Device) string {
+	if device.Info.ImageURL != nil {
+		if base := deviceURLBase(*device.Info.ImageURL); base != "" {
+			return base
+		}
+	}
+	if base := deviceURLBase(device.ImgURL); base != "" {
+		return base
+	}
+	return s.GetBaseURL(r)
+}
+
 // handleTriggerOTA stages an over-the-air update for a device and triggers an immediate reboot/poll.
 func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
@@ -980,7 +997,7 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			baseURL := s.GetBaseURL(r)
+			baseURL := s.otaBaseURL(r, device)
 			updateURL = fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), tempFilename)
 			slog.Info("Custom firmware uploaded", "device", device.ID, "url", updateURL)
 		}
@@ -1022,7 +1039,7 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 		// We need to serve this file via HTTP.
 		// Existing /static/firmware/ maps to DataDir/firmware.
 		// So we can access it via /static/firmware/releases/<version>/<binName>
-		baseURL := s.GetBaseURL(r)
+		baseURL := s.otaBaseURL(r, device)
 		updateURL = fmt.Sprintf("%s/static/firmware/releases/%s/%s", strings.TrimRight(baseURL, "/"), url.PathEscape(version), url.PathEscape(binName))
 	}
 
