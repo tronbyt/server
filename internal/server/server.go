@@ -107,6 +107,10 @@ type Server struct {
 
 	// githubAPIBase, when set, replaces https://api.github.com (used by tests).
 	githubAPIBase string
+
+	// otaCheckClient checks that an https firmware link is publicly trusted
+	// (see otaBaseURL); nil uses a default client. Tests replace it.
+	otaCheckClient *http.Client
 }
 
 // SchemaCacheBypasser forces cache reads for keys with the given prefix to miss

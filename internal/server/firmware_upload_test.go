@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -90,8 +91,17 @@ func TestHandleTriggerOTACustomFirmware(t *testing.T) {
 	})
 }
 
+// failingTransport fails every request, standing in for an https address the
+// server can't verify or reach.
+type failingTransport struct{}
+
+func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("certificate signed by unknown authority")
+}
+
 func TestOTABaseURL(t *testing.T) {
 	s := newTestServerAPI(t)
+	s.otaCheckClient = &http.Client{Transport: failingTransport{}}
 	reported := func(u string) data.DeviceInfo { return data.DeviceInfo{ImageURL: &u} }
 	browser := httptest.NewRequest(http.MethodPost, "https://tronbyt.example.test/devices/x/ota", nil)
 
@@ -116,6 +126,11 @@ func TestOTABaseURL(t *testing.T) {
 			want:   "http://192.168.1.10:8000",
 		},
 		{
+			name:   "device's https address without checking the browser's",
+			device: data.Device{Info: reported("wss://tronbyt.example.org/x/ws")},
+			want:   "https://tronbyt.example.org",
+		},
+		{
 			name:   "browser address as a last resort",
 			device: data.Device{},
 			want:   "https://tronbyt.example.test",
@@ -123,10 +138,46 @@ func TestOTABaseURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := s.otaBaseURL(browser, &tt.device); got != tt.want {
+			if got := s.otaBaseURL(browser, &tt.device, "/static/firmware/fw.bin"); got != tt.want {
 				t.Errorf("otaBaseURL() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// When the device uses plain http but the browser is on https with a trusted
+// certificate, the firmware link uses https.
+func TestOTABaseURLPrefersTrustedHTTPS(t *testing.T) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/static/firmware/fw.bin":
+			w.WriteHeader(http.StatusOK)
+		case "/static/firmware/moved.bin":
+			http.Redirect(w, r, "/elsewhere", http.StatusFound)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+
+	s := newTestServerAPI(t)
+	s.otaCheckClient = ts.Client() // trusts the test server's certificate
+	device := data.Device{ImgURL: "http://192.168.1.10:8000/x/next"}
+	browser := httptest.NewRequest(http.MethodPost, ts.URL+"/devices/x/ota", nil)
+
+	if got := s.otaBaseURL(browser, &device, "/static/firmware/fw.bin"); got != ts.URL {
+		t.Errorf("trusted https: otaBaseURL() = %q, want %q", got, ts.URL)
+	}
+	if got := s.otaBaseURL(browser, &device, "/static/firmware/missing.bin"); got != "http://192.168.1.10:8000" {
+		t.Errorf("file not found over https: otaBaseURL() = %q, want the device's address", got)
+	}
+	if got := s.otaBaseURL(browser, &device, "/static/firmware/moved.bin"); got != "http://192.168.1.10:8000" {
+		t.Errorf("redirect over https: otaBaseURL() = %q, want the device's address", got)
+	}
+
+	s.otaCheckClient = &http.Client{Transport: failingTransport{}}
+	if got := s.otaBaseURL(browser, &device, "/static/firmware/fw.bin"); got != "http://192.168.1.10:8000" {
+		t.Errorf("untrusted https: otaBaseURL() = %q, want the device's address", got)
 	}
 }
 
