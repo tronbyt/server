@@ -129,6 +129,51 @@ func TestFirmwareETagIsPerDepth(t *testing.T) {
 	assert.True(t, released("v1.0.1"), "deeper check must not reuse the shallow check's ETag")
 }
 
+// A failed download must not save the ETag, or the next check gets a 304 and
+// never retries it.
+func TestFirmwareETagNotSavedWhenDownloadFails(t *testing.T) {
+	s := newTestServer(t)
+	t.Setenv("FIRMWARE_REPO", "")
+	t.Setenv("TRONBERRY_REPO", "none")
+
+	firmwareBytes := make([]byte, 64)
+	firmwareBytes[0] = 0xE9
+	const etag = `"releases-v1"`
+	failDownload := true
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases"):
+			if r.Header.Get("If-None-Match") == etag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			w.Header().Set("ETag", etag)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `[{"tag_name":"v1.0.3","assets":[{"name":"tidbyt-gen2_firmware.bin","browser_download_url":"http://%s/fw"}]}]`, r.Host)
+		case r.URL.Path == "/fw":
+			if failDownload {
+				http.Error(w, "unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = w.Write(firmwareBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	firmwarePath := filepath.Join(s.DataDir, "firmware", "releases", "v1.0.3", "tidbyt-gen2.bin")
+
+	require.NoError(t, s.UpdateFirmwareBinaries(FirmwareReleasesAtStartup))
+	assert.NoFileExists(t, firmwarePath)
+
+	failDownload = false
+	require.NoError(t, s.UpdateFirmwareBinaries(FirmwareReleasesAtStartup))
+	assert.FileExists(t, firmwarePath, "next check must retry the failed download")
+}
+
 // newAppsSourceRepo makes a local git repository for the system apps refresh
 // to clone, with one commit.
 func newAppsSourceRepo(t *testing.T) string {

@@ -168,19 +168,19 @@ func (s *Server) applyGithubFirmwareRelease(
 	mapping map[string]string,
 	client *http.Client,
 	token string,
-) {
+) bool {
 	draftWithToken := release.Draft && token != ""
 	if release.TagName == "" || !validFirmwareVersionTag(release.TagName) {
 		if release.Draft {
 			slog.Warn("Skipping draft release without a usable tag", "name", release.Name, "tag", release.TagName)
 		}
-		return
+		return true
 	}
 
 	versionDir := filepath.Join(releasesDir, release.TagName)
 	if err := os.MkdirAll(versionDir, 0755); err != nil {
 		slog.Error("Failed to create version dir", "version", release.TagName, "error", err)
-		return
+		return false
 	}
 
 	info := FirmwareReleaseInfo{
@@ -198,6 +198,7 @@ func (s *Server) applyGithubFirmwareRelease(
 		slog.Info("Downloading draft firmware release", "tag", release.TagName, "name", release.Name)
 	}
 
+	complete := true
 	for _, asset := range release.Assets {
 		localName, ok := mapping[asset.Name]
 		if !ok {
@@ -279,13 +280,21 @@ func (s *Server) applyGithubFirmwareRelease(
 			return true
 		}
 
+		var downloaded bool
 		if draftWithToken {
-			downloadAsset(asset.URL, true)
-		} else if !downloadAsset(asset.BrowserDownloadURL, false) && token != "" {
-			slog.Info("Retrying firmware download via API endpoint", "version", release.TagName, "asset", asset.Name)
-			downloadAsset(asset.URL, true)
+			downloaded = downloadAsset(asset.URL, true)
+		} else {
+			downloaded = downloadAsset(asset.BrowserDownloadURL, false)
+			if !downloaded && token != "" {
+				slog.Info("Retrying firmware download via API endpoint", "version", release.TagName, "asset", asset.Name)
+				downloaded = downloadAsset(asset.URL, true)
+			}
+		}
+		if !downloaded {
+			complete = false
 		}
 	}
+	return complete
 }
 
 func (s *Server) syncFirmwareDraftReleaseByTag(
@@ -402,18 +411,14 @@ func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultR
 		return fmt.Errorf("GitHub API returned %d for %s/%s", resp.StatusCode, owner, repo)
 	}
 
-	newETag := resp.Header.Get("ETag")
-	if newETag != "" {
-		if err := s.setSetting(etagKey, newETag); err != nil {
-			slog.Error("Failed to save firmware ETag setting", "key", etagKey, "error", err)
-		}
-	}
-
 	var releases []githubFirmwareRelease
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return err
 	}
 
+	// The ETag is saved only once every wanted file is on disk. Otherwise the
+	// next check gets a 304 and never retries a download that failed.
+	complete := true
 	downloaded := 0
 	for _, release := range releases {
 		if release.Draft && !includeAlpha {
@@ -429,7 +434,17 @@ func (s *Server) downloadReleasesFromRepo(repoURL string, defaultOwner, defaultR
 			break
 		}
 		downloaded++
-		s.applyGithubFirmwareRelease(release, releasesDir, defaultRepo, mapping, downloadClient, token)
+		if !s.applyGithubFirmwareRelease(release, releasesDir, defaultRepo, mapping, downloadClient, token) {
+			complete = false
+		}
+	}
+
+	if newETag := resp.Header.Get("ETag"); newETag != "" && complete {
+		if err := s.setSetting(etagKey, newETag); err != nil {
+			slog.Error("Failed to save firmware ETag setting", "key", etagKey, "error", err)
+		}
+	} else if !complete {
+		slog.Warn("Some firmware downloads failed; they will be retried on the next check", "repo", repo)
 	}
 
 	if includeAlpha && token != "" {
