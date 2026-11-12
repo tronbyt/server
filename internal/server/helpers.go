@@ -900,19 +900,36 @@ func (s *Server) GetBaseURL(r *http.Request) string {
 
 // GetDeviceBaseURL resolves the base URL for device communication, normalizing WebSocket URLs to HTTP.
 func (s *Server) GetDeviceBaseURL(device *data.Device) string {
-	if device != nil && device.ImgURL != "" {
-		if u, err := url.Parse(device.ImgURL); err == nil && u.Host != "" && u.Scheme != "" {
-			scheme := u.Scheme
-			switch scheme {
-			case "ws":
-				scheme = "http"
-			case "wss":
-				scheme = "https"
-			}
-			return fmt.Sprintf("%s://%s", scheme, u.Host)
+	if device != nil {
+		if base := deviceURLBase(device.ImgURL); base != "" {
+			return base
 		}
 	}
 	return s.GetBaseURL(nil)
+}
+
+// deviceURLBase returns the scheme and host of a device URL, such as
+// "http://192.168.1.10:8000" for "ws://192.168.1.10:8000/abc/ws", or "" if it
+// isn't a usable URL.
+func deviceURLBase(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	scheme := u.Scheme
+	switch scheme {
+	case "ws":
+		scheme = "http"
+	case "wss":
+		scheme = "https"
+	case "http", "https":
+	default:
+		return ""
+	}
+	return fmt.Sprintf("%s://%s", scheme, u.Host)
 }
 
 func (s *Server) getImageURL(r *http.Request, deviceID string) string {

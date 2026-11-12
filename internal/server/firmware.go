@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -928,6 +929,86 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// otaBaseURL returns the base URL the device should download firmwarePath
+// (such as "/static/firmware/releases/v1.7.5/tidbyt-gen2.bin") from.
+//
+// The browser may reach the server at an address the device can't use (such
+// as localhost, an https proxy with a certificate the device can't verify, or
+// a VPN name), so the address the device uses comes first: the URL it reports,
+// then its configured URL. If that is plain http but the browser is on https
+// at the same host name, with a publicly trusted certificate, the browser's
+// address is used instead, so the firmware is downloaded over https wherever
+// the device can verify it. The host name must match because the server
+// reaching an address doesn't mean the device can: the device already looks
+// up its own host name, but may not be able to find a VPN-only or other name.
+// The browser's address is also the last resort when the device has no usable
+// URL.
+func (s *Server) otaBaseURL(r *http.Request, device *data.Device, firmwarePath string) string {
+	deviceBase := ""
+	if device.Info.ImageURL != nil {
+		deviceBase = deviceURLBase(*device.Info.ImageURL)
+	}
+	if deviceBase == "" {
+		deviceBase = deviceURLBase(device.ImgURL)
+	}
+	if strings.HasPrefix(deviceBase, "https://") {
+		return deviceBase
+	}
+
+	browserBase := strings.TrimRight(s.GetBaseURL(r), "/")
+	if deviceBase == "" {
+		return browserBase
+	}
+	if strings.HasPrefix(browserBase, "https://") && sameHostname(browserBase, deviceBase) &&
+		s.firmwareURLTrusted(r.Context(), browserBase+firmwarePath) {
+		return browserBase
+	}
+	return deviceBase
+}
+
+// sameHostname reports whether two base URLs have the same host name, ignoring
+// scheme and port.
+func sameHostname(a, b string) bool {
+	ua, errA := url.Parse(a)
+	ub, errB := url.Parse(b)
+	if errA != nil || errB != nil || ua.Hostname() == "" {
+		return false
+	}
+	return strings.EqualFold(ua.Hostname(), ub.Hostname())
+}
+
+// firmwareURLTrusted reports whether fileURL can be fetched over https with a
+// certificate from a public certificate authority, which the device firmware
+// can verify too (it uses a bundle of common root certificates).
+func (s *Server) firmwareURLTrusted(ctx context.Context, fileURL string) bool {
+	client := http.Client{Timeout: 5 * time.Second}
+	if s.otaCheckClient != nil {
+		client = *s.otaCheckClient
+	}
+	// A redirect could lead somewhere the device can't follow; don't trust it.
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, fileURL, nil)
+	if err != nil {
+		return false
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		slog.Info("Not using the browser's https address for OTA", "url", fileURL, "error", err)
+		return false
+	}
+	if err := resp.Body.Close(); err != nil {
+		slog.Debug("Failed to close OTA check response body", "error", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		slog.Info("Not using the browser's https address for OTA", "url", fileURL, "status", resp.StatusCode)
+		return false
+	}
+	return true
+}
+
 // handleTriggerOTA stages an over-the-air update for a device and triggers an immediate reboot/poll.
 func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 	device := GetDevice(r)
@@ -980,8 +1061,8 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			baseURL := s.GetBaseURL(r)
-			updateURL = fmt.Sprintf("%s/static/firmware/%s", strings.TrimRight(baseURL, "/"), tempFilename)
+			firmwarePath := "/static/firmware/" + url.PathEscape(tempFilename)
+			updateURL = s.otaBaseURL(r, device, firmwarePath) + firmwarePath
 			slog.Info("Custom firmware uploaded", "device", device.ID, "url", updateURL)
 		}
 	}
@@ -1022,8 +1103,8 @@ func (s *Server) handleTriggerOTA(w http.ResponseWriter, r *http.Request) {
 		// We need to serve this file via HTTP.
 		// Existing /static/firmware/ maps to DataDir/firmware.
 		// So we can access it via /static/firmware/releases/<version>/<binName>
-		baseURL := s.GetBaseURL(r)
-		updateURL = fmt.Sprintf("%s/static/firmware/releases/%s/%s", strings.TrimRight(baseURL, "/"), url.PathEscape(version), url.PathEscape(binName))
+		urlPath := fmt.Sprintf("/static/firmware/releases/%s/%s", url.PathEscape(version), url.PathEscape(binName))
+		updateURL = s.otaBaseURL(r, device, urlPath) + urlPath
 	}
 
 	if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(r.Context(), "pending_update_url", updateURL); err != nil {
