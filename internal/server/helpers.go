@@ -124,6 +124,7 @@ type TemplateData struct {
 	AppCatalogURL        string
 	ExternalAppURL       string
 	ExternalProviderName string
+	IsExternalApp        bool
 
 	// Device Update Extras
 	ColorFilterOptions       []ColorFilterOption

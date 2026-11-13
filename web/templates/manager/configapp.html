@@ -959,6 +959,12 @@
     const autoRefresh = document.getElementById("autoRefreshPreview");
     if (autoRefresh && !autoRefresh.checked) return;
 
+    // Push the draft to the device too. External provider renders are expensive,
+    // so those apps only push via the Preview button.
+    {{ if not .IsExternalApp }}
+    previewApp('{{ .Device.ID }}', '{{ .App.Iname }}', config);
+    {{ end }}
+
     // Refresh web preview image with cache busting AND pass current config as query param
     if(previewImage) {
         const currentSrc = previewImage.src.split('?')[0];
