@@ -22,4 +22,6 @@ func TestSecretScan(t *testing.T) {
 	v, err := Secret("token").Value()
 	require.NoError(t, err)
 	assert.Equal(t, "token", v)
+	_, err = Secret("enc:not-really").Value()
+	assert.Error(t, err, "a value Scan would refuse is not written")
 }

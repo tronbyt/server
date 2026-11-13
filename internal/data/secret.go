@@ -19,6 +19,10 @@ type Secret string
 
 // Value implements driver.Valuer.
 func (s Secret) Value() (driver.Value, error) {
+	// Scan refuses this prefix, so a row written with it could not be read back.
+	if strings.HasPrefix(string(s), encryptedSecretPrefix) {
+		return nil, errors.New("secret starts with the reserved " + encryptedSecretPrefix + " prefix")
+	}
 	return string(s), nil
 }
 

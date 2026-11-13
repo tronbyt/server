@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -140,7 +141,25 @@ func (s *Server) usableOAuthClient(ctx context.Context, user *data.User, id stri
 
 // oauthRedirectURI is the callback the client's owner registers with the provider.
 func (s *Server) oauthRedirectURI(r *http.Request, clientID string) string {
-	return s.GetBaseURL(r) + "/oauth/callback/" + url.PathEscape(clientID)
+	return withoutDefaultPort(s.GetBaseURL(r)) + "/oauth/callback/" + url.PathEscape(clientID)
+}
+
+// withoutDefaultPort leaves out the scheme's default port, as browsers do:
+// providers compare redirect URIs as strings, and proxies often send
+// X-Forwarded-Port: 443. GetBaseURL keeps the port, so OIDC redirect URIs
+// already registered with a provider do not change.
+func withoutDefaultPort(baseURL string) string {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return baseURL
+	}
+	if port := u.Port(); (u.Scheme == "https" && port == "443") || (u.Scheme == "http" && port == "80") {
+		u.Host = u.Hostname()
+		if strings.Contains(u.Host, ":") {
+			u.Host = "[" + u.Host + "]"
+		}
+	}
+	return u.String()
 }
 
 func oauth2Config(client *data.OAuthClient, redirectURI string, scopes []string) *oauth2.Config {
@@ -287,10 +306,20 @@ func (s *Server) oauthAccessToken(ctx context.Context, tok *data.OAuthToken) str
 		updates.RefreshToken = tok.RefreshToken
 	}
 	updates.Status = data.OAuthTokenOK
-	if _, err := gorm.G[data.OAuthToken](s.DB).Where("id = ?", tok.ID).
+	// Save even if the render is canceled: a provider that rotates refresh
+	// tokens has already invalidated the old one. The refresh token condition
+	// skips the write when a new sign-in replaced the token meanwhile.
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), oauthHTTPTimeout)
+	defer cancel()
+	saved, err := gorm.G[data.OAuthToken](s.DB).Where("id = ? AND refresh_token = ?", tok.ID, tok.RefreshToken).
 		Select("AccessToken", "RefreshToken", "TokenType", "Expiry", "Status").
-		Updates(ctx, updates); err != nil {
+		Updates(writeCtx, updates)
+	switch {
+	case err != nil:
 		slog.Error("Failed to save refreshed OAuth token", "token_id", tok.ID, "error", err)
+	case saved == 0:
+		slog.Info("OAuth token was replaced during refresh, discarding the refreshed token", "token_id", tok.ID)
+		return ""
 	}
 	tok.AccessToken = updates.AccessToken
 	tok.RefreshToken = updates.RefreshToken
@@ -303,7 +332,9 @@ func (s *Server) oauthAccessToken(ctx context.Context, tok *data.OAuthToken) str
 func (s *Server) markOAuthTokenReauth(ctx context.Context, tok *data.OAuthToken, reason string) {
 	slog.Info("OAuth token needs a new sign-in", "token_id", tok.ID, "app", tok.Iname, "reason", reason)
 	tok.Status = data.OAuthTokenReauthRequired
-	if _, err := gorm.G[data.OAuthToken](s.DB).Where("id = ?", tok.ID).Update(ctx, "status", data.OAuthTokenReauthRequired); err != nil {
+	// Only the token that failed: a new sign-in may have replaced it meanwhile.
+	if _, err := gorm.G[data.OAuthToken](s.DB).Where("id = ? AND refresh_token = ?", tok.ID, tok.RefreshToken).
+		Update(ctx, "status", data.OAuthTokenReauthRequired); err != nil {
 		slog.Error("Failed to mark OAuth token for re-authentication", "token_id", tok.ID, "error", err)
 	}
 }

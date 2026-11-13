@@ -36,6 +36,7 @@ type fakeProvider struct {
 	refreshFails  bool
 	refreshCount  int
 	exchangeCount int
+	onRefresh     func() // called while a refresh request is in flight
 }
 
 func newFakeProvider(t *testing.T) *fakeProvider {
@@ -77,6 +78,9 @@ func (p *fakeProvider) handleToken(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"access_token":"at-1","refresh_token":"rt-1","token_type":"Bearer","expires_in":3600}`))
 	case "refresh_token":
 		p.refreshCount++
+		if p.onRefresh != nil {
+			p.onRefresh()
+		}
 		if p.refreshFails || r.PostForm.Get("refresh_token") != "rt-1" {
 			writeTokenError(w, http.StatusBadRequest, "invalid_grant")
 			return
@@ -452,6 +456,63 @@ func TestOAuthRevokedRefreshNeedsReauth(t *testing.T) {
 	assert.True(t, views["auth"].Connected.ReauthRequired)
 }
 
+// TestOAuthRefreshDoesNotOverwriteNewSignIn checks that a refresh which
+// finishes after the user signed in again leaves the new token alone.
+func TestOAuthRefreshDoesNotOverwriteNewSignIn(t *testing.T) {
+	for _, refreshFails := range []bool{false, true} {
+		t.Run(fmt.Sprintf("refresh fails %v", refreshFails), func(t *testing.T) {
+			env := newOAuthTestEnv(t)
+			client := env.createClient(t, "alice", false, env.provider.authURL(), env.provider.tokenURL())
+			require.Equal(t, http.StatusSeeOther, env.signIn(t, client).Code)
+			ctx := context.Background()
+			_, err := gorm.G[data.OAuthToken](env.s.DB).Where("app_id = ?", env.app.ID).Update(ctx, "expiry", time.Now().Add(-time.Minute))
+			require.NoError(t, err)
+
+			// While the refresh is in flight, a new sign-in replaces the token.
+			env.provider.refreshFails = refreshFails
+			env.provider.onRefresh = func() {
+				_, err := gorm.G[data.OAuthToken](env.s.DB).Where("app_id = ?", env.app.ID).
+					Select("AccessToken", "RefreshToken", "Expiry").
+					Updates(ctx, data.OAuthToken{AccessToken: "at-new", RefreshToken: "rt-new", Expiry: new(time.Now().Add(time.Hour))})
+				require.NoError(t, err)
+			}
+
+			config := map[string]any{}
+			env.s.injectOAuthTokens(ctx, &env.app, config)
+			assert.Equal(t, "", config["auth"], "the stale refresh result is not used")
+			tok := env.tokens(t)[0]
+			assert.Equal(t, data.Secret("at-new"), tok.AccessToken)
+			assert.Equal(t, data.Secret("rt-new"), tok.RefreshToken)
+			assert.Equal(t, data.OAuthTokenOK, tok.Status)
+		})
+	}
+}
+
+// TestOAuthCallbackRejectsReplacedApp checks that a sign-in started for an app
+// is not stored for a new app that took over its iname meanwhile.
+func TestOAuthCallbackRejectsReplacedApp(t *testing.T) {
+	env := newOAuthTestEnv(t)
+	client := env.createClient(t, "alice", false, env.provider.authURL(), env.provider.tokenURL())
+
+	rr := env.do(t, http.MethodPost, "/devices/dev1/100/oauth/auth/connect", url.Values{"client": {client.ID}})
+	require.Equal(t, http.StatusSeeOther, rr.Code, rr.Body.String())
+	loc, err := url.Parse(rr.Header().Get("Location"))
+	require.NoError(t, err)
+	env.provider.challenge = loc.Query().Get("code_challenge")
+	env.provider.redirectURI = loc.Query().Get("redirect_uri")
+
+	ctx := context.Background()
+	_, err = gorm.G[data.App](env.s.DB).Where("id = ?", env.app.ID).Delete(ctx)
+	require.NoError(t, err)
+	replacement := data.App{DeviceID: "dev1", Iname: "100", Name: "other", Path: env.app.Path}
+	require.NoError(t, env.s.DB.Create(&replacement).Error)
+
+	rr = env.do(t, http.MethodGet, "/oauth/callback/"+client.ID+"?code=good-code&state="+url.QueryEscape(loc.Query().Get("state")), nil)
+	assert.Equal(t, "/", rr.Header().Get("Location"))
+	assert.Empty(t, env.tokens(t))
+	assert.Zero(t, env.provider.exchangeCount, "the code is not exchanged")
+}
+
 func TestOAuthUnreachableProviderKeepsValidToken(t *testing.T) {
 	env := newOAuthTestEnv(t)
 	client := env.createClient(t, "alice", false, env.provider.authURL(), env.provider.tokenURL())
@@ -578,8 +639,9 @@ func TestOAuthClientSettingsCreateAndEdit(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "alice", client.OwnerUsername)
 	assert.False(t, client.Shared, "only admins can share a client")
-	assert.Equal(t, "https://github.com/login/oauth/authorize", client.AuthorizationEndpoint)
-	assert.Equal(t, "https://github.com/login/oauth/access_token", client.TokenEndpoint)
+	// Requests go to the endpoints as entered; only the issuer key is normalized.
+	assert.Equal(t, "https://GitHub.com/login/oauth/authorize/", client.AuthorizationEndpoint)
+	assert.Equal(t, "https://github.com:443/login/oauth/access_token", client.TokenEndpoint)
 	assert.Equal(t, "https://github.com/login/oauth/authorize https://github.com/login/oauth/access_token", client.IssuerKey)
 	assert.Equal(t, data.Secret("gh-secret"), client.ClientSecret)
 
@@ -620,7 +682,17 @@ func TestOAuthClientSettingsValidation(t *testing.T) {
 			form := maps.Clone(base)
 			form.Set(change[0], change[1])
 			rr := env.do(t, http.MethodPost, "/settings/oauth/clients", form)
-			assert.Equal(t, "/settings/oauth", rr.Header().Get("Location"))
+			require.Equal(t, http.StatusOK, rr.Code, "the form is shown again")
+			body := rr.Body.String()
+			if change[0] == "id" {
+				assert.NotContains(t, body, change[1])
+			} else {
+				// Same ID, so the redirect URI registered with the provider stays valid.
+				assert.Contains(t, body, "/oauth/callback/0123456789abcdef")
+				if change[0] != "name" {
+					assert.Contains(t, body, `value="X"`, "submitted values are kept")
+				}
+			}
 			count, err := gorm.G[data.OAuthClient](env.s.DB).Count(context.Background(), "*")
 			require.NoError(t, err)
 			assert.Zero(t, count)

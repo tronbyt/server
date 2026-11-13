@@ -895,17 +895,6 @@ func (s *Server) GetBaseURL(r *http.Request) string {
 		host = net.JoinHostPort(host, port)
 	}
 
-	// Leave out the scheme's default port, as browsers do: OAuth providers
-	// compare redirect URIs as strings, and proxies often send
-	// X-Forwarded-Port: 443.
-	if h, port, err := net.SplitHostPort(host); err == nil &&
-		((scheme == "https" && port == "443") || (scheme == "http" && port == "80")) {
-		host = h
-		if strings.Contains(host, ":") {
-			host = "[" + host + "]"
-		}
-	}
-
 	return fmt.Sprintf("%s://%s", scheme, host)
 }
 

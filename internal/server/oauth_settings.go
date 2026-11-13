@@ -52,6 +52,17 @@ type oauthClientForm struct {
 
 func (s *Server) handleOAuthClientsGet(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
+	form, err := s.oauthClientFormFor(r.Context(), r, user)
+	if err != nil {
+		slog.Error("Failed to prepare OAuth client form", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	s.renderOAuthClientsPage(w, r, user, form, nil)
+}
+
+// renderOAuthClientsPage renders the client list with the given form.
+func (s *Server) renderOAuthClientsPage(w http.ResponseWriter, r *http.Request, user *data.User, form oauthClientForm, flashes []string) {
 	ctx := r.Context()
 
 	clients, err := gorm.G[data.OAuthClient](s.DB).
@@ -86,19 +97,57 @@ func (s *Server) handleOAuthClientsGet(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	form, err := s.oauthClientFormFor(ctx, r, user)
-	if err != nil {
-		slog.Error("Failed to prepare OAuth client form", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	s.renderTemplate(w, r, "settings_oauth", TemplateData{
 		User:            user,
 		SettingsSection: "oauth",
 		OAuthClients:    rows,
 		OAuthClientForm: form,
+		Flashes:         flashes,
 	})
+}
+
+// rejectOAuthClientForm shows the form again with what the user submitted and
+// an error. It keeps the client's ID, so the redirect URI the user may already
+// have registered with the provider stays valid. The secret is not echoed back.
+func (s *Server) rejectOAuthClientForm(w http.ResponseWriter, r *http.Request, user *data.User, message string) {
+	form := oauthClientForm{
+		ID:                    r.FormValue("id"),
+		Name:                  strings.TrimSpace(r.FormValue("name")),
+		AuthorizationEndpoint: strings.TrimSpace(r.FormValue("authorization_endpoint")),
+		TokenEndpoint:         strings.TrimSpace(r.FormValue("token_endpoint")),
+		ClientID:              strings.TrimSpace(r.FormValue("client_id")),
+		Shared:                user.IsAdmin && r.FormValue("shared") == "on",
+		ReturnTo:              safeReturnPath(r.FormValue("return_to")),
+	}
+	if oauthClientIDRe.MatchString(form.ID) {
+		existing, err := gorm.G[data.OAuthClient](s.DB).Where("id = ?", form.ID).First(r.Context())
+		switch {
+		case err == nil:
+			if !canManageOAuthClient(user, &existing) {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			form.Editing = true
+			form.HasSecret = existing.ClientSecret != ""
+			if !user.IsAdmin {
+				form.Shared = existing.Shared
+			}
+		case !errors.Is(err, gorm.ErrRecordNotFound):
+			slog.Error("Failed to load OAuth client", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		id, err := generateSecureToken(oauthClientIDLength)
+		if err != nil {
+			slog.Error("Failed to generate OAuth client ID", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		form.ID = id
+	}
+	form.RedirectURI = s.oauthRedirectURI(r, form.ID)
+	s.renderOAuthClientsPage(w, r, user, form, []string{message})
 }
 
 // oauthClientFormFor fills the form from ?edit=<id>, or for a new client from
@@ -152,23 +201,27 @@ func (s *Server) handleOAuthClientSave(w http.ResponseWriter, r *http.Request) {
 	clientID := strings.TrimSpace(r.FormValue("client_id"))
 	secret := r.FormValue("client_secret")
 	returnTo := safeReturnPath(r.FormValue("return_to"))
-	formPath := "/settings/oauth"
+	localizer := s.getLocalizer(r)
 
 	if !oauthClientIDRe.MatchString(id) || name == "" || len(name) > 100 || clientID == "" {
-		s.flashAndRedirect(w, r, "Please fill in the name and client ID.", formPath, http.StatusSeeOther)
+		s.rejectOAuthClientForm(w, r, user, s.localizeOrID(localizer, "Please fill in the name and client ID."))
 		return
 	}
-	authEndpoint, err := oauth.CanonicalEndpoint(r.FormValue("authorization_endpoint"))
+	// Requests go to the endpoints as entered: a provider may need a trailing
+	// slash. The canonical forms only decide which apps the client matches.
+	authEndpoint := strings.TrimSpace(r.FormValue("authorization_endpoint"))
+	tokenEndpoint := strings.TrimSpace(r.FormValue("token_endpoint"))
+	authCanonical, err := oauth.CanonicalEndpoint(authEndpoint)
 	if err != nil {
-		s.flashTextAndRedirect(w, r, s.localizeOrID(s.getLocalizer(r), "Invalid authorization endpoint:")+" "+err.Error(), formPath)
+		s.rejectOAuthClientForm(w, r, user, s.localizeOrID(localizer, "Invalid authorization endpoint:")+" "+err.Error())
 		return
 	}
-	tokenEndpoint, err := oauth.CanonicalEndpoint(r.FormValue("token_endpoint"))
+	tokenCanonical, err := oauth.CanonicalEndpoint(tokenEndpoint)
 	if err != nil {
-		s.flashTextAndRedirect(w, r, s.localizeOrID(s.getLocalizer(r), "Invalid token endpoint:")+" "+err.Error(), formPath)
+		s.rejectOAuthClientForm(w, r, user, s.localizeOrID(localizer, "Invalid token endpoint:")+" "+err.Error())
 		return
 	}
-	issuerKey := authEndpoint + " " + tokenEndpoint
+	issuerKey := authCanonical + " " + tokenCanonical
 
 	err = s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		existing, err := gorm.G[data.OAuthClient](tx).Where("id = ?", id).First(ctx)
@@ -241,7 +294,7 @@ func (s *Server) handleOAuthClientSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirect := formPath
+	redirect := "/settings/oauth"
 	if returnTo != "" {
 		redirect = returnTo
 	}

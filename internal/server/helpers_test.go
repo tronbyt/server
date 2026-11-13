@@ -340,7 +340,18 @@ func TestClearPendingOTAIfMatching(t *testing.T) {
 	assert.Empty(t, stored.PendingUpdateURL)
 }
 
-func TestGetBaseURL(t *testing.T) {
+// TestGetBaseURLKeepsDefaultPort keeps OIDC redirect URIs as they were.
+func TestGetBaseURLKeepsDefaultPort(t *testing.T) {
+	s := &Server{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "internal:8000"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.Header.Set("X-Forwarded-Host", "tronbyt.example")
+	req.Header.Set("X-Forwarded-Port", "443")
+	assert.Equal(t, "https://tronbyt.example:443", s.GetBaseURL(req))
+}
+
+func TestOAuthRedirectURIOmitsDefaultPort(t *testing.T) {
 	s := &Server{}
 	tests := []struct {
 		name    string
@@ -368,7 +379,7 @@ func TestGetBaseURL(t *testing.T) {
 			for k, v := range tt.headers {
 				req.Header.Set(k, v)
 			}
-			assert.Equal(t, tt.want, s.GetBaseURL(req))
+			assert.Equal(t, tt.want+"/oauth/callback/abc", s.oauthRedirectURI(req, "abc"))
 		})
 	}
 }

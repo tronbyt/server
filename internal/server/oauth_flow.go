@@ -32,6 +32,7 @@ type oauthPending struct {
 	State       string   `json:"state"`
 	Verifier    string   `json:"verifier"`
 	ClientID    string   `json:"client_id"` // OAuthClient.ID
+	AppID       uint     `json:"app_id"`    // App.ID, so a new app reusing the iname is not signed in
 	DeviceID    string   `json:"device_id"`
 	Iname       string   `json:"iname"`
 	FieldID     string   `json:"field_id"`
@@ -90,6 +91,7 @@ func (s *Server) handleOAuthConnect(w http.ResponseWriter, r *http.Request) {
 		State:       state,
 		Verifier:    oauth2.GenerateVerifier(),
 		ClientID:    client.ID,
+		AppID:       app.ID,
 		DeviceID:    device.ID,
 		Iname:       app.Iname,
 		FieldID:     fieldID,
@@ -156,7 +158,7 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	device, app := findUserApp(user, pending.DeviceID, pending.Iname)
-	if app == nil {
+	if app == nil || app.ID != pending.AppID {
 		s.flashAndRedirect(w, r, "The app no longer exists.", "/", http.StatusSeeOther)
 		return
 	}
