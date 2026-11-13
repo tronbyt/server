@@ -81,7 +81,7 @@ func run(_ *cobra.Command, args []string) error {
 					return nil
 				}
 
-				return os.Chown(path, uid, gid)
+				return os.Lchown(path, uid, gid)
 			})
 			if err != nil {
 				slog.Warn("Failed to fix permissions", "dir", dir, "error", err)

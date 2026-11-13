@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -212,16 +213,16 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 
 	displayTime, _ := strconv.Atoi(displayTimeStr)
 
-	// Construct source path
-	var realPath string
+	var src *appSource
 	if !s.isExternalAppPath(appPath) {
 		var err error
-		realPath, err = securejoin.SecureJoin(s.DataDir, appPath)
+		src, err = s.openAppSource(device.Username, appPath)
 		if err != nil {
-			slog.Warn("Potential path traversal", "path", appPath, "error", err)
+			slog.Warn("Invalid app path", "path", appPath, "user", user.Username, "error", err)
 			http.Error(w, "Invalid path", http.StatusBadRequest)
 			return
 		}
+		defer func() { _ = src.Close() }()
 	}
 
 	iname, err := generateUniqueIname(s.DB, device.ID)
@@ -241,7 +242,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid external app ID", http.StatusBadRequest)
 			return
 		}
-		if meta := s.getAppMetadata(r.Context(), appPath); meta != nil && meta.Name != "" {
+		if meta := s.getAppMetadata(r.Context(), device.Username, appPath); meta != nil && meta.Name != "" {
 			appName = meta.Name
 		}
 	}
@@ -286,8 +287,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If WebP, copy file and redirect to index
-	isWebP := !s.isExternalAppPath(appPath) && strings.EqualFold(filepath.Ext(appPath), ".webp")
-	if isWebP {
+	if src != nil && src.IsWebP() {
 		destDir, err := s.ensureDeviceImageDir(device.ID)
 		if err != nil {
 			slog.Error("Failed to get device webp directory for app copy", "device_id", device.ID, "error", err)
@@ -301,7 +301,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		srcFile, err := os.Open(realPath)
+		srcFile, err := src.Root.Open(src.Name)
 		if err == nil {
 			defer func() {
 				if err := srcFile.Close(); err != nil {
@@ -410,16 +410,27 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 	// apps.AppMetadata.Path is relative to DataDir
 	// For System Apps: Path=".../clock", Dir(Path)=".../apps", file="clock/preview.webp" -> Join=".../apps/clock/preview.webp" (Correct)
 	// For User Apps: Path=".../app.star", Dir(Path)=".../app", file="preview.webp" -> Join=".../app/preview.webp" (Correct)
-	appDir := filepath.Join(s.DataDir, filepath.ToSlash(filepath.Dir(appMeta.Path)))
+	thumbPath := path.Join(path.Dir(filepath.ToSlash(appMeta.Path)), filepath.ToSlash(file))
 
-	path, err := securejoin.SecureJoin(appDir, file)
+	var owner string
+	if user != nil {
+		owner = user.Username
+	}
+	f, err := s.openAppFile(owner, thumbPath)
 	if err != nil {
-		slog.Warn("Invalid thumbnail path", "error", err, "path", file)
+		slog.Warn("Invalid thumbnail path", "error", err, "path", thumbPath)
+		http.NotFound(w, r)
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	info, err := f.Stat()
+	if err != nil || info.IsDir() {
 		http.NotFound(w, r)
 		return
 	}
 
-	http.ServeFile(w, r, path)
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 }
 
 const externalAppThumbnailDurationMs = 3000
@@ -636,19 +647,19 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 				slog.Error("Failed to get external app schema", "provider", provider.Name(), "appID", appID, "error", err)
 			}
 		} else {
-			appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+			src, err := s.openAppSource(device.Username, *app.Path)
 			if err != nil {
-				slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+				slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 				http.Error(w, "Invalid app path", http.StatusBadRequest)
 				return
-			} else {
-				if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-					schemaWidth, schemaHeight := device.Type.CanvasSize()
-					schemaBytes, err = renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
-					if err != nil {
-						slog.Error("Failed to get app schema", "error", err)
-						// Fall through with empty schema
-					}
+			}
+			defer func() { _ = src.Close() }()
+			if !src.IsWebP() {
+				schemaWidth, schemaHeight := device.Type.CanvasSize()
+				schemaBytes, err = renderer.GetSchema(r.Context(), src.Root, src.Name, schemaWidth, schemaHeight, device.Type.Supports2x())
+				if err != nil {
+					slog.Error("Failed to get app schema", "error", err)
+					// Fall through with empty schema
 				}
 			}
 		}
@@ -672,7 +683,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	var appMetadata *apps.AppMetadata
 	if app.Path != nil {
-		appMetadata = s.getAppMetadata(r.Context(), *app.Path)
+		appMetadata = s.getAppMetadata(r.Context(), device.Username, *app.Path)
 	}
 
 	appID := app.Name
@@ -813,17 +824,18 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 				schemaBytes = b
 			}
 		} else {
-			appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+			src, err := s.openAppSource(device.Username, *app.Path)
 			if err != nil {
-				slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+				slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 				http.Error(w, "Invalid app path", http.StatusBadRequest)
 				return
 			}
+			defer func() { _ = src.Close() }()
 
-			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+			if !src.IsWebP() {
 				schemaWidth, schemaHeight := device.Type.CanvasSize()
 				getSchema := func() error {
-					b, err := renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x())
+					b, err := renderer.GetSchema(r.Context(), src.Root, src.Name, schemaWidth, schemaHeight, device.Type.Supports2x())
 					if err != nil {
 						return err
 					}
@@ -838,7 +850,7 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 				// prefix mirrors pixlet's: "httpcache:<app id>:" where the app id is
 				// the base name of the applet path (see runtime/httpcache.go).
 				if r.URL.Query().Get("refresh") == "true" && s.SchemaCache != nil {
-					prefix := fmt.Sprintf("httpcache:%s:", filepath.Base(appPath))
+					prefix := fmt.Sprintf("httpcache:%s:", src.Name)
 					err = s.SchemaCache.WithBypass(prefix, getSchema)
 				} else {
 					err = getSchema()
@@ -1052,18 +1064,20 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "App path not set", http.StatusBadRequest)
 		return
 	}
-	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+	src, err := s.openAppSource(device.Username, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+		slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 		http.Error(w, "Invalid app path", http.StatusBadRequest)
 		return
 	}
+	defer func() { _ = src.Close() }()
 
 	// Call Handler
 	handlerWidth, handlerHeight := device.Type.CanvasSize()
 	result, err := renderer.CallSchemaHandler(
 		r.Context(),
-		appPath,
+		src.Root,
+		src.Name,
 		payload.Config,
 		handlerWidth, handlerHeight,
 		device.Type.Supports2x(),
@@ -1231,14 +1245,15 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+		src, err := s.openAppSource(device.Username, *app.Path)
 		if err != nil {
-			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+			slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 			http.Error(w, "Invalid app path", http.StatusBadRequest)
 			return
 		}
+		defer func() { _ = src.Close() }()
 
-		imgBytes, _, err := s.RenderApp(r.Context(), device, app, appPath, configData)
+		imgBytes, _, err := s.RenderApp(r.Context(), device, app, src, configData)
 		if err != nil {
 			slog.Error("Preview render failed", "error", err)
 			http.Error(w, "Render failed", http.StatusInternalServerError)
@@ -1485,14 +1500,15 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+	src, err := s.openAppSource(device.Username, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+		slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 		http.Error(w, "Invalid app path", http.StatusBadRequest)
 		return
 	}
+	defer func() { _ = src.Close() }()
 
-	imgBytes, messages, err := s.RenderApp(r.Context(), device, app, appPath, configBody)
+	imgBytes, messages, err := s.RenderApp(r.Context(), device, app, src, configBody)
 	if err != nil {
 		slog.Error("Preview render failed", "error", err)
 		http.Error(w, "Render failed", http.StatusInternalServerError)
@@ -1954,7 +1970,7 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 
 	switch ext {
 	case ".star":
-		imgBytes, _, err := s.RenderApp(r.Context(), device, nil, dstPath, nil)
+		imgBytes, _, err := s.renderAppAtPath(r.Context(), device, dstPath)
 
 		if err == nil && len(imgBytes) > 0 {
 			previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
@@ -2117,7 +2133,7 @@ func (s *Server) generatePreview(ctx context.Context, device *data.Device, appDi
 		}
 	} else {
 		// If no webp, try to render the app directory
-		imgBytes, _, err := s.RenderApp(ctx, device, nil, appDir, nil)
+		imgBytes, _, err := s.renderAppAtPath(ctx, device, appDir)
 		if err == nil && len(imgBytes) > 0 {
 			if err := os.WriteFile(previewPath, imgBytes, 0644); err != nil {
 				slog.Error("Failed to write preview image", "error", err)

@@ -43,6 +43,7 @@ func newTestServer(t *testing.T, opts ...option) *Server {
 
 	// Pre-seed settings to avoid "record not found" logs during NewServer
 	db.Create(&data.Setting{Key: "secret_key", Value: "testsecret"})
+	db.Create(&data.Setting{Key: secretKeyVersionSettingKey, Value: secretKeyVersion})
 	db.Create(&data.Setting{Key: "system_apps_repo", Value: ""})
 
 	cfg := &config.Settings{
@@ -60,6 +61,34 @@ func newTestServer(t *testing.T, opts ...option) *Server {
 		s.backgroundRenders.Wait()
 	})
 	return s
+}
+
+func TestNewServerRotatesSecretKeyOnUpgrade(t *testing.T) {
+	s := newTestServer(t)
+	key, err := s.getSetting("secret_key")
+	require.NoError(t, err)
+	require.Equal(t, "testsecret", key, "a current key must not be rotated")
+
+	// Installs from before key versioning have no version setting.
+	require.NoError(t, s.DB.Where("key = ?", secretKeyVersionSettingKey).Delete(&data.Setting{}).Error)
+
+	cfg := &config.Settings{DataDir: t.TempDir()}
+	upgraded := NewServer(s.DB, cfg)
+	t.Cleanup(upgraded.backgroundRenders.Wait)
+
+	rotated, err := upgraded.getSetting("secret_key")
+	require.NoError(t, err)
+	assert.NotEqual(t, "testsecret", rotated)
+	assert.NotEmpty(t, rotated)
+	version, err := upgraded.getSetting(secretKeyVersionSettingKey)
+	require.NoError(t, err)
+	assert.Equal(t, secretKeyVersion, version)
+
+	restarted := NewServer(s.DB, cfg)
+	t.Cleanup(restarted.backgroundRenders.Wait)
+	again, err := restarted.getSetting("secret_key")
+	require.NoError(t, err)
+	assert.Equal(t, rotated, again, "the key must only rotate once")
 }
 
 func TestSystemAppsAutoRefreshUsesEnvironmentDefault(t *testing.T) {

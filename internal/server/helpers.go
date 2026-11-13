@@ -708,7 +708,7 @@ func (s *Server) replaceSystemAppsCache() error {
 
 // getAppMetadata retrieves metadata for an app path, checking the system cache first,
 // then falling back to reading the manifest.yaml from disk.
-func (s *Server) getAppMetadata(ctx context.Context, appPath string) *apps.AppMetadata {
+func (s *Server) getAppMetadata(ctx context.Context, owner, appPath string) *apps.AppMetadata {
 	if appPath == "" {
 		return nil
 	}
@@ -770,32 +770,24 @@ func (s *Server) getAppMetadata(ctx context.Context, appPath string) *apps.AppMe
 	}
 
 	// Fallback: Check for manifest.yaml in app directory
-	fullPath, err := securejoin.SecureJoin(s.DataDir, appPath)
-	if err == nil {
-		var appDir string
-		info, err := os.Stat(fullPath)
-		if err == nil && info.IsDir() {
-			appDir = fullPath
-		} else {
-			appDir = filepath.ToSlash(filepath.Dir(fullPath))
-		}
-
-		manifestPath := filepath.Join(appDir, "manifest.yaml")
-		if _, err := os.Stat(manifestPath); err == nil {
-			if data, err := os.ReadFile(manifestPath); err == nil {
-				var m apps.Manifest
-				if err := yaml.Unmarshal(data, &m); err == nil {
-					return &apps.AppMetadata{
-						Manifest: m,
-					}
-				} else {
-					slog.Debug("Failed to unmarshal manifest for fallback", "path", manifestPath, "error", err)
-				}
-			}
-		}
+	src, err := s.openAppSource(owner, appPath)
+	if err != nil {
+		return nil
 	}
+	defer func() { _ = src.Close() }()
 
-	return nil
+	data, err := src.Root.ReadFile("manifest.yaml")
+	if err != nil {
+		return nil
+	}
+	var m apps.Manifest
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		slog.Debug("Failed to unmarshal manifest for fallback", "path", appPath, "error", err)
+		return nil
+	}
+	return &apps.AppMetadata{
+		Manifest: m,
+	}
 }
 
 func (s *Server) getSetting(key string) (string, error) {

@@ -139,6 +139,12 @@ var templateFiles = map[string]string{
 	"settings":         "admin/settings.html",
 }
 
+const secretKeyVersionSettingKey = "secret_key_version"
+
+// secretKeyVersion is bumped to rotate the session secret key on upgrade.
+// Version 2 rotates keys that GHSA-h3mg-965p-vmmm may have exposed.
+const secretKeyVersion = "2"
+
 // NewServer creates and initializes a new Server instance with the provided database and settings.
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	version.AllowRemoteLookup = cfg.EnableUpdateChecks
@@ -171,7 +177,12 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	// Load Settings from DB
 	// Secret Key
 	secretKey, err := s.getSetting("secret_key")
-	if err != nil || secretKey == "" {
+	keyVersion, versionErr := s.getSetting(secretKeyVersionSettingKey)
+	rotate := secretKey != "" && versionErr == nil && keyVersion != secretKeyVersion
+	if rotate {
+		slog.Warn("Rotating session secret key; all users will need to log in again")
+	}
+	if err != nil || secretKey == "" || rotate {
 		b := make([]byte, 32)
 		if _, err := rand.Read(b); err != nil {
 			slog.Error("Failed to generate random secret key", "error", err)
@@ -180,7 +191,10 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		} else {
 			secretKey = base64.StdEncoding.EncodeToString(b)
 		}
-		if err := s.setSetting("secret_key", secretKey); err != nil {
+		if err := s.setSettings(map[string]string{
+			"secret_key":               secretKey,
+			secretKeyVersionSettingKey: secretKeyVersion,
+		}); err != nil {
 			slog.Error("Failed to save secret key to settings", "error", err)
 		}
 	}

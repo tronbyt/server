@@ -43,6 +43,10 @@ func TestHandleAddAppPost(t *testing.T) {
 		},
 	}
 
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", "clock")
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "clock.star"), []byte("def main(): pass\n"), 0644))
+
 	form := url.Values{}
 	form.Add("name", "Clock")
 	form.Add("path", "system-apps/apps/clock/clock.star")
@@ -1111,7 +1115,7 @@ func TestExternalAppGetMetadata(t *testing.T) {
 	}
 	s.RegisterExternalProvider(mock)
 
-	meta := s.getAppMetadata(context.Background(), "screeny:clocks-minimal")
+	meta := s.getAppMetadata(context.Background(), "", "screeny:clocks-minimal")
 	require.NotNil(t, meta)
 	assert.Equal(t, "screeny:clocks-minimal", meta.ID)
 	assert.Equal(t, "Minimal Clock", meta.Name)

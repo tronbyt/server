@@ -1102,12 +1102,12 @@ func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, len(rawWebP), 2000, "Encoded animation must exceed the 2000 byte chunk budget")
 
-	appDir := filepath.Join(s.DataDir, "apps", "test_starlark_anim")
+	appDir := filepath.Join(s.DataDir, "users", user.Username, "apps", "test_starlark_anim")
 	require.NoError(t, os.MkdirAll(appDir, 0755))
 	animPath := filepath.Join(appDir, "anim.webp")
 	require.NoError(t, os.WriteFile(animPath, rawWebP, 0644))
 
-	relPath := filepath.Join("apps", "test_starlark_anim", "anim.webp")
+	relPath := filepath.Join("users", user.Username, "apps", "test_starlark_anim", "anim.webp")
 	app := data.App{
 		DeviceID:   device.ID,
 		Iname:      "test_anim_iname",
@@ -1206,12 +1206,12 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 	rawWebP, err := chunker.EncodeFramesToWebP(frames, 50*time.Millisecond)
 	require.NoError(t, err)
 
-	appDir := filepath.Join(s.DataDir, "apps", "test_preview_anim")
+	appDir := filepath.Join(s.DataDir, "users", user.Username, "apps", "test_preview_anim")
 	require.NoError(t, os.MkdirAll(appDir, 0755))
 	animPath := filepath.Join(appDir, "anim.webp")
 	require.NoError(t, os.WriteFile(animPath, rawWebP, 0644))
 
-	relPath := filepath.Join("apps", "test_preview_anim", "anim.webp")
+	relPath := filepath.Join("users", user.Username, "apps", "test_preview_anim", "anim.webp")
 	app := data.App{
 		DeviceID:   device.ID,
 		Iname:      "preview_anim_iname",

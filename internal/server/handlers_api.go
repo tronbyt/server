@@ -397,7 +397,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 
 	// Look up existing pushed app first (by path), then fall back to iname lookup.
 	var existingApp *data.App
-	var appPath string
+	var appPath, appOwner string
 	if installationID != "" {
 		existingApp = device.GetPushedApp(installationID)
 		if existingApp == nil {
@@ -406,7 +406,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		// Only derive appPath from non-pushed installations; "pushed:<id>" is not a real app path.
 		if existingApp != nil && existingApp.Path != nil && *existingApp.Path != "" &&
 			!strings.HasPrefix(*existingApp.Path, "pushed:") {
-			appPath, _ = securejoin.SecureJoin(s.DataDir, *existingApp.Path)
+			appPath, appOwner = *existingApp.Path, device.Username
 		}
 	}
 
@@ -459,7 +459,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		// 1. Check System Apps
 		for _, app := range s.ListSystemApps() {
 			if app.ID == dataReq.AppID {
-				appPath = filepath.Join(s.DataDir, app.Path)
+				appPath = app.Path
 				break
 			}
 		}
@@ -469,7 +469,7 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 			userApps := apps.ListUserApps(s.DataDir, user.Username)
 			for _, app := range userApps {
 				if app.ID == dataReq.AppID { // AppID for user apps is folder name
-					appPath = filepath.Join(s.DataDir, app.Path)
+					appPath, appOwner = app.Path, user.Username
 					break
 				}
 			}
@@ -481,7 +481,15 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, appPath, dataReq.Config)
+	src, err := s.openAppSource(appOwner, appPath)
+	if err != nil {
+		slog.Error("Failed to open app source", "path", appPath, "error", err)
+		http.Error(w, "Invalid app path", http.StatusBadRequest)
+		return
+	}
+	defer func() { _ = src.Close() }()
+
+	imgBytes, _, err := s.RenderApp(r.Context(), device, existingApp, src, dataReq.Config)
 	if err != nil {
 		slog.Error("Failed to render app", "error", err)
 		http.Error(w, "Rendering failed", http.StatusInternalServerError)

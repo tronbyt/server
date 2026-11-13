@@ -25,7 +25,7 @@ import (
 
 // RenderApp consolidates the logic for rendering an app for a device.
 // It handles config overrides, timezone/locale injection, dwell time, and filters.
-func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, appPath string, configOverrides map[string]any) ([]byte, []string, error) {
+func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, src *appSource, configOverrides map[string]any) ([]byte, []string, error) {
 	// Config
 	var config map[string]any
 	switch {
@@ -74,8 +74,8 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 	}
 
 	// 2. Static WebP App
-	if strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-		content, err := os.ReadFile(appPath)
+	if src.IsWebP() {
+		content, err := src.ReadFile()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to read static webp app: %w", err)
 		}
@@ -84,7 +84,8 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 
 	return renderer.Render(
 		ctx,
-		appPath,
+		src.Root,
+		src.Name,
 		config,
 		width, height,
 		time.Duration(appInterval)*time.Second,
@@ -96,6 +97,36 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		filters,
 		showFullAnimation,
 	)
+}
+
+// renderAppAtPath renders a preview of the app at a trusted filesystem path, such as a fresh upload.
+func (s *Server) renderAppAtPath(ctx context.Context, device *data.Device, p string) ([]byte, []string, error) {
+	src, err := openAppSourcePath(p)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = src.Close() }()
+	return s.RenderApp(ctx, device, nil, src, nil)
+}
+
+// readAppSource reads a static app file from a stored app path owned by owner.
+func (s *Server) readAppSource(owner, appPath string) ([]byte, error) {
+	src, err := s.openAppSource(owner, appPath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = src.Close() }()
+	return src.ReadFile()
+}
+
+// renderInstalledApp renders an app installed on device from its stored path.
+func (s *Server) renderInstalledApp(ctx context.Context, device *data.Device, app *data.App) ([]byte, []string, error) {
+	src, err := s.openAppSource(device.Username, *app.Path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = src.Close() }()
+	return s.RenderApp(ctx, device, app, src, nil)
 }
 
 // possiblyRender executes background rendering for an app if its interval has elapsed or content has changed.
@@ -123,9 +154,8 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 
-	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
-	if err != nil {
-		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+	if _, _, err := splitAppPath(device.Username, *app.Path); err != nil {
+		slog.Error("Invalid app path", "path", *app.Path, "device", device.ID, "error", err)
 		return false
 	}
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
@@ -143,7 +173,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 	if strings.HasSuffix(strings.ToLower(*app.Path), ".webp") {
 		if _, err := os.Stat(webpPath); os.IsNotExist(err) {
 			// Copy or chunk from source
-			if b, err := os.ReadFile(appPath); err == nil {
+			if b, err := s.readAppSource(device.Username, *app.Path); err == nil {
 				maxChunkSize := s.GetMaxChunkSizeForDevice(device)
 				if device != nil && maxChunkSize > 0 && len(b) > maxChunkSize {
 					maxChunkDurationMs := s.GetMaxChunkDurationForDevice(device)
@@ -157,11 +187,11 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 					}
 				}
 				if err := os.WriteFile(webpPath, b, 0644); err != nil {
-					slog.Error("Failed to write static webp file", "src", appPath, "dst", webpPath, "error", err)
+					slog.Error("Failed to write static webp file", "src", *app.Path, "dst", webpPath, "error", err)
 					return false
 				}
 			} else {
-				slog.Warn("Source WebP not found", "path", appPath)
+				slog.Warn("Source WebP not found", "path", *app.Path, "error", err)
 				return false
 			}
 		}
@@ -185,7 +215,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
-		imgBytes, messages, err := s.RenderApp(ctx, device, app, appPath, nil)
+		imgBytes, messages, err := s.renderInstalledApp(ctx, device, app)
 		renderDur := time.Since(startTime)
 
 		for _, msg := range messages {
