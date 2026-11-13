@@ -28,7 +28,7 @@ require (
 	github.com/tronbyt/go-libwebp v0.0.0-20251221160926-0c04b4a7738a
 	github.com/tronbyt/pixlet v0.55.0
 	golang.org/x/crypto v0.58.0
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/text v0.43.0
