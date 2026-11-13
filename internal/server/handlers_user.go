@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,8 +18,16 @@ import (
 	"tronbyt-server/internal/gitutils"
 	"tronbyt-server/internal/legacy"
 
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"gorm.io/gorm"
 )
+
+type settingsDebugAppRefreshResponse struct {
+	Config          map[string]any `json:"config"`
+	RenderMessages  []string       `json:"renderMessages"`
+	Status          string         `json:"status"`
+	RenderAttempted bool           `json:"renderAttempted"`
+}
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleIndex called")
@@ -111,6 +120,167 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		DefaultSounds:        GetDefaultSounds(),
 		CustomSounds:         customSounds,
 	})
+}
+
+// handleSettingsDebugGet shows stored pixlet render debug output for installed apps.
+func (s *Server) handleSettingsDebugGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.loadSettingsUser(r)
+	if !ok {
+		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+		return
+	}
+
+	users, err := s.loadUsersForRenderDebug(r.Context(), user)
+	if err != nil {
+		slog.Error("Failed to load apps for render debug", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	s.renderTemplate(w, r, "settings_debug", TemplateData{
+		User:            user,
+		Users:           users,
+		SettingsSection: "debug",
+	})
+}
+
+func (s *Server) loadUsersForRenderDebug(ctx context.Context, viewer *data.User) ([]data.User, error) {
+	preloads := func(db gorm.PreloadBuilder) error {
+		db.Order("name ASC")
+		return nil
+	}
+	if viewer.IsAdmin {
+		return gorm.G[data.User](s.DB).
+			Preload("Devices", preloads).
+			Preload("Devices.Apps", orderedAppsPreload).
+			Order("username ASC").
+			Find(ctx)
+	}
+	u, err := gorm.G[data.User](s.DB).
+		Preload("Devices", preloads).
+		Preload("Devices.Apps", orderedAppsPreload).
+		Where("username = ?", viewer.Username).
+		First(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return []data.User{u}, nil
+}
+
+func (s *Server) handleSettingsDebugAppRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	viewer, ok := s.loadSettingsUser(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	deviceID := r.PathValue("id")
+	iname := r.PathValue("iname")
+	device, app, owner, err := s.loadDeviceAppForSettingsDebug(r.Context(), viewer, deviceID, iname)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, errSettingsDebugForbidden) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		slog.Error("Failed to load app for debug refresh", "device", deviceID, "iname", iname, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	renderAttempted := s.forceRefreshAppRender(r.Context(), app, device, owner)
+
+	refreshed, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(r.Context())
+	if err != nil {
+		slog.Error("Failed to reload app after debug refresh", "app", app.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	localizer := s.getLocalizer(r)
+	resp := settingsDebugAppRefreshResponse{
+		Config:          refreshed.Config,
+		RenderMessages:  refreshed.RenderMessages,
+		Status:          appRenderDebugStatus(localizer, &refreshed),
+		RenderAttempted: renderAttempted,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("Failed to encode debug refresh response", "error", err)
+	}
+}
+
+var errSettingsDebugForbidden = errors.New("settings debug forbidden")
+
+func (s *Server) loadDeviceAppForSettingsDebug(ctx context.Context, viewer *data.User, deviceID, iname string) (*data.Device, *data.App, *data.User, error) {
+	device, err := gorm.G[data.Device](s.DB).
+		Preload("Apps", orderedAppsPreload).
+		Where("id = ?", deviceID).
+		First(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if viewer.Username != device.Username && !viewer.IsAdmin {
+		return nil, nil, nil, errSettingsDebugForbidden
+	}
+
+	var app *data.App
+	for _, candidate := range device.Apps {
+		if candidate.Iname == iname {
+			app = candidate
+			break
+		}
+	}
+	if app == nil {
+		return nil, nil, nil, gorm.ErrRecordNotFound
+	}
+
+	owner, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &device, app, &owner, nil
+}
+
+func (s *Server) forceRefreshAppRender(ctx context.Context, app *data.App, device *data.Device, owner *data.User) bool {
+	if app.Pushed {
+		return false
+	}
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "LastRender", time.Time{}); err != nil {
+		slog.Error("Failed to reset last render for debug refresh", "app", app.ID, "error", err)
+		return false
+	}
+	fresh, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(ctx)
+	if err != nil {
+		slog.Error("Failed to reload app before debug refresh render", "app", app.ID, "error", err)
+		return false
+	}
+	return s.possiblyRender(ctx, &fresh, device, owner)
+}
+
+func appRenderDebugStatus(localizer *i18n.Localizer, app *data.App) string {
+	if app.LastRender.IsZero() {
+		return tmplT(localizer, "Not rendered yet")
+	}
+	if app.EmptyLastRender {
+		ref := app.LastRender
+		if app.LastSuccessfulRender != nil {
+			ref = *app.LastSuccessfulRender
+		}
+		return tmplT(localizer, "No output for:") + " " + tmplTimeSince(localizer, ref)
+	}
+	return tmplT(localizer, "Last:") + " " + tmplTimeAgo(localizer, app.LastRender) +
+		" (" + tmplT(localizer, "in") + " " + tmplDuration(app.LastRenderDur) + ")"
 }
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {

@@ -1070,6 +1070,30 @@
   "Show Render Debug": {
     "other": "Debug-Ausgabe anzeigen"
   },
+  "Debug": {
+    "other": "Debug"
+  },
+  "Render debug page description": {
+    "other": "App-Konfiguration und Pixlet-Debug-Ausgabe ansehen, ohne jede Bearbeitungsseite zu öffnen."
+  },
+  "Render debug output": {
+    "other": "Debug-Ausgabe vom Rendern"
+  },
+  "Refresh render debug": {
+    "other": "Debug-Ausgabe aktualisieren"
+  },
+  "Failed to refresh debug output.": {
+    "other": "Debug-Ausgabe konnte nicht aktualisiert werden."
+  },
+  "No render debug output yet.": {
+    "other": "Noch keine Debug-Ausgabe vom Rendern."
+  },
+  "This device has no apps installed.": {
+    "other": "Auf diesem Gerät sind keine Apps installiert."
+  },
+  "Not rendered yet": {
+    "other": "Noch nicht gerendert"
+  },
   "Cancel": {
     "other": "Abbrechen"
   },

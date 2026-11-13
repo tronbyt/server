@@ -129,6 +129,7 @@ var templateFiles = map[string]string{
 	"settings_account": "settings/account.html",
 	"settings_content": "settings/content.html",
 	"settings_admin":   "settings/admin.html",
+	"settings_debug":   "settings/debug.html",
 	"create":           "manager/create.html",
 	"addapp":           "manager/addapp.html",
 	"configapp":        "manager/configapp.html",
