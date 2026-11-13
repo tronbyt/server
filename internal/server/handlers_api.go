@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -416,17 +419,12 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 		existingApp.Path != nil && strings.HasPrefix(*existingApp.Path, "pushed:") &&
 		len(dataReq.Config) == 0 && dataReq.AppID == "" {
 		cachedID := strings.TrimPrefix(*existingApp.Path, "pushed:")
-		pushedImagePath, err := securejoin.SecureJoin(filepath.Join(s.DataDir, "webp", device.ID, "pushed"), cachedID+".webp")
-		if err != nil {
-			slog.Error("Failed to resolve pushed image path", "error", err)
-			http.Error(w, "Image not found", http.StatusNotFound)
-			return
-		}
-		imgBytes, err := os.ReadFile(pushedImagePath)
+		pushedImageName := appWebpName(existingApp)
+		imgBytes, err := s.readDeviceImage(device.ID, pushedImageName)
 		if err != nil {
 			// No cached image — fall through to the render path so the caller can
 			// recover by providing an appID and config.
-			slog.Warn("Cached pushed image missing, falling through to render", "path", pushedImagePath)
+			slog.Warn("Cached pushed image missing, falling through to render", "device_id", device.ID, "name", pushedImageName, "error", err)
 		} else {
 			if !dataReq.Background {
 				s.Broadcaster.Notify(device.ID, imgBytes)
@@ -729,7 +727,7 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, imgData
 	var filename string
 	if installID != "" {
 		// Image push with installID: stable filename, always replaces
-		filename = installID + ".webp"
+		filename = path.Base(pushedWebpName(installID))
 	} else if coalesceID != "" {
 		// Validate coalesceID to prevent path traversal and suffix collisions.
 		if len(coalesceID) > 64 {
@@ -767,12 +765,7 @@ func (s *Server) savePushedImage(deviceID, installID, coalesceID string, imgData
 		filename = fmt.Sprintf("__%d.webp", time.Now().UnixNano())
 	}
 
-	path, err := securejoin.SecureJoin(dir, filename)
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(path, imgData, 0644); err != nil {
+	if err := s.writeDeviceImage(deviceID, path.Join("pushed", filename), imgData); err != nil {
 		return err
 	}
 
@@ -1293,55 +1286,23 @@ func (s *Server) handlePatchInstallation(w http.ResponseWriter, r *http.Request)
 // removeAppRenders deletes the rendered webp files belonging to an
 // installation, both the timestamped renders and any pushed image.
 func (s *Server) removeAppRenders(deviceID, iname string) {
-	// iname becomes a path component here. Every app the UI and the API
+	// iname becomes part of a filename here. Every app the UI and the API
 	// create gets a server-generated numeric iname, but handleImportDeviceConfig
-	// stores whatever an uploaded config carries, so treat it as untrusted:
-	// only a plain filename component is safe to build a path from.
-	if !isSafePathComponent(iname) {
-		slog.Error("Refusing render cleanup for unsafe installation name", "device_id", deviceID, "iname", iname)
-		return
-	}
-
-	webpDir, err := s.ensureDeviceImageDir(deviceID)
+	// stores whatever an uploaded config carries, so all access goes through
+	// the device image root.
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
-		slog.Error("Failed to get device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
+		slog.Error("Failed to open device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
 		return
 	}
+	defer func() { _ = root.Close() }()
 
-	// Match on the name rather than globbing: glob metacharacters in an
-	// imported iname would otherwise widen the pattern past this app's files.
-	entries, err := os.ReadDir(webpDir)
-	if err != nil {
-		slog.Error("Failed to read device webp directory for app disable cleanup", "device_id", deviceID, "error", err)
-		return
-	}
-	suffix := fmt.Sprintf("-%s.webp", iname)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), suffix) {
-			continue
-		}
-		path := filepath.Join(webpDir, entry.Name())
-		if err := os.Remove(path); err != nil {
-			slog.Error("Failed to remove webp file on app disable", "path", path, "error", err)
-		}
-	}
+	removeAppWebps(root, iname)
 
 	// Also check for pushed webp files
-	pushedWebpPath := filepath.Join(webpDir, "pushed", fmt.Sprintf("%s.webp", iname))
-	if _, err := os.Stat(pushedWebpPath); err == nil {
-		if err := os.Remove(pushedWebpPath); err != nil {
-			slog.Error("Failed to remove pushed webp file on app disable", "path", pushedWebpPath, "error", err)
-		}
+	if err := root.Remove(pushedWebpName(iname)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		slog.Error("Failed to remove pushed webp file on app disable", "device_id", deviceID, "iname", iname, "error", err)
 	}
-}
-
-// isSafePathComponent reports whether name can be joined into a path as a
-// single element without escaping the directory it is joined to.
-func isSafePathComponent(name string) bool {
-	if name == "" || name == "." || name == ".." {
-		return false
-	}
-	return filepath.Base(name) == name
 }
 
 func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Request) {
@@ -1367,27 +1328,22 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Clean up files using the actual iname
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	webpRoot, err := s.openDeviceImageRoot(device.ID)
 	if err != nil {
-		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
+		slog.Error("Failed to open device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	// Clean up pushed app image if applicable
-	if app.Pushed && app.Path != nil && len(*app.Path) > 7 && (*app.Path)[:7] == "pushed:" {
-		pushedID := (*app.Path)[7:]
-		pushedWebpPath := filepath.Join(webpDir, "pushed", pushedID+".webp")
-		if err := os.Remove(pushedWebpPath); err != nil && !os.IsNotExist(err) {
-			slog.Error("Failed to remove pushed webp file", "path", pushedWebpPath, "error", err)
+	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
+		pushedName := appWebpName(&app)
+		if err := webpRoot.Remove(pushedName); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.Error("Failed to remove pushed webp file", "device_id", device.ID, "name", pushedName, "error", err)
 		}
 	}
 
-	matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
-	for _, match := range matches {
-		if err := os.Remove(match); err != nil {
-			slog.Error("Failed to remove webp file", "path", match, "error", err)
-		}
-	}
+	removeAppWebps(webpRoot, app.Iname)
+	_ = webpRoot.Close()
 	s.cleanupAppChunks(device.ID, &app)
 	s.invalidateAppChunks(device.ID, app.Iname)
 

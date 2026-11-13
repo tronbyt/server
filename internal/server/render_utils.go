@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -19,7 +21,6 @@ import (
 	"tronbyt-server/internal/renderer"
 	"tronbyt-server/web"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
 	"gorm.io/gorm"
 )
 
@@ -143,7 +144,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		return false
 	}
 
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	appBasename := appImageBase(app)
 
 	// External Provider App (e.g. Screeny, Awtrix)
 	if s.isExternalAppPath(*app.Path) {
@@ -158,20 +159,17 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		slog.Error("Invalid app path", "path", *app.Path, "device", device.ID, "error", err)
 		return false
 	}
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	webpRoot, err := s.openDeviceImageRoot(device.ID)
 	if err != nil {
-		slog.Error("Failed to get device webp directory for rendering", "device_id", device.ID, "error", err)
+		slog.Error("Failed to open device webp directory for rendering", "device_id", device.ID, "error", err)
 		return false
 	}
-	webpPath, err := securejoin.SecureJoin(webpDir, fmt.Sprintf("%s.webp", appBasename))
-	if err != nil {
-		slog.Error("Path traversal attempt in webp path", "app", appBasename, "error", err)
-		return false
-	}
+	defer func() { _ = webpRoot.Close() }()
+	webpName := appWebpName(app)
 
 	// 2. Static WebP App
 	if strings.HasSuffix(strings.ToLower(*app.Path), ".webp") {
-		if _, err := os.Stat(webpPath); os.IsNotExist(err) {
+		if _, err := webpRoot.Stat(webpName); errors.Is(err, fs.ErrNotExist) {
 			// Copy or chunk from source
 			if b, err := s.readAppSource(device.Username, *app.Path); err == nil {
 				maxChunkSize := s.GetMaxChunkSizeForDevice(device)
@@ -186,8 +184,8 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 						return true
 					}
 				}
-				if err := os.WriteFile(webpPath, b, 0644); err != nil {
-					slog.Error("Failed to write static webp file", "src", *app.Path, "dst", webpPath, "error", err)
+				if err := webpRoot.WriteFile(webpName, b, 0644); err != nil {
+					slog.Error("Failed to write static webp file", "src", *app.Path, "dst", webpName, "error", err)
 					return false
 				}
 			} else {
@@ -298,16 +296,16 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 						slog.Warn("Failed to split oversized Starlark animation into chunks", "app", appBasename, "error", chunkErr)
 					}
 					s.cleanupAppChunks(device.ID, app)
-					if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
-						slog.Error("Failed to write webp", "path", webpPath, "error", err)
+					if err := webpRoot.WriteFile(webpName, imgBytes, 0644); err != nil {
+						slog.Error("Failed to write webp", "name", webpName, "error", err)
 					}
 				}
 			} else {
 				if device != nil {
 					s.cleanupAppChunks(device.ID, app)
 				}
-				if err := os.WriteFile(webpPath, imgBytes, 0644); err != nil {
-					slog.Error("Failed to write webp", "path", webpPath, "error", err)
+				if err := webpRoot.WriteFile(webpName, imgBytes, 0644); err != nil {
+					slog.Error("Failed to write webp", "name", webpName, "error", err)
 				}
 			}
 
@@ -366,7 +364,7 @@ func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *d
 		return false
 	}
 
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	appBasename := appImageBase(app)
 	var deviceID string
 	if device != nil {
 		deviceID = device.ID
@@ -423,10 +421,10 @@ func (s *Server) renderExternalApp(ctx context.Context, app *data.App, device *d
 	maxChunkSize := s.GetMaxChunkSizeForDevice(device)
 	needsRechunk := false
 	if maxChunkSize > 0 && device != nil {
-		deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-		if err == nil {
-			primaryPath := s.getAppWebpPath(deviceWebpDir, app)
-			if fi, err := os.Stat(primaryPath); err == nil && fi.Size() > int64(maxChunkSize) {
+		if webpRoot, err := s.openDeviceImageRoot(device.ID); err == nil {
+			fi, err := webpRoot.Stat(appWebpName(app))
+			_ = webpRoot.Close()
+			if err == nil && fi.Size() > int64(maxChunkSize) {
 				needsRechunk = true
 				slog.Info("Cached external app primary image exceeds device max chunk size; forcing re-render",
 					"app", appBasename, "size", fi.Size(), "max", maxChunkSize)
