@@ -22,6 +22,7 @@ type Settings struct {
 	SystemAppsRepo         string `env:"SYSTEM_APPS_REPO"         envDefault:"https://github.com/tronbyt/apps.git"`
 	MaxRepoSizeMB          int64  `env:"MAX_REPO_SIZE_MB"         envDefault:"750"`
 	CustomAppsAutoRefresh  bool   `env:"CUSTOM_APPS_AUTO_REFRESH"`
+	BlockCustomApps        bool   `env:"BLOCK_CUSTOM_APPS"`
 	GitHubToken            string `env:"GITHUB_TOKEN"`
 	// FirmwareIncludeAlpha fetches the draft "alpha" GitHub release. Requires GitHubToken with firmware repo access.
 	FirmwareIncludeAlpha bool   `env:"FIRMWARE_INCLUDE_ALPHA"`
@@ -79,6 +80,7 @@ type TemplateConfig struct {
 	EnableUserRegistration bool
 	SingleUserAutoLogin    bool
 	SystemAppsAutoRefresh  bool
+	BlockCustomApps        bool
 	Production             bool
 }
 

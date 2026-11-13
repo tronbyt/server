@@ -484,13 +484,13 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/apps/duplicate_from/{source_device_id}/{iname}", s.RequireLogin(s.RequireDevice(s.handleDuplicateAppToDevice)))
 	s.Router.HandleFunc("POST /devices/{id}/reorder_apps", s.RequireLogin(s.RequireDevice(s.handleReorderApps)))
 
-	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppGet)))
-	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppPost)))
+	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.RequireCustomAppsAllowed(s.RequireLogin(s.RequireDevice(s.handleUploadAppGet))))
+	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.RequireCustomAppsAllowed(s.RequireLogin(s.RequireDevice(s.handleUploadAppPost))))
 	s.Router.HandleFunc("GET /devices/{id}/uploads/{filename}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteUpload)))
 
 	s.Router.HandleFunc("POST /set_theme_preference", s.RequireLogin(s.handleSetThemePreference))
 	s.Router.HandleFunc("POST /set_user_repo", s.RequireLogin(s.handleSetUserRepo))
-	s.Router.HandleFunc("POST /refresh_user_repo", s.RequireLogin(s.handleRefreshUserRepo))
+	s.Router.HandleFunc("POST /refresh_user_repo", s.RequireCustomAppsAllowed(s.RequireLogin(s.handleRefreshUserRepo)))
 
 	s.Router.HandleFunc("GET /export_user_config", s.RequireLogin(s.handleExportUserConfig))
 	s.Router.HandleFunc("POST /import_user_config", s.RequireLogin(s.handleImportUserConfig))

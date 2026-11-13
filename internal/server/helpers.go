@@ -207,6 +207,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 			EnableUserRegistration: s.Config.EnableUserRegistration,
 			SingleUserAutoLogin:    s.Config.SingleUserAutoLogin,
 			SystemAppsAutoRefresh:  s.isSystemAppsAutoRefreshEnabled(),
+			BlockCustomApps:        s.Config.BlockCustomApps,
 			Production:             s.Config.Production,
 		}
 	}

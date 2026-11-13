@@ -19,10 +19,12 @@
         <div class="loading-spinner"></div>
         <p>{{ t .Localizer "Loading apps..." }}</p>
     </div>
+    {{- if not .Config.BlockCustomApps }}
     <div class="addapp-actions">
         <a class="w3-button w3-purple"
            href="/devices/{{ .Device.ID }}/uploadapp"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Upload app" }}</a>
     </div>
+    {{- end }}
     <form method="post" id="main_form" class="addapp-config">
         <section class="settings-card">
             <div class="settings-card-header">
