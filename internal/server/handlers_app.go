@@ -669,7 +669,8 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	var externalAppURL string
 	var externalProviderName string
-	if app.Path != nil && s.isExternalAppPath(*app.Path) {
+	isExternalApp := app.Path != nil && s.isExternalAppPath(*app.Path)
+	if isExternalApp {
 		if provider, _, ok := s.parseExternalAppPath(*app.Path); ok {
 			if provider.Name() == "screeny" && s.Config.ScreenyStudioURL != "" {
 				externalAppURL = s.Config.ScreenyStudioURL
@@ -715,6 +716,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		AppCatalogURL:            appCatalogURL,
 		ExternalAppURL:           externalAppURL,
 		ExternalProviderName:     externalProviderName,
+		IsExternalApp:            isExternalApp,
 		DefaultSounds:            GetDefaultSounds(),
 		CustomSounds:             customSounds,
 		AppSounds:                appSounds,
