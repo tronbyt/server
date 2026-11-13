@@ -397,6 +397,10 @@ func (s *Server) handlePushApp(w http.ResponseWriter, r *http.Request) {
 	if installationID == "" {
 		installationID = dataReq.InstallationIDAlt
 	}
+	if installationID != "" && !validInstallationID(installationID) {
+		http.Error(w, "Invalid installation ID", http.StatusBadRequest)
+		return
+	}
 
 	// Look up existing pushed app first (by path), then fall back to iname lookup.
 	var existingApp *data.App
@@ -602,6 +606,10 @@ func (s *Server) handlePushImage(w http.ResponseWriter, r *http.Request) {
 	installID := dataReq.InstallationID
 	if installID == "" {
 		installID = dataReq.InstallationIDAlt
+	}
+	if installID != "" && !validInstallationID(installID) {
+		http.Error(w, "Invalid installation ID", http.StatusBadRequest)
+		return
 	}
 
 	imgBytes, err := base64.StdEncoding.DecodeString(dataReq.Image)
@@ -1321,6 +1329,15 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	// Open the image root first so a failure leaves the app in place to retry.
+	webpRoot, err := s.openDeviceImageRoot(device.ID)
+	if err != nil {
+		slog.Error("Failed to open device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = webpRoot.Close() }()
+
 	// Delete the app
 	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Delete(r.Context()); err != nil {
 		http.Error(w, "Failed to delete app", http.StatusInternalServerError)
@@ -1328,12 +1345,6 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Clean up files using the actual iname
-	webpRoot, err := s.openDeviceImageRoot(device.ID)
-	if err != nil {
-		slog.Error("Failed to open device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
 	// Clean up pushed app image if applicable
 	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
 		pushedName := appWebpName(&app)
@@ -1343,7 +1354,6 @@ func (s *Server) handleDeleteInstallationAPI(w http.ResponseWriter, r *http.Requ
 	}
 
 	removeAppWebps(webpRoot, app.Iname)
-	_ = webpRoot.Close()
 	s.cleanupAppChunks(device.ID, &app)
 	s.invalidateAppChunks(device.ID, app.Iname)
 

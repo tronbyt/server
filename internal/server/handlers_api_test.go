@@ -294,6 +294,30 @@ func TestHandlePushImage(t *testing.T) {
 	}
 }
 
+func TestHandlePushRejectsInvalidInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey, deviceID := "device_api_key", "testdevice"
+	dummyWebp := "UklGRkXlAAAgAAAAAQABAAHAIwAA//VucG/v/4/f//x8oAA="
+
+	for _, installID := range []string{"a/b", `a\b`, "..", "__1", "_/1"} {
+		t.Run(installID, func(t *testing.T) {
+			body, _ := json.Marshal(PushData{InstallationID: installID, Image: dummyWebp})
+			rr := httptest.NewRecorder()
+			s.ServeHTTP(rr, newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push", deviceID), apiKey, body))
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+			body, _ = json.Marshal(PushAppData{InstallationID: installID})
+			rr = httptest.NewRecorder()
+			s.ServeHTTP(rr, newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body))
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+			count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", deviceID, "pushed:"+installID).Count(context.Background(), "*")
+			require.NoError(t, err)
+			assert.Zero(t, count, "no pushed app is created")
+		})
+	}
+}
+
 func TestHandlePushApp(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "device_api_key"

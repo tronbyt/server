@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -74,6 +75,32 @@ func (s *Server) serveDeviceImage(w http.ResponseWriter, r *http.Request, device
 
 	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 	return true
+}
+
+// validInstallationID reports whether id can name an installation's files.
+// It must already be a single filename, so flattening can't make two IDs
+// collide, and must not start with "__", which marks one-off pushes.
+func validInstallationID(id string) bool {
+	return isSinglePathComponent(id) && !strings.ContainsRune(id, 0) && !strings.HasPrefix(id, "__")
+}
+
+// validateImportedApps rejects imported apps whose iname or pushed
+// installation ID can't name files. Both are stored verbatim from the upload.
+func validateImportedApps(apps []*data.App) error {
+	for _, app := range apps {
+		if app == nil {
+			return fmt.Errorf("empty app entry")
+		}
+		if !validInstallationID(app.Iname) {
+			return fmt.Errorf("invalid installation name %q", app.Iname)
+		}
+		if app.Path != nil {
+			if id, ok := strings.CutPrefix(*app.Path, "pushed:"); ok && !validInstallationID(id) {
+				return fmt.Errorf("invalid installation ID %q", id)
+			}
+		}
+	}
+	return nil
 }
 
 // appImageBase returns the filename stem shared by an app's renders: "<name>-<iname>".

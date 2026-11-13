@@ -88,3 +88,26 @@ func TestImportDeviceConfigRejectsInvalidSchedule(t *testing.T) {
 	require.NoError(t, s.DB.First(&saved, "id = ?", device.ID).Error)
 	assert.Equal(t, "before", saved.Name, "nothing is imported")
 }
+
+func TestImportDeviceConfigRejectsInvalidInstallationID(t *testing.T) {
+	pushedPath := "pushed:_/1"
+	for name, app := range map[string]*data.App{
+		"iname with separator": {Name: "clock", Iname: "a/b"},
+		"ephemeral pushed ID":  {Name: "pushed", Iname: "100", Pushed: true, Path: &pushedPath},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := newTestServer(t)
+			user := data.User{Username: "testuser"}
+			require.NoError(t, s.DB.Create(&user).Error)
+			device := data.Device{ID: "importdev", Username: "testuser", APIKey: "importkey", Name: "before"}
+			require.NoError(t, s.DB.Create(&device).Error)
+
+			imported := data.Device{Name: "after", Apps: []*data.App{app}}
+			importDeviceConfig(t, s, &user, &device, imported)
+
+			var saved data.Device
+			require.NoError(t, s.DB.First(&saved, "id = ?", device.ID).Error)
+			assert.Equal(t, "before", saved.Name, "nothing is imported")
+		})
+	}
+}
