@@ -70,6 +70,9 @@ func newTestServerAPI(t *testing.T) *Server {
 	}
 
 	s := NewServer(db, cfg)
+	// Let the startup thumbnail preheat finish before tests register mock
+	// providers; otherwise it can pick one up and wipe the test's renders.
+	s.backgroundRenders.Wait()
 	t.Cleanup(func() {
 		s.backgroundRenders.Wait()
 	})
