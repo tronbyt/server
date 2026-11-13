@@ -651,7 +651,7 @@ func (s *Server) detectedAccessURL(r *http.Request) string {
 func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *sessions.Session) error {
 	// Create a copy of options to modify safely
 	opts := *session.Options
-	opts.Secure = r.URL.Scheme == "https"
+	opts.Secure = requestScheme(r) == "https"
 	session.Options = &opts
 
 	return session.Save(r, w)

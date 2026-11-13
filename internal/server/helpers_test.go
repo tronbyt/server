@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
 )
 
@@ -72,6 +74,37 @@ func TestRequestScheme(t *testing.T) {
 	}
 	if got := requestScheme(&http.Request{URL: &url.URL{Scheme: "https"}}); got != "https" {
 		t.Errorf("requestScheme(https URL) = %q, want %q", got, "https")
+	}
+}
+
+func TestSaveSessionSecureFlag(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	tests := []struct {
+		name       string
+		setup      func(r *http.Request)
+		wantSecure bool
+	}{
+		{"plain http", func(r *http.Request) {}, false},
+		{"native TLS", func(r *http.Request) { r.TLS = &tls.ConnectionState{} }, true},
+		{"forwarded https", func(r *http.Request) { r.URL.Scheme = "https" }, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r.TLS = nil
+			tt.setup(r)
+			w := httptest.NewRecorder()
+
+			session, err := s.Store.New(r, "session-name")
+			require.NoError(t, err)
+			require.NoError(t, s.saveSession(w, r, session))
+
+			cookies := w.Result().Cookies()
+			require.Len(t, cookies, 1)
+			assert.Equal(t, tt.wantSecure, cookies[0].Secure)
+		})
 	}
 }
 
