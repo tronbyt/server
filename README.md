@@ -110,6 +110,9 @@ The server can be configured via environment variables or `.env` file:
 *   `SYSTEM_APPS_AUTO_REFRESH`: Initial default for refreshing the system apps repository every 12 hours (default: `false`). Administrators can change this under **Settings → Content and Firmware**; a saved web preference takes precedence on later starts.
 *   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
 *   `BLOCK_CUSTOM_APPS`: Prevent all users from uploading apps or configuring custom apps repositories (default: `false`). Users can still remove a previously configured repository.
+*   `PIXLET_HTTP_BLOCK_PRIVATE_IPS`: Block apps from making HTTP requests to private, loopback, link-local, and other non-public addresses, such as `192.168.1.1` or `localhost` (default: `false`). Recommended when running untrusted apps. If requests go through a proxy (`HTTP_PROXY`/`HTTPS_PROXY`), only the proxy's address is checked.
+*   `PIXLET_HTTP_TIMEOUT`: Timeout for HTTP requests made by apps, as a Go duration such as `10s` (default: `5s`).
+*   `PIXLET_HTTP_MAX_RESPONSE_MB`: Maximum size of an HTTP response body an app can read, in MB (default: `20`).
 *   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily, and destination of the opt-in community app stats in System Settings, which are off by default (default: `https://cloud.heyniblet.com`). Set to an empty string to disable both. Administrators can also turn off all Niblet Cloud traffic under **Settings → Admin** without changing this variable.
 *   `FIRMWARE_REPO`: GitHub repository URL for ESP32 firmware binaries (default: `https://github.com/tronbyt/firmware-esp32`). Set to `"none"` to disable ESP32 firmware fetching.
 *   `TRONBERRY_REPO`: GitHub repository URL for Tronberry (Raspberry Pi) binaries (default: `https://github.com/tronbyt/tronberry`). Set to `"none"` to disable Tronberry binary fetching.
