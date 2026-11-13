@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
 	github.com/tronbyt/go-libwebp v0.0.0-20251221160926-0c04b4a7738a
-	github.com/tronbyt/pixlet v0.55.0
+	github.com/tronbyt/pixlet v0.55.1
 	golang.org/x/crypto v0.58.0
 	golang.org/x/mod v0.43.0
 	golang.org/x/oauth2 v0.38.0
