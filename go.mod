@@ -15,7 +15,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/mattn/go-isatty v0.0.24
-	github.com/mattn/go-sqlite3 v1.14.52
+	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/nathan-osman/go-sunrise v1.1.0
 	github.com/nicksnyder/go-i18n/v2 v2.7.0
 	github.com/prometheus/client_golang v1.25.0
