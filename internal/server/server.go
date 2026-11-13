@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -805,21 +806,14 @@ func (s *Server) cleanupAppChunks(deviceID string, app *data.App) {
 		return
 	}
 	s.invalidateAppChunks(deviceID, app.Iname)
-	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
 		return
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	chunkPrefix := fmt.Sprintf("%s_chunk_", appBasename)
-	if entries, err := os.ReadDir(deviceWebpDir); err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasPrefix(entry.Name(), chunkPrefix) && strings.HasSuffix(entry.Name(), ".webp") {
-				_ = os.Remove(filepath.Join(deviceWebpDir, entry.Name()))
-			}
-		}
-	}
-	_ = os.Remove(filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename)))
-	_ = os.Remove(filepath.Join(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)))
+	defer func() { _ = root.Close() }()
+	removeAppChunkFiles(root, app)
+	_ = root.Remove(appChunksMetaName(app))
+	_ = root.Remove(appFullWebpName(app))
 }
 
 type chunkMeta struct {
@@ -844,21 +838,18 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.Render
 	s.appChunksMu.RUnlock()
 
 	// Try loading from disk
-	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
 		return nil
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	metaFile := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
-	metaBytes, err := os.ReadFile(metaFile)
+	defer func() { _ = root.Close() }()
+	metaBytes, err := root.ReadFile(appChunksMetaName(app))
 	if err == nil {
 		var metas []chunkMeta
 		if err := json.Unmarshal(metaBytes, &metas); err == nil && len(metas) > 0 {
 			var chunks []providers.RenderChunk
 			for _, m := range metas {
-				chunkFile := filepath.Base(m.File)
-				chunkPath := filepath.Join(deviceWebpDir, chunkFile)
-				b, err := os.ReadFile(chunkPath)
+				b, err := root.ReadFile(filepath.Base(m.File))
 				if err != nil {
 					chunks = nil
 					break
@@ -878,8 +869,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.Render
 	}
 
 	// Fallback: check if single .webp exists
-	singlePath := s.getAppWebpPath(deviceWebpDir, app)
-	if b, err := os.ReadFile(singlePath); err == nil && len(b) > 0 {
+	if b, err := root.ReadFile(appWebpName(app)); err == nil && len(b) > 0 {
 		durationMs := app.DisplayTime * 1000
 		if durationMs <= 0 {
 			durationMs = 15000
@@ -903,53 +893,46 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 	if app == nil || len(chunks) == 0 {
 		return nil
 	}
-	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
 		return err
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	defer func() { _ = root.Close() }()
+	appBasename := appImageBase(app)
 
 	// Remove old chunk files for this app to prevent orphaned chunks if chunk count changed
-	chunkPrefix := fmt.Sprintf("%s_chunk_", appBasename)
-	if entries, err := os.ReadDir(deviceWebpDir); err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasPrefix(entry.Name(), chunkPrefix) && strings.HasSuffix(entry.Name(), ".webp") {
-				_ = os.Remove(filepath.Join(deviceWebpDir, entry.Name()))
-			}
-		}
-	}
+	removeAppChunkFiles(root, app)
 
 	// The primary image (<appBasename>.webp) is what devices fetch on rotation or fallback.
 	// It must always be safe for device hardware and stay within maxChunkSize, so we
-	// write chunk 0 (the first chunk) to primaryPath.
-	primaryPath := s.getAppWebpPath(deviceWebpDir, app)
-	if err := os.MkdirAll(filepath.Dir(primaryPath), 0755); err != nil {
+	// write chunk 0 (the first chunk) to primaryName.
+	primaryName := appWebpName(app)
+	if err := root.MkdirAll(path.Dir(primaryName), 0755); err != nil {
 		return err
 	}
 	primaryBytes := chunks[0].WebPBytes
-	if err := os.WriteFile(primaryPath, primaryBytes, 0644); err != nil {
+	if err := root.WriteFile(primaryName, primaryBytes, 0644); err != nil {
 		return err
 	}
 
 	// Save the complete unchunked animation (if available) to <appBasename>_full.webp
 	// for rich web previews and dashboard display. If empty, remove any existing stale full file.
-	fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename))
+	fullName := appFullWebpName(app)
 	if len(chunks[0].FullWebPBytes) > 0 {
-		if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
-			slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
+		if err := root.WriteFile(fullName, chunks[0].FullWebPBytes, 0644); err != nil {
+			slog.Error("Failed to write full webp preview file", "name", fullName, "error", err)
 			return err
 		}
 	} else {
-		_ = os.Remove(fullPath)
+		_ = root.Remove(fullName)
 	}
 
 	// If multiple chunks, write individual chunk files and chunk metadata JSON
 	var metas []chunkMeta
 	for i, chunk := range chunks {
 		fileName := fmt.Sprintf("%s_chunk_%d.webp", appBasename, i)
-		chunkPath := filepath.Join(deviceWebpDir, fileName)
-		if err := os.WriteFile(chunkPath, chunk.WebPBytes, 0644); err != nil {
-			slog.Error("Failed to write chunk file", "path", chunkPath, "error", err)
+		if err := root.WriteFile(fileName, chunk.WebPBytes, 0644); err != nil {
+			slog.Error("Failed to write chunk file", "name", fileName, "error", err)
 			return err
 		}
 		metas = append(metas, chunkMeta{
@@ -958,10 +941,10 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 		})
 	}
 
-	metaFile := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
+	metaName := appChunksMetaName(app)
 	if metaBytes, err := json.Marshal(metas); err == nil {
-		if err := os.WriteFile(metaFile, metaBytes, 0644); err != nil {
-			slog.Error("Failed to write chunks metadata", "path", metaFile, "error", err)
+		if err := root.WriteFile(metaName, metaBytes, 0644); err != nil {
+			slog.Error("Failed to write chunks metadata", "name", metaName, "error", err)
 		}
 	}
 

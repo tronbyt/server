@@ -855,6 +855,11 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		s.flashAndRedirect(w, r, "Invalid night or dim mode schedule in file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
+	if err := validateImportedApps(importedDevice.Apps); err != nil {
+		slog.Error("Imported device has an invalid app", "error", err)
+		s.flashAndRedirect(w, r, "Invalid app installation ID in file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
 
 	// Clean up WebP files for this device to prevent orphans
 	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)

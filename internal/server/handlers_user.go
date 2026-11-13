@@ -594,6 +594,11 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 			s.flashAndRedirect(w, r, "Invalid night or dim mode schedule in file", "/settings/admin", http.StatusSeeOther)
 			return
 		}
+		if err := validateImportedApps(dev.Apps); err != nil {
+			slog.Error("Imported device has an invalid app", "device", dev.Name, "error", err)
+			s.flashAndRedirect(w, r, "Invalid app installation ID in file", "/settings/admin", http.StatusSeeOther)
+			return
+		}
 	}
 
 	currentUser, err := gorm.G[data.User](s.DB).Preload("Devices", nil).Where("username = ?", userContext.Username).First(r.Context())

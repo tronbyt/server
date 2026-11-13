@@ -991,7 +991,7 @@ func TestExternalAppConfigPreview_FullAnimationServing(t *testing.T) {
 
 	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
-	primaryPath := s.getAppWebpPath(deviceWebpDir, &app)
+	primaryPath := filepath.Join(deviceWebpDir, appWebpName(&app))
 	savedPrimary, err := os.ReadFile(primaryPath)
 	require.NoError(t, err)
 	assert.Equal(t, dummyChunkWebP1, savedPrimary, "primary webp must contain chunk 0 safe for device")
