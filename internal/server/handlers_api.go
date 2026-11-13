@@ -360,15 +360,16 @@ type PushAppData struct {
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
-	user := GetUser(r)
-
-	// If using an API key associated with a specific device, this endpoint might not make sense
-	// or should return only that device. The legacy behavior (Python) returns all devices for the user.
-	// Since APIAuthMiddleware populates user with all devices preloaded, we can just use that.
-
-	devicePayloads := make([]DevicePayload, 0, len(user.Devices))
-	for i := range user.Devices {
-		devicePayloads = append(devicePayloads, s.toDevicePayload(&user.Devices[i]))
+	var devicePayloads []DevicePayload
+	if device, err := DeviceFromContext(r.Context()); err == nil {
+		// A device API key is scoped to its own device, so don't expose the owner's other devices.
+		devicePayloads = []DevicePayload{s.toDevicePayload(device)}
+	} else {
+		user := GetUser(r)
+		devicePayloads = make([]DevicePayload, 0, len(user.Devices))
+		for i := range user.Devices {
+			devicePayloads = append(devicePayloads, s.toDevicePayload(&user.Devices[i]))
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -172,6 +172,40 @@ func TestHandleListDevices(t *testing.T) {
 	}
 }
 
+func TestHandleListDevicesDeviceKeyScoped(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	other := data.Device{
+		ID:       "otherdevice",
+		Username: "testuser",
+		Name:     "Other Device",
+		Type:     data.DeviceTidbytGen1,
+		APIKey:   "other_device_api_key",
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(context.Background(), &other))
+
+	// A user key sees all of the user's devices.
+	req := newAPIRequest("GET", "/v0/devices", "test_api_key", nil)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var payload ListDevicesPayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	assert.Len(t, payload.Devices, 2)
+
+	// A device key sees only its own device.
+	req = newAPIRequest("GET", "/v0/devices", "device_api_key", nil)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	payload = ListDevicesPayload{}
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	require.Len(t, payload.Devices, 1)
+	assert.Equal(t, "testdevice", payload.Devices[0].ID)
+}
+
 func TestHandleGetDevice(t *testing.T) {
 	s := newTestServerAPI(t)
 	apiKey := "test_api_key"
