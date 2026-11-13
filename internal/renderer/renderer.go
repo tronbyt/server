@@ -15,6 +15,8 @@ import (
 )
 
 // Render executes the Starlark script and returns the WebP image bytes.
+// If result is not nil, it is filled in with what the app returned besides the
+// image, such as a requested sound.
 func Render(
 	ctx context.Context,
 	path string,
@@ -28,6 +30,7 @@ func Render(
 	locale *string,
 	filters []string,
 	showFullAnimation *bool,
+	result *loader.RenderResult,
 ) ([]byte, []string, error) {
 	location := time.Local
 	if timezone != nil && *timezone != "" {
@@ -70,6 +73,7 @@ func Render(
 		loader.WithLanguage(lang),
 		loader.WithFilters(renderFilters),
 		loader.WithShowFullAnimation(showFullAnimation),
+		loader.WithResult(result),
 	)
 }
 

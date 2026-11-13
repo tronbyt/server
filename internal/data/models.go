@@ -678,9 +678,10 @@ type App struct {
 	ColorFilter              *ColorFilter `json:"color_filter"`
 	ShowFullAnimation        *bool        `json:"show_full_animation"`
 	NotificationSound        *string      `json:"notification_sound"`
-	NotificationSoundTrigger string       `json:"notification_sound_trigger"` // "every_display" or "on_change"
+	NotificationSoundTrigger string       `json:"notification_sound_trigger"` // "every_display", "on_change" or "app_request"
 	LastRenderHash           string       `json:"last_render_hash"`
 	LastSoundAt              *time.Time   `json:"last_sound_at,omitempty"`
+	LastSoundRequestID       string       `json:"last_sound_request_id,omitempty"` // last render.Root(sound_id) played for "app_request"
 }
 
 type Device struct {
