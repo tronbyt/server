@@ -106,3 +106,49 @@ func TestBlockCustomAppsHidesUI(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 	assert.NotContains(t, rr.Body.String(), "/devices/testdevice/uploadapp")
 }
+
+func TestCustomAppsAllowed(t *testing.T) {
+	s := newTestServer(t)
+	admin := &data.User{Username: "admin", IsAdmin: true}
+	user := &data.User{Username: "user"}
+
+	assert.True(t, s.customAppsAllowed(user))
+	assert.True(t, s.customAppsAllowed(admin))
+
+	s.Config.BlockCustomApps = true
+	assert.False(t, s.customAppsAllowed(user))
+	assert.False(t, s.customAppsAllowed(nil))
+	assert.True(t, s.customAppsAllowed(admin))
+}
+
+func TestBlockCustomAppsAllowsAdmins(t *testing.T) {
+	s := newTestServer(t)
+	s.Config.BlockCustomApps = true
+
+	admin := data.User{Username: "admin", APIKey: "admin-api-key", IsAdmin: true}
+	require.NoError(t, s.DB.Create(&admin).Error)
+	require.NoError(t, s.DB.Create(&data.Device{ID: "admindevice", Username: admin.Username}).Error)
+
+	req := newBlockedCustomAppsRequest(t, s, admin.Username, http.MethodGet, "/devices/admindevice/uploadapp", nil)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	req = newBlockedCustomAppsRequest(t, s, admin.Username, http.MethodPost, "/refresh_user_repo", url.Values{})
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusSeeOther, rr.Code)
+
+	req = newBlockedCustomAppsRequest(t, s, admin.Username, http.MethodGet, "/settings/content", nil)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `id="user_repo_url"`)
+	assert.NotContains(t, rr.Body.String(), "Custom apps are disabled on this server.")
+
+	req = newBlockedCustomAppsRequest(t, s, admin.Username, http.MethodGet, "/devices/admindevice/addapp", nil)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), "/devices/admindevice/uploadapp")
+}

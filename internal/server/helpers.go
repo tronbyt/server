@@ -73,6 +73,7 @@ type TemplateData struct {
 	NibletCloudConfigured bool // NIBLET_CLOUD_URL is set
 	NibletCloudEnabled    bool // admin allows Niblet Cloud traffic
 	User                  *data.User
+	CustomAppsAllowed     bool        // user may upload apps and configure a custom repo
 	Users                 []data.User // For admin view
 	Config                *config.TemplateConfig
 	Flashes               []string
@@ -207,7 +208,6 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 			EnableUserRegistration: s.Config.EnableUserRegistration,
 			SingleUserAutoLogin:    s.Config.SingleUserAutoLogin,
 			SystemAppsAutoRefresh:  s.isSystemAppsAutoRefreshEnabled(),
-			BlockCustomApps:        s.Config.BlockCustomApps,
 			Production:             s.Config.Production,
 		}
 	}
@@ -256,6 +256,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	tmplData.NibletCloudEnabled = s.isNibletCloudEnabled()
 	tmplData.UsageSharingAvailable = s.isNibletCloudEnabled()
 	tmplData.ShowUsagePrompt = s.shouldPromptUsage(tmplData.User)
+	tmplData.CustomAppsAllowed = s.customAppsAllowed(tmplData.User)
 
 	// Calculate IsAutoLoginActive
 	userCount, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")

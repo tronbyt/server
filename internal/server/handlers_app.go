@@ -128,7 +128,7 @@ func (s *Server) handleAddAppGet(w http.ResponseWriter, r *http.Request) {
 		Providers:         availableProviders,
 		SystemRepoInfo:    systemRepoInfo,
 		PublicAppsCatalog: apps.UsesPublicAppsCatalog(s.Config.SystemAppsRepo),
-		Config:            &config.TemplateConfig{Production: s.Config.Production, BlockCustomApps: s.Config.BlockCustomApps},
+		Config:            &config.TemplateConfig{Production: s.Config.Production},
 	})
 }
 

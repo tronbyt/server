@@ -211,7 +211,7 @@
         </div>
         {{ if .User.AppRepoURL }}
         <div style="margin-left: 15px; display: flex; gap: 8px;">
-            {{- if not .Config.BlockCustomApps }}
+            {{- if .CustomAppsAllowed }}
             <form method="post"
                   action="/refresh_user_repo"
                   onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin\'></i> {{ t .Localizer "Refreshing..." }}';">
@@ -239,7 +239,7 @@
         </div>
         {{ end }}
     </div>
-    {{- if .Config.BlockCustomApps }}
+    {{- if not .CustomAppsAllowed }}
     <div style="color: #888;">{{ t .Localizer "Custom apps are disabled on this server." }}</div>
     {{- else }}
     <div style="border-top: 1px solid #333; padding-top: 15px;">

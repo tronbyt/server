@@ -435,7 +435,7 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 
 	repoURL := r.FormValue("app_repo_url")
 	// Removing an existing repo is still allowed so users can clean up.
-	if s.Config.BlockCustomApps && repoURL != "" {
+	if repoURL != "" && !s.customAppsAllowed(user) {
 		http.Error(w, "Custom apps are disabled on this server", http.StatusForbidden)
 		return
 	}
@@ -481,7 +481,7 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 // autoRefreshCustomAppsRepos periodically re-pulls every user's custom apps
 // repo, mirroring autoRefreshSystemRepo for the per-user equivalent.
 func (s *Server) autoRefreshCustomAppsRepos() {
-	if !s.Config.CustomAppsAutoRefresh || s.Config.BlockCustomApps {
+	if !s.Config.CustomAppsAutoRefresh {
 		return
 	}
 
@@ -510,6 +510,9 @@ func (s *Server) refreshAllCustomAppsRepos() {
 	}
 
 	for _, user := range users {
+		if !s.customAppsAllowed(&user) {
+			continue
+		}
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
 		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
 			slog.Error("Scheduled refresh of custom apps repo failed", "user", user.Username, "error", err)
@@ -604,7 +607,7 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 	currentUser.Email = importedUser.Email
 	currentUser.ThemePreference = importedUser.ThemePreference
 	currentUser.SystemRepoURL = importedUser.SystemRepoURL
-	if !s.Config.BlockCustomApps {
+	if s.customAppsAllowed(&currentUser) {
 		currentUser.AppRepoURL = importedUser.AppRepoURL
 	}
 	if importedUser.APIKey != "" {
