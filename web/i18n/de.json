@@ -584,6 +584,9 @@
   "Custom apps repository configured": {
     "other": "Benutzerdefiniertes Apps-Repository konfiguriert"
   },
+  "Custom apps are disabled on this server.": {
+    "other": "Benutzerdefinierte Apps sind auf diesem Server deaktiviert."
+  },
   "No custom repository configured.": {
     "other": "Kein benutzerdefiniertes Repository konfiguriert."
   },

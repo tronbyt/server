@@ -434,6 +434,11 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
 	repoURL := r.FormValue("app_repo_url")
+	// Removing an existing repo is still allowed so users can clean up.
+	if s.Config.BlockCustomApps && repoURL != "" {
+		http.Error(w, "Custom apps are disabled on this server", http.StatusForbidden)
+		return
+	}
 	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "app_repo_url", repoURL); err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
 		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/settings/content", http.StatusSeeOther)
@@ -476,7 +481,7 @@ func (s *Server) handleRefreshUserRepo(w http.ResponseWriter, r *http.Request) {
 // autoRefreshCustomAppsRepos periodically re-pulls every user's custom apps
 // repo, mirroring autoRefreshSystemRepo for the per-user equivalent.
 func (s *Server) autoRefreshCustomAppsRepos() {
-	if !s.Config.CustomAppsAutoRefresh {
+	if !s.Config.CustomAppsAutoRefresh || s.Config.BlockCustomApps {
 		return
 	}
 
@@ -599,7 +604,9 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 	currentUser.Email = importedUser.Email
 	currentUser.ThemePreference = importedUser.ThemePreference
 	currentUser.SystemRepoURL = importedUser.SystemRepoURL
-	currentUser.AppRepoURL = importedUser.AppRepoURL
+	if !s.Config.BlockCustomApps {
+		currentUser.AppRepoURL = importedUser.AppRepoURL
+	}
 	if importedUser.APIKey != "" {
 		currentUser.APIKey = importedUser.APIKey
 	}

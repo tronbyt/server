@@ -584,6 +584,9 @@
   "Custom apps repository configured": {
     "other": "Custom apps repository configured"
   },
+  "Custom apps are disabled on this server.": {
+    "other": "Custom apps are disabled on this server."
+  },
   "No custom repository configured.": {
     "other": "No custom repository configured."
   },

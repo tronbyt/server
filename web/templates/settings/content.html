@@ -172,6 +172,7 @@
         </div>
         {{ if .User.AppRepoURL }}
         <div class="settings-actions">
+            {{- if not .Config.BlockCustomApps }}
             <form method="post"
                   action="/refresh_user_repo"
                   onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class=\'fa-solid fa-spinner fa-spin\'></i> {{ t .Localizer "Refreshing..." }}';">
@@ -179,6 +180,7 @@
                     <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{ t .Localizer "Refresh" }}
                 </button>
             </form>
+            {{- end }}
             <form method="post"
                   action="/set_user_repo"
                   onsubmit="return confirm('{{ t .Localizer "Remove custom repository? This will delete the repo and break any apps using it." }}');">
@@ -189,6 +191,9 @@
             </form>
         </div>
         {{ end }}
+        {{- if .Config.BlockCustomApps }}
+        <p class="settings-help">{{ t .Localizer "Custom apps are disabled on this server." }}</p>
+        {{- else }}
         <div class="settings-card-subsection">
             <h3>{{ t .Localizer "Change Repository" }}</h3>
             <form method="post" action="/set_user_repo" class="settings-form">
@@ -215,6 +220,7 @@
                 </div>
             </form>
         </div>
+        {{- end }}
     </section>
     <section class="settings-card">
         <div class="settings-card-header">

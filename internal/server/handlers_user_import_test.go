@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"tronbyt-server/internal/config"
 	"tronbyt-server/internal/data"
 	"tronbyt-server/internal/legacy"
 
@@ -40,6 +41,7 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 		DB:     db,
 		Store:  store,
 		Bundle: i18n.NewBundle(language.English),
+		Config: &config.Settings{},
 	}
 
 	// Create Legacy JSON payload
@@ -118,6 +120,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 		DB:     db,
 		Store:  store,
 		Bundle: i18n.NewBundle(language.English),
+		Config: &config.Settings{},
 	}
 
 	// Create JSON payload with explicit App ID

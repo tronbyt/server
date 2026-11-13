@@ -105,6 +105,18 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// RequireCustomAppsAllowed rejects requests when the operator has disabled
+// custom apps (uploads and custom repos) via BLOCK_CUSTOM_APPS.
+func (s *Server) RequireCustomAppsAllowed(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.Config.BlockCustomApps {
+			http.Error(w, "Custom apps are disabled on this server", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	}
+}
+
 // RequireLogin authenticates Web UI requests via session cookie.
 func (s *Server) RequireLogin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
