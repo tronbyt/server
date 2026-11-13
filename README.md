@@ -109,7 +109,7 @@ The server can be configured via environment variables or `.env` file:
 *   `SYSTEM_APPS_REPO`: Git repository URL for system apps (default: `https://github.com/tronbyt/apps.git`). End the URL with `#branch-name` to use a branch other than the default.
 *   `SYSTEM_APPS_AUTO_REFRESH`: Initial default for refreshing the system apps repository every 12 hours (default: `false`). Administrators can change this under **Settings → Content and Firmware**; a saved web preference takes precedence on later starts.
 *   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
-*   `BLOCK_CUSTOM_APPS`: Prevent all users from uploading apps or configuring custom apps repositories (default: `false`). Users can still remove a previously configured repository.
+*   `BLOCK_CUSTOM_APPS`: Prevent non-admin users from uploading apps or configuring custom apps repositories (default: `false`). Admins are unaffected, and users can still remove a previously configured repository.
 *   `PIXLET_HTTP_BLOCK_PRIVATE_IPS`: Block apps from making HTTP requests to private, loopback, link-local, and other non-public addresses, such as `192.168.1.1` or `localhost` (default: `false`). Recommended when running untrusted apps. If requests go through a proxy (`HTTP_PROXY`/`HTTPS_PROXY`), only the proxy's address is checked.
 *   `PIXLET_HTTP_TIMEOUT`: Timeout for HTTP requests made by apps, as a Go duration such as `10s` (default: `5s`).
 *   `PIXLET_HTTP_MAX_RESPONSE_MB`: Maximum size of an HTTP response body an app can read, in MB (default: `20`).

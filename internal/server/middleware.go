@@ -105,11 +105,18 @@ func (s *Server) APIAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequireCustomAppsAllowed rejects requests when the operator has disabled
-// custom apps (uploads and custom repos) via BLOCK_CUSTOM_APPS.
+// customAppsAllowed reports whether user may upload apps or configure a custom
+// apps repo. BLOCK_CUSTOM_APPS restricts this to admins, who can already
+// change the system apps repo.
+func (s *Server) customAppsAllowed(user *data.User) bool {
+	return !s.Config.BlockCustomApps || (user != nil && user.IsAdmin)
+}
+
+// RequireCustomAppsAllowed rejects requests from users who may not use custom
+// apps (see customAppsAllowed). It must run after RequireLogin.
 func (s *Server) RequireCustomAppsAllowed(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.Config.BlockCustomApps {
+		if !s.customAppsAllowed(GetUser(r)) {
 			http.Error(w, "Custom apps are disabled on this server", http.StatusForbidden)
 			return
 		}

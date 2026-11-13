@@ -80,7 +80,6 @@ type TemplateConfig struct {
 	EnableUserRegistration bool
 	SingleUserAutoLogin    bool
 	SystemAppsAutoRefresh  bool
-	BlockCustomApps        bool
 	Production             bool
 }
 
