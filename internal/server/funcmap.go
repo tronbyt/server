@@ -30,6 +30,7 @@ func getFuncMap() template.FuncMap {
 		"derefOr":        tmplDerefOr,
 		"isPinned":       tmplIsPinned,
 		"json":           tmplJSON,
+		"jsonPretty":     tmplJSONPretty,
 		"string":         tmplString,
 		"substr":         tmplSubstr,
 		"lower":          strings.ToLower,
@@ -206,6 +207,23 @@ func tmplJSON(v any) (template.JS, error) {
 		return "", err
 	}
 	return template.JS(a), nil
+}
+
+func tmplJSONPretty(v any) (string, error) {
+	if v == nil {
+		return "{}", nil
+	}
+	if m, ok := v.(map[string]any); ok && len(m) == 0 {
+		return "{}", nil
+	}
+	if m, ok := v.(data.JSONMap); ok && len(m) == 0 {
+		return "{}", nil
+	}
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 func tmplString(v any) string {

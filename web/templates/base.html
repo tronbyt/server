@@ -155,6 +155,8 @@
         <a href="/settings/admin"
            class="settings-subnav-link {{ if eq .SettingsSection "admin" }}active{{ end }}">{{ t .Localizer "Admin" }}</a>
         {{ end }}
+        <a href="/settings/debug"
+           class="settings-subnav-link {{ if eq .SettingsSection "debug" }}active{{ end }}">{{ t .Localizer "Debug" }}</a>
     </nav>
     {{ end }}
     {{- if .Flashes -}}
