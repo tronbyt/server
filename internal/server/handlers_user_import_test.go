@@ -25,7 +25,7 @@ func TestHandleImportUserConfig_Legacy(t *testing.T) {
 	// Setup DB
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=private"), &gorm.Config{})
 	assert.NoError(t, err)
-	err = db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{})
+	err = db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.OAuthClient{}, &data.OAuthToken{})
 	assert.NoError(t, err)
 
 	// Create existing user
@@ -104,7 +104,7 @@ func TestHandleImportUserConfig_AppIDReset(t *testing.T) {
 	// Setup DB
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=private"), &gorm.Config{})
 	assert.NoError(t, err)
-	err = db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{})
+	err = db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.OAuthClient{}, &data.OAuthToken{})
 	assert.NoError(t, err)
 
 	// Create existing user
