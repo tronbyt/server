@@ -50,7 +50,7 @@ func TestFirmwareUpdateForDevice(t *testing.T) {
 	assert.Empty(t, s.FirmwareUpdateForDevice(pi), "device without Tronbyt firmware")
 }
 
-func TestHandleIndexShowsFirmwareUpdateBadge(t *testing.T) {
+func TestHandleIndexShowsFirmwareUpdateOnButton(t *testing.T) {
 	s := newTestServer(t)
 	addFirmwareRelease(t, s, "v1.7.5", "tidbyt-gen2.bin")
 
@@ -71,13 +71,13 @@ func TestHandleIndexShowsFirmwareUpdateBadge(t *testing.T) {
 	}
 
 	body := render("")
-	assert.Equal(t, 1, strings.Count(body, `class="firmware-update-badge"`))
+	assert.Equal(t, 1, strings.Count(body, `class="firmware-update-pill"`))
 	assert.Contains(t, body, `href="/devices/dev-old/firmware"`)
 	assert.Contains(t, body, "v1.7.5")
 
 	// The single-card refresh used by the dashboard shows it too.
-	assert.Contains(t, render("?device_id=dev-old&partial=device_card"), `class="firmware-update-badge"`)
-	assert.NotContains(t, render("?device_id=dev-current&partial=device_card"), `class="firmware-update-badge"`)
+	assert.Contains(t, render("?device_id=dev-old&partial=device_card"), `class="firmware-update-pill"`)
+	assert.NotContains(t, render("?device_id=dev-current&partial=device_card"), `class="firmware-update-pill"`)
 }
 
 // A shallow check (2 releases) and a deeper one (5 releases) keep separate
