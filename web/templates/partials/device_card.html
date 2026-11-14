@@ -32,17 +32,6 @@
                         <i class="fa-solid fa-volume-xmark" aria-hidden="true"></i> {{ t .Localizer "Muted" }}
                     </span>
                     {{ end }}
-                    {{ if not .ReadOnly }}
-                    {{ with .FirmwareUpdates }}
-                    {{ with index . $.Item.ID }}
-                    <a class="firmware-update-badge"
-                       href="/devices/{{ $.Item.ID }}/firmware"
-                       title="{{ t $.Localizer "Firmware update available" }}">
-                        <i class="fa-solid fa-circle-arrow-up" aria-hidden="true"></i> {{ t $.Localizer "Firmware" }} {{ . }}
-                    </a>
-                    {{ end }}
-                    {{ end }}
-                    {{ end }}
                 </h1>
                 <p class="settings-page-copy">
                 {{ len .Item.Apps }} {{ if eq (len .Item.Apps) 1 }}{{ t .Localizer "app" }}{{ else }}{{ t .Localizer "apps" }}{{ end }}
@@ -53,7 +42,17 @@
                 <a class="w3-button w3-teal" href="/devices/{{ .Item.ID }}/addapp"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {{ t .Localizer "Add App" }}</a>
                 <a class="w3-button w3-teal" href="/devices/{{ .Item.ID }}/update"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t .Localizer "Edit Device" }}</a>
                 {{ if .Item.Type.SupportsFirmware }}
-                <a class="w3-button w3-teal" href="/devices/{{ .Item.ID }}/firmware"><i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Firmware" }}</a>
+                {{ $fwUpdate := "" }}
+                {{ with .FirmwareUpdates }}{{ $fwUpdate = index . $.Item.ID }}{{ end }}
+                <a class="w3-button w3-teal"
+                   href="/devices/{{ .Item.ID }}/firmware"
+                   {{ if $fwUpdate }}title="{{ t .Localizer "Firmware update available" }}"
+                   {{ end }}>
+                    <i class="fa-solid fa-microchip" aria-hidden="true"></i> {{ t .Localizer "Firmware" }}
+                    {{ if $fwUpdate }}
+                    <span class="firmware-update-pill"><i class="fa-solid fa-circle-arrow-up" aria-hidden="true"></i> {{ $fwUpdate }}</span>
+                    {{ end }}
+                </a>
                 {{ end }}
                 <a class="w3-button w3-teal"
                    href="/devices/{{ .Item.ID }}/tv"
