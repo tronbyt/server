@@ -616,6 +616,33 @@ func (s *Server) GetLatestFirmwareVersionForDevice(device *data.Device) string {
 // "" when the device is up to date, its version is unknown, or it doesn't
 // take Tronbyt firmware.
 func (s *Server) FirmwareUpdateForDevice(device *data.Device) string {
+	current := installedFirmwareVersion(device)
+	if current == "" {
+		return ""
+	}
+	latest := s.GetLatestFirmwareVersionForDevice(device)
+	if !semver.IsValid(latest) || semver.Compare(latest, current) <= 0 {
+		return ""
+	}
+	return latest
+}
+
+// FirmwareUpToDateForDevice reports whether device last reported the newest
+// firmware version this server has, or a newer one. It is false when the
+// device's version is unknown or the server has no firmware for it.
+func (s *Server) FirmwareUpToDateForDevice(device *data.Device) bool {
+	current := installedFirmwareVersion(device)
+	if current == "" {
+		return false
+	}
+	latest := s.GetLatestFirmwareVersionForDevice(device)
+	return semver.IsValid(latest) && semver.Compare(current, latest) >= 0
+}
+
+// installedFirmwareVersion returns the firmware version device last reported,
+// with a "v" prefix to match release tags, or "" when it is unknown, not a
+// semantic version, or the device doesn't take Tronbyt firmware.
+func installedFirmwareVersion(device *data.Device) string {
 	if device == nil || !device.Type.SupportsFirmware() {
 		return ""
 	}
@@ -626,11 +653,7 @@ func (s *Server) FirmwareUpdateForDevice(device *data.Device) string {
 	if !semver.IsValid(current) {
 		return ""
 	}
-	latest := s.GetLatestFirmwareVersionForDevice(device)
-	if !semver.IsValid(latest) || semver.Compare(latest, current) <= 0 {
-		return ""
-	}
-	return latest
+	return current
 }
 
 // isTronberryDevice reports whether the device is a Raspberry Pi or Tronberry device.
@@ -874,6 +897,9 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 		FirmwareReleaseNotesPrefix: "ota_",
 		FirmwareOTAFullSection:     true,
 		FirmwareOTARecommended:     device.PreferFirmwareUpdateUI(),
+		FirmwareInstalledVersion:   installedFirmwareVersion(device),
+		FirmwareUpToDate:           s.FirmwareUpToDateForDevice(device),
+		FirmwareUpdateVersion:      s.FirmwareUpdateForDevice(device),
 	})
 }
 

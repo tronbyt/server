@@ -50,6 +50,66 @@ func TestFirmwareUpdateForDevice(t *testing.T) {
 	assert.Empty(t, s.FirmwareUpdateForDevice(pi), "device without Tronbyt firmware")
 }
 
+func TestFirmwareUpToDateForDevice(t *testing.T) {
+	s := newTestServer(t)
+	gen2 := func(version string) *data.Device {
+		d := &data.Device{Type: data.DeviceTidbytGen2}
+		d.Info.FirmwareVersion = version
+		return d
+	}
+	assert.False(t, s.FirmwareUpToDateForDevice(gen2("1.7.5")), "no firmware on the server")
+
+	addFirmwareRelease(t, s, "v1.7.4", "tidbyt-gen2.bin")
+	addFirmwareRelease(t, s, "v1.7.5", "tidbyt-gen2.bin")
+
+	assert.True(t, s.FirmwareUpToDateForDevice(gen2("1.7.5")), "newest, without v prefix")
+	assert.True(t, s.FirmwareUpToDateForDevice(gen2("v1.7.5")), "newest, with v prefix")
+	assert.True(t, s.FirmwareUpToDateForDevice(gen2("1.8.0")), "newer than any release")
+	assert.False(t, s.FirmwareUpToDateForDevice(gen2("1.7.4")), "older")
+	assert.False(t, s.FirmwareUpToDateForDevice(gen2("")), "unknown version")
+	assert.False(t, s.FirmwareUpToDateForDevice(gen2("dev-build")), "unparsable version")
+}
+
+// The firmware page says whether the device is up to date, and the install
+// button says "Reinstall" while the selected version is already installed.
+func TestFirmwarePageShowsUpdateStatus(t *testing.T) {
+	s := newTestServer(t)
+	addFirmwareRelease(t, s, "v1.7.5", "tidbyt-gen2.bin")
+	addFirmwareRelease(t, s, "v1.7.6", "tidbyt-gen2.bin")
+
+	user := data.User{Username: "fwpage", APIKey: "user-key-fwpage"}
+	require.NoError(t, s.DB.Create(&user).Error)
+
+	render := func(version string) string {
+		device := data.Device{ID: "dev-fw", Name: "Gen 2", Type: data.DeviceTidbytGen2}
+		device.Info.FirmwareVersion = version
+		req := httptest.NewRequest(http.MethodGet, "/devices/dev-fw/firmware", nil)
+		ctx := context.WithValue(req.Context(), userContextKey, &user)
+		ctx = context.WithValue(ctx, deviceContextKey, &device)
+		rr := httptest.NewRecorder()
+		s.handleFirmwareGenerateGet(rr, req.WithContext(ctx))
+		require.Equal(t, http.StatusOK, rr.Code)
+		return rr.Body.String()
+	}
+
+	current := render("1.7.6")
+	assert.Contains(t, current, `class="firmware-status firmware-status--current"`)
+	assert.NotContains(t, current, `firmware-status--update`)
+	assert.Contains(t, current, `data-installed-version="v1.7.6"`)
+	assert.Contains(t, current, `<span class="ota-install-label">Reinstall Selected Firmware</span>`)
+	assert.Contains(t, current, "Recommended method")
+
+	older := render("1.7.5")
+	assert.Contains(t, older, `class="firmware-status firmware-status--update"`)
+	assert.Contains(t, older, "Update available: v1.7.6")
+	assert.NotContains(t, older, `firmware-status--current`)
+	assert.Contains(t, older, `<span class="ota-install-label">Install Selected Firmware</span>`)
+
+	unknown := render("dev")
+	assert.NotContains(t, unknown, `class="firmware-status `)
+	assert.Contains(t, unknown, `<span class="ota-install-label">Install Selected Firmware</span>`)
+}
+
 func TestHandleIndexShowsFirmwareUpdateOnButton(t *testing.T) {
 	s := newTestServer(t)
 	addFirmwareRelease(t, s, "v1.7.5", "tidbyt-gen2.bin")
@@ -74,6 +134,7 @@ func TestHandleIndexShowsFirmwareUpdateOnButton(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(body, `class="firmware-update-pill"`))
 	assert.Contains(t, body, `href="/devices/dev-old/firmware"`)
 	assert.Contains(t, body, "v1.7.5")
+	assert.Contains(t, body, `<span class="visually-hidden">Update available:</span> v1.7.5`)
 
 	// The single-card refresh used by the dashboard shows it too.
 	assert.Contains(t, render("?device_id=dev-old&partial=device_card"), `class="firmware-update-pill"`)

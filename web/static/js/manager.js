@@ -1982,6 +1982,19 @@ function triggerOTA(deviceId, confirmMessage) {
   }
 }
 
+// Label the OTA install button "Reinstall" while the selected version is the
+// one the device already runs.
+function updateOTAInstallLabel(select) {
+  const button = document.querySelector(`[data-ota-install-for="${select.id}"]`);
+  const label = button && button.querySelector('.ota-install-label');
+  if (!label) return;
+  const installed = select.dataset.installedVersion;
+  label.textContent =
+    installed && select.value === installed
+      ? button.dataset.reinstallLabel
+      : button.dataset.installLabel;
+}
+
 function triggerOTAWithVersion(deviceId, confirmMessage) {
   if (confirm(confirmMessage)) {
     const form = document.createElement('form');

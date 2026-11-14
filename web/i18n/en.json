@@ -2641,5 +2641,17 @@
   },
   "Add another OAuth client": {
     "other": "Add another OAuth client"
+  },
+  "Recommended method": {
+    "other": "Recommended method"
+  },
+  "Up to date": {
+    "other": "Up to date"
+  },
+  "Update available:": {
+    "other": "Update available:"
+  },
+  "Reinstall Selected Firmware": {
+    "other": "Reinstall Selected Firmware"
   }
 }

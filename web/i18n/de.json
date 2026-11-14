@@ -2638,5 +2638,17 @@
   },
   "Add another OAuth client": {
     "other": "Weiteren OAuth-Client hinzufügen"
+  },
+  "Recommended method": {
+    "other": "Empfohlene Methode"
+  },
+  "Up to date": {
+    "other": "Aktuell"
+  },
+  "Update available:": {
+    "other": "Update verfügbar:"
+  },
+  "Reinstall Selected Firmware": {
+    "other": "Ausgewählte Firmware neu installieren"
   }
 }

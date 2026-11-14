@@ -156,7 +156,10 @@ type TemplateData struct {
 	ShowOTAReleaseNotes        bool   // show release notes under the OTA version select
 	FirmwareReleaseNotesPrefix string // DOM id prefix for release notes (e.g. "ota_")
 	FirmwareOTAFullSection     bool   // render OTA block as a top-level settings card
-	FirmwareOTARecommended     bool   // show "Recommended" badge on firmware page OTA path
+	FirmwareOTARecommended     bool   // show "Recommended method" badge on firmware page OTA path
+	FirmwareInstalledVersion   string // version the device last reported ("v" prefix), "" if unknown
+	FirmwareUpToDate           bool   // device runs the newest firmware the server has
+	FirmwareUpdateVersion      string // newer firmware version available for the device, if any
 	ServerVersion              string
 	CommitHash                 string
 	CommitURL                  string
