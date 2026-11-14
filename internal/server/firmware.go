@@ -613,8 +613,8 @@ func (s *Server) GetLatestFirmwareVersionForDevice(device *data.Device) string {
 
 // FirmwareUpdateForDevice returns the newest firmware version this server has
 // for device when it is newer than the version the device last reported, or
-// "" when the device is up to date, its version is unknown, or it doesn't
-// take Tronbyt firmware.
+// "" when the device is up to date, its version is unknown, or it takes
+// neither Tronbyt firmware nor Tronberry.
 func (s *Server) FirmwareUpdateForDevice(device *data.Device) string {
 	current := installedFirmwareVersion(device)
 	if current == "" {
@@ -641,9 +641,10 @@ func (s *Server) FirmwareUpToDateForDevice(device *data.Device) bool {
 
 // installedFirmwareVersion returns the firmware version device last reported,
 // with a "v" prefix to match release tags, or "" when it is unknown, not a
-// semantic version, or the device doesn't take Tronbyt firmware.
+// semantic version, or the device takes neither Tronbyt firmware nor
+// Tronberry (Raspberry Pi).
 func installedFirmwareVersion(device *data.Device) string {
-	if device == nil || !device.Type.SupportsFirmware() {
+	if device == nil || (!device.Type.SupportsFirmware() && !device.Type.IsRaspberryPi()) {
 		return ""
 	}
 	current := device.Info.FirmwareVersion

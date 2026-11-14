@@ -74,7 +74,7 @@
                 data-install-label="{{ t .Localizer "Install Selected Firmware" }}"
                 data-reinstall-label="{{ t .Localizer "Reinstall Selected Firmware" }}"
                 onclick="triggerOTAWithVersion('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
-            <i class="fa-solid fa-cloud-arrow-down"></i> <span class="ota-install-label">{{ if and .FirmwareInstalledVersion (eq .FirmwareVersion .FirmwareInstalledVersion) }}{{ t .Localizer "Reinstall Selected Firmware" }}{{ else }}{{ t .Localizer "Install Selected Firmware" }}{{ end }}</span>
+            <i class="fa-solid fa-cloud-arrow-down"></i> <span class="ota-install-label">{{ if and .FirmwareInstalledVersion (eq (trimPrefix .FirmwareVersion "v") (trimPrefix .FirmwareInstalledVersion "v")) }}{{ t .Localizer "Reinstall Selected Firmware" }}{{ else }}{{ t .Localizer "Install Selected Firmware" }}{{ end }}</span>
         </button>
         {{ end }}
         <button type="button"

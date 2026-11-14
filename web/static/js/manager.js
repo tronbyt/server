@@ -1988,9 +1988,11 @@ function updateOTAInstallLabel(select) {
   const button = document.querySelector(`[data-ota-install-for="${select.id}"]`);
   const label = button && button.querySelector('.ota-install-label');
   if (!label) return;
-  const installed = select.dataset.installedVersion;
+  // Release tags may or may not start with "v"; compare without it.
+  const bare = (v) => (v || '').replace(/^v/, '');
+  const installed = bare(select.dataset.installedVersion);
   label.textContent =
-    installed && select.value === installed
+    installed && bare(select.value) === installed
       ? button.dataset.reinstallLabel
       : button.dataset.installLabel;
 }

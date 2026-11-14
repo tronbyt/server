@@ -45,9 +45,21 @@ func TestFirmwareUpdateForDevice(t *testing.T) {
 	assert.Empty(t, s.FirmwareUpdateForDevice(gen2("")), "unknown version")
 	assert.Empty(t, s.FirmwareUpdateForDevice(gen2("dev-build")), "unparsable version")
 
-	pi := &data.Device{Type: data.DeviceRaspberryPi}
-	pi.Info.FirmwareVersion = "1.0.0"
-	assert.Empty(t, s.FirmwareUpdateForDevice(pi), "device without Tronbyt firmware")
+	// Raspberry Pi devices run Tronberry, which has its own releases.
+	addFirmwareRelease(t, s, "v0.3.5", "tronberry")
+	pi := func(version string) *data.Device {
+		d := &data.Device{Type: data.DeviceRaspberryPi}
+		d.Info.FirmwareVersion = version
+		return d
+	}
+	assert.Equal(t, "v0.3.5", s.FirmwareUpdateForDevice(pi("0.3.4")), "Raspberry Pi, older Tronberry")
+	assert.Empty(t, s.FirmwareUpdateForDevice(pi("0.3.5")), "Raspberry Pi, newest Tronberry")
+	assert.True(t, s.FirmwareUpToDateForDevice(pi("0.3.5")), "Raspberry Pi, newest Tronberry")
+
+	other := &data.Device{Type: data.DeviceOther}
+	other.Info.FirmwareVersion = "1.0.0"
+	assert.Empty(t, s.FirmwareUpdateForDevice(other), "device without Tronbyt firmware or Tronberry")
+	assert.False(t, s.FirmwareUpToDateForDevice(other), "device without Tronbyt firmware or Tronberry")
 }
 
 func TestFirmwareUpToDateForDevice(t *testing.T) {
