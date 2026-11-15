@@ -87,3 +87,36 @@ input:checked + .slider:before {
 .device-info-box {
   margin-top: 10px;
 }
+
+/* Firmware status next to "Version on Device" in the OTA section. */
+.firmware-status {
+  display: inline-block;
+  margin-left: 0.6rem;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  color: var(--page-text);
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+
+.firmware-status--current {
+  background-color: color-mix(in srgb, var(--surface-bg) 75%, #888 25%);
+}
+
+.firmware-status--update {
+  background-color: color-mix(in srgb, var(--surface-bg) 60%, #2e9e5b 40%);
+}
+
+/* Text for screen readers only. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

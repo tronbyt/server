@@ -2024,9 +2024,6 @@
   "Update over Wi-Fi (OTA)": {
     "other": "Update over Wi-Fi (OTA)"
   },
-  "Recommended": {
-    "other": "Recommended"
-  },
   "Firmware Update": {
     "other": "Firmware Update"
   },
@@ -2641,5 +2638,14 @@
   },
   "Add another OAuth client": {
     "other": "Add another OAuth client"
+  },
+  "Up to date": {
+    "other": "Up to date"
+  },
+  "Update available:": {
+    "other": "Update available:"
+  },
+  "Reinstall Selected Firmware": {
+    "other": "Reinstall Selected Firmware"
   }
 }
