@@ -6,8 +6,10 @@ import (
 	"errors"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -246,4 +248,54 @@ func TestOTABaseURLKeepsDeviceHostname(t *testing.T) {
 	if got := s.otaBaseURL(browser, &device, "/static/firmware/fw.bin"); got != "http://192.168.1.10:8000" {
 		t.Errorf("otaBaseURL() = %q, want the device's address", got)
 	}
+}
+
+// When the device connects by public IP but the browser uses a different host
+// name that resolves to that IP, the trusted https browser address is used.
+func TestOTABaseURLBrowserHostResolvesToDeviceIP(t *testing.T) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/static/firmware/fw.bin" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(ts.Close)
+
+	publicIP := "203.0.113.5"
+	s := newTestServerAPI(t)
+	tsURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("parse test server URL: %v", err)
+	}
+	client := ts.Client()
+	client.Transport = &otaTestRewriteHostTransport{inner: client.Transport, target: tsURL}
+	s.otaCheckClient = client
+	s.otaHostLookup = func(context.Context, string) ([]net.IP, error) {
+		return []net.IP{net.ParseIP(publicIP)}, nil
+	}
+
+	device := data.Device{ImgURL: "http://" + publicIP + ":8000/x/next"}
+	browser := httptest.NewRequest(http.MethodPost, "http://203-0-113-5.sslip.io/devices/x/ota", nil)
+	browser.Header.Set("X-Forwarded-Proto", "https")
+	browser.Host = "203-0-113-5.sslip.io"
+
+	want := "https://203-0-113-5.sslip.io"
+	if got := s.otaBaseURL(browser, &device, "/static/firmware/fw.bin"); got != want {
+		t.Errorf("otaBaseURL() = %q, want %q", got, want)
+	}
+}
+
+// otaTestRewriteHostTransport sends OTA trust checks to the test TLS server while
+// the request URL still uses the browser's host name.
+type otaTestRewriteHostTransport struct {
+	inner  http.RoundTripper
+	target *url.URL
+}
+
+func (t *otaTestRewriteHostTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.URL.Scheme = t.target.Scheme
+	req.URL.Host = t.target.Host
+	return t.inner.RoundTrip(req)
 }
