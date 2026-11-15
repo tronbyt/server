@@ -109,7 +109,7 @@ func TestFirmwarePageShowsUpdateStatus(t *testing.T) {
 	assert.NotContains(t, current, `firmware-status--update`)
 	assert.Contains(t, current, `data-installed-version="v1.7.6"`)
 	assert.Contains(t, current, `<span class="ota-install-label">Reinstall Selected Firmware</span>`)
-	assert.Contains(t, current, "Recommended method")
+	assert.NotContains(t, current, "firmware-path-badge")
 
 	older := render("1.7.5")
 	assert.Contains(t, older, `class="firmware-status firmware-status--update"`)
@@ -120,6 +120,22 @@ func TestFirmwarePageShowsUpdateStatus(t *testing.T) {
 	unknown := render("dev")
 	assert.NotContains(t, unknown, `class="firmware-status `)
 	assert.Contains(t, unknown, `<span class="ota-install-label">Install Selected Firmware</span>`)
+
+	// With only an unprefixed tag there's no default (semver) version, so the
+	// browser selects the first option; the label must follow that option.
+	s2 := newTestServer(t)
+	addFirmwareRelease(t, s2, "1.7.6", "tidbyt-gen2.bin")
+	user2 := data.User{Username: "fwpage2", APIKey: "user-key-fwpage2"}
+	require.NoError(t, s2.DB.Create(&user2).Error)
+	device := data.Device{ID: "dev-fw2", Name: "Gen 2", Type: data.DeviceTidbytGen2}
+	device.Info.FirmwareVersion = "1.7.6"
+	req := httptest.NewRequest(http.MethodGet, "/devices/dev-fw2/firmware", nil)
+	ctx := context.WithValue(req.Context(), userContextKey, &user2)
+	ctx = context.WithValue(ctx, deviceContextKey, &device)
+	rr := httptest.NewRecorder()
+	s2.handleFirmwareGenerateGet(rr, req.WithContext(ctx))
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `<span class="ota-install-label">Reinstall Selected Firmware</span>`)
 }
 
 func TestHandleIndexShowsFirmwareUpdateOnButton(t *testing.T) {

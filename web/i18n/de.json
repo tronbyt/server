@@ -2021,9 +2021,6 @@
   "Update over Wi-Fi (OTA)": {
     "other": "Update über WLAN (OTA)"
   },
-  "Recommended": {
-    "other": "Empfohlen"
-  },
   "Firmware Update": {
     "other": "Firmware-Update"
   },
@@ -2638,9 +2635,6 @@
   },
   "Add another OAuth client": {
     "other": "Weiteren OAuth-Client hinzufügen"
-  },
-  "Recommended method": {
-    "other": "Empfohlene Methode"
   },
   "Up to date": {
     "other": "Aktuell"

@@ -897,7 +897,6 @@ func (s *Server) handleFirmwareGenerateGet(w http.ResponseWriter, r *http.Reques
 		ShowOTAReleaseNotes:        true,
 		FirmwareReleaseNotesPrefix: "ota_",
 		FirmwareOTAFullSection:     true,
-		FirmwareOTARecommended:     device.PreferFirmwareUpdateUI(),
 		FirmwareInstalledVersion:   installedFirmwareVersion(device),
 		FirmwareUpToDate:           s.FirmwareUpToDateForDevice(device),
 		FirmwareUpdateVersion:      s.FirmwareUpdateForDevice(device),
