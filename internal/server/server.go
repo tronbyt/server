@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -112,6 +113,9 @@ type Server struct {
 	// otaCheckClient checks that an https firmware link is publicly trusted
 	// (see otaBaseURL); nil uses a default client. Tests replace it.
 	otaCheckClient *http.Client
+
+	// otaHostLookup resolves a host name for OTA base URL matching; nil uses DNS.
+	otaHostLookup func(ctx context.Context, host string) ([]net.IP, error)
 
 	// schemaLoader, when set, replaces renderer.GetSchema (used by tests).
 	schemaLoader func(ctx context.Context, root *os.Root, path string, width, height int, output2x bool) ([]byte, error)

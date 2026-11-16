@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -977,11 +978,11 @@ func (s *Server) handleFirmwareGeneratePost(w http.ResponseWriter, r *http.Reque
 // as localhost, an https proxy with a certificate the device can't verify, or
 // a VPN name), so the address the device uses comes first: the URL it reports,
 // then its configured URL. If that is plain http but the browser is on https
-// at the same host name, with a publicly trusted certificate, the browser's
-// address is used instead, so the firmware is downloaded over https wherever
-// the device can verify it. The host name must match because the server
-// reaching an address doesn't mean the device can: the device already looks
-// up its own host name, but may not be able to find a VPN-only or other name.
+// at a host name the device can reach (the same name, or one that resolves to
+// the device's IP when the device connects by address), with a publicly trusted
+// certificate, the browser's address is used instead, so the firmware is
+// downloaded over https wherever the device can verify it. A VPN-only or other
+// name the device cannot resolve is not used when the device uses a LAN address.
 // The browser's address is also the last resort when the device has no usable
 // URL.
 func (s *Server) otaBaseURL(r *http.Request, device *data.Device, firmwarePath string) string {
@@ -1000,7 +1001,7 @@ func (s *Server) otaBaseURL(r *http.Request, device *data.Device, firmwarePath s
 	if deviceBase == "" {
 		return browserBase
 	}
-	if strings.HasPrefix(browserBase, "https://") && sameHostname(browserBase, deviceBase) &&
+	if strings.HasPrefix(browserBase, "https://") && s.otaHostsCompatible(r.Context(), browserBase, deviceBase) &&
 		s.firmwareURLTrusted(r.Context(), browserBase+firmwarePath) {
 		return browserBase
 	}
@@ -1016,6 +1017,57 @@ func sameHostname(a, b string) bool {
 		return false
 	}
 	return strings.EqualFold(ua.Hostname(), ub.Hostname())
+}
+
+// otaHostsCompatible reports whether the device can reach the browser's host
+// for firmware download: the host names match, or the device uses an IP address
+// and the browser's host name resolves to that IP (such as sslip.io for a
+// public IP).
+func (s *Server) otaHostsCompatible(ctx context.Context, browserBase, deviceBase string) bool {
+	if sameHostname(browserBase, deviceBase) {
+		return true
+	}
+	deviceHost := baseURLHostname(deviceBase)
+	if deviceHost == "" {
+		return false
+	}
+	deviceIP := net.ParseIP(deviceHost)
+	if deviceIP == nil {
+		return false
+	}
+	browserHost := baseURLHostname(browserBase)
+	if browserHost == "" {
+		return false
+	}
+	lookup := s.otaHostLookup
+	if lookup == nil {
+		lookup = defaultOTAHostLookup
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ips, err := lookup(ctx, browserHost)
+	if err != nil {
+		return false
+	}
+	for _, ip := range ips {
+		if ip.Equal(deviceIP) {
+			return true
+		}
+	}
+	return false
+}
+
+func baseURLHostname(base string) string {
+	u, err := url.Parse(base)
+	if err != nil || u.Hostname() == "" {
+		return ""
+	}
+	return u.Hostname()
+}
+
+func defaultOTAHostLookup(ctx context.Context, host string) ([]net.IP, error) {
+	var resolver net.Resolver
+	return resolver.LookupIP(ctx, "ip", host)
 }
 
 // firmwareURLTrusted reports whether fileURL can be fetched over https with a
