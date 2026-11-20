@@ -81,6 +81,108 @@
   padding-top: 14px;
 }
 
+.settings-debug-device {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-debug-app {
+  border: 1px solid color-mix(in srgb, var(--border-color, #d6d6d6) 80%, transparent);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--surface-bg, #fff) 92%, var(--border-color, #d6d6d6));
+}
+
+.settings-debug-app-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0;
+  font-weight: 600;
+}
+
+.settings-debug-app-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-debug-app-title {
+  min-width: 0;
+}
+
+.settings-debug-app-meta {
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--muted-text, #666);
+}
+
+.settings-debug-app-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+}
+
+.settings-debug-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-debug-subheading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--page-text);
+}
+
+.settings-debug-subheading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-debug-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-debug-refresh-btn .fa-spin {
+  animation: settings-debug-spin 0.9s linear infinite;
+}
+
+@keyframes settings-debug-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-debug-output {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--flash-bg, #f8fafc);
+  color: var(--page-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 24rem;
+  overflow: auto;
+}
+
 .settings-form,
 .settings-field-list {
   display: flex;

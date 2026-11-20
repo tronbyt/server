@@ -472,6 +472,26 @@ button.action.w3-button.w3-red {
   background-color: color-mix(in srgb, var(--surface-bg) 86%, #c93b3b 14%);
 }
 
+/* Newer firmware available: shown on the device card's Firmware button. */
+.firmware-update-pill {
+  margin-left: 6px;
+  font-size: 0.78em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--surface-bg) 60%, #2e9e5b 40%);
+  color: var(--page-text);
+  white-space: nowrap;
+}
+
+/* Keep each badge in one piece: when the heading runs out of room, the whole
+   badge moves to the next line instead of breaking across two. */
+.pinned-badge,
+.night-mode-badge,
+.dim-mode-badge,
+.muted-badge {
+  display: inline-block;
+}
+
 .status-badge.autopin {
   background-color: color-mix(in srgb, var(--surface-bg) 84%, #4a78d8 16%);
   color: var(--page-text);

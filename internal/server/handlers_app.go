@@ -5,15 +5,18 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -212,16 +215,16 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 
 	displayTime, _ := strconv.Atoi(displayTimeStr)
 
-	// Construct source path
-	var realPath string
+	var src *appSource
 	if !s.isExternalAppPath(appPath) {
 		var err error
-		realPath, err = securejoin.SecureJoin(s.DataDir, appPath)
+		src, err = s.openAppSource(device.Username, appPath)
 		if err != nil {
-			slog.Warn("Potential path traversal", "path", appPath, "error", err)
+			slog.Warn("Invalid app path", "path", appPath, "user", user.Username, "error", err)
 			http.Error(w, "Invalid path", http.StatusBadRequest)
 			return
 		}
+		defer func() { _ = src.Close() }()
 	}
 
 	iname, err := generateUniqueIname(s.DB, device.ID)
@@ -241,7 +244,7 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid external app ID", http.StatusBadRequest)
 			return
 		}
-		if meta := s.getAppMetadata(r.Context(), appPath); meta != nil && meta.Name != "" {
+		if meta := s.getAppMetadata(r.Context(), device.Username, appPath); meta != nil && meta.Name != "" {
 			appName = meta.Name
 		}
 	}
@@ -286,29 +289,23 @@ func (s *Server) handleAddAppPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If WebP, copy file and redirect to index
-	isWebP := !s.isExternalAppPath(appPath) && strings.EqualFold(filepath.Ext(appPath), ".webp")
-	if isWebP {
-		destDir, err := s.ensureDeviceImageDir(device.ID)
+	if src != nil && src.IsWebP() {
+		destRoot, err := s.openDeviceImageRoot(device.ID)
 		if err != nil {
-			slog.Error("Failed to get device webp directory for app copy", "device_id", device.ID, "error", err)
+			slog.Error("Failed to open device webp directory for app copy", "device_id", device.ID, "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		destPath, err := securejoin.SecureJoin(destDir, fmt.Sprintf("%s-%s.webp", newApp.Name, newApp.Iname))
-		if err != nil {
-			slog.Warn("Path traversal attempt blocked", "error", err)
-			http.Error(w, "Invalid filename", http.StatusBadRequest)
-			return
-		}
+		defer func() { _ = destRoot.Close() }()
 
-		srcFile, err := os.Open(realPath)
+		srcFile, err := src.Root.Open(src.Name)
 		if err == nil {
 			defer func() {
 				if err := srcFile.Close(); err != nil {
 					slog.Error("Failed to close source webp", "error", err)
 				}
 			}()
-			destFile, err := os.Create(destPath)
+			destFile, err := destRoot.Create(appWebpName(&newApp))
 			if err == nil {
 				defer func() {
 					if err := destFile.Close(); err != nil {
@@ -410,16 +407,27 @@ func (s *Server) handleAppThumbnail(w http.ResponseWriter, r *http.Request) {
 	// apps.AppMetadata.Path is relative to DataDir
 	// For System Apps: Path=".../clock", Dir(Path)=".../apps", file="clock/preview.webp" -> Join=".../apps/clock/preview.webp" (Correct)
 	// For User Apps: Path=".../app.star", Dir(Path)=".../app", file="preview.webp" -> Join=".../app/preview.webp" (Correct)
-	appDir := filepath.Join(s.DataDir, filepath.ToSlash(filepath.Dir(appMeta.Path)))
+	thumbPath := path.Join(path.Dir(filepath.ToSlash(appMeta.Path)), filepath.ToSlash(file))
 
-	path, err := securejoin.SecureJoin(appDir, file)
+	var owner string
+	if user != nil {
+		owner = user.Username
+	}
+	f, err := s.openAppFile(owner, thumbPath)
 	if err != nil {
-		slog.Warn("Invalid thumbnail path", "error", err, "path", file)
+		slog.Warn("Invalid thumbnail path", "error", err, "path", thumbPath)
+		http.NotFound(w, r)
+		return
+	}
+	defer func() { _ = f.Close() }()
+
+	info, err := f.Stat()
+	if err != nil || info.IsDir() {
 		http.NotFound(w, r)
 		return
 	}
 
-	http.ServeFile(w, r, path)
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
 }
 
 const externalAppThumbnailDurationMs = 3000
@@ -636,20 +644,17 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 				slog.Error("Failed to get external app schema", "provider", provider.Name(), "appID", appID, "error", err)
 			}
 		} else {
-			appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+			src, err := s.openAppSource(device.Username, *app.Path)
 			if err != nil {
-				slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+				slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 				http.Error(w, "Invalid app path", http.StatusBadRequest)
 				return
-			} else {
-				if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
-					schemaWidth, schemaHeight := device.Type.CanvasSize()
-					schemaBytes, err = renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x(), s.hostInfo(device))
-					if err != nil {
-						slog.Error("Failed to get app schema", "error", err)
-						// Fall through with empty schema
-					}
-				}
+			}
+			defer func() { _ = src.Close() }()
+			schemaBytes, err = s.appSchema(r.Context(), device, src)
+			if err != nil {
+				slog.Error("Failed to get app schema", "error", err)
+				// Fall through with empty schema
 			}
 		}
 	}
@@ -661,7 +666,8 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	var externalAppURL string
 	var externalProviderName string
-	if app.Path != nil && s.isExternalAppPath(*app.Path) {
+	isExternalApp := app.Path != nil && s.isExternalAppPath(*app.Path)
+	if isExternalApp {
 		if provider, _, ok := s.parseExternalAppPath(*app.Path); ok {
 			if provider.Name() == "screeny" && s.Config.ScreenyStudioURL != "" {
 				externalAppURL = s.Config.ScreenyStudioURL
@@ -672,7 +678,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 
 	var appMetadata *apps.AppMetadata
 	if app.Path != nil {
-		appMetadata = s.getAppMetadata(r.Context(), *app.Path)
+		appMetadata = s.getAppMetadata(r.Context(), device.Username, *app.Path)
 	}
 
 	appID := app.Name
@@ -700,6 +706,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		App:                      app,
 		Schema:                   template.JS(schemaBytes),
 		AppConfig:                app.Config,
+		OAuthFields:              s.oauthFieldViews(r.Context(), user, device, app, schemaBytes),
 		DeleteOnCancel:           deleteOnCancel,
 		ColorFilterOptions:       s.getColorFilterChoices(),
 		ShowFullAnimationOptions: s.getShowFullAnimationChoices(),
@@ -707,6 +714,7 @@ func (s *Server) handleConfigAppGet(w http.ResponseWriter, r *http.Request) {
 		AppCatalogURL:            appCatalogURL,
 		ExternalAppURL:           externalAppURL,
 		ExternalProviderName:     externalProviderName,
+		IsExternalApp:            isExternalApp,
 		DefaultSounds:            GetDefaultSounds(),
 		CustomSounds:             customSounds,
 		AppSounds:                appSounds,
@@ -813,17 +821,18 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 				schemaBytes = b
 			}
 		} else {
-			appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+			src, err := s.openAppSource(device.Username, *app.Path)
 			if err != nil {
-				slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+				slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 				http.Error(w, "Invalid app path", http.StatusBadRequest)
 				return
 			}
+			defer func() { _ = src.Close() }()
 
-			if !strings.HasSuffix(strings.ToLower(appPath), ".webp") {
+			if !src.IsWebP() {
 				schemaWidth, schemaHeight := device.Type.CanvasSize()
 				getSchema := func() error {
-					b, err := renderer.GetSchema(r.Context(), appPath, schemaWidth, schemaHeight, device.Type.Supports2x(), s.hostInfo(device))
+					b, err := renderer.GetSchema(r.Context(), src.Root, src.Name, schemaWidth, schemaHeight, device.Type.Supports2x(), s.hostInfo(device))
 					if err != nil {
 						return err
 					}
@@ -838,7 +847,7 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 				// prefix mirrors pixlet's: "httpcache:<app id>:" where the app id is
 				// the base name of the applet path (see runtime/httpcache.go).
 				if r.URL.Query().Get("refresh") == "true" && s.SchemaCache != nil {
-					prefix := fmt.Sprintf("httpcache:%s:", filepath.Base(appPath))
+					prefix := fmt.Sprintf("httpcache:%s:", src.Name)
 					err = s.SchemaCache.WithBypass(prefix, getSchema)
 				} else {
 					err = getSchema()
@@ -1052,18 +1061,20 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "App path not set", http.StatusBadRequest)
 		return
 	}
-	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+	src, err := s.openAppSource(device.Username, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+		slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 		http.Error(w, "Invalid app path", http.StatusBadRequest)
 		return
 	}
+	defer func() { _ = src.Close() }()
 
 	// Call Handler
 	handlerWidth, handlerHeight := device.Type.CanvasSize()
 	result, err := renderer.CallSchemaHandler(
 		r.Context(),
-		appPath,
+		src.Root,
+		src.Name,
 		payload.Config,
 		handlerWidth, handlerHeight,
 		device.Type.Supports2x(),
@@ -1094,12 +1105,8 @@ func (s *Server) handleCurrentApp(w http.ResponseWriter, r *http.Request) {
 
 	// For apps with multi-chunk animations, serve the full animation to the browser if available
 	if app != nil {
-		deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-		if err == nil {
-			fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
-			if fullBytes, err := os.ReadFile(fullPath); err == nil && len(fullBytes) > 0 {
-				imgData = fullBytes
-			}
+		if fullBytes, err := s.readDeviceImage(device.ID, appFullWebpName(app)); err == nil && len(fullBytes) > 0 {
+			imgData = fullBytes
 		}
 	}
 
@@ -1127,22 +1134,8 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 
 	// For pushed apps, skip rendering and serve the existing image directly
 	if app.Pushed {
-		webpDir, err := s.ensureDeviceImageDir(id)
-		if err != nil {
-			slog.Error("Failed to get device webp directory for config preview", "device_id", id, "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
 		if app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
-			installationID := strings.TrimPrefix(*app.Path, "pushed:")
-			path, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
-			if err != nil {
-				slog.Error("Failed to resolve pushed image path", "error", err)
-				s.sendDefaultImage(w, r, device)
-				return
-			}
-			if _, err := os.Stat(path); err == nil {
-				http.ServeFile(w, r, path)
+			if s.serveDeviceImage(w, r, id, appWebpName(app)) {
 				return
 			}
 		}
@@ -1173,15 +1166,11 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			}
 			// If the app has already been rendered with this exact saved config, serve existing full-dwell preview
 			if !app.LastRender.IsZero() && isConfigEqual(configData, app.Config) {
-				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-				if err == nil {
-					fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
-					if b, err := os.ReadFile(fullPath); err == nil && len(b) > 0 {
-						w.Header().Set("Content-Type", "image/webp")
-						w.Header().Set("Cache-Control", "no-cache")
-						_, _ = w.Write(b)
-						return
-					}
+				if b, err := s.readDeviceImage(device.ID, appFullWebpName(app)); err == nil && len(b) > 0 {
+					w.Header().Set("Content-Type", "image/webp")
+					w.Header().Set("Cache-Control", "no-cache")
+					_, _ = w.Write(b)
+					return
 				}
 			}
 			width, height := device.Type.CanvasSize()
@@ -1232,14 +1221,15 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+		src, err := s.openAppSource(device.Username, *app.Path)
 		if err != nil {
-			slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+			slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 			http.Error(w, "Invalid app path", http.StatusBadRequest)
 			return
 		}
+		defer func() { _ = src.Close() }()
 
-		imgBytes, _, err := s.RenderApp(r.Context(), device, app, appPath, configData)
+		imgBytes, _, err := s.RenderApp(r.Context(), device, app, src, configData)
 		if err != nil {
 			slog.Error("Preview render failed", "error", err)
 			http.Error(w, "Render failed", http.StatusInternalServerError)
@@ -1262,14 +1252,10 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				http.Error(w, "Invalid external app ID", http.StatusBadRequest)
 				return
 			}
-			deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-			var fullPath string
-			if err == nil {
-				fullPath = filepath.Join(deviceWebpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
-				if b, err := os.ReadFile(fullPath); err == nil && len(b) > 0 {
-					s.serveThumbnailBytes(w, r, b)
-					return
-				}
+			fullName := appFullWebpName(app)
+			if b, err := s.readDeviceImage(device.ID, fullName); err == nil && len(b) > 0 {
+				s.serveThumbnailBytes(w, r, b)
+				return
 			}
 
 			// If existing in-memory chunks have FullWebPBytes, serve it directly
@@ -1314,8 +1300,9 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 				if len(chunks[0].FullWebPBytes) > 0 {
 					previewBytes = chunks[0].FullWebPBytes
 				}
-				if fullPath != "" {
-					_ = os.WriteFile(fullPath, previewBytes, 0644)
+				if webpRoot, err := s.openDeviceImageRoot(device.ID); err == nil {
+					_ = webpRoot.WriteFile(fullName, previewBytes, 0644)
+					_ = webpRoot.Close()
 				}
 				s.serveThumbnailBytes(w, r, previewBytes)
 				return
@@ -1325,49 +1312,20 @@ func (s *Server) handleRenderConfigPreview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Fallback to serving existing file
-	webpDir, err := s.ensureDeviceImageDir(id)
-	if err != nil {
-		slog.Error("Failed to get device webp directory for config preview", "device_id", id, "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	// Fallback to serving existing file. For pushed apps, appWebpName looks up
+	// by installationID (stored in path as "pushed:{installationID}").
+	if app.Pushed && s.serveDeviceImage(w, r, id, appWebpName(app)) {
 		return
 	}
 
-	// For pushed apps, look up by installationID (stored in path as "pushed:{installationID}")
-	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
-		installationID := strings.TrimPrefix(*app.Path, "pushed:")
-		path, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
-		if err != nil {
-			slog.Error("Failed to resolve pushed image path", "error", err)
-			s.sendDefaultImage(w, r, device)
-			return
-		}
-		if _, err := os.Stat(path); err == nil {
-			http.ServeFile(w, r, path)
+	// Standard app preview - prefer full unchunked animation for browser preview if available,
+	// then the primary image, then the pushed subdirectory with iname as fallback.
+	for _, name := range []string{appFullWebpName(app), appImageBase(app) + ".webp", pushedWebpName(app.Iname)} {
+		if s.serveDeviceImage(w, r, id, name) {
 			return
 		}
 	}
-
-	// Standard app preview - prefer full unchunked animation for browser preview if available
-	fullPath := filepath.Join(webpDir, fmt.Sprintf("%s-%s_full.webp", app.Name, app.Iname))
-	if _, err := os.Stat(fullPath); err == nil {
-		http.ServeFile(w, r, fullPath)
-		return
-	}
-
-	filename := fmt.Sprintf("%s-%s.webp", app.Name, app.Iname)
-	path := filepath.Join(webpDir, filename)
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// Try pushed subdirectory with iname as fallback
-		path = filepath.Join(webpDir, "pushed", app.Iname+".webp")
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			s.sendDefaultImage(w, r, device)
-			return
-		}
-	}
-
-	http.ServeFile(w, r, path)
+	s.sendDefaultImage(w, r, device)
 }
 
 func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
@@ -1376,22 +1334,10 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 
 	// For pushed apps, serve the existing image directly without rendering
 	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
-		installationID := strings.TrimPrefix(*app.Path, "pushed:")
-		webpDir, err := s.ensureDeviceImageDir(device.ID)
+		pushedImageName := appWebpName(app)
+		imgBytes, err := s.readDeviceImage(device.ID, pushedImageName)
 		if err != nil {
-			slog.Error("Failed to get device webp directory for push preview", "device_id", device.ID, "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		pushedImagePath, err := securejoin.SecureJoin(filepath.Join(webpDir, "pushed"), installationID+".webp")
-		if err != nil {
-			slog.Error("Failed to resolve pushed image path", "error", err)
-			http.Error(w, "Image not found", http.StatusNotFound)
-			return
-		}
-		imgBytes, err := os.ReadFile(pushedImagePath)
-		if err != nil {
-			slog.Error("Failed to read pushed image for preview", "path", pushedImagePath, "error", err)
+			slog.Error("Failed to read pushed image for preview", "device_id", device.ID, "name", pushedImageName, "error", err)
 			http.Error(w, "Image not found", http.StatusNotFound)
 			return
 		}
@@ -1486,14 +1432,15 @@ func (s *Server) handlePushPreview(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	appPath, err := securejoin.SecureJoin(s.DataDir, *app.Path)
+	src, err := s.openAppSource(device.Username, *app.Path)
 	if err != nil {
-		slog.Error("Failed to resolve app path", "path", *app.Path, "error", err)
+		slog.Error("Failed to open app source", "path", *app.Path, "error", err)
 		http.Error(w, "Invalid app path", http.StatusBadRequest)
 		return
 	}
+	defer func() { _ = src.Close() }()
 
-	imgBytes, messages, err := s.RenderApp(r.Context(), device, app, appPath, configBody)
+	imgBytes, messages, err := s.RenderApp(r.Context(), device, app, src, configBody)
 	if err != nil {
 		slog.Error("Preview render failed", "error", err)
 		http.Error(w, "Render failed", http.StatusInternalServerError)
@@ -1560,6 +1507,9 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Delete App
+		if err := deleteOAuthTokensForApp(r.Context(), tx, app); err != nil {
+			return err
+		}
 		if _, err := gorm.G[data.App](tx).Where("id = ?", app.ID).Delete(r.Context()); err != nil {
 			return err
 		}
@@ -1573,17 +1523,13 @@ func (s *Server) handleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clean up webp (outside transaction, as file system ops can't be rolled back easily)
-	webpDir, err := s.ensureDeviceImageDir(device.ID)
+	webpRoot, err := s.openDeviceImageRoot(device.ID)
 	if err != nil {
-		slog.Error("Failed to get device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
+		slog.Error("Failed to open device webp directory for app delete cleanup", "device_id", device.ID, "error", err)
 		// Don't error out the request if file cleanup fails, but log it
 	} else {
-		matches, _ := filepath.Glob(filepath.Join(webpDir, fmt.Sprintf("*-%s.webp", app.Iname)))
-		for _, match := range matches {
-			if err := os.Remove(match); err != nil {
-				slog.Error("Failed to remove app webp file", "path", match, "error", err)
-			}
-		}
+		removeAppWebps(webpRoot, app.Iname)
+		_ = webpRoot.Close()
 		s.cleanupAppChunks(device.ID, app)
 	}
 
@@ -1955,7 +1901,7 @@ func (s *Server) handleUploadAppPost(w http.ResponseWriter, r *http.Request) {
 
 	switch ext {
 	case ".star":
-		imgBytes, _, err := s.RenderApp(r.Context(), device, nil, dstPath, nil)
+		imgBytes, _, err := s.renderAppAtPath(r.Context(), device, dstPath)
 
 		if err == nil && len(imgBytes) > 0 {
 			previewPath := filepath.Join(previewDir, fmt.Sprintf("%s.webp", appName))
@@ -2118,7 +2064,7 @@ func (s *Server) generatePreview(ctx context.Context, device *data.Device, appDi
 		}
 	} else {
 		// If no webp, try to render the app directory
-		imgBytes, _, err := s.RenderApp(ctx, device, nil, appDir, nil)
+		imgBytes, _, err := s.renderAppAtPath(ctx, device, appDir)
 		if err == nil && len(imgBytes) > 0 {
 			if err := os.WriteFile(previewPath, imgBytes, 0644); err != nil {
 				slog.Error("Failed to write preview image", "error", err)
@@ -2358,29 +2304,13 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 
 	// Pushed App Image Copying
 	if originalApp.Pushed {
-		sourceWebpDir, err := s.ensureDeviceImageDir(sourceDevice.ID)
-		if err != nil {
-			slog.Error("Failed to get source device webp directory for duplication", "error", err)
-		} else {
-			targetWebpDir, err := s.ensureDeviceImageDir(targetDevice.ID)
-			if err != nil {
-				slog.Error("Failed to get target device webp directory for duplication", "error", err)
-			} else {
-				sourceWebpPath := filepath.Join(sourceWebpDir, "pushed", fmt.Sprintf("%s.webp", originalApp.Iname))
-				targetPushedWebpDir := filepath.Join(targetWebpDir, "pushed")
-				if err := os.MkdirAll(targetPushedWebpDir, 0755); err != nil {
-					slog.Error("Failed to create target pushed webp directory", "path", targetPushedWebpDir, "error", err)
-				}
-				targetWebpPath := filepath.Join(targetPushedWebpDir, fmt.Sprintf("%s.webp", newIname))
-
-				if _, err := os.Stat(sourceWebpPath); err == nil {
-					if err := copyFile(sourceWebpPath, targetWebpPath); err != nil {
-						slog.Error("Failed to copy pushed image", "source", sourceWebpPath, "target", targetWebpPath, "error", err)
-					}
-				} else if !os.IsNotExist(err) {
-					slog.Error("Failed to stat source pushed image", "path", sourceWebpPath, "error", err)
-				}
+		sourceName := pushedWebpName(originalApp.Iname)
+		if b, err := s.readDeviceImage(sourceDevice.ID, sourceName); err == nil {
+			if err := s.writeDeviceImage(targetDevice.ID, pushedWebpName(newIname), b); err != nil {
+				slog.Error("Failed to copy pushed image", "source", sourceName, "target_device", targetDevice.ID, "error", err)
 			}
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			slog.Error("Failed to read source pushed image", "device_id", sourceDevice.ID, "name", sourceName, "error", err)
 		}
 	}
 	if duplicatedApp.Path != nil && s.isExternalAppPath(*duplicatedApp.Path) {

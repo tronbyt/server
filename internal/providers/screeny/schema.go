@@ -61,8 +61,10 @@ type PixletSchemaRoot struct {
 // TranslatePatchParamsToPixletSchema converts a list of Screeny Studio parameters into
 // a Pixlet-compatible JSON schema string. When includeScaleFilter is true, a 128x64 upscaling
 // filter dropdown is included (only for devices that support 2x / 128x64 scaling).
-func TranslatePatchParamsToPixletSchema(params []StudioParam, includeScaleFilter bool) ([]byte, error) {
-	fields := make([]PixletSchemaField, 0, len(params)+1)
+// When isSeeded is true, a "Random Seed" field is included allowing users to set a fixed seed
+// or leave it blank/0 for a unique random variation on each render.
+func TranslatePatchParamsToPixletSchema(params []StudioParam, includeScaleFilter bool, isSeeded ...bool) ([]byte, error) {
+	fields := make([]PixletSchemaField, 0, len(params)+2)
 
 	for _, p := range params {
 		field := PixletSchemaField{
@@ -108,6 +110,18 @@ func TranslatePatchParamsToPixletSchema(params []StudioParam, includeScaleFilter
 		}
 
 		fields = append(fields, field)
+	}
+
+	// Add seed configuration field for seeded generative patches.
+	if len(isSeeded) > 0 && isSeeded[0] {
+		fields = append(fields, PixletSchemaField{
+			ID:          "seed",
+			Name:        "Random Seed",
+			Description: "Leave blank or 0 for a unique random variation on each render, or enter a number to freeze it.",
+			Icon:        "dice",
+			Type:        "text",
+			Default:     "",
+		})
 	}
 
 	// Add 128x64 upscaling filter option for 2x displays (e.g. Tronberry).

@@ -403,7 +403,7 @@ func TestDetermineNextApp_AutoPin(t *testing.T) {
 	// Note: Pushed=true always returns true in possiblyRender. We need to set Pushed=false and Path!="" to trigger render logic.
 
 	app.Pushed = false
-	appPath := "test.star"
+	appPath := "users/" + d.Username + "/apps/missing/missing.star"
 	app.Path = &appPath
 	app.EmptyLastRender = true
 	// LastRender must be old enough to trigger a new render

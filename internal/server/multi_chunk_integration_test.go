@@ -196,7 +196,7 @@ func TestMultiChunk_HTTP_SequentialServing(t *testing.T) {
 	// Write App 2 dummy webp
 	webpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
-	app2Path := s.getAppWebpPath(webpDir, &app2)
+	app2Path := filepath.Join(webpDir, appWebpName(&app2))
 	require.NoError(t, os.MkdirAll(filepath.Dir(app2Path), 0755))
 	require.NoError(t, os.WriteFile(app2Path, dummyChunkWebP3, 0644))
 
@@ -621,7 +621,7 @@ func TestMultiChunk_SaveAppChunksSeparatesFullPreview(t *testing.T) {
 	require.NoError(t, err)
 
 	// Primary file must be chunk 0 bytes, NOT fullBytes
-	primaryPath := s.getAppWebpPath(webpDir, &app)
+	primaryPath := filepath.Join(webpDir, appWebpName(&app))
 	savedPrimary, err := os.ReadFile(primaryPath)
 	require.NoError(t, err)
 	assert.Equal(t, chunk0Bytes, savedPrimary, "primary webp must be chunk 0 to stay within device limits")
@@ -670,7 +670,7 @@ func TestMultiChunk_OversizedPrimaryProtection(t *testing.T) {
 	// Simulate an oversized legacy primary file on disk (500 KB > 450 KB ESP32 limit)
 	oversizedBytes := make([]byte, 500000)
 	copy(oversizedBytes, dummyChunkWebP1)
-	primaryPath := s.getAppWebpPath(webpDir, &app)
+	primaryPath := filepath.Join(webpDir, appWebpName(&app))
 	require.NoError(t, os.WriteFile(primaryPath, oversizedBytes, 0644))
 
 	// Multi-chunk files on disk have a valid chunk 0 that fits
@@ -1102,12 +1102,12 @@ func TestStarlark_AutoChunking_OversizedAnimation(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, len(rawWebP), 2000, "Encoded animation must exceed the 2000 byte chunk budget")
 
-	appDir := filepath.Join(s.DataDir, "apps", "test_starlark_anim")
+	appDir := filepath.Join(s.DataDir, "users", user.Username, "apps", "test_starlark_anim")
 	require.NoError(t, os.MkdirAll(appDir, 0755))
 	animPath := filepath.Join(appDir, "anim.webp")
 	require.NoError(t, os.WriteFile(animPath, rawWebP, 0644))
 
-	relPath := filepath.Join("apps", "test_starlark_anim", "anim.webp")
+	relPath := filepath.Join("users", user.Username, "apps", "test_starlark_anim", "anim.webp")
 	app := data.App{
 		DeviceID:   device.ID,
 		Iname:      "test_anim_iname",
@@ -1206,12 +1206,12 @@ func TestStarlark_AutoChunking_PushPreview(t *testing.T) {
 	rawWebP, err := chunker.EncodeFramesToWebP(frames, 50*time.Millisecond)
 	require.NoError(t, err)
 
-	appDir := filepath.Join(s.DataDir, "apps", "test_preview_anim")
+	appDir := filepath.Join(s.DataDir, "users", user.Username, "apps", "test_preview_anim")
 	require.NoError(t, os.MkdirAll(appDir, 0755))
 	animPath := filepath.Join(appDir, "anim.webp")
 	require.NoError(t, os.WriteFile(animPath, rawWebP, 0644))
 
-	relPath := filepath.Join("apps", "test_preview_anim", "anim.webp")
+	relPath := filepath.Join("users", user.Username, "apps", "test_preview_anim", "anim.webp")
 	app := data.App{
 		DeviceID:   device.ID,
 		Iname:      "preview_anim_iname",

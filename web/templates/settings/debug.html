@@ -1,0 +1,174 @@
+{{ define "settings_debug" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "System Settings" }}{{ end }}
+{{ define "content" }}
+<div class="settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "System Settings" }}</p>
+            <h1>{{ t .Localizer "Debug" }}</h1>
+            <p class="settings-page-copy">{{ t .Localizer "Render debug page description" }}</p>
+        </div>
+    </header>
+    {{ range .Users }}
+    {{ $account := . }}
+    {{ if $.User.IsAdmin }}
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ $account.Username }}</h2>
+        </div>
+        {{ if not $account.Devices }}
+        <p class="settings-help">{{ t $.Localizer "No devices found for this user." }}</p>
+        {{ end }}
+        {{ range $account.Devices }}
+        {{ $device := . }}
+        <div class="settings-card-subsection settings-debug-device">
+            <div class="settings-card-header">
+                <h3>{{ $device.Name }}</h3>
+                <p class="settings-caption">{{ $device.ID }}</p>
+            </div>
+            {{ template "settings_debug_apps" (dict "Root" $ "Device" $device) }}
+        </div>
+        {{ end }}
+    </section>
+{{ else }}
+    {{ if not $account.Devices }}
+    <section class="settings-card">
+        <p class="settings-help">{{ t $.Localizer "No devices found for this user." }}</p>
+    </section>
+    {{ end }}
+    {{ range $account.Devices }}
+    {{ $device := . }}
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ $device.Name }}</h2>
+            <p class="settings-caption">{{ $device.ID }}</p>
+        </div>
+        {{ template "settings_debug_apps" (dict "Root" $ "Device" $device) }}
+    </section>
+    {{ end }}
+    {{ end }}
+    {{ end }}
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const noRenderDebugText = {{ t .Localizer "No render debug output yet." | json }};
+    const refreshFailedText = {{ t .Localizer "Failed to refresh debug output." | json }};
+
+    document.querySelectorAll('.settings-debug-refresh-btn').forEach(function (button) {
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const deviceID = button.dataset.deviceId;
+        const iname = button.dataset.iname;
+        const appID = button.dataset.appId;
+        if (!deviceID || !iname || !appID) {
+          return;
+        }
+
+        const icon = button.querySelector('.fa-rotate');
+        button.disabled = true;
+        if (icon) {
+          icon.classList.add('fa-spin');
+        }
+
+        fetch('/settings/debug/apps/' + encodeURIComponent(deviceID) + '/' + encodeURIComponent(iname) + '/refresh', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+        }).then(function (response) {
+          if (!response.ok) {
+            throw new Error('refresh failed');
+          }
+          return response.json();
+        }).then(function (payload) {
+          const meta = document.getElementById('settings-debug-meta-' + appID);
+          const config = document.getElementById('settings-debug-config-' + appID);
+          const messages = document.getElementById('settings-debug-messages-' + appID);
+          if (meta && payload.status) {
+            meta.textContent = payload.status;
+          }
+          if (config) {
+            config.textContent = JSON.stringify(payload.config || {}, null, 2);
+          }
+          if (messages) {
+            if (payload.renderMessages && payload.renderMessages.length > 0) {
+              messages.innerHTML = '<pre class="settings-debug-output"></pre>';
+              messages.querySelector('pre').textContent = payload.renderMessages.join('\n') + '\n';
+            } else {
+              messages.innerHTML = '<p class="settings-help settings-debug-messages-empty"></p>';
+              messages.querySelector('p').textContent = noRenderDebugText;
+            }
+          }
+        }).catch(function () {
+          alert(refreshFailedText);
+        }).finally(function () {
+          button.disabled = false;
+          if (icon) {
+            icon.classList.remove('fa-spin');
+          }
+        });
+      });
+    });
+  });
+</script>
+{{ end }}
+{{ define "settings_debug_apps" }}
+{{ $root := .Root }}
+{{ $device := .Device }}
+{{ if not $device.Apps }}
+<p class="settings-help">{{ t $root.Localizer "This device has no apps installed." }}</p>
+{{ end }}
+{{ range $device.Apps }}
+{{ $app := . }}
+<details class="settings-debug-app"
+         data-device-id="{{ $device.ID }}"
+         data-iname="{{ $app.Iname }}"
+         data-app-id="{{ $app.ID }}">
+    <summary class="settings-debug-app-summary">
+        <span class="settings-debug-app-title">{{ $app.Iname }} ({{ $app.Name }})</span>
+        <span class="settings-debug-app-meta"
+              id="settings-debug-meta-{{ $app.ID }}">
+            {{ if $app.LastRender.IsZero }}
+            {{ t $root.Localizer "Not rendered yet" }}
+            {{ else if $app.EmptyLastRender }}
+            {{ t $root.Localizer "No output for:" }} {{ timesince $root.Localizer (or $app.LastSuccessfulRender $app.LastRender) }}
+        {{ else }}
+            {{ t $root.Localizer "Last:" }} {{ timeago $root.Localizer $app.LastRender }}
+            ({{ t $root.Localizer "in" }} {{ duration $app.LastRenderDur }})
+            {{ end }}
+        </span>
+    </summary>
+    <div class="settings-debug-app-body">
+        <div class="settings-debug-subsection">
+            <h4 class="settings-debug-subheading">{{ t $root.Localizer "App Configuration" }}</h4>
+            <pre class="settings-debug-output settings-debug-config"
+                 id="settings-debug-config-{{ $app.ID }}">{{ $app.Config | jsonPretty }}</pre>
+        </div>
+        <div class="settings-debug-subsection">
+            <div class="settings-debug-subheading-row">
+                <h4 class="settings-debug-subheading">{{ t $root.Localizer "Render debug output" }}</h4>
+                <button type="button"
+                        class="w3-button w3-small w3-round w3-light-gray settings-debug-refresh-btn"
+                        data-device-id="{{ $device.ID }}"
+                        data-iname="{{ $app.Iname }}"
+                        data-app-id="{{ $app.ID }}"
+                        aria-label="{{ t $root.Localizer "Refresh render debug" }}">
+                    <i class="fa-solid fa-rotate" aria-hidden="true"></i> {{ t $root.Localizer "Refresh" }}
+                </button>
+            </div>
+            <div class="settings-debug-messages"
+                 id="settings-debug-messages-{{ $app.ID }}">
+                {{ if $app.RenderMessages }}
+                <pre class="settings-debug-output">{{ range $app.RenderMessages }}{{ . }}
+{{ end }}</pre>
+            {{ else }}
+                <p class="settings-help settings-debug-messages-empty">{{ t $root.Localizer "No render debug output yet." }}</p>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</details>
+{{ end }}
+{{ end }}

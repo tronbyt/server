@@ -29,7 +29,7 @@
     </nav>
     {{ end }}
     {{ range .Devices }}
-    {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "AllDevices" $.AllDevices) }}
+    {{ template "device_card" (dict "Item" . "Localizer" $.Localizer "Devices" $.Devices "AllDevices" $.AllDevices "FirmwareUpdates" $.FirmwareUpdates) }}
     {{ end }}
 </div>
 {{ end }}

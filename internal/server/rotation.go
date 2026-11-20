@@ -14,7 +14,6 @@ import (
 	"tronbyt-server/internal/data"
 	"tronbyt-server/web"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
 	"gorm.io/gorm"
 )
 
@@ -252,20 +251,11 @@ func (s *Server) GetNextAppImage(ctx context.Context, device *data.Device, user 
 	}
 
 	// 6. Return Image
-	var webpPath string
-
-	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-	if err != nil {
-		slog.Error("Failed to get device webp directory for next app image", "device_id", device.ID, "error", err)
-		return getDefaultImage()
-	}
-
-	webpPath = s.getAppWebpPath(deviceWebpDir, app)
-
-	data, err := os.ReadFile(webpPath)
+	webpName := appWebpName(app)
+	data, err := s.readDeviceImage(device.ID, webpName)
 	// If reading the specific app image fails, fall back to default
 	if err != nil {
-		slog.Error("Failed to read app image", "path", webpPath, "error", err)
+		slog.Error("Failed to read app image", "device_id", device.ID, "name", webpName, "error", err)
 		return getDefaultImage()
 	}
 
@@ -304,20 +294,11 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 			if device.Apps[i].Iname == targetIname {
 				app := device.Apps[i]
 
-				// Generate path
-				deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-				if err != nil {
-					slog.Warn("Failed to get device webp directory", "device_id", device.ID, "error", err)
-					break
-				}
-				webpPath := s.getAppWebpPath(deviceWebpDir, app)
-
-				// Check if file exists to be safe
-				if _, err := os.Stat(webpPath); err == nil {
-					data, err := os.ReadFile(webpPath)
-					return data, app, err
+				webpName := appWebpName(app)
+				if data, err := s.readDeviceImage(device.ID, webpName); err == nil {
+					return data, app, nil
 				} else {
-					slog.Warn("DisplayingApp file missing, falling back", "path", webpPath)
+					slog.Warn("DisplayingApp file missing, falling back", "device_id", device.ID, "name", webpName, "error", err)
 				}
 				break // Valid app but missing file, fallthrough to legacy logic
 			}
@@ -343,17 +324,7 @@ func (s *Server) GetCurrentAppImage(ctx context.Context, device *data.Device) ([
 	app := expanded[idx]
 
 	// Return image
-	var webpPath string
-
-	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
-	if err != nil {
-		slog.Error("Failed to get device webp directory for current app image", "device_id", device.ID, "error", err)
-		return nil, nil, fmt.Errorf("failed to get device webp directory: %w", err)
-	}
-
-	webpPath = s.getAppWebpPath(deviceWebpDir, app)
-
-	data, err := os.ReadFile(webpPath)
+	data, err := s.readDeviceImage(device.ID, appWebpName(app))
 	return data, app, err
 }
 
@@ -505,20 +476,4 @@ func createExpandedAppsList(device *data.Device, apps []*data.App) []*data.App {
 		}
 	}
 	return expanded
-}
-
-// getAppWebpPath generates the file path for an app's WebP image.
-// It handles both pushed apps (stored in pushed/ subdirectory) and regular apps.
-func (s *Server) getAppWebpPath(deviceWebpDir string, app *data.App) string {
-	if app.Pushed && app.Path != nil && strings.HasPrefix(*app.Path, "pushed:") {
-		installID := strings.TrimPrefix(*app.Path, "pushed:")
-		path, err := securejoin.SecureJoin(filepath.Join(deviceWebpDir, "pushed"), installID+".webp")
-		if err != nil {
-			slog.Error("Failed to resolve pushed image path", "error", err)
-			return ""
-		}
-		return path
-	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	return filepath.Join(deviceWebpDir, fmt.Sprintf("%s.webp", appBasename))
 }

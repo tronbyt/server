@@ -251,27 +251,6 @@
   color: var(--muted-text, #888);
 }
 
-.firmware-path-title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-}
-
-.firmware-path-badge {
-  display: inline-block;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: #2e7d32;
-  color: #fff;
-  white-space: nowrap;
-}
-
 .firmware-path-divider {
   display: flex;
   align-items: center;

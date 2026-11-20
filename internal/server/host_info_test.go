@@ -52,8 +52,8 @@ func TestRenderAppReadsHostInfo(t *testing.T) {
 	dev, err := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").First(ctx)
 	require.NoError(t, err)
 
-	appPath := filepath.Join(t.TempDir(), "hostapp.star")
-	require.NoError(t, os.WriteFile(appPath, []byte(`
+	appDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "hostapp.star"), []byte(`
 load("device.star", "device")
 load("render.star", "render")
 load("server.star", "server")
@@ -72,7 +72,14 @@ def main(config):
     return render.Root(child = render.Box())
 `), 0o644))
 
-	img, _, err := s.RenderApp(ctx, &dev, nil, appPath, nil)
+	root, err := os.OpenRoot(appDir)
+	require.NoError(t, err)
+	src, err := openAppSourceIn(root, "hostapp.star")
+	_ = root.Close()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = src.Close() })
+
+	img, _, err := s.RenderApp(ctx, &dev, nil, src, nil)
 	require.NoError(t, err)
 	assert.NotEmpty(t, img)
 

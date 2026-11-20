@@ -46,7 +46,7 @@ func newTestServerAPI(t *testing.T) *Server {
 		}
 	})
 
-	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}); err != nil {
+	if err := db.AutoMigrate(&data.User{}, &data.Device{}, &data.App{}, &data.WebAuthnCredential{}, &data.Setting{}, &data.OAuthClient{}, &data.OAuthToken{}); err != nil {
 		t.Fatalf("Failed to migrate DB: %v", err)
 	}
 
@@ -55,6 +55,9 @@ func newTestServerAPI(t *testing.T) *Server {
 	// Pre-seed settings to avoid "record not found" logs during NewServer
 	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "secret_key", Value: "testsecret"}); err != nil {
 		t.Fatalf("Failed to seed secret_key: %v", err)
+	}
+	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: secretKeyVersionSettingKey, Value: secretKeyVersion}); err != nil {
+		t.Fatalf("Failed to seed secret_key_version: %v", err)
 	}
 	if err := gorm.G[data.Setting](db).Create(ctx, &data.Setting{Key: "system_apps_repo", Value: ""}); err != nil {
 		t.Fatalf("Failed to seed system_apps_repo: %v", err)
@@ -67,6 +70,9 @@ func newTestServerAPI(t *testing.T) *Server {
 	}
 
 	s := NewServer(db, cfg)
+	// Let the startup thumbnail preheat finish before tests register mock
+	// providers; otherwise it can pick one up and wipe the test's renders.
+	s.backgroundRenders.Wait()
 	t.Cleanup(func() {
 		s.backgroundRenders.Wait()
 	})
@@ -167,6 +173,40 @@ func TestHandleListDevices(t *testing.T) {
 	if payload.Devices[0].ID != "testdevice" {
 		t.Errorf("Expected device ID 'testdevice', got %s", payload.Devices[0].ID)
 	}
+}
+
+func TestHandleListDevicesDeviceKeyScoped(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	other := data.Device{
+		ID:       "otherdevice",
+		Username: "testuser",
+		Name:     "Other Device",
+		Type:     data.DeviceTidbytGen1,
+		APIKey:   "other_device_api_key",
+	}
+	require.NoError(t, gorm.G[data.Device](s.DB).Create(context.Background(), &other))
+
+	// A user key sees all of the user's devices.
+	req := newAPIRequest("GET", "/v0/devices", "test_api_key", nil)
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var payload ListDevicesPayload
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	assert.Len(t, payload.Devices, 2)
+
+	// A device key sees only its own device.
+	req = newAPIRequest("GET", "/v0/devices", "device_api_key", nil)
+	rr = httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	payload = ListDevicesPayload{}
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	require.Len(t, payload.Devices, 1)
+	assert.Equal(t, "testdevice", payload.Devices[0].ID)
 }
 
 func TestHandleGetDevice(t *testing.T) {
@@ -288,6 +328,30 @@ func TestHandlePushImage(t *testing.T) {
 	expectedPath := filepath.Join(s.DataDir, "webp", deviceID, "pushed", installID+".webp")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("Expected pushed image to exist at %s, but it didn't", expectedPath)
+	}
+}
+
+func TestHandlePushRejectsInvalidInstallationID(t *testing.T) {
+	s := newTestServerAPI(t)
+	apiKey, deviceID := "device_api_key", "testdevice"
+	dummyWebp := "UklGRkXlAAAgAAAAAQABAAHAIwAA//VucG/v/4/f//x8oAA="
+
+	for _, installID := range []string{"a/b", `a\b`, "..", "__1", "_/1"} {
+		t.Run(installID, func(t *testing.T) {
+			body, _ := json.Marshal(PushData{InstallationID: installID, Image: dummyWebp})
+			rr := httptest.NewRecorder()
+			s.ServeHTTP(rr, newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push", deviceID), apiKey, body))
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+			body, _ = json.Marshal(PushAppData{InstallationID: installID})
+			rr = httptest.NewRecorder()
+			s.ServeHTTP(rr, newAPIRequest("POST", fmt.Sprintf("/v0/devices/%s/push_app", deviceID), apiKey, body))
+			assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+			count, err := gorm.G[data.App](s.DB).Where("device_id = ? AND path = ?", deviceID, "pushed:"+installID).Count(context.Background(), "*")
+			require.NoError(t, err)
+			assert.Zero(t, count, "no pushed app is created")
+		})
 	}
 }
 
