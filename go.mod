@@ -29,7 +29,7 @@ require (
 	github.com/tronbyt/pixlet v0.55.1
 	golang.org/x/crypto v0.58.0
 	golang.org/x/mod v0.43.0
-	golang.org/x/net v0.60.0
+	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sync v0.25.0
 	golang.org/x/text v0.44.0
