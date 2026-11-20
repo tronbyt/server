@@ -27,7 +27,7 @@ require (
 	github.com/sumup/aaguids-go v0.0.0-20251118110537-5a71322266f2
 	github.com/tronbyt/go-libwebp v0.0.0-20251221160926-0c04b4a7738a
 	github.com/tronbyt/pixlet v0.55.1
-	golang.org/x/crypto v0.58.0
+	golang.org/x/crypto v0.59.0
 	golang.org/x/mod v0.43.0
 	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.38.0
@@ -127,7 +127,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/image v0.45.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
