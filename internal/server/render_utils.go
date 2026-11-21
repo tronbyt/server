@@ -44,6 +44,15 @@ func validSoundRequestID(id string) string {
 	return id
 }
 
+// rememberSoundRequest records id as the last render.Root(sound_id) handled
+// for app, so later renders returning the same ID don't play it.
+func (s *Server) rememberSoundRequest(ctx context.Context, app *data.App, id string) {
+	app.LastSoundRequestID = id
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_sound_request_id", id); err != nil {
+		slog.Debug("Failed to update last_sound_request_id in DB", "app", app.ID, "error", err)
+	}
+}
+
 // RenderApp consolidates the logic for rendering an app for a device.
 // It handles config overrides, timezone/locale injection, dwell time, and filters.
 func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, src *appSource, configOverrides map[string]any) ([]byte, []string, error) {
@@ -358,6 +367,12 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 					// returning the same ID on later renders without repeat sounds.
 					soundRequestID = validSoundRequestID(renderResult.SoundID)
 					shouldPlay = soundRequestID != "" && soundRequestID != app.LastSoundRequestID
+					if shouldPlay && device.IsMuted() {
+						// Muted: drop the request rather than hold it back (even
+						// during the cooldown), so it can't play after unmuting.
+						s.rememberSoundRequest(ctx, app, soundRequestID)
+						shouldPlay = false
+					}
 				}
 
 				// Debounce: Enforce 30-second cooldown to prevent sound spam from animated apps
@@ -376,10 +391,7 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 							slog.Debug("Failed to update last_sound_at in DB", "app", app.ID, "error", err)
 						}
 						if soundRequestID != "" {
-							app.LastSoundRequestID = soundRequestID
-							if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_sound_request_id", soundRequestID); err != nil {
-								slog.Debug("Failed to update last_sound_request_id in DB", "app", app.ID, "error", err)
-							}
+							s.rememberSoundRequest(ctx, app, soundRequestID)
 						}
 					}
 				}

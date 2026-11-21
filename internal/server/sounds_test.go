@@ -1139,10 +1139,24 @@ def main(config):
 	assert.Equal(t, "match-1-score-2-0", app.LastSoundRequestID, "held-back ID must not be marked as played")
 	assert.True(t, renderAgain("match-1-score-2-1"), "held-back sound_id should play after the cooldown")
 
+	// While muted, a new sound_id is dropped, not held back, even during the
+	// cooldown, so it doesn't play after unmuting.
+	dev.Muted = true
+	_, err = gorm.G[data.Device](s.DB).Where("id = ?", deviceID).Update(ctx, "pending_sound", "")
+	require.NoError(t, err)
+	recent = time.Now().Add(-5 * time.Second)
+	app.LastSoundAt = &recent
+	app.LastRender = time.Time{}
+	app.Config = data.JSONMap{"sid": "match-1-score-3-1"}
+	require.True(t, s.possiblyRender(ctx, &app, &dev, &user))
+	assert.Equal(t, "match-1-score-3-1", app.LastSoundRequestID, "muted request must be marked as handled")
+	dev.Muted = false
+	assert.False(t, renderAgain("match-1-score-3-1"), "request dropped while muted must not play after unmuting")
+
 	// Other triggers ignore sound_id.
 	app.NotificationSoundTrigger = "on_change"
 	app.LastSoundRequestID = ""
-	renderAgain("match-1-score-3-1")
+	renderAgain("match-1-score-4-1")
 	assert.Empty(t, app.LastSoundRequestID, "on_change must not record sound_id")
 }
 
