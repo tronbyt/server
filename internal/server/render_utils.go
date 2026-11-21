@@ -29,16 +29,17 @@ import (
 const maxSoundRequestIDLength = 256
 
 // validSoundRequestID returns the trimmed sound_id an app asked for, or "" if
-// it is empty, too long or contains control characters.
+// it contains control characters (checked before trimming), or is empty or
+// too long.
 func validSoundRequestID(id string) string {
-	id = strings.TrimSpace(id)
-	if id == "" || len(id) > maxSoundRequestIDLength {
-		return ""
-	}
 	for _, r := range id {
 		if r < 0x20 || r == 0x7f {
 			return ""
 		}
+	}
+	id = strings.TrimSpace(id)
+	if id == "" || len(id) > maxSoundRequestIDLength {
+		return ""
 	}
 	return id
 }

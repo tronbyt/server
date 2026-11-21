@@ -1119,6 +1119,7 @@ def main(config):
 	// Invalid IDs are ignored.
 	assert.False(t, renderAgain(strings.Repeat("x", maxSoundRequestIDLength+1)), "over-long sound_id must not play")
 	assert.False(t, renderAgain("goal\nagain"), "sound_id with control characters must not play")
+	assert.False(t, renderAgain("\nmatch-1-score-9-9"), "control characters must be rejected before trimming")
 
 	// The next event plays.
 	assert.True(t, renderAgain("match-1-score-2-0"), "next sound_id should play")
@@ -1143,6 +1144,53 @@ def main(config):
 	app.LastSoundRequestID = ""
 	renderAgain("match-1-score-3-1")
 	assert.Empty(t, app.LastSoundRequestID, "on_change must not record sound_id")
+}
+
+// TestValidSoundRequestID checks trimming and rejection rules for sound_id.
+func TestValidSoundRequestID(t *testing.T) {
+	assert.Equal(t, "goal", validSoundRequestID("  goal "))
+	assert.Empty(t, validSoundRequestID(""))
+	assert.Empty(t, validSoundRequestID("   "))
+	assert.Empty(t, validSoundRequestID("\ngoal"), "leading control character")
+	assert.Empty(t, validSoundRequestID("goal\t"), "trailing control character")
+	assert.Empty(t, validSoundRequestID("go\x7fal"))
+	assert.Empty(t, validSoundRequestID(strings.Repeat("x", maxSoundRequestIDLength+1)))
+	assert.Equal(t, strings.Repeat("x", maxSoundRequestIDLength), validSoundRequestID(strings.Repeat("x", maxSoundRequestIDLength)))
+}
+
+// TestDuplicateAppResetsSoundRequestID checks that a copied installation
+// starts without the source's played sound_id, and the source keeps it.
+func TestDuplicateAppResetsSoundRequestID(t *testing.T) {
+	s := newTestServerAPI(t)
+	ctx := context.Background()
+	dev, err := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").First(ctx)
+	require.NoError(t, err)
+	user, err := gorm.G[data.User](s.DB).Where("username = ?", dev.Username).First(ctx)
+	require.NoError(t, err)
+
+	appPath := filepath.Join("system-apps", "apps", "scoresapp", "scoresapp.star")
+	original := data.App{
+		Iname:                    "scores-1",
+		Name:                     "scoresapp",
+		DeviceID:                 dev.ID,
+		Path:                     &appPath,
+		NotificationSoundTrigger: "app_request",
+		LastSoundRequestID:       "goal-1",
+	}
+	require.NoError(t, gorm.G[data.App](s.DB).Create(ctx, &original))
+
+	require.NoError(t, s.performAppDuplication(ctx, &user, &dev, &original, &dev, original.Iname, true))
+
+	apps, err := gorm.G[data.App](s.DB).Where("device_id = ? AND name = ?", dev.ID, "scoresapp").Find(ctx)
+	require.NoError(t, err)
+	require.Len(t, apps, 2)
+	for _, a := range apps {
+		if a.ID == original.ID {
+			assert.Equal(t, "goal-1", a.LastSoundRequestID, "source keeps its marker")
+		} else {
+			assert.Empty(t, a.LastSoundRequestID, "copy starts without a marker")
+		}
+	}
 }
 
 // TestPatchInstallationAppRequestTrigger verifies the API accepts the "app_request" trigger.

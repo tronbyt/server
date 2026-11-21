@@ -2233,6 +2233,7 @@ func (s *Server) performAppDuplication(ctx context.Context, user *data.User, sou
 	duplicatedApp.LastRender = time.Time{}
 	duplicatedApp.Order = 0 // Will be set later
 	duplicatedApp.AutoPin = false
+	duplicatedApp.LastSoundRequestID = "" // the copy hasn't played any app-requested sound yet
 
 	if originalApp.Config != nil {
 		newConfig := make(data.JSONMap)
