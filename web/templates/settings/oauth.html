@@ -1,0 +1,206 @@
+{{ define "settings_oauth" }}
+{{ template "base" . }}
+{{ end }}
+{{ define "title" }}{{ t .Localizer "System Settings" }}{{ end }}
+{{ define "content" }}
+<div class="settings-page">
+    <header class="settings-page-header">
+        <div>
+            <p class="settings-eyebrow">{{ t .Localizer "System Settings" }}</p>
+            <h1>{{ t .Localizer "OAuth Clients" }}</h1>
+            <p class="settings-page-copy">
+                {{ t .Localizer "Apps that connect to an online account sign in through an OAuth client you register with that service." }}
+            </p>
+        </div>
+    </header>
+    <section class="settings-card">
+        <div class="settings-card-header">
+            <h2>{{ t .Localizer "Your OAuth Clients" }}</h2>
+            <p>{{ t .Localizer "An app offers a client only when both of its endpoints match the ones the app declares." }}</p>
+        </div>
+        <ul class="settings-list">
+            {{ range .OAuthClients }}
+            <li class="settings-list-item settings-user-row" id="client-{{ .ID }}">
+                <div class="settings-list-copy">
+                    <strong>{{ .Name }}</strong>
+                    {{ if .Shared }}
+                    <span class="settings-tag">{{ t $.Localizer "Shared" }}</span>
+                    {{ end }}
+                    {{ if ne .OwnerUsername $.User.Username }}
+                    <span>{{ t $.Localizer "Owner" }}: {{ .OwnerUsername }}</span>
+                    {{ end }}
+                    <span class="settings-caption">{{ t $.Localizer "Authorization endpoint" }}</span>
+                    <span class="settings-input-code">{{ .AuthorizationEndpoint }}</span>
+                    <span class="settings-caption">{{ t $.Localizer "Token endpoint" }}</span>
+                    <span class="settings-input-code">{{ .TokenEndpoint }}</span>
+                    <span class="settings-caption">{{ t $.Localizer "Redirect URI" }}</span>
+                    <span class="settings-input-code">{{ .RedirectURI }}</span>
+                    <span class="settings-caption">{{ t $.Localizer "Connected apps" }}</span>
+                    <span>{{ .Connections }}</span>
+                </div>
+                {{ if .CanManage }}
+                <div class="settings-actions settings-user-actions">
+                    <a class="w3-button w3-blue"
+                       href="/settings/oauth?edit={{ .ID }}#oauth-client-form">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> {{ t $.Localizer "Edit" }}
+                    </a>
+                    <form method="post" action="/settings/oauth/clients/{{ .ID }}/delete">
+                        <button type="submit"
+                                class="w3-button w3-red"
+                                onclick="return confirm('{{ t $.Localizer "Delete this OAuth client? Apps signed in with it will be disconnected." }}');">
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i> {{ t $.Localizer "Delete" }}
+                        </button>
+                    </form>
+                </div>
+                {{ end }}
+            </li>
+        {{ else }}
+            <li class="settings-list-empty">{{ t .Localizer "No OAuth clients yet." }}</li>
+            {{ end }}
+        </ul>
+    </section>
+    <section class="settings-card" id="oauth-client-form">
+        <div class="settings-card-header">
+            <h2>
+                {{ if .OAuthClientForm.Editing }}
+                {{ t .Localizer "Edit OAuth Client" }}
+            {{ else }}
+                {{ t .Localizer "New OAuth Client" }}
+                {{ end }}
+            </h2>
+            <p>
+                {{ t .Localizer "Register an application with the service, using the redirect URI below, then enter the client ID and secret it gives you." }}
+            </p>
+        </div>
+        <form method="post" action="/settings/oauth/clients" class="settings-form">
+            <input type="hidden" name="id" value="{{ .OAuthClientForm.ID }}">
+            <input type="hidden"
+                   name="return_to"
+                   value="{{ .OAuthClientForm.ReturnTo }}">
+            <div class="settings-field-list">
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Redirect URI" }}</div>
+                    <div class="settings-field-control">
+                        <div class="settings-inline-group settings-api-key-row">
+                            <input type="text"
+                                   id="oauth_redirect_uri"
+                                   readonly
+                                   value="{{ .OAuthClientForm.RedirectURI }}"
+                                   class="settings-input settings-input-xwide settings-input-code">
+                            <button type="button" class="w3-button w3-blue" onclick="copyRedirectURI()">
+                                <i class="fa-solid fa-copy" aria-hidden="true"></i> {{ t .Localizer "Copy" }}
+                            </button>
+                        </div>
+                        <p class="settings-help">
+                            {{ t .Localizer "Many services accept only https redirect URIs. If this one starts with http://, open Tronbyt over HTTPS first." }}
+                        </p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oauth_name">{{ t .Localizer "Name" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="text"
+                               name="name"
+                               id="oauth_name"
+                               required
+                               maxlength="100"
+                               value="{{ .OAuthClientForm.Name }}"
+                               class="settings-input settings-input-wide">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oauth_authorization_endpoint">{{ t .Localizer "Authorization endpoint" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="url"
+                               name="authorization_endpoint"
+                               id="oauth_authorization_endpoint"
+                               required
+                               value="{{ .OAuthClientForm.AuthorizationEndpoint }}"
+                               class="settings-input settings-input-xwide settings-input-code">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oauth_token_endpoint">{{ t .Localizer "Token endpoint" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="url"
+                               name="token_endpoint"
+                               id="oauth_token_endpoint"
+                               required
+                               value="{{ .OAuthClientForm.TokenEndpoint }}"
+                               class="settings-input settings-input-xwide settings-input-code">
+                        <p class="settings-help">{{ t .Localizer "The client secret is sent only to this token endpoint." }}</p>
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oauth_client_id">{{ t .Localizer "Client ID" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="text"
+                               name="client_id"
+                               id="oauth_client_id"
+                               required
+                               autocomplete="off"
+                               value="{{ .OAuthClientForm.ClientID }}"
+                               class="settings-input settings-input-xwide settings-input-code">
+                    </div>
+                </div>
+                <div class="settings-field-row">
+                    <div class="settings-field-label">
+                        <label for="oauth_client_secret">{{ t .Localizer "Client secret" }}</label>
+                    </div>
+                    <div class="settings-field-control">
+                        <input type="password"
+                               name="client_secret"
+                               id="oauth_client_secret"
+                               autocomplete="new-password"
+                               {{ if .OAuthClientForm.HasSecret }}placeholder="{{ t .Localizer "Set. Leave empty to keep it." }}"
+                               {{ end }}
+                               class="settings-input settings-input-xwide settings-input-code">
+                        <p class="settings-help">{{ t .Localizer "Leave empty for public clients that use PKCE only." }}</p>
+                    </div>
+                </div>
+                {{ if .User.IsAdmin }}
+                <div class="settings-field-row">
+                    <div class="settings-field-label">{{ t .Localizer "Sharing" }}</div>
+                    <div class="settings-field-control">
+                        <label>
+                            <input type="checkbox"
+                                   name="shared"
+                                   {{ if .OAuthClientForm.Shared }}checked{{ end }}>
+                            {{ t .Localizer "Available to all users of this server" }}
+                        </label>
+                        <p class="settings-help">
+                            {{ t .Localizer "Each user still signs in with their own account. Only the app registration is shared." }}
+                        </p>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+            <div class="settings-actions">
+                <button type="submit" class="w3-button w3-green">
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> {{ t .Localizer "Save" }}
+                </button>
+                {{ if or .OAuthClientForm.Editing .OAuthClientForm.ReturnTo }}
+                <a class="w3-button"
+                   href="{{ if .OAuthClientForm.ReturnTo }}{{ .OAuthClientForm.ReturnTo }}{{ else }}/settings/oauth{{ end }}">{{ t .Localizer "Cancel" }}</a>
+                {{ end }}
+            </div>
+        </form>
+    </section>
+</div>
+<script>
+    function copyRedirectURI() {
+        const input = document.getElementById('oauth_redirect_uri');
+        navigator.clipboard.writeText(input.value).catch(() => {
+            input.select();
+        });
+    }
+</script>
+{{ end }}

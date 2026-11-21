@@ -1,8 +1,11 @@
 package apps
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -55,13 +58,22 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 		return nil, err
 	}
 
+	if len(apps) == 0 {
+		return apps, nil
+	}
+
+	appsRoot, err := os.OpenRoot(filepath.Join(dataDir, "system-apps", "apps"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open system apps dir: %w", err)
+	}
+	defer func() { _ = appsRoot.Close() }()
+
 	// Now, for each app, try to read from its manifest.yaml (overrides or supplements)
 	for i := range apps {
 		dirName := apps[i].ID // Capture directory name (initially set to ID)
 		appDir := filepath.Join(dataDir, "system-apps", "apps", dirName)
-		manifestPath := filepath.Join(appDir, "manifest.yaml")
 
-		loadManifest(manifestPath, &apps[i].Manifest)
+		loadManifest(appsRoot, path.Join(dirName, "manifest.yaml"), &apps[i].Manifest)
 
 		// Finalize paths and defaults
 		if apps[i].ID == "" {
@@ -138,11 +150,12 @@ func ListSystemApps(dataDir string) ([]AppMetadata, error) {
 	return apps, nil
 }
 
-// loadManifest reads manifest.yaml at path into m. Keys present in the file
+// loadManifest reads the manifest at name within root into m. Keys present in the file
 // override m's fields; absent keys leave them untouched, so callers can set
 // defaults first. A missing or invalid manifest leaves m unchanged.
-func loadManifest(path string, m *Manifest) {
-	manifestData, err := os.ReadFile(path)
+func loadManifest(root *os.Root, name string, m *Manifest) {
+	path := filepath.Join(root.Name(), name)
+	manifestData, err := root.ReadFile(name)
 	if err != nil {
 		slog.Debug("manifest.yaml not found for app", "path", path, "error", err)
 		return
@@ -208,93 +221,129 @@ func ListUserApps(dataDir, username string) []AppMetadata {
 }
 
 func scanUserAppsDir(dataDir, username, subDir, defaultSummary string) ([]AppMetadata, error) {
-	userAppsDir := filepath.Join(dataDir, "users", username, subDir)
-	var apps []AppMetadata
-
-	entries, err := os.ReadDir(userAppsDir)
-	if os.IsNotExist(err) {
-		return apps, nil
+	// Walk the user's directory through os.Root so symlinks in a user's git repo
+	// can't lead into other users' files.
+	usersRoot, err := os.OpenRoot(filepath.Join(dataDir, "users"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
 	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to open users directory: %w", err)
+	}
+	defer func() { _ = usersRoot.Close() }()
+
+	userRoot, err := usersRoot.OpenRoot(username)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to open user directory: %w", err)
+	}
+	defer func() { _ = userRoot.Close() }()
+
+	appsRoot, err := userRoot.OpenRoot(subDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to open user apps directory %s: %w", subDir, err)
+	}
+	defer func() { _ = appsRoot.Close() }()
+
+	entries, err := fs.ReadDir(appsRoot.FS(), ".")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read user apps directory %s: %w", subDir, err)
 	}
 
+	var apps []AppMetadata
 	for _, entry := range entries {
-		if entry.IsDir() {
-			appName := entry.Name()
-			appDir := filepath.Join(userAppsDir, appName)
-
-			// Default AppMetadata for user app
-			userApp := AppMetadata{
-				ID:          appName,
-				Name:        appName,
-				PackageName: appName,
-				Author:      username,
-				Summary:     defaultSummary,
-			}
-
-			// List contents of this app directory
-			files, err := os.ReadDir(appDir)
-			if err != nil {
-				slog.Warn("Failed to read user app directory", "path", appDir, "error", err)
-				continue // Skip to next app directory
-			}
-			// Pick up category, tags, broken flag, etc. from an optional
-			// manifest. The identity fields stay tied to the directory: the
-			// add/delete/preview routes address user apps by directory name.
-			loadManifest(filepath.Join(appDir, "manifest.yaml"), &userApp.Manifest)
-			userApp.ID = appName
-			userApp.PackageName = appName
-			if userApp.Name == "" {
-				userApp.Name = appName
-			}
-
-			var starFile string
-			var webpFile string
-			for _, f := range files {
-				if filepath.Ext(f.Name()) == ".star" {
-					starFile = f.Name()
-					break
-				}
-				// Also check for a webp file with the same name as the app
-				if f.Name() == appName+".webp" {
-					webpFile = f.Name()
-				}
-			}
-
-			if starFile != "" {
-				userApp.FileName = starFile
-				userApp.Path = filepath.Join("users", username, subDir, appName, starFile)
-
-				// Infer Preview/Preview2x from convention if files exist
-				baseFileName := strings.TrimSuffix(starFile, ".star")
-				previewWebP := baseFileName + ".webp"
-				preview2xWebP := baseFileName + "@2x.webp"
-
-				if _, err := os.Stat(filepath.Join(appDir, previewWebP)); err == nil {
-					userApp.Preview = previewWebP
-				}
-				if _, err := os.Stat(filepath.Join(appDir, preview2xWebP)); err == nil {
-					userApp.Preview2x = preview2xWebP
-				}
-			} else if webpFile != "" {
-				// No .star file, but we have a .webp file matching the app name
-				userApp.FileName = webpFile
-				userApp.Path = filepath.Join("users", username, subDir, appName, webpFile)
-				userApp.Preview = webpFile
-			} else {
-				continue
-			}
-
-			// Prefer the manifest's updated date, falling back to file mod time
-			if userApp.Updated != "" {
-				userApp.Date = userApp.Updated
-			} else if info, err := os.Stat(filepath.Join(appDir, userApp.FileName)); err == nil {
-				userApp.Date = info.ModTime().Format("2006-01-02 15:04")
-			}
+		if !entry.IsDir() {
+			continue
+		}
+		if userApp, ok := scanUserApp(appsRoot, entry.Name(), username, subDir, defaultSummary); ok {
 			apps = append(apps, userApp)
 		}
 	}
 
 	return apps, nil
+}
+
+func scanUserApp(appsRoot *os.Root, appName, username, subDir, defaultSummary string) (AppMetadata, bool) {
+	appRoot, err := appsRoot.OpenRoot(appName)
+	if err != nil {
+		slog.Warn("Failed to open user app directory", "app", appName, "error", err)
+		return AppMetadata{}, false
+	}
+	defer func() { _ = appRoot.Close() }()
+
+	// Default AppMetadata for user app
+	userApp := AppMetadata{
+		ID:          appName,
+		Name:        appName,
+		PackageName: appName,
+		Author:      username,
+		Summary:     defaultSummary,
+	}
+
+	// List contents of this app directory
+	files, err := fs.ReadDir(appRoot.FS(), ".")
+	if err != nil {
+		slog.Warn("Failed to read user app directory", "app", appName, "error", err)
+		return AppMetadata{}, false
+	}
+	// Pick up category, tags, broken flag, etc. from an optional
+	// manifest. The identity fields stay tied to the directory: the
+	// add/delete/preview routes address user apps by directory name.
+	loadManifest(appRoot, "manifest.yaml", &userApp.Manifest)
+	userApp.ID = appName
+	userApp.PackageName = appName
+	if userApp.Name == "" {
+		userApp.Name = appName
+	}
+
+	var starFile string
+	var webpFile string
+	for _, f := range files {
+		if filepath.Ext(f.Name()) == ".star" {
+			starFile = f.Name()
+			break
+		}
+		// Also check for a webp file with the same name as the app
+		if f.Name() == appName+".webp" {
+			webpFile = f.Name()
+		}
+	}
+
+	switch {
+	case starFile != "":
+		userApp.FileName = starFile
+		userApp.Path = filepath.Join("users", username, subDir, appName, starFile)
+
+		// Infer Preview/Preview2x from convention if files exist
+		baseFileName := strings.TrimSuffix(starFile, ".star")
+		previewWebP := baseFileName + ".webp"
+		preview2xWebP := baseFileName + "@2x.webp"
+
+		if _, err := appRoot.Stat(previewWebP); err == nil {
+			userApp.Preview = previewWebP
+		}
+		if _, err := appRoot.Stat(preview2xWebP); err == nil {
+			userApp.Preview2x = preview2xWebP
+		}
+	case webpFile != "":
+		// No .star file, but we have a .webp file matching the app name
+		userApp.FileName = webpFile
+		userApp.Path = filepath.Join("users", username, subDir, appName, webpFile)
+		userApp.Preview = webpFile
+	default:
+		return AppMetadata{}, false
+	}
+
+	// Prefer the manifest's updated date, falling back to file mod time
+	if userApp.Updated != "" {
+		userApp.Date = userApp.Updated
+	} else if info, err := appRoot.Stat(userApp.FileName); err == nil {
+		userApp.Date = info.ModTime().Format("2006-01-02 15:04")
+	}
+	return userApp, true
 }

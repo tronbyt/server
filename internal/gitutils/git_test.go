@@ -258,3 +258,62 @@ func TestReplaceRepoDirKeepsDestinationWhenMoveFails(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, entries, 1, "no backup should be left behind")
 }
+
+func TestHeadCommit(t *testing.T) {
+	src := newSourceRepo(t)
+	head, err := src.repo.Head()
+	require.NoError(t, err)
+
+	hash, when, err := HeadCommit(src.path)
+	require.NoError(t, err)
+	assert.Equal(t, head.Hash().String(), hash)
+	assert.WithinDuration(t, time.Now(), when, time.Minute)
+
+	_, _, err = HeadCommit(t.TempDir())
+	assert.Error(t, err)
+}
+
+func TestIsUpToDate(t *testing.T) {
+	src := newSourceRepo(t)
+	dst := filepath.Join(t.TempDir(), "clone")
+
+	upToDate, err := IsUpToDate(dst, src.path, "")
+	require.NoError(t, err)
+	assert.False(t, upToDate, "no clone yet")
+
+	require.NoError(t, EnsureRepo(dst, src.path, "", true, 0))
+	upToDate, err = IsUpToDate(dst, src.path, "")
+	require.NoError(t, err)
+	assert.True(t, upToDate, "fresh clone")
+
+	src.commitFile("default2.txt", "more")
+	upToDate, err = IsUpToDate(dst, src.path, "")
+	require.NoError(t, err)
+	assert.False(t, upToDate, "new commit on the remote")
+
+	require.NoError(t, EnsureRepo(dst, src.path, "", true, 0))
+	upToDate, err = IsUpToDate(dst, src.path, "")
+	require.NoError(t, err)
+	assert.True(t, upToDate, "after updating")
+
+	upToDate, err = IsUpToDate(dst, src.path+"#feature", "")
+	require.NoError(t, err)
+	assert.False(t, upToDate, "different branch configured")
+}
+
+func TestIsUpToDateBranchClone(t *testing.T) {
+	src := newSourceRepo(t)
+	dst := filepath.Join(t.TempDir(), "clone")
+	url := src.path + "#feature"
+	require.NoError(t, EnsureRepo(dst, url, "", true, 0))
+
+	upToDate, err := IsUpToDate(dst, url, "")
+	require.NoError(t, err)
+	assert.True(t, upToDate)
+
+	src.checkout("feature", false)
+	src.commitFile("feature2.txt", "more")
+	upToDate, err = IsUpToDate(dst, url, "")
+	require.NoError(t, err)
+	assert.False(t, upToDate)
+}

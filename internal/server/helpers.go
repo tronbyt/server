@@ -73,12 +73,14 @@ type TemplateData struct {
 	NibletCloudConfigured bool // NIBLET_CLOUD_URL is set
 	NibletCloudEnabled    bool // admin allows Niblet Cloud traffic
 	User                  *data.User
+	CustomAppsAllowed     bool        // user may upload apps and configure a custom repo
 	Users                 []data.User // For admin view
 	Config                *config.TemplateConfig
 	Flashes               []string
-	Devices               []data.Device   // Filtered devices for rendering
-	AllDevices            []DeviceSummary // Lightweight list for "Copy to" dropdown
-	Item                  *data.Device    // For single item partials
+	Devices               []data.Device     // Filtered devices for rendering
+	AllDevices            []DeviceSummary   // Lightweight list for "Copy to" dropdown
+	Item                  *data.Device      // For single item partials
+	FirmwareUpdates       map[string]string // Device ID -> newer firmware version available
 	Localizer             *i18n.Localizer
 
 	UpdateAvailable  bool
@@ -122,6 +124,12 @@ type TemplateData struct {
 	AppCatalogURL        string
 	ExternalAppURL       string
 	ExternalProviderName string
+	IsExternalApp        bool
+	OAuthFields          template.JS // per OAuth2 field: clients and connection state
+
+	// OAuth Clients settings
+	OAuthClients    []oauthClientRow
+	OAuthClientForm oauthClientForm
 
 	// Device Update Extras
 	ColorFilterOptions       []ColorFilterOption
@@ -148,7 +156,9 @@ type TemplateData struct {
 	ShowOTAReleaseNotes        bool   // show release notes under the OTA version select
 	FirmwareReleaseNotesPrefix string // DOM id prefix for release notes (e.g. "ota_")
 	FirmwareOTAFullSection     bool   // render OTA block as a top-level settings card
-	FirmwareOTARecommended     bool   // show "Recommended" badge on firmware page OTA path
+	FirmwareInstalledVersion   string // version the device last reported ("v" prefix), "" if unknown
+	FirmwareUpToDate           bool   // device runs the newest firmware the server has
+	FirmwareUpdateVersion      string // newer firmware version available for the device, if any
 	ServerVersion              string
 	CommitHash                 string
 	CommitURL                  string
@@ -254,6 +264,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, r *http.Request, name str
 	tmplData.NibletCloudEnabled = s.isNibletCloudEnabled()
 	tmplData.UsageSharingAvailable = s.isNibletCloudEnabled()
 	tmplData.ShowUsagePrompt = s.shouldPromptUsage(tmplData.User)
+	tmplData.CustomAppsAllowed = s.customAppsAllowed(tmplData.User)
 
 	// Calculate IsAutoLoginActive
 	userCount, err := gorm.G[data.User](s.DB).Count(r.Context(), "*")
@@ -648,7 +659,7 @@ func (s *Server) detectedAccessURL(r *http.Request) string {
 func (s *Server) saveSession(w http.ResponseWriter, r *http.Request, session *sessions.Session) error {
 	// Create a copy of options to modify safely
 	opts := *session.Options
-	opts.Secure = r.URL.Scheme == "https"
+	opts.Secure = requestScheme(r) == "https"
 	session.Options = &opts
 
 	return session.Save(r, w)
@@ -691,11 +702,23 @@ func (s *Server) replaceSystemAppsCache() error {
 	slog.Info("Refreshing system apps cache")
 	refreshedApps, err := apps.ListSystemApps(s.DataDir)
 	if err != nil {
+		s.systemAppsCacheStale.Store(true)
 		return err
+	}
+	s.systemAppsCacheStale.Store(false)
+
+	// Remember which app store commit is installed, for apps that ask
+	// (server.system_apps_commit()). Missing or unreadable repos leave it empty.
+	commit, commitTime, err := gitutils.HeadCommit(filepath.Join(s.DataDir, "system-apps"))
+	if err != nil {
+		slog.Debug("Could not read system apps commit", "error", err)
+		commit, commitTime = "", time.Time{}
 	}
 
 	s.systemAppsCacheMutex.Lock()
 	s.systemAppsCache = refreshedApps
+	s.systemAppsCommit = commit
+	s.systemAppsCommitTime = commitTime
 	count := len(s.systemAppsCache)
 	s.systemAppsCacheMutex.Unlock()
 
@@ -705,7 +728,7 @@ func (s *Server) replaceSystemAppsCache() error {
 
 // getAppMetadata retrieves metadata for an app path, checking the system cache first,
 // then falling back to reading the manifest.yaml from disk.
-func (s *Server) getAppMetadata(ctx context.Context, appPath string) *apps.AppMetadata {
+func (s *Server) getAppMetadata(ctx context.Context, owner, appPath string) *apps.AppMetadata {
 	if appPath == "" {
 		return nil
 	}
@@ -767,32 +790,24 @@ func (s *Server) getAppMetadata(ctx context.Context, appPath string) *apps.AppMe
 	}
 
 	// Fallback: Check for manifest.yaml in app directory
-	fullPath, err := securejoin.SecureJoin(s.DataDir, appPath)
-	if err == nil {
-		var appDir string
-		info, err := os.Stat(fullPath)
-		if err == nil && info.IsDir() {
-			appDir = fullPath
-		} else {
-			appDir = filepath.ToSlash(filepath.Dir(fullPath))
-		}
-
-		manifestPath := filepath.Join(appDir, "manifest.yaml")
-		if _, err := os.Stat(manifestPath); err == nil {
-			if data, err := os.ReadFile(manifestPath); err == nil {
-				var m apps.Manifest
-				if err := yaml.Unmarshal(data, &m); err == nil {
-					return &apps.AppMetadata{
-						Manifest: m,
-					}
-				} else {
-					slog.Debug("Failed to unmarshal manifest for fallback", "path", manifestPath, "error", err)
-				}
-			}
-		}
+	src, err := s.openAppSource(owner, appPath)
+	if err != nil {
+		return nil
 	}
+	defer func() { _ = src.Close() }()
 
-	return nil
+	data, err := src.Root.ReadFile("manifest.yaml")
+	if err != nil {
+		return nil
+	}
+	var m apps.Manifest
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		slog.Debug("Failed to unmarshal manifest for fallback", "path", appPath, "error", err)
+		return nil
+	}
+	return &apps.AppMetadata{
+		Manifest: m,
+	}
 }
 
 func (s *Server) getSetting(key string) (string, error) {
@@ -897,19 +912,36 @@ func (s *Server) GetBaseURL(r *http.Request) string {
 
 // GetDeviceBaseURL resolves the base URL for device communication, normalizing WebSocket URLs to HTTP.
 func (s *Server) GetDeviceBaseURL(device *data.Device) string {
-	if device != nil && device.ImgURL != "" {
-		if u, err := url.Parse(device.ImgURL); err == nil && u.Host != "" && u.Scheme != "" {
-			scheme := u.Scheme
-			switch scheme {
-			case "ws":
-				scheme = "http"
-			case "wss":
-				scheme = "https"
-			}
-			return fmt.Sprintf("%s://%s", scheme, u.Host)
+	if device != nil {
+		if base := deviceURLBase(device.ImgURL); base != "" {
+			return base
 		}
 	}
 	return s.GetBaseURL(nil)
+}
+
+// deviceURLBase returns the scheme and host of a device URL, such as
+// "http://192.168.1.10:8000" for "ws://192.168.1.10:8000/abc/ws", or "" if it
+// isn't a usable URL.
+func deviceURLBase(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	scheme := u.Scheme
+	switch scheme {
+	case "ws":
+		scheme = "http"
+	case "wss":
+		scheme = "https"
+	case "http", "https":
+	default:
+		return ""
+	}
+	return fmt.Sprintf("%s://%s", scheme, u.Host)
 }
 
 func (s *Server) getImageURL(r *http.Request, deviceID string) string {

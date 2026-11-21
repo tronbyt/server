@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,8 +18,16 @@ import (
 	"tronbyt-server/internal/gitutils"
 	"tronbyt-server/internal/legacy"
 
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"gorm.io/gorm"
 )
+
+type settingsDebugAppRefreshResponse struct {
+	Config          map[string]any `json:"config"`
+	RenderMessages  []string       `json:"renderMessages"`
+	Status          string         `json:"status"`
+	RenderAttempted bool           `json:"renderAttempted"`
+}
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("handleIndex called")
@@ -54,6 +63,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	// Devices: filtered list for rendering, AllDevices: lightweight list for "Copy to" dropdown
 	tmplData := TemplateData{User: user, Devices: devices, AllDevices: allDevices}
+	for i := range devices {
+		if v := s.FirmwareUpdateForDevice(&devices[i]); v != "" {
+			if tmplData.FirmwareUpdates == nil {
+				tmplData.FirmwareUpdates = make(map[string]string)
+			}
+			tmplData.FirmwareUpdates[devices[i].ID] = v
+		}
+	}
 	if partial == "device_card" && len(devices) == 1 {
 		tmplData.Partial = "device_card"
 		tmplData.Item = &devices[0]
@@ -103,6 +120,167 @@ func (s *Server) handleAdminIndex(w http.ResponseWriter, r *http.Request) {
 		DefaultSounds:        GetDefaultSounds(),
 		CustomSounds:         customSounds,
 	})
+}
+
+// handleSettingsDebugGet shows stored pixlet render debug output for installed apps.
+func (s *Server) handleSettingsDebugGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.loadSettingsUser(r)
+	if !ok {
+		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+		return
+	}
+
+	users, err := s.loadUsersForRenderDebug(r.Context(), user)
+	if err != nil {
+		slog.Error("Failed to load apps for render debug", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	s.renderTemplate(w, r, "settings_debug", TemplateData{
+		User:            user,
+		Users:           users,
+		SettingsSection: "debug",
+	})
+}
+
+func (s *Server) loadUsersForRenderDebug(ctx context.Context, viewer *data.User) ([]data.User, error) {
+	preloads := func(db gorm.PreloadBuilder) error {
+		db.Order("name ASC")
+		return nil
+	}
+	if viewer.IsAdmin {
+		return gorm.G[data.User](s.DB).
+			Preload("Devices", preloads).
+			Preload("Devices.Apps", orderedAppsPreload).
+			Order("username ASC").
+			Find(ctx)
+	}
+	u, err := gorm.G[data.User](s.DB).
+		Preload("Devices", preloads).
+		Preload("Devices.Apps", orderedAppsPreload).
+		Where("username = ?", viewer.Username).
+		First(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return []data.User{u}, nil
+}
+
+func (s *Server) handleSettingsDebugAppRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	viewer, ok := s.loadSettingsUser(r)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	deviceID := r.PathValue("id")
+	iname := r.PathValue("iname")
+	device, app, owner, err := s.loadDeviceAppForSettingsDebug(r.Context(), viewer, deviceID, iname)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, errSettingsDebugForbidden) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		slog.Error("Failed to load app for debug refresh", "device", deviceID, "iname", iname, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	renderAttempted := s.forceRefreshAppRender(r.Context(), app, device, owner)
+
+	refreshed, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(r.Context())
+	if err != nil {
+		slog.Error("Failed to reload app after debug refresh", "app", app.ID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	localizer := s.getLocalizer(r)
+	resp := settingsDebugAppRefreshResponse{
+		Config:          refreshed.Config,
+		RenderMessages:  refreshed.RenderMessages,
+		Status:          appRenderDebugStatus(localizer, &refreshed),
+		RenderAttempted: renderAttempted,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("Failed to encode debug refresh response", "error", err)
+	}
+}
+
+var errSettingsDebugForbidden = errors.New("settings debug forbidden")
+
+func (s *Server) loadDeviceAppForSettingsDebug(ctx context.Context, viewer *data.User, deviceID, iname string) (*data.Device, *data.App, *data.User, error) {
+	device, err := gorm.G[data.Device](s.DB).
+		Preload("Apps", orderedAppsPreload).
+		Where("id = ?", deviceID).
+		First(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if viewer.Username != device.Username && !viewer.IsAdmin {
+		return nil, nil, nil, errSettingsDebugForbidden
+	}
+
+	var app *data.App
+	for _, candidate := range device.Apps {
+		if candidate.Iname == iname {
+			app = candidate
+			break
+		}
+	}
+	if app == nil {
+		return nil, nil, nil, gorm.ErrRecordNotFound
+	}
+
+	owner, err := gorm.G[data.User](s.DB).Where("username = ?", device.Username).First(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &device, app, &owner, nil
+}
+
+func (s *Server) forceRefreshAppRender(ctx context.Context, app *data.App, device *data.Device, owner *data.User) bool {
+	if app.Pushed {
+		return false
+	}
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "LastRender", time.Time{}); err != nil {
+		slog.Error("Failed to reset last render for debug refresh", "app", app.ID, "error", err)
+		return false
+	}
+	fresh, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).First(ctx)
+	if err != nil {
+		slog.Error("Failed to reload app before debug refresh render", "app", app.ID, "error", err)
+		return false
+	}
+	return s.possiblyRender(ctx, &fresh, device, owner)
+}
+
+func appRenderDebugStatus(localizer *i18n.Localizer, app *data.App) string {
+	if app.LastRender.IsZero() {
+		return tmplT(localizer, "Not rendered yet")
+	}
+	if app.EmptyLastRender {
+		ref := app.LastRender
+		if app.LastSuccessfulRender != nil {
+			ref = *app.LastSuccessfulRender
+		}
+		return tmplT(localizer, "No output for:") + " " + tmplTimeSince(localizer, ref)
+	}
+	return tmplT(localizer, "Last:") + " " + tmplTimeAgo(localizer, app.LastRender) +
+		" (" + tmplT(localizer, "in") + " " + tmplDuration(app.LastRenderDur) + ")"
 }
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -157,6 +335,9 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		for _, d := range targetUser.Devices {
 			deviceIDs = append(deviceIDs, d.ID)
 		}
+		if err := deleteOAuthTokensForDevices(r.Context(), tx, deviceIDs); err != nil {
+			return err
+		}
 		if len(deviceIDs) > 0 {
 			if _, err := gorm.G[data.App](tx).Where("device_id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
@@ -173,7 +354,20 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		// 4. Delete User
+		// 4. Delete OAuth clients the user owns, with the tokens issued through them
+		ownedClients, err := gorm.G[data.OAuthClient](tx).Where("owner_username = ?", targetUsername).Find(r.Context())
+		if err != nil {
+			return err
+		}
+		clientIDs := make([]string, 0, len(ownedClients))
+		for _, c := range ownedClients {
+			clientIDs = append(clientIDs, c.ID)
+		}
+		if err := deleteOAuthClients(r.Context(), tx, clientIDs); err != nil {
+			return err
+		}
+
+		// 5. Delete User
 		if _, err := gorm.G[data.User](tx).Where("username = ?", targetUsername).Delete(r.Context()); err != nil {
 			return err
 		}
@@ -256,6 +450,11 @@ func (s *Server) handleSetUserRepo(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 
 	repoURL := r.FormValue("app_repo_url")
+	// Removing an existing repo is still allowed so users can clean up.
+	if repoURL != "" && !s.customAppsAllowed(user) {
+		http.Error(w, "Custom apps are disabled on this server", http.StatusForbidden)
+		return
+	}
 	if _, err := gorm.G[data.User](s.DB).Where("username = ?", user.Username).Update(r.Context(), "app_repo_url", repoURL); err != nil {
 		slog.Error("Failed to update user repo URL", "error", err)
 		s.flashAndRedirect(w, r, "Failed to update repository URL.", "/settings/content", http.StatusSeeOther)
@@ -327,6 +526,9 @@ func (s *Server) refreshAllCustomAppsRepos() {
 	}
 
 	for _, user := range users {
+		if !s.customAppsAllowed(&user) {
+			continue
+		}
 		appsPath := filepath.Join(s.DataDir, "users", user.Username, "repo")
 		if err := gitutils.EnsureRepo(appsPath, user.AppRepoURL, s.Config.GitHubToken, true, s.Config.MaxRepoSize()); err != nil {
 			slog.Error("Scheduled refresh of custom apps repo failed", "user", user.Username, "error", err)
@@ -408,6 +610,11 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 			s.flashAndRedirect(w, r, "Invalid night or dim mode schedule in file", "/settings/admin", http.StatusSeeOther)
 			return
 		}
+		if err := validateImportedApps(dev.Apps); err != nil {
+			slog.Error("Imported device has an invalid app", "device", dev.Name, "error", err)
+			s.flashAndRedirect(w, r, "Invalid app installation ID in file", "/settings/admin", http.StatusSeeOther)
+			return
+		}
 	}
 
 	currentUser, err := gorm.G[data.User](s.DB).Preload("Devices", nil).Where("username = ?", userContext.Username).First(r.Context())
@@ -421,7 +628,9 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 	currentUser.Email = importedUser.Email
 	currentUser.ThemePreference = importedUser.ThemePreference
 	currentUser.SystemRepoURL = importedUser.SystemRepoURL
-	currentUser.AppRepoURL = importedUser.AppRepoURL
+	if s.customAppsAllowed(&currentUser) {
+		currentUser.AppRepoURL = importedUser.AppRepoURL
+	}
 	if importedUser.APIKey != "" {
 		currentUser.APIKey = importedUser.APIKey
 	}
@@ -446,6 +655,9 @@ func (s *Server) handleImportUserConfig(w http.ResponseWriter, r *http.Request) 
 			deviceIDs = append(deviceIDs, d.ID)
 		}
 		if len(deviceIDs) > 0 {
+			if err := deleteOAuthTokensForDevices(r.Context(), tx, deviceIDs); err != nil {
+				return err
+			}
 			if _, err := gorm.G[data.App](tx).Where("device_id IN ?", deviceIDs).Delete(r.Context()); err != nil {
 				return err
 			}

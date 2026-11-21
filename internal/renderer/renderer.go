@@ -5,20 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/tronbyt/pixlet/encode"
 	"github.com/tronbyt/pixlet/runtime"
+	"github.com/tronbyt/pixlet/runtime/modules/host"
 	"github.com/tronbyt/pixlet/runtime/modules/render_runtime/canvas"
 	"github.com/tronbyt/pixlet/server/loader"
 	"golang.org/x/text/language"
 )
 
-// Render executes the Starlark script and returns the WebP image bytes.
+// Render executes the Starlark app at path within root and returns the WebP image bytes.
 // If result is not nil, it is filled in with what the app returned besides the
 // image, such as a requested sound.
 func Render(
 	ctx context.Context,
+	root *os.Root,
 	path string,
 	config map[string]any,
 	width, height int,
@@ -30,6 +33,7 @@ func Render(
 	locale *string,
 	filters []string,
 	showFullAnimation *bool,
+	hostInfo host.Info,
 	result *loader.RenderResult,
 ) ([]byte, []string, error) {
 	location := time.Local
@@ -58,8 +62,8 @@ func Render(
 		}
 	}
 
-	return loader.RenderApplet(
-		ctx, path, config,
+	r, err := loader.RenderAppletRoot(
+		ctx, root, path, config,
 		loader.WithMeta(canvas.Metadata{
 			Width:  width,
 			Height: height,
@@ -73,19 +77,24 @@ func Render(
 		loader.WithLanguage(lang),
 		loader.WithFilters(renderFilters),
 		loader.WithShowFullAnimation(showFullAnimation),
-		loader.WithResult(result),
+		loader.WithHostInfo(hostInfo),
 	)
+	if result != nil {
+		*result = r
+	}
+	return r.Image, r.Output, err
 }
 
-// GetSchema returns the schema JSON for the given script.
-func GetSchema(ctx context.Context, path string, width, height int, output2x bool) ([]byte, error) {
-	applet, err := runtime.NewAppletFromPath(
-		ctx, path,
+// GetSchema returns the schema JSON for the app at path within root.
+func GetSchema(ctx context.Context, root *os.Root, path string, width, height int, output2x bool, hostInfo host.Info) ([]byte, error) {
+	applet, err := runtime.NewAppletFromRoot(
+		ctx, root, path,
 		runtime.WithCanvasMeta(canvas.Metadata{
 			Width:  width,
 			Height: height,
 			Is2x:   output2x,
 		}),
+		runtime.WithHostInfo(hostInfo),
 	)
 	if err != nil {
 		return nil, err
@@ -104,26 +113,29 @@ func GetSchema(ctx context.Context, path string, width, height int, output2x boo
 	return json.Marshal(applet.Schema)
 }
 
-// CallSchemaHandler executes a schema handler function in the Starlark script.
+// CallSchemaHandler executes a schema handler function in the app at path within root.
 func CallSchemaHandler(
 	ctx context.Context,
+	root *os.Root,
 	path string,
 	config map[string]any,
 	width, height int,
 	output2x bool,
 	handlerName string,
 	parameter string,
+	hostInfo host.Info,
 ) (string, error) {
-	applet, err := runtime.NewAppletFromPath(
-		ctx, path,
+	applet, err := runtime.NewAppletFromRoot(
+		ctx, root, path,
 		runtime.WithCanvasMeta(canvas.Metadata{
 			Width:  width,
 			Height: height,
 			Is2x:   output2x,
 		}),
+		runtime.WithHostInfo(hostInfo),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to load applet from path: %w", err)
+		return "", fmt.Errorf("failed to load applet: %w", err)
 	}
 	defer func() {
 		err := applet.Close()

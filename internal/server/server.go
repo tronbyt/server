@@ -10,9 +10,11 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -33,6 +35,7 @@ import (
 	"tronbyt-server/web"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/tronbyt/pixlet/runtime/modules/host"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gorilla/sessions"
@@ -68,11 +71,17 @@ type Server struct {
 
 	systemAppsCache                      []apps.AppMetadata
 	systemAppsCacheMutex                 sync.RWMutex
+	systemAppsCommit                     string    // HEAD of the system apps repo; guarded by systemAppsCacheMutex
+	systemAppsCommitTime                 time.Time // guarded by systemAppsCacheMutex
 	systemAppsRefreshMutex               sync.Mutex
 	systemAppsAutoRefreshPreferenceMutex sync.Mutex
 	systemAppsAutoRefresh                atomic.Bool
-	nibletCloudPreferenceMutex           sync.Mutex
-	nibletCloudEnabled                   atomic.Bool
+	// systemAppsCacheStale is set when rebuilding the system apps cache
+	// failed, so the next scheduled check rebuilds it even if the
+	// repository hasn't changed since.
+	systemAppsCacheStale       atomic.Bool
+	nibletCloudPreferenceMutex sync.Mutex
+	nibletCloudEnabled         atomic.Bool
 
 	externalProviders     map[string]providers.ExternalAppProvider
 	externalProvidersMu   sync.RWMutex
@@ -97,8 +106,26 @@ type Server struct {
 	UpdateAvailable  bool
 	LatestReleaseURL string
 
+	// firmwareUpdateMutex stops a scheduled and a manual firmware update
+	// from downloading the same files at once.
+	firmwareUpdateMutex sync.Mutex
+
 	// githubAPIBase, when set, replaces https://api.github.com (used by tests).
 	githubAPIBase string
+
+	// otaCheckClient checks that an https firmware link is publicly trusted
+	// (see otaBaseURL); nil uses a default client. Tests replace it.
+	otaCheckClient *http.Client
+
+	// otaHostLookup resolves a host name for OTA base URL matching; nil uses DNS.
+	otaHostLookup func(ctx context.Context, host string) ([]net.IP, error)
+
+	// schemaLoader, when set, replaces renderer.GetSchema (used by tests).
+	schemaLoader func(ctx context.Context, root *os.Root, path string, width, height int, output2x bool, hostInfo host.Info) ([]byte, error)
+
+	// oauthRefreshLocks holds a *sync.Mutex per OAuthToken.ID so that one
+	// token is never refreshed twice at the same time.
+	oauthRefreshLocks sync.Map
 }
 
 // SchemaCacheBypasser forces cache reads for keys with the given prefix to miss
@@ -117,6 +144,8 @@ var templateFiles = map[string]string{
 	"settings_account": "settings/account.html",
 	"settings_content": "settings/content.html",
 	"settings_admin":   "settings/admin.html",
+	"settings_debug":   "settings/debug.html",
+	"settings_oauth":   "settings/oauth.html",
 	"create":           "manager/create.html",
 	"addapp":           "manager/addapp.html",
 	"configapp":        "manager/configapp.html",
@@ -126,6 +155,12 @@ var templateFiles = map[string]string{
 	"device_tv":        "manager/device_tv.html",
 	"settings":         "admin/settings.html",
 }
+
+const secretKeyVersionSettingKey = "secret_key_version"
+
+// secretKeyVersion is bumped to rotate the session secret key on upgrade.
+// Version 2 rotates keys that GHSA-h3mg-965p-vmmm may have exposed.
+const secretKeyVersion = "2"
 
 // NewServer creates and initializes a new Server instance with the provided database and settings.
 func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
@@ -159,7 +194,12 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 	// Load Settings from DB
 	// Secret Key
 	secretKey, err := s.getSetting("secret_key")
-	if err != nil || secretKey == "" {
+	keyVersion, versionErr := s.getSetting(secretKeyVersionSettingKey)
+	rotate := secretKey != "" && versionErr == nil && keyVersion != secretKeyVersion
+	if rotate {
+		slog.Warn("Rotating session secret key; all users will need to log in again")
+	}
+	if err != nil || secretKey == "" || rotate {
 		b := make([]byte, 32)
 		if _, err := rand.Read(b); err != nil {
 			slog.Error("Failed to generate random secret key", "error", err)
@@ -168,7 +208,10 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 		} else {
 			secretKey = base64.StdEncoding.EncodeToString(b)
 		}
-		if err := s.setSetting("secret_key", secretKey); err != nil {
+		if err := s.setSettings(map[string]string{
+			"secret_key":               secretKey,
+			secretKeyVersionSettingKey: secretKeyVersion,
+		}); err != nil {
 			slog.Error("Failed to save secret key to settings", "error", err)
 		}
 	}
@@ -333,6 +376,7 @@ func NewServer(db *gorm.DB, cfg *config.Settings) *Server {
 
 	go s.checkForUpdates(context.Background())
 	go s.autoRefreshSystemRepo(context.Background())
+	go s.autoUpdateFirmware(context.Background())
 	go s.autoRefreshCustomAppsRepos()
 	s.backgroundRenders.Go(func() { s.preheatExternalAppThumbnails() })
 	if cfg.NibletCloudURL != "" {
@@ -450,6 +494,15 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/config", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleConfigAppPost))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/schema_handler/{handler}", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleSchemaHandler))))
 
+	// Server-managed OAuth2 sign-in for app fields
+	csrf := http.NewCrossOriginProtection()
+	s.Router.Handle("POST /devices/{id}/{iname}/oauth/{field}/connect", csrf.Handler(s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleOAuthConnect)))))
+	s.Router.Handle("POST /devices/{id}/{iname}/oauth/{field}/disconnect", csrf.Handler(s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleOAuthDisconnect)))))
+	s.Router.HandleFunc("GET /oauth/callback/{client}", s.RequireLogin(s.handleOAuthCallback))
+	s.Router.HandleFunc("GET /settings/oauth", s.RequireLogin(s.handleOAuthClientsGet))
+	s.Router.Handle("POST /settings/oauth/clients", csrf.Handler(s.RequireLogin(s.handleOAuthClientSave)))
+	s.Router.Handle("POST /settings/oauth/clients/{client}/delete", csrf.Handler(s.RequireLogin(s.handleOAuthClientDelete)))
+
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_pin", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleTogglePin))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/toggle_enabled", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleToggleEnabled))))
 	s.Router.HandleFunc("POST /devices/{id}/{iname}/moveapp", s.RequireLogin(s.RequireDevice(s.RequireApp(s.handleMoveApp))))
@@ -457,13 +510,13 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("POST /devices/{id}/apps/duplicate_from/{source_device_id}/{iname}", s.RequireLogin(s.RequireDevice(s.handleDuplicateAppToDevice)))
 	s.Router.HandleFunc("POST /devices/{id}/reorder_apps", s.RequireLogin(s.RequireDevice(s.handleReorderApps)))
 
-	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppGet)))
-	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.RequireLogin(s.RequireDevice(s.handleUploadAppPost)))
+	s.Router.HandleFunc("GET /devices/{id}/uploadapp", s.RequireLogin(s.RequireCustomAppsAllowed(s.RequireDevice(s.handleUploadAppGet))))
+	s.Router.HandleFunc("POST /devices/{id}/uploadapp", s.RequireLogin(s.RequireCustomAppsAllowed(s.RequireDevice(s.handleUploadAppPost))))
 	s.Router.HandleFunc("GET /devices/{id}/uploads/{filename}/delete", s.RequireLogin(s.RequireDevice(s.handleDeleteUpload)))
 
 	s.Router.HandleFunc("POST /set_theme_preference", s.RequireLogin(s.handleSetThemePreference))
 	s.Router.HandleFunc("POST /set_user_repo", s.RequireLogin(s.handleSetUserRepo))
-	s.Router.HandleFunc("POST /refresh_user_repo", s.RequireLogin(s.handleRefreshUserRepo))
+	s.Router.HandleFunc("POST /refresh_user_repo", s.RequireLogin(s.RequireCustomAppsAllowed(s.handleRefreshUserRepo)))
 
 	s.Router.HandleFunc("GET /export_user_config", s.RequireLogin(s.handleExportUserConfig))
 	s.Router.HandleFunc("POST /import_user_config", s.RequireLogin(s.handleImportUserConfig))
@@ -777,21 +830,14 @@ func (s *Server) cleanupAppChunks(deviceID string, app *data.App) {
 		return
 	}
 	s.invalidateAppChunks(deviceID, app.Iname)
-	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
 		return
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	chunkPrefix := fmt.Sprintf("%s_chunk_", appBasename)
-	if entries, err := os.ReadDir(deviceWebpDir); err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasPrefix(entry.Name(), chunkPrefix) && strings.HasSuffix(entry.Name(), ".webp") {
-				_ = os.Remove(filepath.Join(deviceWebpDir, entry.Name()))
-			}
-		}
-	}
-	_ = os.Remove(filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename)))
-	_ = os.Remove(filepath.Join(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename)))
+	defer func() { _ = root.Close() }()
+	removeAppChunkFiles(root, app)
+	_ = root.Remove(appChunksMetaName(app))
+	_ = root.Remove(appFullWebpName(app))
 }
 
 type chunkMeta struct {
@@ -816,21 +862,18 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.Render
 	s.appChunksMu.RUnlock()
 
 	// Try loading from disk
-	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
 		return nil
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
-	metaFile := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
-	metaBytes, err := os.ReadFile(metaFile)
+	defer func() { _ = root.Close() }()
+	metaBytes, err := root.ReadFile(appChunksMetaName(app))
 	if err == nil {
 		var metas []chunkMeta
 		if err := json.Unmarshal(metaBytes, &metas); err == nil && len(metas) > 0 {
 			var chunks []providers.RenderChunk
 			for _, m := range metas {
-				chunkFile := filepath.Base(m.File)
-				chunkPath := filepath.Join(deviceWebpDir, chunkFile)
-				b, err := os.ReadFile(chunkPath)
+				b, err := root.ReadFile(filepath.Base(m.File))
 				if err != nil {
 					chunks = nil
 					break
@@ -850,8 +893,7 @@ func (s *Server) getAppChunks(deviceID string, app *data.App) []providers.Render
 	}
 
 	// Fallback: check if single .webp exists
-	singlePath := s.getAppWebpPath(deviceWebpDir, app)
-	if b, err := os.ReadFile(singlePath); err == nil && len(b) > 0 {
+	if b, err := root.ReadFile(appWebpName(app)); err == nil && len(b) > 0 {
 		durationMs := app.DisplayTime * 1000
 		if durationMs <= 0 {
 			durationMs = 15000
@@ -875,53 +917,46 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 	if app == nil || len(chunks) == 0 {
 		return nil
 	}
-	deviceWebpDir, err := s.ensureDeviceImageDir(deviceID)
+	root, err := s.openDeviceImageRoot(deviceID)
 	if err != nil {
 		return err
 	}
-	appBasename := fmt.Sprintf("%s-%s", app.Name, app.Iname)
+	defer func() { _ = root.Close() }()
+	appBasename := appImageBase(app)
 
 	// Remove old chunk files for this app to prevent orphaned chunks if chunk count changed
-	chunkPrefix := fmt.Sprintf("%s_chunk_", appBasename)
-	if entries, err := os.ReadDir(deviceWebpDir); err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasPrefix(entry.Name(), chunkPrefix) && strings.HasSuffix(entry.Name(), ".webp") {
-				_ = os.Remove(filepath.Join(deviceWebpDir, entry.Name()))
-			}
-		}
-	}
+	removeAppChunkFiles(root, app)
 
 	// The primary image (<appBasename>.webp) is what devices fetch on rotation or fallback.
 	// It must always be safe for device hardware and stay within maxChunkSize, so we
-	// write chunk 0 (the first chunk) to primaryPath.
-	primaryPath := s.getAppWebpPath(deviceWebpDir, app)
-	if err := os.MkdirAll(filepath.Dir(primaryPath), 0755); err != nil {
+	// write chunk 0 (the first chunk) to primaryName.
+	primaryName := appWebpName(app)
+	if err := root.MkdirAll(path.Dir(primaryName), 0755); err != nil {
 		return err
 	}
 	primaryBytes := chunks[0].WebPBytes
-	if err := os.WriteFile(primaryPath, primaryBytes, 0644); err != nil {
+	if err := root.WriteFile(primaryName, primaryBytes, 0644); err != nil {
 		return err
 	}
 
 	// Save the complete unchunked animation (if available) to <appBasename>_full.webp
 	// for rich web previews and dashboard display. If empty, remove any existing stale full file.
-	fullPath := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_full.webp", appBasename))
+	fullName := appFullWebpName(app)
 	if len(chunks[0].FullWebPBytes) > 0 {
-		if err := os.WriteFile(fullPath, chunks[0].FullWebPBytes, 0644); err != nil {
-			slog.Error("Failed to write full webp preview file", "path", fullPath, "error", err)
+		if err := root.WriteFile(fullName, chunks[0].FullWebPBytes, 0644); err != nil {
+			slog.Error("Failed to write full webp preview file", "name", fullName, "error", err)
 			return err
 		}
 	} else {
-		_ = os.Remove(fullPath)
+		_ = root.Remove(fullName)
 	}
 
 	// If multiple chunks, write individual chunk files and chunk metadata JSON
 	var metas []chunkMeta
 	for i, chunk := range chunks {
 		fileName := fmt.Sprintf("%s_chunk_%d.webp", appBasename, i)
-		chunkPath := filepath.Join(deviceWebpDir, fileName)
-		if err := os.WriteFile(chunkPath, chunk.WebPBytes, 0644); err != nil {
-			slog.Error("Failed to write chunk file", "path", chunkPath, "error", err)
+		if err := root.WriteFile(fileName, chunk.WebPBytes, 0644); err != nil {
+			slog.Error("Failed to write chunk file", "name", fileName, "error", err)
 			return err
 		}
 		metas = append(metas, chunkMeta{
@@ -930,10 +965,10 @@ func (s *Server) saveAppChunks(deviceID string, app *data.App, chunks []provider
 		})
 	}
 
-	metaFile := filepath.Join(deviceWebpDir, fmt.Sprintf("%s_chunks.json", appBasename))
+	metaName := appChunksMetaName(app)
 	if metaBytes, err := json.Marshal(metas); err == nil {
-		if err := os.WriteFile(metaFile, metaBytes, 0644); err != nil {
-			slog.Error("Failed to write chunks metadata", "path", metaFile, "error", err)
+		if err := root.WriteFile(metaName, metaBytes, 0644); err != nil {
+			slog.Error("Failed to write chunks metadata", "name", metaName, "error", err)
 		}
 	}
 

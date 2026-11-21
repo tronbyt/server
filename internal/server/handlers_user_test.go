@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -445,4 +446,83 @@ func TestHandleIndexRendersDeviceCard(t *testing.T) {
 	body := rr.Body.String()
 	require.Contains(t, body, "device-card-dev-pi")
 	require.Contains(t, body, "device-card-dev-gen1")
+}
+
+func TestSettingsDebugShowsRenderMessages(t *testing.T) {
+	s := newTestServer(t)
+	user := data.User{Username: "debugger", APIKey: "debugger-api-key"}
+	require.NoError(t, s.DB.Create(&user).Error)
+
+	device := data.Device{ID: "mytidbyt", Name: "Desk", Username: user.Username, APIKey: "device-api-key"}
+	require.NoError(t, s.DB.Create(&device).Error)
+
+	app := data.App{
+		DeviceID:       device.ID,
+		Iname:          "weather",
+		Name:           "weather",
+		Config:         data.JSONMap{"city": "Seattle"},
+		RenderMessages: data.StringSlice{"line one", "line two"},
+	}
+	require.NoError(t, s.DB.Create(&app).Error)
+
+	seedReq := httptest.NewRequest(http.MethodGet, "/settings/debug", nil)
+	seedRR := httptest.NewRecorder()
+	session, _ := s.Store.Get(seedReq, "session-name")
+	session.Values["username"] = user.Username
+	require.NoError(t, s.saveSession(seedRR, seedReq, session))
+
+	req := httptest.NewRequest(http.MethodGet, "/settings/debug", nil)
+	for _, cookie := range seedRR.Result().Cookies() {
+		req.AddCookie(cookie)
+	}
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	body := rr.Body.String()
+	require.Contains(t, body, `/settings/debug`)
+	require.Contains(t, body, "weather (weather)")
+	require.Contains(t, body, "Seattle")
+	require.Contains(t, body, "App Configuration")
+	require.Contains(t, body, "line one")
+	require.Contains(t, body, "line two")
+}
+
+func TestSettingsDebugAppRefreshReturnsJSON(t *testing.T) {
+	s := newTestServer(t)
+	user := data.User{Username: "debugger", APIKey: "debugger-api-key"}
+	require.NoError(t, s.DB.Create(&user).Error)
+
+	device := data.Device{ID: "mytidbyt", Name: "Desk", Username: user.Username, APIKey: "device-api-key"}
+	require.NoError(t, s.DB.Create(&device).Error)
+
+	app := data.App{
+		DeviceID:       device.ID,
+		Iname:          "weather",
+		Name:           "weather",
+		Config:         data.JSONMap{"city": "Seattle"},
+		RenderMessages: data.StringSlice{"line one"},
+	}
+	require.NoError(t, s.DB.Create(&app).Error)
+
+	seedReq := httptest.NewRequest(http.MethodGet, "/settings/debug", nil)
+	seedRR := httptest.NewRecorder()
+	session, _ := s.Store.Get(seedReq, "session-name")
+	session.Values["username"] = user.Username
+	require.NoError(t, s.saveSession(seedRR, seedReq, session))
+
+	req := httptest.NewRequest(http.MethodPost, "/settings/debug/apps/mytidbyt/weather/refresh", nil)
+	for _, cookie := range seedRR.Result().Cookies() {
+		req.AddCookie(cookie)
+	}
+	rr := httptest.NewRecorder()
+	s.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Contains(t, rr.Header().Get("Content-Type"), "application/json")
+
+	var payload settingsDebugAppRefreshResponse
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&payload))
+	require.Equal(t, "Seattle", payload.Config["city"])
+	require.Equal(t, []string{"line one"}, payload.RenderMessages)
 }

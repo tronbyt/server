@@ -109,6 +109,10 @@ The server can be configured via environment variables or `.env` file:
 *   `SYSTEM_APPS_REPO`: Git repository URL for system apps (default: `https://github.com/tronbyt/apps.git`). End the URL with `#branch-name` to use a branch other than the default.
 *   `SYSTEM_APPS_AUTO_REFRESH`: Initial default for refreshing the system apps repository every 12 hours (default: `false`). Administrators can change this under **Settings → Content and Firmware**; a saved web preference takes precedence on later starts.
 *   `CUSTOM_APPS_AUTO_REFRESH`: Automatically refresh every user's custom apps repository, every 12h (default: `false`).
+*   `BLOCK_CUSTOM_APPS`: Prevent non-admin users from uploading apps or configuring custom apps repositories (default: `false`). Admins are unaffected, and users can still remove a previously configured repository.
+*   `PIXLET_HTTP_BLOCK_PRIVATE_IPS`: Block apps from making HTTP requests to private, loopback, link-local, and other non-public addresses, such as `192.168.1.1` or `localhost` (default: `false`). Recommended when running untrusted apps. If requests go through a proxy (`HTTP_PROXY`/`HTTPS_PROXY`), only the proxy's address is checked.
+*   `PIXLET_HTTP_TIMEOUT`: Timeout for HTTP requests made by apps, as a Go duration such as `10s` (default: `5s`).
+*   `PIXLET_HTTP_MAX_RESPONSE_MB`: Maximum size of an HTTP response body an app can read, in MB (default: `20`).
 *   `NIBLET_CLOUD_URL`: Source of the install counts shown on system app cards, refreshed at most daily, and destination of the opt-in community app stats in System Settings, which are off by default (default: `https://cloud.heyniblet.com`). Set to an empty string to disable both. Administrators can also turn off all Niblet Cloud traffic under **Settings → Admin** without changing this variable.
 *   `FIRMWARE_REPO`: GitHub repository URL for ESP32 firmware binaries (default: `https://github.com/tronbyt/firmware-esp32`). Set to `"none"` to disable ESP32 firmware fetching.
 *   `TRONBERRY_REPO`: GitHub repository URL for Tronberry (Raspberry Pi) binaries (default: `https://github.com/tronbyt/tronberry`). Set to `"none"` to disable Tronberry binary fetching.
@@ -121,7 +125,8 @@ The server can be configured via environment variables or `.env` file:
 *   `AWTRIX_FPS`: Frame rate for Awtrix screen capture (default: `15`).
 *   `AWTRIX_SCALE_FILTER`: Global 128x64 upscaling filter algorithm for Awtrix apps: `bicubic`, `scale2x`, `bilinear`, `nearest` (default: `bicubic`).
 *   `AWTRIX_LAYOUT`: Display centering and layout mode: `center` (default, auto-centers 16-row widgets like weather and 2x scales 8-row widgets like arcade games), `fill` (stretches and scales widgets vertically and horizontally to fill the display canvas without black bars), `native` (raw top-left placement). Can also be configured per app in the app settings.
-*   `GITHUB_TOKEN`: GitHub token for private app repositories (optional).
+*   `GITHUB_TOKEN`: GitHub token for private app repositories and alpha firmware downloads (optional).
+*   `FIRMWARE_INCLUDE_ALPHA`: When `true`, also download the draft GitHub release tagged `alpha`. Requires `GITHUB_TOKEN` with access to the firmware repository. Alpha builds appear in device firmware version lists for manual selection; they are not chosen as the default stable version.
 *   `REDIS_URL`: Redis connection string for caching (optional).
 *   `LOG_LEVEL`: Logging verbosity: `DEBUG`, `INFO`, `WARN`, `ERROR` (default: `INFO`).
 *   `TRONBYT_BRANCH`: Branch name override for footer links (e.g. `feat/custom-branch`, optional).
@@ -159,4 +164,3 @@ When `SCREENY_STUDIO_URL` is configured:
 *   After enabling HTTPS, configure the health check to use the corresponding URL, e.g. `test: ["CMD", "/app/tronbyt-server", "health", "https://tronbyt.example.com/health"]`.
 
 **Cache:** By default, an in-memory cache is used. Redis can be configured via `REDIS_URL` for persistent caching across container restarts.
-

@@ -245,7 +245,11 @@ func (s *Server) findUserAppDir(appID string, ownerUsername string) string {
 					Where("devices.username = ? AND (apps.iname = ? OR apps.name = ?)", cleanOwner, cleanID, cleanID).
 					First(&dbApp).Error
 				if err == nil && dbApp.Path != nil && *dbApp.Path != "" {
-					p, err := securejoin.SecureJoin(s.DataDir, *dbApp.Path)
+					base, rel, err := splitAppPath(cleanOwner, *dbApp.Path)
+					if err != nil {
+						return ""
+					}
+					p, err := securejoin.SecureJoin(filepath.Join(s.DataDir, base), rel)
 					if err == nil {
 						if fi, err := os.Stat(p); err == nil {
 							if fi.IsDir() {

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
 )
 
@@ -72,6 +74,37 @@ func TestRequestScheme(t *testing.T) {
 	}
 	if got := requestScheme(&http.Request{URL: &url.URL{Scheme: "https"}}); got != "https" {
 		t.Errorf("requestScheme(https URL) = %q, want %q", got, "https")
+	}
+}
+
+func TestSaveSessionSecureFlag(t *testing.T) {
+	s := newTestServerAPI(t)
+
+	tests := []struct {
+		name       string
+		setup      func(r *http.Request)
+		wantSecure bool
+	}{
+		{"plain http", func(r *http.Request) {}, false},
+		{"native TLS", func(r *http.Request) { r.TLS = &tls.ConnectionState{} }, true},
+		{"forwarded https", func(r *http.Request) { r.URL.Scheme = "https" }, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r.TLS = nil
+			tt.setup(r)
+			w := httptest.NewRecorder()
+
+			session, err := s.Store.New(r, "session-name")
+			require.NoError(t, err)
+			require.NoError(t, s.saveSession(w, r, session))
+
+			cookies := w.Result().Cookies()
+			require.Len(t, cookies, 1)
+			assert.Equal(t, tt.wantSecure, cookies[0].Secure)
+		})
 	}
 }
 
@@ -305,4 +338,48 @@ func TestClearPendingOTAIfMatching(t *testing.T) {
 	var stored data.Device
 	assert.NoError(t, s.DB.First(&stored, "id = ?", "otamatch").Error)
 	assert.Empty(t, stored.PendingUpdateURL)
+}
+
+// TestGetBaseURLKeepsDefaultPort keeps OIDC redirect URIs as they were.
+func TestGetBaseURLKeepsDefaultPort(t *testing.T) {
+	s := &Server{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "internal:8000"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.Header.Set("X-Forwarded-Host", "tronbyt.example")
+	req.Header.Set("X-Forwarded-Port", "443")
+	assert.Equal(t, "https://tronbyt.example:443", s.GetBaseURL(req))
+}
+
+func TestOAuthRedirectURIOmitsDefaultPort(t *testing.T) {
+	s := &Server{}
+	tests := []struct {
+		name    string
+		host    string
+		headers map[string]string
+		want    string
+	}{
+		{"plain", "example.com", nil, "http://example.com"},
+		{"custom port", "example.com:8000", nil, "http://example.com:8000"},
+		{"https proxy default port", "internal:8000", map[string]string{
+			"X-Forwarded-Proto": "https", "X-Forwarded-Host": "tronbyt.example", "X-Forwarded-Port": "443",
+		}, "https://tronbyt.example"},
+		{"https proxy custom port", "internal:8000", map[string]string{
+			"X-Forwarded-Proto": "https", "X-Forwarded-Host": "tronbyt.example", "X-Forwarded-Port": "8443",
+		}, "https://tronbyt.example:8443"},
+		{"http default port in host", "example.com:80", nil, "http://example.com"},
+		{"https port on http is kept", "example.com:443", nil, "http://example.com:443"},
+		{"ipv6 default port", "[::1]:80", nil, "http://[::1]"},
+		{"ipv6 custom port", "[::1]:8000", nil, "http://[::1]:8000"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Host = tt.host
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
+			assert.Equal(t, tt.want+"/oauth/callback/abc", s.oauthRedirectURI(req, "abc"))
+		})
+	}
 }

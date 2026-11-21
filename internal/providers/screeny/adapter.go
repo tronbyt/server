@@ -10,6 +10,7 @@ import (
 	"image"
 	"log/slog"
 	"math"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -59,6 +60,7 @@ type ScreenyAdapter struct {
 	activePatchMu      sync.Mutex
 	activePatchID      string
 	lastParams         map[string]float32
+	lastSeed           uint32
 	lastPatchActivated time.Time
 }
 
@@ -212,7 +214,7 @@ func (a *ScreenyAdapter) GetAppSchema(ctx context.Context, appID string) ([]byte
 		}
 	}
 
-	return TranslatePatchParamsToPixletSchema(patch.Params, includeScaleFilter)
+	return TranslatePatchParamsToPixletSchema(patch.Params, includeScaleFilter, patch.Seeded)
 }
 
 // RenderAppChunks renders a Screeny patch at 30 FPS for the requested duration,
@@ -254,6 +256,7 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 	if patchChanged {
 		a.activePatchID = req.AppID
 		a.lastParams = make(map[string]float32)
+		a.lastSeed = 0
 	}
 	if a.lastParams == nil {
 		a.lastParams = make(map[string]float32)
@@ -265,6 +268,7 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 			a.activePatchMu.Lock()
 			a.activePatchID = ""
 			a.lastParams = make(map[string]float32)
+			a.lastSeed = 0
 			a.activePatchMu.Unlock()
 			return nil, fmt.Errorf("activating patch %s: %w", req.AppID, err)
 		}
@@ -273,15 +277,54 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 		a.activePatchMu.Unlock()
 	}
 
+	transitionOccurred := patchChanged
+
+	// 2. Manage random or fixed seed for generative patches
+	if a.isPatchSeeded(ctx, req.AppID) {
+		fixedSeed, hasFixedSeed := parseSeedValue(req.Config["seed"])
+		if hasFixedSeed {
+			a.activePatchMu.Lock()
+			needsSeed := patchChanged || a.lastSeed != fixedSeed
+			a.activePatchMu.Unlock()
+			if needsSeed {
+				if err := a.setSeed(ctx, fixedSeed); err != nil {
+					slog.Warn("Failed to set screeny seed", "patch", req.AppID, "seed", fixedSeed, "error", err)
+					a.activePatchMu.Lock()
+					a.lastSeed = 0
+					a.activePatchMu.Unlock()
+				} else {
+					a.activePatchMu.Lock()
+					a.lastSeed = fixedSeed
+					a.activePatchMu.Unlock()
+					transitionOccurred = true
+				}
+			}
+		} else {
+			// No fixed seed provided: randomize seed on each render
+			randomSeed := 1 + rand.Uint32N(math.MaxUint32-1)
+			if err := a.setSeed(ctx, randomSeed); err != nil {
+				slog.Warn("Failed to randomize screeny seed", "patch", req.AppID, "seed", randomSeed, "error", err)
+				a.activePatchMu.Lock()
+				a.lastSeed = 0
+				a.activePatchMu.Unlock()
+			} else {
+				a.activePatchMu.Lock()
+				a.lastSeed = randomSeed
+				a.activePatchMu.Unlock()
+				transitionOccurred = true
+			}
+		}
+	}
+
 	scaleFilter := a.scaleFilter
 	if sf, ok := req.Config["scale_filter"].(string); ok && sf != "" && sf != "default" {
 		scaleFilter = sf
 	}
 
-	// 2. Apply config parameters only when changed or on patch switch
+	// 3. Apply config parameters only when changed or on patch switch
 	for paramID, val := range req.Config {
-		if paramID == "scale_filter" {
-			continue // Handled internally by server-side scaling pipeline
+		if paramID == "scale_filter" || paramID == "seed" {
+			continue // Handled internally by server-side scaling pipeline and seed management
 		}
 		if fVal, ok := parseParamValue(val); ok {
 			a.activePatchMu.Lock()
@@ -294,6 +337,7 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 					a.activePatchMu.Lock()
 					a.activePatchID = ""
 					a.lastParams = make(map[string]float32)
+					a.lastSeed = 0
 					a.activePatchMu.Unlock()
 				} else {
 					a.activePatchMu.Lock()
@@ -304,7 +348,7 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 		}
 	}
 
-	// 3. Connect to screeny-studio WebSocket preview stream and capture frames.
+	// 4. Connect to screeny-studio WebSocket preview stream and capture frames.
 	// For full renders (>= 5000ms), reserve ~1.2s of pipeline headroom so live capture +
 	// lossless WebP encoding + WebSocket transmission finishes before the previous cycle's
 	// dwell_secs expires on the device, preventing buffer starvation and frame looping.
@@ -312,11 +356,12 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 	if durationMs >= 5000 {
 		captureDurationMs = max(durationMs-1200, durationMs*85/100)
 	}
-	frames, err := a.captureFrames(ctx, fps, captureDurationMs, req.Width, req.Height, scaleFilter, patchChanged)
+	frames, err := a.captureFrames(ctx, fps, captureDurationMs, req.Width, req.Height, scaleFilter, transitionOccurred)
 	if err != nil {
 		a.activePatchMu.Lock()
 		a.activePatchID = ""
 		a.lastParams = make(map[string]float32)
+		a.lastSeed = 0
 		a.activePatchMu.Unlock()
 		return nil, fmt.Errorf("capturing screeny frames: %w", err)
 	}
@@ -325,6 +370,7 @@ func (a *ScreenyAdapter) RenderAppChunks(ctx context.Context, req providers.Rend
 		a.activePatchMu.Lock()
 		a.activePatchID = ""
 		a.lastParams = make(map[string]float32)
+		a.lastSeed = 0
 		a.activePatchMu.Unlock()
 		return nil, errors.New("captured zero frames from screeny-studio")
 	}
@@ -416,8 +462,54 @@ func (a *ScreenyAdapter) setParam(ctx context.Context, paramID string, val float
 	return nil
 }
 
+// setSeed calls POST /api/v1/set_seed on screeny-studio.
+func (a *ScreenyAdapter) setSeed(ctx context.Context, seed uint32) error {
+	u := fmt.Sprintf("%s/api/v1/set_seed", a.studioURL)
+	payload, err := json.Marshal(map[string]uint32{
+		"seed": seed,
+	})
+	if err != nil {
+		return err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("set_seed status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// isPatchSeeded returns true if the specified patch supports seed-based procedural generation.
+func (a *ScreenyAdapter) isPatchSeeded(ctx context.Context, patchID string) bool {
+	a.cacheMu.RLock()
+	patch, found := a.cachedPatch[patchID]
+	a.cacheMu.RUnlock()
+
+	if !found {
+		if _, err := a.ListApps(ctx); err == nil {
+			a.cacheMu.RLock()
+			patch, found = a.cachedPatch[patchID]
+			a.cacheMu.RUnlock()
+		}
+	}
+
+	return found && patch.Seeded
+}
+
 // captureFrames opens a WebSocket to /api/v1/ws and collects frames for durationMs.
-func (a *ScreenyAdapter) captureFrames(ctx context.Context, fps, durationMs, targetWidth, targetHeight int, scaleFilter string, patchChanged bool) ([]*image.RGBA, error) {
+func (a *ScreenyAdapter) captureFrames(ctx context.Context, fps, durationMs, targetWidth, targetHeight int, scaleFilter string, discardTransition bool) ([]*image.RGBA, error) {
 	u, err := url.Parse(a.studioURL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing studio URL: %w", err)
@@ -451,7 +543,7 @@ func (a *ScreenyAdapter) captureFrames(ctx context.Context, fps, durationMs, tar
 	scaleRequired := targetWidth == 128 && targetHeight == 64
 	var frames []*image.RGBA
 	timeoutDuration := time.Duration(durationMs+5000) * time.Millisecond
-	if patchChanged && a.transitionSkipSec > 0 {
+	if discardTransition && a.transitionSkipSec > 0 {
 		timeoutDuration += time.Duration(a.transitionSkipSec*1000) * time.Millisecond
 	}
 	timeout := time.After(timeoutDuration)
@@ -482,9 +574,9 @@ func (a *ScreenyAdapter) captureFrames(ctx context.Context, fps, durationMs, tar
 			continue // skip JSON heartbeats / state messages
 		}
 
-		// Screeny Studio performs a 2.0-second crossfade when switching patches.
-		// While timer < transitionSkipSec, discard blend frames only if a patch switch just occurred.
-		if patchChanged && len(msgData) == PreviewPacketLen && a.transitionSkipSec > 0 {
+		// Screeny Studio performs a 2.0-second crossfade when switching patches or setting seeds.
+		// While timer < transitionSkipSec, discard blend frames only if a transition just occurred.
+		if discardTransition && len(msgData) == PreviewPacketLen && a.transitionSkipSec > 0 {
 			timer := math.Float32frombits(binary.LittleEndian.Uint32(msgData[4:8]))
 			if timer < a.transitionSkipSec {
 				continue
@@ -538,6 +630,66 @@ func parseParamValue(val any) (float32, bool) {
 		}
 		if parsed, err := strconv.ParseFloat(v, 32); err == nil {
 			return float32(parsed), true
+		}
+	}
+	return 0, false
+}
+
+// parseSeedValue extracts a user-configured seed if present, positive, and <= math.MaxUint32.
+// Returns (seed, true) if a specific fixed seed is configured, or (0, false) if
+// the seed should be randomized (e.g. empty, "0", "random", "auto", out-of-range, or omitted).
+func parseSeedValue(val any) (uint32, bool) {
+	if val == nil {
+		return 0, false
+	}
+	switch v := val.(type) {
+	case int:
+		if v > 0 && int64(v) <= math.MaxUint32 {
+			return uint32(v), true
+		}
+	case int32:
+		if v > 0 {
+			return uint32(v), true
+		}
+	case int64:
+		if v > 0 && v <= math.MaxUint32 {
+			return uint32(v), true
+		}
+	case uint:
+		if v > 0 && uint64(v) <= math.MaxUint32 {
+			return uint32(v), true
+		}
+	case uint32:
+		if v > 0 {
+			return v, true
+		}
+	case uint64:
+		if v > 0 && v <= math.MaxUint32 {
+			return uint32(v), true
+		}
+	case float64:
+		if !math.IsNaN(v) && !math.IsInf(v, 0) && v > 0 && v <= math.MaxUint32 && v == math.Trunc(v) {
+			return uint32(v), true
+		}
+	case float32:
+		f64 := float64(v)
+		if !math.IsNaN(f64) && !math.IsInf(f64, 0) && f64 > 0 && f64 <= math.MaxUint32 && f64 == math.Trunc(f64) {
+			return uint32(v), true
+		}
+	case json.Number:
+		if n, err := strconv.ParseUint(string(v), 10, 32); err == nil && n > 0 {
+			return uint32(n), true
+		}
+		if f, err := v.Float64(); err == nil && !math.IsNaN(f) && !math.IsInf(f, 0) && f > 0 && f <= math.MaxUint32 && f == math.Trunc(f) {
+			return uint32(f), true
+		}
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" || strings.EqualFold(trimmed, "random") || strings.EqualFold(trimmed, "auto") {
+			return 0, false
+		}
+		if n, err := strconv.ParseUint(trimmed, 10, 32); err == nil && n > 0 {
+			return uint32(n), true
 		}
 	}
 	return 0, false

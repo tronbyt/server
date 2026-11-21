@@ -414,6 +414,9 @@ func (s *Server) handleUpdateDeviceGet(w http.ResponseWriter, r *http.Request) {
 		FirmwareOTAFormID:         "device_firmware_ota_form",
 		ShowOTAReleaseNotes:       true,
 		FirmwareOTAFullSection:    false,
+		FirmwareInstalledVersion:  installedFirmwareVersion(device),
+		FirmwareUpToDate:          s.FirmwareUpToDateForDevice(device),
+		FirmwareUpdateVersion:     s.FirmwareUpdateForDevice(device),
 	})
 }
 
@@ -772,6 +775,9 @@ func (s *Server) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	// Cascading delete in transaction
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete Apps
+		if err := deleteOAuthTokensForDevices(r.Context(), tx, []string{device.ID}); err != nil {
+			return err
+		}
 		if _, err := gorm.G[data.App](tx).Where("device_id = ?", device.ID).Delete(r.Context()); err != nil {
 			return err
 		}
@@ -855,6 +861,11 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 		s.flashAndRedirect(w, r, "Invalid night or dim mode schedule in file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
 		return
 	}
+	if err := validateImportedApps(importedDevice.Apps); err != nil {
+		slog.Error("Imported device has an invalid app", "error", err)
+		s.flashAndRedirect(w, r, "Invalid app installation ID in file", fmt.Sprintf("/devices/%s/update", device.ID), http.StatusSeeOther)
+		return
+	}
 
 	// Clean up WebP files for this device to prevent orphans
 	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
@@ -882,6 +893,9 @@ func (s *Server) handleImportDeviceConfig(w http.ResponseWriter, r *http.Request
 	// Begin a transaction to ensure atomicity
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Delete existing apps for this device
+		if err := deleteOAuthTokensForDevices(r.Context(), tx, []string{device.ID}); err != nil {
+			return err
+		}
 		if err := tx.Where("device_id = ?", device.ID).Delete(&data.App{}).Error; err != nil {
 			return fmt.Errorf("failed to delete existing apps: %w", err)
 		}

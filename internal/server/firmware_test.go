@@ -106,6 +106,50 @@ func TestHandleFirmwareGeneratePost(t *testing.T) {
 	}
 }
 
+func TestFirmwareDownloadReappliesAuthOnRedirect(t *testing.T) {
+	s := newTestServerAPI(t)
+	s.Config.GitHubToken = "test-token"
+	s.Config.FirmwareIncludeAlpha = true
+	t.Setenv("FIRMWARE_REPO", "")
+	t.Setenv("TRONBERRY_REPO", "none")
+
+	firmwareBytes := make([]byte, 64)
+	firmwareBytes[0] = 0xE9
+
+	var redirectAuth string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases"):
+			base := "http://" + r.Host
+			w.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "/tags/alpha") {
+				_, _ = fmt.Fprintf(w, `{"tag_name":"alpha","draft":true,"assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/api-asset","browser_download_url":"%s/browser"}]}`, base, base)
+				return
+			}
+			_, _ = fmt.Fprintf(w, `[{"tag_name":"alpha","draft":true,"assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/api-asset","browser_download_url":"%s/browser"}]}]`, base, base)
+		case r.URL.Path == "/api-asset":
+			if r.Header.Get("Accept") != "application/octet-stream" {
+				http.Error(w, "bad accept", http.StatusBadRequest)
+				return
+			}
+			http.Redirect(w, r, "/cdn-asset", http.StatusFound)
+		case r.URL.Path == "/cdn-asset":
+			redirectAuth = r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(firmwareBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	require.NoError(t, s.UpdateFirmwareBinaries(1))
+	assert.Equal(t, "Bearer test-token", redirectAuth)
+	assert.FileExists(t, filepath.Join(s.DataDir, "firmware", "releases", "alpha", "tidbyt-gen1.bin"))
+}
+
 // TestUpdateFirmwareBinariesRejectsHTMLAndRetriesAPI verifies the expected behavior under test.
 func TestUpdateFirmwareBinariesRejectsHTMLAndRetriesAPI(t *testing.T) {
 	s := newTestServerAPI(t)
@@ -368,4 +412,113 @@ func TestFallbackOwnerRepoDetection(t *testing.T) {
 	infoB, err := s.GetFirmwareReleaseInfo("v5.0.0")
 	require.NoError(t, err)
 	assert.Contains(t, infoB.HTMLURL, "firmware-esp32")
+}
+
+func TestValidFirmwareVersionTag(t *testing.T) {
+	assert.True(t, validFirmwareVersionTag("v1.2.3"))
+	assert.True(t, validFirmwareVersionTag("alpha"))
+	assert.False(t, validFirmwareVersionTag("../escape"))
+	assert.False(t, validFirmwareVersionTag(""))
+}
+
+func TestUpdateFirmwareBinariesSkipsDraftReleasesUnlessEnabled(t *testing.T) {
+	s := newTestServerAPI(t)
+	s.Config.GitHubToken = "test-token"
+	t.Setenv("FIRMWARE_REPO", "")
+	t.Setenv("TRONBERRY_REPO", "none")
+
+	firmwareBytes := []byte{0xE9}
+	firmwareBytes = append(firmwareBytes, make([]byte, 63)...)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		base := "http://" + r.Host
+		switch {
+		case strings.Contains(r.URL.Path, "/releases/tags/alpha"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{"tag_name":"alpha","name":"Alpha","draft":true,"assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/alpha-api","browser_download_url":"%s/alpha"}]}`, base, base)
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `[
+				{"tag_name":"alpha","name":"Alpha","draft":true,"assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/alpha-api","browser_download_url":"%s/alpha"}]},
+				{"tag_name":"v1.0.0","draft":false,"assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/stable-api","browser_download_url":"%s/stable"}]}
+			]`, base, base, base, base)
+		case r.URL.Path == "/alpha-api" || r.URL.Path == "/stable-api":
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(firmwareBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	require.NoError(t, s.UpdateFirmwareBinaries(2))
+	_, err := os.Stat(filepath.Join(s.DataDir, "firmware", "releases", "alpha", "tidbyt-gen1.bin"))
+	assert.True(t, os.IsNotExist(err))
+	assert.FileExists(t, filepath.Join(s.DataDir, "firmware", "releases", "v1.0.0", "tidbyt-gen1.bin"))
+
+	s.Config.FirmwareIncludeAlpha = true
+	require.NoError(t, s.UpdateFirmwareBinaries(2))
+	assert.FileExists(t, filepath.Join(s.DataDir, "firmware", "releases", "alpha", "tidbyt-gen1.bin"))
+
+	assert.Equal(t, "v1.0.0", s.GetLatestFirmwareVersion())
+	versions := s.GetAvailableFirmwareVersions()
+	assert.Contains(t, versions, "alpha")
+}
+
+func TestFirmwareDraftSyncOnETag304(t *testing.T) {
+	s := newTestServerAPI(t)
+	s.Config.GitHubToken = "test-token"
+	s.Config.FirmwareIncludeAlpha = true
+	t.Setenv("FIRMWARE_REPO", "")
+	t.Setenv("TRONBERRY_REPO", "none")
+
+	firmwareBytes := []byte{0xE9}
+	firmwareBytes = append(firmwareBytes, make([]byte, 63)...)
+
+	const etag = `"releases-with-alpha"`
+	var listHits, tagHits int
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases") && !strings.Contains(r.URL.Path, "/tags/"):
+			listHits++
+			if r.Header.Get("If-None-Match") == etag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			w.Header().Set("ETag", etag)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"tag_name":"v1.0.0","draft":false,"assets":[]}]`))
+		case strings.HasPrefix(r.URL.Path, "/repos/tronbyt/firmware-esp32/releases/tags/alpha"):
+			tagHits++
+			base := "http://" + r.Host
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{"tag_name":"alpha","name":"Alpha","draft":true,"assets":[{"name":"tidbyt-gen1_firmware.bin","url":"%s/api-asset","browser_download_url":"%s/browser"}]}`, base, base)
+		case r.URL.Path == "/browser" || r.URL.Path == "/api-asset":
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(firmwareBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(ts.Close)
+	s.githubAPIBase = ts.URL
+
+	require.NoError(t, s.setSetting("firmware_releases_etag_top5_alphatrue", etag))
+
+	require.NoError(t, s.UpdateFirmwareBinaries(5))
+	assert.Equal(t, 1, listHits)
+	assert.Equal(t, 1, tagHits)
+	assert.FileExists(t, filepath.Join(s.DataDir, "firmware", "releases", "alpha", "tidbyt-gen1.bin"))
+}
+
+func TestGetLatestFirmwareVersionIgnoresAlphaTag(t *testing.T) {
+	s := newTestServerAPI(t)
+	for _, ver := range []string{"alpha", "v9.0.0"} {
+		dir := filepath.Join(s.DataDir, "firmware", "releases", ver)
+		require.NoError(t, os.MkdirAll(dir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "release.json"), []byte(`{"tag_name":"`+ver+`"}`), 0644))
+	}
+	assert.Equal(t, "v9.0.0", s.GetLatestFirmwareVersion())
 }

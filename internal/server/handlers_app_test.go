@@ -43,6 +43,10 @@ func TestHandleAddAppPost(t *testing.T) {
 		},
 	}
 
+	appDir := filepath.Join(s.DataDir, "system-apps", "apps", "clock")
+	require.NoError(t, os.MkdirAll(appDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(appDir, "clock.star"), []byte("def main(): pass\n"), 0644))
+
 	form := url.Values{}
 	form.Add("name", "Clock")
 	form.Add("path", "system-apps/apps/clock/clock.star")
@@ -987,7 +991,7 @@ func TestExternalAppConfigPreview_FullAnimationServing(t *testing.T) {
 
 	deviceWebpDir, err := s.ensureDeviceImageDir(device.ID)
 	require.NoError(t, err)
-	primaryPath := s.getAppWebpPath(deviceWebpDir, &app)
+	primaryPath := filepath.Join(deviceWebpDir, appWebpName(&app))
 	savedPrimary, err := os.ReadFile(primaryPath)
 	require.NoError(t, err)
 	assert.Equal(t, dummyChunkWebP1, savedPrimary, "primary webp must contain chunk 0 safe for device")
@@ -1111,7 +1115,7 @@ func TestExternalAppGetMetadata(t *testing.T) {
 	}
 	s.RegisterExternalProvider(mock)
 
-	meta := s.getAppMetadata(context.Background(), "screeny:clocks-minimal")
+	meta := s.getAppMetadata(context.Background(), "", "screeny:clocks-minimal")
 	require.NotNil(t, meta)
 	assert.Equal(t, "screeny:clocks-minimal", meta.ID)
 	assert.Equal(t, "Minimal Clock", meta.Name)

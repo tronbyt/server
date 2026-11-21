@@ -2,12 +2,7 @@
 {{ if .FirmwareOTAFullSection }}
 <section class="settings-card firmware-path-inner" id="firmware-ota">
     <div class="settings-card-header">
-        <div class="firmware-path-title-row">
-            <h2>{{ t .Localizer "Update over Wi-Fi (OTA)" }}</h2>
-            {{ if .FirmwareOTARecommended }}
-            <span class="firmware-path-badge">{{ t .Localizer "Recommended" }}</span>
-            {{ end }}
-        </div>
+        <h2>{{ t .Localizer "Update over Wi-Fi (OTA)" }}</h2>
     </div>
 {{ else }}
     <div class="settings-card-subsection">
@@ -18,6 +13,11 @@
                 <div class="settings-field-label">{{ t .Localizer "Version on Device" }}</div>
                 <div class="settings-field-control">
                 {{ if .Device.Info.FirmwareVersion }}{{ .Device.Info.FirmwareVersion }}{{ else }}{{ t .Localizer "Unknown" }}{{ end }}
+                    {{ if .FirmwareUpdateVersion }}
+                    <span class="firmware-status firmware-status--update"><i class="fa-solid fa-circle-arrow-up" aria-hidden="true"></i> {{ t .Localizer "Update available:" }} {{ .FirmwareUpdateVersion }}</span>
+                    {{ else if .FirmwareUpToDate }}
+                    <span class="firmware-status firmware-status--current"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{ t .Localizer "Up to date" }}</span>
+                    {{ end }}
                 </div>
             </div>
             {{ if .AvailableFirmwareVersions }}
@@ -38,8 +38,8 @@
             <div class="settings-field-control">
                 <select id="{{ .FirmwareVersionSelectID }}"
                         class="settings-input"
-                        {{ if .ShowOTAReleaseNotes }}onchange="renderFirmwareReleaseNotes(this.value, '{{ .FirmwareReleaseNotesPrefix }}')"
-                        {{ end }}>
+                        data-installed-version="{{ .FirmwareInstalledVersion }}"
+                        onchange="updateOTAInstallLabel(this){{ if .ShowOTAReleaseNotes }}; renderFirmwareReleaseNotes(this.value, '{{ .FirmwareReleaseNotesPrefix }}'){{ end }}">
                     {{ range .AvailableFirmwareVersions }}
                     <option value="{{ . }}" {{ if eq . $.FirmwareVersion }}selected{{ end }}>{{ . }}</option>
                     {{ end }}
@@ -65,8 +65,11 @@
         {{ if .AvailableFirmwareVersions }}
         <button type="button"
                 class="w3-button w3-blue"
+                data-ota-install-for="{{ .FirmwareVersionSelectID }}"
+                data-install-label="{{ t .Localizer "Install Selected Firmware" }}"
+                data-reinstall-label="{{ t .Localizer "Reinstall Selected Firmware" }}"
                 onclick="triggerOTAWithVersion('{{ .Device.ID }}', '{{ t .Localizer "This will trigger an Over-The-Air update. The device will reboot. Continue?" }}')">
-            <i class="fa-solid fa-cloud-arrow-down"></i> {{ t .Localizer "Install Selected Firmware" }}
+            <i class="fa-solid fa-cloud-arrow-down"></i> <span class="ota-install-label">{{ if and .FirmwareInstalledVersion (eq (trimPrefix (or .FirmwareVersion (index .AvailableFirmwareVersions 0)) "v") (trimPrefix .FirmwareInstalledVersion "v")) }}{{ t .Localizer "Reinstall Selected Firmware" }}{{ else }}{{ t .Localizer "Install Selected Firmware" }}{{ end }}</span>
         </button>
         {{ end }}
         <button type="button"

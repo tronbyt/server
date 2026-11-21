@@ -648,6 +648,8 @@ func (s *Server) SetupAuthRoutes() {
 	s.Router.HandleFunc("GET /settings/account", s.handleSettingsAccountGet)
 	s.Router.HandleFunc("POST /settings/account", s.handleEditUserPost)
 	s.Router.HandleFunc("GET /settings/content", s.handleSettingsContentGet)
+	s.Router.HandleFunc("GET /settings/debug", s.handleSettingsDebugGet)
+	s.Router.HandleFunc("POST /settings/debug/apps/{id}/{iname}/refresh", s.handleSettingsDebugAppRefresh)
 	s.Router.HandleFunc("POST /auth/generate_api_key", s.handleGenerateAPIKey)
 	s.Router.HandleFunc("POST /auth/set_api_key", s.handleSetAPIKey)
 
