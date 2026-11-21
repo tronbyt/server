@@ -52,6 +52,10 @@ func TestRenderAppReadsHostInfo(t *testing.T) {
 	dev, err := gorm.G[data.Device](s.DB).Where("id = ?", "testdevice").First(ctx)
 	require.NoError(t, err)
 
+	addFirmwareRelease(t, s, "v1.7.4", "tidbyt-gen2.bin")
+	addFirmwareRelease(t, s, "v1.7.5", "tidbyt-gen2.bin")
+	addFirmwareRelease(t, s, "v1.8.0", "tronbyt-S3.bin") // not for a Gen 2
+
 	appDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(appDir, "hostapp.star"), []byte(`
 load("device.star", "device")
@@ -69,6 +73,7 @@ def main(config):
     check("device.model", device.model(), "tidbyt_gen2")
     check("device.firmware_version", device.firmware_version(), "v1.7.4")
     check("device.firmware_type", device.firmware_type(), "esp32")
+    check("device.latest_firmware_version", device.latest_firmware_version(), "v1.7.5")
     return render.Root(child = render.Box())
 `), 0o644))
 
@@ -88,6 +93,11 @@ def main(config):
 	assert.Equal(t, "v2.6.0", info.ServerVersion)
 	assert.Empty(t, info.Device.Model)
 	assert.Empty(t, info.Device.FirmwareVersion)
+	assert.Empty(t, info.Device.LatestFirmwareVersion)
+
+	// A device the server has no firmware for has no latest version.
+	info = s.hostInfo(&data.Device{Type: data.DeviceTronbytS3Wide})
+	assert.Empty(t, info.Device.LatestFirmwareVersion)
 }
 
 func TestHostInfoUnknownModel(t *testing.T) {
