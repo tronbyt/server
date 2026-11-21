@@ -17,6 +17,8 @@ import (
 )
 
 // Render executes the Starlark app at path within root and returns the WebP image bytes.
+// If result is not nil, it is filled in with what the app returned besides the
+// image, such as a requested sound.
 func Render(
 	ctx context.Context,
 	root *os.Root,
@@ -32,6 +34,7 @@ func Render(
 	filters []string,
 	showFullAnimation *bool,
 	hostInfo host.Info,
+	result *loader.RenderResult,
 ) ([]byte, []string, error) {
 	location := time.Local
 	if timezone != nil && *timezone != "" {
@@ -59,7 +62,7 @@ func Render(
 		}
 	}
 
-	result, err := loader.RenderAppletRoot(
+	r, err := loader.RenderAppletRoot(
 		ctx, root, path, config,
 		loader.WithMeta(canvas.Metadata{
 			Width:  width,
@@ -76,7 +79,10 @@ func Render(
 		loader.WithShowFullAnimation(showFullAnimation),
 		loader.WithHostInfo(hostInfo),
 	)
-	return result.Image, result.Output, err
+	if result != nil {
+		*result = r
+	}
+	return r.Image, r.Output, err
 }
 
 // GetSchema returns the schema JSON for the app at path within root.

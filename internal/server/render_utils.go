@@ -21,12 +21,47 @@ import (
 	"tronbyt-server/internal/renderer"
 	"tronbyt-server/web"
 
+	"github.com/tronbyt/pixlet/server/loader"
 	"gorm.io/gorm"
 )
+
+// maxSoundRequestIDLength caps the render.Root(sound_id) value an app can store.
+const maxSoundRequestIDLength = 256
+
+// validSoundRequestID returns the trimmed sound_id an app asked for, or "" if
+// it contains control characters (checked before trimming), or is empty or
+// too long.
+func validSoundRequestID(id string) string {
+	for _, r := range id {
+		if r < 0x20 || r == 0x7f {
+			return ""
+		}
+	}
+	id = strings.TrimSpace(id)
+	if id == "" || len(id) > maxSoundRequestIDLength {
+		return ""
+	}
+	return id
+}
+
+// rememberSoundRequest records id as the last render.Root(sound_id) handled
+// for app, so later renders returning the same ID don't play it.
+func (s *Server) rememberSoundRequest(ctx context.Context, app *data.App, id string) {
+	app.LastSoundRequestID = id
+	if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_sound_request_id", id); err != nil {
+		slog.Debug("Failed to update last_sound_request_id in DB", "app", app.ID, "error", err)
+	}
+}
 
 // RenderApp consolidates the logic for rendering an app for a device.
 // It handles config overrides, timezone/locale injection, dwell time, and filters.
 func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.App, src *appSource, configOverrides map[string]any) ([]byte, []string, error) {
+	return s.renderAppWithResult(ctx, device, app, src, configOverrides, nil)
+}
+
+// renderAppWithResult is RenderApp that also reports what the app returned
+// besides the image (for example a requested sound) when result is not nil.
+func (s *Server) renderAppWithResult(ctx context.Context, device *data.Device, app *data.App, src *appSource, configOverrides map[string]any, result *loader.RenderResult) ([]byte, []string, error) {
 	// Config
 	var config map[string]any
 	switch {
@@ -103,6 +138,7 @@ func (s *Server) RenderApp(ctx context.Context, device *data.Device, app *data.A
 		filters,
 		showFullAnimation,
 		s.hostInfo(device),
+		result,
 	)
 }
 
@@ -127,13 +163,15 @@ func (s *Server) readAppSource(owner, appPath string) ([]byte, error) {
 }
 
 // renderInstalledApp renders an app installed on device from its stored path.
-func (s *Server) renderInstalledApp(ctx context.Context, device *data.Device, app *data.App) ([]byte, []string, error) {
+// When result is not nil, it is filled in with what the app returned besides
+// the image, such as a requested sound.
+func (s *Server) renderInstalledApp(ctx context.Context, device *data.Device, app *data.App, result *loader.RenderResult) ([]byte, []string, error) {
 	src, err := s.openAppSource(device.Username, *app.Path)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer func() { _ = src.Close() }()
-	return s.RenderApp(ctx, device, app, src, nil)
+	return s.renderAppWithResult(ctx, device, app, src, nil, result)
 }
 
 // possiblyRender executes background rendering for an app if its interval has elapsed or content has changed.
@@ -219,7 +257,8 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 		slog.Info("Rendering app", "app", appBasename)
 
 		startTime := time.Now()
-		imgBytes, messages, err := s.renderInstalledApp(ctx, device, app)
+		var renderResult loader.RenderResult
+		imgBytes, messages, err := s.renderInstalledApp(ctx, device, app, &renderResult)
 		renderDur := time.Since(startTime)
 
 		for _, msg := range messages {
@@ -319,8 +358,21 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 			if app.NotificationSound != nil && *app.NotificationSound != "" && *app.NotificationSound != "none" && device != nil && device.GetAudioCapability() != data.AudioCapNone {
 				contentChanged := (app.LastRenderHash != newHash)
 				shouldPlay := false
-				if app.NotificationSoundTrigger == "on_change" {
+				soundRequestID := ""
+				switch app.NotificationSoundTrigger {
+				case "on_change":
 					shouldPlay = contentChanged
+				case "app_request":
+					// Play once per new render.Root(sound_id) value. The app keeps
+					// returning the same ID on later renders without repeat sounds.
+					soundRequestID = validSoundRequestID(renderResult.SoundID)
+					shouldPlay = soundRequestID != "" && soundRequestID != app.LastSoundRequestID
+					if shouldPlay && device.IsMuted() {
+						// Muted: drop the request rather than hold it back (even
+						// during the cooldown), so it can't play after unmuting.
+						s.rememberSoundRequest(ctx, app, soundRequestID)
+						shouldPlay = false
+					}
 				}
 
 				// Debounce: Enforce 30-second cooldown to prevent sound spam from animated apps
@@ -337,6 +389,9 @@ func (s *Server) possiblyRender(ctx context.Context, app *data.App, device *data
 						app.LastSoundAt = &now
 						if _, err := gorm.G[data.App](s.DB).Where("id = ?", app.ID).Update(ctx, "last_sound_at", now); err != nil {
 							slog.Debug("Failed to update last_sound_at in DB", "app", app.ID, "error", err)
+						}
+						if soundRequestID != "" {
+							s.rememberSoundRequest(ctx, app, soundRequestID)
 						}
 					}
 				}
