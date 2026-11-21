@@ -832,7 +832,7 @@ func (s *Server) handleAppSchemaGet(w http.ResponseWriter, r *http.Request) {
 			if !src.IsWebP() {
 				schemaWidth, schemaHeight := device.Type.CanvasSize()
 				getSchema := func() error {
-					b, err := renderer.GetSchema(r.Context(), src.Root, src.Name, schemaWidth, schemaHeight, device.Type.Supports2x())
+					b, err := renderer.GetSchema(r.Context(), src.Root, src.Name, schemaWidth, schemaHeight, device.Type.Supports2x(), s.hostInfo(device))
 					if err != nil {
 						return err
 					}
@@ -1079,7 +1079,8 @@ func (s *Server) handleSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		handlerWidth, handlerHeight,
 		device.Type.Supports2x(),
 		handler,
-		payload.Param)
+		payload.Param,
+		s.hostInfo(device))
 	if err != nil {
 		slog.Error("Schema handler failed", "handler", handler, "error", err)
 		http.Error(w, "Schema handler failed", http.StatusInternalServerError)

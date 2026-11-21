@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tronbyt/pixlet/runtime/modules/host"
 	"gorm.io/gorm"
 )
 
@@ -124,7 +125,7 @@ func newOAuthTestEnv(t *testing.T) *oauthTestEnv {
 	env.app = data.App{DeviceID: "dev1", Iname: "100", Name: "github", Path: &appPath, Pushed: true}
 	require.NoError(t, s.DB.Create(&env.app).Error)
 
-	s.schemaLoader = func(context.Context, *os.Root, string, int, int, bool) ([]byte, error) {
+	s.schemaLoader = func(context.Context, *os.Root, string, int, int, bool, host.Info) ([]byte, error) {
 		return env.schema(p.authURL(), p.tokenURL()), nil
 	}
 	env.login(t, "alice")

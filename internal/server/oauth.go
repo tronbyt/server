@@ -105,7 +105,7 @@ func (s *Server) appSchema(ctx context.Context, device *data.Device, src *appSou
 		load = s.schemaLoader
 	}
 	width, height := device.Type.CanvasSize()
-	return load(ctx, src.Root, src.Name, width, height, device.Type.Supports2x())
+	return load(ctx, src.Root, src.Name, width, height, device.Type.Supports2x(), s.hostInfo(device))
 }
 
 // canUseOAuthClient reports whether the user may sign in to apps with the client.

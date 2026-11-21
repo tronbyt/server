@@ -35,6 +35,7 @@ import (
 	"tronbyt-server/web"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/tronbyt/pixlet/runtime/modules/host"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gorilla/sessions"
@@ -70,6 +71,8 @@ type Server struct {
 
 	systemAppsCache                      []apps.AppMetadata
 	systemAppsCacheMutex                 sync.RWMutex
+	systemAppsCommit                     string    // HEAD of the system apps repo; guarded by systemAppsCacheMutex
+	systemAppsCommitTime                 time.Time // guarded by systemAppsCacheMutex
 	systemAppsRefreshMutex               sync.Mutex
 	systemAppsAutoRefreshPreferenceMutex sync.Mutex
 	systemAppsAutoRefresh                atomic.Bool
@@ -118,7 +121,7 @@ type Server struct {
 	otaHostLookup func(ctx context.Context, host string) ([]net.IP, error)
 
 	// schemaLoader, when set, replaces renderer.GetSchema (used by tests).
-	schemaLoader func(ctx context.Context, root *os.Root, path string, width, height int, output2x bool) ([]byte, error)
+	schemaLoader func(ctx context.Context, root *os.Root, path string, width, height int, output2x bool, hostInfo host.Info) ([]byte, error)
 
 	// oauthRefreshLocks holds a *sync.Mutex per OAuthToken.ID so that one
 	// token is never refreshed twice at the same time.
