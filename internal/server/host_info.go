@@ -11,7 +11,8 @@ import (
 
 // hostInfo returns what apps can read through Pixlet's server.star and
 // device.star modules: the server and app store versions, and the device's
-// model and firmware. device may be nil (e.g. app previews
+// model and firmware, including the newest firmware this server has for it
+// (what the Firmware page would install). device may be nil (e.g. app previews
 // without a device), in which case only server details are filled in.
 func (s *Server) hostInfo(device *data.Device) host.Info {
 	s.systemAppsCacheMutex.RLock()
@@ -30,6 +31,8 @@ func (s *Server) hostInfo(device *data.Device) host.Info {
 		Model:           device.Type.Slug(),
 		FirmwareVersion: normalizeVersion(device.Info.FirmwareVersion),
 		FirmwareType:    strings.ToLower(strings.TrimSpace(device.Info.FirmwareType)),
+
+		LatestFirmwareVersion: s.GetLatestFirmwareVersionForDevice(device),
 	}
 	if info.Device.Model == "unknown" || info.Device.Model == "other" {
 		info.Device.Model = ""

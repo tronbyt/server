@@ -59,7 +59,7 @@ func Render(
 		}
 	}
 
-	return loader.RenderAppletRoot(
+	result, err := loader.RenderAppletRoot(
 		ctx, root, path, config,
 		loader.WithMeta(canvas.Metadata{
 			Width:  width,
@@ -76,6 +76,7 @@ func Render(
 		loader.WithShowFullAnimation(showFullAnimation),
 		loader.WithHostInfo(hostInfo),
 	)
+	return result.Image, result.Output, err
 }
 
 // GetSchema returns the schema JSON for the app at path within root.
