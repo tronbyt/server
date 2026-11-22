@@ -2657,7 +2657,7 @@
   "0 re-renders the app every time it comes up in rotation.": {
     "other": "Bei 0 wird die App jedes Mal neu gerendert, wenn sie in der Rotation an der Reihe ist."
   },
-  "Many apps cache the data they fetch from the web for a set time (TTL) chosen by the app's author. Until that cache expires, each re-render shows the same data, even at 0.": {
-    "other": "Viele Apps speichern die aus dem Web abgerufenen Daten für eine vom App-Autor festgelegte Zeit (TTL) zwischen. Bis dieser Cache abläuft, zeigt jedes erneute Rendern dieselben Daten, auch bei 0."
+  "Many apps cache the data they fetch from the web for a set time (TTL) chosen by the app's author. Until that cache expires, each re-render might show the same data, even at 0.": {
+    "other": "Viele Apps speichern die aus dem Web abgerufenen Daten für eine vom App-Autor festgelegte Zeit (TTL) zwischen. Bis dieser Cache abläuft, zeigt jedes erneute Rendern möglicherweise dieselben Daten, auch bei 0."
   }
 }
