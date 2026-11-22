@@ -493,7 +493,8 @@ func (s *Server) TriggerDeviceSound(ctx context.Context, device *data.Device, so
 	if device.Info.ProtocolType != data.ProtocolWS {
 		device.PendingSound = payload
 		if _, err := gorm.G[data.Device](s.DB).Where("id = ?", device.ID).Update(ctx, "pending_sound", payload); err != nil {
-			slog.Error("Failed to set pending_sound", "device", device.ID, "error", err)
+			// Polling devices only get the sound from the database, so report it.
+			return fmt.Errorf("set pending_sound: %w", err)
 		}
 	}
 
