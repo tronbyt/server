@@ -111,6 +111,49 @@
   white-space: pre-wrap;
 }
 
+/* Click-to-open help under a form field label */
+.field-info {
+  margin-top: 6px;
+  font-size: 0.85em;
+}
+
+.field-info > summary {
+  cursor: pointer;
+  color: var(--primary-color);
+  font-weight: 600;
+  list-style: none;
+}
+
+.field-info > summary::-webkit-details-marker {
+  display: none;
+}
+
+.field-info > summary:hover {
+  text-decoration: underline;
+}
+
+.field-info-body {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  color: var(--post-about-text);
+}
+
+.field-info-body p {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.field-info-body ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.field-info-body li + li {
+  margin-top: 4px;
+}
+
 @media screen and (max-width: 768px) {
   .palette button {
     width: 40px;

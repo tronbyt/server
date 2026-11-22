@@ -2647,5 +2647,20 @@
   },
   "Reinstall Selected Firmware": {
     "other": "Reinstall Selected Firmware"
+  },
+  "Use 0 to re-render every rotation.": {
+    "other": "Use 0 to re-render every rotation."
+  },
+  "Why isn't my app updating?": {
+    "other": "Why isn't my app updating?"
+  },
+  "Re-rendering is not the same as fetching new data.": {
+    "other": "Re-rendering is not the same as fetching new data."
+  },
+  "0 re-renders the app every time it comes up in rotation.": {
+    "other": "0 re-renders the app every time it comes up in rotation."
+  },
+  "Many apps cache the data they fetch from the web for a set time (TTL) chosen by the app's author. Until that cache expires, each re-render shows the same data, even at 0.": {
+    "other": "Many apps cache the data they fetch from the web for a set time (TTL) chosen by the app's author. Until that cache expires, each re-render shows the same data, even at 0."
   }
 }
