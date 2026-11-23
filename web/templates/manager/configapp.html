@@ -185,6 +185,21 @@
             <td>
                 <label for="uinterval">{{ t .Localizer "Render Interval Minutes" }}</label>
                 <small>{{ t .Localizer "Update every X minutes" }}{{ if .AppMetadata }} ({{ t .Localizer "recommended" }}: {{ .AppMetadata.RecommendedInterval }}){{ end }}</small>
+                <small>{{ t .Localizer "Use 0 to re-render every rotation." }}</small>
+                <details class="field-info">
+                    <summary>
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i> {{ t .Localizer "Why isn't my app updating?" }}
+                    </summary>
+                    <div class="field-info-body">
+                        <p>{{ t .Localizer "Re-rendering is not the same as fetching new data." }}</p>
+                        <ul>
+                            <li>{{ t .Localizer "0 re-renders the app every time it comes up in rotation." }}</li>
+                            <li>
+                                {{ t .Localizer "Many apps cache the data they fetch from the web for a set time (TTL) chosen by the app's author. Until that cache expires, each re-render might show the same data, even at 0." }}
+                            </li>
+                        </ul>
+                    </div>
+                </details>
             </td>
             <td>
                 <input type="number"
