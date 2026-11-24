@@ -38,7 +38,7 @@
     {{ end }}
 </div>
 <script>
-    function loginWebAuthn() {
+    document.addEventListener("DOMContentLoaded", function() {
         if (!window.PublicKeyCredential || !navigator.credentials) {
             const el = document.getElementById('webauthn-login-container');
             if (el) el.style.display = 'none';
