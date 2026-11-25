@@ -27,7 +27,9 @@
     </button>
 </form>
 <div id="webauthn-login-container" class="w3-section">
-    <button onclick="loginWebAuthn()" class="w3-button w3-blue">
+    <button id="webauthn-login-button"
+            onclick="loginWebAuthn()"
+            class="w3-button w3-blue">
         <i class="fa-solid fa-fingerprint" aria-hidden="true"></i> {{ t .Localizer "Sign in with Passkey" }}
     </button>
     {{ if .OIDCEnabled }}
@@ -38,9 +40,10 @@
     {{ end }}
 </div>
 <script>
-    function loginWebAuthn() {
+    document.addEventListener("DOMContentLoaded", function() {
         if (!window.PublicKeyCredential || !navigator.credentials) {
-            const el = document.getElementById('webauthn-login-container');
+            // Hide only the passkey button: the OIDC button shares its container.
+            const el = document.getElementById('webauthn-login-button');
             if (el) el.style.display = 'none';
         }
     });
